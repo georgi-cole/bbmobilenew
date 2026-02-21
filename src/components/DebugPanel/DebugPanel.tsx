@@ -356,6 +356,7 @@ export default function DebugPanel() {
                       }),
                     )
                   }
+                  disabled={!!game.pendingMinigame}
                   title="Launch a standalone TapRace session for testing"
                 >
                   Test TapRace

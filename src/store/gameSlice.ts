@@ -140,9 +140,10 @@ function buildMinigameSession(
 ): MinigameSession {
   const aiScores: Record<string, number> = {};
   let aiSeed = state.seed;
+  const timeLimit = DEFAULT_TAPRACE_OPTIONS.timeLimit;
   participants.forEach((p) => {
     if (!p.isUser) {
-      aiScores[p.id] = simulateTapRaceAI(aiSeed);
+      aiScores[p.id] = simulateTapRaceAI(aiSeed, 'HARD', timeLimit);
       // Advance seed for each AI player so scores are independent
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
     }
@@ -159,18 +160,37 @@ function buildMinigameSession(
 /**
  * Pick the winner from a set of participants and their scores.
  * Returns the participant ID with the highest score.
+ *
+ * Ties are broken deterministically using an FNV-1a hash of the sorted tied
+ * IDs + high score, so equal tap counts never bias toward earlier IDs.
  */
 function determineWinner(participants: string[], scores: Record<string, number>): string {
-  let winnerId = participants[0];
+  if (participants.length === 0) {
+    throw new Error('determineWinner called with no participants');
+  }
+
+  // Find the highest score.
   let highScore = -1;
   for (const id of participants) {
     const score = scores[id] ?? 0;
-    if (score > highScore) {
-      highScore = score;
-      winnerId = id;
-    }
+    if (score > highScore) highScore = score;
   }
-  return winnerId;
+
+  // Collect all participants that share the top score.
+  const topIds = participants.filter((id) => (scores[id] ?? 0) === highScore);
+
+  // Single winner — return directly.
+  if (topIds.length === 1) return topIds[0];
+
+  // Tie-break deterministically: hash sorted IDs + high score via FNV-1a.
+  const tieKey = `${[...topIds].sort().join('|')}:${highScore}`;
+  let hash = 0x811c9dc5 >>> 0; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < tieKey.length; i++) {
+    hash ^= tieKey.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0; // FNV-1a 32-bit prime
+  }
+  const rng = mulberry32(hash >>> 0);
+  return topIds[Math.floor(rng() * topIds.length)];
 }
 
 const gameSlice = createSlice({
@@ -441,6 +461,13 @@ const gameSlice = createSlice({
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
     advance(state) {
+      // Guard: if a minigame is active the human must complete (or skip) it first.
+      // This prevents fastForwardToEviction / debug advance from racing past an
+      // open TapRace overlay and leaving it stuck on screen.
+      if (state.pendingMinigame) {
+        state.pendingMinigame = null; // Auto-dismiss; winner falls back to random pick below.
+      }
+
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──
       if (state.phase === 'final4_eviction') {
         // Guard: Final 4 eviction requires a valid POV holder
@@ -880,13 +907,13 @@ export const startMinigame =
   (opts: { key: string; participants: string[]; seed: number; options: { timeLimit: number } }) =>
   (dispatch: AppDispatch, getState: () => RootState): MinigameResult | undefined => {
     const state = getState().game;
-    // Pre-compute AI scores
+    // Pre-compute AI scores, respecting the configured timeLimit
     const aiScores: Record<string, number> = {};
     let aiSeed = opts.seed;
     opts.participants.forEach((id) => {
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
-        aiScores[id] = simulateTapRaceAI(aiSeed);
+        aiScores[id] = simulateTapRaceAI(aiSeed, 'HARD', opts.options.timeLimit);
         aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     });
@@ -905,11 +932,11 @@ export const startMinigame =
     });
 
     if (!hasHuman) {
-      // AI-only: determine winner immediately and return
+      // AI-only: determine winner immediately and return the result directly.
+      // We do NOT dispatch completeMinigame here — that would write a stale
+      // minigameResult that could later be consumed by an unrelated advance().
       const winnerId = determineWinner(opts.participants, aiScores);
       const result: MinigameResult = { seedUsed: opts.seed, scores: aiScores, winnerId };
-      dispatch(launchMinigame(session));
-      dispatch(completeMinigame(0)); // 0 since no human score
       return result;
     }
 
