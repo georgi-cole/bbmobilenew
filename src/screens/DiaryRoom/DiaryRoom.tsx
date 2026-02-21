@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../../store/GameContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { addTvEvent } from '../../store/gameSlice';
 import './DiaryRoom.css';
 
 type DiaryTab = 'confess' | 'log';
@@ -21,17 +22,18 @@ const TABS: { id: DiaryTab; label: string; icon: string }[] = [
 
 export default function DiaryRoom() {
   const navigate = useNavigate();
-  const { state, addTvEvent } = useGame();
+  const dispatch = useAppDispatch();
+  const tvFeed = useAppSelector((s) => s.game.tvFeed);
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
 
-  const diaryLog = state.tvFeed.filter((e) => e.type === 'diary');
+  const diaryLog = tvFeed.filter((e) => e.type === 'diary');
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = entry.trim();
     if (!text) return;
-    addTvEvent({ text: `📖 Diary: "${text}"`, type: 'diary' });
+    dispatch(addTvEvent({ text: `📖 Diary: "${text}"`, type: 'diary' }));
     setEntry('');
   }
 

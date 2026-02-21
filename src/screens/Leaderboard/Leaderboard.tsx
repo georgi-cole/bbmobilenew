@@ -1,10 +1,10 @@
-import { useGame } from '../../store/GameContext';
+import { useAppSelector } from '../../store/hooks';
 import './Leaderboard.css';
 
 export default function Leaderboard() {
-  const { state } = useGame();
+  const players = useAppSelector((s) => s.game.players);
 
-  const ranked = [...state.players].sort((a, b) => {
+  const ranked = [...players].sort((a, b) => {
     const score = (p: typeof a) =>
       (p.stats?.hohWins ?? 0) * 3 + (p.stats?.povWins ?? 0) * 2;
     return score(b) - score(a);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useGame } from '../../store/GameContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { addTvEvent, selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import type { Player } from '../../types';
@@ -21,16 +22,18 @@ import './GameScreen.css';
  *   - Evicted section collapses by default
  *
  * To extend: add new sections between TvZone and the roster,
- * or add action buttons by dispatching events via useGame().
+ * or add action buttons by dispatching events via useAppDispatch().
  */
 export default function GameScreen() {
-  const { alivePlayers, evictedPlayers, addTvEvent } = useGame();
+  const dispatch = useAppDispatch();
+  const alivePlayers = useAppSelector(selectAlivePlayers);
+  const evictedPlayers = useAppSelector(selectEvictedPlayers);
   const [evictedOpen, setEvictedOpen] = useState(false);
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
     if (player.isUser) {
-      addTvEvent({ text: `${player.name} checks their alliance status 🤫`, type: 'diary' });
+      dispatch(addTvEvent({ text: `${player.name} checks their alliance status 🤫`, type: 'diary' }));
     }
   }
 
