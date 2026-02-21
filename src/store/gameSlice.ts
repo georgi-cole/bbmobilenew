@@ -156,6 +156,23 @@ function buildMinigameSession(
   };
 }
 
+/**
+ * Pick the winner from a set of participants and their scores.
+ * Returns the participant ID with the highest score.
+ */
+function determineWinner(participants: string[], scores: Record<string, number>): string {
+  let winnerId = participants[0];
+  let highScore = -1;
+  for (const id of participants) {
+    const score = scores[id] ?? 0;
+    if (score > highScore) {
+      highScore = score;
+      winnerId = id;
+    }
+  }
+  return winnerId;
+}
+
 const gameSlice = createSlice({
   name: 'game',
   initialState,
@@ -211,15 +228,7 @@ const gameSlice = createSlice({
       }
 
       // Determine winner: highest tap count wins
-      let winnerId = session.participants[0];
-      let highScore = -1;
-      for (const id of session.participants) {
-        const score = scores[id] ?? 0;
-        if (score > highScore) {
-          highScore = score;
-          winnerId = id;
-        }
-      }
+      const winnerId = determineWinner(session.participants, scores);
 
       // Update personal records for every participant
       const personalRecords: Record<string, number> = {};
@@ -897,14 +906,7 @@ export const startMinigame =
 
     if (!hasHuman) {
       // AI-only: determine winner immediately and return
-      let winnerId = opts.participants[0];
-      let highScore = -1;
-      for (const id of opts.participants) {
-        if ((aiScores[id] ?? 0) > highScore) {
-          highScore = aiScores[id] ?? 0;
-          winnerId = id;
-        }
-      }
+      const winnerId = determineWinner(opts.participants, aiScores);
       const result: MinigameResult = { seedUsed: opts.seed, scores: aiScores, winnerId };
       dispatch(launchMinigame(session));
       dispatch(completeMinigame(0)); // 0 since no human score

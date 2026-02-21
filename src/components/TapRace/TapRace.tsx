@@ -76,6 +76,9 @@ export default function TapRace({ session, players }: Props) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+  // `session`, `humanId`, and `players` are intentionally excluded: they are
+  // stable for the lifetime of a single competition and should NOT restart the
+  // timer if they somehow change.  tapCountRef is a ref (always current).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase]);
 
