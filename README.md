@@ -16,6 +16,13 @@ npm run build      # output in dist/
 npm run preview    # preview the production build
 ```
 
+## GitHub Pages deployment
+
+Pushes to `main` trigger the **Build and deploy Pages** workflow, which runs
+`npm run build` and publishes the `./dist` folder to the `github-pages`
+environment. The site is served at
+`https://georgi-cole.github.io/bbmobilenew/`.
+
 ## Architecture
 
 ```

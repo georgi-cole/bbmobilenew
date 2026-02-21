@@ -7,7 +7,7 @@
  *   3. Add a <Route> inside the AppShell layout route
  *   That's it — no other files need changing.
  */
-import { createBrowserRouter } from 'react-router-dom';
+import { createHashRouter } from 'react-router-dom';
 
 import AppShell      from './components/layout/AppShell';
 import HomeHub       from './screens/HomeHub/HomeHub';
@@ -20,7 +20,7 @@ import Credits       from './screens/Credits/Credits';
 import Week          from './screens/Week/Week';
 import CreatePlayer  from './screens/CreatePlayer/CreatePlayer';
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: '/',
     element: <AppShell />,
