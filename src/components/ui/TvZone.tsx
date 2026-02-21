@@ -22,6 +22,10 @@ const PHASE_LABELS: Record<string, string> = {
   week_end:             'Week End',
   final4_eviction:      'Final 4 Eviction',
   final3:               'Final 3',
+  final3_comp1:         'Final 3 — Part 1',
+  final3_comp2:         'Final 3 — Part 2',
+  final3_comp3:         'Final 3 — Part 3 (Final HOH)',
+  final3_decision:      'Final HOH Eviction',
 };
 
 /**

@@ -4,6 +4,7 @@ import {
   addTvEvent,
   advance,
   finalizeFinal4Eviction,
+  finalizeFinal3Eviction,
   selectAlivePlayers,
   selectEvictedPlayers,
   setReplacementNominee,
@@ -69,8 +70,16 @@ export default function GameScreen() {
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
 
+  // ── Final 3 human Final HOH eviction ─────────────────────────────────────
+  // Shown when phase is final3_decision and the human player is the Final HOH.
+  const humanIsFinalHoh = humanPlayer && game.hohId === humanPlayer.id;
+  const showFinal3Modal =
+    game.awaitingFinal3Eviction === true && game.phase === 'final3_decision' && humanIsFinalHoh;
+
+  const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+
   // Hide Continue button while waiting for human decision
-  const awaitingHumanDecision = showReplacementModal || showFinal4Modal;
+  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal;
 
   return (
     <div className="game-screen">
@@ -93,6 +102,17 @@ export default function GameScreen() {
           subtitle={`${humanPlayer!.name}, you hold the sole vote to evict. Choose wisely.`}
           options={final4Options}
           onSelect={(id) => dispatch(finalizeFinal4Eviction(id))}
+          danger
+        />
+      )}
+
+      {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
+      {showFinal3Modal && (
+        <TvDecisionModal
+          title="Final HOH — Evict a Houseguest"
+          subtitle={`${humanPlayer!.name}, as Final HOH you must directly evict one of the remaining houseguests.`}
+          options={final3Options}
+          onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
         />
       )}

@@ -33,6 +33,10 @@ const PHASES: Phase[] = [
   'week_end',
   'final4_eviction',
   'final3',
+  'final3_comp1',
+  'final3_comp2',
+  'final3_comp3',
+  'final3_decision',
 ];
 
 export default function DebugPanel() {
@@ -250,6 +254,33 @@ export default function DebugPanel() {
                   onClick={() => dispatch(forcePhase('final3'))}
                 >
                   Force Final 3
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp1'))}
+                >
+                  F3 Part 1
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp2'))}
+                >
+                  F3 Part 2
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp3'))}
+                >
+                  F3 Part 3
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_decision'))}
+                >
+                  F3 Decision
                 </button>
               </div>
 
