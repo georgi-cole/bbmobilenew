@@ -19,6 +19,8 @@ import Leaderboard   from './screens/Leaderboard/Leaderboard';
 import Credits       from './screens/Credits/Credits';
 import Week          from './screens/Week/Week';
 import CreatePlayer  from './screens/CreatePlayer/CreatePlayer';
+import GameOver      from './screens/GameOver/GameOver';
+import Settings      from './screens/Settings/Settings';
 
 export const router = createHashRouter([
   {
@@ -34,6 +36,8 @@ export const router = createHashRouter([
       { path: 'credits',          element: <Credits />      },
       { path: 'week',             element: <Week />         },
       { path: 'create-player',    element: <CreatePlayer /> },
+      { path: 'game-over',        element: <GameOver />     },
+      { path: 'settings',         element: <Settings />     },
     ],
   },
 ]);

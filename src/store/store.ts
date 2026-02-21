@@ -9,6 +9,19 @@ export const store = configureStore({
     finale: finaleReducer,
     challenge: challengeReducer,
   },
+  preloadedState: {
+    settings: loadSettings(),
+  },
+});
+
+// Persist settings to localStorage whenever they change
+let prevSettings = store.getState().settings;
+store.subscribe(() => {
+  const current = store.getState().settings;
+  if (current !== prevSettings) {
+    prevSettings = current;
+    saveSettings(current);
+  }
 });
 
 export type RootState = ReturnType<typeof store.getState>;

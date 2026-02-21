@@ -5,6 +5,7 @@
  * Coordinates juror reveals, human-vote UI, tally display, and winner banner.
  */
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { Player } from '../../types';
 import {
@@ -26,6 +27,7 @@ import './FinalFaceoff.css';
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const game = useAppSelector((s) => s.game);
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
@@ -86,8 +88,9 @@ export default function FinalFaceoff() {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
       );
+      navigate('/game-over');
     }
-  }, [dispatch, finale.isComplete, finale.winnerId, finale.runnerUpId]);
+  }, [dispatch, navigate, finale.isComplete, finale.winnerId, finale.runnerUpId]);
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
   useEffect(() => {

@@ -1,0 +1,91 @@
+.gameover-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: 20px;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.gameover-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--color-card);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+
+.gameover-title {
+  margin: 4px 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.gameover-sub {
+  margin: 0 0 14px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.gameover-winner {
+  margin: 10px 0 8px;
+}
+
+.gameover-winner__label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.gameover-winner__name {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 6px;
+  color: var(--color-text);
+}
+
+.gameover-runnerup {
+  margin: 6px 0 12px;
+  color: var(--color-text);
+}
+
+.gameover-runnerup__label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.gameover-runnerup__name {
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+.gameover-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.gameover-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+
+.gameover-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-card);
+}
+
+.gameover-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--color-text);
+}
