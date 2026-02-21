@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
+import { addTvEvent, advance, selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import type { Player } from '../../types';
@@ -40,6 +40,16 @@ export default function GameScreen() {
   return (
     <div className="game-screen">
       <TvZone />
+
+      {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
+      <button
+        className="game-screen__advance-btn"
+        onClick={() => dispatch(advance())}
+        type="button"
+        aria-label="Advance to next phase"
+      >
+        Continue ▶
+      </button>
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">

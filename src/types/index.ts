@@ -9,6 +9,7 @@ export type PlayerStatus =
   | 'hoh'
   | 'pov'
   | 'hoh+pov'
+  | 'nominated+pov'
   | 'evicted'
   | 'jury';
 
@@ -26,21 +27,22 @@ export interface Player {
   };
 }
 
-// Game phases map 1-to-1 with bbmobile phases for portability
+// Canonical weekly-game phase list (in execution order)
 export type Phase =
-  | 'lobby'
-  | 'opening'
-  | 'intermission'
-  | 'hoh'
+  | 'week_start'
+  | 'hoh_comp'
+  | 'hoh_results'
+  | 'social_1'
   | 'nominations'
-  | 'veto_comp'
-  | 'veto_ceremony'
-  | 'livevote'
-  | 'jury'
-  | 'final3_comp1'
-  | 'final3_comp2'
-  | 'final3_decision'
-  | 'social';
+  | 'nomination_results'
+  | 'pov_comp'
+  | 'pov_results'
+  | 'pov_ceremony'
+  | 'pov_ceremony_results'
+  | 'social_2'
+  | 'live_vote'
+  | 'eviction_results'
+  | 'week_end';
 
 export interface TvEvent {
   id: string;
@@ -56,6 +58,14 @@ export interface GameState {
   players: Player[];
   tvFeed: TvEvent[];
   isLive: boolean;
+  /** Mulberry32 seed – advances on each outcome computation for reproducibility. */
+  seed: number;
+  /** Player ID of the current Head of Household, or null between weeks. */
+  hohId: string | null;
+  /** Player IDs currently nominated for eviction. */
+  nomineeIds: string[];
+  /** Player ID of the current Power of Veto holder, or null. */
+  povWinnerId: string | null;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

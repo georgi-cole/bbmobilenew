@@ -11,30 +11,31 @@ import type { GameState, Player, Phase, TvEvent } from '../types';
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 const SEED_PLAYERS: Player[] = [
-  { id: 'p1',  name: 'Alex',    avatar: '🧑',  status: 'hoh',       isUser: true },
-  { id: 'p2',  name: 'Blake',   avatar: '👱',  status: 'nominated' },
-  { id: 'p3',  name: 'Casey',   avatar: '👩',  status: 'nominated' },
+  { id: 'p1',  name: 'Alex',    avatar: '🧑',  status: 'active', isUser: true },
+  { id: 'p2',  name: 'Blake',   avatar: '👱',  status: 'active' },
+  { id: 'p3',  name: 'Casey',   avatar: '👩',  status: 'active' },
   { id: 'p4',  name: 'Dana',    avatar: '🧔',  status: 'active' },
-  { id: 'p5',  name: 'Ellis',   avatar: '👧',  status: 'pov' },
+  { id: 'p5',  name: 'Ellis',   avatar: '👧',  status: 'active' },
   { id: 'p6',  name: 'Frankie', avatar: '🧓',  status: 'active' },
   { id: 'p7',  name: 'Grace',   avatar: '👩‍🦱', status: 'active' },
   { id: 'p8',  name: 'Harper',  avatar: '🧑‍🦰', status: 'active' },
   { id: 'p9',  name: 'Indigo',  avatar: '🧑‍🦳', status: 'active' },
   { id: 'p10', name: 'Jordan',  avatar: '👦',  status: 'active' },
-  { id: 'p11', name: 'Kai',     avatar: '🧑‍🦲', status: 'evicted' },
-  { id: 'p12', name: 'Logan',   avatar: '👴',  status: 'jury' },
+  { id: 'p11', name: 'Kai',     avatar: '🧑‍🦲', status: 'active' },
+  { id: 'p12', name: 'Logan',   avatar: '👴',  status: 'active' },
 ];
 
 const INITIAL_STATE: GameState = {
   season: 1,
-  week: 3,
-  phase: 'veto_comp',
+  week: 1,
+  phase: 'week_start',
+  seed: 42,
+  hohId: null,
+  nomineeIds: [],
+  povWinnerId: null,
   players: SEED_PLAYERS,
   tvFeed: [
-    { id: 'e1', text: 'Alex won the Head of Household competition! 🏆', type: 'game', timestamp: Date.now() - 9000 },
-    { id: 'e2', text: 'Blake and Casey have been nominated for eviction.', type: 'game', timestamp: Date.now() - 6000 },
-    { id: 'e3', text: 'Ellis won the Power of Veto! 🎭', type: 'game', timestamp: Date.now() - 3000 },
-    { id: 'e4', text: 'Dana and Frankie formed a secret alliance.', type: 'social', timestamp: Date.now() - 1500 },
+    { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
 };
@@ -52,7 +53,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };
     case 'ADVANCE_WEEK':
-      return { ...state, week: state.week + 1, phase: 'intermission' };
+      return { ...state, week: state.week + 1, phase: 'week_start' };
     case 'UPDATE_PLAYER':
       return {
         ...state,

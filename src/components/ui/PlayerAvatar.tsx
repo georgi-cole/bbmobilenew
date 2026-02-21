@@ -10,12 +10,13 @@ interface PlayerAvatarProps {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  hoh:       '👑',
-  nominated: '🎯',
-  pov:       '🎭',
-  'hoh+pov': '👑🎭',
-  evicted:   '🚪',
-  jury:      '⚖️',
+  hoh:            '👑',
+  nominated:      '🎯',
+  pov:            '🎭',
+  'hoh+pov':      '👑🎭',
+  'nominated+pov': '🎯🎭',
+  evicted:        '🚪',
+  jury:           '⚖️',
 };
 
 /**
