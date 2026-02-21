@@ -1,9 +1,8 @@
 /* ── Shell / background / content layers ─────────────────────────────────── */
 .homehub-shell {
-  position: relative;
-  min-height: 100%;
-  overflow-x: hidden;
-  overflow-y: visible;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 
 .homehub-intro-bg {
@@ -20,15 +19,16 @@
 .homehub-content {
   position: relative;
   z-index: 1;
+  height: 100%;
 }
 
-/* HomeHub */
+/* HomeHub — vertically and horizontally centered in full viewport */
 .home-hub {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  height: 100%;
   padding: 32px 24px;
   gap: 32px;
 }
@@ -54,62 +54,98 @@
 .home-hub__buttons {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 12px;
   width: 100%;
   max-width: 420px;
 }
 
 .home-hub__btn {
-  width: 100%;
+  width: 82%;
+  max-width: 360px;
   padding: 14px 20px;
   border-radius: 14px;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(8px) saturate(1.1);
-  -webkit-backdrop-filter: blur(8px) saturate(1.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   letter-spacing: 0.3px;
+  position: relative;
 }
+
+/* Asymmetric translateX offsets for a stacked look.
+   Positions map to: 1=Play(primary, overridden below), 2=Settings,
+   3=Profile, 4=Leaderboard, 5=Credits — update if HUB_BUTTONS changes. */
+.home-hub__btn:nth-child(2) { transform: translateX(10px); }
+.home-hub__btn:nth-child(3) { transform: translateX(-8px); }
+.home-hub__btn:nth-child(4) { transform: translateX(6px);  }
+.home-hub__btn:nth-child(5) { transform: translateX(-4px); }
 
 .home-hub__btn:hover,
 .home-hub__btn:focus {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  transform: translateX(0) translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .home-hub__btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateX(0) translateY(0) scale(0.98);
 }
 
+/* ── Primary (Play) button ────────────────────────────────────────────────── */
 .home-hub__btn--primary {
-  background: linear-gradient(135deg, rgba(120, 72, 255, 0.9), rgba(96, 165, 250, 0.9));
+  width: 88%;
+  max-width: 380px;
+  background: linear-gradient(135deg, rgba(120, 72, 255, 0.92), rgba(96, 165, 250, 0.92));
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   font-size: 1.1rem;
+  /* translateX(0) keeps the primary button always centered regardless of nth-child position */
+  transform: translateX(0);
 }
 
+/* Subtle inset highlight pseudo-element */
+.home-hub__btn--primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.home-hub__btn--primary:hover,
+.home-hub__btn--primary:focus {
+  transform: translateX(0) translateY(-4px);
+  box-shadow: 0 18px 40px rgba(99, 102, 241, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ── Secondary buttons ────────────────────────────────────────────────────── */
 .home-hub__btn--secondary {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.14);
   color: var(--color-text);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+/* ── Ghost button ─────────────────────────────────────────────────────────── */
 .home-hub__btn--ghost {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.07);
   color: var(--color-text-muted);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.9;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 360px) {
   .home-hub__title  { font-size: 1.6rem; }
-  .home-hub__btn    { padding: 12px 16px; font-size: 0.9rem; }
+  .home-hub__btn    { width: 90%; padding: 12px 16px; font-size: 0.9rem; }
+  .home-hub__btn--primary { width: 95%; }
 }

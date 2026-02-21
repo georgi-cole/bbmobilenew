@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import './NavBar.css';
 
 /**
@@ -16,6 +16,10 @@ const LINKS = [
 ] as const;
 
 export default function NavBar() {
+  const { pathname } = useLocation();
+
+  if (pathname === '/') return null;
+
   return (
     <nav className="nav-bar" aria-label="Main navigation">
       {LINKS.map(({ to, icon, label }) => (
