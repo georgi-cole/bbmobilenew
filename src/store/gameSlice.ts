@@ -23,19 +23,21 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
+// Only players from the canonical houseguests dataset (src/data/houseguests.ts)
+// whose avatar image exists in public/avatars/ are included here.
 const SEED_PLAYERS: Player[] = [
-  { id: 'p1',  name: 'Alex',    avatar: '🧑',  status: 'active', isUser: true },
-  { id: 'p2',  name: 'Blake',   avatar: '👱',  status: 'active' },
-  { id: 'p3',  name: 'Casey',   avatar: '👩',  status: 'active' },
-  { id: 'p4',  name: 'Dana',    avatar: '🧔',  status: 'active' },
-  { id: 'p5',  name: 'Ellis',   avatar: '👧',  status: 'active' },
-  { id: 'p6',  name: 'Frankie', avatar: '🧓',  status: 'active' },
-  { id: 'p7',  name: 'Grace',   avatar: '👩‍🦱', status: 'active' },
-  { id: 'p8',  name: 'Harper',  avatar: '🧑‍🦰', status: 'active' },
-  { id: 'p9',  name: 'Indigo',  avatar: '🧑‍🦳', status: 'active' },
-  { id: 'p10', name: 'Jordan',  avatar: '👦',  status: 'active' },
-  { id: 'p11', name: 'Kai',     avatar: '🧑‍🦲', status: 'active' },
-  { id: 'p12', name: 'Logan',   avatar: '👴',  status: 'active' },
+  { id: 'finn',  name: 'Finn',  avatar: '🧑', status: 'active', isUser: true },
+  { id: 'kai',   name: 'Kai',   avatar: '🧑', status: 'active' },
+  { id: 'kian',  name: 'Kian',  avatar: '🧑', status: 'active' },
+  { id: 'zed',   name: 'Zed',   avatar: '🧑', status: 'active' },
+  { id: 'ash',   name: 'Ash',   avatar: '🧑', status: 'active' },
+  { id: 'jax',   name: 'Jax',   avatar: '🧑', status: 'active' },
+  { id: 'aria',  name: 'Aria',  avatar: '👩', status: 'active' },
+  { id: 'echo',  name: 'Echo',  avatar: '👩', status: 'active' },
+  { id: 'mimi',  name: 'Mimi',  avatar: '👩', status: 'active' },
+  { id: 'rae',   name: 'Rae',   avatar: '👩', status: 'active' },
+  { id: 'nova',  name: 'Nova',  avatar: '👩', status: 'active' },
+  { id: 'ivy',   name: 'Ivy',   avatar: '👩', status: 'active' },
 ];
 
 const initialState: GameState = {
