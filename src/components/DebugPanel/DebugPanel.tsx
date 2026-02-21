@@ -16,14 +16,6 @@ import {
   fastForwardToEviction,
   startMinigame,
 } from '../../store/gameSlice';
-import {
-  selectSettings,
-  setSim,
-  resetSettings,
-  importSettings,
-  clearSettingsStorage,
-  type SettingsState,
-} from '../../store/settingsSlice';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
 import type { Phase } from '../../types';
@@ -59,7 +51,6 @@ export default function DebugPanel() {
 
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
-  const settings = useAppSelector(selectSettings);
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);

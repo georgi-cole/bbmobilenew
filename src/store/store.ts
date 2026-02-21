@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from './gameSlice';
 import finaleReducer from './finaleSlice';
 import challengeReducer from './challengeSlice';
+import settingsReducer, { loadSettings, saveSettings } from './settingsSlice';
 
 export const store = configureStore({
   reducer: {
     game: gameReducer,
     finale: finaleReducer,
     challenge: challengeReducer,
+    settings: settingsReducer,
   },
   preloadedState: {
     settings: loadSettings(),
