@@ -6,19 +6,20 @@ import StatusPill from '../ui/StatusPill';
 import './TvZone.css';
 
 const PHASE_LABELS: Record<string, string> = {
-  lobby:            'Lobby',
-  opening:          'Season Premiere',
-  intermission:     'Strategizing',
-  hoh:              'HOH Competition',
-  nominations:      'Nominations',
-  veto_comp:        'Veto Competition',
-  veto_ceremony:    'Veto Ceremony',
-  livevote:         'Live Eviction',
-  jury:             'Jury Deliberation',
-  final3_comp1:     'Final 3 – Part 1',
-  final3_comp2:     'Final 3 – Part 2',
-  final3_decision:  'Final 3 – Decision',
-  social:           'Social Time',
+  week_start:           'Week Start',
+  hoh_comp:             'HOH Competition',
+  hoh_results:          'HOH Results',
+  social_1:             'Social Time',
+  nominations:          'Nominations',
+  nomination_results:   'Nomination Results',
+  pov_comp:             'Veto Competition',
+  pov_results:          'Veto Results',
+  pov_ceremony:         'Veto Ceremony',
+  pov_ceremony_results: 'Veto Ceremony Results',
+  social_2:             'Pre-Vote Social',
+  live_vote:            'Live Eviction',
+  eviction_results:     'Eviction Results',
+  week_end:             'Week End',
 };
 
 /**

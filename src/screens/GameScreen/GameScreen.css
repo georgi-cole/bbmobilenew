@@ -6,6 +6,30 @@
   padding: 12px 12px 24px;
 }
 
+/* ── Advance / Continue CTA ─────────────────────────────────────────────── */
+.game-screen__advance-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-accent, #7c3aed);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.game-screen__advance-btn:hover {
+  opacity: 0.88;
+}
+
+.game-screen__advance-btn:active {
+  transform: scale(0.97);
+}
+
 /* ── Section titles ─────────────────────────────────────────────────────── */
 .game-screen__section-title {
   margin: 0 0 10px;
