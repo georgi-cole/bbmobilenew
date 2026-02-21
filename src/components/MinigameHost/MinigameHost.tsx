@@ -94,7 +94,7 @@ export default function MinigameHost({
         <MinigameRules
           game={game}
           onConfirm={handleRulesConfirm}
-          onSkip={handleRulesConfirm}
+          onSkip={skipRules ? handleRulesConfirm : undefined}
         />
       )}
 

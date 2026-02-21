@@ -36,6 +36,7 @@ const moduleCache: Record<string, { render: (...args: unknown[]) => void }> = {}
 
 async function loadLegacyModule(
   modulePath: string,
+  gameKey: string,
 ): Promise<{ render: (...args: unknown[]) => void }> {
   if (moduleCache[modulePath]) return moduleCache[modulePath];
 
@@ -51,19 +52,32 @@ async function loadLegacyModule(
 
   await loader();
 
-  // Legacy modules attach themselves to window; look for a namespace matching
-  // the file stem (e.g. "count-house.js" → window.CountHouseGame or fallback).
-  const stem = modulePath.replace(/\.js$/, '').replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
-  const capitalised = stem.charAt(0).toUpperCase() + stem.slice(1);
+  // Legacy modules register themselves under window.MiniGames[gameKey]
+  // (primary convention in bbmobile) or window.MinigameModules[gameKey]
+  // (used by tetris, minesweeper, etc.).  Fall back to capitalised-stem heuristics.
   const winAny = window as unknown as Record<string, unknown>;
+  const miniGames = winAny['MiniGames'] as Record<string, unknown> | undefined;
+  const minigameModules = winAny['MinigameModules'] as Record<string, unknown> | undefined;
+
   const mod =
-    (winAny[capitalised + 'Game'] as { render: (...a: unknown[]) => void } | undefined) ??
-    (winAny[capitalised] as { render: (...a: unknown[]) => void } | undefined) ??
-    (winAny['currentMinigame'] as { render: (...a: unknown[]) => void } | undefined);
+    (miniGames?.[gameKey] as { render: (...a: unknown[]) => void } | undefined) ??
+    (minigameModules?.[gameKey] as { render: (...a: unknown[]) => void } | undefined) ??
+    // legacy heuristic fallbacks
+    (() => {
+      const stem = modulePath
+        .replace(/\.js$/, '')
+        .replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
+      const capitalised = stem.charAt(0).toUpperCase() + stem.slice(1);
+      return (
+        (winAny[capitalised + 'Game'] as { render: (...a: unknown[]) => void } | undefined) ??
+        (winAny[capitalised] as { render: (...a: unknown[]) => void } | undefined) ??
+        (winAny['currentMinigame'] as { render: (...a: unknown[]) => void } | undefined)
+      );
+    })();
 
   if (!mod?.render) {
     throw new Error(
-      `[LegacyMinigameWrapper] Module loaded but no render() found for ${modulePath}`,
+      `[LegacyMinigameWrapper] Module loaded but no render() found for ${modulePath} (key: ${gameKey})`,
     );
   }
 
@@ -87,7 +101,7 @@ export default function LegacyMinigameWrapper({ game, options = {}, onComplete, 
     // Capture the container element so the cleanup function can safely clear it.
     const container = containerRef.current;
 
-    loadLegacyModule(game.modulePath)
+    loadLegacyModule(game.modulePath, game.key)
       .then((mod) => {
         if (cancelled || !containerRef.current) return;
         setLoading(false);
@@ -108,6 +122,8 @@ export default function LegacyMinigameWrapper({ game, options = {}, onComplete, 
           },
           {
             seed: options.seed,
+            // Pass both keys: some modules use timeLimitMs (ms), others use timeLimit (s).
+            timeLimitMs: game.timeLimitMs > 0 ? game.timeLimitMs : undefined,
             timeLimit: game.timeLimitMs > 0 ? game.timeLimitMs / 1000 : undefined,
             onProgress: (partial: unknown) => {
               partialRef.current = normalizeRaw(partial);

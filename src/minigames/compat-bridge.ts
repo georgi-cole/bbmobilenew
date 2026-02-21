@@ -48,6 +48,26 @@ export function installCompatBridge(): void {
         const progress = (durationMs - minMs) / (targetMs - minMs);
         return Math.max(0, Math.min(100, 10 + progress * 90));
       },
+      /**
+       * calculateFinalScore — matches the legacy bbmobile contract.
+       * Normalises rawScore in [minScore, maxScore] to a 0-1000 canonical scale,
+       * then applies a compBeast multiplier (0.75–1.25).
+       */
+      calculateFinalScore(params: {
+        rawScore: number;
+        minScore?: number;
+        maxScore?: number;
+        compBeast?: number;
+        difficultyMultiplier?: number;
+      }) {
+        const { rawScore, minScore = 0, maxScore = 100, compBeast = 0.5, difficultyMultiplier = 1.0 } = params;
+        const scoping = win['MinigameScoring'] as { normalize: (r: number, mn: number, mx: number) => number };
+        const normalised = scoping.normalize(rawScore, minScore, maxScore); // 0-100
+        const compMultiplier = 0.75 + compBeast * 0.5;
+        const finalMultiplier = compMultiplier * difficultyMultiplier;
+        // Return on 0-1000 scale (legacy modules expect SCALE=1000 from central-scoring)
+        return Math.max(0, Math.min(1500, normalised * 10 * finalMultiplier));
+      },
     };
   }
 
