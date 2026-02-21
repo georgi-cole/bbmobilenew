@@ -33,10 +33,10 @@ export default function AppShell() {
       </main>
       <NavBar />
       <DebugPanel />
-      {/* Mount FinalFaceoff only while the overlay is actively shown
-          (phase === 'jury' + isActive). Avoids re-mounting after dismissal
-          leaves the game stuck at jury phase with an invisible overlay. */}
-      {phase === 'jury' && finale.isActive && <FinalFaceoff />}
+      {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
+          Keep the previous safeguard: don't remount after dismissal by checking
+          hasStarted. */}
+      {phase === 'jury' && (finale.isActive || !finale.hasStarted) && <FinalFaceoff />}
     </div>
   );
 }
