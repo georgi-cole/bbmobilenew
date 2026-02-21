@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import NavBar from './NavBar';
+import DebugPanel from '../DebugPanel/DebugPanel';
 import './AppShell.css';
 
 /**
@@ -22,6 +23,7 @@ export default function AppShell() {
         <Outlet />
       </main>
       <NavBar />
+      <DebugPanel />
     </div>
   );
 }
