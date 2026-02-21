@@ -7,8 +7,7 @@
  *   3. Time-of-day fallback
  */
 
-export const ASSETS_BASE = '/assets/skins/';
-export const DEFAULT_FILE = 'daily-background.png';
+export const ASSETS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
 
 export interface BackgroundEntry {
   file: string;

@@ -51,6 +51,9 @@ export default function useBackgroundTheme(
 
     return () => {
       cancelled = true;
+      if (attachToBody) {
+        document.body.style.removeProperty('--intro-bg-image');
+      }
     };
   }, [attachToBody]);
 
