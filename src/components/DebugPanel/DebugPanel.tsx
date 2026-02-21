@@ -17,6 +17,7 @@ import {
   startMinigame,
 } from '../../store/gameSlice';
 import FinaleDebugControls from './FinaleControls.debug';
+import MinigameDebugControls from './MinigameDebugControls';
 import type { Phase } from '../../types';
 import './DebugPanel.css';
 
@@ -380,6 +381,9 @@ export default function DebugPanel() {
 
             {/* ── Finale Debug Controls ── */}
             <FinaleDebugControls />
+
+            {/* ── Minigame Debug Controls ── */}
+            <MinigameDebugControls />
           </div>
         </aside>
       )}
