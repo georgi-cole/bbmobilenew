@@ -8,11 +8,11 @@ import './NavBar.css';
  * Each entry needs: to (route path), icon (emoji), label (text).
  */
 const LINKS = [
-  { to: '/',            icon: '🏠', label: 'Home'        },
-  { to: '/game',        icon: '🎮', label: 'Game'        },
-  { to: '/houseguests', icon: '👥', label: 'Houseguests' },
+  { to: '/',          icon: '🏠', label: 'Home'        },
+  { to: '/game',      icon: '🎮', label: 'Game'        },
+  { to: '/settings',  icon: '⚙️', label: 'Settings'    },
   { to: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
-  { to: '/profile',     icon: '👤', label: 'Profile'     },
+  { to: '/profile',   icon: '👤', label: 'Profile'     },
 ] as const;
 
 export default function NavBar() {

@@ -10,10 +10,9 @@ import './HomeHub.css';
  */
 const HUB_BUTTONS = [
   { to: '/game',         label: '▶  Play',          variant: 'primary'   },
-  { to: '/houseguests',  label: '👥 Houseguests',    variant: 'secondary' },
+  { to: '/settings',     label: '⚙️ Settings',      variant: 'secondary' },
   { to: '/profile',      label: '👤 Profile',        variant: 'secondary' },
   { to: '/leaderboard',  label: '🏆 Leaderboard',    variant: 'secondary' },
-  { to: '/diary-room',   label: '🚪 Diary Room',     variant: 'secondary' },
   { to: '/credits',      label: '🎬 Credits',        variant: 'ghost'     },
 ] as const;
 
@@ -34,9 +33,7 @@ export default function HomeHub() {
       <div className="homehub-content home-hub">
       {/* Hero / icon area */}
       <div className="home-hub__hero" aria-hidden="true">
-        <div className="home-hub__logo">🏠</div>
         <h1 className="home-hub__title">Big Brother</h1>
-        <p className="home-hub__subtitle">AI&nbsp;Edition</p>
       </div>
 
       {/* Button stack */}
