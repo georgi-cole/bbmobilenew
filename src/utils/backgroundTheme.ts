@@ -7,7 +7,8 @@
  *   3. Time-of-day fallback
  */
 
-export const ASSETS_BASE = `${import.meta.env.BASE_URL}assets/skins/`;
+const _BASE_URL = import.meta.env.BASE_URL ?? '/';
+export const ASSETS_BASE = `${_BASE_URL.replace(/\/$/, '')}/assets/skins/`;
 
 export interface BackgroundEntry {
   file: string;
@@ -149,6 +150,7 @@ export async function resolveTheme(
   // 1. Holiday override
   if (isHolidayWindow(now)) {
     const key = holidayKey(now);
+    console.info('[backgroundTheme] Holiday override →', key);
     return { key, url: buildUrl(key), reason: 'holiday' };
   }
 
@@ -157,13 +159,17 @@ export async function resolveTheme(
     try {
       const position = await getPosition(geolocationTimeoutMs);
       const { latitude, longitude } = position.coords;
+      console.debug('[backgroundTheme] Got position', latitude, longitude);
       const code = await fetchWeatherCode(latitude, longitude);
+      console.debug('[backgroundTheme] weathercode', code);
       const weatherKey = mapWeatherCodeToTheme(code);
       if (weatherKey) {
+        console.info('[backgroundTheme] Weather theme →', weatherKey, `(code ${code})`);
         return { key: weatherKey, url: buildUrl(weatherKey), reason: `weather:${code}` };
       }
       // Clear/overcast — fall through to time-of-day but note the source
       const todKey = timeOfDayKey(now);
+      console.info('[backgroundTheme] Clear/overcast; time-of-day →', todKey);
       return { key: todKey, url: buildUrl(todKey), reason: `weather:${code}:timeofday` };
     } catch (err) {
       // Geo or network failure — fall through to time-of-day
@@ -173,5 +179,6 @@ export async function resolveTheme(
 
   // 3. Time-of-day fallback
   const key = timeOfDayKey(now);
+  console.info('[backgroundTheme] Time-of-day fallback →', key);
   return { key, url: buildUrl(key), reason: 'timeofday' };
 }
