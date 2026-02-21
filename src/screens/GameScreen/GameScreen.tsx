@@ -89,7 +89,7 @@ export default function GameScreen() {
       {showReplacementModal && (
         <TvDecisionModal
           title="Name a Replacement Nominee"
-          subtitle={`${humanPlayer!.name}, you must name a replacement nominee.`}
+          subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
           options={replacementOptions}
           onSelect={(id) => dispatch(setReplacementNominee(id))}
         />
@@ -99,7 +99,7 @@ export default function GameScreen() {
       {showFinal4Modal && (
         <TvDecisionModal
           title="Final 4 — Cast Your Vote"
-          subtitle={`${humanPlayer!.name}, you hold the sole vote to evict. Choose wisely.`}
+          subtitle={`${humanPlayer?.name}, you hold the sole vote to evict. Choose wisely.`}
           options={final4Options}
           onSelect={(id) => dispatch(finalizeFinal4Eviction(id))}
           danger
@@ -110,7 +110,7 @@ export default function GameScreen() {
       {showFinal3Modal && (
         <TvDecisionModal
           title="Final HOH — Evict a Houseguest"
-          subtitle={`${humanPlayer!.name}, as Final HOH you must directly evict one of the remaining houseguests.`}
+          subtitle={`${humanPlayer?.name}, as Final HOH you must directly evict one of the remaining houseguests.`}
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
