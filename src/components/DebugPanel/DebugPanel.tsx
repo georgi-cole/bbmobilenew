@@ -7,6 +7,9 @@ import {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  forcePhase,
+  finalizeFinal4Eviction,
+  clearBlockingFlags,
   resetGame,
   rerollSeed,
   fastForwardToEviction,
@@ -29,6 +32,12 @@ const PHASES: Phase[] = [
   'live_vote',
   'eviction_results',
   'week_end',
+  'final4_eviction',
+  'final3',
+  'final3_comp1',
+  'final3_comp2',
+  'final3_comp3',
+  'final3_decision',
 ];
 
 export default function DebugPanel() {
@@ -44,6 +53,7 @@ export default function DebugPanel() {
   const [nominee1, setNominee1] = useState('');
   const [nominee2, setNominee2] = useState('');
   const [selectedPov, setSelectedPov] = useState('');
+  const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
 
   if (!isDebug) return null;
 
@@ -66,9 +76,8 @@ export default function DebugPanel() {
         .join(', ')
     : '—';
 
-  const handleFastForward = () => {
-    dispatch(fastForwardToEviction());
-  };
+  // Players eligible to be evicted in Final4 (current nominees)
+  const f4Nominees = game.players.filter((p) => game.nomineeIds.includes(p.id));
 
   return (
     <>
@@ -99,14 +108,15 @@ export default function DebugPanel() {
             <section className="dbg-section">
               <h3 className="dbg-section__title">Inspector</h3>
               <dl className="dbg-grid">
-                <dt>Week</dt>      <dd>{game.week}</dd>
-                <dt>Phase</dt>     <dd>{game.phase}</dd>
-                <dt>Seed</dt>      <dd>{game.seed}</dd>
-                <dt>HOH</dt>       <dd>{hohName}</dd>
-                <dt>Nominees</dt>  <dd>{nomineeNames}</dd>
-                <dt>POV Winner</dt><dd>{povName}</dd>
-                <dt>Alive</dt>     <dd>{alive.length}</dd>
-                <dt>Evicted</dt>   <dd>{evicted.length}</dd>
+                <dt>Week</dt>            <dd>{game.week}</dd>
+                <dt>Phase</dt>           <dd>{game.phase}</dd>
+                <dt>Seed</dt>            <dd>{game.seed}</dd>
+                <dt>HOH</dt>             <dd>{hohName}</dd>
+                <dt>Nominees</dt>        <dd>{nomineeNames}</dd>
+                <dt>POV Winner</dt>      <dd>{povName}</dd>
+                <dt>Replacement?</dt>    <dd>{game.replacementNeeded ? 'yes' : 'no'}</dd>
+                <dt>Alive</dt>           <dd>{alive.length}</dd>
+                <dt>Evicted</dt>         <dd>{evicted.length}</dd>
               </dl>
 
               <details className="dbg-players">
@@ -149,7 +159,7 @@ export default function DebugPanel() {
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(advance())}>
                   Advance Phase
                 </button>
-                <button className="dbg-btn dbg-btn--wide" onClick={handleFastForward}>
+                <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(fastForwardToEviction())}>
                   Fast-fwd → Eviction
                 </button>
               </div>
@@ -230,6 +240,94 @@ export default function DebugPanel() {
                   onClick={() => { dispatch(forcePovWinner(selectedPov)); setSelectedPov(''); }}
                 >
                   Set
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final4_eviction'))}
+                >
+                  Force Final 4
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3'))}
+                >
+                  Force Final 3
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp1'))}
+                >
+                  F3 Part 1
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp2'))}
+                >
+                  F3 Part 2
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_comp3'))}
+                >
+                  F3 Part 3
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(forcePhase('final3_decision'))}
+                >
+                  F3 Decision
+                </button>
+              </div>
+
+              {/* Final 4 eviction pick (debug) */}
+              {game.phase === 'final4_eviction' && f4Nominees.length > 0 && (
+                <div className="dbg-row">
+                  <label className="dbg-label">F4 Evict</label>
+                  <select
+                    className="dbg-select"
+                    value={selectedF4Evictee}
+                    onChange={(e) => setSelectedF4Evictee(e.target.value)}
+                  >
+                    <option value="">— pick evictee —</option>
+                    {f4Nominees.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="dbg-btn"
+                    disabled={!selectedF4Evictee}
+                    onClick={() => {
+                      dispatch(finalizeFinal4Eviction(selectedF4Evictee));
+                      setSelectedF4Evictee('');
+                    }}
+                  >
+                    Evict
+                  </button>
+                  <button
+                    className="dbg-btn"
+                    onClick={() => {
+                      dispatch(advance());
+                    }}
+                    title="⚠ Overrides human POV holder decision — for debug use only"
+                  >
+                    AI Pick ⚠
+                  </button>
+                </div>
+              )}
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(clearBlockingFlags())}
+                  title="Clears replacementNeeded / awaitingFinal3Eviction if the game gets stuck"
+                >
+                  Clear Stuck Flags
                 </button>
               </div>
 

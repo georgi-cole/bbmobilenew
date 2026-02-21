@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, advance, selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
+import {
+  addTvEvent,
+  advance,
+  finalizeFinal4Eviction,
+  finalizeFinal3Eviction,
+  selectAlivePlayers,
+  selectEvictedPlayers,
+  setReplacementNominee,
+} from '../../store/gameSlice';
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
+import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
@@ -28,6 +37,7 @@ export default function GameScreen() {
   const dispatch = useAppDispatch();
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const evictedPlayers = useAppSelector(selectEvictedPlayers);
+  const game = useAppSelector((s) => s.game);
   const [evictedOpen, setEvictedOpen] = useState(false);
 
   function handleAvatarSelect(player: Player) {
@@ -37,19 +47,88 @@ export default function GameScreen() {
     }
   }
 
+  // ── Human HOH replacement picker ─────────────────────────────────────────
+  // Shown when a nominee auto-saved themselves and the human HOH must pick a
+  // replacement. The Continue button is hidden while this modal is open.
+  const replacementNeeded = game.replacementNeeded === true;
+  const humanPlayer = game.players.find((p) => p.isUser);
+  const humanIsHoH = humanPlayer && game.hohId === humanPlayer.id;
+  const showReplacementModal = replacementNeeded && humanIsHoH;
+
+  const replacementOptions = alivePlayers.filter(
+    (p) =>
+      p.id !== game.hohId &&
+      p.id !== game.povWinnerId &&
+      !game.nomineeIds.includes(p.id),
+  );
+
+  // ── Final 4 human POV holder vote ────────────────────────────────────────
+  // Shown when phase is final4_eviction and the human player is the POV holder.
+  const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id;
+  const showFinal4Modal =
+    game.phase === 'final4_eviction' && humanIsPovHolder;
+
+  const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+
+  // ── Final 3 human Final HOH eviction ─────────────────────────────────────
+  // Shown when phase is final3_decision and the human player is the Final HOH.
+  const humanIsFinalHoh = humanPlayer && game.hohId === humanPlayer.id;
+  const showFinal3Modal =
+    game.awaitingFinal3Eviction === true && game.phase === 'final3_decision' && humanIsFinalHoh;
+
+  const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
+
+  // Hide Continue button while waiting for any human-only decision modal.
+  // Keep this in sync with the conditions that control human decision modals above.
+  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal;
+
   return (
     <div className="game-screen">
       <TvZone />
 
+      {/* ── Human HOH replacement picker ────────────────────────────────── */}
+      {showReplacementModal && (
+        <TvDecisionModal
+          title="Name a Replacement Nominee"
+          subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
+          options={replacementOptions}
+          onSelect={(id) => dispatch(setReplacementNominee(id))}
+        />
+      )}
+
+      {/* ── Final 4 eviction vote (human POV holder) ────────────────────── */}
+      {showFinal4Modal && (
+        <TvDecisionModal
+          title="Final 4 — Cast Your Vote"
+          subtitle={`${humanPlayer?.name}, you hold the sole vote to evict. Choose wisely.`}
+          options={final4Options}
+          onSelect={(id) => dispatch(finalizeFinal4Eviction(id))}
+          danger
+        />
+      )}
+
+      {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
+      {showFinal3Modal && (
+        <TvDecisionModal
+          title="Final HOH — Evict a Houseguest"
+          subtitle={`${humanPlayer?.name}, as Final HOH you must directly evict one of the remaining houseguests.`}
+          options={final3Options}
+          onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
+          danger
+        />
+      )}
+
       {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
-      <button
-        className="game-screen__advance-btn"
-        onClick={() => dispatch(advance())}
-        type="button"
-        aria-label="Advance to next phase"
-      >
-        Continue ▶
-      </button>
+      {!awaitingHumanDecision && (
+        <button
+          className="game-screen__advance-btn"
+          onClick={() => dispatch(advance())}
+          type="button"
+          aria-label="Advance to next phase"
+        >
+          Continue ▶
+        </button>
+      )}
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">
