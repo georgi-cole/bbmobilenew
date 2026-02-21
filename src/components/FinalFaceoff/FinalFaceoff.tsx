@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import type { Player } from '../../types';
 import {
   startFinale,
   revealNextJurorThunk,
@@ -64,7 +65,7 @@ export default function FinalFaceoff() {
       finale.revealedCount >= finale.revealOrder.length &&
       !finale.isComplete
     ) {
-      dispatch(finalizeFinale({ seed: game.seed, americasVoteEnabled: game.cfg?.americasVoteEnabled }));
+      dispatch(finalizeFinale({ seed: game.seed }));
     }
   }, [
     dispatch,
@@ -96,8 +97,15 @@ export default function FinalFaceoff() {
 
   if (!finale.isActive) return null;
 
-  const finalists = finale.finalistIds.map((id) => game.players.find((p) => p.id === id)!).filter(Boolean);
-  const tally = tallyVotes(finale.votes);
+  const finalists = finale.finalistIds
+    .map((id) => game.players.find((p) => p.id === id))
+    .filter((p): p is Player => p !== undefined);
+  // Only tally votes for jurors that have already been revealed
+  const revealedVotesMap: Record<string, string> = {};
+  for (const r of revealed) {
+    revealedVotesMap[r.jurorId] = r.finalistId;
+  }
+  const tally = finale.isComplete ? tallyVotes(finale.votes) : tallyVotes(revealedVotesMap);
   const winner = game.players.find((p) => p.id === finale.winnerId);
   const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id);
   // allRevealed: true when all jurors are revealed OR when there are none (skip to tally)
@@ -116,7 +124,7 @@ export default function FinalFaceoff() {
   function handleSkipAll() {
     if (finale.revealOrder.length === 0 && !finale.isComplete) {
       // No jurors — finalize directly
-      dispatch(finalizeFinale({ seed: game.seed, americasVoteEnabled: game.cfg?.americasVoteEnabled }));
+      dispatch(finalizeFinale({ seed: game.seed }));
       return;
     }
     // Reveal all remaining jurors at once

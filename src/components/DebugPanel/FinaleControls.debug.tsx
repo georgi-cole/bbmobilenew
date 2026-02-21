@@ -66,7 +66,7 @@ export default function FinaleDebugControls() {
           <button
             className="dbg-btn dbg-btn--wide"
             onClick={() =>
-              dispatch(finalizeFinale({ seed: game.seed, americasVoteEnabled: game.cfg?.americasVoteEnabled }))
+              dispatch(finalizeFinale({ seed: game.seed }))
             }
           >
             Fast-fwd Finale

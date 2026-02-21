@@ -298,6 +298,9 @@ const gameSlice = createSlice({
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
     advance(state) {
+      // ── Guard: jury phase is terminal — nothing to advance past ──────────
+      if (state.phase === 'jury') return;
+
       // ── Finale trigger: when week_end fires with only 2 alive players ─────
       if (state.phase === 'week_end') {
         const alive = state.players.filter(
@@ -761,7 +764,11 @@ export const selectEvictedPlayers = createSelector(selectPlayers, (players) =>
 export const fastForwardToEviction =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
     let steps = 0;
-    while (getState().game.phase !== 'eviction_results' && steps < PHASE_ORDER.length) {
+    while (
+      getState().game.phase !== 'eviction_results' &&
+      getState().game.phase !== 'jury' &&
+      steps < PHASE_ORDER.length
+    ) {
       dispatch(advance());
       steps++;
     }

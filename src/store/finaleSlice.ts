@@ -182,7 +182,7 @@ const finaleSlice = createSlice({
      * Updates revealedCount to maximum (reveals any still-hidden jurors).
      * No-op if winner already declared.
      */
-    finalizeFinale(state, action: PayloadAction<{ seed: number; americasVoteEnabled?: boolean }>) {
+    finalizeFinale(state, action: PayloadAction<{ seed: number }>) {
       if (state.isComplete) return;
 
       // Reveal any outstanding jurors
@@ -194,7 +194,6 @@ const finaleSlice = createSlice({
         tally,
         state.finalistIds,
         action.payload.seed,
-        action.payload.americasVoteEnabled,
       );
       const runnerUpId = state.finalistIds.find((id) => id !== winnerId) ?? null;
 
@@ -242,13 +241,16 @@ const finaleSlice = createSlice({
       state.isActive = false;
     },
 
-    /** Full reset – called via extraReducers when game is reset. */
+    /**
+     * Full reset – for explicit manual resets (e.g., tests or dev tooling).
+     * Game resets are handled automatically via extraReducers below.
+     */
     resetFinale() {
       return { ...initialState };
     },
   },
   extraReducers: (builder) => {
-    // Reset finale state whenever the game is fully reset.
+    // Automatically reset finale state whenever the game is fully reset.
     builder.addMatcher(
       (action) => action.type === 'game/resetGame',
       () => ({ ...initialState }),
@@ -299,8 +301,7 @@ export const revealNextJurorThunk =
 
     if (finale.revealedCount >= finale.revealOrder.length && !finale.isComplete) {
       const { seed } = getState().game;
-      const americasVoteEnabled = getState().game.cfg?.americasVoteEnabled;
-      dispatch(finalizeFinale({ seed, americasVoteEnabled }));
+      dispatch(finalizeFinale({ seed }));
     }
   };
 

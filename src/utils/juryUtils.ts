@@ -65,19 +65,19 @@ export function tallyVotes(votes: Record<string, string>): Record<string, number
 
 /**
  * Determine the winner from tallied votes.
- * On a tie, falls back to seeded RNG (or America's Vote if enabled).
+ * On a tie, falls back to seeded RNG.
+ * When `americasVoteEnabled` is true the UI labels the tiebreak as "America's Vote",
+ * but the underlying resolution is identical (seeded RNG).
  *
  * @param tally              Vote counts per finalist.
  * @param finalistIds        Exactly 2 finalist IDs.
  * @param seed               RNG seed for deterministic tiebreak.
- * @param americasVoteEnabled  When true, tie is broken by seeded RNG labelled "America's Vote".
  * @returns                  Winner ID.
  */
 export function determineWinner(
   tally: Record<string, number>,
   finalistIds: string[],
   seed: number,
-  americasVoteEnabled = false,
 ): string {
   const [a, b] = finalistIds;
   const aVotes = tally[a] ?? 0;
@@ -85,9 +85,7 @@ export function determineWinner(
 
   if (aVotes !== bVotes) return aVotes > bVotes ? a : b;
 
-  // Tie: use seeded RNG (regardless of americasVoteEnabled flag – both
-  // are deterministic; the flag just controls the UI label shown).
-  void americasVoteEnabled; // referenced in UI; unused in pure logic
+  // Tie: use seeded RNG (deterministic; UI may label this "America's Vote").
   const rng = mulberry32(seed);
   return rng() < 0.5 ? a : b;
 }
