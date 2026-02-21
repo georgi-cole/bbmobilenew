@@ -1,0 +1,197 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   PlayerAvatar — interactive avatar tile
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.player-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+/* Face button */
+.player-avatar__face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--color-card);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.player-avatar__face:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.player-avatar__face:active {
+  transform: scale(0.97);
+}
+
+.player-avatar__face:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* Sizes */
+.player-avatar--sm .player-avatar__face {
+  width: 44px;
+  height: 44px;
+  font-size: 1.5rem;
+}
+
+.player-avatar--md .player-avatar__face {
+  width: 56px;
+  height: 56px;
+  font-size: 1.9rem;
+}
+
+.player-avatar--lg .player-avatar__face {
+  width: 72px;
+  height: 72px;
+  font-size: 2.4rem;
+}
+
+.player-avatar__emoji {
+  line-height: 1;
+}
+
+/* Status badge overlay */
+.player-avatar__badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 0.8rem;
+  line-height: 1;
+  background: var(--color-bg);
+  border-radius: 50%;
+  padding: 2px 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* "YOU" tag */
+.player-avatar__you {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  font-weight: 800;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-radius: 6px;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+
+/* Name label */
+.player-avatar__name {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  max-width: 60px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status tints */
+.player-avatar--hoh .player-avatar__face {
+  box-shadow: 0 0 0 3px #f59e0b, 0 4px 14px rgba(245, 158, 11, 0.4);
+}
+.player-avatar--nominated .player-avatar__face {
+  box-shadow: 0 0 0 3px #ef4444, 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+.player-avatar--pov .player-avatar__face {
+  box-shadow: 0 0 0 3px #8b5cf6, 0 4px 14px rgba(139, 92, 246, 0.4);
+}
+.player-avatar--out .player-avatar__face {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+}
+.player-avatar--out .player-avatar__name {
+  opacity: 0.45;
+}
+
+/* ── Popover ─────────────────────────────────────────────────────────────── */
+.player-avatar__popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--color-card);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 14px 16px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  animation: popoverIn 0.18s ease;
+}
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.player-avatar__popover-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 5px;
+}
+
+.player-avatar__popover-face {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.player-avatar__popover-name {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.player-avatar__popover-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+}
+
+.player-avatar__popover-status--hoh      { color: #f59e0b; }
+.player-avatar__popover-status--nominated { color: #ef4444; }
+.player-avatar__popover-status--pov      { color: #8b5cf6; }
+.player-avatar__popover-status--evicted  { color: var(--color-text-muted); }
+.player-avatar__popover-status--jury     { color: var(--color-text-muted); }
+.player-avatar__popover-status--active   { color: #1fc884; }
+
+.player-avatar__popover-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  width: 100%;
+}
+
+.player-avatar__popover-stats li {
+  padding: 2px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}

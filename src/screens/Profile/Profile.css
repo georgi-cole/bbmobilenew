@@ -1,0 +1,21 @@
+/* Profile */
+.profile-screen {
+  align-items: center;
+}
+.profile-screen__avatar {
+  font-size: 5rem;
+  line-height: 1;
+  margin: 8px 0;
+}
+.profile-screen__name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+.profile-screen__pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+}

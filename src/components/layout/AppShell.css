@@ -1,0 +1,20 @@
+/* AppShell */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh; /* dynamic viewport height – handles mobile browser chrome */
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--color-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-shell__main {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  /* Push content above bottom safe area */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

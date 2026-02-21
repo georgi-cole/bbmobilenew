@@ -1,0 +1,33 @@
+import { useGame } from '../../store/GameContext';
+import PlayerAvatar from '../../components/ui/PlayerAvatar';
+import './Houseguests.css';
+
+export default function Houseguests() {
+  const { alivePlayers, evictedPlayers } = useGame();
+
+  return (
+    <div className="placeholder-screen houseguests-screen">
+      <h1 className="placeholder-screen__title">👥 Houseguests</h1>
+
+      <section>
+        <h2 className="placeholder-screen__section">Active ({alivePlayers.length})</h2>
+        <div className="houseguests-screen__grid">
+          {alivePlayers.map((p) => (
+            <PlayerAvatar key={p.id} player={p} size="lg" />
+          ))}
+        </div>
+      </section>
+
+      {evictedPlayers.length > 0 && (
+        <section>
+          <h2 className="placeholder-screen__section">Evicted / Jury ({evictedPlayers.length})</h2>
+          <div className="houseguests-screen__grid houseguests-screen__grid--out">
+            {evictedPlayers.map((p) => (
+              <PlayerAvatar key={p.id} player={p} size="md" />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
