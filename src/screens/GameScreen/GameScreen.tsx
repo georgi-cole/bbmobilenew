@@ -114,8 +114,10 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Floating Action Bar (replaces wide Continue CTA) ─────────────── */}
-      <FloatingActionBar />
+      {/* ── Floating Action Bar — hidden during human decision modals ───── */}
+      {!(showReplacementModal || showFinal4Modal || showFinal3Modal) && (
+        <FloatingActionBar />
+      )}
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">

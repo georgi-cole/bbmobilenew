@@ -5,24 +5,34 @@
  */
 import type { RootState } from './store';
 
-/** True when the game is not awaiting any human-only decision, so advance() is safe to call. */
-export const selectAdvanceEnabled = (state: RootState): boolean => {
-  const game = state.game;
-  return !game.replacementNeeded && !game.awaitingFinal3Eviction;
-};
-
 /**
- * True while the game is blocked on a human decision modal
- * (replacement nominee, Final 4 vote, or Final 3 HOH eviction).
+ * True when the game is blocked on a human decision modal:
+ * - replacement nominee picker (pov_ceremony_results)
+ * - Final 4 solo eviction vote (human is POV holder)
+ * - Final 3 HOH eviction (awaitingFinal3Eviction)
  */
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game;
-  return Boolean(game.replacementNeeded) || Boolean(game.awaitingFinal3Eviction);
+
+  // Final 4: human POV holder must choose via TvDecisionModal, not advance()
+  const isFinal4HumanPovDecision =
+    game?.phase === 'final4_eviction' &&
+    Boolean(game?.povWinnerId) &&
+    game.players.some((p) => p.id === game.povWinnerId && p.isUser);
+
+  return (
+    Boolean(game.replacementNeeded) ||
+    Boolean(game.awaitingFinal3Eviction) ||
+    isFinal4HumanPovDecision
+  );
 };
 
+/** True when the game is not awaiting any human-only decision, so advance() is safe to call. */
+export const selectAdvanceEnabled = (state: RootState): boolean =>
+  !selectIsWaitingForInput(state);
+
 /**
- * Count of Diary Room entries in the TV feed.
- * Returns the total number of 'diary' type events since game start
+ * Count of Diary Room entries in the TV feed since game start
  * (used as a badge count on the DR button).
  */
 export const selectUnreadDrCount = (state: RootState): number => {
@@ -34,6 +44,13 @@ export const selectUnreadDrCount = (state: RootState): number => {
  * Count of current nominees on the block.
  * Returns the number of players in nomineeIds (active nominees awaiting eviction).
  */
-export const selectPendingActionsCount = (state: RootState): number => {
-  return state.game?.nomineeIds?.length ?? 0;
-};
+export const selectCurrentNomineesCount = (state: RootState): number =>
+  state.game?.nomineeIds?.length ?? 0;
+
+/**
+ * @deprecated Use selectCurrentNomineesCount instead.
+ * Kept for backward compatibility; returns the same nominee count.
+ */
+export const selectPendingActionsCount = (state: RootState): number =>
+  selectCurrentNomineesCount(state);
+

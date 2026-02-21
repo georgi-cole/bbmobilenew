@@ -4,7 +4,7 @@ import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectUnreadDrCount,
-  selectPendingActionsCount,
+  selectCurrentNomineesCount,
 } from '../../store/selectors';
 import './FloatingActionBar.css';
 
@@ -15,9 +15,9 @@ import './FloatingActionBar.css';
  *   [Social] [Help]  ●Next●  [DR] [Actions]
  *
  * - Center button dispatches advance(); pulses when actionable; disabled when
- *   waiting for human input.
+ *   waiting for human input (replacement nominee, Final 4 POV vote, Final 3 HOH eviction).
  * - DR and Actions buttons show numeric badges wired to store selectors.
- * - Left side: Social and Help buttons (currently no-op placeholders).
+ * - Left side: Social and Help buttons (UI placeholders — functionality TBD).
  * - Right side: DR and Actions buttons with badge counts.
  */
 export default function FloatingActionBar() {
@@ -25,11 +25,11 @@ export default function FloatingActionBar() {
   const canAdvance = useAppSelector(selectAdvanceEnabled);
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
-  const actionsCount = useAppSelector(selectPendingActionsCount);
+  const nomineesCount = useAppSelector(selectCurrentNomineesCount);
 
   return (
     <div className="fab" role="toolbar" aria-label="Game actions">
-      {/* ── Left side: Social + Help ───────────────────────────────────── */}
+      {/* ── Left side: Social + Help (placeholders) ───────────────────── */}
       <div className="fab__side">
         <button
           className="fab__side-btn"
@@ -51,19 +51,13 @@ export default function FloatingActionBar() {
 
       {/* ── Center: Next / Advance ─────────────────────────────────────── */}
       <button
-        className={[
-          'fab__center-btn',
-          canAdvance && !isWaiting ? 'fab__center-btn--pulse' : '',
-          isWaiting ? 'fab__center-btn--disabled' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        className={`fab__center-btn${canAdvance && !isWaiting ? ' fab__center-btn--pulse' : ''}${
+          isWaiting ? ' fab__center-btn--disabled' : ''
+        }`}
         type="button"
         aria-label="Advance to next phase"
         disabled={isWaiting}
-        onClick={() => {
-          if (!isWaiting) dispatch(advance());
-        }}
+        onClick={() => dispatch(advance())}
       >
         ▶
       </button>
@@ -73,7 +67,7 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label={`Diary Room${drCount > 0 ? ` (${drCount} unread)` : ''}`}
+          aria-label={`Diary Room${drCount > 0 ? ` (${Math.min(drCount, 99)}${drCount > 99 ? '+' : ''} entries)` : ''}`}
           title="Diary Room"
         >
           📓
@@ -86,13 +80,13 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label={`Actions${actionsCount > 0 ? ` (${actionsCount} pending)` : ''}`}
+          aria-label={`Actions${nomineesCount > 0 ? ` (${nomineesCount} nominee${nomineesCount !== 1 ? 's' : ''})` : ''}`}
           title="Actions"
         >
           ⚡
-          {actionsCount > 0 && (
+          {nomineesCount > 0 && (
             <span className="fab__badge" aria-hidden="true">
-              {actionsCount > 99 ? '99+' : actionsCount}
+              {nomineesCount > 99 ? '99+' : nomineesCount}
             </span>
           )}
         </button>
@@ -100,3 +94,4 @@ export default function FloatingActionBar() {
     </div>
   );
 }
+
