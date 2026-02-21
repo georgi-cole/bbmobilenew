@@ -1,0 +1,123 @@
+/* HouseguestProfile modal */
+
+.hg-profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: overlayIn 0.2s ease;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.hg-profile {
+  background: var(--color-card);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 36px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  animation: sheetUp 0.25s ease;
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.hg-profile__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.hg-profile__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.hg-profile__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+}
+
+.hg-profile__name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 4px;
+}
+
+.hg-profile__meta {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 0 0 2px;
+}
+
+.hg-profile__profession {
+  font-size: 0.82rem;
+  color: var(--color-accent);
+  margin: 0;
+  font-weight: 600;
+}
+
+.hg-profile__motto {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  border-left: 3px solid var(--color-accent);
+  padding-left: 10px;
+  margin: 0 0 14px;
+}
+
+.hg-profile__funfact {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+}
+
+.hg-profile__label {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hg-profile__story {
+  margin-bottom: 14px;
+}
+
+.hg-profile__story-text {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 6px 0 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.hg-profile__allies,
+.hg-profile__enemies {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 4px 0;
+}

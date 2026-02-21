@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -48,7 +49,17 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
         aria-expanded={popoverOpen}
         type="button"
       >
-        <span className="player-avatar__emoji" aria-hidden="true">
+        <img
+          className="player-avatar__img"
+          src={resolveAvatar(player)}
+          alt={player.name}
+          onError={(e) => {
+            const img = e.currentTarget;
+            img.onerror = null;
+            img.src = getDicebear(player.name);
+          }}
+        />
+        <span className="player-avatar__emoji player-avatar__emoji--fallback" aria-hidden="true">
           {player.avatar}
         </span>
         {badge && (

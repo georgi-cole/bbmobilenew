@@ -61,6 +61,23 @@
   line-height: 1;
 }
 
+/* Image avatar */
+.player-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Emoji fallback: shown only when img fails (via CSS .player-avatar__img--error class) */
+.player-avatar__emoji--fallback {
+  display: none;
+  position: absolute;
+  font-size: inherit;
+  line-height: 1;
+}
+
 /* Status badge overlay */
 .player-avatar__badge {
   position: absolute;
