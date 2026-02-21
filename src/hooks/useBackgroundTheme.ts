@@ -6,8 +6,8 @@
  * Usage:
  *   const { url, key, reason } = useBackgroundTheme();
  *
- * When attachToBody is true the resolved URL is written to the CSS custom
- * property --intro-bg-image on <body> so global styles can consume it.
+ * When attachToRoot is true the resolved URL is written to the CSS custom
+ * property --intro-bg-image on <html> (documentElement) so global styles can consume it.
  */
 import { useState, useEffect } from 'react';
 import { resolveTheme } from '../utils/backgroundTheme';
@@ -20,7 +20,7 @@ interface BackgroundState {
 }
 
 interface UseBackgroundThemeOptions {
-  attachToBody?: boolean;
+  attachToRoot?: boolean;
 }
 
 export default function useBackgroundTheme(
@@ -32,7 +32,7 @@ export default function useBackgroundTheme(
     reason: null,
   });
 
-  const { attachToBody } = opts;
+  const { attachToRoot } = opts;
 
   useEffect(() => {
     let cancelled = false;
@@ -40,9 +40,10 @@ export default function useBackgroundTheme(
     resolveTheme().then((resolved: ResolvedTheme) => {
       if (cancelled) return;
       setState({ url: resolved.url, key: resolved.key, reason: resolved.reason });
+      console.info('[useBackgroundTheme] background applied:', resolved.key, resolved.url, `(${resolved.reason})`);
 
-      if (attachToBody) {
-        document.body.style.setProperty(
+      if (attachToRoot) {
+        document.documentElement.style.setProperty(
           '--intro-bg-image',
           `url("${resolved.url}")`,
         );
@@ -51,11 +52,11 @@ export default function useBackgroundTheme(
 
     return () => {
       cancelled = true;
-      if (attachToBody) {
-        document.body.style.removeProperty('--intro-bg-image');
+      if (attachToRoot) {
+        document.documentElement.style.removeProperty('--intro-bg-image');
       }
     };
-  }, [attachToBody]);
+  }, [attachToRoot]);
 
   return state;
 }
