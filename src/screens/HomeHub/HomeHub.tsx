@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import './HomeHub.css';
 
 /**
@@ -18,9 +19,19 @@ const HUB_BUTTONS = [
 
 export default function HomeHub() {
   const navigate = useNavigate();
+  const { url: bgUrl } = useBackgroundTheme();
 
   return (
-    <div className="home-hub">
+    <div className="homehub-shell">
+      {/* Dynamic background layer */}
+      <div
+        className="homehub-intro-bg"
+        style={bgUrl ? { backgroundImage: `url("${bgUrl}")` } : undefined}
+        aria-hidden="true"
+      />
+
+      {/* Foreground content */}
+      <div className="homehub-content home-hub">
       {/* Hero / icon area */}
       <div className="home-hub__hero" aria-hidden="true">
         <div className="home-hub__logo">🏠</div>
@@ -41,6 +52,7 @@ export default function HomeHub() {
           </button>
         ))}
       </nav>
+      </div>
     </div>
   );
 }
