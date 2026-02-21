@@ -154,19 +154,36 @@ function buildMinigameSession(
   state: GameState,
   participants: Player[],
 ): MinigameSession {
+  // Ensure human is included if alive
+  const human = state.players.find((p) => p.isUser);
+  let resolvedParticipants = participants;
+  if (
+    human &&
+    human.status !== 'evicted' &&
+    human.status !== 'jury' &&
+    !participants.some((p) => String(p.id) === String(human.id))
+  ) {
+    resolvedParticipants = [...participants, human];
+    pushEvent(
+      state,
+      `[DEBUG] Human player "${human.name}" was missing from minigame participants — added automatically. 🔧`,
+      'game',
+    );
+  }
+
   const aiScores: Record<string, number> = {};
   let aiSeed = state.seed;
   const timeLimit = DEFAULT_TAPRACE_OPTIONS.timeLimit;
-  participants.forEach((p) => {
+  resolvedParticipants.forEach((p) => {
     if (!p.isUser) {
-      aiScores[p.id] = simulateTapRaceAI(aiSeed, 'HARD', timeLimit);
+      aiScores[String(p.id)] = simulateTapRaceAI(aiSeed, 'HARD', timeLimit);
       // Advance seed for each AI player so scores are independent
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
     }
   });
   return {
     key: 'TapRace',
-    participants: participants.map((p) => p.id),
+    participants: resolvedParticipants.map((p) => String(p.id)),
     seed: state.seed,
     options: { ...DEFAULT_TAPRACE_OPTIONS },
     aiScores,
@@ -243,6 +260,12 @@ const gameSlice = createSlice({
      */
     launchMinigame(state, action: PayloadAction<MinigameSession>) {
       state.pendingMinigame = action.payload;
+      const ids = action.payload.participants.join(', ');
+      pushEvent(
+        state,
+        `[DEBUG] Minigame "${action.payload.key}" launched — participants: [${ids}], seed: ${action.payload.seed}. 🎮`,
+        'game',
+      );
     },
 
     /**
@@ -500,7 +523,12 @@ const gameSlice = createSlice({
       // This prevents fastForwardToEviction / debug advance from racing past an
       // open TapRace overlay and leaving it stuck on screen.
       if (state.pendingMinigame) {
-        state.pendingMinigame = null; // Auto-dismiss; winner falls back to random pick below.
+        pushEvent(
+          state,
+          `[DEBUG] advance() blocked — minigame "${state.pendingMinigame.key}" is active. Complete or skip it first. 🎮`,
+          'game',
+        );
+        return;
       }
 
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──
