@@ -1,0 +1,113 @@
+/* MinigameHost.css */
+.minigame-host {
+  position: fixed;
+  inset: 0;
+  background: #0d0d1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  color: #eee;
+}
+
+/* ─── Ready countdown ────────────────────────────────────────────────────── */
+.minigame-host-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.minigame-host-ready-label {
+  font-size: 1.2rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.minigame-host-ready-game {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e94560;
+}
+
+.minigame-host-ready-count {
+  font-size: 7rem;
+  font-weight: 900;
+  color: #fff;
+  animation: pulse 0.9s ease infinite;
+  line-height: 1;
+}
+
+.minigame-host-ready-go {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #4caf50;
+  animation: pop 0.3s ease;
+}
+
+/* ─── Playing ────────────────────────────────────────────────────────────── */
+.minigame-host-playing {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ─── Results overlay ────────────────────────────────────────────────────── */
+.minigame-host-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  animation: fadeIn 0.3s ease;
+}
+
+.minigame-host-results-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #e94560;
+  margin: 0;
+}
+
+.minigame-host-results-score {
+  font-size: 1.1rem;
+  color: #ccc;
+}
+
+.minigame-host-results-btn {
+  margin-top: 8px;
+  padding: 12px 32px;
+  background: #e94560;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.minigame-host-results-btn:hover {
+  background: #c73250;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.08); }
+}
+
+@keyframes pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}

@@ -16,15 +16,8 @@ import {
   fastForwardToEviction,
   startMinigame,
 } from '../../store/gameSlice';
-import {
-  selectSettings,
-  setSim,
-  resetSettings,
-  importSettings,
-  clearSettingsStorage,
-  type SettingsState,
-} from '../../store/settingsSlice';
 import FinaleDebugControls from './FinaleControls.debug';
+import MinigameDebugControls from './MinigameDebugControls';
 import type { Phase } from '../../types';
 import './DebugPanel.css';
 
@@ -58,7 +51,6 @@ export default function DebugPanel() {
 
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
-  const settings = useAppSelector(selectSettings);
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
@@ -390,120 +382,8 @@ export default function DebugPanel() {
             {/* ── Finale Debug Controls ── */}
             <FinaleDebugControls />
 
-            {/* ── Admin / Experiments (DEV only) ── */}
-            {import.meta.env.DEV && (
-              <section className="dbg-section">
-                <h3 className="dbg-section__title">Admin / Experiments</h3>
-
-                {/* Simulation toggles */}
-                <div className="dbg-row">
-                  <label className="dbg-label">Jury House</label>
-                  <input
-                    type="checkbox"
-                    checked={settings.sim.enableJuryHouse}
-                    onChange={(e) => dispatch(setSim({ enableJuryHouse: e.target.checked }))}
-                    title="sim.enableJuryHouse"
-                  />
-                </div>
-                <div className="dbg-row">
-                  <label className="dbg-label">Fan Favorite</label>
-                  <input
-                    type="checkbox"
-                    checked={settings.sim.enableFanFavorite}
-                    onChange={(e) => dispatch(setSim({ enableFanFavorite: e.target.checked }))}
-                    title="sim.enableFanFavorite"
-                  />
-                </div>
-                <div className="dbg-row">
-                  <label className="dbg-label">Twists</label>
-                  <input
-                    type="checkbox"
-                    checked={settings.sim.enableTwists}
-                    onChange={(e) => dispatch(setSim({ enableTwists: e.target.checked }))}
-                    title="sim.enableTwists"
-                  />
-                </div>
-                <div className="dbg-row">
-                  <label className="dbg-label">Self-Evict</label>
-                  <input
-                    type="checkbox"
-                    checked={settings.sim.allowSelfEvict}
-                    onChange={(e) => dispatch(setSim({ allowSelfEvict: e.target.checked }))}
-                    title="sim.allowSelfEvict"
-                  />
-                </div>
-
-                {/* Settings admin actions */}
-                <div className="dbg-row">
-                  <button
-                    className="dbg-btn dbg-btn--wide dbg-btn--danger"
-                    onClick={() => dispatch(resetSettings())}
-                  >
-                    Reset Settings
-                  </button>
-                  <button
-                    className="dbg-btn dbg-btn--wide dbg-btn--danger"
-                    onClick={() => clearSettingsStorage()}
-                    title="Clears localStorage without updating Redux state"
-                  >
-                    Clear Storage
-                  </button>
-                </div>
-                <div className="dbg-row">
-                  <button
-                    className="dbg-btn dbg-btn--wide"
-                    onClick={() => {
-                      const json = JSON.stringify(settings, null, 2);
-                      const blob = new Blob([json], { type: 'application/json' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'bbmobilenew_settings.json';
-                      a.click();
-                      setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    }}
-                  >
-                    Export JSON
-                  </button>
-                  <button
-                    className="dbg-btn dbg-btn--wide"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'application/json';
-                      input.onchange = () => {
-                        const file = input.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          try {
-                            const parsed = JSON.parse(ev.target?.result as string) as SettingsState;
-                            // Basic shape validation before importing
-                            if (
-                              typeof parsed !== 'object' || parsed === null ||
-                              typeof parsed.audio !== 'object' ||
-                              typeof parsed.display !== 'object' ||
-                              typeof parsed.gameUX !== 'object' ||
-                              typeof parsed.sim !== 'object'
-                            ) {
-                              alert('Invalid settings JSON: unexpected structure');
-                              return;
-                            }
-                            dispatch(importSettings(parsed));
-                          } catch {
-                            alert('Invalid settings JSON');
-                          }
-                        };
-                        reader.readAsText(file);
-                      };
-                      input.click();
-                    }}
-                  >
-                    Import JSON
-                  </button>
-                </div>
-              </section>
-            )}
+            {/* ── Minigame Debug Controls ── */}
+            <MinigameDebugControls />
           </div>
         </aside>
       )}
