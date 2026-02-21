@@ -13,18 +13,16 @@ export function getDicebear(seed: string): string {
 }
 
 /**
- * Resolves the best available avatar URL for a player.
+ * Resolves the initial avatar URL for a player.
  *
- * Priority order:
- *  1. player.avatar (if it looks like a URL, not an emoji)
- *  2. /avatars/{Name}.png  (capitalised, matching bbmobile naming)
- *  3. /avatars/{name}.png  (lowercase)
- *  4. /avatars/{id}.png    (stable id)
- *  5. Dicebear fallback
+ * Returns the first of:
+ *  1. player.avatar — if it is already a URL (starts with `http` or `/`)
+ *  2. /avatars/{Name}.png — capitalised first letter, matching bbmobile's
+ *     file-naming convention (e.g. Finn.png, Mimi.png)
  *
- * The returned URL is used as the initial <img> src.
- * An onError handler should call getDicebear(player.name) to swap in the
- * Dicebear URL and set onerror=null to prevent infinite retry loops.
+ * The caller is responsible for chaining fallbacks at render time:
+ *  - First onError: swap src to getDicebear(player.name)
+ *  - Second onError (Dicebear unreachable): show emoji / initials fallback
  */
 export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): string {
   // If player.avatar is already a URL (starts with http/https or /), use it

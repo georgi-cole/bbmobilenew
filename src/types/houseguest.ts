@@ -1,3 +1,5 @@
+import type { Player } from './index';
+
 // Houseguest static profile type (canonical dataset from houseguests.ts)
 export interface Houseguest {
   id: string;
@@ -21,19 +23,8 @@ export interface Houseguest {
   story: string;
 }
 
-// Houseguest enriched with live Player state
-export interface EnrichedPlayer {
-  id: string;
-  name: string;
-  avatar: string;
-  status: string;
-  isUser?: boolean;
-  stats?: {
-    hohWins: number;
-    povWins: number;
-    timesNominated: number;
-  };
-  // Static profile fields (undefined if not in dataset)
+// Static profile fields that enrich a live Player object
+interface HouseguestProfileFields {
   fullName?: string;
   age?: number;
   sex?: string;
@@ -45,3 +36,7 @@ export interface EnrichedPlayer {
   allies?: string[];
   enemies?: string[];
 }
+
+// Houseguest enriched with live Player state — extends Player directly so
+// all Player fields retain their precise types (e.g. status: PlayerStatus)
+export type EnrichedPlayer = Player & HouseguestProfileFields;

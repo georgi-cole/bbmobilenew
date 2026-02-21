@@ -70,14 +70,6 @@
   display: block;
 }
 
-/* Emoji fallback: shown only when img fails (via CSS .player-avatar__img--error class) */
-.player-avatar__emoji--fallback {
-  display: none;
-  position: absolute;
-  font-size: inherit;
-  line-height: 1;
-}
-
 /* Status badge overlay */
 .player-avatar__badge {
   position: absolute;
