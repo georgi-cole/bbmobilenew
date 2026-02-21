@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
-  advance,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -12,6 +11,7 @@ import {
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
@@ -78,10 +78,6 @@ export default function GameScreen() {
 
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
 
-  // Hide Continue button while waiting for any human-only decision modal.
-  // Keep this in sync with the conditions that control human decision modals above.
-  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal;
-
   return (
     <div className="game-screen">
       <TvZone />
@@ -118,17 +114,8 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
-      {!awaitingHumanDecision && (
-        <button
-          className="game-screen__advance-btn"
-          onClick={() => dispatch(advance())}
-          type="button"
-          aria-label="Advance to next phase"
-        >
-          Continue ▶
-        </button>
-      )}
+      {/* ── Floating Action Bar (replaces wide Continue CTA) ─────────────── */}
+      <FloatingActionBar />
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">

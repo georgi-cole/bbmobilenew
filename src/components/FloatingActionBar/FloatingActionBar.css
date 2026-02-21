@@ -1,0 +1,115 @@
+/* ── Floating Action Bar ────────────────────────────────────────────────── */
+.fab {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100;
+}
+
+/* ── Side button groups ─────────────────────────────────────────────────── */
+.fab__side {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Individual side buttons ────────────────────────────────────────────── */
+.fab__side-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-card-2, #1a2336);
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.fab__side-btn:hover {
+  opacity: 0.85;
+}
+
+.fab__side-btn:active {
+  transform: scale(0.93);
+}
+
+/* ── Center (Next) button ───────────────────────────────────────────────── */
+.fab__center-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5);
+  transition: opacity 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.fab__center-btn:hover {
+  opacity: 0.9;
+}
+
+.fab__center-btn:active {
+  transform: scale(0.93);
+}
+
+/* ── Pulse animation when actionable ───────────────────────────────────── */
+@keyframes fab-pulse {
+  0%   { box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5); }
+  50%  { box-shadow: 0 4px 24px rgba(99, 102, 241, 0.85), 0 0 0 6px rgba(99, 102, 241, 0.18); }
+  100% { box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5); }
+}
+
+.fab__center-btn--pulse {
+  animation: fab-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── Disabled state ─────────────────────────────────────────────────────── */
+.fab__center-btn--disabled {
+  background: var(--color-card-2, #1a2336);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: not-allowed;
+  animation: none;
+}
+
+.fab__center-btn--disabled:hover {
+  opacity: 1;
+}
+
+.fab__center-btn--disabled:active {
+  transform: none;
+}
+
+/* ── Numeric badges ─────────────────────────────────────────────────────── */
+.fab__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
