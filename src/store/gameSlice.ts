@@ -69,6 +69,22 @@ function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
 }
 
 /**
+ * Determine whether the next evicted player should become a juror ('jury')
+ * or simply go home ('evicted'), based on the configured jury size.
+ *
+ * Formula (default jurySize = 7 for a 12-player season):
+ *   nonJuryEvictions = totalPlayers - 2 - jurySize
+ * The first `nonJuryEvictions` players evicted go home; the rest become jury.
+ */
+function evictedStatus(state: GameState): 'evicted' | 'jury' {
+  const totalPlayers = state.players.length;
+  const jurySize = state.cfg?.jurySize ?? 7;
+  const nonJuryEvictions = totalPlayers - 2 - jurySize;
+  const evictedSoFar = state.players.filter((p) => p.status === 'evicted').length;
+  return evictedSoFar < nonJuryEvictions ? 'evicted' : 'jury';
+}
+
+/**
  * Apply an HOH winner to state.  Used by both advance() and completeMinigame().
  */
 function applyHohWinner(state: GameState, winnerId: string) {
