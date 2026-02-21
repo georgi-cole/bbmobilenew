@@ -1,5 +1,11 @@
 /* ─── TV Decision Modal ───────────────────────────────────────────────────── */
 
+/*
+ * NOTE: Decisions presented by this modal are MANDATORY — the game cannot
+ * progress without a selection. There is intentionally no Escape key or
+ * cancel mechanism; houseguest decisions are final.
+ */
+
 .tv-decision-modal {
   position: fixed;
   inset: 0;
@@ -7,26 +13,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0 0 0 / 0.75);
+  background: rgba(0, 0, 0, 0.75);
   padding: 1rem;
 }
 
 .tv-decision-modal__card {
   background: #0d0d1a;
-  border: 2px solid rgba(255 255 255 / 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  width: min(26rem, 100%);
+  width: min(26rem, 100vw - 2rem);
   display: flex;
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0 0 0 / 0.7);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
 }
 
 .tv-decision-modal__header {
   background: #16213e;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid rgba(255 255 255 / 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tv-decision-modal__title {
@@ -57,8 +63,8 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.6rem 0.75rem;
-  background: rgba(255 255 255 / 0.04);
-  border: 1px solid rgba(255 255 255 / 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   cursor: pointer;
   color: #e0e0f0;
@@ -68,13 +74,13 @@
 }
 
 .tv-decision-modal__option:hover {
-  background: rgba(255 255 255 / 0.1);
-  border-color: rgba(255 255 255 / 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .tv-decision-modal__option--danger:hover {
-  background: rgba(180 20 20 / 0.35);
-  border-color: rgba(255 80 80 / 0.4);
+  background: rgba(180, 20, 20, 0.35);
+  border-color: rgba(255, 80, 80, 0.4);
 }
 
 .tv-decision-modal__option-avatar {
@@ -91,4 +97,12 @@
   font-size: 0.65rem;
   color: #7b8ecc;
   font-family: monospace;
+}
+
+.tv-decision-modal__empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #7b8ecc;
+  font-style: italic;
 }

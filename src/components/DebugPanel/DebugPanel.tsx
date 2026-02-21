@@ -9,6 +9,7 @@ import {
   forcePovWinner,
   forcePhase,
   finalizeFinal4Eviction,
+  clearBlockingFlags,
   resetGame,
   rerollSeed,
   fastForwardToEviction,
@@ -313,11 +314,22 @@ export default function DebugPanel() {
                     onClick={() => {
                       dispatch(advance());
                     }}
+                    title="⚠ Overrides human POV holder decision — for debug use only"
                   >
-                    AI Pick
+                    AI Pick ⚠
                   </button>
                 </div>
               )}
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(clearBlockingFlags())}
+                  title="Clears replacementNeeded / awaitingFinal3Eviction if the game gets stuck"
+                >
+                  Clear Stuck Flags
+                </button>
+              </div>
 
               <div className="dbg-row">
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(rerollSeed())}>

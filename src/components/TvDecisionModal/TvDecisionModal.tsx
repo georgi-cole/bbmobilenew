@@ -14,6 +14,10 @@ interface Props {
  * a houseguest. Used for:
  *   - HOH replacement nominee selection (after POV auto-save)
  *   - Final 4 eviction vote (human POV holder)
+ *   - Final 3 Final HOH eviction
+ *
+ * These decisions are MANDATORY — the game cannot progress without a
+ * selection. There is intentionally no Escape key or cancel mechanism.
  */
 export default function TvDecisionModal({ title, subtitle, options, onSelect, danger = false }: Props) {
   return (
@@ -25,20 +29,26 @@ export default function TvDecisionModal({ title, subtitle, options, onSelect, da
         </header>
 
         <div className="tv-decision-modal__body">
-          {options.map((player) => (
-            <button
-              key={player.id}
-              className={`tv-decision-modal__option${danger ? ' tv-decision-modal__option--danger' : ''}`}
-              onClick={() => onSelect(player.id)}
-              type="button"
-            >
-              <span className="tv-decision-modal__option-avatar" aria-hidden="true">
-                {player.avatar}
-              </span>
-              <span className="tv-decision-modal__option-name">{player.name}</span>
-              <span className="tv-decision-modal__option-tag">{player.status}</span>
-            </button>
-          ))}
+          {options.length === 0 ? (
+            <p className="tv-decision-modal__empty">
+              No eligible houseguests available. Use the Debug Panel to fix game state.
+            </p>
+          ) : (
+            options.map((player) => (
+              <button
+                key={player.id}
+                className={`tv-decision-modal__option${danger ? ' tv-decision-modal__option--danger' : ''}`}
+                onClick={() => onSelect(player.id)}
+                type="button"
+              >
+                <span className="tv-decision-modal__option-avatar" aria-hidden="true">
+                  {player.avatar}
+                </span>
+                <span className="tv-decision-modal__option-name">{player.name}</span>
+                <span className="tv-decision-modal__option-tag">{player.status}</span>
+              </button>
+            ))
+          )}
         </div>
       </div>
     </div>

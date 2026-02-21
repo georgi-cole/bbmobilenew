@@ -78,7 +78,8 @@ export default function GameScreen() {
 
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
 
-  // Hide Continue button while waiting for human decision
+  // Hide Continue button while waiting for any human-only decision modal.
+  // Keep this in sync with the conditions that control human decision modals above.
   const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal;
 
   return (

@@ -99,9 +99,14 @@ export interface GameState {
    * Set during `final3_comp2` advance.
    */
   f3Part2WinnerId?: string | null;
-  /** Optional weekly config overrides. */
+    /** Optional weekly config overrides. */
   cfg?: {
-    /** When true, special POV twists and Final4 bypass are suspended. */
+    /**
+     * Future feature flag for multi-eviction weeks.
+     * When true, special POV twists and Final 4 bypass should be suspended.
+     * NOTE: There is currently no automatic logic to set this flag; it is a
+     * placeholder for future multi-eviction week support.
+     */
     multiEviction?: boolean;
   };
 }

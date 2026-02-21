@@ -97,9 +97,19 @@ const gameSlice = createSlice({
     /**
      * Human HOH picks a replacement nominee after a POV auto-save.
      * Clears replacementNeeded so the Continue button reappears.
+     * Validates that the selected player is eligible (not HOH, not POV holder,
+     * and not already a nominee) to guard against invalid dispatches.
      */
     setReplacementNominee(state, action: PayloadAction<string>) {
       const id = action.payload;
+      // Eligibility guard: reject HOH, POV holder, or already-nominated players
+      if (
+        id === state.hohId ||
+        id === state.povWinnerId ||
+        state.nomineeIds.includes(id)
+      ) {
+        return;
+      }
       const player = state.players.find((p) => p.id === id);
       const hohPlayer = state.players.find((p) => p.id === state.hohId);
       if (!player || !hohPlayer) return;
@@ -117,9 +127,12 @@ const gameSlice = createSlice({
     /**
      * Finalize the Final 4 eviction — used when the human POV holder casts their vote.
      * For AI, advance() handles the eviction automatically.
+     * Validates that the evictee is a current nominee before proceeding.
      */
     finalizeFinal4Eviction(state, action: PayloadAction<string>) {
       const evicteeId = action.payload;
+      // Validate the evictee is a current nominee
+      if (!state.nomineeIds.includes(evicteeId)) return;
       const evictee = state.players.find((p) => p.id === evicteeId);
       const povHolder = state.players.find((p) => p.id === state.povWinnerId);
       if (!evictee || !povHolder) return;
@@ -139,9 +152,12 @@ const gameSlice = createSlice({
      * Finalize the Final 3 eviction — used when the human Final HOH directly evicts
      * one of the 2 remaining houseguests in the `final3_decision` phase.
      * For AI Final HOH, advance() handles the eviction automatically.
+     * Validates that the evictee is a current nominee before proceeding.
      */
     finalizeFinal3Eviction(state, action: PayloadAction<string>) {
       const evicteeId = action.payload;
+      // Validate the evictee is a current nominee
+      if (!state.nomineeIds.includes(evicteeId)) return;
       const evictee = state.players.find((p) => p.id === evicteeId);
       const finalHoh = state.players.find((p) => p.id === state.hohId);
       if (!evictee || !finalHoh) return;
@@ -213,6 +229,15 @@ const gameSlice = createSlice({
       state.phase = action.payload;
       pushEvent(state, `[DEBUG] Phase forced to ${action.payload}. 🔧`, 'game');
     },
+    /**
+     * Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction)
+     * that could prevent the Continue button from appearing (debug only).
+     */
+    clearBlockingFlags(state) {
+      state.replacementNeeded = false;
+      state.awaitingFinal3Eviction = false;
+      pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
+    },
     /** Reset game state to the initial seed (debug only). */
     resetGame() {
       return {
@@ -229,6 +254,7 @@ const gameSlice = createSlice({
     },
     /** Generate a new random RNG seed (debug only). */
     rerollSeed(state) {
+      // Mix Math.random() with the low 32 bits of Date.now() via XOR to derive a 32-bit seed.
       state.seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
       pushEvent(state, `[DEBUG] RNG seed rerolled to ${state.seed}. 🎲`, 'game');
     },
@@ -237,6 +263,14 @@ const gameSlice = createSlice({
     advance(state) {
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──
       if (state.phase === 'final4_eviction') {
+        // Guard: Final 4 eviction requires a valid POV holder
+        if (!state.povWinnerId) return;
+
+        // Guard: if the POV holder is the human player, the decision must come
+        // through finalizeFinal4Eviction (via TvDecisionModal) — not advance().
+        const povHolderPlayer = state.players.find((p) => p.id === state.povWinnerId);
+        if (povHolderPlayer?.isUser) return;
+
         // AI POV holder casts the sole vote deterministically
         const seedRng = mulberry32(state.seed);
         state.seed = (seedRng() * 0x100000000) >>> 0;
@@ -509,22 +543,39 @@ const gameSlice = createSlice({
             const f4Nominees = alive.filter(
               (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
             );
-            state.nomineeIds = f4Nominees.slice(0, 2).map((pl) => pl.id);
-            f4Nominees.slice(0, 2).forEach((pl) => {
-              const fp = state.players.find((x) => x.id === pl.id);
-              if (fp && fp.status !== 'nominated' && fp.status !== 'nominated+pov') {
-                fp.status = 'nominated';
-              }
-            });
-            const f4Names = state.nomineeIds
-              .map((id) => state.players.find((x) => x.id === id)?.name ?? id)
-              .join(' and ');
-            pushEvent(
-              state,
-              `Final 4! ${f4Names} are on the block. The POV holder has the sole vote to evict. 🏆`,
-              'game',
-            );
-            nextPhase = 'final4_eviction';
+            if (f4Nominees.length === 2) {
+              // Compute names before mutating state so the log is consistent.
+              const f4Names = f4Nominees.map((pl) => pl.name).join(' and ');
+
+              // Apply all core state mutations together.
+              state.nomineeIds = f4Nominees.map((pl) => pl.id);
+              f4Nominees.forEach((pl) => {
+                const fp = state.players.find((x) => x.id === pl.id);
+                if (fp) {
+                  // Preserve existing POV power if the player somehow has it.
+                  if (fp.status === 'pov' || fp.status === 'hoh+pov') {
+                    fp.status = 'nominated+pov';
+                  } else if (fp.status !== 'nominated' && fp.status !== 'nominated+pov') {
+                    fp.status = 'nominated';
+                  }
+                }
+              });
+              nextPhase = 'final4_eviction';
+
+              // Log after mutations are committed.
+              pushEvent(
+                state,
+                `Final 4! ${f4Names} are on the block. The POV holder has the sole vote to evict. 🏆`,
+                'game',
+              );
+            } else {
+              // Defensive: skip bypass if nominee count is unexpected to avoid inconsistent state.
+              pushEvent(
+                state,
+                `[Warning] Final 4 bypass skipped — unexpected eligible nominee count (${f4Nominees.length}).`,
+                'game',
+              );
+            }
           }
           break;
         }
@@ -634,6 +685,7 @@ export const {
   forceNominees,
   forcePovWinner,
   forcePhase,
+  clearBlockingFlags,
   resetGame,
   rerollSeed,
 } = gameSlice.actions;
