@@ -10,6 +10,7 @@ import './HomeHub.css';
  */
 const HUB_BUTTONS = [
   { to: '/game',         label: '▶  Play',          variant: 'primary'   },
+  { to: '/rules',        label: '📋 Rules',         variant: 'secondary' },
   { to: '/settings',     label: '⚙️ Settings',      variant: 'secondary' },
   { to: '/profile',      label: '👤 Profile',        variant: 'secondary' },
   { to: '/leaderboard',  label: '🏆 Leaderboard',    variant: 'secondary' },
