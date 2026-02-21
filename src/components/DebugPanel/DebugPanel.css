@@ -1,0 +1,210 @@
+/* ─── Debug Panel ─────────────────────────────────────────────────────────── */
+
+/* Floating action button (bottom-right corner) */
+.dbg-fab {
+  position: fixed;
+  bottom: 5rem; /* above nav bar */
+  right: 1rem;
+  z-index: 9000;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255 255 255 / 0.2);
+  background: #1a1a2e;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0 0 0 / 0.5);
+  transition: transform 0.15s ease;
+}
+.dbg-fab:hover {
+  transform: scale(1.1);
+}
+
+/* Panel drawer */
+.dbg-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8999;
+  width: min(22rem, 100vw);
+  background: #0d0d1a;
+  color: #e0e0f0;
+  border-left: 1px solid rgba(255 255 255 / 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -4px 0 20px rgba(0 0 0 / 0.6);
+  font-size: 0.8rem;
+}
+
+/* Header */
+.dbg-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #16213e;
+  border-bottom: 1px solid rgba(255 255 255 / 0.08);
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.dbg-panel__close {
+  background: none;
+  border: none;
+  color: #e0e0f0;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+.dbg-panel__close:hover {
+  background: rgba(255 255 255 / 0.1);
+}
+
+/* Scrollable body */
+.dbg-panel__body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Section */
+.dbg-section {
+  background: rgba(255 255 255 / 0.04);
+  border: 1px solid rgba(255 255 255 / 0.08);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dbg-section__title {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7b8ecc;
+}
+
+/* Inspector key-value grid */
+.dbg-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0;
+}
+.dbg-grid dt {
+  color: #7b8ecc;
+  white-space: nowrap;
+}
+.dbg-grid dd {
+  margin: 0;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+/* Players list */
+.dbg-players summary {
+  cursor: pointer;
+  color: #7b8ecc;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.dbg-player-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.dbg-player {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(255 255 255 / 0.03);
+}
+.dbg-player--evicted,
+.dbg-player--jury {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.dbg-player__status {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: #7b8ecc;
+  font-family: monospace;
+}
+
+/* Controls rows */
+.dbg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.dbg-row--col {
+  flex-direction: column;
+  align-items: stretch;
+}
+.dbg-label {
+  white-space: nowrap;
+  color: #7b8ecc;
+  min-width: 5rem;
+  font-size: 0.75rem;
+}
+.dbg-select {
+  flex: 1;
+  min-width: 0;
+  background: #1a1a2e;
+  color: #e0e0f0;
+  border: 1px solid rgba(255 255 255 / 0.15);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.75rem;
+}
+.dbg-btn {
+  background: #16213e;
+  color: #e0e0f0;
+  border: 1px solid rgba(255 255 255 / 0.15);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.dbg-btn:hover:not(:disabled) {
+  background: #0f3460;
+}
+.dbg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.dbg-btn--wide {
+  flex: 1;
+}
+.dbg-btn--danger {
+  border-color: rgba(255 80 80 / 0.4);
+  color: #ff8080;
+}
+.dbg-btn--danger:hover:not(:disabled) {
+  background: rgba(180 20 20 / 0.4);
+}
+
+/* Hide on very small screens (phones in portrait) by tucking behind toggle */
+@media (max-width: 360px) {
+  .dbg-panel {
+    width: 100vw;
+  }
+}

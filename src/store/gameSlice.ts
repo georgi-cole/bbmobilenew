@@ -1,5 +1,5 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
-import type { RootState } from './store';
+import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 
@@ -88,6 +88,77 @@ const gameSlice = createSlice({
     },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
+    },
+
+    // ─── Debug-only actions ───────────────────────────────────────────────────
+    /** Force a specific player to be HOH (debug only). */
+    forceHoH(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      state.players.forEach((p) => {
+        if (p.status === 'hoh') p.status = 'active';
+        if (p.status === 'hoh+pov') p.status = 'pov';
+      });
+      state.hohId = id;
+      const player = state.players.find((p) => p.id === id);
+      if (player) {
+        player.status = player.status === 'pov' ? 'hoh+pov' : 'hoh';
+        pushEvent(state, `[DEBUG] ${player.name} forced as Head of Household. 👑`, 'game');
+      }
+    },
+    /** Force specific players as nominees (debug only). */
+    forceNominees(state, action: PayloadAction<string[]>) {
+      const ids = action.payload;
+      state.players.forEach((p) => {
+        if (p.status === 'nominated') p.status = 'active';
+        if (p.status === 'nominated+pov') p.status = 'pov';
+      });
+      state.nomineeIds = ids;
+      const names: string[] = [];
+      ids.forEach((id) => {
+        const p = state.players.find((pl) => pl.id === id);
+        if (p) {
+          p.status = p.status === 'pov' ? 'nominated+pov' : 'nominated';
+          names.push(p.name);
+        }
+      });
+      pushEvent(state, `[DEBUG] ${names.join(' and ')} forced as nominees. 🎯`, 'game');
+    },
+    /** Force a specific player as POV winner (debug only). */
+    forcePovWinner(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      state.players.forEach((p) => {
+        if (p.status === 'pov') p.status = 'active';
+        if (p.status === 'hoh+pov') p.status = 'hoh';
+        if (p.status === 'nominated+pov') p.status = 'nominated';
+      });
+      state.povWinnerId = id;
+      const player = state.players.find((p) => p.id === id);
+      if (player) {
+        if (player.status === 'hoh') player.status = 'hoh+pov';
+        else if (player.status === 'nominated') player.status = 'nominated+pov';
+        else player.status = 'pov';
+        pushEvent(state, `[DEBUG] ${player.name} forced as POV winner. 🎭`, 'game');
+      }
+    },
+    /** Reset game state to the initial seed (debug only). */
+    resetGame() {
+      return {
+        ...initialState,
+        tvFeed: [
+          {
+            id: 'e0',
+            text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.',
+            type: 'game' as const,
+            timestamp: Date.now(),
+          },
+        ],
+      };
+    },
+    /** Generate a new random RNG seed (debug only). */
+    rerollSeed(state) {
+      // XOR Math.random with timestamp bits for additional entropy
+      state.seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
+      pushEvent(state, `[DEBUG] RNG seed rerolled to ${state.seed}. 🎲`, 'game');
     },
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
@@ -213,7 +284,8 @@ const gameSlice = createSlice({
   },
 });
 
-export const { setPhase, advanceWeek, updatePlayer, addTvEvent, setLive, advance } =
+export const { setPhase, advanceWeek, updatePlayer, addTvEvent, setLive, advance,
+  forceHoH, forceNominees, forcePovWinner, resetGame, rerollSeed } =
   gameSlice.actions;
 export default gameSlice.reducer;
 
@@ -227,3 +299,14 @@ export const selectAlivePlayers = createSelector(selectPlayers, (players) =>
 export const selectEvictedPlayers = createSelector(selectPlayers, (players) =>
   players.filter((p) => p.status === 'evicted' || p.status === 'jury'),
 );
+
+// ─── Debug thunks ─────────────────────────────────────────────────────────────
+/** Dispatch advance() repeatedly until the phase reaches 'eviction_results' (debug only). */
+export const fastForwardToEviction =
+  () => (dispatch: AppDispatch, getState: () => RootState) => {
+    let steps = 0;
+    while (getState().game.phase !== 'eviction_results' && steps < PHASE_ORDER.length) {
+      dispatch(advance());
+      steps++;
+    }
+  };
