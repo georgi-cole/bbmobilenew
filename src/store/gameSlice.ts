@@ -263,26 +263,25 @@ const gameSlice = createSlice({
         }
       }
 
-      state.minigameResult = {
-        seedUsed: session.seed,
-        scores,
-        winnerId,
-        personalRecords,
-      };
       state.pendingMinigame = null;
 
       // ── Auto-advance phase based on context ──────────────────────────────
+      // Apply the winner inline so minigameResult is never left set in state,
+      // which would risk being consumed by a later advance() call.
       const alive = state.players.filter(
         (p) => p.status !== 'evicted' && p.status !== 'jury',
       );
       if (state.phase === 'hoh_comp') {
         applyHohWinner(state, winnerId);
-        state.minigameResult = null;
         state.phase = 'hoh_results';
       } else if (state.phase === 'pov_comp') {
         state.phase = applyPovWinner(state, winnerId, alive);
-        state.minigameResult = null;
       }
+      // Always keep minigameResult null. The winner was applied inline above for
+      // competition phases; for non-competition phases (e.g., debug Test TapRace)
+      // there is nothing to apply and we must not leave stale data that could be
+      // consumed by a future hoh_results / pov_results advance() call.
+      state.minigameResult = null;
     },
 
     /**
@@ -703,15 +702,10 @@ const gameSlice = createSlice({
           break;
         }
         case 'hoh_results': {
-          if (state.minigameResult?.winnerId) {
-            // Result was set by the human finishing TapRace — apply it.
-            applyHohWinner(state, state.minigameResult.winnerId);
-            state.minigameResult = null;
-          } else {
-            // AI-only or debug-advance — pick randomly.
-            const hoh = seededPick(rng, alive);
-            applyHohWinner(state, hoh.id);
-          }
+          // completeMinigame() applies the HOH winner inline and advances the phase
+          // directly, so minigameResult is always null here.  Always pick randomly.
+          const hoh = seededPick(rng, alive);
+          applyHohWinner(state, hoh.id);
           break;
         }
         case 'social_1': {
@@ -745,15 +739,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_results': {
-          let povWinnerId: string;
-          if (state.minigameResult?.winnerId) {
-            // Result was set by the human finishing TapRace — apply it.
-            povWinnerId = state.minigameResult.winnerId;
-            state.minigameResult = null;
-          } else {
-            // AI-only or debug-advance — pick randomly.
-            povWinnerId = seededPick(rng, alive).id;
-          }
+          // completeMinigame() applies the POV winner inline and advances the phase
+          // directly, so minigameResult is always null here.  Always pick randomly.
+          const povWinnerId = seededPick(rng, alive).id;
           nextPhase = applyPovWinner(state, povWinnerId, alive);
           break;
         }
