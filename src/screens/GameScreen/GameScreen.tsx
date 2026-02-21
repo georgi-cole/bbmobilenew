@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
-  advance,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -13,6 +12,7 @@ import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
@@ -134,17 +134,8 @@ export default function GameScreen() {
         <TapRace session={pendingMinigame} players={game.players} />
       )}
 
-      {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
-      {!awaitingHumanDecision && (
-        <button
-          className="game-screen__advance-btn"
-          onClick={() => dispatch(advance())}
-          type="button"
-          aria-label="Advance to next phase"
-        >
-          Continue ▶
-        </button>
-      )}
+      {/* ── Floating Action Bar ───────────────────────────────────────────── */}
+      {!awaitingHumanDecision && <FloatingActionBar />}
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">
