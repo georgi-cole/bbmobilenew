@@ -25,6 +25,10 @@ export interface Player {
     povWins: number;
     timesNominated: number;
   };
+  /** Set to 1 for the winner, 2 for runner-up after finale. */
+  finalRank?: number;
+  /** True once the player is confirmed season winner. */
+  isWinner?: boolean;
 }
 
 // Canonical weekly-game phase list (in execution order)
@@ -54,7 +58,9 @@ export type Phase =
   /** Final 3 Part 3: Part-1 winner vs Part-2 winner → Final HOH crowned. */
   | 'final3_comp3'
   /** Final HOH evicts one of the 2 remaining houseguests directly (no vote). */
-  | 'final3_decision';
+  | 'final3_decision'
+  /** Jury phase: the Final 2 faces the jury for votes; finale overlay active. */
+  | 'jury';
 
 export interface TvEvent {
   id: string;
@@ -108,6 +114,33 @@ export interface GameState {
      * placeholder for future multi-eviction week support.
      */
     multiEviction?: boolean;
+    /**
+     * Number of jury members (default 7).
+     * Formula: nonJuryEvictions = totalPlayers - 2 - jurySize;
+     * players evicted at index < nonJuryEvictions go home (status 'evicted'),
+     * the rest become jurors (status 'jury').
+     */
+    jurySize?: number;
+    /**
+     * When true, one pre-jury evictee may return to the jury house via
+     * jury-return scoring before voting begins.
+     */
+    enableJuryReturn?: boolean;
+    /**
+     * Total pacing budget (ms) for the full jury-reveal sequence.
+     * Default: 42 000 (42 s).  Tests should use a much shorter value.
+     */
+    tJuryFinale?: number;
+    /**
+     * Per-vote reveal delay (ms).
+     * Default: derived from tJuryFinale / jurySize.
+     */
+    tVoteReveal?: number;
+    /**
+     * When true, a tied vote is broken by "America's Vote" (random pick).
+     * Default false – ties are broken deterministically via seeded RNG.
+     */
+    americasVoteEnabled?: boolean;
   };
 }
 
