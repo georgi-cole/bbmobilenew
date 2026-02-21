@@ -41,18 +41,6 @@
   gap: 8px;
 }
 
-.home-hub__logo {
-  font-size: 5rem;
-  line-height: 1;
-  filter: drop-shadow(0 0 24px rgba(99, 102, 241, 0.5));
-  animation: heroFloat 3s ease-in-out infinite;
-}
-
-@keyframes heroFloat {
-  0%, 100% { transform: translateY(0);   }
-  50%       { transform: translateY(-8px); }
-}
-
 .home-hub__title {
   margin: 0;
   font-size: 2rem;
@@ -62,22 +50,13 @@
   text-transform: uppercase;
 }
 
-.home-hub__subtitle {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  color: var(--color-accent);
-}
-
 /* ── Button stack ─────────────────────────────────────────────────────────── */
 .home-hub__buttons {
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: 420px;
 }
 
 .home-hub__btn {
@@ -87,13 +66,19 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  border: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
   letter-spacing: 0.3px;
 }
 
-.home-hub__btn:hover {
-  transform: translateY(-2px);
+.home-hub__btn:hover,
+.home-hub__btn:focus {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 
 .home-hub__btn:active {
@@ -101,28 +86,30 @@
 }
 
 .home-hub__btn--primary {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-2) 100%);
+  background: linear-gradient(135deg, rgba(120, 72, 255, 0.9), rgba(96, 165, 250, 0.9));
   color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
   font-size: 1.1rem;
 }
 
 .home-hub__btn--secondary {
-  background: var(--color-card);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--color-text);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .home-hub__btn--ghost {
   background: transparent;
   color: var(--color-text-muted);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
+  opacity: 0.9;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 360px) {
-  .home-hub__logo   { font-size: 3.8rem; }
   .home-hub__title  { font-size: 1.6rem; }
   .home-hub__btn    { padding: 12px 16px; font-size: 0.9rem; }
 }
