@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../../store/GameContext';
+import { useAppSelector } from '../../store/hooks';
+import { selectAlivePlayers } from '../../store/gameSlice';
 import StatusPill from '../ui/StatusPill';
 import './TvZone.css';
 
@@ -32,21 +33,22 @@ const PHASE_LABELS: Record<string, string> = {
  *   └──────────────────────────────┘
  *   │  tvFeed: scrollable log     │
  *
- * To inject new content: dispatch ADD_TV_EVENT via useGame().addTvEvent().
+ * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
 export default function TvZone() {
-  const { state, alivePlayers } = useGame();
+  const gameState = useAppSelector((s) => s.game);
+  const alivePlayers = useAppSelector(selectAlivePlayers);
   const navigate = useNavigate();
   const feedRef = useRef<HTMLUListElement>(null);
 
-  const latestEvent = state.tvFeed[0];
+  const latestEvent = gameState.tvFeed[0];
 
   // Auto-scroll feed to top when new event arrives
   useEffect(() => {
     feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [state.tvFeed.length]);
+  }, [gameState.tvFeed.length]);
 
-  const phaseLabel = PHASE_LABELS[state.phase] ?? state.phase;
+  const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
 
   return (
     <section className="tv-zone" aria-label="Game action zone">
@@ -54,12 +56,12 @@ export default function TvZone() {
       <div className="tv-zone__head">
         <div className="tv-zone__head-pills">
           <StatusPill variant="phase"   icon="📍" label={phaseLabel} />
-          <StatusPill variant="week"    icon="📅" label={`S${state.season}W${state.week}`} />
-          <StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${state.players.length}`} />
+          <StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} />
+          <StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} />
         </div>
 
         <div className="tv-zone__head-actions">
-          {state.isLive && (
+          {gameState.isLive && (
             <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
           )}
           <StatusPill
@@ -83,7 +85,7 @@ export default function TvZone() {
 
       {/* ── Event feed ──────────────────────────────────────────────────── */}
       <ul className="tv-zone__feed" ref={feedRef} aria-label="Game event log">
-        {state.tvFeed.map((ev) => (
+        {gameState.tvFeed.map((ev) => (
           <li key={ev.id} className={`tv-zone__feed-item tv-zone__feed-item--${ev.type}`}>
             <span className="tv-zone__feed-type" aria-hidden="true">
               {{ game: '🎮', social: '💬', vote: '🗳️', twist: '🌀', diary: '📖' }[ev.type]}

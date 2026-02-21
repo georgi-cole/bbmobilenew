@@ -1,9 +1,11 @@
-import { useGame } from '../../store/GameContext';
+import { useAppSelector } from '../../store/hooks';
+import { selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import './Houseguests.css';
 
 export default function Houseguests() {
-  const { alivePlayers, evictedPlayers } = useGame();
+  const alivePlayers = useAppSelector(selectAlivePlayers);
+  const evictedPlayers = useAppSelector(selectEvictedPlayers);
 
   return (
     <div className="placeholder-screen houseguests-screen">
