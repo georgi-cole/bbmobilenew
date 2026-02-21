@@ -28,8 +28,10 @@ export default function NavBar() {
           }
           aria-label={label}
         >
-          <span className="nav-bar__icon" aria-hidden="true">{icon}</span>
-          <span className="nav-bar__label">{label}</span>
+          <span className="nav-bar__item-inner">
+            <span className="nav-bar__icon" aria-hidden="true">{icon}</span>
+            <span className="nav-bar__label">{label}</span>
+          </span>
         </NavLink>
       ))}
     </nav>

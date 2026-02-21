@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -22,18 +23,37 @@ const STATUS_BADGE: Record<string, string> = {
 /**
  * PlayerAvatar — interactive avatar tile.
  *
- * Tap → shows a mini popover with name + stats.
- * Status is shown as a coloured badge overlay.
+ * When onSelect is provided (e.g. Houseguests screen): tap opens the
+ * HouseguestProfile modal; the popover is not shown.
+ * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
- * To extend: add new PlayerStatus values in src/types/index.ts,
- * add a badge emoji to STATUS_BADGE above, add CSS in PlayerAvatar.css.
+ * Image loading uses a two-step fallback chain:
+ *  1. /avatars/{Name}.png (via resolveAvatar)
+ *  2. Dicebear pixel-art SVG (on first load error)
+ *  3. Emoji / initials (if Dicebear also fails — shown accessibly)
  */
 export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAvatarProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState(() => resolveAvatar(player));
+  const [showEmojiAvatar, setShowEmojiAvatar] = useState(false);
 
   function handleClick() {
-    setPopoverOpen((v) => !v);
-    onSelect?.(player);
+    if (onSelect) {
+      onSelect(player);
+    } else {
+      setPopoverOpen((v) => !v);
+    }
+  }
+
+  function handleImgError() {
+    const dicebear = getDicebear(player.name);
+    if (avatarSrc !== dicebear) {
+      // Step 2: swap to Dicebear
+      setAvatarSrc(dicebear);
+    } else {
+      // Step 3: Dicebear also failed — show emoji fallback
+      setShowEmojiAvatar(true);
+    }
   }
 
   const isEvicted = player.status === 'evicted' || player.status === 'jury';
@@ -45,12 +65,21 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
         className="player-avatar__face"
         onClick={handleClick}
         aria-label={`${player.name} – ${player.status}`}
-        aria-expanded={popoverOpen}
+        aria-expanded={onSelect ? undefined : popoverOpen}
         type="button"
       >
-        <span className="player-avatar__emoji" aria-hidden="true">
-          {player.avatar}
-        </span>
+        {showEmojiAvatar ? (
+          <span className="player-avatar__emoji" role="img" aria-label={player.name}>
+            {player.avatar}
+          </span>
+        ) : (
+          <img
+            className="player-avatar__img"
+            src={avatarSrc}
+            alt={player.name}
+            onError={handleImgError}
+          />
+        )}
         {badge && (
           <span className="player-avatar__badge" aria-hidden="true">
             {badge}

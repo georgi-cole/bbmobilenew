@@ -16,6 +16,7 @@ import {
   fastForwardToEviction,
   startMinigame,
 } from '../../store/gameSlice';
+import FinaleDebugControls from './FinaleControls.debug';
 import type { Phase } from '../../types';
 import './DebugPanel.css';
 
@@ -40,6 +41,7 @@ const PHASES: Phase[] = [
   'final3_comp2',
   'final3_comp3',
   'final3_decision',
+  'jury',
 ];
 
 export default function DebugPanel() {
@@ -375,6 +377,9 @@ export default function DebugPanel() {
                 </button>
               </div>
             </section>
+
+            {/* ── Finale Debug Controls ── */}
+            <FinaleDebugControls />
           </div>
         </aside>
       )}

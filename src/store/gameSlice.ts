@@ -336,7 +336,7 @@ const gameSlice = createSlice({
       const povHolder = state.players.find((p) => p.id === state.povWinnerId);
       if (!evictee || !povHolder) return;
 
-      evictee.status = 'evicted';
+      evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       pushEvent(
         state,
@@ -361,7 +361,7 @@ const gameSlice = createSlice({
       const finalHoh = state.players.find((p) => p.id === state.hohId);
       if (!evictee || !finalHoh) return;
 
-      evictee.status = 'evicted';
+      evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       state.awaitingFinal3Eviction = false;
       pushEvent(
@@ -429,7 +429,27 @@ const gameSlice = createSlice({
       pushEvent(state, `[DEBUG] Phase forced to ${action.payload}. 🔧`, 'game');
     },
     /**
-     * Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction)
+     * Mark the winner and runner-up in player data after the finale.
+     * Called by the FinalFaceoff component once the winner is declared.
+     */
+    finalizeGame(state, action: PayloadAction<{ winnerId: string; runnerUpId: string }>) {
+      const { winnerId, runnerUpId } = action.payload;
+      state.players.forEach((p) => {
+        if (p.id === winnerId) {
+          p.isWinner = true;
+          p.finalRank = 1;
+        } else if (p.id === runnerUpId) {
+          p.finalRank = 2;
+        }
+      });
+      pushEvent(
+        state,
+        `🏆 ${state.players.find((p) => p.id === winnerId)?.name ?? 'The winner'} has won Big Brother – AI Edition! Congratulations! 🎉`,
+        'game',
+      );
+    },
+
+    /** Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction)
      * that could prevent the Continue button from appearing (debug only).
      */
     clearBlockingFlags(state) {
@@ -486,7 +506,7 @@ const gameSlice = createSlice({
         if (nominees.length > 0) {
           const evictee = seededPick(rng, nominees);
           const povHolder = state.players.find((p) => p.id === state.povWinnerId);
-          evictee.status = 'evicted';
+          evictee.status = evictedStatus(state);
           state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           pushEvent(
             state,
@@ -623,7 +643,7 @@ const gameSlice = createSlice({
           const evictee = seededPick(aiRng, nominees);
           const evicteePlayer = state.players.find((p) => p.id === evictee.id);
           if (evicteePlayer) {
-            evicteePlayer.status = 'evicted';
+            evicteePlayer.status = evictedStatus(state);
             state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           }
           pushEvent(
@@ -650,7 +670,7 @@ const gameSlice = createSlice({
         const finalHoh = state.players.find((p) => p.id === state.hohId);
         if (nominees.length > 0) {
           const evictee = seededPick(rng, nominees);
-          evictee.status = 'evicted';
+          evictee.status = evictedStatus(state);
           state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           state.awaitingFinal3Eviction = false;
           pushEvent(
@@ -820,7 +840,7 @@ const gameSlice = createSlice({
           const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
           if (nominees.length > 0) {
             const evicted = seededPick(rng, nominees);
-            evicted.status = 'evicted';
+            evicted.status = evictedStatus(state);
             state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
             pushEvent(state, `${evicted.name}, you have been evicted from the Big Brother house. 🚪`, 'game');
           }
@@ -850,6 +870,7 @@ export const {
   setReplacementNominee,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
+  finalizeGame,
   forceHoH,
   forceNominees,
   forcePovWinner,
@@ -876,7 +897,11 @@ export const selectEvictedPlayers = createSelector(selectPlayers, (players) =>
 export const fastForwardToEviction =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
     let steps = 0;
-    while (getState().game.phase !== 'eviction_results' && steps < PHASE_ORDER.length) {
+    while (
+      getState().game.phase !== 'eviction_results' &&
+      getState().game.phase !== 'jury' &&
+      steps < PHASE_ORDER.length
+    ) {
       dispatch(advance());
       steps++;
     }

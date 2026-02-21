@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent } from '../../store/gameSlice';
+import { generateBigBrotherReply } from '../../services/bigBrother';
 import './DiaryRoom.css';
 
 type DiaryTab = 'confess' | 'log';
@@ -24,17 +25,45 @@ export default function DiaryRoom() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const tvFeed = useAppSelector((s) => s.game.tvFeed);
+  const phase = useAppSelector((s) => s.game.phase);
+  const seed = useAppSelector((s) => s.game.seed);
+  const playerName = useAppSelector(
+    (s) => s.game.players.find((p) => p.isUser)?.name,
+  );
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const diaryLog = tvFeed.filter((e) => e.type === 'diary');
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = entry.trim();
     if (!text) return;
+
     dispatch(addTvEvent({ text: `📖 Diary: "${text}"`, type: 'diary' }));
     setEntry('');
+    setLoading(true);
+
+    try {
+      const resp = await generateBigBrotherReply({
+        diaryText: text,
+        playerName,
+        phase,
+        seed,
+      });
+      dispatch(addTvEvent({ text: `📺 Big Brother: ${resp.text}`, type: 'game' }));
+    } catch (err) {
+      console.error('Big Brother AI error:', err);
+      dispatch(
+        addTvEvent({
+          text: '📺 Big Brother: Your confession has been noted. The house is watching.',
+          type: 'game',
+        }),
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -89,9 +118,9 @@ export default function DiaryRoom() {
               <button
                 className="diary-room__submit"
                 type="submit"
-                disabled={!entry.trim()}
+                disabled={!entry.trim() || loading}
               >
-                📣 Submit Entry
+                {loading ? '⏳ Waiting…' : '📣 Submit Entry'}
               </button>
             </div>
           </form>

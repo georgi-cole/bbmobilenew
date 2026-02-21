@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
-  advance,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
