@@ -1,24 +1,8 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
-import type { GameState, Player, Phase, TvEvent } from '../types';
+import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
-import { shouldBeJuror } from '../utils/juryUtils';
-
-// ─── Internal helper: assign evicted or jury status ──────────────────────────
-/**
- * Returns 'jury' if this eviction index falls within the jury window,
- * otherwise 'evicted' (pre-jury eviction).
- */
-function evictedStatus(
-  state: GameState,
-): 'evicted' | 'jury' {
-  const totalPlayers = state.players.length;
-  const jurySize = state.cfg?.jurySize ?? 7;
-  const evictionIdx = state.players.filter(
-    (p) => p.status === 'evicted' || p.status === 'jury',
-  ).length;
-  return shouldBeJuror(evictionIdx, totalPlayers, jurySize) ? 'jury' : 'evicted';
-}
+import { simulateTapRaceAI, DEFAULT_TAPRACE_OPTIONS } from './minigame';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -84,6 +68,147 @@ function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
 
+/**
+ * Determine whether the next evicted player should become a juror ('jury')
+ * or simply go home ('evicted'), based on the configured jury size.
+ *
+ * Formula (default jurySize = 7 for a 12-player season):
+ *   nonJuryEvictions = totalPlayers - 2 - jurySize
+ * The first `nonJuryEvictions` players evicted go home; the rest become jury.
+ */
+function evictedStatus(state: GameState): 'evicted' | 'jury' {
+  const totalPlayers = state.players.length;
+  const jurySize = state.cfg?.jurySize ?? 7;
+  const nonJuryEvictions = totalPlayers - 2 - jurySize;
+  const evictedSoFar = state.players.filter((p) => p.status === 'evicted').length;
+  return evictedSoFar < nonJuryEvictions ? 'evicted' : 'jury';
+}
+
+/**
+ * Apply an HOH winner to state.  Used by both advance() and completeMinigame().
+ */
+function applyHohWinner(state: GameState, winnerId: string) {
+  state.hohId = winnerId;
+  state.players.forEach((p) => {
+    if (p.id === winnerId) p.status = 'hoh';
+    else if (p.status === 'hoh') p.status = 'active';
+  });
+  const winner = state.players.find((p) => p.id === winnerId);
+  pushEvent(state, `${winner?.name ?? winnerId} has won Head of Household! 👑`, 'game');
+}
+
+/**
+ * Apply a POV winner to state.  Handles Final-4 bypass logic.
+ * Returns the resolved next phase ('pov_results' or 'final4_eviction').
+ */
+function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Phase {
+  state.povWinnerId = winnerId;
+  const p = state.players.find((pl) => pl.id === winnerId);
+  if (p) {
+    if (p.status === 'hoh') p.status = 'hoh+pov';
+    else if (p.status === 'nominated') p.status = 'nominated+pov';
+    else p.status = 'pov';
+  }
+  pushEvent(state, `${p?.name ?? winnerId} has won the Power of Veto! 🎭`, 'game');
+
+  // ── Final 4 bypass (skip ceremony; POV holder has sole eviction vote) ──
+  if (alive.length === 4 && !state.cfg?.multiEviction) {
+    const f4Nominees = alive.filter(
+      (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
+    );
+    if (f4Nominees.length === 2) {
+      const f4Names = f4Nominees.map((pl) => pl.name).join(' and ');
+      state.nomineeIds = f4Nominees.map((pl) => pl.id);
+      f4Nominees.forEach((pl) => {
+        const fp = state.players.find((x) => x.id === pl.id);
+        if (fp) {
+          if (fp.status === 'pov' || fp.status === 'hoh+pov') {
+            fp.status = 'nominated+pov';
+          } else if (fp.status !== 'nominated' && fp.status !== 'nominated+pov') {
+            fp.status = 'nominated';
+          }
+        }
+      });
+      pushEvent(
+        state,
+        `Final 4! ${f4Names} are on the block. The POV holder has the sole vote to evict. 🏆`,
+        'game',
+      );
+      return 'final4_eviction';
+    } else {
+      pushEvent(
+        state,
+        `[Warning] Final 4 bypass skipped — unexpected eligible nominee count (${f4Nominees.length}).`,
+        'game',
+      );
+    }
+  }
+  return 'pov_results';
+}
+
+/**
+ * Build a pending-minigame session with pre-simulated AI scores.
+ * Each AI player gets a deterministic score derived from a per-player seed.
+ */
+function buildMinigameSession(
+  state: GameState,
+  participants: Player[],
+): MinigameSession {
+  const aiScores: Record<string, number> = {};
+  let aiSeed = state.seed;
+  const timeLimit = DEFAULT_TAPRACE_OPTIONS.timeLimit;
+  participants.forEach((p) => {
+    if (!p.isUser) {
+      aiScores[p.id] = simulateTapRaceAI(aiSeed, 'HARD', timeLimit);
+      // Advance seed for each AI player so scores are independent
+      aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
+    }
+  });
+  return {
+    key: 'TapRace',
+    participants: participants.map((p) => p.id),
+    seed: state.seed,
+    options: { ...DEFAULT_TAPRACE_OPTIONS },
+    aiScores,
+  };
+}
+
+/**
+ * Pick the winner from a set of participants and their scores.
+ * Returns the participant ID with the highest score.
+ *
+ * Ties are broken deterministically using an FNV-1a hash of the sorted tied
+ * IDs + high score, so equal tap counts never bias toward earlier IDs.
+ */
+function determineWinner(participants: string[], scores: Record<string, number>): string {
+  if (participants.length === 0) {
+    throw new Error('determineWinner called with no participants');
+  }
+
+  // Find the highest score.
+  let highScore = -1;
+  for (const id of participants) {
+    const score = scores[id] ?? 0;
+    if (score > highScore) highScore = score;
+  }
+
+  // Collect all participants that share the top score.
+  const topIds = participants.filter((id) => (scores[id] ?? 0) === highScore);
+
+  // Single winner — return directly.
+  if (topIds.length === 1) return topIds[0];
+
+  // Tie-break deterministically: hash sorted IDs + high score via FNV-1a.
+  const tieKey = `${[...topIds].sort().join('|')}:${highScore}`;
+  let hash = 0x811c9dc5 >>> 0; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < tieKey.length; i++) {
+    hash ^= tieKey.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0; // FNV-1a 32-bit prime
+  }
+  const rng = mulberry32(hash >>> 0);
+  return topIds[Math.floor(rng() * topIds.length)];
+}
+
 const gameSlice = createSlice({
   name: 'game',
   initialState,
@@ -109,6 +234,79 @@ const gameSlice = createSlice({
     },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
+    },
+
+    /**
+     * Set up a pending TapRace session with pre-computed AI scores.
+     * Called by the startMinigame thunk; the GameScreen reacts by showing the
+     * TapRace overlay.
+     */
+    launchMinigame(state, action: PayloadAction<MinigameSession>) {
+      state.pendingMinigame = action.payload;
+    },
+
+    /**
+     * Record the human player's final tap score, compute all participant scores,
+     * determine the winner, update personal records, and advance the phase.
+     *
+     * Called by the TapRace component when the timer expires and the player
+     * presses the "Done" / "Continue ▶" button.
+     */
+    completeMinigame(state, action: PayloadAction<number>) {
+      const session = state.pendingMinigame;
+      if (!session) return;
+
+      const humanPlayer = state.players.find((p) => p.isUser);
+      // Merge human score with pre-computed AI scores
+      const scores: Record<string, number> = { ...session.aiScores };
+      if (humanPlayer && session.participants.includes(humanPlayer.id)) {
+        scores[humanPlayer.id] = action.payload;
+      }
+
+      // Determine winner: highest tap count wins
+      const winnerId = determineWinner(session.participants, scores);
+
+      // Update personal records for every participant
+      const personalRecords: Record<string, number> = {};
+      for (const id of session.participants) {
+        const p = state.players.find((pl) => pl.id === id);
+        if (!p) continue;
+        const score = scores[id] ?? 0;
+        if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+        if (p.stats.tapRacePR == null || score > p.stats.tapRacePR) {
+          p.stats.tapRacePR = score;
+          personalRecords[id] = score;
+        }
+      }
+
+      state.pendingMinigame = null;
+
+      // ── Auto-advance phase based on context ──────────────────────────────
+      // Apply the winner inline so minigameResult is never left set in state,
+      // which would risk being consumed by a later advance() call.
+      const alive = state.players.filter(
+        (p) => p.status !== 'evicted' && p.status !== 'jury',
+      );
+      if (state.phase === 'hoh_comp') {
+        applyHohWinner(state, winnerId);
+        state.phase = 'hoh_results';
+      } else if (state.phase === 'pov_comp') {
+        state.phase = applyPovWinner(state, winnerId, alive);
+      }
+      // Always keep minigameResult null. The winner was applied inline above for
+      // competition phases; for non-competition phases (e.g., debug Test TapRace)
+      // there is nothing to apply and we must not leave stale data that could be
+      // consumed by a future hoh_results / pov_results advance() call.
+      state.minigameResult = null;
+    },
+
+    /**
+     * Discard the active minigame session without completing it.
+     * Useful for debug bypasses; a subsequent advance() will pick randomly.
+     */
+    skipMinigame(state) {
+      state.pendingMinigame = null;
+      pushEvent(state, `[DEBUG] Minigame skipped — winner will be picked randomly. 🔧`, 'game');
     },
 
     /**
@@ -298,23 +496,11 @@ const gameSlice = createSlice({
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
     advance(state) {
-      // ── Guard: jury phase is terminal — nothing to advance past ──────────
-      if (state.phase === 'jury') return;
-
-      // ── Finale trigger: when week_end fires with only 2 alive players ─────
-      if (state.phase === 'week_end') {
-        const alive = state.players.filter(
-          (p) => p.status !== 'evicted' && p.status !== 'jury',
-        );
-        if (alive.length === 2) {
-          state.phase = 'jury';
-          pushEvent(
-            state,
-            `It's time for the Final Jury to decide the winner of Big Brother! 🏛️`,
-            'game',
-          );
-          return;
-        }
+      // Guard: if a minigame is active the human must complete (or skip) it first.
+      // This prevents fastForwardToEviction / debug advance from racing past an
+      // open TapRace overlay and leaving it stuck on screen.
+      if (state.pendingMinigame) {
+        state.pendingMinigame = null; // Auto-dismiss; winner falls back to random pick below.
       }
 
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──
@@ -545,15 +731,17 @@ const gameSlice = createSlice({
         }
         case 'hoh_comp': {
           pushEvent(state, `The Head of Household competition has begun! 🏆 Who will win power this week?`, 'game');
+          // If the human player is still in the game, launch TapRace.
+          if (alive.some((p) => p.isUser)) {
+            state.pendingMinigame = buildMinigameSession(state, alive);
+          }
           break;
         }
         case 'hoh_results': {
+          // completeMinigame() applies the HOH winner inline and advances the phase
+          // directly, so minigameResult is always null here.  Always pick randomly.
           const hoh = seededPick(rng, alive);
-          state.hohId = hoh.id;
-          state.players.forEach((p) => {
-            if (p.id === hoh.id) p.status = 'hoh';
-          });
-          pushEvent(state, `${hoh.name} has won Head of Household! 👑`, 'game');
+          applyHohWinner(state, hoh.id);
           break;
         }
         case 'social_1': {
@@ -580,59 +768,17 @@ const gameSlice = createSlice({
         }
         case 'pov_comp': {
           pushEvent(state, `The Power of Veto competition is underway! 🎭`, 'game');
+          // If the human player is still in the game, launch TapRace.
+          if (alive.some((p) => p.isUser)) {
+            state.pendingMinigame = buildMinigameSession(state, alive);
+          }
           break;
         }
         case 'pov_results': {
-          const pov = seededPick(rng, alive);
-          state.povWinnerId = pov.id;
-          const p = state.players.find((pl) => pl.id === pov.id);
-          if (p) {
-            if (p.status === 'hoh') p.status = 'hoh+pov';
-            else if (p.status === 'nominated') p.status = 'nominated+pov';
-            else p.status = 'pov';
-          }
-          pushEvent(state, `${pov.name} has won the Power of Veto! 🎭`, 'game');
-
-          // ── Final 4 bypass (skip ceremony; POV holder has sole eviction vote) ──
-          // Gated: disabled during multi-eviction weeks per bbmobile spec.
-          if (alive.length === 4 && !state.cfg?.multiEviction) {
-            const f4Nominees = alive.filter(
-              (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
-            );
-            if (f4Nominees.length === 2) {
-              // Compute names before mutating state so the log is consistent.
-              const f4Names = f4Nominees.map((pl) => pl.name).join(' and ');
-
-              // Apply all core state mutations together.
-              state.nomineeIds = f4Nominees.map((pl) => pl.id);
-              f4Nominees.forEach((pl) => {
-                const fp = state.players.find((x) => x.id === pl.id);
-                if (fp) {
-                  // Preserve existing POV power if the player somehow has it.
-                  if (fp.status === 'pov' || fp.status === 'hoh+pov') {
-                    fp.status = 'nominated+pov';
-                  } else if (fp.status !== 'nominated' && fp.status !== 'nominated+pov') {
-                    fp.status = 'nominated';
-                  }
-                }
-              });
-              nextPhase = 'final4_eviction';
-
-              // Log after mutations are committed.
-              pushEvent(
-                state,
-                `Final 4! ${f4Names} are on the block. The POV holder has the sole vote to evict. 🏆`,
-                'game',
-              );
-            } else {
-              // Defensive: skip bypass if nominee count is unexpected to avoid inconsistent state.
-              pushEvent(
-                state,
-                `[Warning] Final 4 bypass skipped — unexpected eligible nominee count (${f4Nominees.length}).`,
-                'game',
-              );
-            }
-          }
+          // completeMinigame() applies the POV winner inline and advances the phase
+          // directly, so minigameResult is always null here.  Always pick randomly.
+          const povWinnerId = seededPick(rng, alive).id;
+          nextPhase = applyPovWinner(state, povWinnerId, alive);
           break;
         }
         case 'pov_ceremony': {
@@ -733,6 +879,9 @@ export const {
   updatePlayer,
   addTvEvent,
   setLive,
+  launchMinigame,
+  completeMinigame,
+  skipMinigame,
   advance,
   setReplacementNominee,
   finalizeFinal4Eviction,
@@ -772,4 +921,55 @@ export const fastForwardToEviction =
       dispatch(advance());
       steps++;
     }
+  };
+
+/**
+ * Public minigame API — startMinigame thunk.
+ *
+ * For human participants: pre-computes AI scores and dispatches launchMinigame
+ * so the GameScreen can render the TapRace overlay.
+ * For AI-only participants: immediately dispatches a complete result (no UI).
+ *
+ * Returns the MinigameResult for AI-only runs; undefined when human UI is shown.
+ */
+export const startMinigame =
+  (opts: { key: string; participants: string[]; seed: number; options: { timeLimit: number } }) =>
+  (dispatch: AppDispatch, getState: () => RootState): MinigameResult | undefined => {
+    const state = getState().game;
+    // Pre-compute AI scores, respecting the configured timeLimit
+    const aiScores: Record<string, number> = {};
+    let aiSeed = opts.seed;
+    opts.participants.forEach((id) => {
+      const p = state.players.find((pl) => pl.id === id);
+      if (p && !p.isUser) {
+        aiScores[id] = simulateTapRaceAI(aiSeed, 'HARD', opts.options.timeLimit);
+        aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
+      }
+    });
+
+    const session = {
+      key: opts.key,
+      participants: opts.participants,
+      seed: opts.seed,
+      options: opts.options,
+      aiScores,
+    };
+
+    const hasHuman = opts.participants.some((id) => {
+      const p = state.players.find((pl) => pl.id === id);
+      return !!p?.isUser;
+    });
+
+    if (!hasHuman) {
+      // AI-only: determine winner immediately and return the result directly.
+      // We do NOT dispatch completeMinigame here — that would write a stale
+      // minigameResult that could later be consumed by an unrelated advance().
+      const winnerId = determineWinner(opts.participants, aiScores);
+      const result: MinigameResult = { seedUsed: opts.seed, scores: aiScores, winnerId };
+      return result;
+    }
+
+    // Human present: launch UI and return undefined (UI resolves via completeMinigame)
+    dispatch(launchMinigame(session));
+    return undefined;
   };

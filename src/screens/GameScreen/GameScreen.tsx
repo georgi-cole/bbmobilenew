@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
+  advance,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -11,7 +12,7 @@ import {
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
-import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
+import TapRace from '../../components/TapRace/TapRace';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
@@ -78,6 +79,20 @@ export default function GameScreen() {
 
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id));
 
+  // ── TapRace minigame ──────────────────────────────────────────────────────
+  // Shown when a HOH or POV competition is in progress and the human player
+  // is a participant. The Continue button is hidden while the overlay is active.
+  const pendingMinigame = game.pendingMinigame;
+  const humanIsParticipant =
+    !!pendingMinigame &&
+    !!humanPlayer &&
+    pendingMinigame.participants.includes(humanPlayer.id);
+  const showTapRace = humanIsParticipant;
+
+  // Hide Continue button while waiting for any human-only decision modal.
+  // Keep this in sync with the conditions that control human decision modals above.
+  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal || showTapRace;
+
   return (
     <div className="game-screen">
       <TvZone />
@@ -114,9 +129,21 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Floating Action Bar — hidden during human decision modals ───── */}
-      {!(showReplacementModal || showFinal4Modal || showFinal3Modal) && (
-        <FloatingActionBar />
+      {/* ── TapRace minigame overlay ─────────────────────────────────────── */}
+      {showTapRace && pendingMinigame && (
+        <TapRace session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
+      {!awaitingHumanDecision && (
+        <button
+          className="game-screen__advance-btn"
+          onClick={() => dispatch(advance())}
+          type="button"
+          aria-label="Advance to next phase"
+        >
+          Continue ▶
+        </button>
       )}
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}

@@ -12,7 +12,9 @@ import {
   clearBlockingFlags,
   resetGame,
   rerollSeed,
+  skipMinigame,
   fastForwardToEviction,
+  startMinigame,
 } from '../../store/gameSlice';
 import FinaleDebugControls from './FinaleControls.debug';
 import type { Phase } from '../../types';
@@ -117,6 +119,7 @@ export default function DebugPanel() {
                 <dt>Nominees</dt>        <dd>{nomineeNames}</dd>
                 <dt>POV Winner</dt>      <dd>{povName}</dd>
                 <dt>Replacement?</dt>    <dd>{game.replacementNeeded ? 'yes' : 'no'}</dd>
+                <dt>Minigame?</dt>       <dd>{game.pendingMinigame ? game.pendingMinigame.key : '—'}</dd>
                 <dt>Alive</dt>           <dd>{alive.length}</dd>
                 <dt>Evicted</dt>         <dd>{evicted.length}</dd>
               </dl>
@@ -330,6 +333,35 @@ export default function DebugPanel() {
                   title="Clears replacementNeeded / awaitingFinal3Eviction if the game gets stuck"
                 >
                   Clear Stuck Flags
+                </button>
+              </div>
+
+              {/* ── Minigame debug controls ── */}
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(skipMinigame())}
+                  disabled={!game.pendingMinigame}
+                  title="Dismiss the active TapRace overlay; winner will be picked randomly"
+                >
+                  Skip Minigame
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() =>
+                    dispatch(
+                      startMinigame({
+                        key: 'TapRace',
+                        participants: alive.map((p) => p.id),
+                        seed: game.seed,
+                        options: { timeLimit: 10 },
+                      }),
+                    )
+                  }
+                  disabled={!!game.pendingMinigame}
+                  title="Launch a standalone TapRace session for testing"
+                >
+                  Test TapRace
                 </button>
               </div>
 
