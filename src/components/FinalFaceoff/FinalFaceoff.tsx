@@ -10,6 +10,7 @@ import type { Player } from '../../types';
 import {
   startFinale,
   revealNextJurorThunk,
+  skipAllJurorsThunk,
   castVote,
   finalizeFinale,
   dismissFinale,
@@ -17,7 +18,7 @@ import {
   selectRevealedJurors,
 } from '../../store/finaleSlice';
 import { finalizeGame } from '../../store/gameSlice';
-import { tallyVotes } from '../../utils/juryUtils';
+import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
@@ -55,7 +56,7 @@ export default function FinalFaceoff() {
         },
       }),
     );
-  }, [dispatch, finale.hasStarted, game]);
+  }, [dispatch, finale.hasStarted, game.players, game.seed, game.cfg]);
 
   // ── Auto-finalize once all jurors revealed ─────────────────────────────
   useEffect(() => {
@@ -88,6 +89,25 @@ export default function FinalFaceoff() {
     }
   }, [dispatch, finale.isComplete, finale.winnerId, finale.runnerUpId]);
 
+  // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
+  useEffect(() => {
+    const awaitingId = finale.awaitingHumanJurorId;
+    if (!awaitingId || finale.isComplete) return;
+    const timeoutMs = game.cfg?.tVoteReveal ?? 30_000;
+    const timer = setTimeout(() => {
+      const aiVote = aiJurorVote(awaitingId, finale.finalistIds, game.seed);
+      dispatch(castVote({ jurorId: awaitingId, finalistId: aiVote }));
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [
+    dispatch,
+    finale.awaitingHumanJurorId,
+    finale.isComplete,
+    finale.finalistIds,
+    game.cfg?.tVoteReveal,
+    game.seed,
+  ]);
+
   // ── Auto-scroll jury list to bottom on new reveals ─────────────────────
   useEffect(() => {
     if (jurorListRef.current) {
@@ -97,9 +117,12 @@ export default function FinalFaceoff() {
 
   if (!finale.isActive) return null;
 
-  const finalists = finale.finalistIds
-    .map((id) => game.players.find((p) => p.id === id))
-    .filter((p): p is Player => p !== undefined);
+  // Build finalists list with proper type safety (no non-null assertion)
+  const finalists: Player[] = [];
+  for (const id of finale.finalistIds) {
+    const player = game.players.find((p) => p.id === id);
+    if (player) finalists.push(player);
+  }
   // Only tally votes for jurors that have already been revealed
   const revealedVotesMap: Record<string, string> = {};
   for (const r of revealed) {
@@ -122,16 +145,7 @@ export default function FinalFaceoff() {
   }
 
   function handleSkipAll() {
-    if (finale.revealOrder.length === 0 && !finale.isComplete) {
-      // No jurors — finalize directly
-      dispatch(finalizeFinale({ seed: game.seed }));
-      return;
-    }
-    // Reveal all remaining jurors at once
-    const remaining = finale.revealOrder.length - finale.revealedCount;
-    for (let i = 0; i < remaining; i++) {
-      dispatch(revealNextJurorThunk(humanIds));
-    }
+    dispatch(skipAllJurorsThunk(humanIds, game.seed));
   }
 
   function handleCastVote(finalistId: string) {
@@ -202,7 +216,9 @@ export default function FinalFaceoff() {
             {finalists.map((f) => (
               <button
                 key={f.id}
+                type="button"
                 className="fo-human-vote__choice"
+                aria-label={`Cast jury vote for ${f.name}`}
                 onClick={() => handleCastVote(f.id)}
               >
                 <span className="fo-human-vote__choice-avatar">{f.avatar}</span>

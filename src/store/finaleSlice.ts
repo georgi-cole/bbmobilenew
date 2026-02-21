@@ -35,6 +35,8 @@ export interface FinaleState {
   isActive: boolean;
   /** IDs of the 2 players competing as finalists. */
   finalistIds: string[];
+  /** Original (unshuffled) effective jury IDs — preserved for rerolling. */
+  jurorIds: string[];
   /** Ordered list of juror IDs (shuffle-ordered for reveal). */
   revealOrder: string[];
   /**
@@ -66,6 +68,7 @@ export interface FinaleState {
 const initialState: FinaleState = {
   isActive: false,
   finalistIds: [],
+  jurorIds: [],
   revealOrder: [],
   votes: {},
   revealedCount: 0,
@@ -136,6 +139,7 @@ const finaleSlice = createSlice({
       state.isActive = true;
       state.hasStarted = true;
       state.finalistIds = finalistIds;
+      state.jurorIds = effectiveJurorIds;
       state.revealOrder = shuffled;
       state.votes = votes;
       state.revealedCount = 0;
@@ -224,7 +228,7 @@ const finaleSlice = createSlice({
       const { seed, humanPlayerIds } = action.payload;
 
       const rng = mulberry32(seed);
-      state.revealOrder = seededPickN(rng, state.revealOrder, state.revealOrder.length);
+      state.revealOrder = seededPickN(rng, state.jurorIds, state.jurorIds.length);
 
       for (const jId of state.revealOrder) {
         if (humanPlayerIds.includes(jId)) continue;
@@ -301,6 +305,45 @@ export const revealNextJurorThunk =
 
     if (finale.revealedCount >= finale.revealOrder.length && !finale.isComplete) {
       const { seed } = getState().game;
+      dispatch(finalizeFinale({ seed }));
+    }
+  };
+
+/**
+ * Skip-all: reveal every remaining juror at once, auto-casting AI fallback
+ * votes for any human jurors that haven't voted yet, then finalize.
+ *
+ * This avoids race conditions from a synchronous loop of revealNextJurorThunk
+ * calls, and correctly handles human jurors by pre-filling AI votes.
+ */
+export const skipAllJurorsThunk =
+  (humanPlayerIds: string[], seed: number) =>
+  (dispatch: AppDispatch, getState: () => RootState) => {
+    const state = getState().finale;
+
+    if (state.revealOrder.length === 0 && !state.isComplete) {
+      dispatch(finalizeFinale({ seed }));
+      return;
+    }
+
+    // Pre-fill AI fallback votes for any unvoted human jurors
+    for (const jurorId of state.revealOrder) {
+      if (humanPlayerIds.includes(jurorId) && !state.votes[jurorId]) {
+        dispatch(
+          castVote({ jurorId, finalistId: aiJurorVote(jurorId, state.finalistIds, seed) }),
+        );
+      }
+    }
+
+    // Now all jurors have votes — reveal them all synchronously
+    let current = getState().finale;
+    const remaining = current.revealOrder.length - current.revealedCount;
+    for (let i = 0; i < remaining; i++) {
+      dispatch(revealNextJuror({ humanPlayerIds }));
+    }
+
+    current = getState().finale;
+    if (!current.isComplete) {
       dispatch(finalizeFinale({ seed }));
     }
   };

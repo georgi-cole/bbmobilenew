@@ -3,6 +3,7 @@ import NavBar from './NavBar';
 import DebugPanel from '../DebugPanel/DebugPanel';
 import FinalFaceoff from '../FinalFaceoff/FinalFaceoff';
 import { useAppSelector } from '../../store/hooks';
+import { selectFinale } from '../../store/finaleSlice';
 import './AppShell.css';
 
 /**
@@ -23,6 +24,7 @@ import './AppShell.css';
  */
 export default function AppShell() {
   const phase = useAppSelector((s) => s.game.phase);
+  const finale = useAppSelector(selectFinale);
 
   return (
     <div className="app-shell">
@@ -31,7 +33,10 @@ export default function AppShell() {
       </main>
       <NavBar />
       <DebugPanel />
-      {phase === 'jury' && <FinalFaceoff />}
+      {/* Mount FinalFaceoff only while the overlay is actively shown
+          (phase === 'jury' + isActive). Avoids re-mounting after dismissal
+          leaves the game stuck at jury phase with an invisible overlay. */}
+      {phase === 'jury' && finale.isActive && <FinalFaceoff />}
     </div>
   );
 }

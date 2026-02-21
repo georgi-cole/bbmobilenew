@@ -35,7 +35,9 @@ export function shouldBeJuror(evictionIndex: number, totalPlayers: number, juryS
  */
 export function ensureOddJurors(jurorIds: string[], preJuryIds: string[]): string[] {
   if (jurorIds.length % 2 === 1) return jurorIds;
-  const extra = preJuryIds[preJuryIds.length - 1]; // most recently evicted pre-juror
+  // Pick the most recently evicted pre-juror not already in the jury
+  // (prevents duplicates when jury-return mechanic already promoted them).
+  const extra = [...preJuryIds].reverse().find((id) => !jurorIds.includes(id));
   return extra ? [...jurorIds, extra] : jurorIds;
 }
 
@@ -79,6 +81,7 @@ export function determineWinner(
   finalistIds: string[],
   seed: number,
 ): string {
+  if (finalistIds.length < 2) return finalistIds[0] ?? '';
   const [a, b] = finalistIds;
   const aVotes = tally[a] ?? 0;
   const bVotes = tally[b] ?? 0;
@@ -112,6 +115,7 @@ function hashStr(s: string): number {
  * @returns            The finalist ID the juror votes for.
  */
 export function aiJurorVote(jurorId: string, finalistIds: string[], seed: number): string {
+  if (finalistIds.length === 0) return '';
   const rng = mulberry32((seed ^ hashStr(jurorId)) >>> 0);
   return finalistIds[Math.floor(rng() * finalistIds.length)];
 }
