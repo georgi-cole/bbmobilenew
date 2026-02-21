@@ -1,0 +1,246 @@
+/* TapRace overlay — fills the GameScreen viewport */
+.taprace {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  padding: 16px;
+}
+
+.taprace__card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface, #1e1e2e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.taprace__header {
+  padding: 20px 20px 12px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.taprace__title {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--color-text, #fff);
+  letter-spacing: 0.4px;
+}
+
+.taprace__subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #a0a0b8);
+}
+
+/* ── Ready phase ─────────────────────────────────────────────────────────── */
+.taprace__ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 12px;
+}
+
+.taprace__countdown {
+  font-size: 5rem;
+  font-weight: 900;
+  color: var(--color-accent, #7c3aed);
+  line-height: 1;
+}
+
+.taprace__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #a0a0b8);
+}
+
+/* ── Playing phase ───────────────────────────────────────────────────────── */
+.taprace__playing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 20px 28px;
+}
+
+.taprace__stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.taprace__taps {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--color-text, #fff);
+  line-height: 1;
+}
+
+.taprace__taps-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #a0a0b8);
+  margin-left: 4px;
+}
+
+.taprace__time {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-muted, #a0a0b8);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timer progress bar */
+.taprace__progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.taprace__progress-fill {
+  height: 100%;
+  background: var(--color-accent, #7c3aed);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+/* TAP button */
+.taprace__tap-btn {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent, #7c3aed);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.5);
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.taprace__tap-btn:active {
+  transform: scale(0.93);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+}
+
+/* ── Results phase ───────────────────────────────────────────────────────── */
+.taprace__results {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.taprace__winner-line {
+  margin: 0;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-text, #fff);
+}
+
+.taprace__leaderboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.taprace__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.88rem;
+}
+
+.taprace__entry--winner {
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+}
+
+.taprace__entry--you {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.taprace__rank {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.taprace__entry-name {
+  flex: 1;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taprace__you-tag {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #a0a0b8);
+}
+
+.taprace__entry-score {
+  font-weight: 700;
+  color: var(--color-text-muted, #a0a0b8);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.taprace__pr-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
+/* Done / Continue button */
+.taprace__done-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-accent, #7c3aed);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.taprace__done-btn:hover {
+  opacity: 0.88;
+}
+
+.taprace__done-btn:active {
+  transform: scale(0.97);
+}

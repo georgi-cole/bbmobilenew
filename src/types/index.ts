@@ -24,7 +24,31 @@ export interface Player {
     hohWins: number;
     povWins: number;
     timesNominated: number;
+    /** Personal-record tap count for TapRace competitions. */
+    tapRacePR?: number;
   };
+}
+
+// ─── Minigame types ───────────────────────────────────────────────────────────
+
+/** Authoritative result of a completed minigame. Scores are raw tap counts. */
+export interface MinigameResult {
+  seedUsed: number;
+  /** Raw scores keyed by player ID. Higher = better for TapRace. */
+  scores: Record<string, number>;
+  winnerId: string;
+  /** Players whose score beat their previous personal record this run. */
+  personalRecords?: Record<string, number>;
+}
+
+/** Active minigame session stored in game state while waiting for player input. */
+export interface MinigameSession {
+  key: string;
+  participants: string[];
+  seed: number;
+  options: { timeLimit: number };
+  /** Pre-simulated deterministic scores for every non-human participant. */
+  aiScores: Record<string, number>;
 }
 
 // Canonical weekly-game phase list (in execution order)
@@ -89,6 +113,17 @@ export interface GameState {
    * The Continue button is hidden and a TvDecisionModal is shown instead.
    */
   awaitingFinal3Eviction?: boolean;
+  /**
+   * Active minigame session. Set when the human player needs to play a
+   * minigame (e.g. TapRace for HOH/POV). The Continue button is hidden and
+   * the TapRace overlay is shown instead. Null when no minigame is active.
+   */
+  pendingMinigame?: MinigameSession | null;
+  /**
+   * Result of the most-recently completed minigame. Used by `advance()` to
+   * determine the HOH/POV winner instead of a random pick. Cleared after use.
+   */
+  minigameResult?: MinigameResult | null;
   /**
    * Winner of Final 3 Part 1 — advances directly to Part 3 (skips Part 2).
    * Set during `final3_comp1` advance.
