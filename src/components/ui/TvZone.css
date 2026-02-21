@@ -1,0 +1,172 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   TvZone — TV-like action area
+   Inspired by bbmobile .tv.tv-screen / tvHead / tvViewport layout
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tv-zone {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--color-card);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Head bar ──────────────────────────────────────────────────────────────── */
+.tv-zone__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tv-zone__head-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tv-zone__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* LIVE badge */
+.tv-zone__live-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  animation: livePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ── Viewport (the "screen") ───────────────────────────────────────────────── */
+.tv-zone__viewport {
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 18px;
+  background: var(--tv-surface, #0b121a);
+  overflow: hidden;
+}
+
+/* Scanlines */
+.tv-zone__scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.025) 0 1px,
+    transparent 1px 2px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Vignette */
+.tv-zone__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    80% 70% at 50% 50%,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Latest event text */
+.tv-zone__now {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #e8f0fe;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 1);
+}
+
+/* ── Event feed ────────────────────────────────────────────────────────────── */
+.tv-zone__feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tv-zone__feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease;
+}
+
+.tv-zone__feed-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* First item = latest, highlighted */
+.tv-zone__feed-item:first-child {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tv-zone__feed-type {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.tv-zone__feed-text {
+  line-height: 1.4;
+}
+
+/* Type colour accents */
+.tv-zone__feed-item--game   { border-left: 2px solid var(--color-accent); }
+.tv-zone__feed-item--social { border-left: 2px solid #1fc884; }
+.tv-zone__feed-item--vote   { border-left: 2px solid #ef4444; }
+.tv-zone__feed-item--twist  { border-left: 2px solid #f59e0b; }
+.tv-zone__feed-item--diary  { border-left: 2px solid #8b5cf6; }
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .tv-zone__viewport {
+    min-height: 100px;
+    padding: 16px 14px;
+  }
+  .tv-zone__now {
+    font-size: 0.82rem;
+  }
+  .tv-zone__feed {
+    max-height: 120px;
+  }
+}

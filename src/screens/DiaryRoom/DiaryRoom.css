@@ -1,0 +1,175 @@
+/* DiaryRoom */
+.diary-room {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: 24px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.diary-room__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.diary-room__back {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.diary-room__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.diary-room__tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.diary-room__tab {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.diary-room__tab--active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.diary-room__body {
+  flex: 1;
+  padding: 16px;
+}
+
+/* ── Confess tab ─────────────────────────────────────────────────────────── */
+.diary-room__confess {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diary-room__prompt {
+  margin: 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 10px;
+  background: rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
+  border-left: 3px solid #8b5cf6;
+}
+
+.diary-room__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.diary-room__textarea:focus {
+  outline: 2px solid var(--color-accent);
+  border-color: transparent;
+}
+
+.diary-room__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diary-room__charcount {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.diary-room__submit {
+  background: linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.diary-room__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.diary-room__submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Log tab ─────────────────────────────────────────────────────────────── */
+.diary-room__log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diary-room__empty {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.diary-room__log-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--color-card);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #8b5cf6;
+}
+
+.diary-room__log-text {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.diary-room__log-time {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

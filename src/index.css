@@ -1,0 +1,114 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Global base styles — bbmobilenew
+   Mobile-first, dark theme, safe-area aware.
+
+   Design tokens (CSS custom properties):
+     --color-bg          dark background
+     --color-card        surface / card
+     --color-text        primary text
+     --color-text-muted  secondary text
+     --color-accent      primary accent (indigo)
+     --color-accent-2    secondary accent (purple)
+
+   Add new tokens here; they are automatically available everywhere.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --color-bg:          #0d111a;
+  --color-card:        #141b26;
+  --color-card-2:      #1a2336;
+  --color-text:        rgba(255, 255, 255, 0.92);
+  --color-text-muted:  rgba(255, 255, 255, 0.48);
+  --color-accent:      #6366f1;
+  --color-accent-2:    #8b5cf6;
+  --color-line:        rgba(255, 255, 255, 0.08);
+
+  /* TV surface (used by TvZone) */
+  --tv-surface:        #0b121a;
+
+  /* Typography */
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  /* Prevent pull-to-refresh on mobile */
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/* ── Base elements ────────────────────────────────────────────────────────── */
+button {
+  font-family: inherit;
+}
+
+/* Remove default blue tap highlight on mobile */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Shared placeholder screen layout ────────────────────────────────────── */
+.placeholder-screen {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  gap: 8px;
+  min-height: 100%;
+}
+
+.placeholder-screen__title {
+  margin: 0 0 4px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.placeholder-screen__section {
+  margin: 16px 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted);
+}
+
+.placeholder-screen__note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+

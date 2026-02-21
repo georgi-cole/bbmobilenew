@@ -1,0 +1,12 @@
+/* Houseguests */
+.houseguests-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 16px 12px;
+  justify-items: center;
+  padding: 8px 0 16px;
+}
+
+.houseguests-screen__grid--out {
+  opacity: 0.6;
+}
