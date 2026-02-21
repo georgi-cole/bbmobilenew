@@ -42,7 +42,11 @@ export type Phase =
   | 'social_2'
   | 'live_vote'
   | 'eviction_results'
-  | 'week_end';
+  | 'week_end'
+  /** Special: entered from pov_results when aliveCount === 4 (skips ceremony). */
+  | 'final4_eviction'
+  /** Special: entered after Final 4 eviction; hands off to final competitions. */
+  | 'final3';
 
 export interface TvEvent {
   id: string;
@@ -66,6 +70,16 @@ export interface GameState {
   nomineeIds: string[];
   /** Player ID of the current Power of Veto holder, or null. */
   povWinnerId: string | null;
+  /**
+   * When true, the human HOH must pick a replacement nominee (after a POV auto-save).
+   * The Continue button is hidden and a replacement picker is shown instead.
+   */
+  replacementNeeded?: boolean;
+  /** Optional weekly config overrides. */
+  cfg?: {
+    /** When true, special POV twists and Final4 bypass are suspended. */
+    multiEviction?: boolean;
+  };
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

@@ -20,6 +20,8 @@ const PHASE_LABELS: Record<string, string> = {
   live_vote:            'Live Eviction',
   eviction_results:     'Eviction Results',
   week_end:             'Week End',
+  final4_eviction:      'Final 4 Eviction',
+  final3:               'Final 3',
 };
 
 /**

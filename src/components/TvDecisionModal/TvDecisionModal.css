@@ -1,0 +1,94 @@
+/* ─── TV Decision Modal ───────────────────────────────────────────────────── */
+
+.tv-decision-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0 0 0 / 0.75);
+  padding: 1rem;
+}
+
+.tv-decision-modal__card {
+  background: #0d0d1a;
+  border: 2px solid rgba(255 255 255 / 0.15);
+  border-radius: 12px;
+  width: min(26rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0 0 0 / 0.7);
+}
+
+.tv-decision-modal__header {
+  background: #16213e;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255 255 255 / 0.1);
+}
+
+.tv-decision-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e0e0f0;
+  letter-spacing: 0.04em;
+}
+
+.tv-decision-modal__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #7b8ecc;
+}
+
+.tv-decision-modal__body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.tv-decision-modal__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255 255 255 / 0.04);
+  border: 1px solid rgba(255 255 255 / 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e0e0f0;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tv-decision-modal__option:hover {
+  background: rgba(255 255 255 / 0.1);
+  border-color: rgba(255 255 255 / 0.25);
+}
+
+.tv-decision-modal__option--danger:hover {
+  background: rgba(180 20 20 / 0.35);
+  border-color: rgba(255 80 80 / 0.4);
+}
+
+.tv-decision-modal__option-avatar {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.tv-decision-modal__option-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.tv-decision-modal__option-tag {
+  font-size: 0.65rem;
+  color: #7b8ecc;
+  font-family: monospace;
+}
