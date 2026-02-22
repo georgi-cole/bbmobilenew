@@ -19,6 +19,9 @@ interface Props {
   onDone: () => void;
 }
 
+/** Minimum width percentage for vote tally bars (prevents invisible bars for 0-vote nominees). */
+const MIN_BAR_WIDTH_PCT = 4;
+
 /**
  * VoteResultsPopup — displays the vote tally after the live eviction vote.
  *
@@ -100,7 +103,7 @@ export default function VoteResultsPopup({
                 <div className="vrp__tally-bar-wrap">
                   <div
                     className="vrp__tally-bar"
-                    style={{ width: isVisible ? `${Math.max(pct, 4)}%` : '0%' }}
+                    style={{ width: isVisible ? `${Math.max(pct, MIN_BAR_WIDTH_PCT)}%` : '0%' }}
                   />
                 </div>
                 <span className="vrp__tally-count">

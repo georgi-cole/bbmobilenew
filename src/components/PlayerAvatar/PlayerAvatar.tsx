@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import { resolveAvatar, getDicebear, isEmoji } from '../../utils/avatar';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -56,7 +56,7 @@ export default function PlayerAvatar({
 
   const inner = showFallback ? (
     <span className="pa__fallback" aria-hidden="true">
-      {/\p{Emoji}/u.test(player.avatar ?? '') ? player.avatar : player.name.charAt(0).toUpperCase()}
+      {isEmoji(player.avatar ?? '') ? player.avatar : player.name.charAt(0).toUpperCase()}
     </span>
   ) : (
     <img

@@ -5,6 +5,14 @@ import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 
 /**
+ * Returns true if the given string is a single emoji character.
+ * Used to decide whether to show emoji or initials as avatar fallback.
+ */
+export function isEmoji(s: string): boolean {
+  return /\p{Emoji}/u.test(s);
+}
+
+/**
  * Returns a Dicebear avatar URL for the given seed string.
  * Uses the "pixel-art" style which renders a deterministic pixel-art face.
  */
