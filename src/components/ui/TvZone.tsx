@@ -73,21 +73,30 @@ export default function TvZone() {
           )}
           <StatusPill
             variant="dr"
-            icon="🚪"
-            label="DR"
+            icon="🎤"
+            label="Diary Room"
             onClick={() => navigate('/diary-room')}
             ariaLabel="Open Diary Room"
           />
         </div>
       </div>
 
-      {/* ── Viewport (the "screen") ──────────────────────────────────────── */}
-      <div className="tv-zone__viewport" aria-live="polite" aria-atomic="true">
-        <div className="tv-zone__scanlines" aria-hidden="true" />
-        <div className="tv-zone__vignette"  aria-hidden="true" />
-        <p className="tv-zone__now">
-          {latestEvent?.text ?? 'Welcome to Big Brother – AI Edition 🏠'}
-        </p>
+      {/* ── Bezel + Viewport ────────────────────────────────────────────────── */}
+      <div className="tv-zone__bezel">
+        <div className="tv-zone__bezel-frame">
+          <div className="tv-zone__bezel-brand" aria-hidden="true">
+            <span className="tv-zone__bezel-brand__text">BB</span>
+          </div>
+
+          <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
+            <div className="tv-zone__scanlines" aria-hidden="true" />
+            <div className="tv-zone__vignette"  aria-hidden="true" />
+            <div className="tv-zone__glare"     aria-hidden="true" />
+            <p className="tv-zone__now">
+              {latestEvent?.text ?? 'Welcome to Big Brother – AI Edition 🏠'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Event feed ──────────────────────────────────────────────────── */}

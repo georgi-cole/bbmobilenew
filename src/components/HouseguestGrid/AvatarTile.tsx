@@ -60,6 +60,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick 
       }
     >
       <div className={styles.avatarWrap}>
+        <div className={styles.nameOverlay} aria-hidden="true">
+          {name}
+        </div>
+
+        {isYou && (
+          <span className={styles.youBadge} aria-hidden="true">
+            YOU
+          </span>
+        )}
+
         {avatarUrl ? (
           <img src={avatarUrl} alt={name} className={styles.avatar} onError={handleImgError} />
         ) : (
@@ -95,10 +105,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick 
         )}
       </div>
 
-      <div className={styles.nameRow}>
-        {isYou && <span className={styles.youBadge}>YOU</span>}
-        <span className={styles.name}>{name}</span>
-      </div>
+      <div className={styles.nameRow} aria-hidden="true" />
     </div>
   )
 }

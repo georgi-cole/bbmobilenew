@@ -191,7 +191,7 @@ export default function GameScreen() {
     showTapRace
 
   return (
-    <div className="game-screen">
+    <div className="game-screen game-screen-shell">
       <TvZone />
 
       {/* ── Human HOH nominee 1 picker ───────────────────────────────────── */}
@@ -325,7 +325,11 @@ export default function GameScreen() {
       {!awaitingHumanDecision && <FloatingActionBar />}
 
       {/* ── Houseguest grid (alive + evicted in one grid) ────────────────── */}
-      <HouseguestGrid houseguests={game.players.map(playerToHouseguest)} />
+      <HouseguestGrid
+        houseguests={game.players.map(playerToHouseguest)}
+        headerSelector=".tv-zone"
+        footerSelector=".nav-bar"
+      />
     </div>
   )
 }
