@@ -179,17 +179,8 @@ export default function GameScreen() {
         <TapRace session={pendingMinigame} players={game.players} />
       )}
 
-      {/* ── Continue / Advance CTA ────────────────────────────────────────── */}
-      {!awaitingHumanDecision && (
-        <button
-          className="game-screen__advance-btn"
-          onClick={() => dispatch(advance())}
-          type="button"
-          aria-label="Advance to next phase"
-        >
-          Continue ▶
-        </button>
-      )}
+      {/* ── Floating Action Bar ───────────────────────────────────────────── */}
+      {!awaitingHumanDecision && <FloatingActionBar />}
 
       {/* ── Alive roster ──────────────────────────────────────────────── */}
       <section className="game-screen__roster" aria-label="Active houseguests">
