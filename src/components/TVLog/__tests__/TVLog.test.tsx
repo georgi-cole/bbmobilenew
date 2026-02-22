@@ -118,7 +118,7 @@ describe('TVLog — expand on click', () => {
     expect(screen.getByText(teased)).toBeDefined();
 
     // Click to expand
-    await userEvent.click(screen.getByRole('button', { name: teased }));
+    await userEvent.click(screen.getByText(teased));
 
     // Now shows the full text
     expect(screen.getByText(longText)).toBeDefined();

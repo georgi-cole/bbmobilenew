@@ -85,15 +85,10 @@
 .tv-log__text {
   flex: 1;
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tv-log__item--expanded .tv-log__text {
   white-space: normal;
-  text-overflow: unset;
-  overflow: visible;
 }
 
 /* Type-colour left-border accents (mirrors TvZone feed) */

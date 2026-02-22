@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { TvEvent } from '../../types';
 import { tease } from '../../utils/tvLogTemplates';
 import './TVLog.css';
@@ -40,9 +40,13 @@ export default function TVLog({ entries, mainTVMessage, maxVisible = 3 }: TVLogP
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Suppress the first entry when its text duplicates the main viewport message.
-  const visible = mainTVMessage
-    ? entries.filter((ev, i) => !(i === 0 && ev.text === mainTVMessage))
-    : entries;
+  const visible = useMemo(
+    () =>
+      mainTVMessage
+        ? entries.filter((ev, i) => !(i === 0 && ev.text === mainTVMessage))
+        : entries,
+    [entries, mainTVMessage],
+  );
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -76,7 +80,12 @@ export default function TVLog({ entries, mainTVMessage, maxVisible = 3 }: TVLogP
             onClick={() => toggleExpand(ev.id)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && toggleExpand(ev.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleExpand(ev.id);
+              }
+            }}
             aria-expanded={isExpanded}
             aria-label={isExpanded ? ev.text : displayText}
           >

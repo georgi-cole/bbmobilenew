@@ -1,14 +1,16 @@
 /**
- * tvLogTemplates — utilities for TV log message display.
+ * tvLogTemplates — utilities for TV log message display and event creation.
  *
  * Provides:
  *   - tease(text, maxLen?)  — truncates text to maxLen chars with an ellipsis
- *   - getTemplate(type)     — returns the teaser/full template strings for a given event type
+ *   - getTemplate(type)     — returns teaser/full template strings for a given
+ *                             event type; intended for use at event-creation time
+ *                             (e.g. when building the text passed to addTvEvent),
+ *                             not inside the TVLog component itself.
  */
 
+import type { TvEvent } from '../types';
 import TEMPLATES from '../data/tv-log-templates.json';
-
-type EventType = 'game' | 'social' | 'vote' | 'twist' | 'diary';
 
 export interface TvLogTemplate {
   teaser: string;
@@ -21,7 +23,11 @@ export function tease(text: string, maxLen = 60): string {
   return text.slice(0, maxLen).trimEnd() + '…';
 }
 
-/** Return the template strings for the given event type. */
-export function getTemplate(type: EventType): TvLogTemplate {
-  return TEMPLATES[type] ?? TEMPLATES['game'];
+/**
+ * Return the teaser/full template strings for the given event type.
+ * Use these templates when constructing the `text` field of a new TvEvent
+ * (e.g. via `addTvEvent`), not for display inside the TVLog component.
+ */
+export function getTemplate(type: TvEvent['type']): TvLogTemplate {
+  return (TEMPLATES as Record<string, TvLogTemplate>)[type] ?? TEMPLATES['game'];
 }

@@ -79,10 +79,13 @@ below the main TV viewport in `TvZone`.
 **Teaser truncation** — long event texts are clipped to 60 characters in the
 collapsed state.  Click/tap any row to toggle the full text.
 
-**Message templates** — `src/data/tv-log-templates.json` contains `teaser` and
+**Message templates** — `src/data/tv-log-templates.json` defines `teaser` and
 `full` template strings for each event type in a Big-Brother tone.  The
 `getTemplate(type)` utility in `src/utils/tvLogTemplates.ts` returns the right
-pair.  The `tease(text, maxLen?)` function handles plain-text truncation.
+pair for generating event text — intended for use at **event-creation time**
+(e.g. when building the `text` passed to `addTvEvent()`), not inside TVLog
+itself.  The `tease(text, maxLen?)` function handles plain-text truncation of
+whatever text is passed into the component.
 
 ---
 
