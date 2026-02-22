@@ -22,7 +22,8 @@ export interface MinigameParticipant {
   isHuman: boolean;
   /** Pre-computed raw score for AI players; ignored for the human (finalValue is used). */
   precomputedScore: number;
-  /** Previous personal-record score for this game (0-1000 scale). Null = no prior record. */
+  /** Previous personal-record value for this game, using the game's native metric
+   * (same units/scale as the raw rounded game score). Null = no prior record. */
   previousPR: number | null;
 }
 

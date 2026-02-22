@@ -12,11 +12,14 @@ import {
   submitPovDecision,
   submitPovSaveTarget,
   setReplacementNominee,
+  submitHumanVote,
+  submitTieBreak,
 } from '../../store/gameSlice';
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
 import TvZone from '../../components/ui/TvZone';
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
+import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
@@ -318,7 +321,9 @@ export default function GameScreen() {
             // Record per-game personal records for all participants.
             dispatch(updateGamePRs({
               gameKey: pendingChallenge.game.key,
-              scores: Object.fromEntries(rawResults.map((r) => [r.playerId, r.rawValue])),
+              scores: Object.fromEntries(
+                rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
+              ),
               lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
             // Advance game state: apply HOH/POV winner and transition phase.
