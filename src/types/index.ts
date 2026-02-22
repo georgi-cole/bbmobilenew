@@ -114,6 +114,50 @@ export interface GameState {
    */
   replacementNeeded?: boolean;
   /**
+   * When true, the human HOH must pick two nominees in the `nomination_results` phase.
+   * The Continue button is hidden and a two-step nominee picker is shown instead.
+   */
+  awaitingNominations?: boolean;
+  /**
+   * The first nominee chosen by the human HOH during the two-step nomination flow.
+   * Set by `selectNominee1`; cleared after `finalizeNominations`.
+   */
+  pendingNominee1Id?: string | null;
+  /**
+   * When true, the human POV holder must decide whether to use the veto
+   * in the `pov_ceremony_results` phase (not applicable when they are a nominee,
+   * since nominees always self-save).
+   * The Continue button is hidden and a Yes/No binary modal is shown.
+   */
+  awaitingPovDecision?: boolean;
+  /**
+   * When true, the human POV holder chose to use the veto and must now pick
+   * which nominee to save. The Continue button is hidden and a player picker
+   * showing current nominees is rendered.
+   */
+  awaitingPovSaveTarget?: boolean;
+  /**
+   * Vote accumulator for the live eviction vote.
+   * Maps voter player ID → nominee player ID.
+   * Populated during `live_vote` transition (AI votes) and by `submitHumanVote`.
+   */
+  votes?: Record<string, string>;
+  /**
+   * When true, the human player is an eligible voter during `live_vote` and must
+   * cast their eviction vote via a blocking modal before `advance()` continues.
+   */
+  awaitingHumanVote?: boolean;
+  /**
+   * When true, the live vote ended in a tie and the human HOH must break it.
+   * The Continue button is hidden and a tie-break modal is shown.
+   */
+  awaitingTieBreak?: boolean;
+  /**
+   * The subset of nominees that are tied in the live eviction vote.
+   * Populated when `awaitingTieBreak` is set; shown in the tie-break modal.
+   */
+  tiedNomineeIds?: string[] | null;
+  /**
    * When true, the human Final HOH must directly evict one of the 2 remaining
    * houseguests in the `final3_decision` phase.
    * The Continue button is hidden and a TvDecisionModal is shown instead.

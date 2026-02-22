@@ -1,0 +1,91 @@
+/* ─── TV Binary Decision Modal ─────────────────────────────────────────────── */
+
+/*
+ * Reuses the same visual language as TvDecisionModal.
+ * Decisions presented here are MANDATORY (no escape / cancel).
+ */
+
+.tv-binary-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 1rem;
+}
+
+.tv-binary-modal__card {
+  background: #0d0d1a;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  width: min(26rem, 100vw - 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+}
+
+.tv-binary-modal__header {
+  background: #16213e;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tv-binary-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e0e0f0;
+  letter-spacing: 0.04em;
+}
+
+.tv-binary-modal__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #7b8ecc;
+}
+
+.tv-binary-modal__body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tv-binary-modal__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tv-binary-modal__option--yes {
+  background: rgba(40, 160, 80, 0.25);
+  border-color: rgba(60, 200, 100, 0.35);
+  color: #7ef5a0;
+}
+
+.tv-binary-modal__option--yes:hover {
+  background: rgba(40, 160, 80, 0.45);
+  border-color: rgba(60, 200, 100, 0.6);
+}
+
+.tv-binary-modal__option--no {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e0e0f0;
+}
+
+.tv-binary-modal__option--no:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
