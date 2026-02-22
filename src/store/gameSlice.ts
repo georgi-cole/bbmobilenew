@@ -747,6 +747,21 @@ const gameSlice = createSlice({
         return;
       }
 
+      // Guard: jury is a terminal phase — advance() is a no-op once reached.
+      if (state.phase === 'jury') return;
+
+      // Guard: at week_end with ≤2 players alive the Final 2 is set.
+      // Transition directly to jury instead of cycling back to week_start.
+      if (state.phase === 'week_end') {
+        const aliveAtEnd = state.players.filter(
+          (p) => p.status !== 'evicted' && p.status !== 'jury',
+        );
+        if (aliveAtEnd.length <= 2) {
+          state.phase = 'jury';
+          return;
+        }
+      }
+
       const currentIdx = PHASE_ORDER.indexOf(state.phase);
       const nextIdx = (currentIdx + 1) % PHASE_ORDER.length;
       let nextPhase: Phase = PHASE_ORDER[nextIdx];
@@ -802,7 +817,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'nomination_results': {
+          // Guard: need at least 3 players to nominate 2 (HOH + 2 nominees).
           const pool = alive.filter((p) => p.id !== state.hohId);
+          if (pool.length < 2) break;
           const nominees = seededPickN(rng, pool, 2);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
@@ -900,6 +917,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'eviction_results': {
+          // Guard: never evict when fewer than 2 players remain (should not happen in
+          // normal flow, but prevents infinite loops if endgame guards are bypassed).
+          if (alive.length < 2) break;
           const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
           if (nominees.length > 0) {
             const evicted = seededPick(rng, nominees);
