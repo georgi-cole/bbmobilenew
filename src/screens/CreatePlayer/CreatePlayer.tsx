@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '../../store/hooks';
+import { setUserProfile } from '../../store/userProfileSlice';
+import { resetGame } from '../../store/gameSlice';
 import './CreatePlayer.css';
 
 export default function CreatePlayer() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('🧑');
 
@@ -11,7 +15,8 @@ export default function CreatePlayer() {
 
   function handleCreate(e: FormEvent) {
     e.preventDefault();
-    // TODO: dispatch to GameContext when player creation is implemented
+    dispatch(setUserProfile({ name: name.trim() || 'You', avatar }));
+    dispatch(resetGame());
     navigate('/game');
   }
 

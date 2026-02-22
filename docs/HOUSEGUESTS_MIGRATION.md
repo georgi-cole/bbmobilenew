@@ -71,8 +71,30 @@ npm run typecheck    # no TS errors
 `resolveAvatar(player)` in `src/utils/avatar.ts` tries in order:
 
 1. `player.avatar` — if it is already a URL (starts with `http` or `/`), use it directly.
-2. `/avatars/{Name}.png` — capitalised first letter, matching the bbmobile file naming.
-3. Dicebear SVG (`getDicebear(player.name)`) — set via `<img onError>` as a client-side fallback.
+2. **Stable houseguest id candidates** — the player is matched against the canonical
+   `src/data/houseguests.ts` dataset (first by `player.id`, then case-insensitively by
+   `player.name`). If a match is found the resolver prefers files named after the
+   houseguest's stable lowercase slug:
+   `avatars/{id}.png`, `avatars/{Id}.png`, `avatars/{id}.jpg`, `avatars/{Id}.jpg`, `avatars/{id}.webp`
+   (e.g. `avatars/finn.png` → `avatars/Finn.png`).
+3. Name-based candidates — `avatars/CapitalizedName.png`, `avatars/lowercasename.png`,
+   `avatars/{playerId}.png`, etc.
+4. Dicebear SVG (`getDicebear(player.name)`) — set via `<img onError>` as a client-side fallback.
+
+### Verification steps (avatar resolver)
+
+1. Enable debug logging in the browser console:
+   ```js
+   window.__AVATAR_DEBUG = true;
+   ```
+2. Navigate to the Houseguests screen — each player tile will log its candidate URLs:
+   ```
+   [avatar] resolveAvatar candidates for Finn ["/bbmobilenew/avatars/finn.png", "/bbmobilenew/avatars/Finn.png", ...]
+   ```
+3. Confirm the first candidate path matches an existing file in `public/avatars/`.
+4. Open the Network tab and verify requests return **200** (no 404s for known houseguests).
+5. For a player whose name is not in `houseguests.ts`, confirm the resolver falls back to
+   name-based candidates and finally to Dicebear.
 
 ---
 

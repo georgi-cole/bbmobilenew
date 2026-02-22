@@ -8,22 +8,39 @@ import {
   type ReactNode,
 } from 'react';
 import type { GameState, Player, Phase, TvEvent } from '../types';
+import HOUSEGUESTS from '../data/houseguests';
+import { mulberry32, seededPickN } from './rng';
+import { loadUserProfile } from './userProfileSlice';
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-const SEED_PLAYERS: Player[] = [
-  { id: 'p1',  name: 'Alex',    avatar: '🧑',  status: 'active', isUser: true },
-  { id: 'p2',  name: 'Blake',   avatar: '👱',  status: 'active' },
-  { id: 'p3',  name: 'Casey',   avatar: '👩',  status: 'active' },
-  { id: 'p4',  name: 'Dana',    avatar: '🧔',  status: 'active' },
-  { id: 'p5',  name: 'Ellis',   avatar: '👧',  status: 'active' },
-  { id: 'p6',  name: 'Frankie', avatar: '🧓',  status: 'active' },
-  { id: 'p7',  name: 'Grace',   avatar: '👩‍🦱', status: 'active' },
-  { id: 'p8',  name: 'Harper',  avatar: '🧑‍🦰', status: 'active' },
-  { id: 'p9',  name: 'Indigo',  avatar: '🧑‍🦳', status: 'active' },
-  { id: 'p10', name: 'Jordan',  avatar: '👦',  status: 'active' },
-  { id: 'p11', name: 'Kai',     avatar: '🧑‍🦲', status: 'active' },
-  { id: 'p12', name: 'Logan',   avatar: '👴',  status: 'active' },
-];
+// ─── Houseguest pool ─────────────────────────────────────────────────────────
+const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
+  id: hg.id,
+  name: hg.name,
+  avatar: hg.sex === 'Female' ? '👩' : '🧑',
+}));
+
+const GAME_ROSTER_SIZE = 12;
+
+function buildUserPlayer(): Player {
+  const profile = loadUserProfile();
+  return {
+    id: 'user',
+    name: profile.name,
+    avatar: profile.avatar,
+    status: 'active',
+    isUser: true,
+  };
+}
+
+function buildInitialPlayers(): Player[] {
+  const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
+  const rng = mulberry32(seed);
+  const picked = seededPickN(rng, HOUSEGUEST_POOL, GAME_ROSTER_SIZE - 1).map((hg) => ({
+    ...hg,
+    status: 'active' as const,
+  }));
+  return [buildUserPlayer(), ...picked];
+}
 
 const INITIAL_STATE: GameState = {
   season: 1,
@@ -33,7 +50,7 @@ const INITIAL_STATE: GameState = {
   hohId: null,
   nomineeIds: [],
   povWinnerId: null,
-  players: SEED_PLAYERS,
+  players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
