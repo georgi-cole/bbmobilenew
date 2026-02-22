@@ -17,9 +17,15 @@ export {
   engineComplete,
   setLastReport,
   influenceUpdated,
+  setEnergyBankEntry,
+  applyEnergyDelta,
+  recordSocialAction,
+  updateRelationship,
   selectSocialBudgets,
+  selectEnergyBank,
   selectLastSocialReport,
   selectInfluenceWeights,
+  selectSessionLogs,
 } from './socialSlice';
 export { socialMiddleware } from './socialMiddleware';
 export {
@@ -33,3 +39,22 @@ export {
   computeVetoBias,
   update as influenceUpdate,
 } from './SocialInfluence';
+export type { ActionCategory, SocialActionDefinition } from './socialActions';
+export { SOCIAL_ACTIONS } from './socialActions';
+export { normalizeCost, normalizeActionCosts } from './smExecNormalize';
+export {
+  initEnergyBank,
+  get as energyBankGet,
+  set as energyBankSet,
+  add as energyBankAdd,
+  SocialEnergyBank as SocialEnergyBankModule,
+} from './SocialEnergyBank';
+export type { ExecuteActionOptions, ExecuteActionResult } from './SocialManeuvers';
+export {
+  initManeuvers,
+  getActionById,
+  getAvailableActions,
+  computeActionCost,
+  executeAction,
+  SocialManeuvers,
+} from './SocialManeuvers';

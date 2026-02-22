@@ -17,6 +17,7 @@ import { socialConfig } from './socialConfig';
 import { DEFAULT_ENERGY } from './constants';
 import { engineReady, engineComplete, setLastReport } from './socialSlice';
 import { initInfluence, update as influenceUpdate } from './SocialInfluence';
+import { initManeuvers } from './SocialManeuvers';
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown;
@@ -40,6 +41,7 @@ let _lastReport: SocialPhaseReport | null = null;
 function init(store: StoreAPI): void {
   _store = store;
   initInfluence(store);
+  initManeuvers(store);
 }
 
 /**
