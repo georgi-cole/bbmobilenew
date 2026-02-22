@@ -3,6 +3,8 @@
 // Add new fields here; consumers only break if they depend on removed fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { SocialState } from '../social/types';
+
 export type PlayerStatus =
   | 'active'
   | 'nominated'
