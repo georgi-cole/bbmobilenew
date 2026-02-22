@@ -1,0 +1,125 @@
+/*
+ * _introhub-buttons.css
+ *
+ * Cross-platform normalisation layer for .home-hub__btn buttons.
+ *
+ * This file supplements HomeHub.css with:
+ *   1. @supports blocks so backdrop-filter only fires when the browser honours it.
+ *   2. html.is-webkit overrides for Safari / iOS WebView quirks.
+ *   3. html.is-standalone combinators for the A2HS / PWA context.
+ *   4. html.is-chrome-android hook (reserved; currently a no-op).
+ *
+ * Import order: this file must be imported AFTER HomeHub.css so that the
+ * rules here can override it where needed.
+ *
+ * Classes on <html> are set at runtime by src/utils/displayMode.ts.
+ */
+
+/* ── 1. Backdrop-filter — conditional on @supports ──────────────────────── */
+/*
+ * HomeHub.css declares backdrop-filter unconditionally so that it is present
+ * in the stylesheet for browsers that support it.  The @supports block below
+ * is a no-op in those browsers (same declaration wins by specificity/order).
+ * Its value is as a defensive guard: if a browser ignores the property it also
+ * ignores the entire @supports block, leaving only the box-shadow fallback from
+ * HomeHub.css to provide depth.
+ */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .home-hub__btn {
+    backdrop-filter: blur(8px) saturate(1.02);
+    -webkit-backdrop-filter: blur(8px) saturate(1.02);
+  }
+}
+
+/* When backdrop-filter is NOT supported, boost the background opacity slightly
+   so the button still reads against the dynamic background image. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .home-hub__btn {
+    background: rgba(6, 12, 28, 0.92);
+  }
+
+  .home-hub__btn--primary {
+    background: linear-gradient(
+      135deg,
+      rgba(123, 92, 255, 0.96) 0%,
+      rgba(111, 183, 255, 0.96) 100%
+    );
+  }
+
+  .home-hub__btn--secondary {
+    background: linear-gradient(180deg, rgba(10, 14, 26, 0.94), rgba(8, 12, 22, 0.94));
+  }
+
+  .home-hub__btn--ghost {
+    background: linear-gradient(180deg, rgba(5, 10, 18, 0.90), rgba(8, 12, 22, 0.90));
+  }
+}
+
+/* ── 2. WebKit / Safari fixes ────────────────────────────────────────────── */
+/*
+ * Safari (macOS + iOS) and every iOS browser need explicit -webkit-appearance:
+ * none to prevent UA stylesheets from overriding border-radius on <button>.
+ * HomeHub.css already sets this, but the html.is-webkit selector raises
+ * specificity so it wins over any conflicting rule from third-party styles.
+ */
+html.is-webkit .home-hub__btn {
+  -webkit-appearance: none;
+  appearance: none;
+  /* Explicit per-corner values — WebKit standalone is known to reset shorthand
+     border-radius on repaint; listing all four corners prevents this. */
+  border-radius: 28px 8px 28px 8px;
+}
+
+html.is-webkit .home-hub__btn::before,
+html.is-webkit .home-hub__btn::after {
+  border-radius: inherit;
+}
+
+@media (max-width: 420px) {
+  html.is-webkit .home-hub__btn {
+    border-radius: 20px 6px 20px 6px;
+  }
+}
+
+/* ── 3. Standalone (A2HS / PWA) — reinforce glass fallback ──────────────── */
+/*
+ * iOS Safari in standalone mode often refuses to composite backdrop-filter on
+ * elements that overlap a composited background (e.g. a <div> with a CSS
+ * background-image).  The _ios-standalone-fixes.css already nulls out
+ * backdrop-filter for this context.  Here we make sure the compensating
+ * box-shadow and background are strong enough to provide depth without blur.
+ */
+html.is-standalone .home-hub__btn {
+  /* Deeper shadow compensates for absent blur */
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  /* Slightly less transparent so the button is legible over any background */
+  background: rgba(6, 12, 28, 0.88);
+}
+
+html.is-standalone .home-hub__btn--primary {
+  background: linear-gradient(
+    135deg,
+    rgba(123, 92, 255, 0.94) 0%,
+    rgba(111, 183, 255, 0.94) 100%
+  );
+  box-shadow:
+    0 28px 70px rgba(83, 52, 180, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+html.is-standalone .home-hub__btn--secondary {
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.92), rgba(8, 12, 22, 0.90));
+}
+
+html.is-standalone .home-hub__btn--ghost {
+  background: linear-gradient(180deg, rgba(5, 10, 18, 0.88), rgba(8, 12, 22, 0.88));
+}
+
+/* ── 4. Chrome on Android hook (reserved) ───────────────────────────────── */
+/*
+ * Android Chrome handles backdrop-filter well and doesn't flatten border-radius.
+ * No overrides are needed today; the selector is a hook for future tweaks.
+ */
+/* html.is-chrome-android .home-hub__btn { } */

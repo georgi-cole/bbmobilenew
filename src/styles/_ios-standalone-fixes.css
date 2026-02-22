@@ -82,3 +82,28 @@ html.is-standalone .home-hub__btn--primary {
     border-radius: var(--hub-btn-radius-sm);
   }
 }
+
+/* ── WebKit (non-standalone) — appearance + border-radius insurance ──────── */
+/*
+ * On non-standalone Safari (both macOS and iOS) the UA stylesheet can still
+ * fight -webkit-appearance:none if a parent sets certain properties.  These
+ * rules mirror the standalone block but allow backdrop-filter to remain active.
+ * They are lower specificity than the is-standalone rules above so standalone
+ * wins when both classes are present.
+ */
+html.is-webkit:not(.is-standalone) .home-hub__btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 28px 8px 28px 8px;
+}
+
+html.is-webkit:not(.is-standalone) .home-hub__btn::before,
+html.is-webkit:not(.is-standalone) .home-hub__btn::after {
+  border-radius: inherit;
+}
+
+@media (max-width: 420px) {
+  html.is-webkit:not(.is-standalone) .home-hub__btn {
+    border-radius: 20px 6px 20px 6px;
+  }
+}
