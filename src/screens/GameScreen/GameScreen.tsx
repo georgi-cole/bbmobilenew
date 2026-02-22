@@ -191,6 +191,7 @@ export default function GameScreen() {
             dispatch(updateGamePRs({
               gameKey: pendingChallenge.game.key,
               scores: Object.fromEntries(rawResults.map((r) => [r.playerId, r.rawValue])),
+              lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
             // Advance game state: apply HOH/POV winner and transition phase.
             // Fall back to first participant if winner determination fails.

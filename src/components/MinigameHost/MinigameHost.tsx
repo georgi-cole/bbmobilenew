@@ -114,13 +114,15 @@ export default function MinigameHost({
   const leaderboard = useMemo(() => {
     if (!participants || participants.length === 0) return null;
     const humanScore = finalValue ?? 0;
+    const lowerBetter = game.scoringAdapter === 'lowerBetter';
     const entries = participants.map((p) => {
       const score = p.isHuman ? humanScore : p.precomputedScore;
-      const isPR = p.previousPR === null || score > p.previousPR;
+      const isPR =
+        p.previousPR === null ||
+        (lowerBetter ? score < p.previousPR : score > p.previousPR);
       return { ...p, score, isPR };
     });
     // Sort: lower-is-better adapters sort ascending; all others sort descending.
-    const lowerBetter = game.scoringAdapter === 'lowerBetter';
     entries.sort((a, b) => (lowerBetter ? a.score - b.score : b.score - a.score));
     return entries;
   }, [participants, finalValue, game.scoringAdapter]);
@@ -195,7 +197,7 @@ export default function MinigameHost({
                       )}
                     </span>
                     <span className="minigame-host-leaderboard-score">
-                      Score: <strong>{fmtScore(entry.score)}</strong>
+                      {game.metricLabel}: <strong>{fmtScore(entry.score)}</strong>
                       {entry.isPR && (
                         <span className="minigame-host-leaderboard-pr" title="Personal Record!">
                           {' '}🏅 PR
@@ -208,7 +210,7 @@ export default function MinigameHost({
             </>
           ) : (
             <p className="minigame-host-results-score">
-              Score: <strong>{fmtScore(finalValue ?? 0)}</strong>
+              {game.metricLabel}: <strong>{fmtScore(finalValue ?? 0)}</strong>
               {wasPartial && ' (partial)'}
             </p>
           )}

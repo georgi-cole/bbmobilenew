@@ -334,20 +334,21 @@ const gameSlice = createSlice({
     /**
      * Record per-game personal-record scores for all participants after a
      * challenge completes.  Only updates a player's PR if the new score beats
-     * their previous best.  Scores are on the canonical 0-1000 scale.
+     * their previous best.  `lowerIsBetter` controls comparison direction.
      */
     updateGamePRs(
       state,
-      action: PayloadAction<{ gameKey: string; scores: Record<string, number> }>,
+      action: PayloadAction<{ gameKey: string; scores: Record<string, number>; lowerIsBetter?: boolean }>,
     ) {
-      const { gameKey, scores } = action.payload;
+      const { gameKey, scores, lowerIsBetter = false } = action.payload;
       for (const [id, score] of Object.entries(scores)) {
         const player = state.players.find((p) => p.id === id);
         if (!player) continue;
         if (!player.stats) player.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
         if (!player.stats.gamePRs) player.stats.gamePRs = {};
         const prev = player.stats.gamePRs[gameKey];
-        if (prev === undefined || score > prev) {
+        const isBetter = prev === undefined || (lowerIsBetter ? score < prev : score > prev);
+        if (isBetter) {
           player.stats.gamePRs[gameKey] = score;
         }
       }
