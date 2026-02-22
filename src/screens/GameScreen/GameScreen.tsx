@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
   applyMinigameWinner,
+  updateGamePRs,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -159,11 +160,13 @@ export default function GameScreen() {
           gameOptions={{ seed: pendingChallenge.seed }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);
+            const aiScore = pendingChallenge.aiScores[id] ?? 0;
             return {
               id,
               name: player?.name ?? id,
               isHuman: !!player?.isUser,
-              precomputedScore: pendingChallenge.aiScores[id] ?? 0,
+              precomputedScore: aiScore,
+              previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };
           })}
           onDone={(rawValue) => {
@@ -177,6 +180,11 @@ export default function GameScreen() {
                   : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
             const winnerId = dispatch(completeChallenge(rawResults)) as string | null;
+            // Record per-game personal records for all participants.
+            dispatch(updateGamePRs({
+              gameKey: pendingChallenge.game.key,
+              scores: Object.fromEntries(rawResults.map((r) => [r.playerId, r.rawValue])),
+            }));
             // Advance game state: apply HOH/POV winner and transition phase.
             // Fall back to first participant if winner determination fails.
             dispatch(applyMinigameWinner(winnerId ?? pendingChallenge.participants[0]));

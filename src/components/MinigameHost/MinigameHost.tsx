@@ -22,6 +22,8 @@ export interface MinigameParticipant {
   isHuman: boolean;
   /** Pre-computed raw score for AI players; ignored for the human (finalValue is used). */
   precomputedScore: number;
+  /** Previous personal-record score for this game (0-1000 scale). Null = no prior record. */
+  previousPR: number | null;
 }
 
 interface Props {
@@ -47,6 +49,11 @@ interface Props {
 type HostPhase = 'rules' | 'countdown' | 'playing' | 'results';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
+
+/** Round a raw game score to an integer for display. */
+function fmtScore(value: number): string {
+  return String(Math.round(value));
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -107,10 +114,11 @@ export default function MinigameHost({
   const leaderboard = useMemo(() => {
     if (!participants || participants.length === 0) return null;
     const humanScore = finalValue ?? 0;
-    const entries = participants.map((p) => ({
-      ...p,
-      score: p.isHuman ? humanScore : p.precomputedScore,
-    }));
+    const entries = participants.map((p) => {
+      const score = p.isHuman ? humanScore : p.precomputedScore;
+      const isPR = p.previousPR === null || score > p.previousPR;
+      return { ...p, score, isPR };
+    });
     // Sort: lower-is-better adapters sort ascending; all others sort descending.
     const lowerBetter = game.scoringAdapter === 'lowerBetter';
     entries.sort((a, b) => (lowerBetter ? a.score - b.score : b.score - a.score));
@@ -187,7 +195,12 @@ export default function MinigameHost({
                       )}
                     </span>
                     <span className="minigame-host-leaderboard-score">
-                      {game.metricLabel}: <strong>{entry.score}</strong>
+                      Score: <strong>{fmtScore(entry.score)}</strong>
+                      {entry.isPR && (
+                        <span className="minigame-host-leaderboard-pr" title="Personal Record!">
+                          {' '}🏅 PR
+                        </span>
+                      )}
                     </span>
                   </li>
                 ))}
@@ -195,7 +208,7 @@ export default function MinigameHost({
             </>
           ) : (
             <p className="minigame-host-results-score">
-              {game.metricLabel}: <strong>{finalValue ?? 0}</strong>
+              Score: <strong>{fmtScore(finalValue ?? 0)}</strong>
               {wasPartial && ' (partial)'}
             </p>
           )}

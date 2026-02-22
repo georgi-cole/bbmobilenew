@@ -332,6 +332,28 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Record per-game personal-record scores for all participants after a
+     * challenge completes.  Only updates a player's PR if the new score beats
+     * their previous best.  Scores are on the canonical 0-1000 scale.
+     */
+    updateGamePRs(
+      state,
+      action: PayloadAction<{ gameKey: string; scores: Record<string, number> }>,
+    ) {
+      const { gameKey, scores } = action.payload;
+      for (const [id, score] of Object.entries(scores)) {
+        const player = state.players.find((p) => p.id === id);
+        if (!player) continue;
+        if (!player.stats) player.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+        if (!player.stats.gamePRs) player.stats.gamePRs = {};
+        const prev = player.stats.gamePRs[gameKey];
+        if (prev === undefined || score > prev) {
+          player.stats.gamePRs[gameKey] = score;
+        }
+      }
+    },
+
+    /**
      * Human HOH picks a replacement nominee after a POV auto-save.
      * Clears replacementNeeded so the Continue button reappears.
      * Validates that the selected player is eligible (not HOH, not POV holder,
@@ -913,6 +935,7 @@ export const {
   completeMinigame,
   skipMinigame,
   applyMinigameWinner,
+  updateGamePRs,
   advance,
   setReplacementNominee,
   finalizeFinal4Eviction,

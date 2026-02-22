@@ -9,6 +9,7 @@
   justify-content: center;
   z-index: 100;
   color: #eee;
+  overflow: hidden;
 }
 
 /* ─── Ready countdown ────────────────────────────────────────────────────── */
@@ -49,21 +50,24 @@
 }
 
 /* ─── Playing ────────────────────────────────────────────────────────────── */
+/* The playing area takes the full screen and clips any overflowing game content */
 .minigame-host-playing {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
 /* ─── Results overlay ────────────────────────────────────────────────────── */
+/* Results fills most of the viewport so it never appears pinned to the top */
 .minigame-host-results {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 24px;
-  max-width: 420px;
+  padding: 24px 24px 32px;
   width: 100%;
+  max-width: 460px;
+  max-height: 90dvh;
   animation: fadeIn 0.3s ease;
 }
 
@@ -96,8 +100,9 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  max-height: 340px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .minigame-host-leaderboard-entry {
@@ -108,6 +113,7 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.88rem;
+  flex-shrink: 0;
 }
 
 .minigame-host-leaderboard-entry--winner {
@@ -148,9 +154,17 @@
   white-space: nowrap;
 }
 
+.minigame-host-leaderboard-pr {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
 .minigame-host-results-btn {
   margin-top: 8px;
-  padding: 12px 32px;
+  width: 100%;
+  padding: 14px 32px;
   background: #e94560;
   color: #fff;
   border: none;
@@ -159,6 +173,7 @@
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
+  flex-shrink: 0;
 }
 
 .minigame-host-results-btn:hover {
@@ -180,3 +195,5 @@
   70%  { transform: scale(1.1); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+
