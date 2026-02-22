@@ -4,6 +4,10 @@
  * NOTE: Decisions presented by this modal are MANDATORY — the game cannot
  * progress without a selection. There is intentionally no Escape key or
  * cancel mechanism; houseguest decisions are final.
+ *
+ * Two-step confirm flow:
+ *  1. Tap an option  → it becomes highlighted (--selected state)
+ *  2. Press Confirm  → stinger overlay plays, then action dispatches
  */
 
 .tv-decision-modal {
@@ -15,6 +19,12 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.75);
   padding: 1rem;
+  animation: tvdmFadeIn 0.22s ease;
+}
+
+@keyframes tvdmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .tv-decision-modal__card {
@@ -27,6 +37,12 @@
   gap: 0;
   overflow: hidden;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  animation: tvdmSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tvdmSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 .tv-decision-modal__header {
@@ -70,7 +86,7 @@
   color: #e0e0f0;
   font-size: 0.9rem;
   text-align: left;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
 }
 
 .tv-decision-modal__option:hover {
@@ -78,14 +94,46 @@
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+.tv-decision-modal__option:active {
+  transform: scale(0.98);
+}
+
 .tv-decision-modal__option--danger:hover {
   background: rgba(180, 20, 20, 0.35);
   border-color: rgba(255, 80, 80, 0.4);
 }
 
+/* Selected state — highlighted with accent glow */
+.tv-decision-modal__option--selected {
+  background: rgba(80, 160, 255, 0.18);
+  border-color: rgba(100, 180, 255, 0.55);
+  box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
+  animation: tvdmOptionSelect 0.18s ease;
+}
+
+.tv-decision-modal__option--danger.tv-decision-modal__option--selected {
+  background: rgba(200, 40, 40, 0.28);
+  border-color: rgba(255, 80, 80, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.2);
+}
+
+@keyframes tvdmOptionSelect {
+  from { transform: scale(0.98); opacity: 0.7; }
+  to   { transform: scale(1);    opacity: 1;   }
+}
+
+/* Avatar — image variant */
 .tv-decision-modal__option-avatar {
   font-size: 1.4rem;
   flex-shrink: 0;
+}
+
+.tv-decision-modal__option-avatar--img {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 0; /* hide alt text visually */
 }
 
 .tv-decision-modal__option-name {
@@ -106,3 +154,59 @@
   color: #7b8ecc;
   font-style: italic;
 }
+
+/* ── Footer with Change / Confirm buttons ─────────────────────────────────── */
+.tv-decision-modal__footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a0a16;
+  animation: tvdmFadeIn 0.18s ease;
+}
+
+.tv-decision-modal__btn-change {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #aabbd4;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tv-decision-modal__btn-change:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tv-decision-modal__btn-confirm {
+  flex: 1;
+  padding: 0.55rem 0.9rem;
+  background: rgba(80, 160, 255, 0.22);
+  border: 1px solid rgba(100, 180, 255, 0.45);
+  border-radius: 8px;
+  color: #9dd4ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tv-decision-modal__btn-confirm:hover {
+  background: rgba(80, 160, 255, 0.38);
+  border-color: rgba(100, 180, 255, 0.7);
+}
+
+.tv-decision-modal__btn-confirm--danger {
+  background: rgba(180, 30, 30, 0.28);
+  border-color: rgba(255, 80, 80, 0.45);
+  color: #ffaaaa;
+}
+
+.tv-decision-modal__btn-confirm--danger:hover {
+  background: rgba(200, 40, 40, 0.5);
+  border-color: rgba(255, 80, 80, 0.7);
+}
+
