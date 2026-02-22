@@ -14,6 +14,8 @@ export default function Houseguests() {
     id: p.id,
     name: p.name,
     avatarUrl: resolveAvatar(p),
+    statuses: p.status,
+    finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
     isEvicted: p.status === 'evicted' || p.status === 'jury',
     isYou: p.isUser,
     onClick: () => setSelectedPlayer(p),
