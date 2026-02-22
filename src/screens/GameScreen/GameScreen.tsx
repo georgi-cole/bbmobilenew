@@ -194,7 +194,11 @@ export default function GameScreen() {
       {!awaitingHumanDecision && <FloatingActionBar />}
 
       {/* ── Houseguest grid (alive + evicted in one grid) ────────────────── */}
-      <HouseguestGrid houseguests={game.players.map(playerToHouseguest)} />
+      <HouseguestGrid
+        houseguests={game.players.map(playerToHouseguest)}
+        headerSelector=".tv-zone"
+        footerSelector=".nav-bar"
+      />
     </div>
   )
 }
