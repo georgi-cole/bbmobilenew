@@ -60,9 +60,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #25272b, #1e1f22);
-  border: 2px solid rgba(255,255,255,0.04);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.02);
+  background: linear-gradient(180deg, #252a32, #1c1f24);
+  border: 1.5px solid rgba(255,255,255,0.05);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6), inset 0 -2px 0 rgba(255,255,255,0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nameOverlay {
@@ -116,7 +117,8 @@
 
 .evicted .avatar,
 .evicted .avatarPlaceholder {
-  filter: grayscale(100%) brightness(0.8) opacity(0.85);
+  filter: grayscale(100%) brightness(0.7) opacity(0.8);
+  transition: filter 0.6s ease;
 }
 
 .cross {
@@ -130,6 +132,23 @@
   transform-origin: center;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
   z-index: 2;
+}
+
+.cross line {
+  /* stroke-dasharray ≈ diagonal line length in the 100×100 viewBox:
+     √((85-15)² + (85-15)²) = √9800 ≈ 98.99 → rounded up to 100 for full coverage */
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawCrossLine 0.45s ease-out 0.1s forwards;
+}
+
+.cross line:nth-child(2) {
+  /* stagger second line so the X draws sequentially (starts after first finishes at 0.55s) */
+  animation-delay: 0.55s;
+}
+
+@keyframes drawCrossLine {
+  to { stroke-dashoffset: 0; }
 }
 
 .evicted {

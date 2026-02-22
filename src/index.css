@@ -27,6 +27,9 @@
   --color-accent:      #6366f1;
   --color-accent-2:    #8b5cf6;
   --color-line:        rgba(255, 255, 255, 0.08);
+  --color-gold-primary:   #fbbf24;
+  --color-gold-secondary: #f59e0b;
+  --color-gold-deep:      #d97706;
 
   /* TV surface (used by TvZone) */
   --tv-surface:        #0b121a;
