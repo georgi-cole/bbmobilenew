@@ -143,10 +143,16 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
   pushEvent(state, `${p?.name ?? winnerId} has won the Power of Veto! 🎭`, 'game');
 
   // ── Final 4 bypass (skip ceremony; POV holder has sole eviction vote) ──
-  if (alive.length === 4 && !state.cfg?.multiEviction) {
-    const f4Nominees = alive.filter(
+  // This rule always applies at Final 4 regardless of any config flags.
+  if (alive.length === 4) {
+    let f4Nominees = alive.filter(
       (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
     );
+    // Edge case: HOH wins POV → same ID excluded twice, leaving 3 candidates.
+    // Fall back to the original nominees from the nominations phase.
+    if (f4Nominees.length !== 2 && state.nomineeIds.length === 2) {
+      f4Nominees = alive.filter((pl) => state.nomineeIds.includes(pl.id));
+    }
     if (f4Nominees.length === 2) {
       const f4Names = f4Nominees.map((pl) => pl.name).join(' and ');
       state.nomineeIds = f4Nominees.map((pl) => pl.id);
@@ -917,9 +923,10 @@ const gameSlice = createSlice({
           break;
         }
         case 'eviction_results': {
-          // Guard: never evict when fewer than 2 players remain (should not happen in
-          // normal flow, but prevents infinite loops if endgame guards are bypassed).
-          if (alive.length < 2) break;
+          // Guard: never evict when 2 or fewer players remain.
+          // With 2 alive the Final 2 is set; a normal eviction here would reduce
+          // the house to 1 player, which must never happen.
+          if (alive.length <= 2) break;
           const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
           if (nominees.length > 0) {
             const evicted = seededPick(rng, nominees);

@@ -144,9 +144,10 @@ export interface GameState {
   cfg?: {
     /**
      * Future feature flag for multi-eviction weeks.
-     * When true, special POV twists and Final 4 bypass should be suspended.
-     * NOTE: There is currently no automatic logic to set this flag; it is a
-     * placeholder for future multi-eviction week support.
+     * When true, special POV twists may be suspended.
+     * NOTE: Final 4 special handling (POV holder sole vote) is always enforced
+     * regardless of this flag. There is currently no automatic logic to set
+     * this flag; it is a placeholder for future multi-eviction week support.
      */
     multiEviction?: boolean;
     /**
