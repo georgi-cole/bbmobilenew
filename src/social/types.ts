@@ -22,13 +22,25 @@ export interface SocialPhaseReport {
   timestamp: number;
 }
 
+/** A single recorded social action executed during a phase. */
+export interface SocialActionLogEntry {
+  actionId: string;
+  actorId: string;
+  targetId: string;
+  cost: number;
+  delta: number;
+  outcome: 'success' | 'failure';
+  newEnergy: number;
+  timestamp: number;
+}
+
 /** Redux-serialisable state subtree owned by the social module. */
 export interface SocialState {
   energyBank: SocialEnergyBank;
   relationships: RelationshipsMap;
   lastReport?: SocialPhaseReport | null;
-  /** Raw event log entries; typed as `unknown` until engine types are defined. */
-  sessionLogs: unknown[];
+  /** Append-only log of social actions executed this session. */
+  sessionLogs: SocialActionLogEntry[];
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.
