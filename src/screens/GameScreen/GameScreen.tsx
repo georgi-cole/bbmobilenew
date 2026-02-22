@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
+  completeMinigame,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
   selectEvictedPlayers,
   setReplacementNominee,
 } from '../../store/gameSlice';
+import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
 import TvZone from '../../components/ui/TvZone';
 import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
+import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
 import type { Player } from '../../types';
 import './GameScreen.css';
@@ -39,7 +42,21 @@ export default function GameScreen() {
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const evictedPlayers = useAppSelector(selectEvictedPlayers);
   const game = useAppSelector((s) => s.game);
+  const pendingChallenge = useAppSelector(selectPendingChallenge);
   const [evictedOpen, setEvictedOpen] = useState(false);
+
+  // ── Auto-start challenge on competition phase transitions ─────────────────
+  // NOTE: game.pendingMinigame (legacy TapRace session) is intentionally left
+  // active — its aiScores are reused in onDone to build the RawResult array
+  // for completeChallenge, keeping AI opponent scores consistent across both
+  // the challenge telemetry and the game-state advancement (completeMinigame).
+  const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers]);
+  useEffect(() => {
+    const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp';
+    if (isCompPhase && !pendingChallenge) {
+      dispatch(startChallenge(game.seed, aliveIds));
+    }
+  }, [game.phase, pendingChallenge, aliveIds, game.seed, dispatch]);
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -87,11 +104,16 @@ export default function GameScreen() {
     !!pendingMinigame &&
     !!humanPlayer &&
     pendingMinigame.participants.includes(humanPlayer.id);
-  const showTapRace = humanIsParticipant;
+  // MinigameHost takes priority over legacy TapRace when a challenge is pending
+  // and the human player is a participant in that challenge.
+  const humanIsChallengeParticipant =
+    !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id);
+  const showMinigameHost = humanIsChallengeParticipant;
+  const showTapRace = !showMinigameHost && humanIsParticipant;
 
   // Hide Continue button while waiting for any human-only decision modal.
   // Keep this in sync with the conditions that control human decision modals above.
-  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal || showTapRace;
+  const awaitingHumanDecision = showReplacementModal || showFinal4Modal || showFinal3Modal || showMinigameHost || showTapRace;
 
   return (
     <div className="game-screen">
@@ -126,6 +148,29 @@ export default function GameScreen() {
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
+        />
+      )}
+
+      {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}
+      {showMinigameHost && pendingChallenge && (
+        <MinigameHost
+          game={pendingChallenge.game}
+          gameOptions={{ seed: pendingChallenge.seed }}
+          onDone={(rawValue) => {
+            // Build raw results for all challenge participants.
+            // AI scores are sourced from the pre-computed legacy TapRace session
+            // so both the challenge telemetry and game-state winner are consistent.
+            const rawResults = pendingChallenge.participants.map((id) => ({
+              playerId: id,
+              rawValue:
+                id === humanPlayer?.id
+                  ? rawValue
+                  : (game.pendingMinigame?.aiScores[id] ?? rawValue),
+            }));
+            dispatch(completeChallenge(rawResults));
+            // Advance game state: apply HOH/POV winner and transition phase.
+            dispatch(completeMinigame(rawValue));
+          }}
         />
       )}
 

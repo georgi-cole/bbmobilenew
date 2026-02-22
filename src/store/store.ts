@@ -37,3 +37,8 @@ store.subscribe(() => {
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+if (import.meta.env.DEV) {
+  // @ts-expect-error – intentionally attaching store for dev debugging
+  window.store = store;
+}
