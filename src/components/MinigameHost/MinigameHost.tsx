@@ -7,7 +7,7 @@
 //   3. Legacy minigame (via LegacyMinigameWrapper)
 //   4. Results screen  → calls onDone(rawValue)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { GameRegistryEntry } from '../../minigames/registry';
 import MinigameRules from '../MinigameRules/MinigameRules';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
@@ -15,6 +15,14 @@ import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
 import './MinigameHost.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MinigameParticipant {
+  id: string;
+  name: string;
+  isHuman: boolean;
+  /** Pre-computed raw score for AI players; ignored for the human (finalValue is used). */
+  precomputedScore: number;
+}
 
 interface Props {
   game: GameRegistryEntry;
@@ -29,9 +37,16 @@ interface Props {
   skipRules?: boolean;
   /** When true the 3-second countdown is skipped (for testing). */
   skipCountdown?: boolean;
+  /**
+   * All competition participants (human + AI).  When provided, the results
+   * screen shows a full ranked leaderboard instead of the human's score alone.
+   */
+  participants?: MinigameParticipant[];
 }
 
 type HostPhase = 'rules' | 'countdown' | 'playing' | 'results';
+
+const MEDALS = ['🥇', '🥈', '🥉'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -41,6 +56,7 @@ export default function MinigameHost({
   onDone,
   skipRules = false,
   skipCountdown = false,
+  participants,
 }: Props) {
   const [phase, setPhase] = useState<HostPhase>(skipRules ? 'countdown' : 'rules');
   const [countdown, setCountdown] = useState(3);
@@ -87,6 +103,20 @@ export default function MinigameHost({
     onDone(finalValue ?? 0, wasPartial);
   }, [onDone, finalValue, wasPartial]);
 
+  // ── Build leaderboard when participants are provided ─────────────────────
+  const leaderboard = useMemo(() => {
+    if (!participants || participants.length === 0) return null;
+    const humanScore = finalValue ?? 0;
+    const entries = participants.map((p) => ({
+      ...p,
+      score: p.isHuman ? humanScore : p.precomputedScore,
+    }));
+    // Sort: lower-is-better adapters sort ascending; all others sort descending.
+    const lowerBetter = game.scoringAdapter === 'lowerBetter';
+    entries.sort((a, b) => (lowerBetter ? a.score - b.score : b.score - a.score));
+    return entries;
+  }, [participants, finalValue, game.scoringAdapter]);
+
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="minigame-host" role="dialog" aria-modal="true" aria-label={`${game.title} minigame`}>
@@ -128,10 +158,48 @@ export default function MinigameHost({
           <h2 className="minigame-host-results-title">
             {wasPartial ? '🚪 Exited Early' : '🏁 Finished!'}
           </h2>
-          <p className="minigame-host-results-score">
-            {game.metricLabel}: <strong>{finalValue ?? 0}</strong>
-            {wasPartial && ' (partial)'}
-          </p>
+
+          {leaderboard ? (
+            <>
+              <p className="minigame-host-results-winner">
+                🏆 {leaderboard[0]?.name ?? 'Unknown'} wins
+                {leaderboard[0]?.isHuman ? " — that's you!" : '!'}
+              </p>
+              <ol className="minigame-host-leaderboard">
+                {leaderboard.map((entry, i) => (
+                  <li
+                    key={entry.id}
+                    className={[
+                      'minigame-host-leaderboard-entry',
+                      entry.isHuman ? 'minigame-host-leaderboard-entry--you' : '',
+                      i === 0 ? 'minigame-host-leaderboard-entry--winner' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <span className="minigame-host-leaderboard-rank" aria-hidden="true">
+                      {MEDALS[i] ?? `${i + 1}.`}
+                    </span>
+                    <span className="minigame-host-leaderboard-name">
+                      {entry.name}
+                      {entry.isHuman && (
+                        <span className="minigame-host-leaderboard-you"> (You)</span>
+                      )}
+                    </span>
+                    <span className="minigame-host-leaderboard-score">
+                      {game.metricLabel}: <strong>{entry.score}</strong>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <p className="minigame-host-results-score">
+              {game.metricLabel}: <strong>{finalValue ?? 0}</strong>
+              {wasPartial && ' (partial)'}
+            </p>
+          )}
+
           <button className="minigame-host-results-btn" onClick={handleContinue} autoFocus>
             Continue ▶
           </button>

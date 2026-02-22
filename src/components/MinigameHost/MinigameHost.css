@@ -79,6 +79,75 @@
   color: #ccc;
 }
 
+/* ─── Leaderboard (shown when participants are passed) ───────────────────── */
+.minigame-host-results-winner {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+}
+
+.minigame-host-leaderboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.minigame-host-leaderboard-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.88rem;
+}
+
+.minigame-host-leaderboard-entry--winner {
+  background: rgba(233, 69, 96, 0.18);
+  border: 1px solid rgba(233, 69, 96, 0.35);
+}
+
+.minigame-host-leaderboard-entry--you {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.minigame-host-leaderboard-rank {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.minigame-host-leaderboard-name {
+  flex: 1;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.minigame-host-leaderboard-you {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: #a0a0b8;
+}
+
+.minigame-host-leaderboard-score {
+  font-weight: 700;
+  color: #a0a0b8;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .minigame-host-results-btn {
   margin-top: 8px;
   padding: 12px 32px;

@@ -15,6 +15,7 @@ import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
+import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
 import type { Player } from '../../types';
 import './GameScreen.css';
@@ -156,6 +157,15 @@ export default function GameScreen() {
         <MinigameHost
           game={pendingChallenge.game}
           gameOptions={{ seed: pendingChallenge.seed }}
+          participants={pendingChallenge.participants.map((id): MinigameParticipant => {
+            const player = game.players.find((p) => p.id === id);
+            return {
+              id,
+              name: player?.name ?? id,
+              isHuman: !!player?.isUser,
+              precomputedScore: pendingChallenge.aiScores[id] ?? 0,
+            };
+          })}
           onDone={(rawValue) => {
             // Build raw results for all challenge participants using pre-computed
             // AI scores (appropriate for the selected game's metric kind).
