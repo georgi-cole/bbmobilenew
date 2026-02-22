@@ -15,13 +15,27 @@ const socialSlice = createSlice({
     setLastReport(state, action: PayloadAction<SocialPhaseReport>) {
       state.lastReport = action.payload;
     },
+    /** Stores the latest influence weights computed for an actor's decision. */
+    influenceUpdated(
+      state,
+      action: PayloadAction<{
+        actorId: string;
+        decisionType: string;
+        weights: Record<string, number>;
+      }>,
+    ) {
+      const { actorId, weights } = action.payload;
+      state.influenceWeights[actorId] = weights;
+    },
   },
 });
 
-export const { engineReady, engineComplete, setLastReport } = socialSlice.actions;
+export const { engineReady, engineComplete, setLastReport, influenceUpdated } = socialSlice.actions;
 export default socialSlice.reducer;
 
 // Selectors – typed against a minimal shape to avoid circular imports with store.ts
 export const selectSocialBudgets = (state: { social: SocialState }) => state.social.energyBank;
 export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social.lastReport ?? null;
+export const selectInfluenceWeights = (state: { social: SocialState }) =>
+  state.social.influenceWeights;

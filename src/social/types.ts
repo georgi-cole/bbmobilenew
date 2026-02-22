@@ -29,4 +29,19 @@ export interface SocialState {
   lastReport?: SocialPhaseReport | null;
   /** Raw event log entries; typed as `unknown` until engine types are defined. */
   sessionLogs: unknown[];
+  /**
+   * Latest influence weights per actor: actorId → (targetId → weight).
+   * Populated by SocialInfluence.update dispatching social/influenceUpdated.
+   */
+  influenceWeights: Record<string, Record<string, number>>;
+}
+
+// ── Policy ────────────────────────────────────────────────────────────────
+
+/** Context passed to SocialPolicy functions. */
+export interface PolicyContext {
+  relationships: RelationshipsMap;
+  players: Array<{ id: string; status: string; isUser?: boolean }>;
+  week?: number;
+  seed?: number;
 }

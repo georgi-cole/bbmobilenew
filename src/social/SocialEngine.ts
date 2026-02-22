@@ -16,6 +16,7 @@ import type { SocialPhaseReport } from './types';
 import { socialConfig } from './socialConfig';
 import { DEFAULT_ENERGY } from './constants';
 import { engineReady, engineComplete, setLastReport } from './socialSlice';
+import { initInfluence, update as influenceUpdate } from './SocialInfluence';
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown;
@@ -38,6 +39,7 @@ let _lastReport: SocialPhaseReport | null = null;
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
   _store = store;
+  initInfluence(store);
 }
 
 /**
@@ -84,8 +86,9 @@ function startPhase(phaseName: string): void {
 }
 
 /**
- * Finalize the social phase: generate a `SocialPhaseReport`, dispatch
- * `social/engineComplete`, and persist the report via `social/setLastReport`.
+ * Finalize the social phase: generate a `SocialPhaseReport`, compute
+ * per-player influence weights, dispatch `social/engineComplete`, and
+ * persist the report via `social/setLastReport`.
  */
 function endPhase(phaseName: string): void {
   if (!_store) return;
@@ -96,6 +99,13 @@ function endPhase(phaseName: string): void {
   const activePlayers = players
     .filter((p) => p.status !== 'evicted' && p.status !== 'jury')
     .map((p) => p.id);
+
+  // Compute influence weights for each AI participant before clearing budgets
+  const aiParticipants = Array.from(_budgets.keys());
+  for (const actorId of aiParticipants) {
+    const eligibleTargets = activePlayers.filter((id) => id !== actorId);
+    influenceUpdate(actorId, 'nomination', eligibleTargets);
+  }
 
   const report: SocialPhaseReport = {
     id: `${phaseName}_w${week}_${Date.now()}`,
