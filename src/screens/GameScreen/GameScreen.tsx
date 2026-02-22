@@ -7,6 +7,10 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
+  selectNominee1,
+  finalizeNominations,
+  submitPovDecision,
+  submitPovSaveTarget,
   setReplacementNominee,
 } from '../../store/gameSlice';
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
@@ -91,12 +95,59 @@ export default function GameScreen() {
     (p) => p.id !== game.hohId && p.id !== game.povWinnerId && !game.nomineeIds.includes(p.id)
   )
 
+  // ── Human HOH nomination flow (step 1 & step 2) ──────────────────────────
+  // Shown when the human HOH must pick their two nominees.
+  const showNominee1Modal =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    !game.pendingNominee1Id &&
+    humanIsHoH
+  const showNominee2Modal =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    Boolean(game.pendingNominee1Id) &&
+    humanIsHoH
+
+  const nominee1Options = alivePlayers.filter(
+    (p) => p.id !== game.hohId
+  )
+  const nominee2Options = alivePlayers.filter(
+    (p) => p.id !== game.hohId && p.id !== game.pendingNominee1Id
+  )
+
+  // ── Human POV holder decision (use veto or not) ──────────────────────────
+  const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
+  const showPovDecisionModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.awaitingPovDecision) &&
+    humanIsPovHolder
+
+  // ── Human POV holder picks who to save ───────────────────────────────────
+  const showPovSaveModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.awaitingPovSaveTarget) &&
+    humanIsPovHolder
+  const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
   // ── Final 4 human POV holder vote ────────────────────────────────────────
   // Shown when phase is final4_eviction and the human player is the POV holder.
-  const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
   const showFinal4Modal = game.phase === 'final4_eviction' && humanIsPovHolder
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  // ── Human live eviction vote ──────────────────────────────────────────────
+  // Shown when the human player is an eligible voter during live_vote.
+  const showLiveVoteModal =
+    game.phase === 'live_vote' && Boolean(game.awaitingHumanVote) && humanPlayer !== undefined
+  const liveVoteOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  // ── Human HOH tie-break ───────────────────────────────────────────────────
+  // Shown when the live vote ended in a tie and the human is HOH.
+  const showTieBreakModal =
+    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH
+  const tieBreakOptions = alivePlayers.filter((p) =>
+    (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
+  )
 
   // ── Final 3 human Final HOH eviction ─────────────────────────────────────
   // Shown when phase is final3_decision and the human player is the Final HOH.
@@ -122,11 +173,66 @@ export default function GameScreen() {
   // Hide Continue button while waiting for any human-only decision modal.
   // Keep this in sync with the conditions that control human decision modals above.
   const awaitingHumanDecision =
-    showReplacementModal || showFinal4Modal || showFinal3Modal || showMinigameHost || showTapRace
+    showReplacementModal ||
+    showNominee1Modal ||
+    showNominee2Modal ||
+    showPovDecisionModal ||
+    showPovSaveModal ||
+    showFinal4Modal ||
+    showLiveVoteModal ||
+    showTieBreakModal ||
+    showFinal3Modal ||
+    showMinigameHost ||
+    showTapRace
 
   return (
-    <div className="game-screen">
+    <div className="game-screen game-screen-shell">
       <TvZone />
+
+      {/* ── Human HOH nominee 1 picker ───────────────────────────────────── */}
+      {showNominee1Modal && (
+        <TvDecisionModal
+          title="Nomination Ceremony — Pick Nominee 1"
+          subtitle={`${humanPlayer?.name}, choose your first nominee for eviction.`}
+          options={nominee1Options}
+          onSelect={(id) => dispatch(selectNominee1(id))}
+        />
+      )}
+
+      {/* ── Human HOH nominee 2 picker ───────────────────────────────────── */}
+      {showNominee2Modal && (() => {
+        const nominee1 = game.players.find((p) => p.id === game.pendingNominee1Id)
+        return (
+          <TvDecisionModal
+            title="Nomination Ceremony — Pick Nominee 2"
+            subtitle={`${humanPlayer?.name}, choose your second nominee. (Nominee 1: ${nominee1?.name ?? '?'})`}
+            options={nominee2Options}
+            onSelect={(id) => dispatch(finalizeNominations(id))}
+          />
+        )
+      })()}
+
+      {/* ── Human POV holder Yes/No decision ────────────────────────────── */}
+      {showPovDecisionModal && (
+        <TvBinaryDecisionModal
+          title="Power of Veto Ceremony"
+          subtitle={`${humanPlayer?.name}, will you use the Power of Veto?`}
+          yesLabel="✅ Yes — use the Power of Veto"
+          noLabel="❌ No — keep nominations the same"
+          onYes={() => dispatch(submitPovDecision(true))}
+          onNo={() => dispatch(submitPovDecision(false))}
+        />
+      )}
+
+      {/* ── Human POV holder picks who to save ──────────────────────────── */}
+      {showPovSaveModal && (
+        <TvDecisionModal
+          title="Power of Veto — Save a Nominee"
+          subtitle={`${humanPlayer?.name}, choose which nominee to save with the veto.`}
+          options={povSaveOptions}
+          onSelect={(id) => dispatch(submitPovSaveTarget(id))}
+        />
+      )}
 
       {/* ── Human HOH replacement picker ────────────────────────────────── */}
       {showReplacementModal && (
@@ -135,6 +241,28 @@ export default function GameScreen() {
           subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
           options={replacementOptions}
           onSelect={(id) => dispatch(setReplacementNominee(id))}
+        />
+      )}
+
+      {/* ── Human live eviction vote ─────────────────────────────────────── */}
+      {showLiveVoteModal && (
+        <TvDecisionModal
+          title="Live Eviction Vote"
+          subtitle={`${humanPlayer?.name}, cast your vote to evict one of the nominees.`}
+          options={liveVoteOptions}
+          onSelect={(id) => dispatch(submitHumanVote(id))}
+          danger
+        />
+      )}
+
+      {/* ── Human HOH tie-break ──────────────────────────────────────────── */}
+      {showTieBreakModal && (
+        <TvDecisionModal
+          title="Tie-Break — HOH Casts the Deciding Vote"
+          subtitle={`${humanPlayer?.name}, the vote is tied! As HOH, you must break the tie.`}
+          options={tieBreakOptions}
+          onSelect={(id) => dispatch(submitTieBreak(id))}
+          danger
         />
       )}
 
@@ -209,7 +337,11 @@ export default function GameScreen() {
       {!awaitingHumanDecision && <FloatingActionBar />}
 
       {/* ── Houseguest grid (alive + evicted in one grid) ────────────────── */}
-      <HouseguestGrid houseguests={game.players.map(playerToHouseguest)} />
+      <HouseguestGrid
+        houseguests={game.players.map(playerToHouseguest)}
+        headerSelector=".tv-zone"
+        footerSelector=".nav-bar"
+      />
     </div>
   )
 }

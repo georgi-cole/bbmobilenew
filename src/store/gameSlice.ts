@@ -78,6 +78,14 @@ const initialState: GameState = {
   nomineeIds: [],
   povWinnerId: null,
   replacementNeeded: false,
+  awaitingNominations: false,
+  pendingNominee1Id: null,
+  awaitingPovDecision: false,
+  awaitingPovSaveTarget: false,
+  votes: {},
+  awaitingHumanVote: false,
+  awaitingTieBreak: false,
+  tiedNomineeIds: null,
   awaitingFinal3Eviction: false,
   f3Part1WinnerId: null,
   f3Part2WinnerId: null,
@@ -143,10 +151,16 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
   pushEvent(state, `${p?.name ?? winnerId} has won the Power of Veto! 🎭`, 'game');
 
   // ── Final 4 bypass (skip ceremony; POV holder has sole eviction vote) ──
-  if (alive.length === 4 && !state.cfg?.multiEviction) {
-    const f4Nominees = alive.filter(
+  // This rule always applies at Final 4 regardless of any config flags.
+  if (alive.length === 4) {
+    let f4Nominees = alive.filter(
       (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
     );
+    // Edge case: HOH wins POV → same ID excluded twice, leaving 3 candidates.
+    // Fall back to the original nominees from the nominations phase.
+    if (f4Nominees.length !== 2 && state.nomineeIds.length === 2) {
+      f4Nominees = alive.filter((pl) => state.nomineeIds.includes(pl.id));
+    }
     if (f4Nominees.length === 2) {
       const f4Names = f4Nominees.map((pl) => pl.name).join(' and ');
       state.nomineeIds = f4Nominees.map((pl) => pl.id);
@@ -211,6 +225,41 @@ function determineWinner(participants: string[], scores: Record<string, number>)
   }
   const rng = mulberry32(hash >>> 0);
   return topIds[Math.floor(rng() * topIds.length)];
+}
+
+/**
+ * FNV-1a 32-bit hash for a string.
+ * Used to derive independent, deterministic per-voter RNG seeds from a
+ * voter's string ID, ensuring each AI voter produces a stable and distinct
+ * vote without needing a separate stored seed.
+ */
+function hashString(s: string): number {
+  let hash = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    hash ^= s.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+/**
+ * Isolated AI voting logic.
+ * Deterministic placeholder — replace this function with relationship-based
+ * logic once the social module is installed.
+ *
+ * @param voterId     ID of the AI voter casting their vote
+ * @param nomineeIds  IDs of eligible nominees (must have ≥1 entry)
+ * @param gameSeed    Current game seed (keeps results varied across weeks)
+ * @returns           The nominee ID that this AI voter chooses to evict
+ */
+function chooseAiEvictionVote(
+  voterId: string,
+  nomineeIds: string[],
+  gameSeed: number,
+): string {
+  const voterSeed = (gameSeed ^ hashString(voterId)) >>> 0;
+  const rng = mulberry32(voterSeed);
+  return nomineeIds[Math.floor(rng() * nomineeIds.length)];
 }
 
 const gameSlice = createSlice({
@@ -385,6 +434,178 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Human HOH selects their first nominee during the two-step nomination flow.
+     * Sets `pendingNominee1Id` so the UI can move on to step 2.
+     * Eligibility: alive, not HOH. Guards: awaitingNominations must be true and
+     * phase must be nomination_results.
+     */
+    selectNominee1(state, action: PayloadAction<string>) {
+      if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
+      const id = action.payload;
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      const eligible = alive.filter((p) => p.id !== state.hohId);
+      if (!eligible.some((p) => p.id === id)) return;
+      state.pendingNominee1Id = id;
+    },
+
+    /**
+     * Human HOH selects their second nominee, finalizing nominations.
+     * Validates: alive, not HOH, not equal to nominee 1.
+     * Guards: awaitingNominations must be true, phase must be nomination_results,
+     * and pendingNominee1Id must be set.
+     * Clears `awaitingNominations` and `pendingNominee1Id`.
+     */
+    finalizeNominations(state, action: PayloadAction<string>) {
+      if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
+      const id2 = action.payload;
+      const id1 = state.pendingNominee1Id;
+      if (!id1 || id2 === id1) return;
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      const eligible = alive.filter((p) => p.id !== state.hohId);
+      if (!eligible.some((p) => p.id === id2)) return;
+      if (!eligible.some((p) => p.id === id1)) return;
+
+      const p1 = state.players.find((p) => p.id === id1);
+      const p2 = state.players.find((p) => p.id === id2);
+      const hohPlayer = state.players.find((p) => p.id === state.hohId);
+      if (!p1 || !p2) return;
+
+      state.nomineeIds = [id1, id2];
+      p1.status = 'nominated';
+      p2.status = 'nominated';
+      state.awaitingNominations = false;
+      state.pendingNominee1Id = null;
+      pushEvent(
+        state,
+        `${p1.name} and ${p2.name} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
+        'game',
+      );
+    },
+
+    /**
+     * Human POV holder decides whether to use or not use the veto.
+     * - `false`: the veto is not used; log the event and clear the flag.
+     * - `true`: set `awaitingPovSaveTarget` so the player can pick who to save.
+     */
+    submitPovDecision(state, action: PayloadAction<boolean>) {
+      if (!state.awaitingPovDecision) return;
+      state.awaitingPovDecision = false;
+      const povWinner = state.players.find((p) => p.id === state.povWinnerId);
+      if (action.payload) {
+        // Will use veto — wait for save target
+        state.awaitingPovSaveTarget = true;
+      } else {
+        // Will not use veto
+        pushEvent(
+          state,
+          `${povWinner?.name ?? 'The veto holder'} has decided NOT to use the Power of Veto. The nominations remain the same. ⚡`,
+          'game',
+        );
+      }
+    },
+
+    /**
+     * Human POV holder picks which nominee to save with the veto.
+     * After saving, triggers the replacement nominee flow (human HOH → modal;
+     * AI HOH → deterministic pick).
+     */
+    submitPovSaveTarget(state, action: PayloadAction<string>) {
+      const saveId = action.payload;
+      if (!state.awaitingPovSaveTarget) return;
+      if (!state.nomineeIds.includes(saveId)) return;
+
+      const savedPlayer = state.players.find((p) => p.id === saveId);
+      const povWinner = state.players.find((p) => p.id === state.povWinnerId);
+      const hohPlayer = state.players.find((p) => p.id === state.hohId);
+      if (!savedPlayer || !povWinner) return;
+
+      // Save the selected nominee
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
+      savedPlayer.status = 'active';
+      state.awaitingPovSaveTarget = false;
+      pushEvent(
+        state,
+        `${povWinner.name} used the Power of Veto on ${savedPlayer.name}! 🛡️`,
+        'game',
+      );
+
+      // HOH must name a replacement
+      if (hohPlayer?.isUser) {
+        state.replacementNeeded = true;
+        pushEvent(
+          state,
+          `${hohPlayer.name} must now name a replacement nominee. 🎯`,
+          'game',
+        );
+      } else {
+        // AI HOH: deterministically pick replacement
+        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const eligible = alive.filter(
+          (pl) =>
+            pl.id !== state.hohId &&
+            pl.id !== state.povWinnerId &&
+            !state.nomineeIds.includes(pl.id),
+        );
+        if (eligible.length > 0) {
+          const rng = mulberry32(state.seed);
+          const replacement = seededPick(rng, eligible);
+          state.nomineeIds.push(replacement.id);
+          const rp = state.players.find((pl) => pl.id === replacement.id);
+          if (rp) rp.status = 'nominated';
+          pushEvent(
+            state,
+            `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+            'game',
+          );
+        }
+      }
+    },
+
+    /**
+     * Human eligible voter casts their eviction vote during `live_vote`.
+     * Adds the vote to `state.votes` and clears `awaitingHumanVote`.
+     */
+    submitHumanVote(state, action: PayloadAction<string>) {
+      const nomineeId = action.payload;
+      if (!state.awaitingHumanVote) return;
+      if (!state.nomineeIds.includes(nomineeId)) return;
+      const humanPlayer = state.players.find((p) => p.isUser);
+      if (!humanPlayer) return;
+      if (!state.votes) state.votes = {};
+      state.votes[humanPlayer.id] = nomineeId;
+      state.awaitingHumanVote = false;
+    },
+
+    /**
+     * Human HOH breaks a tied eviction vote by selecting the evictee.
+     * Evicts the chosen nominee, clears `awaitingTieBreak`, and advances
+     * directly to `week_end` (consistent with the finalizeFinal3Eviction pattern).
+     */
+    submitTieBreak(state, action: PayloadAction<string>) {
+      const nomineeId = action.payload;
+      if (!state.awaitingTieBreak) return;
+      const tied = state.tiedNomineeIds ?? state.nomineeIds;
+      if (!tied.includes(nomineeId)) return;
+
+      const evictee = state.players.find((p) => p.id === nomineeId);
+      const hohPlayer = state.players.find((p) => p.id === state.hohId);
+      if (!evictee) return;
+
+      evictee.status = evictedStatus(state);
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeId);
+      state.awaitingTieBreak = false;
+      state.tiedNomineeIds = null;
+      state.votes = {};
+      pushEvent(
+        state,
+        `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
+        'game',
+      );
+      pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
+      state.phase = 'week_end';
+    },
+
+    /**
      * Finalize the Final 4 eviction — used when the human POV holder casts their vote.
      * For AI, advance() handles the eviction automatically.
      * Validates that the evictee is a current nominee before proceeding.
@@ -510,12 +731,20 @@ const gameSlice = createSlice({
       );
     },
 
-    /** Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction)
+    /** Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction, etc.)
      * that could prevent the Continue button from appearing (debug only).
      */
     clearBlockingFlags(state) {
       state.replacementNeeded = false;
+      state.awaitingNominations = false;
+      state.pendingNominee1Id = null;
+      state.awaitingPovDecision = false;
+      state.awaitingPovSaveTarget = false;
+      state.awaitingHumanVote = false;
+      state.awaitingTieBreak = false;
+      state.tiedNomineeIds = null;
       state.awaitingFinal3Eviction = false;
+      state.votes = {};
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /** Reset game state with a fresh random roster (debug only). */
@@ -533,6 +762,14 @@ const gameSlice = createSlice({
         nomineeIds: [],
         povWinnerId: null,
         replacementNeeded: false,
+        awaitingNominations: false,
+        pendingNominee1Id: null,
+        awaitingPovDecision: false,
+        awaitingPovSaveTarget: false,
+        votes: {},
+        awaitingHumanVote: false,
+        awaitingTieBreak: false,
+        tiedNomineeIds: null,
         awaitingFinal3Eviction: false,
         f3Part1WinnerId: null,
         f3Part2WinnerId: null,
@@ -557,6 +794,21 @@ const gameSlice = createSlice({
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
     advance(state) {
+      // Guard: if any human-decision flag is set, advance() must not proceed.
+      // This protects against programmatic dispatches (debug tools, fastForward)
+      // bypassing mandatory decision steps and leaving state inconsistent.
+      if (
+        state.replacementNeeded ||
+        state.awaitingNominations ||
+        state.awaitingPovDecision ||
+        state.awaitingPovSaveTarget ||
+        state.awaitingHumanVote ||
+        state.awaitingTieBreak ||
+        state.awaitingFinal3Eviction
+      ) {
+        return;
+      }
+
       // Guard: if a minigame is active the human must complete (or skip) it first.
       // This prevents fastForwardToEviction / debug advance from racing past an
       // open TapRace overlay and leaving it stuck on screen.
@@ -603,6 +855,14 @@ const gameSlice = createSlice({
         state.nomineeIds = [];
         state.povWinnerId = null;
         state.replacementNeeded = false;
+        state.awaitingNominations = false;
+        state.pendingNominee1Id = null;
+        state.awaitingPovDecision = false;
+        state.awaitingPovSaveTarget = false;
+        state.votes = {};
+        state.awaitingHumanVote = false;
+        state.awaitingTieBreak = false;
+        state.tiedNomineeIds = null;
         state.awaitingFinal3Eviction = false;
         state.f3Part1WinnerId = null;
         state.f3Part2WinnerId = null;
@@ -761,6 +1021,21 @@ const gameSlice = createSlice({
         return;
       }
 
+      // Guard: jury is a terminal phase — advance() is a no-op once reached.
+      if (state.phase === 'jury') return;
+
+      // Guard: at week_end with ≤2 players alive the Final 2 is set.
+      // Transition directly to jury instead of cycling back to week_start.
+      if (state.phase === 'week_end') {
+        const aliveAtEnd = state.players.filter(
+          (p) => p.status !== 'evicted' && p.status !== 'jury',
+        );
+        if (aliveAtEnd.length <= 2) {
+          state.phase = 'jury';
+          return;
+        }
+      }
+
       const currentIdx = PHASE_ORDER.indexOf(state.phase);
       const nextIdx = (currentIdx + 1) % PHASE_ORDER.length;
       let nextPhase: Phase = PHASE_ORDER[nextIdx];
@@ -782,6 +1057,14 @@ const gameSlice = createSlice({
           state.nomineeIds = [];
           state.povWinnerId = null;
           state.replacementNeeded = false;
+          state.awaitingNominations = false;
+          state.pendingNominee1Id = null;
+          state.awaitingPovDecision = false;
+          state.awaitingPovSaveTarget = false;
+          state.votes = {};
+          state.awaitingHumanVote = false;
+          state.awaitingTieBreak = false;
+          state.tiedNomineeIds = null;
           state.players.forEach((p) => {
             if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
               p.status = 'active';
@@ -812,7 +1095,24 @@ const gameSlice = createSlice({
           break;
         }
         case 'nomination_results': {
+          // Guard: need at least 3 players to nominate 2 (HOH + 2 nominees).
           const pool = alive.filter((p) => p.id !== state.hohId);
+          if (pool.length < 2) break;
+
+          const hohPlayer = state.players.find((p) => p.id === state.hohId);
+          if (hohPlayer?.isUser) {
+            // Human HOH: block advance() and wait for the two-step nomination UI
+            state.awaitingNominations = true;
+            state.pendingNominee1Id = null;
+            pushEvent(
+              state,
+              `${hohPlayer.name}, it's time to make your nominations. Choose two houseguests to put on the block. 🎯`,
+              'game',
+            );
+            break;
+          }
+
+          // AI HOH: pick randomly
           const nominees = seededPickN(rng, pool, 2);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
@@ -883,8 +1183,16 @@ const gameSlice = createSlice({
                 );
               }
             }
+          } else if (povWinner?.isUser) {
+            // Human POV holder who is not a nominee: they must decide whether to use it
+            state.awaitingPovDecision = true;
+            pushEvent(
+              state,
+              `${povWinner.name}, will you use the Power of Veto? ⚡`,
+              'game',
+            );
           } else {
-            // Normal case: POV holder is not a nominee — does not use the veto
+            // AI POV holder who is not a nominee: does not use the veto
             const povName = povWinner?.name ?? 'The veto holder';
             pushEvent(
               state,
@@ -903,15 +1211,93 @@ const gameSlice = createSlice({
             .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
             .join(' and ');
           pushEvent(state, `The live eviction vote has begun! ${nomNames} face eviction. 🗳️`, 'vote');
+
+          // Cast AI eligible votes (eligible = alive, not HOH, not nominee)
+          state.votes = {};
+          const eligibleVoters = alive.filter(
+            (p) => p.id !== state.hohId && !state.nomineeIds.includes(p.id),
+          );
+          for (const voter of eligibleVoters) {
+            if (!voter.isUser) {
+              state.votes[voter.id] = chooseAiEvictionVote(voter.id, state.nomineeIds, state.seed);
+            }
+          }
+
+          // Block advance() if the human player is an eligible voter
+          const humanVoter = eligibleVoters.find((p) => p.isUser);
+          if (humanVoter) {
+            state.awaitingHumanVote = true;
+          }
           break;
         }
         case 'eviction_results': {
+          // Guard: never evict when fewer than 2 players remain (should not happen in
+          // normal flow, but prevents infinite loops if endgame guards are bypassed).
+          if (alive.length < 2) break;
+          // Guard: if we're already waiting for a human tie-break, do nothing.
+          if (state.awaitingTieBreak) break;
+
           const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
-          if (nominees.length > 0) {
-            const evicted = seededPick(rng, nominees);
-            evicted.status = evictedStatus(state);
-            state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
-            pushEvent(state, `${evicted.name}, you have been evicted from the Big Brother house. 🚪`, 'game');
+          if (nominees.length === 0) break;
+
+          // ── Tally votes ───────────────────────────────────────────────────
+          const voteCounts: Record<string, number> = {};
+          for (const nomineeId of state.nomineeIds) voteCounts[nomineeId] = 0;
+          for (const nomineeId of Object.values(state.votes ?? {})) {
+            if (nomineeId in voteCounts) voteCounts[nomineeId]++;
+          }
+
+          // Find the highest vote count
+          let maxVotes = -1;
+          for (const count of Object.values(voteCounts)) {
+            if (count > maxVotes) maxVotes = count;
+          }
+          const topNominees = state.nomineeIds.filter((id) => (voteCounts[id] ?? 0) === maxVotes);
+
+          if (topNominees.length === 1) {
+            // Clear winner — evict them
+            const evicted = state.players.find((p) => p.id === topNominees[0]);
+            if (evicted) {
+              evicted.status = evictedStatus(state);
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
+              state.votes = {};
+              pushEvent(
+                state,
+                `${evicted.name}, you have been evicted from the Big Brother house. 🚪`,
+                'game',
+              );
+            }
+          } else {
+            // Tie — HOH breaks the tie
+            const hohPlayer = state.players.find((p) => p.id === state.hohId);
+            if (hohPlayer?.isUser) {
+              // Human HOH: block and show tie-break modal
+              state.awaitingTieBreak = true;
+              state.tiedNomineeIds = topNominees;
+              const tiedNames = topNominees
+                .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+                .join(' and ');
+              pushEvent(
+                state,
+                `It's a tie between ${tiedNames}! ${hohPlayer.name}, as HOH you must break the tie. 🗳️`,
+                'game',
+              );
+            } else {
+              // AI HOH: deterministically pick among tied nominees
+              const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
+              const evicteeId = topNominees[Math.floor(aiRng() * topNominees.length)];
+              const evicted = state.players.find((p) => p.id === evicteeId);
+              if (evicted) {
+                evicted.status = evictedStatus(state);
+                state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
+                state.votes = {};
+                pushEvent(
+                  state,
+                  `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evicted.name}. ${evicted.name} has been evicted from the Big Brother house. 🗳️`,
+                  'game',
+                );
+              }
+            }
           }
           break;
         }
@@ -939,6 +1325,12 @@ export const {
   updateGamePRs,
   advance,
   setReplacementNominee,
+  selectNominee1,
+  finalizeNominations,
+  submitPovDecision,
+  submitPovSaveTarget,
+  submitHumanVote,
+  submitTieBreak,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizeGame,

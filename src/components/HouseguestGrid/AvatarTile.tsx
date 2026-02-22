@@ -1,3 +1,5 @@
+import React from 'react'
+import { avatarVariants } from '../../utils/avatarCase'
 import styles from './HouseguestGrid.module.css'
 
 type Props = {
@@ -9,6 +11,35 @@ type Props = {
 }
 
 export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick }: Props) {
+  const attemptRef = React.useRef(0)
+  const variantsRef = React.useRef<string[] | null>(null)
+  const exhaustedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    attemptRef.current = 0
+    variantsRef.current = null
+    exhaustedRef.current = false
+  }, [avatarUrl])
+
+  function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
+    if (exhaustedRef.current) return
+    const img = e.currentTarget
+    if (!variantsRef.current) {
+      variantsRef.current = avatarVariants(img.src)
+      attemptRef.current = 0
+    }
+
+    attemptRef.current += 1
+    const variants = variantsRef.current
+    if (variants && attemptRef.current < variants.length) {
+      img.src = variants[attemptRef.current]
+      return
+    }
+
+    exhaustedRef.current = true
+    img.src = '/avatars/placeholder.png'
+  }
+
   return (
     <div
       className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
@@ -29,8 +60,18 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick 
       }
     >
       <div className={styles.avatarWrap}>
+        <div className={styles.nameOverlay} aria-hidden="true">
+          {name}
+        </div>
+
+        {isYou && (
+          <span className={styles.youBadge} aria-hidden="true">
+            YOU
+          </span>
+        )}
+
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className={styles.avatar} />
+          <img src={avatarUrl} alt={name} className={styles.avatar} onError={handleImgError} />
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
@@ -64,10 +105,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick 
         )}
       </div>
 
-      <div className={styles.nameRow}>
-        {isYou && <span className={styles.youBadge}>YOU</span>}
-        <span className={styles.name}>{name}</span>
-      </div>
+      <div className={styles.nameRow} aria-hidden="true" />
     </div>
   )
 }
