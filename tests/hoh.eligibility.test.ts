@@ -7,7 +7,10 @@
  *  2. prevHohId is set correctly when transitioning from week_end to week_start.
  *  3. The outgoing HOH CAN compete in the Final 3 (prevHohId cleared on final3).
  *  4. Week 1 has no outgoing HOH (prevHohId is null).
- *  5. When prevHohId is the only alive player, the fallback allows anyone to win.
+ *  5. When only two players remain and one is prevHohId, the other player wins HOH.
+ *     (Note: this forced state cannot occur in normal game flow — 2 alive players
+ *     at week_end transitions to jury, not back to HOH comp — but the logic handles
+ *     it correctly as a defensive guarantee.)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -110,7 +113,9 @@ describe('HOH eligibility — prevHohId tracking', () => {
   });
 
   it('outgoing HOH fallback: if only one other player is alive, they win (not the outgoing HOH)', () => {
-    // Edge case: only 2 alive players, one is outgoing HOH → fallback allows them
+    // Edge case: only 2 alive players, one is outgoing HOH → the other player should win.
+    // Note: in normal game flow this state is unreachable (2 alive players → jury mode),
+    // but the logic correctly handles it as a defensive guarantee.
     const players: Player[] = [
       { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active', isUser: true },
       { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'active' },
