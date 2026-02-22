@@ -26,17 +26,24 @@ interface Props {
  * because the modals are controlled by Redux state that only clears after the
  * action dispatches.
  */
-export default function TvStingerOverlay({ message = '✔ Locked in!', duration = 800, onDone }: Props) {
+export default function TvStingerOverlay({ message = '✔ Locked in!', duration = 900, onDone }: Props) {
   useEffect(() => {
     const id = setTimeout(onDone, duration);
     return () => clearTimeout(id);
   }, [duration, onDone]);
 
   return (
-    <div className="tv-stinger" role="dialog" aria-modal="true" aria-live="assertive">
+    <div
+      className="tv-stinger"
+      role="dialog"
+      aria-modal="true"
+      aria-live="assertive"
+      onClick={onDone}
+    >
       <div className="tv-stinger__content">
         <span className="tv-stinger__icon">🔒</span>
         <span className="tv-stinger__message">{message}</span>
+        <span className="tv-stinger__skip">tap to skip</span>
       </div>
     </div>
   );

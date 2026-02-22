@@ -145,6 +145,12 @@ export interface GameState {
    */
   votes?: Record<string, string>;
   /**
+   * Pending votes being accumulated before the vote tally is revealed.
+   * Same shape as `votes` but used to drive the VoteResultsPopup reveal sequence.
+   * Cleared after the eviction is resolved.
+   */
+  pendingVotes?: Record<string, string>;
+  /**
    * When true, the human player is an eligible voter during `live_vote` and must
    * cast their eviction vote via a blocking modal before `advance()` continues.
    */
@@ -191,6 +197,17 @@ export interface GameState {
    * Set this field in game logic when a twist is introduced.
    */
   twistActive?: boolean;
+  /**
+   * When set, the VoteResultsPopup is shown with the vote tally before
+   * advancing. Maps nominee ID → number of votes received.
+   * Cleared by `dismissVoteResults`.
+   */
+  voteResults?: Record<string, number> | null;
+  /**
+   * When set, the EvictionSplash animation is shown for this player ID
+   * before the game advances. Cleared by `dismissEvictionSplash`.
+   */
+  evictionSplashId?: string | null;
   /** Optional weekly config overrides. */
   cfg?: {
     /**

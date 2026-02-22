@@ -89,6 +89,8 @@ const initialState: GameState = {
   awaitingFinal3Eviction: false,
   f3Part1WinnerId: null,
   f3Part2WinnerId: null,
+  voteResults: null,
+  evictionSplashId: null,
   players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
@@ -483,6 +485,37 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Human HOH commits two nominees in a single action (multi-select flow).
+     * Replaces the two-step `selectNominee1` / `finalizeNominations` pattern
+     * when TvMultiSelectModal is used. Validates both IDs are eligible.
+     */
+    commitNominees(state, action: PayloadAction<string[]>) {
+      if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
+      const ids = action.payload;
+      if (ids.length !== 2 || ids[0] === ids[1]) return;
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      const eligible = alive.filter((p) => p.id !== state.hohId);
+      if (!eligible.some((p) => p.id === ids[0])) return;
+      if (!eligible.some((p) => p.id === ids[1])) return;
+
+      const p1 = state.players.find((p) => p.id === ids[0]);
+      const p2 = state.players.find((p) => p.id === ids[1]);
+      const hohPlayer = state.players.find((p) => p.id === state.hohId);
+      if (!p1 || !p2) return;
+
+      state.nomineeIds = [ids[0], ids[1]];
+      p1.status = 'nominated';
+      p2.status = 'nominated';
+      state.awaitingNominations = false;
+      state.pendingNominee1Id = null;
+      pushEvent(
+        state,
+        `${p1.name} and ${p2.name} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
+        'game',
+      );
+    },
+
+    /**
      * Human POV holder decides whether to use or not use the veto.
      * - `false`: the veto is not used; log the event and clear the flag.
      * - `true`: set `awaitingPovSaveTarget` so the player can pick who to save.
@@ -603,6 +636,22 @@ const gameSlice = createSlice({
       );
       pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
       state.phase = 'week_end';
+    },
+
+    /**
+     * Dismiss the vote results popup after the player has viewed it.
+     * Triggers the eviction splash if an evictee was determined.
+     */
+    dismissVoteResults(state) {
+      state.voteResults = null;
+    },
+
+    /**
+     * Dismiss the eviction splash animation after the player has viewed it.
+     * Clears the eviction splash ID.
+     */
+    dismissEvictionSplash(state) {
+      state.evictionSplashId = null;
     },
 
     /**
@@ -745,6 +794,8 @@ const gameSlice = createSlice({
       state.tiedNomineeIds = null;
       state.awaitingFinal3Eviction = false;
       state.votes = {};
+      state.voteResults = null;
+      state.evictionSplashId = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /** Reset game state with a fresh random roster (debug only). */
@@ -773,6 +824,8 @@ const gameSlice = createSlice({
         awaitingFinal3Eviction: false,
         f3Part1WinnerId: null,
         f3Part2WinnerId: null,
+        voteResults: null,
+        evictionSplashId: null,
         players: buildInitialPlayers(),
         tvFeed: [
           {
@@ -1260,6 +1313,9 @@ const gameSlice = createSlice({
             if (evicted) {
               evicted.status = evictedStatus(state);
               state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
+              // Store vote results for popup reveal, then trigger eviction splash
+              state.voteResults = { ...voteCounts };
+              state.evictionSplashId = evicted.id;
               state.votes = {};
               pushEvent(
                 state,
@@ -1290,6 +1346,9 @@ const gameSlice = createSlice({
               if (evicted) {
                 evicted.status = evictedStatus(state);
                 state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
+                // Store vote results for popup reveal, then trigger eviction splash
+                state.voteResults = { ...voteCounts };
+                state.evictionSplashId = evicted.id;
                 state.votes = {};
                 pushEvent(
                   state,
@@ -1327,10 +1386,13 @@ export const {
   setReplacementNominee,
   selectNominee1,
   finalizeNominations,
+  commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
   submitHumanVote,
   submitTieBreak,
+  dismissVoteResults,
+  dismissEvictionSplash,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizeGame,
