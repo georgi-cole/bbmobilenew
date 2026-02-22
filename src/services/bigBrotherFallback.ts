@@ -52,7 +52,7 @@ const SAFETY_PATTERNS: RegExp[] = [
   /\b(how (do|can|to)|instructions? (for|to)|tell me (how|to))\b.{0,40}\b(make|build|create|get)\b.{0,30}\b(weapon|bomb|drug|poison|explosive|meth|hack)\b/i,
   /\bself.?harm\b|\bcut myself\b|\bkill myself\b|\bend (my|it all)\b|\bsuicide\b/i,
   /\b(dox|doxx|leak|expose|reveal)\b.{0,30}\b(address|phone|number|info|personal|private|identity)\b/i,
-  /\b(illegal|break the law|steal|cheat the game|rig the vote)\b/i,
+  /\b(how (do|can|should|to)|instructions? (for|to)|tell me (how|to)|what(?:'s| is) (the )?best way to|show me how to)\b.{0,60}\b(cheat(?: the game)?|rig the vote|steal|break the law|do something illegal|illegally)\b/i,
 ];
 
 const REFUSAL_REPLIES: string[] = [

@@ -2,13 +2,16 @@
  * Client wrapper for the Big Brother AI responder endpoint.
  *
  * Resolution order:
- *  1. VITE_BB_AI_ENDPOINT or REACT_APP_BB_AI_ENDPOINT env var (full URL).
- *  2. Relative URL /api/ai/bigbrother — works in dev via the Vite proxy to localhost:4000.
+ *  1. VITE_BB_AI_ENDPOINT env var (full URL).
+ *  2. REACT_APP_BB_AI_ENDPOINT env var (full URL).
+ *  3. Relative URL /api/ai/bigbrother — works in dev via the Vite proxy to
+ *     localhost:4000 (see vite.config.ts). This path is always tried when no
+ *     explicit env var is set, so local dev without env vars still reaches the
+ *     backend server.
  *
- * If no explicit endpoint is configured, or if the remote fetch fails (network
- * error, timeout, non-OK status, or malformed JSON), the offline fallback in
- * bigBrotherFallback.ts is used and a console.warn is emitted with the error
- * details to aid debugging.
+ * If the remote fetch fails (network error, timeout, non-OK status, or
+ * malformed JSON), the offline fallback in bigBrotherFallback.ts is used and
+ * a console.warn is emitted with the error details to aid debugging.
  */
 
 import { generateOfflineBigBrotherReply } from './bigBrotherFallback';
@@ -16,10 +19,10 @@ import { generateOfflineBigBrotherReply } from './bigBrotherFallback';
 const FETCH_TIMEOUT_MS = 15_000;
 
 /**
- * Resolve the remote endpoint from env vars.
- * Returns null when neither env var is set, signalling offline-only mode.
+ * Resolve the remote endpoint from env vars, falling back to the relative
+ * Vite proxy path so that local dev without env vars still reaches the backend.
  */
-function resolveEndpoint(): string | null {
+function resolveEndpoint(): string {
   // Vite projects expose VITE_* on import.meta.env
   const vite = import.meta.env.VITE_BB_AI_ENDPOINT as string | undefined;
   if (vite) return vite;
@@ -28,7 +31,8 @@ function resolveEndpoint(): string | null {
   const cra = import.meta.env.REACT_APP_BB_AI_ENDPOINT as string | undefined;
   if (cra) return cra;
 
-  return null;
+  // Default: relative path proxied to localhost:4000 in dev (see vite.config.ts)
+  return '/api/ai/bigbrother';
 }
 
 const ENDPOINT = resolveEndpoint();
@@ -48,11 +52,6 @@ export interface BigBrotherResponse {
 export async function generateBigBrotherReply(
   payload: BigBrotherPayload,
 ): Promise<BigBrotherResponse> {
-  // No endpoint configured → use offline fallback immediately
-  if (!ENDPOINT) {
-    return generateOfflineBigBrotherReply(payload);
-  }
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
