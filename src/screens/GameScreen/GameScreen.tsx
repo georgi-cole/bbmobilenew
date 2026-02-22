@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
-  completeMinigame,
+  applyMinigameWinner,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -46,10 +46,10 @@ export default function GameScreen() {
   const [evictedOpen, setEvictedOpen] = useState(false);
 
   // ── Auto-start challenge on competition phase transitions ─────────────────
-  // NOTE: game.pendingMinigame (legacy TapRace session) is intentionally left
-  // active — its aiScores are reused in onDone to build the RawResult array
-  // for completeChallenge, keeping AI opponent scores consistent across both
-  // the challenge telemetry and the game-state advancement (completeMinigame).
+  // The challenge system (startChallenge / MinigameHost) is the sole owner of
+  // game selection for HOH and POV competitions. It picks a random game from
+  // the registry, pre-computes AI scores appropriate for that game's metric kind,
+  // and handles the rules modal → countdown → game → results flow.
   const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers]);
   useEffect(() => {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp';
@@ -157,19 +157,19 @@ export default function GameScreen() {
           game={pendingChallenge.game}
           gameOptions={{ seed: pendingChallenge.seed }}
           onDone={(rawValue) => {
-            // Build raw results for all challenge participants.
-            // AI scores are sourced from the pre-computed legacy TapRace session
-            // so both the challenge telemetry and game-state winner are consistent.
+            // Build raw results for all challenge participants using pre-computed
+            // AI scores (appropriate for the selected game's metric kind).
             const rawResults = pendingChallenge.participants.map((id) => ({
               playerId: id,
               rawValue:
                 id === humanPlayer?.id
                   ? rawValue
-                  : (game.pendingMinigame?.aiScores[id] ?? rawValue),
+                  : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
-            dispatch(completeChallenge(rawResults));
+            const winnerId = dispatch(completeChallenge(rawResults)) as string | null;
             // Advance game state: apply HOH/POV winner and transition phase.
-            dispatch(completeMinigame(rawValue));
+            // Fall back to first participant if winner determination fails.
+            dispatch(applyMinigameWinner(winnerId ?? pendingChallenge.participants[0]));
           }}
         />
       )}

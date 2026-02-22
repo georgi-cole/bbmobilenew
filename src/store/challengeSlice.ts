@@ -13,6 +13,45 @@ import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
 
+// ─── AI Score Simulation ──────────────────────────────────────────────────────
+
+/**
+ * Simulate a deterministic AI score appropriate for a given game's metric kind.
+ * Scores are calibrated to produce plausible human-level performance so that
+ * the challenge system's winner determination is meaningful.
+ */
+function simulateAIScore(game: GameRegistryEntry, seed: number): number {
+  const rng = mulberry32(seed >>> 0);
+  const { metricKind, timeLimitMs, scoringParams } = game;
+  switch (metricKind) {
+    case 'count': {
+      // Tap-like count scaled to time limit (75–90 taps per 10 s)
+      const scale = timeLimitMs > 0 ? timeLimitMs / 10000 : 1;
+      return Math.round(75 * scale + Math.floor(rng() * 16 * scale));
+    }
+    case 'time': {
+      // Lower-is-better time; scatter between targetMs and ~50% of maxMs
+      const targetMs = scoringParams?.targetMs ?? 1000;
+      const maxMs = scoringParams?.maxMs ?? (timeLimitMs > 0 ? timeLimitMs : 60000);
+      return Math.round(targetMs + rng() * (maxMs - targetMs) * 0.5);
+    }
+    case 'accuracy': {
+      // Accuracy percentage 60–100
+      return Math.round(60 + rng() * 40);
+    }
+    case 'endurance': {
+      // Time survived in seconds 10–60
+      return Math.round(10 + rng() * 50);
+    }
+    case 'hybrid':
+    case 'points':
+    default: {
+      // Generic points 0–100
+      return Math.round(rng() * 100);
+    }
+  }
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ChallengeRun {
@@ -51,6 +90,8 @@ export interface PendingChallenge {
   seed: number;
   participants: string[];
   phase: 'rules' | 'countdown' | 'playing' | 'done';
+  /** Pre-simulated deterministic scores for every non-human participant. */
+  aiScores: Record<string, number>;
 }
 
 const initialState: ChallengeState = {
@@ -148,6 +189,17 @@ export const startChallenge =
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, game.key);
 
+    // Pre-compute AI scores for all non-human participants.
+    const humanId = getState().game?.players?.find((p) => p.isUser)?.id;
+    const aiScores: Record<string, number> = {};
+    let aiSeed = challengeSeed;
+    for (const pid of participants) {
+      if (pid !== humanId) {
+        aiScores[pid] = simulateAIScore(game, aiSeed);
+        aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
+      }
+    }
+
     const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const pending: PendingChallenge = {
       id,
@@ -155,6 +207,7 @@ export const startChallenge =
       seed: challengeSeed,
       participants,
       phase: 'rules',
+      aiScores,
     };
 
     dispatch(setPendingChallenge(pending));
