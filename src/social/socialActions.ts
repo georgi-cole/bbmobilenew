@@ -11,6 +11,12 @@ export type ActionCategory = 'friendly' | 'strategic' | 'aggressive' | 'alliance
 export interface SocialActionDefinition {
   id: string;
   title: string;
+  /**
+   * UI metadata category for display and filtering purposes.
+   * Note: this field does NOT affect SocialPolicy outcome computation —
+   * the actual delta behaviour is driven by the id lists in
+   * `socialConfig.actionCategories.friendlyActions` / `aggressiveActions`.
+   */
   category: ActionCategory;
   /** Energy cost as a plain number or a cost-shape object. */
   baseCost: number | { energy?: number; info?: number };

@@ -2,7 +2,7 @@
 //
 // Validates:
 //  1. SOCIAL_ACTIONS contains expected entries with correct shape.
-//  2. normalizeCost / normalizeActionCosts handle numbers and object shapes.
+//  2. normalizeCost / normalizeActionCost handle numbers and object shapes.
 //  3. SocialEnergyBank.get / set / add read/write Redux state.
 //  4. getActionById returns correct definitions.
 //  5. getAvailableActions filters by current energy.
@@ -23,7 +23,7 @@ import socialReducer, {
   updateRelationship,
 } from '../../src/social/socialSlice';
 import { SOCIAL_ACTIONS } from '../../src/social/socialActions';
-import { normalizeCost, normalizeActionCosts } from '../../src/social/smExecNormalize';
+import { normalizeCost, normalizeActionCost } from '../../src/social/smExecNormalize';
 import {
   initEnergyBank,
   get as bankGet,
@@ -118,15 +118,15 @@ describe('normalizeCost', () => {
   });
 });
 
-describe('normalizeActionCosts', () => {
+describe('normalizeActionCost', () => {
   it('returns numeric baseCost unchanged', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'compliment')!;
-    expect(normalizeActionCosts(action)).toBe(1);
+    expect(normalizeActionCost(action)).toBe(1);
   });
 
   it('returns energy field for object baseCost', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'whisper')!;
-    expect(normalizeActionCosts(action)).toBe(1);
+    expect(normalizeActionCost(action)).toBe(1);
   });
 });
 
@@ -215,6 +215,12 @@ describe('socialSlice – new reducers', () => {
     expect(store.getState().social.relationships['p1']['p2'].affinity).toBeCloseTo(0.1);
   });
 
+  it('updateRelationship does not create an entry when delta is 0 and no tags', () => {
+    const store = makeStore();
+    store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 0 }));
+    expect(store.getState().social.relationships['p1']?.['p2']).toBeUndefined();
+  });
+
   it('updateRelationship accumulates affinity on existing entry', () => {
     const store = makeStore();
     store.dispatch(updateRelationship({ source: 'p1', target: 'p2', delta: 0.1 }));
@@ -295,7 +301,7 @@ describe('getAvailableActions', () => {
     // idle has baseCost 0, so it should still be available even with 0 energy
     const available = getAvailableActions('p1');
     for (const action of available) {
-      expect(normalizeActionCosts(action)).toBeLessThanOrEqual(0);
+      expect(normalizeActionCost(action)).toBeLessThanOrEqual(0);
     }
   });
 
@@ -306,7 +312,7 @@ describe('getAvailableActions', () => {
     // Only actions with cost ≤ 1 should appear
     const available = getAvailableActions('p1');
     for (const action of available) {
-      expect(normalizeActionCosts(action)).toBeLessThanOrEqual(1);
+      expect(normalizeActionCost(action)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -325,7 +331,7 @@ describe('getAvailableActions', () => {
     };
     const available = getAvailableActions('p1', snapshot);
     for (const action of available) {
-      expect(normalizeActionCosts(action)).toBeLessThanOrEqual(2);
+      expect(normalizeActionCost(action)).toBeLessThanOrEqual(2);
     }
   });
 });
@@ -379,12 +385,13 @@ describe('executeAction – happy path', () => {
   it('updates relationship affinity in Redux state', () => {
     const store = makeStore();
     initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
-    executeAction('p1', 'p2', 'compliment');
+    // Use 'ally' which produces a non-zero delta via socialConfig.friendlyActions
+    executeAction('p1', 'p2', 'ally');
     const rel = store.getState().social.relationships['p1']?.['p2'];
     expect(rel).toBeDefined();
-    expect(typeof rel!.affinity).toBe('number');
+    expect(rel!.affinity).toBe(socialConfig.affinityDeltas.friendlySuccess);
   });
 
   it.todo(

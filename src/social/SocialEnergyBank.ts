@@ -39,14 +39,20 @@ export function initEnergyBank(store: StoreAPI): void {
 
 /** Return the current energy for playerId (0 if the player has no entry). */
 export function get(playerId: string): number {
-  if (!_store) return 0;
+  if (!_store) {
+    console.warn('SocialEnergyBank: get() called before initEnergyBank()');
+    return 0;
+  }
   const state = _store.getState() as StateForBank;
   return state.social.energyBank[playerId] ?? 0;
 }
 
 /** Set the energy for playerId to an exact value. */
 export function set(playerId: string, value: number): void {
-  if (!_store) return;
+  if (!_store) {
+    console.warn('SocialEnergyBank: set() called before initEnergyBank()');
+    return;
+  }
   _store.dispatch(setEnergyBankEntry({ playerId, value }));
 }
 
@@ -56,7 +62,10 @@ export function set(playerId: string, value: number): void {
  * Returns the new energy value.
  */
 export function add(playerId: string, delta: number): number {
-  if (!_store) return 0;
+  if (!_store) {
+    console.warn('SocialEnergyBank: add() called before initEnergyBank()');
+    return 0;
+  }
   const current = get(playerId);
   const value = Math.max(0, current + delta);
   _store.dispatch(setEnergyBankEntry({ playerId, value }));

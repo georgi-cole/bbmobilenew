@@ -59,6 +59,10 @@ const socialSlice = createSlice({
           rel.tags = Array.from(new Set([...rel.tags, ...tags]));
         }
       } else {
+        // Avoid creating zero-information relationships (no affinity change, no tags).
+        if (delta === 0 && (!tags || tags.length === 0)) {
+          return;
+        }
         state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
       }
     },

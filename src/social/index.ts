@@ -42,7 +42,7 @@ export {
 } from './SocialInfluence';
 export type { ActionCategory, SocialActionDefinition } from './socialActions';
 export { SOCIAL_ACTIONS } from './socialActions';
-export { normalizeCost, normalizeActionCosts } from './smExecNormalize';
+export { normalizeCost, normalizeActionCost } from './smExecNormalize';
 export {
   initEnergyBank,
   get as energyBankGet,

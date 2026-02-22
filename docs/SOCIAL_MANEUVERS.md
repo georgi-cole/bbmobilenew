@@ -1,6 +1,6 @@
 # Social Maneuvers
 
-The Social Maneuvers subsystem provides the core data and APIs for executing social actions during a Big-Brother phase, deducting player energy, computing affinity outcomes, and persisting everything to Redux state.
+The Social Maneuvers subsystem provides the core data and APIs for executing social actions during a Big Brother phase, deducting player energy, computing affinity outcomes, and persisting everything to Redux state.
 
 ## Files
 
@@ -71,7 +71,7 @@ interface ExecuteActionResult {
 
 - **Unknown action id** → `{ success: false, delta: 0, newEnergy: <current> }`
 - **Insufficient energy** → `{ success: false, delta: 0, newEnergy: <current> }` (no state mutation)
-- **Store not initialised** → dispatches are skipped; energy operations return 0
+- **Store not initialised** → `{ success: false, delta: 0, newEnergy: 0 }` immediately; no state mutations occur
 
 ---
 
@@ -102,7 +102,7 @@ The relevant fields in `state.social` (from `SocialState`):
 {
   energyBank:   Record<string, number>;        // playerId → remaining energy
   relationships: RelationshipsMap;             // source → target → { affinity, tags }
-  sessionLogs:  unknown[];                     // append-only action log
+  sessionLogs:  SocialActionLogEntry[];        // append-only action log
 }
 ```
 
@@ -112,7 +112,7 @@ The relevant fields in `state.social` (from `SocialState`):
 import { selectEnergyBank, selectSessionLogs } from './social/socialSlice';
 
 const energy = useAppSelector(selectEnergyBank);    // Record<string, number>
-const logs   = useAppSelector(selectSessionLogs);   // unknown[]
+const logs   = useAppSelector(selectSessionLogs);   // SocialActionLogEntry[]
 ```
 
 ---
@@ -126,6 +126,12 @@ When the dev server is running (`npm run dev`) the store is exposed as `window.s
 
 // Look up an action
 window.__socialManeuvers.getActionById('compliment');
+
+// Check what actions a player can currently afford
+window.__socialManeuvers.getAvailableActions('player1');
+
+// Compute cost for a specific action
+window.__socialManeuvers.computeActionCost('player1', window.__socialManeuvers.getActionById('ally'), 'player2');
 
 // Execute a social action
 window.__socialManeuvers.executeAction('player1', 'player2', 'compliment');

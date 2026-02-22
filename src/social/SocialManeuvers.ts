@@ -8,12 +8,12 @@
  *   computeActionCost(actorId, action, targetId, state?)  → number
  *   executeAction(actorId, targetId, actionId, options?)  → ExecuteActionResult
  *
- * Debug: window.__socialManeuvers exposes { getActionById, executeAction } in browsers.
+ * Debug: window.__socialManeuvers exposes the full public API in browsers.
  */
 
 import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
-import { normalizeActionCosts } from './smExecNormalize';
+import { normalizeActionCost } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta } from './SocialPolicy';
 import { recordSocialAction, updateRelationship } from './socialSlice';
@@ -26,6 +26,11 @@ interface StoreAPI {
   getState: () => unknown;
 }
 
+/**
+ * Partial SocialState snapshot accepted by getAvailableActions and
+ * computeActionCost. Only the fields actively read by those functions are
+ * required — lastReport and influenceWeights are not needed here.
+ */
 type PartialSocialState = Pick<SocialState, 'energyBank' | 'relationships' | 'sessionLogs'>;
 
 interface StateForManeuvers {
@@ -56,6 +61,11 @@ export function getActionById(id: string): SocialActionDefinition | undefined {
  * Return all actions the actor can currently afford.
  * Reads energy from the provided state snapshot, or falls back to the Redux
  * store when no state is supplied.
+ *
+ * NOTE: Uses the base normalized cost. When `computeActionCost` is extended to
+ * apply trait or target-based modifiers, update this filter to use the same
+ * cost logic (likely via `computeActionCost`) so availability checks remain
+ * consistent with execution-time costs.
  */
 export function getAvailableActions(
   actorId: string,
@@ -67,7 +77,7 @@ export function getAvailableActions(
   } else {
     energy = SocialEnergyBank.get(actorId);
   }
-  return SOCIAL_ACTIONS.filter((a) => normalizeActionCosts(a) <= energy);
+  return SOCIAL_ACTIONS.filter((a) => normalizeActionCost(a) <= energy);
 }
 
 /**
@@ -80,7 +90,7 @@ export function computeActionCost(
   _targetId: string,
   _state?: StateForManeuvers,
 ): number {
-  return normalizeActionCosts(action);
+  return normalizeActionCost(action);
 }
 
 // ── Execution ─────────────────────────────────────────────────────────────
@@ -177,6 +187,8 @@ export const SocialManeuvers = {
 if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>)['__socialManeuvers'] = {
     getActionById,
+    getAvailableActions,
+    computeActionCost,
     executeAction,
   };
 }

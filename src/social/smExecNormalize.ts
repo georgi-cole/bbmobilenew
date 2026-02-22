@@ -4,8 +4,8 @@
  * Ported from BBMobile's sm-exec-normalize.js.
  *
  * Public API:
- *   normalizeCost(value)         → number (energy units)
- *   normalizeActionCosts(action) → number (energy units for the action)
+ *   normalizeCost(value)        → number (energy units)
+ *   normalizeActionCost(action) → number (energy units for the action)
  */
 
 import type { SocialActionDefinition } from './socialActions';
@@ -41,6 +41,6 @@ export function normalizeCost(
 /**
  * Return the normalised energy cost for a social action definition.
  */
-export function normalizeActionCosts(action: SocialActionDefinition): number {
+export function normalizeActionCost(action: SocialActionDefinition): number {
   return normalizeCost(action.baseCost);
 }
