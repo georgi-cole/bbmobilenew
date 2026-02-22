@@ -1,0 +1,12 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}

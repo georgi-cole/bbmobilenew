@@ -1,39 +1,29 @@
 import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
-import { selectAlivePlayers, selectEvictedPlayers } from '../../store/gameSlice';
-import PlayerAvatar from '../../components/ui/PlayerAvatar';
+import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
 import HouseguestProfile from '../../components/HouseguestProfile/HouseguestProfile';
+import { resolveAvatar } from '../../utils/avatar';
 import type { Player } from '../../types';
 import './Houseguests.css';
 
 export default function Houseguests() {
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const evictedPlayers = useAppSelector(selectEvictedPlayers);
+  const players = useAppSelector((s) => s.game.players);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
+  const houseguests = players.map((p) => ({
+    id: p.id,
+    name: p.name,
+    avatarUrl: resolveAvatar(p),
+    isEvicted: p.status === 'evicted' || p.status === 'jury',
+    isYou: p.isUser,
+    onClick: () => setSelectedPlayer(p),
+  }));
 
   return (
     <div className="placeholder-screen houseguests-screen">
       <h1 className="placeholder-screen__title">👥 Houseguests</h1>
 
-      <section>
-        <h2 className="placeholder-screen__section">Active ({alivePlayers.length})</h2>
-        <div className="houseguests-screen__grid">
-          {alivePlayers.map((p) => (
-            <PlayerAvatar key={p.id} player={p} size="lg" onSelect={setSelectedPlayer} />
-          ))}
-        </div>
-      </section>
-
-      {evictedPlayers.length > 0 && (
-        <section>
-          <h2 className="placeholder-screen__section">Evicted / Jury ({evictedPlayers.length})</h2>
-          <div className="houseguests-screen__grid houseguests-screen__grid--out">
-            {evictedPlayers.map((p) => (
-              <PlayerAvatar key={p.id} player={p} size="md" onSelect={setSelectedPlayer} />
-            ))}
-          </div>
-        </section>
-      )}
+      <HouseguestGrid houseguests={houseguests} />
 
       {selectedPlayer && (
         <HouseguestProfile
