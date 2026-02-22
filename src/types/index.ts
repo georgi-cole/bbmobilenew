@@ -199,7 +199,21 @@ export interface GameState {
    * Set this field in game logic when a twist is introduced.
    */
   twistActive?: boolean;
-  /** Social subsystem state (always-on; initialised from SOCIAL_INITIAL_STATE). */
+  /**
+   * When set, the VoteResultsPopup is shown with the vote tally before
+   * advancing. Maps nominee ID → number of votes received.
+   * Cleared by `dismissVoteResults`.
+   */
+  voteResults?: Record<string, number> | null;
+  /**
+   * When set, the EvictionSplash animation is shown for this player ID
+   * before the game advances. Cleared by `dismissEvictionSplash`.
+   */
+  evictionSplashId?: string | null;
+  /**
+   * Social module state subtree. Managed by the social module; optional so
+   * that tests and legacy code that don't set it up continue to work.
+   */
   social?: SocialState;
   /** Optional weekly config overrides. */
   cfg?: {

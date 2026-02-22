@@ -7,26 +7,31 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
-  selectNominee1,
-  finalizeNominations,
+  commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
   setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
-} from '../../store/gameSlice';
-import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
-import TvZone from '../../components/ui/TvZone';
-import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
-import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
-import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal';
-import TapRace from '../../components/TapRace/TapRace';
-import MinigameHost from '../../components/MinigameHost/MinigameHost';
-import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
-import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
-import { resolveAvatar } from '../../utils/avatar';
-import type { Player } from '../../types';
-import './GameScreen.css';
+  dismissVoteResults,
+  dismissEvictionSplash,
+  advance,
+} from '../../store/gameSlice'
+import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
+import TvZone from '../../components/ui/TvZone'
+import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
+import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
+import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
+import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
+import TapRace from '../../components/TapRace/TapRace'
+import MinigameHost from '../../components/MinigameHost/MinigameHost'
+import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
+import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup'
+import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
+import { resolveAvatar } from '../../utils/avatar'
+import type { Player } from '../../types'
+import './GameScreen.css'
 
 /**
  * GameScreen — main gameplay view.
@@ -128,24 +133,18 @@ export default function GameScreen() {
     (p) => p.id !== game.hohId && p.id !== game.povWinnerId && !game.nomineeIds.includes(p.id)
   )
 
-  // ── Human HOH nomination flow (step 1 & step 2) ──────────────────────────
-  // Shown when the human HOH must pick their two nominees.
-  const showNominee1Modal =
+  // ── Human HOH nomination flow (single multi-select modal) ────────────────
+  // Shown when the human HOH must pick their two nominees simultaneously.
+  const showNominationsModal =
     game.phase === 'nomination_results' &&
     Boolean(game.awaitingNominations) &&
-    !game.pendingNominee1Id &&
-    humanIsHoH
-  const showNominee2Modal =
-    game.phase === 'nomination_results' &&
-    Boolean(game.awaitingNominations) &&
-    Boolean(game.pendingNominee1Id) &&
     humanIsHoH
 
-  const nominee1Options = alivePlayers.filter(
-    (p) => p.id !== game.hohId
-  )
-  const nominee2Options = alivePlayers.filter(
-    (p) => p.id !== game.hohId && p.id !== game.pendingNominee1Id
+  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
+
+  const handleCommitNominees = useCallback(
+    (ids: string[]) => dispatch(commitNominees(ids)),
+    [dispatch]
   )
 
   // ── Human POV holder decision (use veto or not) ──────────────────────────
@@ -190,6 +189,63 @@ export default function GameScreen() {
 
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
+  // ── Vote Results Popup ────────────────────────────────────────────────────
+  const showVoteResults = Boolean(game.voteResults) && !game.awaitingTieBreak
+  const voteResultsTallies = showVoteResults
+    ? game.players
+        .filter((p) => game.voteResults && p.id in game.voteResults)
+        .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
+    : []
+  // After dismissing vote results: show the eviction splash if one is pending,
+  // otherwise advance the game phase directly.
+  const handleVoteResultsDone = useCallback(() => {
+    dispatch(dismissVoteResults())
+    // If no eviction splash is queued, advance the phase now.
+    // (If evictionSplashId is set, EvictionSplash's onDone will advance instead.)
+    if (!game.evictionSplashId) {
+      dispatch(advance())
+    }
+  }, [dispatch, game.evictionSplashId])
+
+  // ── Eviction Splash ───────────────────────────────────────────────────────
+  const evictionSplashPlayer = game.evictionSplashId
+    ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
+    : null
+  const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
+  // After the eviction splash completes, dismiss it and advance the phase.
+  const handleEvictionSplashDone = useCallback(() => {
+    dispatch(dismissEvictionSplash())
+    dispatch(advance())
+  }, [dispatch])
+
+  // Determine evictee for vote results.
+  // Prefer the actual eviction decision (evictionSplashId) and fall back to
+  // vote tallies, returning null if the tallies are tied.
+  const voteResultsEvictee = useMemo(() => {
+    if (!game.voteResults) return null
+
+    // If we have an explicit eviction decision, use that as the source of truth.
+    if (game.evictionSplashId) {
+      return game.players.find((p) => p.id === game.evictionSplashId) ?? null
+    }
+
+    let maxVotes = -1
+    let evicteeIds: string[] = []
+    for (const [id, count] of Object.entries(game.voteResults)) {
+      if (count > maxVotes) {
+        maxVotes = count
+        evicteeIds = [id]
+      } else if (count === maxVotes) {
+        evicteeIds.push(id)
+      }
+    }
+
+    // If there's a tie for max votes, we can't determine a single evictee from tallies alone.
+    if (evicteeIds.length !== 1) return null
+
+    return game.players.find((p) => p.id === evicteeIds[0]) ?? null
+  }, [game.voteResults, game.evictionSplashId, game.players])
+
   // ── TapRace minigame ──────────────────────────────────────────────────────
   // Shown when a HOH or POV competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
@@ -204,18 +260,21 @@ export default function GameScreen() {
   const showTapRace = !showMinigameHost && humanIsParticipant
 
   // Hide Continue button while waiting for any human-only decision modal.
+  // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
+  // be advanced under those full-screen overlays.
   // Keep this in sync with the conditions that control human decision modals above.
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
-    showNominee1Modal ||
-    showNominee2Modal ||
+    showNominationsModal ||
     showPovDecisionModal ||
     showPovSaveModal ||
     showFinal4Modal ||
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
+    showVoteResults ||
+    showEvictionSplash ||
     showMinigameHost ||
     showTapRace
 
@@ -263,19 +322,6 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Human HOH nominee 2 picker ───────────────────────────────────── */}
-      {showNominee2Modal && (() => {
-        const nominee1 = game.players.find((p) => p.id === game.pendingNominee1Id)
-        return (
-          <TvDecisionModal
-            title="Nomination Ceremony — Pick Nominee 2"
-            subtitle={`${humanPlayer?.name}, choose your second nominee. (Nominee 1: ${nominee1?.name ?? '?'})`}
-            options={nominee2Options}
-            onSelect={(id) => dispatch(finalizeNominations(id))}
-          />
-        )
-      })()}
-
       {/* ── Human POV holder Yes/No decision ────────────────────────────── */}
       {showPovDecisionModal && (
         <TvBinaryDecisionModal
@@ -295,6 +341,7 @@ export default function GameScreen() {
           subtitle={`${humanPlayer?.name}, choose which nominee to save with the veto.`}
           options={povSaveOptions}
           onSelect={(id) => dispatch(submitPovSaveTarget(id))}
+          stingerMessage="VETO USED"
         />
       )}
 
@@ -305,6 +352,7 @@ export default function GameScreen() {
           subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
           options={replacementOptions}
           onSelect={(id) => dispatch(setReplacementNominee(id))}
+          stingerMessage="NOMINATIONS SET"
         />
       )}
 
@@ -316,6 +364,7 @@ export default function GameScreen() {
           options={liveVoteOptions}
           onSelect={(id) => dispatch(submitHumanVote(id))}
           danger
+          stingerMessage="VOTE RECORDED"
         />
       )}
 
@@ -327,6 +376,7 @@ export default function GameScreen() {
           options={tieBreakOptions}
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
+          stingerMessage="TIE BREAKER CAST"
         />
       )}
 
@@ -338,6 +388,7 @@ export default function GameScreen() {
           options={final4Options}
           onSelect={(id) => dispatch(finalizeFinal4Eviction(id))}
           danger
+          stingerMessage="VOTE RECORDED"
         />
       )}
 
@@ -349,6 +400,7 @@ export default function GameScreen() {
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
+          stingerMessage="VOTE RECORDED"
         />
       )}
 
@@ -397,6 +449,23 @@ export default function GameScreen() {
       {/* ── TapRace minigame overlay ─────────────────────────────────────── */}
       {showTapRace && pendingMinigame && (
         <TapRace session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── Vote Results Popup ───────────────────────────────────────────── */}
+      {showVoteResults && (
+        <VoteResultsPopup
+          tallies={voteResultsTallies}
+          evictee={voteResultsEvictee}
+          onDone={handleVoteResultsDone}
+        />
+      )}
+
+      {/* ── Eviction Splash (colour → B&W cinematic) ────────────────────── */}
+      {showEvictionSplash && evictionSplashPlayer && (
+        <EvictionSplash
+          evictee={evictionSplashPlayer}
+          onDone={handleEvictionSplashDone}
+        />
       )}
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}

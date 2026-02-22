@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import TvStingerOverlay from '../TvStingerOverlay/TvStingerOverlay';
 import './TvDecisionModal.css';
 
@@ -23,39 +23,9 @@ interface Props {
   stingerMessage?: string;
 }
 
-/** Small avatar image with emoji fallback for use inside decision options. */
-function OptionAvatar({ player }: { player: Player }) {
-  const [showEmoji, setShowEmoji] = useState(false);
-
-  function handleError(e: React.SyntheticEvent<HTMLImageElement>) {
-    const img = e.currentTarget;
-    img.onerror = null; // mute native handler to prevent double-firing
-    const dicebear = getDicebear(player.name);
-    if (img.src !== dicebear) {
-      // Step 2: try Dicebear pixel-art fallback
-      img.src = dicebear;
-      img.onerror = () => setShowEmoji(true); // Step 3: emoji if Dicebear also fails
-    } else {
-      setShowEmoji(true);
-    }
-  }
-
-  if (showEmoji) {
-    return (
-      <span className="tv-decision-modal__option-avatar" aria-hidden="true">
-        {player.avatar}
-      </span>
-    );
-  }
-  return (
-    <img
-      className="tv-decision-modal__option-avatar tv-decision-modal__option-avatar--img"
-      src={resolveAvatar(player)}
-      alt=""
-      onError={handleError}
-      aria-hidden="true"
-    />
-  );
+/** Avatar tile for use inside decision option rows. Uses md size to show photo clearly. */
+function OptionAvatar({ player, selected }: { player: Player; selected: boolean }) {
+  return <PlayerAvatar player={player} selected={selected} size="md" />;
 }
 
 /**
@@ -136,7 +106,7 @@ export default function TvDecisionModal({
                     aria-pressed={isSelected}
                     type="button"
                   >
-                    <OptionAvatar player={player} />
+                    <OptionAvatar player={player} selected={isSelected} />
                     <span className="tv-decision-modal__option-name">{player.name}</span>
                     <span className="tv-decision-modal__option-tag">{player.status}</span>
                   </button>
