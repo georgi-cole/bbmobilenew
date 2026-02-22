@@ -2,7 +2,7 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
-import { simulateTapRaceAI, DEFAULT_TAPRACE_OPTIONS } from './minigame';
+import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
 
@@ -192,33 +192,6 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
 }
 
 /**
- * Build a pending-minigame session with pre-simulated AI scores.
- * Each AI player gets a deterministic score derived from a per-player seed.
- */
-function buildMinigameSession(
-  state: GameState,
-  participants: Player[],
-): MinigameSession {
-  const aiScores: Record<string, number> = {};
-  let aiSeed = state.seed;
-  const timeLimit = DEFAULT_TAPRACE_OPTIONS.timeLimit;
-  participants.forEach((p) => {
-    if (!p.isUser) {
-      aiScores[p.id] = simulateTapRaceAI(aiSeed, 'HARD', timeLimit);
-      // Advance seed for each AI player so scores are independent
-      aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
-    }
-  });
-  return {
-    key: 'TapRace',
-    participants: participants.map((p) => p.id),
-    seed: state.seed,
-    options: { ...DEFAULT_TAPRACE_OPTIONS },
-    aiScores,
-  };
-}
-
-/**
  * Pick the winner from a set of participants and their scores.
  * Returns the participant ID with the highest score.
  *
@@ -387,6 +360,47 @@ const gameSlice = createSlice({
     skipMinigame(state) {
       state.pendingMinigame = null;
       pushEvent(state, `[DEBUG] Minigame skipped — winner will be picked randomly. 🔧`, 'game');
+    },
+
+    /**
+     * Apply a minigame winner determined by the challenge flow (MinigameHost).
+     * Advances the phase (hoh_comp → hoh_results, pov_comp → pov_results) and
+     * applies the appropriate winner effects without relying on pendingMinigame.
+     */
+    applyMinigameWinner(state, action: PayloadAction<string>) {
+      const winnerId = action.payload;
+      const alive = state.players.filter(
+        (p) => p.status !== 'evicted' && p.status !== 'jury',
+      );
+      if (state.phase === 'hoh_comp') {
+        applyHohWinner(state, winnerId);
+        state.phase = 'hoh_results';
+      } else if (state.phase === 'pov_comp') {
+        state.phase = applyPovWinner(state, winnerId, alive);
+      }
+    },
+
+    /**
+     * Record per-game personal-record scores for all participants after a
+     * challenge completes.  Only updates a player's PR if the new score beats
+     * their previous best.  `lowerIsBetter` controls comparison direction.
+     */
+    updateGamePRs(
+      state,
+      action: PayloadAction<{ gameKey: string; scores: Record<string, number>; lowerIsBetter?: boolean }>,
+    ) {
+      const { gameKey, scores, lowerIsBetter = false } = action.payload;
+      for (const [id, score] of Object.entries(scores)) {
+        const player = state.players.find((p) => p.id === id);
+        if (!player) continue;
+        if (!player.stats) player.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+        if (!player.stats.gamePRs) player.stats.gamePRs = {};
+        const prev = player.stats.gamePRs[gameKey];
+        const isBetter = prev === undefined || (lowerIsBetter ? score < prev : score > prev);
+        if (isBetter) {
+          player.stats.gamePRs[gameKey] = score;
+        }
+      }
     },
 
     /**
@@ -1061,10 +1075,6 @@ const gameSlice = createSlice({
         }
         case 'hoh_comp': {
           pushEvent(state, `The Head of Household competition has begun! 🏆 Who will win power this week?`, 'game');
-          // If the human player is still in the game, launch TapRace.
-          if (alive.some((p) => p.isUser)) {
-            state.pendingMinigame = buildMinigameSession(state, alive);
-          }
           break;
         }
         case 'hoh_results': {
@@ -1115,10 +1125,6 @@ const gameSlice = createSlice({
         }
         case 'pov_comp': {
           pushEvent(state, `The Power of Veto competition is underway! 🎭`, 'game');
-          // If the human player is still in the game, launch TapRace.
-          if (alive.some((p) => p.isUser)) {
-            state.pendingMinigame = buildMinigameSession(state, alive);
-          }
           break;
         }
         case 'pov_results': {
@@ -1315,6 +1321,8 @@ export const {
   launchMinigame,
   completeMinigame,
   skipMinigame,
+  applyMinigameWinner,
+  updateGamePRs,
   advance,
   setReplacementNominee,
   selectNominee1,

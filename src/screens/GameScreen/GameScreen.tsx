@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
-  completeMinigame,
+  applyMinigameWinner,
+  updateGamePRs,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
@@ -13,22 +14,19 @@ import {
   setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
-} from '../../store/gameSlice'
-import {
-  startChallenge,
-  selectPendingChallenge,
-  completeChallenge,
-} from '../../store/challengeSlice'
-import TvZone from '../../components/ui/TvZone'
-import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
-import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
-import TapRace from '../../components/TapRace/TapRace'
-import MinigameHost from '../../components/MinigameHost/MinigameHost'
-import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
-import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
-import { resolveAvatar } from '../../utils/avatar'
-import type { Player } from '../../types'
-import './GameScreen.css'
+} from '../../store/gameSlice';
+import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
+import TvZone from '../../components/ui/TvZone';
+import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
+import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
+import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal';
+import TapRace from '../../components/TapRace/TapRace';
+import MinigameHost from '../../components/MinigameHost/MinigameHost';
+import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
+import { resolveAvatar } from '../../utils/avatar';
+import type { Player } from '../../types';
+import './GameScreen.css';
 
 /**
  * GameScreen — main gameplay view.
@@ -55,11 +53,11 @@ export default function GameScreen() {
   const pendingChallenge = useAppSelector(selectPendingChallenge)
 
   // ── Auto-start challenge on competition phase transitions ─────────────────
-  // NOTE: game.pendingMinigame (legacy TapRace session) is intentionally left
-  // active — its aiScores are reused in onDone to build the RawResult array
-  // for completeChallenge, keeping AI opponent scores consistent across both
-  // the challenge telemetry and the game-state advancement (completeMinigame).
-  const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers])
+  // The challenge system (startChallenge / MinigameHost) is the sole owner of
+  // game selection for HOH and POV competitions. It picks a random game from
+  // the registry, pre-computes AI scores appropriate for that game's metric kind,
+  // and handles the rules modal → countdown → game → results flow.
+  const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers]);
   useEffect(() => {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
     if (isCompPhase && !pendingChallenge) {
@@ -298,20 +296,39 @@ export default function GameScreen() {
         <MinigameHost
           game={pendingChallenge.game}
           gameOptions={{ seed: pendingChallenge.seed }}
+          participants={pendingChallenge.participants.map((id): MinigameParticipant => {
+            const player = game.players.find((p) => p.id === id);
+            const aiScore = pendingChallenge.aiScores[id] ?? 0;
+            return {
+              id,
+              name: player?.name ?? id,
+              isHuman: !!player?.isUser,
+              precomputedScore: aiScore,
+              previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
+            };
+          })}
           onDone={(rawValue) => {
-            // Build raw results for all challenge participants.
-            // AI scores are sourced from the pre-computed legacy TapRace session
-            // so both the challenge telemetry and game-state winner are consistent.
+            // Build raw results for all challenge participants using pre-computed
+            // AI scores (appropriate for the selected game's metric kind).
             const rawResults = pendingChallenge.participants.map((id) => ({
               playerId: id,
               rawValue:
                 id === humanPlayer?.id
                   ? rawValue
-                  : (game.pendingMinigame?.aiScores[id] ?? rawValue),
-            }))
-            dispatch(completeChallenge(rawResults))
+                  : (pendingChallenge.aiScores[id] ?? rawValue),
+            }));
+            const winnerId = dispatch(completeChallenge(rawResults)) as string | null;
+            // Record per-game personal records for all participants.
+            dispatch(updateGamePRs({
+              gameKey: pendingChallenge.game.key,
+              scores: Object.fromEntries(
+                rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
+              ),
+              lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
+            }));
             // Advance game state: apply HOH/POV winner and transition phase.
-            dispatch(completeMinigame(rawValue))
+            // Fall back to first participant if winner determination fails.
+            dispatch(applyMinigameWinner(winnerId ?? pendingChallenge.participants[0]));
           }}
         />
       )}

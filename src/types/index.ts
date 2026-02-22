@@ -26,6 +26,8 @@ export interface Player {
     timesNominated: number;
     /** Personal-record tap count for TapRace competitions. */
     tapRacePR?: number;
+    /** Per-game personal-record scores keyed by game key (raw rounded score reported by the game). */
+    gamePRs?: Record<string, number>;
   };
   /** Set to 1 for the winner, 2 for runner-up after finale. */
   finalRank?: number;
