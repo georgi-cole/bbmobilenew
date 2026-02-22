@@ -60,7 +60,29 @@ src/
 ### Adding a new game event type
 
 1. Extend the `TvEvent.type` union in `src/types/index.ts`
-2. Add an emoji mapping in `TvZone.tsx` and a border-left colour in `TvZone.css`
+2. Add an emoji mapping in `TVLog.tsx` (`TYPE_ICONS`) and a border-left colour in `TVLog.css`
+3. Add teaser/full template strings to `src/data/tv-log-templates.json`
+
+### TVLog component
+
+`src/components/TVLog/TVLog.tsx` is the scrollable event-log strip rendered
+below the main TV viewport in `TvZone`.
+
+**Props**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `entries` | `TvEvent[]` | — | Full list of TV events, newest first |
+| `mainTVMessage` | `string?` | `undefined` | Text shown in the TV viewport; the first log entry is suppressed when it matches, preventing a duplicate row |
+| `maxVisible` | `number?` | `3` | Number of rows visible before the log scrolls |
+
+**Teaser truncation** — long event texts are clipped to 60 characters in the
+collapsed state.  Click/tap any row to toggle the full text.
+
+**Message templates** — `src/data/tv-log-templates.json` contains `teaser` and
+`full` template strings for each event type in a Big-Brother tone.  The
+`getTemplate(type)` utility in `src/utils/tvLogTemplates.ts` returns the right
+pair.  The `tease(text, maxLen?)` function handles plain-text truncation.
 
 ---
 
