@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -312,13 +312,13 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* ── Human HOH nominee 1 picker ───────────────────────────────────── */}
-      {showNominee1Modal && (
-        <TvDecisionModal
-          title="Nomination Ceremony — Pick Nominee 1"
-          subtitle={`${humanPlayer?.name}, choose your first nominee for eviction.`}
-          options={nominee1Options}
-          onSelect={(id) => dispatch(selectNominee1(id))}
+      {/* ── Human HOH nomination modal (single multi-select step) ──────── */}
+      {showNominationsModal && (
+        <TvMultiSelectModal
+          title="Nomination Ceremony"
+          subtitle={`${humanPlayer?.name}, choose two houseguests to nominate for eviction.`}
+          options={nomineeOptions}
+          onConfirm={handleCommitNominees}
         />
       )}
 
