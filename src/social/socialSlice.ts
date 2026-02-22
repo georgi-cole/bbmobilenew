@@ -11,9 +11,7 @@ const socialSlice = createSlice({
       state.energyBank = action.payload.budgets;
     },
     /** Signals the engine has finished a phase; report is written via setLastReport. */
-    engineComplete(_state, _action: PayloadAction<{ report: SocialPhaseReport }>) {
-      // intentionally empty – report written atomically via setLastReport
-    },
+    engineComplete() {},
     setLastReport(state, action: PayloadAction<SocialPhaseReport>) {
       state.lastReport = action.payload;
     },

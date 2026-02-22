@@ -109,7 +109,7 @@ function endPhase(phaseName: string): void {
   _activePhase = null;
   _budgets.clear();
 
-  _store.dispatch(engineComplete({ report }));
+  _store.dispatch(engineComplete());
   _store.dispatch(setLastReport(report));
 }
 
