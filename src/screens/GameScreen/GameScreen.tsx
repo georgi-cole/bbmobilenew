@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addTvEvent,
-  advance,
   completeMinigame,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
@@ -16,6 +15,7 @@ import PlayerAvatar from '../../components/ui/PlayerAvatar';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
