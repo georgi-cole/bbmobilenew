@@ -105,7 +105,7 @@ export default function TvMultiSelectModal({
                     aria-pressed={isSelected}
                     type="button"
                   >
-                    <PlayerAvatar player={player} selected={isSelected} size="sm" />
+                    <PlayerAvatar player={player} selected={isSelected} size="md" />
                     <span className="tv-ms-modal__option-name">{player.name}</span>
                     <span className="tv-ms-modal__option-tag">{player.status}</span>
                     {isSelected && (

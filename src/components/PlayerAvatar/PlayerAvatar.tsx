@@ -62,7 +62,7 @@ export default function PlayerAvatar({
     <img
       className={`pa__img${loaded ? ' pa__img--loaded' : ''}`}
       src={avatarSrc}
-      alt={player.name}
+      alt=""
       onError={handleError}
       onLoad={() => setLoaded(true)}
       aria-hidden="true"

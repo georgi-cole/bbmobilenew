@@ -196,19 +196,33 @@ export default function GameScreen() {
     dispatch(advance())
   }, [dispatch])
 
-  // Determine evictee for vote results (player with highest votes)
+  // Determine evictee for vote results.
+  // Prefer the actual eviction decision (evictionSplashId) and fall back to
+  // vote tallies, returning null if the tallies are tied.
   const voteResultsEvictee = useMemo(() => {
     if (!game.voteResults) return null
+
+    // If we have an explicit eviction decision, use that as the source of truth.
+    if (game.evictionSplashId) {
+      return game.players.find((p) => p.id === game.evictionSplashId) ?? null
+    }
+
     let maxVotes = -1
-    let evicteeId: string | null = null
+    let evicteeIds: string[] = []
     for (const [id, count] of Object.entries(game.voteResults)) {
       if (count > maxVotes) {
         maxVotes = count
-        evicteeId = id
+        evicteeIds = [id]
+      } else if (count === maxVotes) {
+        evicteeIds.push(id)
       }
     }
-    return evicteeId ? game.players.find((p) => p.id === evicteeId) ?? null : null
-  }, [game.voteResults, game.players])
+
+    // If there's a tie for max votes, we can't determine a single evictee from tallies alone.
+    if (evicteeIds.length !== 1) return null
+
+    return game.players.find((p) => p.id === evicteeIds[0]) ?? null
+  }, [game.voteResults, game.evictionSplashId, game.players])
 
   // ── TapRace minigame ──────────────────────────────────────────────────────
   // Shown when a HOH or POV competition is in progress and the human player
@@ -224,6 +238,8 @@ export default function GameScreen() {
   const showTapRace = !showMinigameHost && humanIsParticipant
 
   // Hide Continue button while waiting for any human-only decision modal.
+  // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
+  // be advanced under those full-screen overlays.
   // Keep this in sync with the conditions that control human decision modals above.
   const awaitingHumanDecision =
     showReplacementModal ||
@@ -234,6 +250,8 @@ export default function GameScreen() {
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
+    showVoteResults ||
+    showEvictionSplash ||
     showMinigameHost ||
     showTapRace
 

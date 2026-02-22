@@ -108,7 +108,7 @@ export default function VoteResultsPopup({
                 <div className="vrp__tally-bar-wrap">
                   <div
                     className="vrp__tally-bar"
-                    style={{ width: isVisible ? `${Math.max(pct, MIN_BAR_WIDTH_PCT)}%` : '0%' }}
+                    style={{ width: isVisible ? (t.voteCount > 0 ? `${Math.max(pct, MIN_BAR_WIDTH_PCT)}%` : '0%') : '0%' }}
                   />
                 </div>
                 <span className="vrp__tally-count">

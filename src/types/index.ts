@@ -147,12 +147,6 @@ export interface GameState {
    */
   votes?: Record<string, string>;
   /**
-   * Pending votes being accumulated before the vote tally is revealed.
-   * Same shape as `votes` but used to drive the VoteResultsPopup reveal sequence.
-   * Cleared after the eviction is resolved.
-   */
-  pendingVotes?: Record<string, string>;
-  /**
    * When true, the human player is an eligible voter during `live_vote` and must
    * cast their eviction vote via a blocking modal before `advance()` continues.
    */

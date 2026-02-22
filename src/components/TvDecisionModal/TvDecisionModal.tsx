@@ -23,9 +23,9 @@ interface Props {
   stingerMessage?: string;
 }
 
-/** Small avatar image with emoji fallback for use inside decision options. */
+/** Avatar tile for use inside decision option rows. Uses md size to show photo clearly. */
 function OptionAvatar({ player, selected }: { player: Player; selected: boolean }) {
-  return <PlayerAvatar player={player} selected={selected} size="sm" />;
+  return <PlayerAvatar player={player} selected={selected} size="md" />;
 }
 
 /**
