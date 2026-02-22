@@ -5,27 +5,29 @@ import { selectAlivePlayers } from '../../store/gameSlice';
 import StatusPill from '../ui/StatusPill';
 import './TvZone.css';
 
+// Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
-  week_start:           'Week Start',
-  hoh_comp:             'HOH Competition',
-  hoh_results:          'HOH Results',
-  social_1:             'Social Time',
-  nominations:          'Nominations',
-  nomination_results:   'Nomination Results',
-  pov_comp:             'Veto Competition',
-  pov_results:          'Veto Results',
-  pov_ceremony:         'Veto Ceremony',
-  pov_ceremony_results: 'Veto Ceremony Results',
-  social_2:             'Pre-Vote Social',
-  live_vote:            'Live Eviction',
-  eviction_results:     'Eviction Results',
-  week_end:             'Week End',
-  final4_eviction:      'Final 4 Eviction',
-  final3:               'Final 3',
-  final3_comp1:         'Final 3 — Part 1',
-  final3_comp2:         'Final 3 — Part 2',
-  final3_comp3:         'Final 3 — Part 3 (Final HOH)',
-  final3_decision:      'Final HOH Eviction',
+  week_start:           'WEEK START',
+  hoh_comp:             'HOH COMP',
+  hoh_results:          'HOH RESULTS',
+  social_1:             'SOCIAL',
+  nominations:          'NOMS',
+  nomination_results:   'NOMS RESULTS',
+  pov_comp:             'POV COMP',
+  pov_results:          'POV RESULTS',
+  pov_ceremony:         'VETO',
+  pov_ceremony_results: 'VETO RESULTS',
+  social_2:             'SOCIAL',
+  live_vote:            'VOTE',
+  eviction_results:     'EVICTION',
+  week_end:             'WEEK END',
+  final4_eviction:      'F4 EVICT',
+  final3:               'FINAL 3',
+  final3_comp1:         'F3 P1',
+  final3_comp2:         'F3 P2',
+  final3_comp3:         'F3 P3',
+  final3_decision:      'FINAL HOH',
+  jury:                 'JURY',
 };
 
 /**
@@ -61,11 +63,19 @@ export default function TvZone() {
     <section className="tv-zone" aria-label="Game action zone">
       {/* ── Head bar ────────────────────────────────────────────────────── */}
       <div className="tv-zone__head">
-        <div className="tv-zone__head-pills">
-          <StatusPill variant="phase"   icon="📍" label={phaseLabel} />
-          <StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} />
-          <StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} />
+        {/* Left: pinned phase pill */}
+        <div className="tv-zone__head-phase">
+          <StatusPill variant="phase" icon="📍" label={phaseLabel} />
         </div>
+
+        {/* Center: scrollable single-row status pills */}
+        <ul className="tv-zone__head-pills" aria-label="Game status pills">
+          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} /></li>
+          <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
+          {gameState.twistActive && (
+            <li><StatusPill variant="twist" icon="🌀" label="TWIST" /></li>
+          )}
+        </ul>
 
         <div className="tv-zone__head-actions">
           {gameState.isLive && (
@@ -74,7 +84,7 @@ export default function TvZone() {
           <StatusPill
             variant="dr"
             icon="🎤"
-            label="Diary Room"
+            label="DR"
             onClick={() => navigate('/diary-room')}
             ariaLabel="Open Diary Room"
           />

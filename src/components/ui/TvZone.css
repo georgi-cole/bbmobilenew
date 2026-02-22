@@ -17,24 +17,44 @@
 .tv-zone__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 6px;
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  /* Three columns: pinned phase | scrollable pills | actions */
 }
 
+/* Left: phase pill pinned, never wraps */
+.tv-zone__head-phase {
+  flex-shrink: 0;
+}
+
+/* Center: single-row scrollable pill strip */
 .tv-zone__head-pills {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* hide scrollbar visually but keep it functional */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tv-zone__head-pills::-webkit-scrollbar {
+  display: none;
 }
 
 .tv-zone__head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* LIVE badge */
