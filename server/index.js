@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const fetch = require('node-fetch');
+const diaryWeeksRouter = require('./routes/diaryWeeks');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
@@ -14,6 +15,8 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '30', 10);
 const LLM_TIMEOUT_MS = parseInt(process.env.LLM_TIMEOUT_MS ?? '10000', 10);
+/** Feature flag — set FEATURE_DIARY_WEEK=false in .env to disable the router. */
+const FEATURE_DIARY_WEEK = (process.env.FEATURE_DIARY_WEEK ?? 'true') !== 'false';
 
 const MAX_DIARY_TEXT_LENGTH = 500;
 const LLM_MAX_TOKENS = 150;
@@ -174,6 +177,11 @@ app.use('/api/', apiLimiter);
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+// ─── Diary Week endpoints ─────────────────────────────────────────────────────
+if (FEATURE_DIARY_WEEK) {
+  app.use('/api', diaryWeeksRouter);
+}
 
 // ─── Big Brother AI endpoint ──────────────────────────────────────────────────
 app.post('/api/ai/bigbrother', async (req, res) => {
