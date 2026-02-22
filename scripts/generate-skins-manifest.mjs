@@ -38,21 +38,37 @@ const THEME_KEYS = [
 
 /**
  * Substrings to look for in a filename (lower-cased) to identify each key.
- * Order matters: more-specific patterns are listed first.
+ * Earlier entries in the array = more canonical match; used for sort priority.
+ * NOTE: Keep in sync with the CANDIDATES map in src/utils/backgroundTheme.ts
+ * so the generator can detect all filenames used by the runtime prober.
  */
 const KEY_HINTS = {
   sunrise:      ['sunrise'],
-  day:          ['day', 'daily'], // matched after xmasDay / snowday to avoid conflicts
+  day:          ['day', 'daily', 'autumn', 'leaves'], // checked after xmasDay/snowday to avoid conflicts
   sunset:       ['sunset'],
-  night:        ['night'],      // matched after xmasNight to avoid conflicts
+  night:        ['night'],       // checked in DETECTION_PRIORITY before 'snow'; covers night-snow-background
   rain:         ['rain'],
-  snowday:      ['snowday'],    // must come before 'snow'
+  snowday:      ['snowday'],     // must come before 'snow'
   snow:         ['snow', 'blizzard'],
   thunderstorm: ['thunder', 'storm'],
-  xmasDay:      ['xmas-day', 'xmasday', 'santa-day', 'santaday', 'christmas-day'],
+  xmasDay:      ['xmas-day', 'xmasday', 'santa-day', 'santaday', 'christmas-day',
+                 'xmas-background'], // 'xmas-background' is not a substring of 'xmas-*-background' so it uniquely matches xmas-background.{ext}
   xmasEve:      ['xmas-eve', 'xmaseve', 'christmas-eve'],
   xmasNight:    ['xmas-night', 'xmasnight', 'xmasy-night', 'christmas-night'],
 };
+
+/**
+ * Priority order for key detection — more-specific keys are checked first to
+ * avoid partial-match ambiguity.  'night' is checked before 'snow' so that
+ * 'night-snow-background.png' maps to night rather than snow.
+ */
+const DETECTION_PRIORITY = [
+  'xmasDay', 'xmasEve', 'xmasNight',
+  'snowday', 'thunderstorm',
+  'sunrise', 'sunset',
+  'rain', 'night', 'snow',
+  'day',
+];
 
 /** Supported image extensions. */
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif']);
@@ -62,23 +78,17 @@ function isImageFile(filename) {
 }
 
 /**
- * Returns the first theme key whose hints appear in the lower-cased filename,
- * or null if no key matches.
+ * Returns the theme key and the index of the matching hint within that key's
+ * hints array for a given filename.  Earlier hint index = more canonical name.
+ * Returns null if no key matches.
  */
-function detectKey(filename) {
+function detectKeyWithHintIndex(filename) {
   const lower = filename.toLowerCase();
-  // Evaluate keys in a priority order that avoids partial-match ambiguity
-  const priority = [
-    'xmasDay', 'xmasEve', 'xmasNight',
-    'snowday', 'thunderstorm',
-    'sunrise', 'sunset',
-    'rain', 'snow',
-    'night', 'day',
-  ];
-  for (const key of priority) {
+  for (const key of DETECTION_PRIORITY) {
     const hints = KEY_HINTS[key] ?? [];
-    if (hints.some((h) => lower.includes(h))) {
-      return key;
+    const hintIndex = hints.findIndex((h) => lower.includes(h));
+    if (hintIndex !== -1) {
+      return { key, hintIndex };
     }
   }
   return null;
@@ -86,43 +96,61 @@ function detectKey(filename) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-if (!fs.existsSync(SKINS_DIR)) {
-  console.error(`[generate-skins-manifest] ERROR: skins directory not found: ${SKINS_DIR}`);
-  console.error('  Create it with:  mkdir -p public/assets/skins');
+let skinsStats;
+try {
+  skinsStats = fs.statSync(SKINS_DIR);
+} catch (err) {
+  console.error(`[generate-skins-manifest] ERROR: unable to access skins path: ${SKINS_DIR}`);
+  console.error(`  ${String(err)}`);
   process.exit(1);
 }
 
-const files = fs.readdirSync(SKINS_DIR)
-  .filter((f) => isImageFile(f))
-  .sort((a, b) => {
-    // Files with spaces or parentheses (e.g. "foo (2).png") are less preferred;
-    // give them a higher sort key so canonical names sort first.
-    const aComplex = /[\s()]/.test(a) ? 1 : 0;
-    const bComplex = /[\s()]/.test(b) ? 1 : 0;
-    if (aComplex !== bComplex) return aComplex - bComplex;
-    return a.localeCompare(b);
-  });
+if (!skinsStats.isDirectory()) {
+  console.error(`[generate-skins-manifest] ERROR: skins path is not a directory: ${SKINS_DIR}`);
+  console.error('  Ensure public/assets/skins is a directory, not a file.');
+  process.exit(1);
+}
 
-if (files.length === 0) {
+const allFiles = fs.readdirSync(SKINS_DIR).filter((f) => isImageFile(f));
+
+if (allFiles.length === 0) {
   console.warn('[generate-skins-manifest] WARNING: no image files found in', SKINS_DIR);
   console.warn('  The manifest will be empty.  Run scripts/fetch-skins.sh to download assets.');
 }
 
-const manifest = {};
-
-for (const file of files) {
-  const key = detectKey(file);
-  if (!key) {
+// Build per-key candidate lists with hint-index metadata for sorting.
+/** @type {Record<string, Array<{file: string, hintIndex: number}>>} */
+const keyGroups = {};
+for (const file of allFiles) {
+  const match = detectKeyWithHintIndex(file);
+  if (!match) {
     console.log(`  [skip] ${file}  (no matching theme key)`);
     continue;
   }
-  if (manifest[key]) {
-    // Keep the first match; log duplicates so maintainers can review
-    console.log(`  [dup]  ${file}  → ${key} (already mapped to ${manifest[key]}; skipping)`);
-    continue;
+  if (!keyGroups[match.key]) keyGroups[match.key] = [];
+  keyGroups[match.key].push({ file, hintIndex: match.hintIndex });
+}
+
+// Sort each group and emit manifest entries.
+// Sort order: earlier hint index (more canonical) > no spaces/parens > alphabetical.
+const manifest = {};
+for (const key of THEME_KEYS) {
+  const group = keyGroups[key];
+  if (!group || group.length === 0) continue;
+
+  group.sort((a, b) => {
+    if (a.hintIndex !== b.hintIndex) return a.hintIndex - b.hintIndex;
+    const aComplex = /[\s()]/.test(a.file) ? 1 : 0;
+    const bComplex = /[\s()]/.test(b.file) ? 1 : 0;
+    if (aComplex !== bComplex) return aComplex - bComplex;
+    return a.file.localeCompare(b.file);
+  });
+
+  manifest[key] = group[0].file;
+  console.log(`  [map]  ${group[0].file}  → ${key}`);
+  for (let i = 1; i < group.length; i++) {
+    console.log(`  [dup]  ${group[i].file}  → ${key} (already mapped to ${group[0].file}; skipping)`);
   }
-  manifest[key] = file;
-  console.log(`  [map]  ${file}  → ${key}`);
 }
 
 // Report any theme keys that received no mapping

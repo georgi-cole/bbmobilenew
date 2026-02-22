@@ -61,18 +61,22 @@ export const CANDIDATES: Record<ThemeKey, string[]> = {
   sunrise:      ['bg-sunrise.png',      'sunrise-background.png'                              ],
   day:          ['bg-day.png',          'daily-background.png',    'autumn-leaves-background.png'],
   sunset:       ['bg-sunset.png',       'sunset-background.png'                               ],
-  night:        ['bg-night.png',        'icy-night-background.jpg'                            ],
+  night:        ['bg-night.png',        'icy-night-background.jpg', 'night-snow-background.png'],
   rain:         ['bg-rain.png',         'rainy-background.png'                                ],
-  snow:         ['bg-snow.png',         'blizzard-background.png', 'night-snow-background.png'],
+  snow:         ['bg-snow.png',         'blizzard-background.png'                             ],
   snowday:      ['bg-snowday.png',      'snowday-background.png'                              ],
   thunderstorm: ['bg-thunderstorm.png', 'thunderstorm-background.png'                         ],
-  xmasDay:      ['bg-xmas-day.png',     'xmas-day-background.png', 'discrete-santa-day-background.png'],
-  xmasEve:      ['bg-xmas-eve.png',     'xmas-eve-background.png', 'xmas-background.jpg'     ],
+  xmasDay:      ['bg-xmas-day.png',     'xmas-day-background.png', 'discrete-santa-day-background.png', 'xmas-background.jpg'],
+  xmasEve:      ['bg-xmas-eve.png',     'xmas-eve-background.png'                            ],
   xmasNight:    ['bg-xmas-night.png',   'xmasy-night-background.png'                         ],
 };
 
 /** Shape of the optional skins.json manifest (key → filename). */
 export type SkinsManifest = Partial<Record<ThemeKey, string>>;
+
+/** Module-level manifest cache to avoid redundant network fetches. */
+const MANIFEST_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let _manifestCache: { data: SkinsManifest | null; fetchedAt: number } | null = null;
 
 /**
  * Maps Open-Meteo WMO weathercode to a theme key.
@@ -127,14 +131,21 @@ export async function existsHead(url: string): Promise<boolean> {
 
 /**
  * Attempts to fetch and parse `skins.json` from ASSETS_BASE.
+ * Results are cached for MANIFEST_CACHE_TTL_MS to avoid repeated network requests.
  * Returns the manifest mapping or null on any failure.
  */
 export async function fetchManifest(): Promise<SkinsManifest | null> {
+  const now = Date.now();
+  if (_manifestCache && now - _manifestCache.fetchedAt < MANIFEST_CACHE_TTL_MS) {
+    return _manifestCache.data;
+  }
   try {
     const res = await fetch(`${ASSETS_BASE}skins.json`);
-    if (!res.ok) return null;
-    return (await res.json()) as SkinsManifest;
+    const data: SkinsManifest | null = res.ok ? (await res.json()) as SkinsManifest : null;
+    _manifestCache = { data, fetchedAt: now };
+    return data;
   } catch {
+    _manifestCache = { data: null, fetchedAt: now };
     return null;
   }
 }
@@ -150,6 +161,12 @@ export async function resolveAssetForKeyWithManifest(
 ): Promise<string | null> {
   const filename = manifest[key];
   if (!filename) return null;
+  // Reject filenames containing path separators or null bytes — a bare filename
+  // with no separators cannot cause path traversal regardless of encoding.
+  if (filename.includes('/') || filename.includes('\\') || filename.includes('\0')) {
+    console.warn('[backgroundTheme] manifest entry for', key, 'contains unsafe path; ignoring');
+    return null;
+  }
   const url = `${ASSETS_BASE}${filename}`;
   const ok = await existsHead(url);
   if (ok) {
