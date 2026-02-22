@@ -3,6 +3,10 @@
 /*
  * Reuses the same visual language as TvDecisionModal.
  * Decisions presented here are MANDATORY (no escape / cancel).
+ *
+ * Two-step confirm flow:
+ *  1. Tap Yes or No → option becomes highlighted (--selected)
+ *  2. Press Confirm → stinger overlay plays, then action dispatches
  */
 
 .tv-binary-modal {
@@ -14,6 +18,12 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.75);
   padding: 1rem;
+  animation: tvbmFadeIn 0.22s ease;
+}
+
+@keyframes tvbmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .tv-binary-modal__card {
@@ -26,6 +36,12 @@
   gap: 0;
   overflow: hidden;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  animation: tvbmSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tvbmSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 .tv-binary-modal__header {
@@ -65,7 +81,11 @@
   font-size: 0.9rem;
   font-weight: 600;
   border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.tv-binary-modal__option:active {
+  transform: scale(0.98);
 }
 
 .tv-binary-modal__option--yes {
@@ -79,6 +99,13 @@
   border-color: rgba(60, 200, 100, 0.6);
 }
 
+.tv-binary-modal__option--yes.tv-binary-modal__option--selected {
+  background: rgba(40, 160, 80, 0.5);
+  border-color: rgba(60, 200, 100, 0.8);
+  box-shadow: 0 0 0 2px rgba(60, 200, 100, 0.25);
+  animation: tvbmOptionSelect 0.18s ease;
+}
+
 .tv-binary-modal__option--no {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
@@ -89,3 +116,76 @@
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.25);
 }
+
+.tv-binary-modal__option--no.tv-binary-modal__option--selected {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  animation: tvbmOptionSelect 0.18s ease;
+}
+
+@keyframes tvbmOptionSelect {
+  from { transform: scale(0.97); opacity: 0.7; }
+  to   { transform: scale(1);    opacity: 1;   }
+}
+
+/* Focus styles for keyboard navigation */
+.tv-binary-modal__option:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.tv-binary-modal__option--yes:focus-visible {
+  outline-color: rgba(60, 200, 100, 0.8);
+}
+
+.tv-binary-modal__btn-change:focus-visible,
+.tv-binary-modal__btn-confirm:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* ── Footer with Change / Confirm buttons ─────────────────────────────────── */
+.tv-binary-modal__footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a0a16;
+  animation: tvbmFadeIn 0.18s ease;
+}
+
+.tv-binary-modal__btn-change {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #aabbd4;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tv-binary-modal__btn-change:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tv-binary-modal__btn-confirm {
+  flex: 1;
+  padding: 0.55rem 0.9rem;
+  background: rgba(80, 160, 255, 0.22);
+  border: 1px solid rgba(100, 180, 255, 0.45);
+  border-radius: 8px;
+  color: #9dd4ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tv-binary-modal__btn-confirm:hover {
+  background: rgba(80, 160, 255, 0.38);
+  border-color: rgba(100, 180, 255, 0.7);
+}
+
