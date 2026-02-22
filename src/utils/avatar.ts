@@ -2,6 +2,7 @@
 // Lightweight avatar resolver with Dicebear fallback.
 
 import type { Player } from '../types';
+import { getById, findByName } from '../data/houseguests';
 
 /**
  * Returns a Dicebear avatar URL for the given seed string.
@@ -45,16 +46,24 @@ function joinAvatarPath(file: string): string {
   return `avatars/${file}`;
 }
 
+/** Capitalises the first letter of a string and lowercases the rest. */
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
 /**
  * Returns all candidate avatar URLs for a player, from most to least preferred.
  * The final entry is always a Dicebear fallback URL.
  *
- * For name-based players (non-numeric id), candidates are:
- *   avatars/CapitalizedName.png, avatars/lowercasename.png,
- *   avatars/{id}.png, avatars/{id}.jpg,
- *   avatars/CapitalizedName.jpg, avatars/lowercasename.jpg
+ * Resolution order:
+ *  1. player.avatar if already a full URL or absolute path
+ *  2. Stable houseguest id candidates (matched by player.id then player.name):
+ *       avatars/{hgId}.png, avatars/{HgId}.png, avatars/{hgId}.jpg, avatars/{HgId}.jpg
+ *  3. Name-based candidates: avatars/CapitalizedName.png, avatars/lowercasename.png,
+ *       avatars/{id}.png, avatars/{id}.jpg, avatars/CapitalizedName.jpg, avatars/lowercasename.jpg
+ *  4. Dicebear SVG fallback
  *
- * For numeric ids, candidates are: avatars/{id}.png, avatars/{id}.jpg
+ * For numeric ids with no houseguest match, candidates are: avatars/{id}.png, avatars/{id}.jpg
  */
 export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'avatar'>): string[] {
   const candidates: string[] = [];
@@ -67,10 +76,24 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
   const id = player.id;
   const isNumeric = /^\d+$/.test(id);
 
+  // Try to resolve a stable houseguest id from the canonical dataset.
+  // Match by player.id first (in case it is already a slug), then by player.name.
+  const hg = getById(id) ?? findByName(player.name);
+  if (hg) {
+    const hgId = hg.id; // lowercase stable slug, e.g. 'finn'
+    const hgIdCap = capitalize(hgId); // e.g. 'Finn'
+    candidates.push(
+      joinAvatarPath(`${hgId}.png`),
+      joinAvatarPath(`${hgIdCap}.png`),
+      joinAvatarPath(`${hgId}.jpg`),
+      joinAvatarPath(`${hgIdCap}.jpg`),
+    );
+  }
+
   if (isNumeric) {
     candidates.push(joinAvatarPath(`${id}.png`), joinAvatarPath(`${id}.jpg`));
   } else {
-    const cap = player.name.charAt(0).toUpperCase() + player.name.slice(1).toLowerCase();
+    const cap = capitalize(player.name);
     const lower = player.name.toLowerCase();
     candidates.push(
       joinAvatarPath(`${cap}.png`),
@@ -88,6 +111,13 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
 }
 
 /**
+ * Debug helper: returns all candidate URLs for a player.
+ * Useful in the browser console: `window.__bb.getAvatarCandidatesFor(player)`
+ * Enable verbose logging by setting `window.__AVATAR_DEBUG = true`.
+ */
+export const getAvatarCandidatesFor = resolveAvatarCandidates;
+
+/**
  * Resolves the initial avatar URL for a player.
  *
  * Returns the first candidate from resolveAvatarCandidates() so the
@@ -99,8 +129,9 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
  *  - Second onError (Dicebear unreachable): show emoji / initials fallback
  */
 export function resolveAvatar(player: Pick<Player, 'id' | 'name' | 'avatar'>): string {
+  const candidates = resolveAvatarCandidates(player);
   if (typeof window !== 'undefined' && (window as Window & { __AVATAR_DEBUG?: boolean }).__AVATAR_DEBUG) {
-    console.debug('[avatar] resolveAvatar', player, resolveAvatarCandidates(player));
+    console.debug('[avatar] resolveAvatar candidates for', player.name, candidates);
   }
-  return resolveAvatarCandidates(player)[0];
+  return candidates[0];
 }
