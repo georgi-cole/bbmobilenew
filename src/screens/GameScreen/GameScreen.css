@@ -6,6 +6,15 @@
   padding: 12px 12px calc(var(--nav-bar-height) + 16px);
 }
 
+/* Gameplay background shell */
+.game-screen-shell {
+  background-image: url('/assets/bb-gameplay-bg.svg');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: local;
+}
+
 /* ── Advance / Continue CTA ─────────────────────────────────────────────── */
 .game-screen__advance-btn {
   display: block;
