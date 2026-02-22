@@ -1,0 +1,117 @@
+/* ─── EvictionSplash ─────────────────────────────────────────────────────────
+ * Cinematic full-screen eviction animation: colour → B&W.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.eviction-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  animation: evictFadeIn 0.5s ease;
+  background: #000;
+  overflow: hidden;
+}
+
+@keyframes evictFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Dark vignette overlay to punch up the cinematic feel */
+.eviction-splash__overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(0,0,0,0.75) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── Photo (fills full screen background) ────────────────────────────────── */
+.eviction-splash__photo-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  transition: filter 1.4s ease;
+}
+
+/* Colour → B&W transition */
+.eviction-splash__photo-wrap--bw {
+  filter: grayscale(1) brightness(0.75);
+}
+
+.eviction-splash__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.eviction-splash__fallback {
+  font-size: 10rem;
+  line-height: 1;
+}
+
+/* ── Text content (layered above photo) ─────────────────────────────────── */
+.eviction-splash__content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 2rem 1.5rem 2.5rem;
+  background: linear-gradient(0deg, rgba(0,0,0,0.88) 0%, transparent 100%);
+  width: 100%;
+  animation: evictContentSlide 0.6s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes evictContentSlide {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.eviction-splash__label {
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  color: rgba(255, 80, 80, 0.9);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.eviction-splash__name {
+  margin: 0 0 0.6rem;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.8);
+}
+
+.eviction-splash__goodbye {
+  margin: 0 0 1.2rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+.eviction-splash__skip {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.06em;
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .eviction-splash,
+  .eviction-splash__photo-wrap,
+  .eviction-splash__content {
+    animation: none !important;
+  }
+  .eviction-splash { opacity: 1; }
+  .eviction-splash__photo-wrap { transition: none !important; }
+}

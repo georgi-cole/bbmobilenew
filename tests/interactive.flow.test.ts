@@ -4,6 +4,7 @@ import gameReducer, {
   advance,
   selectNominee1,
   finalizeNominations,
+  commitNominees,
   submitPovDecision,
   submitHumanVote,
   submitTieBreak,
@@ -232,5 +233,59 @@ describe('Live vote + eviction tally', () => {
     expect(state.phase).toBe('week_end');
     const p1 = state.players.find(p => p.id === 'p1');
     expect(p1?.status).toMatch(/evicted|jury/);
+  });
+});
+
+describe('commitNominees (single-action nomination)', () => {
+  it('sets both nominees and clears awaitingNominations', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const state = store.getState().game;
+    expect(state.awaitingNominations).toBe(false);
+    expect(state.pendingNominee1Id).toBeNull();
+    expect(state.nomineeIds).toContain('p1');
+    expect(state.nomineeIds).toContain('p2');
+    expect(state.nomineeIds).toHaveLength(2);
+  });
+
+  it('marks nominated players with status "nominated"', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const { players } = store.getState().game;
+    expect(players.find(p => p.id === 'p1')?.status).toBe('nominated');
+    expect(players.find(p => p.id === 'p2')?.status).toBe('nominated');
+  });
+
+  it('is a no-op when awaitingNominations is false', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: false });
+    store.dispatch(commitNominees(['p1', 'p2']));
+    expect(store.getState().game.nomineeIds).toHaveLength(0);
+  });
+
+  it('rejects duplicate ids (same player twice)', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p1', 'p1']));
+    expect(store.getState().game.awaitingNominations).toBe(true); // still blocking
+    expect(store.getState().game.nomineeIds).toHaveLength(0);
+  });
+
+  it('rejects a payload with wrong number of ids', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p1'])); // only 1 id, needs 2
+    expect(store.getState().game.awaitingNominations).toBe(true);
+    expect(store.getState().game.nomineeIds).toHaveLength(0);
+  });
+
+  it('rejects the HOH as a nominee', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p0', 'p1'])); // p0 is HOH
+    expect(store.getState().game.awaitingNominations).toBe(true);
+    expect(store.getState().game.nomineeIds).toHaveLength(0);
+  });
+
+  it('is a no-op when phase is not nomination_results', () => {
+    const store = makeStore({ phase: 'nominations', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p1', 'p2']));
+    expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 });

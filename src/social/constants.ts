@@ -11,4 +11,5 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   relationships: {},
   lastReport: null,
   sessionLogs: [],
+  influenceWeights: {},
 };

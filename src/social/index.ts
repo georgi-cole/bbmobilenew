@@ -6,6 +6,7 @@ export type {
   RelationshipsMap,
   SocialPhaseReport,
   SocialState,
+  PolicyContext,
 } from './types';
 
 export { DEFAULT_ENERGY, SOCIAL_INITIAL_STATE } from './constants';
@@ -15,7 +16,20 @@ export {
   engineReady,
   engineComplete,
   setLastReport,
+  influenceUpdated,
   selectSocialBudgets,
   selectLastSocialReport,
+  selectInfluenceWeights,
 } from './socialSlice';
 export { socialMiddleware } from './socialMiddleware';
+export {
+  chooseActionFor,
+  chooseTargetsFor,
+  computeOutcomeDelta,
+} from './SocialPolicy';
+export {
+  initInfluence,
+  computeNomBias,
+  computeVetoBias,
+  update as influenceUpdate,
+} from './SocialInfluence';
