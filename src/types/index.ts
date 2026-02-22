@@ -210,6 +210,11 @@ export interface GameState {
    * before the game advances. Cleared by `dismissEvictionSplash`.
    */
   evictionSplashId?: string | null;
+  /**
+   * Social module state subtree. Managed by the social module; optional so
+   * that tests and legacy code that don't set it up continue to work.
+   */
+  social?: SocialState;
   /** Optional weekly config overrides. */
   cfg?: {
     /**
