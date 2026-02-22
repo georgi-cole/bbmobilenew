@@ -11,6 +11,7 @@ import type { GameState, Player, Phase, TvEvent } from '../types';
 import HOUSEGUESTS from '../data/houseguests';
 import { mulberry32, seededPickN } from './rng';
 import { loadUserProfile } from './userProfileSlice';
+import { SOCIAL_INITIAL_STATE } from '../social/constants';
 
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
 const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
@@ -55,6 +56,7 @@ const INITIAL_STATE: GameState = {
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
+  social: SOCIAL_INITIAL_STATE,
 };
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
