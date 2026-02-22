@@ -136,15 +136,15 @@
 
 .cross line {
   /* stroke-dasharray ≈ diagonal line length in the 100×100 viewBox:
-     √((85-15)² + (85-15)²) ≈ 99 → rounded up to 100 for full coverage */
+     √((85-15)² + (85-15)²) = √9800 ≈ 98.99 → rounded up to 100 for full coverage */
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   animation: drawCrossLine 0.45s ease-out 0.1s forwards;
 }
 
 .cross line:nth-child(2) {
-  /* stagger second line so the X draws sequentially */
-  animation-delay: 0.22s;
+  /* stagger second line so the X draws sequentially (starts after first finishes at 0.55s) */
+  animation-delay: 0.55s;
 }
 
 @keyframes drawCrossLine {

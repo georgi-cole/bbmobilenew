@@ -19,8 +19,13 @@
   background: rgba(0, 0, 0, 0.82);
   padding: 1rem;
   animation: tvbmFadeIn 0.22s ease;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+}
+
+@supports (backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px)) {
+  .tv-binary-modal {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
 }
 
 @keyframes tvbmFadeIn {
@@ -152,17 +157,17 @@
 
 /* Focus styles for keyboard navigation */
 .tv-binary-modal__option:focus-visible {
-  outline: 2px solid rgba(100, 160, 255, 0.9);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .tv-binary-modal__option--yes:focus-visible {
-  outline-color: rgba(50, 200, 100, 0.9);
+  outline-color: var(--color-accent);
 }
 
 .tv-binary-modal__btn-change:focus-visible,
 .tv-binary-modal__btn-confirm:focus-visible {
-  outline: 2px solid rgba(100, 160, 255, 0.9);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 

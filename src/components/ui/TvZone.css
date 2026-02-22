@@ -69,6 +69,8 @@
   font-weight: 900;
   letter-spacing: 1px;
   text-transform: uppercase;
+  /* base shadow matches animation start state to prevent flash-in */
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
   animation: livePulse 1.4s ease-in-out infinite;
 }
 
@@ -238,7 +240,7 @@
   font-size: 0.6rem;
   font-weight: 900;
   letter-spacing: 2px;
-  color: rgba(165, 180, 252, 0.7);
+  color: #e0e7ff;
   text-transform: uppercase;
 }
 
