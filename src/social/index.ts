@@ -9,3 +9,13 @@ export type {
 } from './types';
 
 export { DEFAULT_ENERGY, SOCIAL_INITIAL_STATE } from './constants';
+export { socialConfig } from './socialConfig';
+export { SocialEngine } from './SocialEngine';
+export {
+  engineReady,
+  engineComplete,
+  setLastReport,
+  selectSocialBudgets,
+  selectLastSocialReport,
+} from './socialSlice';
+export { socialMiddleware } from './socialMiddleware';
