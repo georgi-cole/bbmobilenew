@@ -129,6 +129,22 @@
   to   { transform: scale(1);    opacity: 1;   }
 }
 
+/* Focus styles for keyboard navigation */
+.tv-binary-modal__option:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.tv-binary-modal__option--yes:focus-visible {
+  outline-color: rgba(60, 200, 100, 0.8);
+}
+
+.tv-binary-modal__btn-change:focus-visible,
+.tv-binary-modal__btn-confirm:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
 /* ── Footer with Change / Confirm buttons ─────────────────────────────────── */
 .tv-binary-modal__footer {
   display: flex;

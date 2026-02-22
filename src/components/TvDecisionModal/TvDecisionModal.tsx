@@ -14,19 +14,27 @@ interface Props {
   confirmLabel?: string;
   /** Label shown on the back/change button. Default: "Change" */
   cancelLabel?: string;
-  /** Stinger message shown after confirm. Default: "Decision locked in!" */
+  /**
+   * Message shown in the stinger overlay after the player confirms.
+   * Tailor this to the decision context — e.g. "Vote locked in!" for
+   * eviction votes or "Nominee recorded!" for nomination ceremonies.
+   * Default: "Decision locked in!"
+   */
   stingerMessage?: string;
 }
 
 /** Small avatar image with emoji fallback for use inside decision options. */
 function OptionAvatar({ player }: { player: Player }) {
-  const [src, setSrc] = useState(() => resolveAvatar(player));
   const [showEmoji, setShowEmoji] = useState(false);
 
-  function handleError() {
+  function handleError(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    img.onerror = null; // mute native handler to prevent double-firing
     const dicebear = getDicebear(player.name);
-    if (src !== dicebear) {
-      setSrc(dicebear);
+    if (img.src !== dicebear) {
+      // Step 2: try Dicebear pixel-art fallback
+      img.src = dicebear;
+      img.onerror = () => setShowEmoji(true); // Step 3: emoji if Dicebear also fails
     } else {
       setShowEmoji(true);
     }
@@ -42,8 +50,8 @@ function OptionAvatar({ player }: { player: Player }) {
   return (
     <img
       className="tv-decision-modal__option-avatar tv-decision-modal__option-avatar--img"
-      src={src}
-      alt={player.name}
+      src={resolveAvatar(player)}
+      alt=""
       onError={handleError}
       aria-hidden="true"
     />
@@ -77,23 +85,27 @@ export default function TvDecisionModal({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showStinger, setShowStinger] = useState(false);
 
+  // Derive the selected player from the current options list.
+  // If options change (e.g. game state updates) and the previously-selected
+  // player is no longer available, selectedPlayer becomes undefined and the
+  // footer is hidden automatically — no stale selection can be committed.
+  const selectedPlayer = options.find((p) => p.id === selectedId);
+
   function handleOptionClick(playerId: string) {
     setSelectedId(playerId);
   }
 
   function handleConfirm() {
-    if (selectedId) {
+    if (selectedPlayer) {
       setShowStinger(true);
     }
   }
 
   const handleStingerDone = useCallback(() => {
-    if (selectedId) {
-      onSelect(selectedId);
+    if (selectedPlayer) {
+      onSelect(selectedPlayer.id);
     }
-  }, [selectedId, onSelect]);
-
-  const selectedPlayer = options.find((p) => p.id === selectedId);
+  }, [selectedPlayer, onSelect]);
 
   return (
     <>
@@ -150,7 +162,7 @@ export default function TvDecisionModal({
                 onClick={handleConfirm}
                 type="button"
               >
-                {confirmLabel}: <strong>{selectedPlayer.name}</strong>
+                {confirmLabel}: <span className="tv-decision-modal__btn-confirm-name">{selectedPlayer.name}</span>
               </button>
             </footer>
           )}

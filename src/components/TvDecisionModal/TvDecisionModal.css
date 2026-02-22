@@ -108,7 +108,7 @@
   background: rgba(80, 160, 255, 0.18);
   border-color: rgba(100, 180, 255, 0.55);
   box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
-  animation: tvdmOptionSelect 0.18s ease;
+  animation: tvdmOptionSelect 0.15s ease;
 }
 
 .tv-decision-modal__option--danger.tv-decision-modal__option--selected {
@@ -122,8 +122,19 @@
   to   { transform: scale(1);    opacity: 1;   }
 }
 
+/* Focus styles for keyboard navigation */
+.tv-decision-modal__option:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.tv-decision-modal__btn-change:focus-visible,
+.tv-decision-modal__btn-confirm:focus-visible {
+  outline: 2px solid rgba(100, 180, 255, 0.8);
+  outline-offset: 2px;
+}
+
 /* Avatar — image variant */
-.tv-decision-modal__option-avatar {
   font-size: 1.4rem;
   flex-shrink: 0;
 }
@@ -133,7 +144,6 @@
   height: 2rem;
   border-radius: 50%;
   object-fit: cover;
-  font-size: 0; /* hide alt text visually */
 }
 
 .tv-decision-modal__option-name {
@@ -208,5 +218,10 @@
 .tv-decision-modal__btn-confirm--danger:hover {
   background: rgba(200, 40, 40, 0.5);
   border-color: rgba(255, 80, 80, 0.7);
+}
+
+/* Player name inside confirm button — bold via CSS, not <strong> */
+.tv-decision-modal__btn-confirm-name {
+  font-weight: 700;
 }
 

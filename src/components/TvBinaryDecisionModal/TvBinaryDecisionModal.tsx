@@ -47,8 +47,13 @@ export default function TvBinaryDecisionModal({
   }
 
   const handleStingerDone = useCallback(() => {
-    if (selected === 'yes') onYes();
-    else if (selected === 'no') onNo();
+    if (selected === 'yes') {
+      onYes();
+    } else if (selected === 'no') {
+      onNo();
+    } else {
+      throw new Error('TvBinaryDecisionModal: handleStingerDone called without a selection');
+    }
   }, [selected, onYes, onNo]);
 
   return (
