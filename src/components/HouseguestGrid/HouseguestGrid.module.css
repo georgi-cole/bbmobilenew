@@ -1,5 +1,5 @@
 .container {
-  padding: 8px 12px;
+  padding: 10px 10px 8px;
 }
 
 .headerRow {
@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .header {
   font-size: 13px;
@@ -28,22 +28,34 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px 12px;
+  grid-template-columns: repeat(4, 1fr);
   justify-items: center;
   align-items: start;
+  max-height: var(--grid-available-height, 480px);
+  overflow: hidden;
+  padding-bottom: 6px;
+  /* Compute tile size: fit 3 rows with 10px gaps and 38px header row within available height.
+     Clamped between 60px (minimum legible) and 112px (comfortable maximum). */
+  --computed-tile-size: clamp(
+    60px,
+    calc(
+      (var(--grid-available-height, 480px) - 38px - 2 * 10px) / 3 - 10px
+    ),
+    112px
+  );
 }
 
 @media (max-width: 520px) {
   .grid {
-    grid-template-columns: repeat(2, minmax(110px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
 }
 
 @media (min-width: 521px) and (max-width: 900px) {
   .grid {
-    grid-template-columns: repeat(3, minmax(110px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -56,24 +68,40 @@
 .tile {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
-  max-width: 160px;
+  max-width: 140px;
   position: relative;
 }
 
 .avatarWrap {
   position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: 14px;
+  width: var(--computed-tile-size);
+  height: var(--computed-tile-size);
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, #25272b, #1e1f22);
-  border: 3px solid rgba(255,255,255,0.04);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.6), inset 0 -2px 0 rgba(255,255,255,0.02);
+  border: 2px solid rgba(255,255,255,0.04);
+  box-shadow: 0 6px 10px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.02);
+}
+
+.nameOverlay {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  right: 7px;
+  font-size: 11px;
+  color: #ffffff;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 3;
 }
 
 .avatar {
@@ -81,7 +109,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .avatarPlaceholder {
@@ -91,34 +119,26 @@
   border-radius: 8px;
 }
 
-.nameRow {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.name {
-  font-size: 12px;
-  color: #d7dbe0;
-  text-align: center;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  max-width: 140px;
-}
-
 .youBadge {
+  position: absolute;
+  top: 5px;
+  right: 7px;
   background: #4b6cff;
   color: white;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: 2px 5px;
+  border-radius: 5px;
   font-size: 10px;
+  z-index: 3;
+}
+
+.nameRow {
+  display: none;
 }
 
 .evicted .avatar,
 .evicted .avatarPlaceholder {
-  filter: grayscale(100%) brightness(0.8) opacity(0.8);
+  filter: grayscale(100%) brightness(0.8) opacity(0.85);
 }
 
 .cross {
@@ -130,16 +150,17 @@
   pointer-events: none;
   display: block;
   transform-origin: center;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  z-index: 2;
 }
 
 .evicted {
-  opacity: 0.92;
+  opacity: 0.98;
 }
 
 .tile:focus-within,
 .tile:focus {
-  outline: 3px solid rgba(75,108,255,0.18);
+  outline: 3px solid rgba(75,108,255,0.14);
   outline-offset: 4px;
   border-radius: 12px;
 }
