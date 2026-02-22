@@ -416,9 +416,11 @@ const gameSlice = createSlice({
     /**
      * Human HOH selects their first nominee during the two-step nomination flow.
      * Sets `pendingNominee1Id` so the UI can move on to step 2.
-     * Eligibility: alive, not HOH.
+     * Eligibility: alive, not HOH. Guards: awaitingNominations must be true and
+     * phase must be nomination_results.
      */
     selectNominee1(state, action: PayloadAction<string>) {
+      if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const id = action.payload;
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
       const eligible = alive.filter((p) => p.id !== state.hohId);
@@ -429,9 +431,12 @@ const gameSlice = createSlice({
     /**
      * Human HOH selects their second nominee, finalizing nominations.
      * Validates: alive, not HOH, not equal to nominee 1.
+     * Guards: awaitingNominations must be true, phase must be nomination_results,
+     * and pendingNominee1Id must be set.
      * Clears `awaitingNominations` and `pendingNominee1Id`.
      */
     finalizeNominations(state, action: PayloadAction<string>) {
+      if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const id2 = action.payload;
       const id1 = state.pendingNominee1Id;
       if (!id1 || id2 === id1) return;
@@ -719,6 +724,7 @@ const gameSlice = createSlice({
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
       state.awaitingFinal3Eviction = false;
+      state.votes = {};
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /** Reset game state with a fresh random roster (debug only). */
@@ -768,6 +774,21 @@ const gameSlice = createSlice({
 
     /** Advance to the next phase, computing outcomes deterministically via RNG. */
     advance(state) {
+      // Guard: if any human-decision flag is set, advance() must not proceed.
+      // This protects against programmatic dispatches (debug tools, fastForward)
+      // bypassing mandatory decision steps and leaving state inconsistent.
+      if (
+        state.replacementNeeded ||
+        state.awaitingNominations ||
+        state.awaitingPovDecision ||
+        state.awaitingPovSaveTarget ||
+        state.awaitingHumanVote ||
+        state.awaitingTieBreak ||
+        state.awaitingFinal3Eviction
+      ) {
+        return;
+      }
+
       // Guard: if a minigame is active the human must complete (or skip) it first.
       // This prevents fastForwardToEviction / debug advance from racing past an
       // open TapRace overlay and leaving it stuck on screen.

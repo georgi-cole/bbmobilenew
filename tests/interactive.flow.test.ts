@@ -47,6 +47,22 @@ describe('Human HOH nominations', () => {
     expect(state.nomineeIds).toHaveLength(0);
   });
 
+  it('advance() is a no-op while awaitingNominations is true', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    store.dispatch(advance());
+    store.dispatch(advance());
+    const state = store.getState().game;
+    // Phase must not advance — nominations not yet made
+    expect(state.phase).toBe('nomination_results');
+    expect(state.awaitingNominations).toBe(true);
+  });
+
+  it('selectNominee1 is a no-op when awaitingNominations is false', () => {
+    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: false });
+    store.dispatch(selectNominee1('p1'));
+    expect(store.getState().game.pendingNominee1Id).toBeNull();
+  });
+
   it('AI HOH auto-nominates without blocking', () => {
     const store = makeStore({ phase: 'nominations', hohId: 'p1' }); // p1 is not user
     store.dispatch(advance()); // nominations → nomination_results
@@ -139,6 +155,16 @@ describe('Live vote + eviction tally', () => {
     for (const voterId of aiVoterIds) {
       expect(state.votes?.[voterId]).toBeDefined();
     }
+  });
+
+  it('advance() is a no-op while awaitingHumanVote is true', () => {
+    const store = makeStore({ phase: 'live_vote', hohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
+    store.dispatch(advance());
+    store.dispatch(advance());
+    const state = store.getState().game;
+    // Phase must not advance — human has not yet voted
+    expect(state.phase).toBe('live_vote');
+    expect(state.awaitingHumanVote).toBe(true);
   });
 
   it('submitHumanVote adds vote and clears awaitingHumanVote', () => {

@@ -102,8 +102,16 @@ export default function GameScreen() {
 
   // ── Human HOH nomination flow (step 1 & step 2) ──────────────────────────
   // Shown when the human HOH must pick their two nominees.
-  const showNominee1Modal = Boolean(game.awaitingNominations) && !game.pendingNominee1Id && humanIsHoH
-  const showNominee2Modal = Boolean(game.awaitingNominations) && Boolean(game.pendingNominee1Id) && humanIsHoH
+  const showNominee1Modal =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    !game.pendingNominee1Id &&
+    humanIsHoH
+  const showNominee2Modal =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    Boolean(game.pendingNominee1Id) &&
+    humanIsHoH
 
   const nominee1Options = alivePlayers.filter(
     (p) => p.id !== game.hohId
@@ -114,10 +122,16 @@ export default function GameScreen() {
 
   // ── Human POV holder decision (use veto or not) ──────────────────────────
   const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
-  const showPovDecisionModal = Boolean(game.awaitingPovDecision) && humanIsPovHolder
+  const showPovDecisionModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.awaitingPovDecision) &&
+    humanIsPovHolder
 
   // ── Human POV holder picks who to save ───────────────────────────────────
-  const showPovSaveModal = Boolean(game.awaitingPovSaveTarget) && humanIsPovHolder
+  const showPovSaveModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.awaitingPovSaveTarget) &&
+    humanIsPovHolder
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── Final 4 human POV holder vote ────────────────────────────────────────
@@ -128,12 +142,14 @@ export default function GameScreen() {
 
   // ── Human live eviction vote ──────────────────────────────────────────────
   // Shown when the human player is an eligible voter during live_vote.
-  const showLiveVoteModal = Boolean(game.awaitingHumanVote) && humanPlayer !== undefined
+  const showLiveVoteModal =
+    game.phase === 'live_vote' && Boolean(game.awaitingHumanVote) && humanPlayer !== undefined
   const liveVoteOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── Human HOH tie-break ───────────────────────────────────────────────────
   // Shown when the live vote ended in a tie and the human is HOH.
-  const showTieBreakModal = Boolean(game.awaitingTieBreak) && humanIsHoH
+  const showTieBreakModal =
+    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
