@@ -30,39 +30,17 @@
   display: grid;
   gap: 10px 12px;
   grid-template-columns: repeat(4, 1fr);
-  justify-items: center;
+  justify-items: stretch;
   align-items: start;
   max-height: var(--grid-available-height, 480px);
   overflow: hidden;
   padding-bottom: 6px;
-  /* Compute tile size: fit 3 rows with 10px gaps and 38px header row within available height.
-     Clamped between 60px (minimum legible) and 112px (comfortable maximum). */
-  --computed-tile-size: clamp(
-    60px,
-    calc(
-      (var(--grid-available-height, 480px) - 38px - 2 * 10px) / 3 - 10px
-    ),
-    112px
-  );
 }
 
-@media (max-width: 520px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-}
-
-@media (min-width: 521px) and (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
 
 .gridItem {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  min-width: 0;
 }
 
 .tile {
@@ -70,22 +48,21 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  max-width: 140px;
   position: relative;
 }
 
 .avatarWrap {
   position: relative;
-  width: var(--computed-tile-size);
-  height: var(--computed-tile-size);
-  border-radius: 12px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, #25272b, #1e1f22);
   border: 2px solid rgba(255,255,255,0.04);
-  box-shadow: 0 6px 10px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.02);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.02);
 }
 
 .nameOverlay {
