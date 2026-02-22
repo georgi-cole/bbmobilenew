@@ -64,7 +64,48 @@ src/
 
 ---
 
-## Diary Room Log — Weekly
+## iOS Home Screen (A2HS) / Standalone Testing
+
+When the app is added to an iOS home screen and launched as a PWA (standalone
+mode), Safari uses a different rendering context that can strip `backdrop-filter`,
+flatten `border-radius` on `<button>` elements, and ignore custom shadows.
+
+### How to reproduce
+
+1. Open the deployed site (`https://georgi-cole.github.io/bbmobilenew/`) in
+   **Safari on iOS** (not Chrome/Firefox — they don't support `navigator.standalone`).
+2. Tap the **Share** button → **Add to Home Screen** → **Add**.
+3. Launch the app from the home-screen icon — it now runs in standalone mode.
+4. Verify the HomeHub button stack renders with asymmetric rounded corners and
+   visible shadows (not flattened system-style buttons).
+
+### How the fix works
+
+* **`src/main.tsx`** — detects standalone mode via `navigator.standalone` and
+  `matchMedia('(display-mode: standalone)')` and adds `is-standalone` to
+  `<html>`.
+* **`src/styles/_ios-standalone-fixes.css`** — scoped under both
+  `@media (display-mode: standalone)` and `html.is-standalone` to ensure rules
+  fire even before JS has run. Key overrides:
+  * `-webkit-appearance: none` — prevents Safari from rendering native button
+    chrome.
+  * `border-radius: 28px 8px 28px 8px` — explicit px values that WebKit honours
+    in standalone context.
+  * `border-radius: inherit` on `::before` / `::after` pseudo-elements.
+  * `backdrop-filter: none` + enhanced `box-shadow` — consistent shadow without
+    relying on blur compositing.
+* **`index.html`** — `apple-mobile-web-app-capable` and related meta tags
+  enable proper standalone behaviour and status-bar integration.
+
+### Remote debugging on iOS
+
+1. Enable **Safari → Preferences → Advanced → Show Develop menu** on your Mac.
+2. Connect iPhone via USB; trust the connection.
+3. Open **Develop → [Your iPhone] → [page]** in desktop Safari DevTools.
+4. Inspect element styles and verify `html.is-standalone` class is present and
+   the standalone-specific CSS rules are applied.
+
+
 
 The **Weekly Diary Room Log** feature lets admins record and publish a
 structured summary of each Big Brother game week. Guests can view published
