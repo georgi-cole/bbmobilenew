@@ -1,0 +1,145 @@
+.container {
+  padding: 8px 12px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.header {
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  color: #bfc3c8;
+  margin: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.count {
+  color: #9aa0a6;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  justify-items: center;
+  align-items: start;
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(110px, 1fr));
+  }
+}
+
+.gridItem {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 160px;
+  position: relative;
+}
+
+.avatarWrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #25272b, #1e1f22);
+  border: 3px solid rgba(255,255,255,0.04);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.6), inset 0 -2px 0 rgba(255,255,255,0.02);
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 10px;
+}
+
+.avatarPlaceholder {
+  width: 70%;
+  height: 70%;
+  background: linear-gradient(90deg, #3b3f45, #2b2d30);
+  border-radius: 8px;
+}
+
+.nameRow {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.name {
+  font-size: 12px;
+  color: #d7dbe0;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 140px;
+}
+
+.youBadge {
+  background: #4b6cff;
+  color: white;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.evicted .avatar,
+.evicted .avatarPlaceholder {
+  filter: grayscale(100%) brightness(0.8) opacity(0.8);
+}
+
+.cross {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+  transform-origin: center;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+}
+
+.evicted {
+  opacity: 0.92;
+}
+
+.tile:focus-within,
+.tile:focus {
+  outline: 3px solid rgba(75,108,255,0.18);
+  outline-offset: 4px;
+  border-radius: 12px;
+}

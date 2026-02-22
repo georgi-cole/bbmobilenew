@@ -54,6 +54,13 @@ button.status-pill:focus-visible {
 .status-pill--phase {
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-2) 100%);
   color: var(--color-bg);
+  max-width: var(--pill-max-width, 140px);
+}
+
+.status-pill--phase .status-pill__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .status-pill--week {
