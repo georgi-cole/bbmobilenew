@@ -9,6 +9,10 @@
  *     an infinite loop.
  *  4. nomination_results and eviction_results guards prevent processing when
  *     the alive count is too small.
+ *  5. Final 4: pov_comp with 4 alive → final4_eviction → correct nominees →
+ *     final3 after eviction.
+ *  6. Final 3: full flow from final3 through comp1/comp2/comp3 to jury.
+ *  7. Regression: eviction_results never evicts when 2 or fewer players alive.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -16,6 +20,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   finalizeFinal3Eviction,
+  finalizeFinal4Eviction,
 } from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
@@ -265,6 +270,14 @@ describe('endgame simulation — Final 5 through to jury', () => {
         state.nomineeIds.length > 0
       ) {
         store.dispatch(finalizeFinal3Eviction(state.nomineeIds[0]));
+      } else if (
+        state.phase === 'final4_eviction' &&
+        state.povWinnerId &&
+        state.nomineeIds.length > 0 &&
+        state.players.find((p) => p.id === state.povWinnerId)?.isUser
+      ) {
+        // Human is POV holder at Final 4 — must use finalizeFinal4Eviction
+        store.dispatch(finalizeFinal4Eviction(state.nomineeIds[0]));
       } else {
         store.dispatch(advance());
       }
@@ -279,5 +292,401 @@ describe('endgame simulation — Final 5 through to jury', () => {
       .getState()
       .game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
     expect(alive).toHaveLength(2);
+  });
+});
+
+// ── Final 4 flow tests ────────────────────────────────────────────────────────
+
+describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
+  /**
+   * Build a 4-player state ready for the POV competition.
+   * All players are AI (no isUser) so no minigame is launched and
+   * advance() can proceed without TapRace interaction.
+   */
+  function makeFinal4Store(options: { withHumanPovWinner?: boolean } = {}) {
+    const players: Player[] = [
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
+      { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
+      { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+
+    const base: GameState = {
+      season: 1,
+      week: 9,
+      phase: 'pov_comp',
+      seed: 42,
+      hohId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      povWinnerId: null,
+      replacementNeeded: false,
+      awaitingFinal3Eviction: false,
+      f3Part1WinnerId: null,
+      f3Part2WinnerId: null,
+      players,
+      tvFeed: [],
+      isLive: false,
+    };
+
+    if (options.withHumanPovWinner) {
+      // Pre-set the POV winner to the human player (p3 as human, already won POV)
+      // Use final4_eviction phase directly to test the blocking behavior
+      const humanPlayers = players.map((p) =>
+        p.id === 'p3' ? { ...p, isUser: true, status: 'pov' as const } : p,
+      );
+      return configureStore({
+        reducer: { game: gameReducer },
+        preloadedState: {
+          game: {
+            ...base,
+            phase: 'final4_eviction' as const,
+            povWinnerId: 'p3',
+            nomineeIds: ['p1', 'p2'],
+            players: humanPlayers,
+          },
+        },
+      });
+    }
+
+    return configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: { game: base },
+    });
+  }
+
+  it('transitions from pov_comp to final4_eviction when 4 players are alive', () => {
+    const store = makeFinal4Store();
+
+    // advance() from pov_comp: arrives at pov_results → picks POV winner → Final 4 detected
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('final4_eviction');
+  });
+
+  it('sets exactly 2 nominees (non-HOH, non-POV) at final4_eviction', () => {
+    const store = makeFinal4Store();
+    store.dispatch(advance()); // pov_comp → final4_eviction
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('final4_eviction');
+
+    // There must be exactly 2 nominees
+    expect(state.nomineeIds).toHaveLength(2);
+
+    // Neither nominee is the HOH
+    expect(state.nomineeIds).not.toContain(state.hohId);
+    // Neither nominee is the POV winner
+    expect(state.nomineeIds).not.toContain(state.povWinnerId);
+  });
+
+  it('AI POV holder evicts a nominee and transitions to final3', () => {
+    const store = makeFinal4Store();
+    store.dispatch(advance()); // pov_comp → final4_eviction
+
+    // Confirm we are at final4_eviction with an AI POV holder
+    const midState = store.getState().game;
+    expect(midState.phase).toBe('final4_eviction');
+    const povHolder = midState.players.find((p) => p.id === midState.povWinnerId);
+    expect(povHolder?.isUser).toBeFalsy();
+
+    // advance() again: AI POV holder casts sole vote
+    store.dispatch(advance());
+
+    const endState = store.getState().game;
+    expect(endState.phase).toBe('final3');
+
+    // Exactly 3 players should remain alive
+    const alive = endState.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    expect(alive).toHaveLength(3);
+  });
+
+  it('human POV holder blocks advance() at final4_eviction', () => {
+    // State: phase=final4_eviction, POV winner is human (p3)
+    const store = makeFinal4Store({ withHumanPovWinner: true });
+
+    // advance() must be a no-op when human is POV holder
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('final4_eviction');
+
+    // Calling it again must still be a no-op
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('final4_eviction');
+  });
+
+  it('finalizeFinal4Eviction() by human POV holder evicts nominee and transitions to final3', () => {
+    const store = makeFinal4Store({ withHumanPovWinner: true });
+
+    expect(store.getState().game.phase).toBe('final4_eviction');
+    const { nomineeIds } = store.getState().game;
+    expect(nomineeIds).toHaveLength(2);
+
+    // Human POV holder chooses to evict the first nominee
+    store.dispatch(finalizeFinal4Eviction(nomineeIds[0]));
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3');
+
+    // Exactly 3 players alive after eviction
+    const alive = state.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    expect(alive).toHaveLength(3);
+  });
+
+  it('Final 4 is not bypassed even when cfg.multiEviction is true', () => {
+    // Ensure that setting multiEviction:true does not disable Final 4 special handling
+    const players: Player[] = [
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
+      { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
+      { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          season: 1,
+          week: 9,
+          phase: 'pov_comp' as const,
+          seed: 42,
+          hohId: 'p0',
+          nomineeIds: ['p1', 'p2'],
+          povWinnerId: null,
+          replacementNeeded: false,
+          awaitingFinal3Eviction: false,
+          f3Part1WinnerId: null,
+          f3Part2WinnerId: null,
+          players,
+          tvFeed: [],
+          isLive: false,
+          cfg: { multiEviction: true }, // should NOT disable Final 4
+        },
+      },
+    });
+
+    store.dispatch(advance()); // pov_comp → should still reach final4_eviction
+
+    expect(store.getState().game.phase).toBe('final4_eviction');
+  });
+});
+
+// ── Final 3 flow tests ────────────────────────────────────────────────────────
+
+describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
+  function makeFinal3Store(overrides: Partial<GameState> = {}) {
+    const players: Player[] = [
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'active' },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
+      { id: 'p2', name: 'Carol', avatar: '👩', status: 'active' },
+      ...Array.from({ length: 9 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+    const base: GameState = {
+      season: 1,
+      week: 10,
+      phase: 'final3',
+      seed: 99,
+      hohId: null,
+      nomineeIds: [],
+      povWinnerId: null,
+      replacementNeeded: false,
+      awaitingFinal3Eviction: false,
+      f3Part1WinnerId: null,
+      f3Part2WinnerId: null,
+      players,
+      tvFeed: [],
+      isLive: false,
+    };
+    return configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: { game: { ...base, ...overrides } },
+    });
+  }
+
+  it('final3 → final3_comp1 on advance()', () => {
+    const store = makeFinal3Store();
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('final3_comp1');
+  });
+
+  it('final3_comp1 → final3_comp2 and sets f3Part1WinnerId', () => {
+    const store = makeFinal3Store({ phase: 'final3_comp1' });
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp2');
+    expect(state.f3Part1WinnerId).not.toBeNull();
+  });
+
+  it('final3_comp2 → final3_comp3 and sets f3Part2WinnerId (different from Part 1 winner)', () => {
+    const store = makeFinal3Store({ phase: 'final3_comp1' });
+    store.dispatch(advance()); // → comp2, f3Part1WinnerId set
+    store.dispatch(advance()); // → comp3, f3Part2WinnerId set
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp3');
+    expect(state.f3Part2WinnerId).not.toBeNull();
+    // Part 1 and Part 2 winners must be different players
+    expect(state.f3Part1WinnerId).not.toBe(state.f3Part2WinnerId);
+  });
+
+  it('final3_comp3 advances to week_end or final3_decision (never stays at comp3)', () => {
+    const store = makeFinal3Store({ phase: 'final3_comp1', seed: 7 });
+    store.dispatch(advance()); // → comp2
+    store.dispatch(advance()); // → comp3
+    store.dispatch(advance()); // → week_end (AI Final HOH) or final3_decision (human)
+    const state = store.getState().game;
+    expect(['week_end', 'final3_decision']).toContain(state.phase);
+  });
+
+  it('phases proceed in correct order: comp1 → comp2 → comp3 → (decision or week_end)', () => {
+    const store = makeFinal3Store({ seed: 42 });
+    store.dispatch(advance()); // final3 → final3_comp1
+    expect(store.getState().game.phase).toBe('final3_comp1');
+    store.dispatch(advance()); // final3_comp1 → final3_comp2
+    expect(store.getState().game.phase).toBe('final3_comp2');
+    store.dispatch(advance()); // final3_comp2 → final3_comp3
+    expect(store.getState().game.phase).toBe('final3_comp3');
+    store.dispatch(advance()); // final3_comp3 → week_end or final3_decision
+    expect(['week_end', 'final3_decision']).toContain(store.getState().game.phase);
+  });
+
+  it('full Final 3 flow reaches jury from final3 within 10 advance() calls', () => {
+    const store = makeFinal3Store({ seed: 7 });
+
+    let steps = 0;
+    const MAX = 10;
+    while (store.getState().game.phase !== 'jury' && steps < MAX) {
+      const state = store.getState().game;
+      if (
+        state.phase === 'final3_decision' &&
+        state.awaitingFinal3Eviction &&
+        state.nomineeIds.length > 0
+      ) {
+        store.dispatch(finalizeFinal3Eviction(state.nomineeIds[0]));
+      } else {
+        store.dispatch(advance());
+      }
+      steps++;
+    }
+
+    expect(store.getState().game.phase).toBe('jury');
+    expect(steps).toBeLessThan(MAX);
+
+    // Exactly 2 finalists remain
+    const alive = store
+      .getState()
+      .game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+    expect(alive).toHaveLength(2);
+  });
+});
+
+// ── Regression: eviction_results never evicts to 1 player ────────────────────
+
+describe('Regression — eviction never drops alive count below 2', () => {
+  it('eviction_results with exactly 2 alive players does NOT evict either', () => {
+    // Defensive guard: eviction_results must not evict when only 2 players alive
+    // (should not happen via correct endgame routing).
+    const players: Player[] = [
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'nominated', isUser: true },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          season: 1,
+          week: 10,
+          phase: 'live_vote' as const,
+          seed: 42,
+          hohId: null,
+          nomineeIds: ['p0', 'p1'],
+          povWinnerId: null,
+          replacementNeeded: false,
+          awaitingFinal3Eviction: false,
+          f3Part1WinnerId: null,
+          f3Part2WinnerId: null,
+          players,
+          tvFeed: [],
+          isLive: false,
+        },
+      },
+    });
+
+    store.dispatch(advance()); // live_vote → eviction_results
+
+    const state = store.getState().game;
+    // Guard should have fired: neither player should have been evicted
+    const p0 = state.players.find((p) => p.id === 'p0');
+    const p1 = state.players.find((p) => p.id === 'p1');
+    expect(p0?.status).not.toBe('evicted');
+    expect(p0?.status).not.toBe('jury');
+    expect(p1?.status).not.toBe('evicted');
+    expect(p1?.status).not.toBe('jury');
+  });
+
+  it('week_end with 2 alive transitions to jury, never back to week_start', () => {
+    const players: Player[] = [
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'active', isUser: true },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+
+    const store = configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: {
+        game: {
+          season: 1,
+          week: 10,
+          phase: 'week_end' as const,
+          seed: 42,
+          hohId: null,
+          nomineeIds: [],
+          povWinnerId: null,
+          replacementNeeded: false,
+          awaitingFinal3Eviction: false,
+          f3Part1WinnerId: null,
+          f3Part2WinnerId: null,
+          players,
+          tvFeed: [],
+          isLive: false,
+        },
+      },
+    });
+
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury');
+    // Further advance() calls are no-ops
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury');
   });
 });
