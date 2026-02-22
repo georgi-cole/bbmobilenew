@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { SocialPhaseReport, SocialState } from './types';
+import type { SocialActionLogEntry, SocialPhaseReport, SocialState } from './types';
 import { SOCIAL_INITIAL_STATE } from './constants';
 
 const socialSlice = createSlice({
@@ -40,7 +40,7 @@ const socialSlice = createSlice({
       state.energyBank[action.payload.playerId] = current + action.payload.delta;
     },
     /** Append a social action log entry to sessionLogs. */
-    recordSocialAction(state, action: PayloadAction<{ entry: unknown }>) {
+    recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
     },
     /** Update the affinity (and optionally tags) for a directed relationship. */
@@ -85,4 +85,5 @@ export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social.lastReport ?? null;
 export const selectInfluenceWeights = (state: { social: SocialState }) =>
   state.social.influenceWeights;
-export const selectSessionLogs = (state: { social: SocialState }) => state.social.sessionLogs;
+export const selectSessionLogs = (state: { social: SocialState }) =>
+  state.social.sessionLogs as SocialState['sessionLogs'];

@@ -12,7 +12,7 @@
  * `state.social.energyBank`.
  */
 
-import { setEnergyBankEntry, applyEnergyDelta } from './socialSlice';
+import { setEnergyBankEntry } from './socialSlice';
 import type { SocialEnergyBank as SocialEnergyBankType } from './types';
 
 // ── Internal store reference ──────────────────────────────────────────────
@@ -52,13 +52,15 @@ export function set(playerId: string, value: number): void {
 
 /**
  * Add delta to the player's current energy (use a negative delta to deduct).
+ * Energy is clamped at a minimum of 0.
  * Returns the new energy value.
  */
 export function add(playerId: string, delta: number): number {
   if (!_store) return 0;
-  _store.dispatch(applyEnergyDelta({ playerId, delta }));
-  const state = _store.getState() as StateForBank;
-  return state.social.energyBank[playerId] ?? 0;
+  const current = get(playerId);
+  const value = Math.max(0, current + delta);
+  _store.dispatch(setEnergyBankEntry({ playerId, value }));
+  return value;
 }
 
 /** Prepared for future phase-reset logic; currently a no-op. */

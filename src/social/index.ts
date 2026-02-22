@@ -5,6 +5,7 @@ export type {
   RelationshipEntry,
   RelationshipsMap,
   SocialPhaseReport,
+  SocialActionLogEntry,
   SocialState,
   PolicyContext,
 } from './types';

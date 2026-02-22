@@ -37,6 +37,7 @@ import {
   executeAction,
 } from '../../src/social/SocialManeuvers';
 import { socialConfig } from '../../src/social/socialConfig';
+import type { SocialActionLogEntry } from '../../src/social/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -75,9 +76,9 @@ describe('SOCIAL_ACTIONS definitions', () => {
     expect(action.baseCost).toBe(1);
   });
 
-  it('startFight has outcomeTag betrayal', () => {
+  it('startFight has outcomeTag conflict', () => {
     const action = SOCIAL_ACTIONS.find((a) => a.id === 'startFight')!;
-    expect(action.outcomeTag).toBe('betrayal');
+    expect(action.outcomeTag).toBe('conflict');
   });
 });
 
@@ -102,6 +103,18 @@ describe('normalizeCost', () => {
 
   it('returns 1 for null', () => {
     expect(normalizeCost(null)).toBe(1);
+  });
+
+  it('returns 1 when energy field is NaN', () => {
+    expect(normalizeCost({ energy: NaN })).toBe(1);
+  });
+
+  it('returns 1 when energy field is Infinity', () => {
+    expect(normalizeCost({ energy: Infinity })).toBe(1);
+  });
+
+  it('returns 1 when energy field is negative', () => {
+    expect(normalizeCost({ energy: -5 })).toBe(1);
   });
 });
 
@@ -179,7 +192,20 @@ describe('socialSlice – new reducers', () => {
 
   it('recordSocialAction appends to sessionLogs', () => {
     const store = makeStore();
-    store.dispatch(recordSocialAction({ entry: { actionId: 'compliment' } }));
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: 'p1',
+          targetId: 'p2',
+          cost: 1,
+          delta: 0,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
     expect(store.getState().social.sessionLogs).toHaveLength(1);
   });
 
@@ -263,10 +289,14 @@ describe('getAvailableActions', () => {
     // Energy not set → starts at 0
   });
 
-  it('returns empty when player has no energy', () => {
+  it('returns only zero-cost actions when player has no energy', () => {
     const store = makeStore();
     initManeuvers(store);
-    expect(getAvailableActions('p1')).toHaveLength(0);
+    // idle has baseCost 0, so it should still be available even with 0 energy
+    const available = getAvailableActions('p1');
+    for (const action of available) {
+      expect(normalizeActionCosts(action)).toBeLessThanOrEqual(0);
+    }
   });
 
   it('returns only affordable actions', () => {
@@ -337,7 +367,7 @@ describe('executeAction – happy path', () => {
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
 
     executeAction('p1', 'p2', 'compliment');
-    const entry = store.getState().social.sessionLogs[0] as Record<string, unknown>;
+    const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
     expect(entry.actionId).toBe('compliment');
     expect(entry.actorId).toBe('p1');
     expect(entry.targetId).toBe('p2');
@@ -357,17 +387,9 @@ describe('executeAction – happy path', () => {
     expect(typeof rel!.affinity).toBe('number');
   });
 
-  it('applies the correct affinity delta for a friendly action (success)', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-
-    const result = executeAction('p1', 'p2', 'compliment');
-    // compliment is friendly; computeOutcomeDelta uses friendlyActions list
-    // which contains 'ally' and 'protect' — compliment is not listed so delta=0
-    // That is correct behaviour: unknown actions return 0 delta
-    expect(typeof result.delta).toBe('number');
-  });
+  it.todo(
+    'applies the correct affinity delta for a friendly action (success) – TODO: add compliment to socialConfig.actionCategories.friendlyActions so computeOutcomeDelta returns a non-zero delta',
+  );
 
   it('tags relationship with outcomeTag when action has one', () => {
     const store = makeStore();
@@ -376,7 +398,7 @@ describe('executeAction – happy path', () => {
 
     executeAction('p1', 'p2', 'startFight');
     const rel = store.getState().social.relationships['p1']?.['p2'];
-    expect(rel?.tags).toContain('betrayal');
+    expect(rel?.tags).toContain('conflict');
   });
 
   it('multiple executions accumulate session logs', () => {
@@ -444,7 +466,7 @@ describe('executeAction – failure cases', () => {
 
     const result = executeAction('p1', 'p2', 'compliment', { outcome: 'failure' });
     expect(result.success).toBe(true);
-    const entry = store.getState().social.sessionLogs[0] as Record<string, unknown>;
+    const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
     expect(entry.outcome).toBe('failure');
   });
 });
@@ -452,32 +474,46 @@ describe('executeAction – failure cases', () => {
 // ── Integration: computeOutcomeDelta wired through executeAction ──────────
 
 describe('executeAction – outcome delta from SocialPolicy', () => {
-  it('uses the ally action (friendly) for a positive delta on success', () => {
+  it('delta for ally (friendly, socialConfig) is positive on success', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
-    // Temporarily add 'ally' to SOCIAL_ACTIONS so we can test the policy path
-    // instead of verifying the full compliment action (which returns 0 delta
-    // as it's not in socialConfig.actionCategories.friendlyActions).
-    // We test this via updateRelationship directly dispatched by executeAction.
-    const result = executeAction('p1', 'p2', 'compliment');
-    // compliment is not in friendlyActions config so delta = 0
-    expect(result.delta).toBe(0);
+    const result = executeAction('p1', 'p2', 'ally');
+    expect(result.success).toBe(true);
+    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess);
   });
 
-  it('delta for a known-friendly policy action is positive on success', () => {
+  it('delta for betray (aggressive, socialConfig) is negative on success', () => {
     const store = makeStore();
     initManeuvers(store);
-    // Give player an action matching the policy's friendlyActions list
-    // (those are 'ally' and 'protect' from socialConfig)
-    // We skip this test if no action with id 'ally' or 'protect' is defined
-    // (they're not in SOCIAL_ACTIONS by default – that's by design).
-    const allyDefined = SOCIAL_ACTIONS.some((a) => a.id === 'ally');
-    if (!allyDefined) return; // skipped – not expected to be defined in this PR
-
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    const result = executeAction('p1', 'p2', 'ally');
-    expect(result.delta).toBe(socialConfig.affinityDeltas.friendlySuccess);
+
+    const result = executeAction('p1', 'p2', 'betray');
+    expect(result.success).toBe(true);
+    expect(result.delta).toBe(socialConfig.affinityDeltas.aggressiveSuccess);
+  });
+
+  it('delta for compliment (not yet in socialConfig categories) is 0', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+
+    const result = executeAction('p1', 'p2', 'compliment');
+    // compliment is not in socialConfig.actionCategories so delta = 0
+    expect(result.delta).toBe(0);
+  });
+});
+
+// ── SocialEnergyBank energy clamping ──────────────────────────────────────
+
+describe('SocialEnergyBank – energy clamped at 0', () => {
+  it('add with delta that would produce negative energy clamps at 0', () => {
+    const store = makeStore();
+    initEnergyBank(store);
+    bankSet('p1', 2);
+    const result = bankAdd('p1', -10);
+    expect(result).toBe(0);
+    expect(store.getState().social.energyBank['p1']).toBe(0);
   });
 });

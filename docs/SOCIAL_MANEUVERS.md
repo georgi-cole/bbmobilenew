@@ -50,11 +50,11 @@ Main entry point for performing a social action. Synchronous and deterministic.
 import { executeAction } from './social/SocialManeuvers';
 
 const result = executeAction('player1', 'player2', 'compliment');
-// { success: true, delta: 0.1, newEnergy: 4 }
+// { success: true, delta: 0, newEnergy: 4 }
 
 // Force a failure outcome:
 const result2 = executeAction('player1', 'player2', 'rumor', { outcome: 'failure' });
-// { success: true, delta: -0.05, newEnergy: 2 }
+// { success: true, delta: 0, newEnergy: 2 }
 ```
 
 #### Returns `ExecuteActionResult`

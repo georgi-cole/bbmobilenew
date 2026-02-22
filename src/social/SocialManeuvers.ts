@@ -17,7 +17,7 @@ import { normalizeActionCosts } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta } from './SocialPolicy';
 import { recordSocialAction, updateRelationship } from './socialSlice';
-import type { SocialState } from './types';
+import type { SocialActionLogEntry, SocialState } from './types';
 
 // ── Internal store reference ──────────────────────────────────────────────
 
@@ -103,12 +103,13 @@ export interface ExecuteActionResult {
  * Execute a social action synchronously.
  *
  * Steps:
- *  1. Validate the action exists and the actor has enough energy.
- *  2. Deduct energy via SocialEnergyBank.
- *  3. Compute affinity delta via SocialPolicy.computeOutcomeDelta.
- *  4. Dispatch updateRelationship to persist the affinity change.
- *  5. Dispatch recordSocialAction to append an entry to sessionLogs.
- *  6. Return { success, delta, newEnergy }.
+ *  1. Fail fast if the store is not initialised.
+ *  2. Validate the action exists and the actor has enough energy.
+ *  3. Deduct energy via SocialEnergyBank.
+ *  4. Compute affinity delta via SocialPolicy.computeOutcomeDelta.
+ *  5. Dispatch updateRelationship to persist the affinity change.
+ *  6. Dispatch recordSocialAction to append an entry to sessionLogs.
+ *  7. Return { success, delta, newEnergy }.
  *
  * Returns { success: false } without mutating state if validation fails.
  */
@@ -118,6 +119,10 @@ export function executeAction(
   actionId: string,
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
+  if (!_store) {
+    return { success: false, delta: 0, newEnergy: 0 };
+  }
+
   const action = getActionById(actionId);
   if (!action) {
     return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId) };
@@ -134,30 +139,26 @@ export function executeAction(
   const delta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
   const newEnergy = SocialEnergyBank.add(actorId, -cost);
 
-  if (_store) {
-    _store.dispatch(
-      updateRelationship({
-        source: actorId,
-        target: targetId,
-        delta,
-        tags: action.outcomeTag ? [action.outcomeTag] : undefined,
-      }),
-    );
-    _store.dispatch(
-      recordSocialAction({
-        entry: {
-          actionId,
-          actorId,
-          targetId,
-          cost,
-          delta,
-          outcome,
-          newEnergy,
-          timestamp: Date.now(),
-        },
-      }),
-    );
-  }
+  const entry: SocialActionLogEntry = {
+    actionId,
+    actorId,
+    targetId,
+    cost,
+    delta,
+    outcome,
+    newEnergy,
+    timestamp: Date.now(),
+  };
+
+  _store.dispatch(
+    updateRelationship({
+      source: actorId,
+      target: targetId,
+      delta,
+      tags: action.outcomeTag ? [action.outcomeTag] : undefined,
+    }),
+  );
+  _store.dispatch(recordSocialAction({ entry }));
 
   return { success: true, delta, newEnergy };
 }
