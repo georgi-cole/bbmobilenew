@@ -1,0 +1,106 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   TVLog — scrollable event log strip beneath the TV viewport
+
+   CSS custom-property reference:
+     --tv-log-item-h   : height of each collapsed log row  (default 36px)
+     --tv-log-max-vis  : number of rows visible before scroll (default 3)
+                         max-height is calculated as calc(var(--tv-log-item-h) * var(--tv-log-max-vis))
+
+   Both variables can be overridden on a parent element to adapt the log to
+   different screen sizes without touching the component code.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tv-log {
+  --tv-log-item-h: 36px;
+  --tv-log-max-vis: 3;
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: calc(var(--tv-log-item-h) * var(--tv-log-max-vis));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+}
+
+.tv-log::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tv-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tv-log::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+/* ── Log item ──────────────────────────────────────────────────────────────── */
+.tv-log__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tv-log-item-h);
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #9ca3af);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.tv-log__item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Expanded items grow to show full text */
+.tv-log__item--expanded {
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  min-height: var(--tv-log-item-h);
+}
+
+/* Most-recent non-duplicate item gets a subtle highlight */
+.tv-log__item:first-child {
+  color: var(--color-text, #f1f5f9);
+  background: rgba(99, 102, 241, 0.06);
+  animation: tvLogItemIn 0.3s ease;
+}
+
+@keyframes tvLogItemIn {
+  from { opacity: 0; background: rgba(99, 102, 241, 0.18); }
+  to   { opacity: 1; }
+}
+
+.tv-log__icon {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.tv-log__text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.tv-log__item--expanded .tv-log__text {
+  white-space: normal;
+}
+
+/* Type-colour left-border accents (mirrors TvZone feed) */
+.tv-log__item--game   { border-left: 2px solid var(--color-accent, #6366f1); }
+.tv-log__item--social { border-left: 2px solid #1fc884; }
+.tv-log__item--vote   { border-left: 2px solid #ef4444; }
+.tv-log__item--twist  { border-left: 2px solid #f59e0b; }
+.tv-log__item--diary  { border-left: 2px solid #8b5cf6; }
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .tv-log {
+    --tv-log-item-h: 32px;
+  }
+}
