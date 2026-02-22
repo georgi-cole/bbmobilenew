@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatar, getDicebear, isEmoji } from '../../utils/avatar';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -17,7 +17,7 @@ interface PlayerAvatarProps {
  * PlayerAvatar — reusable avatar tile for decision modals.
  *
  * Renders a circular photo avatar with:
- *  - Two-step image fallback: photo → Dicebear → emoji/initials
+ *  - Multi-step image fallback: iterates all resolveAvatarCandidates before emoji/initials
  *  - Load animation (fade-in)
  *  - Subtle border + status ring
  *  - Selected state (glow ring) and hover state
@@ -30,14 +30,16 @@ export default function PlayerAvatar({
   size = 'md',
   onClick,
 }: PlayerAvatarProps) {
-  const [avatarSrc, setAvatarSrc] = useState(() => resolveAvatar(player));
+  const [candidates] = useState(() => resolveAvatarCandidates(player));
+  const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  const avatarSrc = candidates[candidateIdx] ?? '';
+
   function handleError() {
-    const dicebear = getDicebear(player.name);
-    if (avatarSrc !== dicebear) {
-      setAvatarSrc(dicebear);
+    if (candidateIdx < candidates.length - 1) {
+      setCandidateIdx((i) => i + 1);
     } else {
       setShowFallback(true);
     }
