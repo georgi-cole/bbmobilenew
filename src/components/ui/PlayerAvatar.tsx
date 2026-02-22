@@ -113,7 +113,7 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
           </div>
           <strong className="player-avatar__popover-name">{player.name}</strong>
           <span className={`player-avatar__popover-status player-avatar__popover-status--${player.status}`}>
-            {badgeStr} {player.status.toUpperCase()}
+            {`${badgeStr} ${player.status.toUpperCase()}`.trim()}
           </span>
           {player.stats && (
             <ul className="player-avatar__popover-stats">

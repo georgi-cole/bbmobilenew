@@ -69,7 +69,8 @@ export interface BadgeInfo {
  * string and optional final rank.
  *
  * Handles compound statuses like 'hoh+pov' and 'nominated+pov' by splitting
- * on '+'.  Final-rank medals take precedence and are appended last.
+ * on '+'. Final-rank medals take precedence and replace any existing status
+ * badges so that only the medal is shown for finalists.
  *
  * @param status    - PlayerStatus string (e.g. 'hoh', 'nominated+pov', 'active')
  * @param finalRank - Optional numeric final placement (1, 2, or 3)
@@ -89,9 +90,9 @@ export function getBadgesForPlayer(
     }
   }
 
-  // Append medal if a final rank is set (overrides status badges for finals)
-  if (finalRank != null) {
-    const rankCode = finalRankBadge(finalRank as 1 | 2 | 3);
+  // Append medal if a valid final rank (1–3) is set (overrides status badges for finals)
+  if (finalRank === 1 || finalRank === 2 || finalRank === 3) {
+    const rankCode = finalRankBadge(finalRank);
     if (rankCode) {
       // Remove any status badges and show only the medal for finalists
       badges.length = 0;
