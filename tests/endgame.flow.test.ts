@@ -20,7 +20,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   finalizeFinal3Eviction,
-  finalizeFinal4Eviction,
+  selectNominee1,
+  finalizeNominations,
+  submitPovDecision,
+  submitPovSaveTarget,
+  setReplacementNominee,
+  submitHumanVote,
+  submitTieBreak,
 } from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
@@ -46,6 +52,14 @@ function makeStore(overrides: Partial<GameState> = {}) {
     nomineeIds: [],
     povWinnerId: null,
     replacementNeeded: false,
+    awaitingNominations: false,
+    pendingNominee1Id: null,
+    awaitingPovDecision: false,
+    awaitingPovSaveTarget: false,
+    votes: {},
+    awaitingHumanVote: false,
+    awaitingTieBreak: false,
+    tiedNomineeIds: null,
     awaitingFinal3Eviction: false,
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
@@ -270,14 +284,52 @@ describe('endgame simulation — Final 5 through to jury', () => {
         state.nomineeIds.length > 0
       ) {
         store.dispatch(finalizeFinal3Eviction(state.nomineeIds[0]));
-      } else if (
-        state.phase === 'final4_eviction' &&
-        state.povWinnerId &&
-        state.nomineeIds.length > 0 &&
-        state.players.find((p) => p.id === state.povWinnerId)?.isUser
-      ) {
-        // Human is POV holder at Final 4 — must use finalizeFinal4Eviction
-        store.dispatch(finalizeFinal4Eviction(state.nomineeIds[0]));
+      } else if (state.awaitingNominations && !state.pendingNominee1Id) {
+        // Step 1: pick a valid nominee 1 (first non-HOH alive player)
+        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter((p) => p.id !== state.hohId);
+        if (pool.length >= 2) {
+          store.dispatch(selectNominee1(pool[0].id));
+        } else {
+          store.dispatch(advance());
+        }
+      } else if (state.awaitingNominations && state.pendingNominee1Id) {
+        // Step 2: pick a valid nominee 2 (second non-HOH alive player)
+        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter((p) => p.id !== state.hohId && p.id !== state.pendingNominee1Id);
+        if (pool.length >= 1) {
+          store.dispatch(finalizeNominations(pool[0].id));
+        } else {
+          store.dispatch(advance());
+        }
+      } else if (state.awaitingPovDecision) {
+        // Human POV holder decides not to use the veto
+        store.dispatch(submitPovDecision(false));
+      } else if (state.awaitingPovSaveTarget && state.nomineeIds.length > 0) {
+        store.dispatch(submitPovSaveTarget(state.nomineeIds[0]));
+      } else if (state.replacementNeeded) {
+        // Human HOH picks a replacement nominee
+        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter(
+          (p) =>
+            p.id !== state.hohId &&
+            p.id !== state.povWinnerId &&
+            !state.nomineeIds.includes(p.id),
+        );
+        if (pool.length > 0) {
+          store.dispatch(setReplacementNominee(pool[0].id));
+        } else {
+          store.dispatch(advance());
+        }
+      } else if (state.awaitingHumanVote && state.nomineeIds.length > 0) {
+        store.dispatch(submitHumanVote(state.nomineeIds[0]));
+      } else if (state.awaitingTieBreak) {
+        const tied = state.tiedNomineeIds ?? state.nomineeIds;
+        if (tied.length > 0) {
+          store.dispatch(submitTieBreak(tied[0]));
+        } else {
+          store.dispatch(advance());
+        }
       } else {
         store.dispatch(advance());
       }

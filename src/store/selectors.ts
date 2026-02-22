@@ -7,7 +7,12 @@ import type { RootState } from './store';
 
 /**
  * True when the game is blocked on a human decision modal:
+ * - human HOH nominations (nomination_results)
+ * - POV use decision (pov_ceremony_results, human POV holder)
+ * - POV save target (pov_ceremony_results, human POV holder chose to use it)
  * - replacement nominee picker (pov_ceremony_results)
+ * - human live vote (live_vote)
+ * - tie-break (eviction_results)
  * - Final 4 solo eviction vote (human is POV holder)
  * - Final 3 HOH eviction (awaitingFinal3Eviction)
  */
@@ -22,6 +27,11 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
 
   return (
     Boolean(game.replacementNeeded) ||
+    Boolean(game.awaitingNominations) ||
+    Boolean(game.awaitingPovDecision) ||
+    Boolean(game.awaitingPovSaveTarget) ||
+    Boolean(game.awaitingHumanVote) ||
+    Boolean(game.awaitingTieBreak) ||
     Boolean(game.awaitingFinal3Eviction) ||
     isFinal4HumanPovDecision
   );
