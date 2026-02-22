@@ -49,6 +49,7 @@ const INITIAL_STATE: GameState = {
   phase: 'week_start',
   seed: 42,
   hohId: null,
+  prevHohId: null,
   nomineeIds: [],
   povWinnerId: null,
   players: buildInitialPlayers(),

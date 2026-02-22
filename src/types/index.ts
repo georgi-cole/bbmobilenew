@@ -108,6 +108,12 @@ export interface GameState {
   seed: number;
   /** Player ID of the current Head of Household, or null between weeks. */
   hohId: string | null;
+  /**
+   * Player ID of the outgoing (previous week's) Head of Household.
+   * Set at the start of each new week so the outgoing HOH can be excluded
+   * from the HOH competition. Null in Week 1 and during the Final 3.
+   */
+  prevHohId: string | null;
   /** Player IDs currently nominated for eviction. */
   nomineeIds: string[];
   /** Player ID of the current Power of Veto holder, or null. */
