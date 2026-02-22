@@ -4,9 +4,11 @@ import { test, expect, type Page } from '@playwright/test';
 // reachable at http://localhost:3000/bbmobilenew. Example: npm run dev -- --port 3000
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000/bbmobilenew';
 
-/** Navigate to the app with the debug panel enabled (?debug=1). */
+/** Navigate to the game screen with the debug panel enabled. */
 async function gotoDebug(page: Page) {
-  await page.goto(`${BASE}?debug=1`);
+  // Hash router: query params are part of the hash — navigate to /#/game?debug=1
+  // so we land directly on the game screen and the DebugPanel renders.
+  await page.goto(`${BASE}/#/game?debug=1`);
 }
 
 /** Open the debug panel by clicking the FAB toggle (if not already open). */
@@ -75,7 +77,7 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
     // Advance — Continue is visible because the AI is the POV holder (no blocking flag)
-    const continueBtn = page.getByRole('button', { name: /Continue/i });
+    const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
 
@@ -114,7 +116,7 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
     // Continue is visible until advance() sets awaitingPovDecision
-    const continueBtn = page.getByRole('button', { name: /Continue/i });
+    const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
 
@@ -161,7 +163,7 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     const tvFeed = page.getByTestId('tv-feed');
     await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
-    const continueBtn = page.getByRole('button', { name: /Continue/i });
+    const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
 
     // final3 → final3_comp1: "three-part HOH" announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 });

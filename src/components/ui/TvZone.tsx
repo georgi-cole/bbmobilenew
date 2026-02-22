@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -47,8 +48,14 @@ export default function TvZone() {
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const navigate = useNavigate();
+  const feedRef = useRef<HTMLUListElement>(null);
 
   const latestEvent = gameState.tvFeed[0];
+
+  // Auto-scroll feed to top when new event arrives
+  useEffect(() => {
+    feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [gameState.tvFeed.length]);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
 

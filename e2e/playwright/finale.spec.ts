@@ -6,7 +6,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000/bbmobilenew';
 
 test.describe('Finale / Jury flow', () => {
   test('mounts FinalFaceoff and completes finale via DebugPanel', async ({ page }) => {
-    await page.goto(BASE);
+    await page.goto(`${BASE}/#/?debug=1`);
 
     // Open DebugPanel — DebugPanel is mounted in AppShell; ensure it's visible
     // The debug controls render a section with title "Finale / Jury"; find the
