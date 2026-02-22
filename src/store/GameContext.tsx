@@ -8,24 +8,39 @@ import {
   type ReactNode,
 } from 'react';
 import type { GameState, Player, Phase, TvEvent } from '../types';
+import HOUSEGUESTS from '../data/houseguests';
+import { mulberry32, seededPickN } from './rng';
+import { loadUserProfile } from './userProfileSlice';
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-// Only players from the canonical houseguests dataset (src/data/houseguests.ts)
-// whose avatar image exists in public/avatars/ are included here.
-const SEED_PLAYERS: Player[] = [
-  { id: 'finn',  name: 'Finn',  avatar: '🧑', status: 'active', isUser: true },
-  { id: 'kai',   name: 'Kai',   avatar: '🧑', status: 'active' },
-  { id: 'kian',  name: 'Kian',  avatar: '🧑', status: 'active' },
-  { id: 'zed',   name: 'Zed',   avatar: '🧑', status: 'active' },
-  { id: 'ash',   name: 'Ash',   avatar: '🧑', status: 'active' },
-  { id: 'jax',   name: 'Jax',   avatar: '🧑', status: 'active' },
-  { id: 'aria',  name: 'Aria',  avatar: '👩', status: 'active' },
-  { id: 'echo',  name: 'Echo',  avatar: '👩', status: 'active' },
-  { id: 'mimi',  name: 'Mimi',  avatar: '👩', status: 'active' },
-  { id: 'rae',   name: 'Rae',   avatar: '👩', status: 'active' },
-  { id: 'nova',  name: 'Nova',  avatar: '👩', status: 'active' },
-  { id: 'ivy',   name: 'Ivy',   avatar: '👩', status: 'active' },
-];
+// ─── Houseguest pool ─────────────────────────────────────────────────────────
+const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
+  id: hg.id,
+  name: hg.name,
+  avatar: hg.sex === 'Female' ? '👩' : '🧑',
+}));
+
+const GAME_ROSTER_SIZE = 12;
+
+function buildUserPlayer(): Player {
+  const profile = loadUserProfile();
+  return {
+    id: 'user',
+    name: profile.name,
+    avatar: profile.avatar,
+    status: 'active',
+    isUser: true,
+  };
+}
+
+function buildInitialPlayers(): Player[] {
+  const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
+  const rng = mulberry32(seed);
+  const picked = seededPickN(rng, HOUSEGUEST_POOL, GAME_ROSTER_SIZE - 1).map((hg) => ({
+    ...hg,
+    status: 'active' as const,
+  }));
+  return [buildUserPlayer(), ...picked];
+}
 
 const INITIAL_STATE: GameState = {
   season: 1,
@@ -35,7 +50,7 @@ const INITIAL_STATE: GameState = {
   hohId: null,
   nomineeIds: [],
   povWinnerId: null,
-  players: SEED_PLAYERS,
+  players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],

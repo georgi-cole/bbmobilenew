@@ -3,6 +3,8 @@ import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI, DEFAULT_TAPRACE_OPTIONS } from './minigame';
+import HOUSEGUESTS from '../data/houseguests';
+import { loadUserProfile } from './userProfileSlice';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -22,23 +24,50 @@ const PHASE_ORDER: Phase[] = [
   'week_end',
 ];
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
-// Only players from the canonical houseguests dataset (src/data/houseguests.ts)
-// whose avatar image exists in public/avatars/ are included here.
-const SEED_PLAYERS: Player[] = [
-  { id: 'finn',  name: 'Finn',  avatar: '🧑', status: 'active', isUser: true },
-  { id: 'kai',   name: 'Kai',   avatar: '🧑', status: 'active' },
-  { id: 'kian',  name: 'Kian',  avatar: '🧑', status: 'active' },
-  { id: 'zed',   name: 'Zed',   avatar: '🧑', status: 'active' },
-  { id: 'ash',   name: 'Ash',   avatar: '🧑', status: 'active' },
-  { id: 'jax',   name: 'Jax',   avatar: '🧑', status: 'active' },
-  { id: 'aria',  name: 'Aria',  avatar: '👩', status: 'active' },
-  { id: 'echo',  name: 'Echo',  avatar: '👩', status: 'active' },
-  { id: 'mimi',  name: 'Mimi',  avatar: '👩', status: 'active' },
-  { id: 'rae',   name: 'Rae',   avatar: '👩', status: 'active' },
-  { id: 'nova',  name: 'Nova',  avatar: '👩', status: 'active' },
-  { id: 'ivy',   name: 'Ivy',   avatar: '👩', status: 'active' },
-];
+// ─── Houseguest pool ─────────────────────────────────────────────────────────
+// All 22 houseguests in src/data/houseguests.ts have matching avatar images in
+// public/avatars/. This pool is the source for AI opponents each game.
+const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
+  id: hg.id,
+  name: hg.name,
+  avatar: hg.sex === 'Female' ? '👩' : '🧑',
+}));
+
+const GAME_ROSTER_SIZE = 12;
+
+/**
+ * Build the human player from the stored profile.
+ * Falls back to name='You' and the You.png silhouette when no profile exists.
+ * The avatar resolver finds avatars/You.png via the name-based candidate
+ * capitalize('You') = 'You' → avatars/You.png.
+ */
+function buildUserPlayer(): Player {
+  const profile = loadUserProfile();
+  return {
+    id: 'user',
+    name: profile.name,
+    avatar: profile.avatar,
+    status: 'active',
+    isUser: true,
+  };
+}
+
+/**
+ * Pick (GAME_ROSTER_SIZE - 1) houseguests at random from the full pool.
+ * Uses Math.random() to seed the pick so each new game has a fresh roster.
+ */
+function pickHouseguests(): Player[] {
+  const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
+  const rng = mulberry32(seed);
+  return seededPickN(rng, HOUSEGUEST_POOL, GAME_ROSTER_SIZE - 1).map((hg) => ({
+    ...hg,
+    status: 'active' as const,
+  }));
+}
+
+function buildInitialPlayers(): Player[] {
+  return [buildUserPlayer(), ...pickHouseguests()];
+}
 
 const initialState: GameState = {
   season: 1,
@@ -52,7 +81,7 @@ const initialState: GameState = {
   awaitingFinal3Eviction: false,
   f3Part1WinnerId: null,
   f3Part2WinnerId: null,
-  players: SEED_PLAYERS,
+  players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
@@ -475,10 +504,25 @@ const gameSlice = createSlice({
       state.awaitingFinal3Eviction = false;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
-    /** Reset game state to the initial seed (debug only). */
+    /** Reset game state with a fresh random roster (debug only). */
     resetGame() {
+      // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
+      // This seed drives in-game RNG (HOH/POV/vote outcomes); it is independent
+      // of the Math.random() seed used in pickHouseguests() for roster selection.
+      const seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
       return {
-        ...initialState,
+        season: 1,
+        week: 1,
+        phase: 'week_start' as Phase,
+        seed,
+        hohId: null,
+        nomineeIds: [],
+        povWinnerId: null,
+        replacementNeeded: false,
+        awaitingFinal3Eviction: false,
+        f3Part1WinnerId: null,
+        f3Part2WinnerId: null,
+        players: buildInitialPlayers(),
         tvFeed: [
           {
             id: 'e0',
@@ -487,6 +531,7 @@ const gameSlice = createSlice({
             timestamp: Date.now(),
           },
         ],
+        isLive: false,
       };
     },
     /** Generate a new random RNG seed (debug only). */
