@@ -76,10 +76,18 @@ export default function GameScreen() {
 
   function playerToHouseguest(p: Player) {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
+    const parts: string[] = []
+    if (game.hohId === p.id) parts.push('hoh')
+    if (game.povWinnerId === p.id) parts.push('pov')
+    if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id)) parts.push('nominated')
+    if (p.status === 'jury') parts.push('jury')
+    const statuses = parts.length > 0 ? parts.join('+') : (p.status ?? 'active')
     return {
       id: p.id,
       name: p.name,
       avatarUrl: resolveAvatar(p),
+      statuses,
+      finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
       isYou: p.isUser,
       onClick: () => handleAvatarSelect(p),
