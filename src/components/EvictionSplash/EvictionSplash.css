@@ -131,6 +131,6 @@
     animation: none !important;
   }
   .eviction-splash { opacity: 1; }
-  .eviction-splash--fading { opacity: 0; }
+  .eviction-splash--fading { opacity: 1; }
   .eviction-splash__photo-wrap { transition: none !important; }
 }

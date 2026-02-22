@@ -42,11 +42,16 @@ export default function EvictionSplash({ evictee, onDone, duration = 3200 }: Pro
   // Sequence: colour → B&W at duration/2; fade-out starts at duration - FADE_OUT_MS; fire at duration.
   useEffect(() => {
     const halfId = setTimeout(() => setGreyscale(true), duration / 2);
-    const fadeId = setTimeout(() => setFading(true), duration - FADE_OUT_MS);
+    const hasFadePhase = duration > FADE_OUT_MS;
+    const fadeId = hasFadePhase
+      ? setTimeout(() => setFading(true), Math.max(0, duration - FADE_OUT_MS))
+      : null;
     const doneId = setTimeout(fire, duration);
     return () => {
       clearTimeout(halfId);
-      clearTimeout(fadeId);
+      if (fadeId !== null) {
+        clearTimeout(fadeId);
+      }
       clearTimeout(doneId);
     };
     // fire is stable within this render; eslint-disable below is intentional.
