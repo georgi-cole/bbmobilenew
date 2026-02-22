@@ -32,7 +32,7 @@ src/social/
 
 3. **Phase end** (when leaving a social phase): `socialMiddleware` calls
    `SocialEngine.endPhase(phaseName)`.
-   - Generates a `SocialPhaseReport` summarising the phase.
+   - Generates a `SocialPhaseReport` summarizing the phase.
    - Dispatches `social/engineComplete` (signal) and `social/setLastReport`
      (persists the report into `state.social.lastReport`).
 

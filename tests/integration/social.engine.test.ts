@@ -7,7 +7,7 @@
 //     dispatching social/setLastReport and populating state.social.lastReport.
 //  3. The advance action also triggers start/end correctly.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import socialReducer from '../../src/social/socialSlice';
@@ -29,12 +29,6 @@ function makeStore() {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('SocialEngine – phase lifecycle via middleware', () => {
-  beforeEach(() => {
-    // Re-initialize the singleton engine with a fresh store for each test
-    const store = makeStore();
-    SocialEngine.init(store);
-  });
-
   it('populates state.social.energyBank when entering social_1', () => {
     const store = makeStore();
     SocialEngine.init(store);
@@ -138,5 +132,24 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     expect(report).not.toBeNull();
     expect(report?.id).toMatch(/^social_2_/);
     expect(report).toEqual(store.getState().social.lastReport);
+  });
+
+  it('direct social_1 → social_2 transition ends social_1 and starts social_2', () => {
+    const store = makeStore();
+    SocialEngine.init(store);
+
+    store.dispatch(setPhase('social_1'));
+    expect(SocialEngine.isPhaseActive()).toBe(true);
+    expect(store.getState().social.lastReport).toBeNull();
+
+    // Jump directly to the next social phase (e.g. via DebugPanel forcePhase).
+    store.dispatch(setPhase('social_2'));
+
+    // social_1 should have been ended (lastReport populated) and social_2 started.
+    expect(store.getState().social.lastReport).not.toBeNull();
+    expect(store.getState().social.lastReport?.id).toMatch(/^social_1_/);
+    expect(SocialEngine.isPhaseActive()).toBe(true);
+    // New budgets should be computed for social_2.
+    expect(Object.keys(SocialEngine.getBudgets()).length).toBeGreaterThan(0);
   });
 });
