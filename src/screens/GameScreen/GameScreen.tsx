@@ -11,12 +11,13 @@ import {
 } from '../../store/gameSlice';
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice';
 import TvZone from '../../components/ui/TvZone';
-import PlayerAvatar from '../../components/ui/PlayerAvatar';
+import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
 import TapRace from '../../components/TapRace/TapRace';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
+import { resolveAvatar } from '../../utils/avatar';
 import type { Player } from '../../types';
 import './GameScreen.css';
 
