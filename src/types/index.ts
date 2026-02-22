@@ -186,7 +186,12 @@ export interface GameState {
    * Set during `final3_comp2` advance.
    */
   f3Part2WinnerId?: string | null;
-    /** Optional weekly config overrides. */
+  /**
+   * When truthy, a TWIST is active and the TWIST pill will be shown in the TvZone header.
+   * Set this field in game logic when a twist is introduced.
+   */
+  twistActive?: boolean;
+  /** Optional weekly config overrides. */
   cfg?: {
     /**
      * Future feature flag for multi-eviction weeks.
@@ -233,6 +238,7 @@ export type StatusPillVariant =
   | 'week'
   | 'players'
   | 'dr'
+  | 'twist'
   | 'success'
   | 'danger'
   | 'warning'

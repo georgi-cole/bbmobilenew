@@ -54,14 +54,6 @@ button.status-pill:focus-visible {
 .status-pill--phase {
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-2) 100%);
   color: var(--color-bg);
-  max-width: var(--pill-max-width, 110px);
-  overflow: hidden;
-}
-
-.status-pill--phase .status-pill__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .status-pill--week {
@@ -77,6 +69,11 @@ button.status-pill:focus-visible {
 .status-pill--dr {
   background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
   color: #fff;
+}
+
+.status-pill--twist {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1a1a1a;
 }
 
 .status-pill--success {
