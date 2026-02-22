@@ -1,0 +1,13 @@
+{
+  "sunrise": "sunrise-background.png",
+  "day": "daily-background.png",
+  "sunset": "sunset-background.png",
+  "night": "bg-night.png",
+  "rain": "rainy-background.png",
+  "snow": "blizzard-background.png",
+  "snowday": "snowday-background.png",
+  "thunderstorm": "thunderstorm-background.png",
+  "xmasDay": "xmas-day-background.png",
+  "xmasEve": "xmas-eve-background.png",
+  "xmasNight": "xmasy-night-background.png"
+}
