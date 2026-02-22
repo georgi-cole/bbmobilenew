@@ -4,6 +4,8 @@ import finaleReducer from './finaleSlice';
 import challengeReducer from './challengeSlice';
 import settingsReducer, { loadSettings, saveSettings } from './settingsSlice';
 import userProfileReducer, { loadUserProfile, saveUserProfile } from './userProfileSlice';
+import socialReducer from '../social/socialSlice';
+import { socialMiddleware } from '../social/socialMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -12,11 +14,13 @@ export const store = configureStore({
     challenge: challengeReducer,
     settings: settingsReducer,
     userProfile: userProfileReducer,
+    social: socialReducer,
   },
   preloadedState: {
     settings: loadSettings(),
     userProfile: loadUserProfile(),
   },
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
 });
 
 // Persist settings to localStorage whenever they change
