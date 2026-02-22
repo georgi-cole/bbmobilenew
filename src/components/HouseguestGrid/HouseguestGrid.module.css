@@ -128,13 +128,50 @@
   pointer-events: none;
   display: block;
   transform-origin: center;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
   z-index: 2;
 }
 
 .evicted {
   opacity: 0.98;
 }
+
+/* ── Status badge stack ─────────────────────────────────────────────────────── */
+/* Positioned in the top-left corner; badges stack vertically. */
+.badgeStack {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  border-radius: 5px;
+  padding: 2px 3px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+  /* Subtle border for legibility on any background */
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Per-badge accent colours */
+.badge_hoh       { background: rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 0.4); }
+.badge_pov       { background: rgba(139,  92, 246, 0.25); border-color: rgba(139, 92, 246, 0.4); }
+.badge_nominated { background: rgba(239,  68,  68, 0.25); border-color: rgba(239, 68, 68, 0.4); }
+.badge_jury      { background: rgba(156, 163, 175, 0.18); border-color: rgba(156,163,175, 0.3); }
+.badge_first     { background: rgba(251, 191,  36, 0.30); border-color: rgba(251,191, 36, 0.5); }
+.badge_second    { background: rgba(156, 163, 175, 0.25); border-color: rgba(156,163,175, 0.45); }
+.badge_third     { background: rgba(180, 113,  60, 0.25); border-color: rgba(180,113, 60, 0.45); }
 
 .tile:focus-within,
 .tile:focus {

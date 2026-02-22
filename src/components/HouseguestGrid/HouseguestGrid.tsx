@@ -9,6 +9,16 @@ export type Houseguest = {
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  /**
+   * Game status string(s) to display as badge overlays.
+   * Accepts a single PlayerStatus value (e.g. 'hoh', 'nominated+pov')
+   * or an array of status codes.
+   */
+  statuses?: string | string[]
+  /**
+   * Final placement rank: 1 (winner 🥇), 2 (runner-up 🥈), or 3 (3rd 🥉).
+   */
+  finalRank?: 1 | 2 | 3 | null
 }
 
 type Props = {
@@ -78,6 +88,8 @@ export default function HouseguestGrid({
               isEvicted={hg.isEvicted}
               isYou={hg.isYou}
               onClick={hg.onClick}
+              statuses={hg.statuses}
+              finalRank={hg.finalRank}
             />
           </li>
         ))}
