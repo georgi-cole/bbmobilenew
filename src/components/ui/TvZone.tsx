@@ -69,13 +69,13 @@ export default function TvZone() {
         </div>
 
         {/* Center: scrollable single-row status pills */}
-        <div className="tv-zone__head-pills" role="list" aria-label="Game status pills">
-          <StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} />
-          <StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} />
+        <ul className="tv-zone__head-pills" aria-label="Game status pills">
+          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} /></li>
+          <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
           {gameState.twistActive && (
-            <StatusPill variant="twist" icon="🌀" label="TWIST" />
+            <li><StatusPill variant="twist" icon="🌀" label="TWIST" /></li>
           )}
-        </div>
+        </ul>
 
         <div className="tv-zone__head-actions">
           {gameState.isLive && (
