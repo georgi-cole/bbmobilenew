@@ -127,7 +127,7 @@ export default function GameScreen() {
     showReplacementModal || showFinal4Modal || showFinal3Modal || showMinigameHost || showTapRace
 
   return (
-    <div className="game-screen">
+    <div className="game-screen game-screen-shell">
       <TvZone />
 
       {/* ── Human HOH replacement picker ────────────────────────────────── */}
