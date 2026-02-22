@@ -628,7 +628,17 @@ const gameSlice = createSlice({
       state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeId);
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
+      // Preserve the tally and trigger the eviction splash sequence
+      state.evictionSplashId = nomineeId;
+      const votes = state.votes ?? {};
       state.votes = {};
+      // Build vote counts for the popup from the existing votes record
+      const voteCounts: Record<string, number> = {};
+      for (const nid of (tied as string[])) voteCounts[nid] = 0;
+      for (const nid of Object.values(votes)) {
+        if (nid in voteCounts) voteCounts[nid]++;
+      }
+      state.voteResults = voteCounts;
       pushEvent(
         state,
         `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
@@ -640,7 +650,8 @@ const gameSlice = createSlice({
 
     /**
      * Dismiss the vote results popup after the player has viewed it.
-     * Triggers the eviction splash if an evictee was determined.
+     * Clears `voteResults`; the EvictionSplash sequence is driven separately
+     * by `evictionSplashId` and GameScreen logic.
      */
     dismissVoteResults(state) {
       state.voteResults = null;

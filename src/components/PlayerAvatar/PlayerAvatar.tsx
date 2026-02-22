@@ -75,6 +75,7 @@ export default function PlayerAvatar({
         className={classes}
         onClick={() => onClick(player)}
         aria-pressed={selected}
+        aria-label={player.name}
         type="button"
       >
         <span className="pa__ring" aria-hidden="true" />

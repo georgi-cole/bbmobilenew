@@ -5,11 +5,17 @@ import type { Player } from '../types';
 import { getById, findByName } from '../data/houseguests';
 
 /**
- * Returns true if the given string is a single emoji character.
+ * Returns true if the given string is a single emoji grapheme/sequence.
  * Used to decide whether to show emoji or initials as avatar fallback.
+ * Matches a single Extended_Pictographic codepoint, optional variation selector,
+ * and any ZWJ-joined extensions — but not arbitrary strings that merely contain an emoji.
  */
 export function isEmoji(s: string): boolean {
-  return /\p{Emoji}/u.test(s);
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  const singleEmojiRegex =
+    /^\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*$/u;
+  return singleEmojiRegex.test(trimmed);
 }
 
 /**

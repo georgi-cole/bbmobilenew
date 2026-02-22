@@ -15,6 +15,7 @@ import {
   submitTieBreak,
   dismissVoteResults,
   dismissEvictionSplash,
+  advance,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import TvZone from '../../components/ui/TvZone'
@@ -173,18 +174,26 @@ export default function GameScreen() {
         .filter((p) => game.voteResults && p.id in game.voteResults)
         .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
     : []
-  // After dismissing vote results, show the eviction splash (if any)
+  // After dismissing vote results: show the eviction splash if one is pending,
+  // otherwise advance the game phase directly.
   const handleVoteResultsDone = useCallback(() => {
     dispatch(dismissVoteResults())
-  }, [dispatch])
+    // If no eviction splash is queued, advance the phase now.
+    // (If evictionSplashId is set, EvictionSplash's onDone will advance instead.)
+    if (!game.evictionSplashId) {
+      dispatch(advance())
+    }
+  }, [dispatch, game.evictionSplashId])
 
   // ── Eviction Splash ───────────────────────────────────────────────────────
   const evictionSplashPlayer = game.evictionSplashId
     ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
     : null
   const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
+  // After the eviction splash completes, dismiss it and advance the phase.
   const handleEvictionSplashDone = useCallback(() => {
     dispatch(dismissEvictionSplash())
+    dispatch(advance())
   }, [dispatch])
 
   // Determine evictee for vote results (player with highest votes)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './VoteResultsPopup.css';
@@ -40,6 +40,13 @@ export default function VoteResultsPopup({
 }: Props) {
   const [revealed, setRevealed] = useState(0);
   const [countdown, setCountdown] = useState(Math.ceil(countdownMs / 1000));
+  const firedRef = useRef(false);
+
+  function fire() {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    onDone();
+  }
 
   // Reveal nominees one by one with staggered timing
   useEffect(() => {
@@ -48,22 +55,20 @@ export default function VoteResultsPopup({
     return () => clearTimeout(id);
   }, [revealed, tallies.length]);
 
-  // Start countdown once all tallies are revealed
+  // Start countdown once all tallies are revealed; call onDone when it hits 0
   const allRevealed = revealed >= tallies.length;
 
   useEffect(() => {
     if (!allRevealed) return;
     if (countdown <= 0) {
-      onDone();
+      fire();
       return;
     }
     const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(id);
-  }, [allRevealed, countdown, onDone]);
-
-  const handleClick = useCallback(() => {
-    if (allRevealed) onDone();
-  }, [allRevealed, onDone]);
+    // fire is stable within this render; eslint-disable below is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allRevealed, countdown]);
 
   const totalVotes = tallies.reduce((s, t) => s + t.voteCount, 0);
 
@@ -73,7 +78,7 @@ export default function VoteResultsPopup({
       role="dialog"
       aria-modal="true"
       aria-label="Vote results"
-      onClick={handleClick}
+      onClick={fire}
     >
       <div className="vrp__card">
         <header className="vrp__header">

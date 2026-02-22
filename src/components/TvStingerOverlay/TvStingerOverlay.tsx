@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './TvStingerOverlay.css';
 
 interface Props {
   /** Message to display in the stinger (e.g. "Vote locked in!") */
   message?: string;
-  /** Duration in ms before onDone is called. Default: 800 */
+  /** Duration in ms before onDone is called. Default: 900 */
   duration?: number;
   /** Called after the stinger duration elapses */
   onDone: () => void;
@@ -15,22 +15,29 @@ interface Props {
  * confirms a decision, adding suspense / pacing before the game advances.
  *
  * Rendered on top of the decision modal (z-index: 8000). Automatically
- * calls onDone after `duration` ms.
+ * calls onDone after `duration` ms. Tappable to skip.
+ *
+ * onDone is guarded internally — it will fire at most once even if the
+ * user taps and the timer fires simultaneously.
  *
  * ⚠️  `onDone` must be a stable reference (wrapped in `useCallback` by the
  * caller) to avoid restarting the timeout on every render.
- *
- * NOTE: If the component unmounts before the timeout fires (e.g. the parent
- * modal is removed before the stinger completes), onDone is NOT called and
- * the pending action is cancelled. In normal game flow this cannot happen
- * because the modals are controlled by Redux state that only clears after the
- * action dispatches.
  */
 export default function TvStingerOverlay({ message = '✔ Locked in!', duration = 900, onDone }: Props) {
+  const firedRef = useRef(false);
+
+  function fire() {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    onDone();
+  }
+
   useEffect(() => {
-    const id = setTimeout(onDone, duration);
+    const id = setTimeout(fire, duration);
     return () => clearTimeout(id);
-  }, [duration, onDone]);
+    // fire is stable within this render; eslint-disable below is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duration]);
 
   return (
     <div
@@ -38,7 +45,7 @@ export default function TvStingerOverlay({ message = '✔ Locked in!', duration 
       role="dialog"
       aria-modal="true"
       aria-live="assertive"
-      onClick={onDone}
+      onClick={fire}
     >
       <div className="tv-stinger__content">
         <span className="tv-stinger__icon">🔒</span>
