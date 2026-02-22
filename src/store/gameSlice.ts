@@ -75,6 +75,7 @@ const initialState: GameState = {
   phase: 'week_start',
   seed: 42,
   hohId: null,
+  prevHohId: null,
   nomineeIds: [],
   povWinnerId: null,
   replacementNeeded: false,
@@ -759,6 +760,7 @@ const gameSlice = createSlice({
         phase: 'week_start' as Phase,
         seed,
         hohId: null,
+        prevHohId: null,
         nomineeIds: [],
         povWinnerId: null,
         replacementNeeded: false,
@@ -849,9 +851,11 @@ const gameSlice = createSlice({
       }
 
       if (state.phase === 'final3') {
-        // Reset week-level fields and start Final 3 Part 1
+        // Reset week-level fields and start Final 3 Part 1.
+        // Clear prevHohId — Final 3 comps have no outgoing-HOH restriction.
         state.week += 1;
         state.hohId = null;
+        state.prevHohId = null;
         state.nomineeIds = [];
         state.povWinnerId = null;
         state.replacementNeeded = false;
@@ -1051,7 +1055,9 @@ const gameSlice = createSlice({
 
       switch (nextPhase) {
         case 'week_start': {
-          // week_end → week_start: increment week and reset week-level fields
+          // week_end → week_start: increment week and reset week-level fields.
+          // Save the outgoing HOH so they can be excluded from this week's HOH comp.
+          state.prevHohId = state.hohId ?? null;
           state.week += 1;
           state.hohId = null;
           state.nomineeIds = [];
@@ -1080,7 +1086,11 @@ const gameSlice = createSlice({
         case 'hoh_results': {
           // completeMinigame() applies the HOH winner inline and advances the phase
           // directly, so minigameResult is always null here.  Always pick randomly.
-          const hoh = seededPick(rng, alive);
+          // Exclude the outgoing HOH (prevHohId) to respect the ineligibility rule.
+          const hohPool = state.prevHohId
+            ? alive.filter((p) => p.id !== state.prevHohId)
+            : alive;
+          const hoh = seededPick(rng, hohPool.length > 0 ? hohPool : alive);
           applyHohWinner(state, hoh.id);
           break;
         }

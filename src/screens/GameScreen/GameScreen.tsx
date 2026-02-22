@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -52,18 +52,41 @@ export default function GameScreen() {
   const game = useAppSelector((s) => s.game)
   const pendingChallenge = useAppSelector(selectPendingChallenge)
 
+  const humanPlayer = game.players.find((p) => p.isUser)
+
   // ── Auto-start challenge on competition phase transitions ─────────────────
   // The challenge system (startChallenge / MinigameHost) is the sole owner of
   // game selection for HOH and POV competitions. It picks a random game from
   // the registry, pre-computes AI scores appropriate for that game's metric kind,
   // and handles the rules modal → countdown → game → results flow.
+  //
+  // HOH eligibility rule: the outgoing HOH (prevHohId) cannot compete in the
+  // next week's HOH competition. They are excluded from the participant list.
+  // When the human player is the outgoing HOH, no challenge is started at all
+  // (the winner is determined randomly via advance() instead).
   const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers]);
+  const hohCompParticipants = useMemo(() => {
+    if (game.phase !== 'hoh_comp' || !game.prevHohId) return aliveIds;
+    return aliveIds.filter((id) => id !== game.prevHohId);
+  }, [game.phase, game.prevHohId, aliveIds]);
+
+  const humanIsOutgoingHoh = game.phase === 'hoh_comp' && !!game.prevHohId && game.prevHohId === humanPlayer?.id;
+
+  // Warning modal state: shown once per week when the human is the outgoing HOH.
+  // Tracks which week the warning was dismissed so it resets automatically each week.
+  const [outgoingHohWarningDismissedWeek, setOutgoingHohWarningDismissedWeek] = useState<number | null>(null);
+  const showOutgoingHohWarning = humanIsOutgoingHoh && outgoingHohWarningDismissedWeek !== game.week;
+
   useEffect(() => {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
-    if (isCompPhase && !pendingChallenge) {
-      dispatch(startChallenge(game.seed, aliveIds))
+    // Do not start a challenge when the human player is the outgoing HOH —
+    // they are ineligible to compete; advance() will pick a winner randomly.
+    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh) {
+      // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
+      const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
+      dispatch(startChallenge(game.seed, participants))
     }
-  }, [game.phase, pendingChallenge, aliveIds, game.seed, dispatch])
+  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -98,7 +121,6 @@ export default function GameScreen() {
   // Shown when a nominee auto-saved themselves and the human HOH must pick a
   // replacement. The Continue button is hidden while this modal is open.
   const replacementNeeded = game.replacementNeeded === true
-  const humanPlayer = game.players.find((p) => p.isUser)
   const humanIsHoH = humanPlayer && game.hohId === humanPlayer.id
   const showReplacementModal = replacementNeeded && humanIsHoH
 
@@ -184,6 +206,7 @@ export default function GameScreen() {
   // Hide Continue button while waiting for any human-only decision modal.
   // Keep this in sync with the conditions that control human decision modals above.
   const awaitingHumanDecision =
+    showOutgoingHohWarning ||
     showReplacementModal ||
     showNominee1Modal ||
     showNominee2Modal ||
@@ -199,6 +222,36 @@ export default function GameScreen() {
   return (
     <div className="game-screen game-screen-shell">
       <TvZone />
+
+      {/* ── Outgoing HOH ineligibility warning ──────────────────────────── */}
+      {showOutgoingHohWarning && (
+        <div
+          className="tv-binary-modal"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="outgoing-hoh-title"
+        >
+          <div className="tv-binary-modal__card">
+            <header className="tv-binary-modal__header">
+              <h2 className="tv-binary-modal__title" id="outgoing-hoh-title">
+                👑 HOH Competition
+              </h2>
+              <p className="tv-binary-modal__subtitle">
+                As outgoing HOH, you are not eligible to compete.
+              </p>
+            </header>
+            <div className="tv-binary-modal__body">
+              <button
+                className="tv-binary-modal__option tv-binary-modal__option--yes"
+                onClick={() => setOutgoingHohWarningDismissedWeek(game.week)}
+                type="button"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Human HOH nominee 1 picker ───────────────────────────────────── */}
       {showNominee1Modal && (
