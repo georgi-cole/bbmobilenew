@@ -132,6 +132,15 @@ export const JURY_LOCKED_LINES: string[] = [
   'I\'m awarding my jury vote to…',
 ];
 
+/** Plea templates used when POV holder asks nominees for their pleas at Final 4. */
+export const NOMINEE_PLEA_TEMPLATES: string[] = [
+  "Please keep me in this game — I haven't finished what I came here to do. 🙏",
+  "I've been loyal from day one and I promise to have your back in the Final 3. Please keep me.",
+  "You know you can trust me more than anyone else on that block. I'm begging you to stay. 🙏",
+  "I've fought too hard to go home now. Give me the chance to prove I deserve to be here.",
+  "Everything I've done in this game has been for us. Please don't send me home now.",
+];
+
 /** Banter templates per finalist — fill in {finalist} with the name. */
 export const JURY_BANTER_TEMPLATES = {
   positive: [

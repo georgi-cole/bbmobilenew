@@ -1,0 +1,45 @@
+name: E2E Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start dev server
+        run: npm run dev &
+        env:
+          NODE_ENV: test
+
+      - name: Wait for dev server
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Playwright e2e tests
+        run: npx playwright test e2e/playwright/
+        env:
+          E2E_BASE_URL: http://localhost:3000
+
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: playwright-report/
+          retention-days: 7

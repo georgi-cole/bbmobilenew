@@ -5,6 +5,7 @@ import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
+import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -620,9 +621,10 @@ const gameSlice = createSlice({
 
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
+      state.awaitingPovDecision = false;
       pushEvent(
         state,
-        `${povHolder.name} votes to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+        `${povHolder.name} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
         'game',
       );
       state.phase = 'final3';
@@ -821,25 +823,40 @@ const gameSlice = createSlice({
         // Guard: Final 4 eviction requires a valid POV holder
         if (!state.povWinnerId) return;
 
-        // Guard: if the POV holder is the human player, the decision must come
-        // through finalizeFinal4Eviction (via TvDecisionModal) — not advance().
-        const povHolderPlayer = state.players.find((p) => p.id === state.povWinnerId);
-        if (povHolderPlayer?.isUser) return;
+        const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+        const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+
+        // Emit plea sequence: POV holder asks nominees for their pleas
+        pushEvent(
+          state,
+          `${povHolder?.name ?? 'The POV holder'} asks nominees for their pleas. 🎤`,
+          'game',
+        );
+        nominees.forEach((nominee, idx) => {
+          const plea = pickPhrase(NOMINEE_PLEA_TEMPLATES, state.seed, idx);
+          pushEvent(state, `${nominee.name}: "${plea}"`, 'game');
+        });
+
+        // Guard: if the POV holder is the human player, set awaitingPovDecision
+        // so the UI shows the decision modal and advance() is blocked until the
+        // player acts (the general guard at the top of advance() will catch it).
+        if (povHolder?.isUser) {
+          state.awaitingPovDecision = true;
+          return;
+        }
 
         // AI POV holder casts the sole vote deterministically
         const seedRng = mulberry32(state.seed);
         state.seed = (seedRng() * 0x100000000) >>> 0;
         const rng = mulberry32(state.seed);
 
-        const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
         if (nominees.length > 0) {
           const evictee = seededPick(rng, nominees);
-          const povHolder = state.players.find((p) => p.id === state.povWinnerId);
           evictee.status = evictedStatus(state);
           state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           pushEvent(
             state,
-            `${povHolder?.name ?? 'The POV holder'} votes to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+            `${povHolder?.name ?? 'The POV holder'} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
             'game',
           );
         }
@@ -883,12 +900,17 @@ const gameSlice = createSlice({
         const rng = mulberry32(state.seed);
 
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        pushEvent(
+          state,
+          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final HOH. 🏁`,
+          'game',
+        );
         const winner = seededPick(rng, alive);
         state.f3Part1WinnerId = winner.id;
 
         pushEvent(
           state,
-          `Final 3 Part 1: ${winner.name} wins and advances directly to Part 3! 🏆`,
+          `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two houseguests will compete in Part 2. 🏆`,
           'game',
         );
         state.phase = 'final3_comp2';
@@ -909,12 +931,17 @@ const gameSlice = createSlice({
           state.phase = 'final3_comp3';
           return;
         }
+        pushEvent(
+          state,
+          `Final 3 Part 2 is underway! The remaining two houseguests battle to join the Part 1 winner in Part 3. 🏁`,
+          'game',
+        );
         const winner = seededPick(rng, losers);
         state.f3Part2WinnerId = winner.id;
 
         pushEvent(
           state,
-          `Final 3 Part 2: ${winner.name} wins and advances to face the Part 1 winner in Part 3! 🏆`,
+          `Final 3 Part 2 result: ${winner.name} wins and advances to face the Part 1 winner in Part 3! 🏆`,
           'game',
         );
         state.phase = 'final3_comp3';
@@ -937,6 +964,17 @@ const gameSlice = createSlice({
         if (finalists.length < 2) {
           pushEvent(state, `[Warning] Part 3 finalists missing — using all alive players as fallback.`, 'game');
         }
+
+        const f3Part1Name = state.players.find((p) => p.id === state.f3Part1WinnerId)?.name;
+        const f3Part2Name = state.players.find((p) => p.id === state.f3Part2WinnerId)?.name;
+        if (f3Part1Name && f3Part2Name) {
+          pushEvent(
+            state,
+            `Final 3 Part 3 is underway! ${f3Part1Name} (Part 1 winner) vs ${f3Part2Name} (Part 2 winner) — the winner becomes the Final Head of Household! 🏁`,
+            'game',
+          );
+        }
+
         const finalHoh = seededPick(rng, pool);
 
         // Crown the Final HOH
