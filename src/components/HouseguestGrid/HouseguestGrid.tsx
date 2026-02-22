@@ -1,19 +1,19 @@
-import AvatarTile from "./AvatarTile";
-import styles from "./HouseguestGrid.module.css";
+import AvatarTile from './AvatarTile'
+import styles from './HouseguestGrid.module.css'
 
 export type Houseguest = {
-  id: string | number;
-  name: string;
-  avatarUrl?: string;
-  isEvicted?: boolean;
-  isYou?: boolean;
-  onClick?: () => void;
-};
+  id: string | number
+  name: string
+  avatarUrl?: string
+  isEvicted?: boolean
+  isYou?: boolean
+  onClick?: () => void
+}
 
 type Props = {
-  houseguests: Houseguest[];
-  showCountInHeader?: boolean;
-};
+  houseguests: Houseguest[]
+  showCountInHeader?: boolean
+}
 
 export default function HouseguestGrid({ houseguests, showCountInHeader = false }: Props) {
   return (
@@ -40,5 +40,5 @@ export default function HouseguestGrid({ houseguests, showCountInHeader = false 
         ))}
       </ul>
     </section>
-  );
+  )
 }
