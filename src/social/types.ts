@@ -30,10 +30,10 @@ export interface SocialState {
   /** Raw event log entries; typed as `unknown` until engine types are defined. */
   sessionLogs: unknown[];
   /**
-   * Latest influence weights per actor: actorId → (targetId → weight).
+   * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.
    */
-  influenceWeights: Record<string, Record<string, number>>;
+  influenceWeights: Record<string, Record<string, Record<string, number>>>;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

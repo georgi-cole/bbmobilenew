@@ -62,8 +62,9 @@ export function computeNomBias(
     // Known enemy – actor is keen to nominate
     bias = max;
   } else {
-    // Neutral/unknown – proportional mapping onto the bounds
-    bias = allyThreshold !== 0 ? (rel.affinity / allyThreshold) * max : 0;
+    // Neutral/unknown – proportional mapping: positive affinity → negative bias (reluctant),
+    // negative affinity → positive bias (keen)
+    bias = allyThreshold !== 0 ? -(rel.affinity / allyThreshold) * max : 0;
   }
 
   // Apply tag modifiers

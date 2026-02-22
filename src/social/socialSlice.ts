@@ -15,7 +15,7 @@ const socialSlice = createSlice({
     setLastReport(state, action: PayloadAction<SocialPhaseReport>) {
       state.lastReport = action.payload;
     },
-    /** Stores the latest influence weights computed for an actor's decision. */
+    /** Stores influence weights keyed by actor and decision type. */
     influenceUpdated(
       state,
       action: PayloadAction<{
@@ -24,8 +24,11 @@ const socialSlice = createSlice({
         weights: Record<string, number>;
       }>,
     ) {
-      const { actorId, weights } = action.payload;
-      state.influenceWeights[actorId] = weights;
+      const { actorId, decisionType, weights } = action.payload;
+      if (!state.influenceWeights[actorId]) {
+        state.influenceWeights[actorId] = {};
+      }
+      state.influenceWeights[actorId][decisionType] = weights;
     },
   },
 });

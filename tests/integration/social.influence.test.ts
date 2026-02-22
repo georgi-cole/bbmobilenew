@@ -132,16 +132,27 @@ describe('SocialInfluence – computeVetoBias', () => {
 // ── update / Redux integration ────────────────────────────────────────────
 
 describe('SocialInfluence – update dispatches influenceUpdated', () => {
-  it('stores weights in state.social.influenceWeights', () => {
+  it('stores weights in state.social.influenceWeights under actorId and decisionType', () => {
     const store = makeStore();
     initInfluence(store);
 
     update('p1', 'nomination', ['p2', 'p3']);
 
-    const weights = store.getState().social.influenceWeights['p1'];
+    const weights = store.getState().social.influenceWeights['p1']?.['nomination'];
     expect(weights).toBeDefined();
     expect(Object.keys(weights)).toContain('p2');
     expect(Object.keys(weights)).toContain('p3');
+  });
+
+  it('stores nomination and veto weights independently for the same actor', () => {
+    const store = makeStore();
+    initInfluence(store);
+
+    update('p1', 'nomination', ['p2']);
+    update('p1', 'veto', ['p3']);
+
+    expect(store.getState().social.influenceWeights['p1']?.['nomination']).toBeDefined();
+    expect(store.getState().social.influenceWeights['p1']?.['veto']).toBeDefined();
   });
 
   it('weights are numbers', () => {
@@ -150,7 +161,7 @@ describe('SocialInfluence – update dispatches influenceUpdated', () => {
 
     update('p1', 'veto', ['p2']);
 
-    const weights = store.getState().social.influenceWeights['p1'];
+    const weights = store.getState().social.influenceWeights['p1']?.['veto'];
     expect(typeof weights['p2']).toBe('number');
   });
 
@@ -177,7 +188,7 @@ describe('SocialEngine – influenceWeights populated on endPhase', () => {
     expect(Object.keys(influenceWeights).length).toBeGreaterThan(0);
   });
 
-  it('each actor in influenceWeights has a weights record', () => {
+  it('each actor in influenceWeights has a nomination weights record', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
@@ -185,8 +196,10 @@ describe('SocialEngine – influenceWeights populated on endPhase', () => {
     store.dispatch(setPhase('nominations'));
 
     const { influenceWeights } = store.getState().social;
-    for (const weights of Object.values(influenceWeights)) {
-      expect(typeof weights).toBe('object');
+    for (const actorWeights of Object.values(influenceWeights)) {
+      expect(typeof actorWeights).toBe('object');
+      expect(actorWeights['nomination']).toBeDefined();
+      expect(typeof actorWeights['nomination']).toBe('object');
     }
   });
 });
