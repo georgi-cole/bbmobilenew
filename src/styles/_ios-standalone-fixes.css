@@ -1,0 +1,84 @@
+/*
+ * iOS A2HS / PWA standalone mode fixes
+ *
+ * When the app is launched from an iOS home-screen icon (navigator.standalone
+ * or display-mode: standalone) Safari uses a stripped rendering context that
+ * can ignore backdrop-filter, flatten border-radius on <button> elements, and
+ * ignore -webkit-appearance overrides set elsewhere.
+ *
+ * The `.is-standalone` class is added to <html> by the snippet in main.tsx.
+ * We also cover the same rules inside the @media query so they fire even if the
+ * JS snippet hasn't run yet (e.g. during first paint).
+ *
+ * CSS custom properties defined here act as single source of truth for the
+ * standalone-specific values. They must be declared in both the @media block
+ * and the html.is-standalone selector because CSS does not support mixins;
+ * only the applicable block is evaluated at runtime.
+ */
+
+/* ── Standalone token overrides ──────────────────────────────────────────── */
+@media (display-mode: standalone) {
+  :root {
+    --hub-btn-radius: 28px 8px 28px 8px;
+    --hub-btn-radius-sm: 20px 6px 20px 6px;
+    --hub-btn-shadow: 0 16px 44px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --hub-btn-primary-shadow: 0 28px 70px rgba(83, 52, 180, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* Scope appearance reset to HomeHub buttons only to avoid side-effects */
+  .home-hub__btn {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: var(--hub-btn-radius);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: var(--hub-btn-shadow);
+  }
+
+  .home-hub__btn::before,
+  .home-hub__btn::after {
+    border-radius: inherit;
+  }
+
+  .home-hub__btn--primary {
+    box-shadow: var(--hub-btn-primary-shadow);
+  }
+
+  @media (max-width: 420px) {
+    .home-hub__btn {
+      border-radius: var(--hub-btn-radius-sm);
+    }
+  }
+}
+
+/* ── Class-based override (added by JS in main.tsx) ──────────────────────── */
+html.is-standalone {
+  --hub-btn-radius: 28px 8px 28px 8px;
+  --hub-btn-radius-sm: 20px 6px 20px 6px;
+  --hub-btn-shadow: 0 16px 44px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --hub-btn-primary-shadow: 0 28px 70px rgba(83, 52, 180, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+html.is-standalone .home-hub__btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: var(--hub-btn-radius);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--hub-btn-shadow);
+}
+
+html.is-standalone .home-hub__btn::before,
+html.is-standalone .home-hub__btn::after {
+  border-radius: inherit;
+}
+
+html.is-standalone .home-hub__btn--primary {
+  box-shadow: var(--hub-btn-primary-shadow);
+}
+
+@media (max-width: 420px) {
+  html.is-standalone .home-hub__btn {
+    border-radius: var(--hub-btn-radius-sm);
+  }
+}

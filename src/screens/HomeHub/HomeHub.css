@@ -86,7 +86,8 @@
   max-width: 86%;            /* caps on small viewports */
   min-width: 180px;          /* prevents being too small; overridden on small screens below */
   padding: 12px 34px;        /* horizontal padding determines button size */
-  border-radius: 16px;
+  /* Asymmetric corners — explicit px values so WebKit standalone honours them */
+  border-radius: 28px 8px 28px 8px;
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--color-text);
@@ -94,6 +95,7 @@
   border: 1px solid rgba(255,255,255,0.06);
   /* slightly more transparent than before (about -8% alpha) */
   background: rgba(6, 12, 28, 0.78);
+  /* Primary shadow; also acts as backdrop-filter fallback in standalone mode */
   box-shadow: 0 16px 44px rgba(0,0,0,0.56);
   backdrop-filter: blur(8px) saturate(1.02);
   -webkit-backdrop-filter: blur(8px) saturate(1.02);
@@ -101,6 +103,9 @@
   position: relative;
   overflow: visible;
   white-space: nowrap;       /* keep single-line buttons */
+  /* Disable UA button styling so WebKit standalone doesn't flatten corners */
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* Primary (Play) — more glassy gradient (roughly 12% transparent) */
@@ -165,12 +170,12 @@
   transform: translateX(0) translateY(-8px);
 }
 
-/* Small inset shine for Play button */
+/* Small inset shine for Play button — matches parent border-radius exactly */
 .home-hub__btn--primary::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+  border-radius: inherit;
   box-shadow: inset 0 -8px 40px rgba(255,255,255,0.06);
   pointer-events: none;
 }
@@ -191,7 +196,7 @@
     max-width: 420px;
     padding: 12px 22px;
     font-size: 1rem;
-    border-radius: 14px;
+    border-radius: 20px 6px 20px 6px;
   }
   .home-hub__btn--primary { width: 92%; padding: 12px 26px; }
   .home-hub__buttons .home-hub__btn:nth-child(odd),
