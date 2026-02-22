@@ -1,17 +1,41 @@
 /**
  * Client wrapper for the Big Brother AI responder endpoint.
  *
- * The endpoint is resolved in this order:
- *  1. VITE_BB_AI_ENDPOINT env var (full URL, e.g. http://localhost:4000/api/ai/bigbrother)
- *  2. Relative URL /api/ai/bigbrother – works in dev via the Vite proxy to localhost:4000
+ * Resolution order:
+ *  1. VITE_BB_AI_ENDPOINT env var (full URL).
+ *  2. REACT_APP_BB_AI_ENDPOINT env var (full URL).
+ *  3. Relative URL /api/ai/bigbrother — works in dev via the Vite proxy to
+ *     localhost:4000 (see vite.config.ts). This path is always tried when no
+ *     explicit env var is set, so local dev without env vars still reaches the
+ *     backend server.
+ *
+ * If the remote fetch fails (network error, timeout, non-OK status, or
+ * malformed JSON), the offline fallback in bigBrotherFallback.ts is used and
+ * a console.warn is emitted with the error details to aid debugging.
  */
+
+import { generateOfflineBigBrotherReply } from './bigBrotherFallback';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
-const ENDPOINT: string =
-  // Vite exposes VITE_* vars on import.meta.env; fall back to relative proxy path
-  (import.meta.env.VITE_BB_AI_ENDPOINT as string | undefined) ??
-  '/api/ai/bigbrother';
+/**
+ * Resolve the remote endpoint from env vars, falling back to the relative
+ * Vite proxy path so that local dev without env vars still reaches the backend.
+ */
+function resolveEndpoint(): string {
+  // Vite projects expose VITE_* on import.meta.env
+  const vite = import.meta.env.VITE_BB_AI_ENDPOINT as string | undefined;
+  if (vite) return vite;
+
+  // CRA / other bundlers may expose REACT_APP_* on import.meta.env too
+  const cra = import.meta.env.REACT_APP_BB_AI_ENDPOINT as string | undefined;
+  if (cra) return cra;
+
+  // Default: relative path proxied to localhost:4000 in dev (see vite.config.ts)
+  return '/api/ai/bigbrother';
+}
+
+const ENDPOINT = resolveEndpoint();
 
 export interface BigBrotherPayload {
   diaryText: string;
@@ -22,7 +46,7 @@ export interface BigBrotherPayload {
 
 export interface BigBrotherResponse {
   text: string;
-  reason: 'llm' | 'fallback' | 'input_moderation' | 'output_moderation';
+  reason: string;
 }
 
 export async function generateBigBrotherReply(
@@ -49,12 +73,19 @@ export async function generateBigBrotherReply(
     } catch {
       throw new Error('Big Brother server returned an unexpected response.');
     }
+
+    if (typeof json?.text !== 'string') {
+      throw new Error('Big Brother server response missing "text" field.');
+    }
+
     return json;
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new Error('Big Brother did not respond in time. Is the server running?');
-    }
-    throw err;
+    const detail = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[BigBrother] Remote endpoint unreachable or returned an error — using offline fallback. Reason: ${detail}`,
+    );
+    const fallback = await generateOfflineBigBrotherReply(payload);
+    return { ...fallback, reason: 'fallback_offline' };
   } finally {
     clearTimeout(timer);
   }
