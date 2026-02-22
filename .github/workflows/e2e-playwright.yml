@@ -29,7 +29,18 @@ jobs:
           NODE_ENV: test
 
       - name: Wait for dev server
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        run: |
+          echo "Waiting for dev server at http://localhost:3000 ..."
+          end=$((SECONDS+60))
+          until curl -f -s http://localhost:3000 > /dev/null 2>&1; do
+            if [ "$SECONDS" -ge "$end" ]; then
+              echo "Dev server did not become ready within 60 seconds."
+              exit 1
+            fi
+            echo "Dev server not ready yet, retrying..."
+            sleep 2
+          done
+          echo "Dev server is up."
 
       - name: Run Playwright e2e tests
         run: npx playwright test e2e/playwright/

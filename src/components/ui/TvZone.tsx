@@ -110,7 +110,7 @@ export default function TvZone() {
       </div>
 
       {/* ── Event feed ──────────────────────────────────────────────────── */}
-      <ul className="tv-zone__feed" ref={feedRef} aria-label="Game event log">
+      <ul className="tv-zone__feed" data-testid="tv-feed" ref={feedRef} aria-label="Game event log">
         {gameState.tvFeed.map((ev) => (
           <li key={ev.id} className={`tv-zone__feed-item tv-zone__feed-item--${ev.type}`}>
             <span className="tv-zone__feed-type" aria-hidden="true">

@@ -1,137 +1,189 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // NOTE: Start the dev server before running this test. The app should be
 // reachable at http://localhost:3000. Example: npm run dev
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
+/** Navigate to the app with the debug panel enabled (?debug=1). */
+async function gotoDebug(page: Page) {
+  await page.goto(`${BASE}?debug=1`);
+}
+
+/** Open the debug panel by clicking the FAB toggle (if not already open). */
+async function openDebugPanel(page: Page) {
+  const fab = page.getByRole('button', { name: 'Toggle Debug Panel' });
+  await expect(fab).toBeVisible({ timeout: 5000 });
+  const panel = page.getByRole('complementary', { name: 'Debug Panel' });
+  if (!(await panel.isVisible())) {
+    await fab.click();
+  }
+  await expect(panel).toBeVisible({ timeout: 3000 });
+}
+
+/**
+ * Force two nominees via the "Force Nominees" row in the DebugPanel.
+ * Picks the first two available options from each select (skipping the blank placeholder).
+ */
+async function forceNominees(page: Page) {
+  const nomRow = page.locator('.dbg-row', { has: page.locator('.dbg-label', { hasText: 'Force Nominees' }) });
+  const [sel1, sel2] = await nomRow.locator('select').all();
+  const opts1 = await sel1.locator('option').all();
+  const opts2 = await sel2.locator('option').all();
+  // Pick first real option (index 1 skips the blank placeholder)
+  if (opts1.length > 1) await sel1.selectOption({ index: 1 });
+  // Pick second real option (index 2) to avoid duplicate
+  if (opts2.length > 2) await sel2.selectOption({ index: 2 });
+  await nomRow.getByRole('button', { name: 'Set' }).click();
+}
+
+/**
+ * Force a POV winner via the "Force POV" row in the DebugPanel.
+ * `playerIndex` selects which alive player becomes POV holder (1 = first in list, 2 = second, etc.).
+ * Default is 2 (typically an AI player) to avoid picking the human player at index 1.
+ */
+async function forcePov(page: Page, playerIndex = 2) {
+  const povRow = page.locator('.dbg-row', { has: page.locator('.dbg-label', { hasText: 'Force POV' }) });
+  const sel = povRow.locator('select');
+  const opts = await sel.locator('option').all();
+  if (opts.length > playerIndex) await sel.selectOption({ index: playerIndex });
+  await povRow.getByRole('button', { name: 'Set' }).click();
+}
+
 test.describe('Final 4 POV messaging & sequencing', () => {
   /**
-   * Force Final 4 scenario via DebugPanel:
-   * - Force phase to final4_eviction
-   * - Ensure AI POV holder path: plea messages appear and game advances to final3
+   * AI POV holder path:
+   * 1. Set up nominees and an AI POV winner via DebugPanel.
+   * 2. Force phase to final4_eviction.
+   * 3. Click Continue — advance() emits plea messages then AI picks the evictee.
+   * 4. Assert TV feed contains plea request, nominee pleas, and the eviction message.
+   * 5. Assert game has advanced to Final 3.
    */
   test('AI POV holder — plea messages appear and game advances to final3', async ({ page }) => {
-    await page.goto(BASE);
+    await gotoDebug(page);
+    await openDebugPanel(page);
 
-    // Force phase to final4_eviction via DebugPanel
-    const forcePhaseBtn = page.getByRole('button', { name: /Force final4_eviction/i });
-    await expect(forcePhaseBtn).toBeVisible({ timeout: 5000 });
-    await forcePhaseBtn.click();
+    // Set up nominees and a non-human (AI) POV winner
+    await forceNominees(page);
+    await forcePov(page, 2); // index 2 = second alive player (AI)
 
-    // Verify phase is final4_eviction by looking for TV feed message or debug indicator
-    // The debug panel emits "[DEBUG] Phase forced to final4_eviction."
-    const tvFeed = page.locator('[data-testid="tv-feed"], .tv-feed, .tv-zone');
-    await expect(tvFeed).toBeVisible({ timeout: 5000 });
+    // Force the phase to final4_eviction
+    const forceF4Btn = page.getByRole('button', { name: 'Force Final 4' });
+    await expect(forceF4Btn).toBeVisible({ timeout: 3000 });
+    await forceF4Btn.click();
 
-    // Press Continue to trigger the plea sequence (AI POV holder)
+    const tvFeed = page.getByTestId('tv-feed');
+    await expect(tvFeed).toBeVisible({ timeout: 3000 });
+
+    // Advance — Continue is visible because the AI is the POV holder (no blocking flag)
     const continueBtn = page.getByRole('button', { name: /Continue/i });
-    // If human is not POV holder, Continue should be visible
-    if (await continueBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await continueBtn.click();
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
 
-      // After advance(), plea messages should appear:
-      // "asks nominees for their pleas" OR the game may have already auto-advanced
-      // Check the TV feed contains plea messaging or game advanced to final3
-      await expect(tvFeed).toContainText(
-        /asks nominees for their pleas|Final 3|has chosen to evict/i,
-        { timeout: 5000 },
-      );
-    }
+    // After advance(): plea sequence + AI eviction decision should appear in TV feed
+    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 5000 });
+
+    // Game must have advanced to Final 3
+    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 5000 });
   });
 
   /**
-   * Force a human-as-POV scenario:
-   * - Use DebugPanel to set human player as POV winner and force final4_eviction
-   * - Verify plea messages appear in TV feed
-   * - Verify decision modal is shown
-   * - Make a choice and verify eviction message and transition to final3
+   * Human POV holder path:
+   * 1. Set up nominees and force the human player as POV winner.
+   * 2. Force phase to final4_eviction.
+   * 3. Click Continue — advance() emits plea messages then sets awaitingPovDecision.
+   * 4. Assert plea messages appear in the TV feed.
+   * 5. Assert the TvDecisionModal is visible.
+   * 6. Select a nominee and confirm — assert eviction message and Final 3 transition.
    */
   test('Human POV holder — plea messages appear, decision modal shown, eviction performed', async ({ page }) => {
-    await page.goto(BASE);
+    await gotoDebug(page);
+    await openDebugPanel(page);
 
-    // Force the human player as POV winner using the DebugPanel
-    // The DebugPanel has a "Force POV: You" button or similar
-    const forcePovBtn = page.getByRole('button', { name: /Force POV.*[Yy]ou|POV.*user|You.*POV/i });
-    const hasForcePov = await forcePovBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    if (hasForcePov) {
-      await forcePovBtn.click();
-    }
+    // Set up nominees first (they must not be the human player)
+    await forceNominees(page);
+    // Force the human player as POV winner (index 1 = first alive player = human "You")
+    await forcePov(page, 1);
 
-    // Force phase to final4_eviction
-    const forcePhaseBtn = page.getByRole('button', { name: /Force final4_eviction/i });
-    await expect(forcePhaseBtn).toBeVisible({ timeout: 5000 });
-    await forcePhaseBtn.click();
+    // Force the phase to final4_eviction
+    const forceF4Btn = page.getByRole('button', { name: 'Force Final 4' });
+    await expect(forceF4Btn).toBeVisible({ timeout: 3000 });
+    await forceF4Btn.click();
 
-    // Press Continue to trigger the plea sequence for the human POV holder
+    const tvFeed = page.getByTestId('tv-feed');
+    await expect(tvFeed).toBeVisible({ timeout: 3000 });
+
+    // Continue is visible until advance() sets awaitingPovDecision
     const continueBtn = page.getByRole('button', { name: /Continue/i });
-    const hasContinue = await continueBtn.isVisible({ timeout: 2000 }).catch(() => false);
-    if (hasContinue) {
-      await continueBtn.click();
-    }
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
 
-    // TV feed should contain plea messaging
-    const tvFeed = page.locator('[data-testid="tv-feed"], .tv-feed, .tv-zone');
-    await expect(tvFeed).toContainText(/asks nominees for their pleas|plea/i, { timeout: 5000 });
+    // Plea messages must appear in the TV feed
+    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 5000 });
 
-    // If human is POV holder, decision modal should now appear
+    // Decision modal must appear (awaitingPovDecision is now true)
     const decisionModal = page.getByRole('dialog');
-    const modalVisible = await decisionModal.isVisible({ timeout: 3000 }).catch(() => false);
+    await expect(decisionModal).toBeVisible({ timeout: 5000 });
 
-    if (modalVisible) {
-      // Modal is visible — select first option (nominee) and confirm
-      const firstOption = decisionModal.getByRole('button').first();
-      await firstOption.click();
+    // Select the first nominee option from the modal
+    const options = decisionModal.getByRole('button').filter({ hasNotText: /Confirm|Change/i });
+    await options.first().click();
 
-      // Confirm button appears after selection
-      const confirmBtn = decisionModal.getByRole('button', { name: /Confirm/i });
-      if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
+    // Confirm the selection
+    const confirmBtn = decisionModal.getByRole('button', { name: /Confirm/i });
+    await expect(confirmBtn).toBeVisible({ timeout: 3000 });
+    await confirmBtn.click();
 
-      // TV feed should contain eviction message
-      await expect(tvFeed).toContainText(/has chosen to evict|Final 3/i, { timeout: 5000 });
-    }
+    // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
+    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 5000 });
   });
 
   /**
-   * Final 3 competition flow — verify all three parts run sequentially with messages.
+   * Final 3 competition flow:
+   * 1. Force the game to final3 phase (3-part HOH begins).
+   * 2. Advance through all three competition parts.
+   * 3. Assert TV feed announcement messages appear before each part's result.
+   *
+   * NOTE: This test forces the phase directly. The alive player pool in a fresh
+   * game may contain more than 3 players; the competition logic picks from
+   * whoever is alive, which is valid for messaging/sequencing verification.
    */
   test('Final 3 competition phases run sequentially with TV feed messages', async ({ page }) => {
-    await page.goto(BASE);
+    await gotoDebug(page);
+    await openDebugPanel(page);
 
-    // Force phase to final3 via DebugPanel
-    const forcePhaseBtn = page.getByRole('button', { name: /Force final3\b/i });
-    await expect(forcePhaseBtn).toBeVisible({ timeout: 5000 });
-    await forcePhaseBtn.click();
+    // Force phase to final3 (the entry point for the three-part HOH sequence)
+    const forceF3Btn = page.getByRole('button', { name: 'Force Final 3' });
+    await expect(forceF3Btn).toBeVisible({ timeout: 3000 });
+    await forceF3Btn.click();
 
-    const tvFeed = page.locator('[data-testid="tv-feed"], .tv-feed, .tv-zone');
-    await expect(tvFeed).toBeVisible({ timeout: 5000 });
+    const tvFeed = page.getByTestId('tv-feed');
+    await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
-    // Advance through final3 → final3_comp1
     const continueBtn = page.getByRole('button', { name: /Continue/i });
 
-    // Advance: final3 → final3_comp1
-    if (await continueBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await continueBtn.click();
-      await expect(tvFeed).toContainText(/three-part HOH|Final 3.*Part 1|comp1/i, { timeout: 3000 });
-    }
+    // final3 → final3_comp1: "three-part HOH" announcement
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
+    await expect(tvFeed).toContainText(/three-part HOH/i, { timeout: 5000 });
 
-    // Advance: final3_comp1 → final3_comp2
-    if (await continueBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await continueBtn.click();
-      await expect(tvFeed).toContainText(/Part 1.*underway|Part 1.*result|Part 1.*wins/i, { timeout: 3000 });
-    }
+    // final3_comp1 → final3_comp2: Part 1 underway + result messages
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
+    await expect(tvFeed).toContainText(/Part 1 is underway/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Part 1 result/i, { timeout: 5000 });
 
-    // Advance: final3_comp2 → final3_comp3
-    if (await continueBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await continueBtn.click();
-      await expect(tvFeed).toContainText(/Part 2.*underway|Part 2.*result|Part 2.*wins/i, { timeout: 3000 });
-    }
+    // final3_comp2 → final3_comp3: Part 2 underway + result messages
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
+    await expect(tvFeed).toContainText(/Part 2 is underway/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 5000 });
 
-    // Advance: final3_comp3 → final3_decision or week_end
-    if (await continueBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await continueBtn.click();
-      await expect(tvFeed).toContainText(/Part 3.*underway|Part 3.*wins|Final Head of Household/i, { timeout: 3000 });
-    }
+    // final3_comp3 → final3_decision or week_end: Part 3 underway + winner announcement
+    await expect(continueBtn).toBeVisible({ timeout: 3000 });
+    await continueBtn.click();
+    await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Final Head of Household/i, { timeout: 5000 });
   });
 });

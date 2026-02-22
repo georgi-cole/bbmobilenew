@@ -136,7 +136,7 @@ export const JURY_LOCKED_LINES: string[] = [
 export const NOMINEE_PLEA_TEMPLATES: string[] = [
   "Please keep me in this game — I haven't finished what I came here to do. 🙏",
   "I've been loyal from day one and I promise to have your back in the Final 3. Please keep me.",
-  "You know you can trust me more than anyone else on that block. I'm begging you to stay. 🙏",
+  "You know you can trust me more than anyone else on that block. I'm begging you to let me stay. 🙏",
   "I've fought too hard to go home now. Give me the chance to prove I deserve to be here.",
   "Everything I've done in this game has been for us. Please don't send me home now.",
 ];

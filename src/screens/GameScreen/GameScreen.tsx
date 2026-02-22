@@ -143,7 +143,7 @@ export default function GameScreen() {
   // ── Final 4 human POV holder vote ────────────────────────────────────────
   // Shown when phase is final4_eviction, the human player is the POV holder,
   // and awaitingPovDecision is set (meaning plea messages have been emitted).
-  const showFinal4Modal = game.phase === 'final4_eviction' && humanIsPovHolder && Boolean(game.awaitingPovDecision)
+  const showFinal4Modal = game.phase === 'final4_eviction' && humanIsPovHolder && game.awaitingPovDecision
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
