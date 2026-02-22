@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
 import StatusPill from '../ui/StatusPill';
-import TVLog from '../TVLog/TVLog';
 import './TvZone.css';
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.

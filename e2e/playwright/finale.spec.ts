@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 // NOTE: Start the dev server before running this test. The app should be
-// reachable at http://localhost:3000. Example: npm run dev
-const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
+// reachable at http://localhost:3000/bbmobilenew. Example: npm run dev -- --port 3000
+const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000/bbmobilenew';
 
 test.describe('Finale / Jury flow', () => {
   test('mounts FinalFaceoff and completes finale via DebugPanel', async ({ page }) => {
