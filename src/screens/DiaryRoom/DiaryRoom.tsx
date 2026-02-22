@@ -55,9 +55,10 @@ export default function DiaryRoom() {
       dispatch(addTvEvent({ text: `📺 Big Brother: ${resp.text}`, type: 'game' }));
     } catch (err) {
       console.error('Big Brother AI error:', err);
+      const detail = err instanceof Error ? err.message : 'Unknown error.';
       dispatch(
         addTvEvent({
-          text: '📺 Big Brother: Your confession has been noted. The house is watching.',
+          text: `📺 Big Brother is unavailable: ${detail}`,
           type: 'game',
         }),
       );
