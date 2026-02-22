@@ -97,8 +97,7 @@
   background: rgba(6, 12, 28, 0.78);
   /* Primary shadow; also acts as backdrop-filter fallback in standalone mode */
   box-shadow: 0 16px 44px rgba(0,0,0,0.56);
-  backdrop-filter: blur(8px) saturate(1.02);
-  -webkit-backdrop-filter: blur(8px) saturate(1.02);
+  /* backdrop-filter applied via @supports in _introhub-buttons.css */
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
   position: relative;
   overflow: visible;
