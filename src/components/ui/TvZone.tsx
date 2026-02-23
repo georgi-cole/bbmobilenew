@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -55,16 +55,16 @@ const MAJOR_KEYS = new Set([
 
 /** Maps a major key to its announcement title and subtitle. */
 const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }> = {
-  week_start:           { title: 'New Week Begins',            subtitle: 'The game resets — alliances shift.',          isLive: false, autoDismissMs: 4000 },
+  week_start:           { title: 'New Week Begins',            subtitle: 'The game resets — alliances shift.',          isLive: false, autoDismissMs: 4500 },
   nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two houseguests are going on the block.',     isLive: true,  autoDismissMs: null },
-  veto_competition:     { title: 'Power of Veto Competition',  subtitle: 'Six players compete for the golden veto.',   isLive: true,  autoDismissMs: 4000 },
-  veto_ceremony:        { title: 'Veto Ceremony',              subtitle: 'Will the veto be used?',                     isLive: true,  autoDismissMs: 4000 },
+  veto_competition:     { title: 'Power of Veto Competition',  subtitle: 'Six players compete for the golden veto.',   isLive: true,  autoDismissMs: 4500 },
+  veto_ceremony:        { title: 'Veto Ceremony',              subtitle: 'Will the veto be used?',                     isLive: true,  autoDismissMs: 4500 },
   live_eviction:        { title: 'Live Eviction',              subtitle: 'The house votes to evict.',                  isLive: true,  autoDismissMs: null },
   final4:               { title: 'Final 4',                    subtitle: 'Only four players remain.',                  isLive: true,  autoDismissMs: null },
   final3:               { title: 'Final 3',                    subtitle: 'The endgame begins.',                        isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final Head of Household',    subtitle: 'The most powerful decision of the game.',    isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',               isLive: true,  autoDismissMs: null },
-  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                isLive: true,  autoDismissMs: 4000 },
+  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                isLive: true,  autoDismissMs: 4500 },
 };
 
 /** Derives a major key from the event's text when meta/major fields are absent. */
@@ -97,11 +97,15 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
     title: key.replace(/_/g, ' ').toUpperCase(),
     subtitle: ev.text,
     isLive: false,
-    autoDismissMs: 4000,
+    autoDismissMs: 4500,
   };
   return { key, ...meta };
 }
 
+
+// Duration (ms) the main viewport text stays faded after an announcement is dismissed,
+// preventing jarring text transitions between the overlay disappearing and new text.
+const POST_DISMISS_FADE_MS = 300;
 
 /**
  * TvZone — the central "TV-like" action zone.
@@ -140,6 +144,9 @@ export default function TvZone() {
   // Track which event the user has manually dismissed so the overlay doesn't
   // reappear for the same event after dismissal.
   const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+  // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
+  const [postDismissBlocked, setPostDismissBlocked] = useState(false);
+  const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Derive the active announcement directly during render — no effect needed.
   const activeAnnouncement = useMemo<Announcement | null>(() => {
@@ -151,7 +158,25 @@ export default function TvZone() {
 
   const handleDismiss = useCallback(() => {
     if (latestEvent) setDismissedEventId(latestEvent.id);
+    setPostDismissBlocked(true);
+    if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
+    dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
   }, [latestEvent]);
+
+  // Cleanup post-dismiss timer on unmount
+  useEffect(() => {
+    return () => {
+      if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
+    };
+  }, []);
+
+  // Listen for central FAB 'tv:announcement-dismiss' events
+  useEffect(() => {
+    const handler = () => handleDismiss();
+    window.addEventListener('tv:announcement-dismiss', handler);
+    return () => window.removeEventListener('tv:announcement-dismiss', handler);
+  }, [handleDismiss]);
+
   const handleInfo = useCallback(() => {
     if (activeAnnouncement) setModalAnnouncementKey(activeAnnouncement.key);
     setModalOpen(true);
@@ -203,7 +228,7 @@ export default function TvZone() {
             <div className="tv-zone__scanlines" aria-hidden="true" />
             <div className="tv-zone__vignette"  aria-hidden="true" />
             <div className="tv-zone__glare"     aria-hidden="true" />
-            <p className="tv-zone__now">
+            <p className="tv-zone__now" style={postDismissBlocked ? { opacity: 0 } : undefined}>
               {latestEvent?.text ?? 'Welcome to Big Brother – AI Edition 🏠'}
             </p>
 
@@ -217,17 +242,6 @@ export default function TvZone() {
               />
             )}
           </div>
-
-          {/* Continue FAB — visible when a manual-dismiss announcement is active */}
-          {activeAnnouncement && activeAnnouncement.autoDismissMs === null && (
-            <button
-              className="tv-zone__continue-fab"
-              onClick={handleDismiss}
-              aria-label="Continue"
-            >
-              Continue ▶
-            </button>
-          )}
         </div>
       </div>
 

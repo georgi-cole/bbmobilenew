@@ -22,8 +22,8 @@
 }
 
 @keyframes tvAnnouncePop {
-  from { opacity: 0; transform: scale(0.94); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* Subtle scanline overlay on the announcement */
@@ -140,25 +140,6 @@
   outline: 2px solid #e5e7ff;
   outline-offset: 2px;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
-}
-
-/* ── Progress bar (auto-dismiss) ──────────────────────────────────────────── */
-.tv-announcement__progress-wrap {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  z-index: 1;
-}
-
-.tv-announcement__progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6366f1, #818cf8);
-  transform-origin: left;
-  /* transition driven by React inline style */
-  transition: transform 0.1s linear;
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────────── */

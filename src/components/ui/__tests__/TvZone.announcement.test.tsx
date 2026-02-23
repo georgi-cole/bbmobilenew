@@ -4,13 +4,13 @@
  * Covers:
  *  1. TvZone shows TvAnnouncementOverlay when latest event has a major key.
  *  2. Overlay's info button opens the TvAnnouncementModal.
- *  3. Continue FAB dismisses manual-dismiss announcements.
- *  4. Auto-dismiss announcements do NOT show the Continue FAB.
+ *  3. 'tv:announcement-dismiss' event dismisses active announcements.
+ *  4. Auto-dismiss announcements do NOT show a Continue FAB.
  *  5. TVLog is used with maxVisible=2 suppressing the main TV message.
  *  6. No overlay shown when event has no recognised major key.
  *  7. Stale overlay is cleared when a new non-major event arrives.
  *  8. Modal stays open after overlay dismisses (independent key tracking).
- *  9. Auto-dismiss progress decreases over time; onDismiss fires at completion.
+ *  9. Auto-dismiss onDismiss fires at completion; no visible progress bar.
  * 10. Countdown pauses on hover/focus and resumes on leave/blur.
  */
 
@@ -157,7 +157,7 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
   });
 
-  it('modal stays open after overlay is dismissed via Continue FAB', async () => {
+  it('modal stays open after overlay is dismissed via tv:announcement-dismiss event', async () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -173,16 +173,17 @@ describe('TvZone — announcement overlay', () => {
     await userEvent.click(screen.getByRole('button', { name: /More Info/i }));
     expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
 
-    // Dismiss overlay via Continue
-    const fab = screen.getByRole('button', { name: /Continue/i });
-    await userEvent.click(fab);
+    // Dismiss overlay via central FAB event
+    act(() => {
+      window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+    });
 
     // Overlay gone, but modal is still open
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
     expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
   });
 
-  it('shows the Continue FAB for manual-dismiss announcements', () => {
+  it('does NOT show a Continue FAB for any announcement (per-card FAB removed)', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -198,8 +199,8 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    // nomination_ceremony has autoDismissMs = null → Continue FAB shown
-    expect(screen.getByRole('button', { name: /Continue/i })).toBeDefined();
+    // Per-card Continue FAB has been removed — rely on central Play/Continue FAB
+    expect(screen.queryByRole('button', { name: /Continue/i })).toBeNull();
   });
 
   it('does NOT show the Continue FAB for auto-dismiss announcements', () => {
@@ -218,11 +219,11 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    // week_start has autoDismissMs = 4000 → no Continue FAB
+    // week_start has autoDismissMs = 4500 → no Continue FAB
     expect(screen.queryByRole('button', { name: /Continue/i })).toBeNull();
   });
 
-  it('dismisses the overlay when Continue FAB is clicked', async () => {
+  it('dismisses the overlay when tv:announcement-dismiss event is dispatched', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -238,8 +239,11 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    const fab = screen.getByRole('button', { name: /Continue/i });
-    await userEvent.click(fab);
+    expect(screen.getByRole('dialog', { name: /Announcement:/i })).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+    });
 
     // Overlay should be gone
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
@@ -320,44 +324,39 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     }
   }
 
-  it('starts with progress = 1 and decreases over time', () => {
+  it('auto-dismiss timer fires onDismiss when countdown reaches zero (no visible progress bar)', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
     );
 
-    // Verify progress bar is present
     const overlay = getByRole('dialog');
     expect(overlay).toBeDefined();
 
-    // Advance half-way through
-    advanceTime(2000);
-    // Progress fill should now be at ~50%
-    const fill = overlay.querySelector('.tv-announcement__progress-fill');
-    expect(fill).toBeDefined();
-    // scaleX should be approximately 0.5
-    const style = (fill as HTMLElement).style.transform;
-    const scale = parseFloat(style.replace('scaleX(', '').replace(')', ''));
-    expect(scale).toBeGreaterThan(0.4);
-    expect(scale).toBeLessThan(0.7);
+    // Progress bar has been removed — no visible fill element
+    expect(overlay.querySelector('.tv-announcement__progress-fill')).toBeNull();
+
+    // Advance half-way through — onDismiss should not have fired yet
+    advanceTime(2250);
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it('calls onDismiss when the countdown reaches zero', () => {
     const onDismiss = vi.fn();
     render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
     );
 
     // Advance past the full duration
-    advanceTime(4001);
+    advanceTime(4501);
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
@@ -365,7 +364,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
@@ -390,7 +389,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
         paused={true}

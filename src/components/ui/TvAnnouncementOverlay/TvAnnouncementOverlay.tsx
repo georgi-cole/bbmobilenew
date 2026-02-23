@@ -149,15 +149,6 @@ export default function TvAnnouncementOverlay({
       >
         ℹ️
       </button>
-
-      {isAuto && (
-        <div className="tv-announcement__progress-wrap" aria-hidden="true">
-          <div
-            className="tv-announcement__progress-fill"
-            style={{ transform: `scaleX(${progress})` }}
-          />
-        </div>
-      )}
     </div>
   );
 }

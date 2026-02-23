@@ -83,7 +83,7 @@
 .tv-zone__viewport {
   position: relative;
   flex: 1 1 0;
-  min-height: 160px; /* base min-height; reduced on very small screens via media query */
+  min-height: 192px; /* ~20% larger than original 160px — constant, not dynamic */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,7 +195,7 @@
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .tv-zone__viewport {
-    min-height: 100px;
+    min-height: 120px;
     padding: 16px 14px;
   }
   .tv-zone__now {
