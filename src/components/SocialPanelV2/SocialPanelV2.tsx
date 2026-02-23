@@ -12,6 +12,7 @@ import {
 import { addTvEvent } from '../../store/gameSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import { TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
+import { isEvicted, isNonJury } from '../../utils/playerStatus';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
@@ -105,7 +106,7 @@ export default function SocialPanelV2() {
     const targetId = selectedTarget ?? humanPlayer.id;
     // Guard: block actions targeting unknown, evicted, or jury players.
     const targetPlayer = game.players.find((p) => p.id === targetId);
-    if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
+    if (!targetPlayer || isEvicted(targetPlayer)) {
       setFeedbackMsg('Cannot target an evicted or jury player.');
       isExecutingRef.current = false;
       return;
@@ -129,11 +130,11 @@ export default function SocialPanelV2() {
     : null;
 
   // ── Player list for Social module ─────────────────────────────────────────
-  // - Remove pre-jury evictees (status 'evicted' → didn't make jury) entirely.
-  // - Sort jury members (evicted but in jury house) to the bottom as disabled.
-  const allNonUser = game.players.filter((p) => !p.isUser && p.status !== 'evicted');
-  const activePlayers = allNonUser.filter((p) => p.status !== 'jury');
-  const juryPlayers = allNonUser.filter((p) => p.status === 'jury');
+  // - Remove non-jury players (isNonJury: status 'evicted') entirely.
+  // - Sort jury members (isEvicted but in jury house) to the bottom as disabled.
+  const allNonUser = game.players.filter((p) => !p.isUser && !isNonJury(p));
+  const activePlayers = allNonUser.filter((p) => !isEvicted(p));
+  const juryPlayers = allNonUser.filter((p) => isEvicted(p));
   const orderedPlayers = [...activePlayers, ...juryPlayers];
   const disabledPlayerIds = juryPlayers.map((p) => p.id);
 

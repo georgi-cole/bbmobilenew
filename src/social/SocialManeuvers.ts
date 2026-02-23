@@ -18,6 +18,8 @@ import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome } from './SocialPolicy';
 import { recordSocialAction, updateRelationship } from './socialSlice';
 import type { SocialActionLogEntry, SocialState } from './types';
+import { isEvicted } from '../utils/playerStatus';
+import type { Player } from '../types';
 
 // ── Internal store reference ──────────────────────────────────────────────
 
@@ -35,6 +37,15 @@ type PartialSocialState = Pick<SocialState, 'energyBank' | 'relationships' | 'se
 
 interface StateForManeuvers {
   social: PartialSocialState;
+}
+
+/**
+ * Shape of the full app state as seen by executeAction's eviction guard.
+ * `game` is optional so the guard degrades gracefully when only the social
+ * slice is present (e.g. unit tests with a minimal store).
+ */
+interface AppStateForGuard {
+  game?: { players?: Player[] };
 }
 
 let _store: StoreAPI | null = null;
@@ -147,6 +158,18 @@ export function executeAction(
   const action = getActionById(actionId);
   if (!action) {
     return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action', score: 0, label: 'Unmoved' };
+  }
+
+  // Guard: reject actions targeting evicted or jury players.
+  // Read game.players from the store when available; skip the check when the
+  // store does not include a game slice (e.g. unit tests with a minimal store).
+  const stateForGuard = _store.getState() as AppStateForGuard;
+  if (stateForGuard.game?.players) {
+    const targetPlayer = stateForGuard.game.players.find((p) => p.id === targetId);
+    if (targetPlayer && isEvicted(targetPlayer)) {
+      console.debug(`[SocialManeuvers] Rejected action "${actionId}" — target "${targetId}" is evicted.`);
+      return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Cannot target an evicted player', score: 0, label: 'Unmoved' };
+    }
   }
 
   const cost = computeActionCost(actorId, action, targetId);

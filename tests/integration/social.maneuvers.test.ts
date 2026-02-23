@@ -11,6 +11,7 @@
 //  8. executeAction returns failure for unknown action id.
 //  9. Redux selectors selectEnergyBank and selectSessionLogs are correct.
 // 10. updateRelationship reducer merges affinity and tags.
+// 11. executeAction rejects targeting evicted and jury players (eviction guard).
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
@@ -22,6 +23,7 @@ import socialReducer, {
   recordSocialAction,
   updateRelationship,
 } from '../../src/social/socialSlice';
+import gameReducer from '../../src/store/gameSlice';
 import { SOCIAL_ACTIONS } from '../../src/social/socialActions';
 import { normalizeCost, normalizeActionCost } from '../../src/social/smExecNormalize';
 import {
@@ -43,6 +45,11 @@ import type { SocialActionLogEntry } from '../../src/social/types';
 
 function makeStore() {
   return configureStore({ reducer: { social: socialReducer } });
+}
+
+/** Store that includes the game slice so the eviction guard can check player status. */
+function makeFullStore() {
+  return configureStore({ reducer: { game: gameReducer, social: socialReducer } });
 }
 
 // ── socialActions ──────────────────────────────────────────────────────────
@@ -522,5 +529,63 @@ describe('SocialEnergyBank – energy clamped at 0', () => {
     const result = bankAdd('p1', -10);
     expect(result).toBe(0);
     expect(store.getState().social.energyBank['p1']).toBe(0);
+  });
+});
+
+// ── executeAction – eviction guard ────────────────────────────────────────
+
+describe('executeAction – eviction guard (requires game slice in store)', () => {
+  /** Build a store with one non-user player set to the given status. */
+  function makeStoreWithEvictedTarget(status: 'evicted' | 'jury') {
+    const base = makeFullStore().getState();
+    const humanId = base.game.players.find((p) => p.isUser)!.id;
+    const targetId = base.game.players.find((p) => !p.isUser)!.id;
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer },
+      preloadedState: {
+        game: {
+          ...base.game,
+          players: base.game.players.map((p) =>
+            p.id === targetId ? { ...p, status } : p,
+          ),
+        },
+        social: base.social,
+      },
+    });
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }));
+    initManeuvers(store);
+    return { store, humanId, targetId };
+  }
+
+  it('rejects an action targeting a player with status "evicted"', () => {
+    const { humanId, targetId } = makeStoreWithEvictedTarget('evicted');
+    // Guard must reject even with sufficient energy.
+    const result = executeAction(humanId, targetId, 'compliment');
+    expect(result.success).toBe(false);
+    expect(result.summary).toMatch(/evicted/i);
+  });
+
+  it('rejects an action targeting a player with status "jury"', () => {
+    const { humanId, targetId } = makeStoreWithEvictedTarget('jury');
+    const result = executeAction(humanId, targetId, 'compliment');
+    expect(result.success).toBe(false);
+    expect(result.summary).toMatch(/evicted/i);
+  });
+
+  it('does not mutate sessionLogs when guard rejects an evicted target', () => {
+    const { store, humanId, targetId } = makeStoreWithEvictedTarget('evicted');
+    executeAction(humanId, targetId, 'compliment');
+    expect(store.getState().social.sessionLogs).toHaveLength(0);
+  });
+
+  it('allows action when store has no game slice (backwards-compatible with minimal stores)', () => {
+    // Minimal store (social only) — guard is skipped, action proceeds normally.
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+
+    const result = executeAction('p1', 'p2', 'compliment');
+    // Without game.players available the guard cannot check, so it passes through.
+    expect(result.success).toBe(true);
   });
 });
