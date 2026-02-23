@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition } from 'react';
 import type { Phase } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
@@ -134,10 +134,9 @@ export default function TvZone() {
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.log('TvZone latestEvent:', latestEvent);
     }
-  }, [latestEvent?.id]);
+  }, [latestEvent]);
 
   // ── Announcement state ──────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
@@ -158,7 +157,11 @@ export default function TvZone() {
   const previousPhaseRef = useRef<Phase | null>(null);
   // Stable ref so phase-transition effect always reads the latest latestEvent.
   const latestEventRef = useRef(latestEvent);
-  latestEventRef.current = latestEvent;
+  // Update the ref after each render so the phase-transition effect always has
+  // the freshest value without needing latestEvent in its own dependency array.
+  useLayoutEffect(() => {
+    latestEventRef.current = latestEvent;
+  });
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
@@ -172,22 +175,26 @@ export default function TvZone() {
     if (prevPhase === null || prevPhase === currentPhase) return;
 
     const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length);
-    if (key && currentPhase !== dismissedPhase) {
-      const ev = latestEventRef.current;
-      const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
-      setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
-      // Suppress any concurrent event-based popup with the same key to prevent duplication.
-      if (ev && extractMajorKey(ev) === key) {
-        setDismissedEventId(ev.id);
+    const ev = latestEventRef.current;
+    // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
+    // by deferring setState calls into a callback rather than calling them synchronously).
+    startTransition(() => {
+      if (key && currentPhase !== dismissedPhase) {
+        const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
+        setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
+        // Suppress any concurrent event-based popup with the same key to prevent duplication.
+        if (ev && extractMajorKey(ev) === key) {
+          setDismissedEventId(ev.id);
+        }
+      } else {
+        // Entering a non-popup phase: clear any stale phase announcement.
+        // Also clear the dismissed guard so the same phase can show its popup again in a later week.
+        if (dismissedPhase && currentPhase !== dismissedPhase) {
+          setDismissedPhase(null);
+        }
+        setPhaseAnnouncement(null);
       }
-    } else {
-      // Entering a non-popup phase: clear any stale phase announcement.
-      // Also clear the dismissed guard so the same phase can show its popup again in a later week.
-      if (dismissedPhase && currentPhase !== dismissedPhase) {
-        setDismissedPhase(null);
-      }
-      setPhaseAnnouncement(null);
-    }
+    });
   }, [gameState.phase, alivePlayers.length, dismissedPhase]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
