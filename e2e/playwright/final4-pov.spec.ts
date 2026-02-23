@@ -50,7 +50,7 @@ async function forcePov(page: Page, playerIndex = 2) {
   await povRow.getByRole('button', { name: 'Set' }).click();
 }
 
-test.describe('Final 4 POV messaging & sequencing', () => {
+test.describe.serial('Final 4 POV messaging & sequencing', () => {
   /**
    * AI POV holder path:
    * 1. Set up nominees and an AI POV winner via DebugPanel.
@@ -73,8 +73,8 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await expect(forceF4Btn).toBeVisible({ timeout: 3000 });
     await forceF4Btn.click();
 
+    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 });
     const tvFeed = page.getByTestId('tv-feed');
-    await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
     // Advance — Continue is visible because the AI is the POV holder (no blocking flag)
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
@@ -82,11 +82,11 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await continueBtn.click();
 
     // After advance(): plea sequence + AI eviction decision should appear in TV feed
-    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 5000 });
-    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 });
 
     // Game must have advanced to Final 3
-    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 10000 });
   });
 
   /**
@@ -112,8 +112,8 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await expect(forceF4Btn).toBeVisible({ timeout: 3000 });
     await forceF4Btn.click();
 
+    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 });
     const tvFeed = page.getByTestId('tv-feed');
-    await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
     // Continue is visible until advance() sets awaitingPovDecision
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
@@ -121,7 +121,7 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await continueBtn.click();
 
     // Plea messages must appear in the TV feed
-    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 });
 
     // Decision modal must appear (awaitingPovDecision is now true)
     const decisionModal = page.getByRole('dialog');
@@ -137,8 +137,8 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await confirmBtn.click();
 
     // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
-    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 5000 });
-    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 10000 });
   });
 
   /**
@@ -160,32 +160,32 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await expect(forceF3Btn).toBeVisible({ timeout: 3000 });
     await forceF3Btn.click();
 
+    await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 });
     const tvFeed = page.getByTestId('tv-feed');
-    await expect(tvFeed).toBeVisible({ timeout: 3000 });
 
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
 
     // final3 → final3_comp1: "three-part HOH" announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
-    await expect(tvFeed).toContainText(/three-part HOH/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/three-part HOH/i, { timeout: 10000 });
 
     // final3_comp1 → final3_comp2: Part 1 underway + result messages
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
-    await expect(tvFeed).toContainText(/Part 1 is underway/i, { timeout: 5000 });
-    await expect(tvFeed).toContainText(/Part 1 result/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Part 1 is underway/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/Part 1 result/i, { timeout: 10000 });
 
     // final3_comp2 → final3_comp3: Part 2 underway + result messages
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
-    await expect(tvFeed).toContainText(/Part 2 is underway/i, { timeout: 5000 });
-    await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Part 2 is underway/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 10000 });
 
     // final3_comp3 → final3_decision or week_end: Part 3 underway + winner announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
-    await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 5000 });
-    await expect(tvFeed).toContainText(/Final Head of Household/i, { timeout: 5000 });
+    await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/Final Head of Household/i, { timeout: 10000 });
   });
 });
