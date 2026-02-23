@@ -56,6 +56,11 @@ export default function PlayerCard({
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (disabled) return;
+    if (e.key === 'Escape' && selected) {
+      e.preventDefault();
+      onSelect(player.id, false, false);
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onSelect(player.id, e.ctrlKey || e.metaKey, e.shiftKey);
@@ -63,9 +68,9 @@ export default function PlayerCard({
   }
 
   return (
-    <div
+    <button
+      type="button"
       className={classes}
-      role="button"
       tabIndex={disabled ? -1 : 0}
       aria-pressed={selected}
       aria-disabled={disabled}
@@ -100,6 +105,6 @@ export default function PlayerCard({
           <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
         </div>
       )}
-    </div>
+    </button>
   );
 }

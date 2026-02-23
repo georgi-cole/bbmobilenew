@@ -99,7 +99,7 @@ export default function PlayerList({
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
     const buttons = Array.from(
-      containerRef.current?.querySelectorAll<HTMLElement>('[role="button"]') ?? [],
+      containerRef.current?.querySelectorAll<HTMLElement>('[role="button"], button.pc') ?? [],
     );
     if (buttons.length === 0) return;
     const idx = buttons.indexOf(document.activeElement as HTMLElement);

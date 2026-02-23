@@ -82,6 +82,7 @@ export default function SocialPanelV2() {
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [successPulse, setSuccessPulse] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Re-entrancy guard: prevents double-execution on rapid clicks (synchronous
   // state updates are batched and `executing` state may not be visible yet).
@@ -106,6 +107,7 @@ export default function SocialPanelV2() {
   const handleExecute = useCallback(() => {
     if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
     isExecutingRef.current = true;
+    setExecuting(true);
     setFeedbackMsg(null);
     // For targetless actions (needsTargets: false), fall back to the human player's
     // own id so executeAction always receives a valid string.
@@ -130,6 +132,7 @@ export default function SocialPanelV2() {
       }, 850);
     }
     isExecutingRef.current = false;
+    setExecuting(false);
   }, [canExecute, humanPlayer, selectedActionId, selectedTarget, game.players]);
 
   if (!open) return null;
@@ -160,6 +163,8 @@ export default function SocialPanelV2() {
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
+      {/* Skip link: lets keyboard users jump past the header directly to actions */}
+      <a className="sp2-skip-link" href="#sp2-body">Skip to actions</a>
       <div className="sp2-modal">
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
@@ -167,18 +172,21 @@ export default function SocialPanelV2() {
           <div className="sp2-header__resources">
             <span
               className="sp2-energy-chip"
+              aria-live="polite"
               aria-label={`Energy: ${energy}`}
             >
               ⚡ {energy}
             </span>
             <span
               className="sp2-resource-chip sp2-resource-chip--influence"
+              aria-live="polite"
               aria-label={`Influence: ${influence}`}
             >
               🤝 {influence}
             </span>
             <span
               className="sp2-resource-chip sp2-resource-chip--info"
+              aria-live="polite"
               aria-label={`Info: ${info}`}
             >
               💡 {info}
@@ -195,7 +203,7 @@ export default function SocialPanelV2() {
         </header>
 
         {/* ── Two-column body ──────────────────────────────────────────────── */}
-        <div className="sp2-body">
+        <div id="sp2-body" className="sp2-body">
           {/* Left column – Player roster */}
           <div className="sp2-column" aria-label="Player roster">
             <span className="sp2-column__label">Players</span>
@@ -233,7 +241,7 @@ export default function SocialPanelV2() {
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}
         <footer className="sp2-footer">
           {feedbackMsg ? (
-            <span className="sp2-footer__feedback" role="status">{feedbackMsg}</span>
+            <span className="sp2-footer__feedback" role="status" aria-live="polite">{feedbackMsg}</span>
           ) : (
             <span className="sp2-footer__cost">
               {energyCost !== null ? `Cost: ⚡${energyCost}` : 'Cost: —'}
@@ -243,6 +251,7 @@ export default function SocialPanelV2() {
             className={`sp2-footer__execute${successPulse ? ' sp2-footer__execute--pulse' : ''}`}
             type="button"
             disabled={!canExecute}
+            aria-busy={executing}
             onClick={handleExecute}
           >
             Execute
