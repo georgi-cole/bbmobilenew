@@ -147,7 +147,7 @@ export default function TvAnnouncementOverlay({
         onClick={onInfo}
         aria-label={`More info about ${title}`}
       >
-        ℹ️ More Info
+        ℹ️
       </button>
 
       {isAuto && (

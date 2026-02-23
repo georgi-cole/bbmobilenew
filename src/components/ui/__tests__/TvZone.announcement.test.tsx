@@ -314,8 +314,9 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
 
   function advanceTime(ms: number) {
     vi.spyOn(window.performance, 'now').mockReturnValue(ms);
-    if (rafCallback) {
-      act(() => { rafCallback(ms); });
+    const cb = rafCallback;
+    if (cb) {
+      act(() => { cb(ms); });
     }
   }
 
