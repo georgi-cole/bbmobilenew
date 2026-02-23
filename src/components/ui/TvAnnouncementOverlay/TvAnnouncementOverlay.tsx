@@ -14,6 +14,8 @@ export interface TvAnnouncementOverlayProps {
   announcement: Announcement;
   onInfo: () => void;
   onDismiss: () => void;
+  /** When true, the auto-dismiss countdown is paused (e.g. while info modal is open). */
+  paused?: boolean;
 }
 
 /**
@@ -21,13 +23,15 @@ export interface TvAnnouncementOverlayProps {
  *
  * - If `autoDismissMs` is a positive number, a countdown progress bar is shown
  *   and the overlay auto-dismisses when it reaches zero.
- * - The countdown pauses while the component is hovered or focused.
+ * - The countdown pauses while the component is hovered, focused, or when
+ *   `paused` is true (e.g. while the info modal is open).
  * - The info button calls `onInfo`; `onDismiss` hides the overlay.
  */
 export default function TvAnnouncementOverlay({
   announcement,
   onInfo,
   onDismiss,
+  paused = false,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
 
@@ -35,10 +39,12 @@ export default function TvAnnouncementOverlay({
 
   // progress: 1 → 0 (full → empty bar)
   const [progress, setProgress] = useState(1);
-  const pausedRef = useRef(false);
+  const hoverPausedRef = useRef(false);
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
+
+  const isPaused = () => hoverPausedRef.current || paused;
 
   const tick = useCallback(() => {
     if (!isAuto) return;
@@ -58,6 +64,7 @@ export default function TvAnnouncementOverlay({
     rafRef.current = requestAnimationFrame(tick);
   }, [isAuto, autoDismissMs, onDismiss]);
 
+  // Start the RAF countdown on mount
   useEffect(() => {
     if (!isAuto) return;
     startTimeRef.current = performance.now();
@@ -66,25 +73,40 @@ export default function TvAnnouncementOverlay({
     return () => cancelAnimationFrame(rafRef.current);
   }, [isAuto, tick]);
 
+  // Cancel/restart RAF when `paused` prop changes
+  useEffect(() => {
+    if (!isAuto) return;
+    if (paused) {
+      cancelAnimationFrame(rafRef.current);
+    } else {
+      startTimeRef.current = performance.now();
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, [paused, isAuto, tick]);
+
   const handleMouseEnter = () => {
-    pausedRef.current = true;
+    hoverPausedRef.current = true;
     cancelAnimationFrame(rafRef.current);
   };
   const handleMouseLeave = () => {
     if (!isAuto) return;
-    pausedRef.current = false;
-    startTimeRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(tick);
+    hoverPausedRef.current = false;
+    if (!isPaused()) {
+      startTimeRef.current = performance.now();
+      rafRef.current = requestAnimationFrame(tick);
+    }
   };
   const handleFocus = () => {
-    pausedRef.current = true;
+    hoverPausedRef.current = true;
     cancelAnimationFrame(rafRef.current);
   };
   const handleBlur = () => {
     if (!isAuto) return;
-    pausedRef.current = false;
-    startTimeRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(tick);
+    hoverPausedRef.current = false;
+    if (!isPaused()) {
+      startTimeRef.current = performance.now();
+      rafRef.current = requestAnimationFrame(tick);
+    }
   };
 
   return (

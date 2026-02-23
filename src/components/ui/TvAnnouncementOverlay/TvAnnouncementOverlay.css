@@ -121,11 +121,21 @@
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.tv-announcement__info-btn:hover,
-.tv-announcement__info-btn:focus {
+.tv-announcement__info-btn:hover {
   background: rgba(99, 102, 241, 0.3);
   border-color: rgba(99, 102, 241, 0.8);
+}
+
+.tv-announcement__info-btn:focus {
   outline: none;
+}
+
+.tv-announcement__info-btn:focus-visible {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.8);
+  outline: 2px solid #e5e7ff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
 }
 
 /* ── Progress bar (auto-dismiss) ──────────────────────────────────────────── */

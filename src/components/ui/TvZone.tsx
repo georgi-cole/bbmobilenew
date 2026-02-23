@@ -110,21 +110,32 @@ export default function TvZone() {
   // ── Announcement state ──────────────────────────────────────────────────────
   const [activeAnnouncement, setActiveAnnouncement] = useState<Announcement | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // Keep the modal key alive independently so the modal stays open even if
+  // the overlay dismisses (e.g. via auto-dismiss) while the user is reading.
+  const [modalAnnouncementKey, setModalAnnouncementKey] = useState<string | null>(null);
   const lastAnnouncedIdRef = useRef<string | null>(null);
 
-  // Derive announcement from latest event
+  // Derive announcement from latest event; clear overlay when no major key
   useEffect(() => {
-    if (!latestEvent) return;
+    if (!latestEvent) {
+      setActiveAnnouncement(null);
+      return;
+    }
     if (latestEvent.id === lastAnnouncedIdRef.current) return;
+    lastAnnouncedIdRef.current = latestEvent.id;
     const majorKey = extractMajorKey(latestEvent);
     if (majorKey) {
-      lastAnnouncedIdRef.current = latestEvent.id;
       setActiveAnnouncement(buildAnnouncement(majorKey, latestEvent));
+    } else {
+      setActiveAnnouncement(null);
     }
   }, [latestEvent]);
 
   const handleDismiss = useCallback(() => setActiveAnnouncement(null), []);
-  const handleInfo = useCallback(() => setModalOpen(true), []);
+  const handleInfo = useCallback(() => {
+    if (activeAnnouncement) setModalAnnouncementKey(activeAnnouncement.key);
+    setModalOpen(true);
+  }, [activeAnnouncement]);
   const handleModalClose = useCallback(() => setModalOpen(false), []);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
@@ -182,6 +193,7 @@ export default function TvZone() {
                 announcement={activeAnnouncement}
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
+                paused={modalOpen}
               />
             )}
           </div>
@@ -207,9 +219,9 @@ export default function TvZone() {
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}
-      {activeAnnouncement && (
+      {modalAnnouncementKey && (
         <TvAnnouncementModal
-          announcementKey={activeAnnouncement.key}
+          announcementKey={modalAnnouncementKey}
           open={modalOpen}
           onClose={handleModalClose}
         />

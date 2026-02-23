@@ -64,6 +64,14 @@
   outline: none;
 }
 
+.tv-ann-modal__close:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  outline: 2px solid rgba(129, 140, 248, 0.9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 .tv-ann-modal__title {
   margin: 0 32px 6px 0;
   font-size: 1rem;

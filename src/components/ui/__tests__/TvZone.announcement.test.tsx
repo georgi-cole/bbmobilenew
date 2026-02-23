@@ -8,16 +8,21 @@
  *  4. Auto-dismiss announcements do NOT show the Continue FAB.
  *  5. TVLog is used with maxVisible=2 suppressing the main TV message.
  *  6. No overlay shown when event has no recognised major key.
+ *  7. Stale overlay is cleared when a new non-major event arrives.
+ *  8. Modal stays open after overlay dismisses (independent key tracking).
+ *  9. Auto-dismiss progress decreases over time; onDismiss fires at completion.
+ * 10. Countdown pauses on hover/focus and resumes on leave/blur.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import gameReducer, { addTvEvent } from '../../../store/gameSlice';
 import TvZone from '../TvZone';
+import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import type { TvEvent } from '../../../types';
 
 // ── Store helpers ─────────────────────────────────────────────────────────────
@@ -44,12 +49,15 @@ function makeEvent(overrides: Partial<TvEvent> & Pick<TvEvent, 'id' | 'text'>): 
 
 describe('TvZone — announcement overlay', () => {
   beforeEach(() => {
-    // Suppress RAF errors in jsdom
+    // Suppress RAF scheduling in jsdom so auto-dismiss timers don't fire
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((_cb) => {
-      // Don't actually schedule — just return a handle
       return 0 as unknown as ReturnType<typeof requestAnimationFrame>;
     });
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('shows the overlay when the latest event has meta.major set to a recognised key', () => {
@@ -106,6 +114,25 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
+  it('clears the overlay when a new non-major event arrives after a major event', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    // First: major event shows overlay
+    act(() => {
+      store.dispatch(
+        addTvEvent(makeEvent({ id: 'ev-a', text: 'Noms set.', meta: { major: 'nomination_ceremony' } })),
+      );
+    });
+    expect(screen.getByRole('dialog', { name: /Announcement:/i })).toBeDefined();
+
+    // Then: non-major event clears overlay
+    act(() => {
+      store.dispatch(addTvEvent(makeEvent({ id: 'ev-b', text: 'Everyone eats pizza.' })));
+    });
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
   it('opens the modal when the info button is clicked', async () => {
     const store = makeStore();
     renderTvZone(store);
@@ -127,6 +154,31 @@ describe('TvZone — announcement overlay', () => {
     await userEvent.click(infoBtn);
 
     // Modal should open with phase info
+    expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
+  });
+
+  it('modal stays open after overlay is dismissed via Continue FAB', async () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({ id: 'ev-modal-persist', text: 'Jury votes.', meta: { major: 'jury' } }),
+        ),
+      );
+    });
+
+    // Open modal first
+    await userEvent.click(screen.getByRole('button', { name: /More Info/i }));
+    expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
+
+    // Dismiss overlay via Continue
+    const fab = screen.getByRole('button', { name: /Continue/i });
+    await userEvent.click(fab);
+
+    // Overlay gone, but modal is still open
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
     expect(screen.getByRole('dialog', { name: /Phase info:/i })).toBeDefined();
   });
 
@@ -220,6 +272,10 @@ describe('TvZone — announcement overlay', () => {
 // ── TVLog integration ─────────────────────────────────────────────────────────
 
 describe('TvZone — TVLog usage', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('renders a game event log (TVLog)', () => {
     const store = makeStore();
     renderTvZone(store);
@@ -230,5 +286,121 @@ describe('TvZone — TVLog usage', () => {
     });
 
     expect(screen.getByRole('list', { name: /Game event log/i })).toBeDefined();
+  });
+});
+
+// ── TvAnnouncementOverlay countdown unit tests ─────────────────────────────────
+
+describe('TvAnnouncementOverlay — countdown logic', () => {
+  let rafCallback: FrameRequestCallback | null = null;
+  let rafHandleCounter = 0;
+
+  beforeEach(() => {
+    rafCallback = null;
+    rafHandleCounter = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      rafCallback = cb;
+      return ++rafHandleCounter;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {
+      rafCallback = null;
+    });
+    vi.spyOn(window.performance, 'now').mockReturnValue(0);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function advanceTime(ms: number) {
+    vi.spyOn(window.performance, 'now').mockReturnValue(ms);
+    if (rafCallback) {
+      act(() => { rafCallback(ms); });
+    }
+  }
+
+  it('starts with progress = 1 and decreases over time', () => {
+    const onDismiss = vi.fn();
+    const { getByRole } = render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    // Verify progress bar is present
+    const overlay = getByRole('dialog');
+    expect(overlay).toBeDefined();
+
+    // Advance half-way through
+    advanceTime(2000);
+    // Progress fill should now be at ~50%
+    const fill = overlay.querySelector('.tv-announcement__progress-fill');
+    expect(fill).toBeDefined();
+    // scaleX should be approximately 0.5
+    const style = (fill as HTMLElement).style.transform;
+    const scale = parseFloat(style.replace('scaleX(', '').replace(')', ''));
+    expect(scale).toBeGreaterThan(0.4);
+    expect(scale).toBeLessThan(0.7);
+  });
+
+  it('calls onDismiss when the countdown reaches zero', () => {
+    const onDismiss = vi.fn();
+    render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    // Advance past the full duration
+    advanceTime(4001);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels RAF on mouse enter and restarts on mouse leave', () => {
+    const onDismiss = vi.fn();
+    const { getByRole } = render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    const overlay = getByRole('dialog');
+
+    // Mouse enter should cancel RAF
+    act(() => { fireEvent.mouseEnter(overlay); });
+    expect(window.cancelAnimationFrame).toHaveBeenCalled();
+
+    const cancelCallsBefore = (window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+    const requestCallsBefore = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    // Mouse leave should restart RAF
+    act(() => { fireEvent.mouseLeave(overlay); });
+    expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(requestCallsBefore);
+    expect((window.cancelAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(cancelCallsBefore); // no extra cancels
+  });
+
+  it('does NOT restart RAF on mouse leave when paused prop is true', () => {
+    const onDismiss = vi.fn();
+    const { getByRole } = render(
+      <TvAnnouncementOverlay
+        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4000 }}
+        onInfo={() => {}}
+        onDismiss={onDismiss}
+        paused={true}
+      />,
+    );
+
+    const overlay = getByRole('dialog');
+    const requestCallsBefore = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    // Mouse leave should NOT restart because paused=true
+    act(() => { fireEvent.mouseLeave(overlay); });
+    expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBefore);
   });
 });

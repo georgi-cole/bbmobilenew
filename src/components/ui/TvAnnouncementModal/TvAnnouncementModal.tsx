@@ -69,7 +69,7 @@ export interface TvAnnouncementModalProps {
  * TvAnnouncementModal — fullscreen phase-info modal.
  *
  * - Closes on backdrop click or ESC key.
- * - Traps focus within the modal card while open.
+ * - Moves focus to the card on open; full focus trap is not implemented.
  */
 export default function TvAnnouncementModal({
   announcementKey,

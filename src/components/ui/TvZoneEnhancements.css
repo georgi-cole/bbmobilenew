@@ -22,12 +22,22 @@
   animation: fabPopIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.tv-zone__continue-fab:hover,
-.tv-zone__continue-fab:focus {
+.tv-zone__continue-fab:hover {
   background: rgba(99, 102, 241, 0.45);
   border-color: rgba(99, 102, 241, 0.9);
   transform: scale(1.04);
+}
+
+.tv-zone__continue-fab:focus {
   outline: none;
+}
+
+.tv-zone__continue-fab:focus-visible {
+  background: rgba(99, 102, 241, 0.45);
+  border-color: rgba(99, 102, 241, 0.9);
+  transform: scale(1.04);
+  outline: 2px solid #e0e7ff;
+  outline-offset: 2px;
 }
 
 @keyframes fabPopIn {
