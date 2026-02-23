@@ -13,6 +13,12 @@ interface PlayerListProps {
   disabledIds?: ReadonlyArray<string>;
   /** Called whenever the selection changes. */
   onSelectionChange?: (selectedIds: Set<string>) => void;
+  /**
+   * External controlled selection. When provided, overrides internal selection
+   * state for display purposes (controlled mode). If omitted, the component
+   * manages selection internally (uncontrolled mode — backwards-compatible).
+   */
+  selectedIds?: ReadonlySet<string>;
 }
 
 /**
@@ -32,14 +38,18 @@ export default function PlayerList({
   relationships,
   disabledIds = [],
   onSelectionChange,
+  selectedIds: controlledSelectedIds,
 }: PlayerListProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const lastFocusedIndexRef = useRef<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // When selectedIds prop is provided use it for display; otherwise fall back to internal state.
+  const displaySelectedIds = controlledSelectedIds ?? internalSelectedIds;
+
   const updateSelection = useCallback(
     (next: Set<string>) => {
-      setSelectedIds(next);
+      setInternalSelectedIds(next);
       onSelectionChange?.(next);
     },
     [onSelectionChange],
@@ -48,7 +58,7 @@ export default function PlayerList({
   function handleSelect(playerId: string, additive: boolean) {
     const next = additive
       ? (() => {
-          const s = new Set(selectedIds);
+          const s = new Set(internalSelectedIds);
           if (s.has(playerId)) { s.delete(playerId); } else { s.add(playerId); }
           return s;
         })()
@@ -108,7 +118,7 @@ export default function PlayerList({
           <PlayerCard
             key={player.id}
             player={player}
-            selected={selectedIds.has(player.id)}
+            selected={displaySelectedIds.has(player.id)}
             disabled={disabled}
             onSelect={(id, additive, shiftKey) => {
               if (shiftKey) {

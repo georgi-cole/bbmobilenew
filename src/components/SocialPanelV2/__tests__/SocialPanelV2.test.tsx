@@ -12,14 +12,21 @@
  *  8. Close button hides the modal.
  *  9. Does not render when there is no human player.
  * 10. Modal re-opens when transitioning between social_1 and social_2 after being closed.
+ * 11. Execute button enabled when idle action (needsTargets: false) is selected.
+ * 12. Execute button disabled when target-requiring action is selected without a player.
+ * 13. Execute button enabled when action and a player are both selected.
+ * 14. Execute shows success feedback after idle action is performed.
+ * 15. Execute shows 'Insufficient energy' feedback when player cannot afford action.
+ * 16. After successful execute, action selection is cleared (button returns to disabled).
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
 import socialReducer, { setEnergyBankEntry } from '../../../social/socialSlice';
+import { initManeuvers } from '../../../social/SocialManeuvers';
 import SocialPanelV2 from '../SocialPanelV2';
 import type { RootState } from '../../../store/store';
 
@@ -156,5 +163,65 @@ describe('SocialPanelV2 – close behaviour', () => {
       store.dispatch(setPhase('social_2'));
     });
     expect(screen.getByRole('dialog')).toBeDefined();
+  });
+});
+
+// ── Execute flow ───────────────────────────────────────────────────────────
+
+describe('SocialPanelV2 – execute flow', () => {
+  let store: ReturnType<typeof makeStore>;
+  let humanId: string;
+
+  beforeEach(() => {
+    store = makeStore({ phase: 'social_1' });
+    humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 }));
+    initManeuvers(store);
+    renderPanel(store);
+  });
+
+  it('execute button is enabled when a targetless action (idle) is selected', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('execute button stays disabled when a target-requiring action is selected without a player', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('execute button is enabled when action and a player are both selected', () => {
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('shows feedback after executing idle action', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+    expect(screen.getByRole('status')).toBeDefined();
+  });
+
+  it('shows "Insufficient energy" when player cannot afford the action', () => {
+    act(() => {
+      store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 0 }));
+    });
+    const nonUserPlayer = store.getState().game.players.find((p) => !p.isUser)!;
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+    expect(screen.getByRole('status').textContent).toContain('Insufficient energy');
+  });
+
+  it('execute button returns to disabled after successful execution', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+    // After success, selectedActionId is cleared → button disabled again
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 });

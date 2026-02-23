@@ -98,6 +98,9 @@ export function computeActionCost(
 export interface ExecuteActionOptions {
   /** Override the outcome instead of defaulting to 'success'. */
   outcome?: 'success' | 'failure';
+  /** Redux dispatch function. When provided, used as a fallback when the store
+   *  is not yet initialised via initManeuvers(). */
+  dispatch?: (action: unknown) => unknown;
 }
 
 export interface ExecuteActionResult {
@@ -107,6 +110,8 @@ export interface ExecuteActionResult {
   delta: number;
   /** Actor's energy after the action (unchanged on failure). */
   newEnergy: number;
+  /** Human-readable summary of the outcome for UI display. */
+  summary: string;
 }
 
 /**
@@ -129,20 +134,21 @@ export function executeAction(
   actionId: string,
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
-  if (!_store) {
-    return { success: false, delta: 0, newEnergy: 0 };
+  const dispatch = options?.dispatch ?? _store?.dispatch;
+  if (!dispatch) {
+    return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised' };
   }
 
   const action = getActionById(actionId);
   if (!action) {
-    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId) };
+    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action' };
   }
 
   const cost = computeActionCost(actorId, action, targetId);
   const currentEnergy = SocialEnergyBank.get(actorId);
 
   if (currentEnergy < cost) {
-    return { success: false, delta: 0, newEnergy: currentEnergy };
+    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient energy' };
   }
 
   const outcome = options?.outcome ?? 'success';
@@ -160,7 +166,7 @@ export function executeAction(
     timestamp: Date.now(),
   };
 
-  _store.dispatch(
+  dispatch(
     updateRelationship({
       source: actorId,
       target: targetId,
@@ -168,9 +174,16 @@ export function executeAction(
       tags: action.outcomeTag ? [action.outcomeTag] : undefined,
     }),
   );
-  _store.dispatch(recordSocialAction({ entry }));
+  dispatch(recordSocialAction({ entry }));
 
-  return { success: true, delta, newEnergy };
+  const summary =
+    delta > 0
+      ? `${action.title} succeeded (+${delta} affinity)`
+      : delta < 0
+        ? `${action.title} succeeded (${delta} affinity)`
+        : `${action.title} performed`;
+
+  return { success: true, delta, newEnergy, summary };
 }
 
 // ── Named export for convenience ──────────────────────────────────────────

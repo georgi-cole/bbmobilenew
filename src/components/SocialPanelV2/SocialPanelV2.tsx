@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useAppSelector } from '../../store/hooks';
+import { useState, useCallback } from 'react';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
+import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import './SocialPanelV2.css';
@@ -25,6 +26,7 @@ import './SocialPanelV2.css';
  * purely derived from state.
  */
 export default function SocialPanelV2() {
+  const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const energyBank = useAppSelector(selectEnergyBank);
   const relationships = useAppSelector((s) => s.social?.relationships);
@@ -39,9 +41,43 @@ export default function SocialPanelV2() {
   const [closedForPhase, setClosedForPhase] = useState<string | null>(null);
   const open = isSocialPhase && !!humanPlayer && closedForPhase !== game.phase;
 
+  // ── Execute flow state ────────────────────────────────────────────────────
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  const handleSelectionChange = useCallback((ids: Set<string>) => {
+    setSelectedTargets(Array.from(ids));
+  }, []);
+
   if (!open) return null;
 
   const energy = energyBank?.[humanPlayer!.id] ?? 0;
+
+  const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
+  const needsTargets = selectedAction?.needsTargets !== false;
+  const canExecute = !executing && !!selectedActionId && (!needsTargets || selectedTargets.length > 0);
+
+  const energyCost = selectedAction
+    ? typeof selectedAction.baseCost === 'number'
+      ? selectedAction.baseCost
+      : (selectedAction.baseCost.energy ?? 0)
+    : null;
+
+  function handleExecute() {
+    if (!canExecute || !humanPlayer || !selectedActionId) return;
+    setExecuting(true);
+    setFeedbackMsg(null);
+    const targetId = selectedTargets[0] ?? humanPlayer.id;
+    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, { dispatch });
+    setFeedbackMsg(result.summary);
+    if (result.success) {
+      setSelectedActionId(null);
+      setSelectedTargets([]);
+    }
+    setExecuting(false);
+  }
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -76,25 +112,37 @@ export default function SocialPanelV2() {
               players={game.players.filter((p) => !p.isUser)}
               humanPlayerId={humanPlayer!.id}
               relationships={relationships}
+              selectedIds={new Set(selectedTargets)}
+              onSelectionChange={handleSelectionChange}
             />
           </div>
 
           {/* Right column – Action grid */}
           <div className="sp2-column" aria-label="Action grid">
             <span className="sp2-column__label">Actions</span>
-            <ActionGrid />
+            <ActionGrid
+              selectedId={selectedActionId}
+              onActionClick={setSelectedActionId}
+            />
           </div>
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}
         <footer className="sp2-footer">
-          <span className="sp2-footer__cost">Cost: —</span>
+          {feedbackMsg ? (
+            <span className="sp2-footer__feedback" role="status">{feedbackMsg}</span>
+          ) : (
+            <span className="sp2-footer__cost">
+              {energyCost !== null ? `Cost: ⚡${energyCost}` : 'Cost: —'}
+            </span>
+          )}
           <button
             className="sp2-footer__execute"
             type="button"
-            disabled
+            disabled={!canExecute}
+            onClick={handleExecute}
           >
-            Execute
+            {executing ? 'Executing…' : 'Execute'}
           </button>
         </footer>
       </div>
