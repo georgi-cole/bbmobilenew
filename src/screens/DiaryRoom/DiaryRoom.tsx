@@ -6,6 +6,7 @@ import { generateBigBrotherReply } from '../../services/bigBrother';
 import DiaryWeekView from '../../components/DiaryWeekView';
 import DiaryWeekEditor from '../../components/DiaryWeekEditor';
 import { FEATURE_DIARY_WEEK, exportDiaryWeekJson } from '../../services/diaryWeek';
+import { isVisibleInDr } from '../../services/activityService';
 import type { DiaryWeek } from '../../types/diaryWeek';
 import './DiaryRoom.css';
 
@@ -71,7 +72,7 @@ export default function DiaryRoom() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const diaryLog = tvFeed.filter((e) => e.type === 'diary');
+  const diaryLog = tvFeed.filter(isVisibleInDr);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

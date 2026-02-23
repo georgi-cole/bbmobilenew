@@ -36,6 +36,12 @@ export interface SocialActionLogEntry {
   score?: number;
   /** Human-readable outcome label (e.g. 'Good', 'Bad') produced by the evaluator. */
   label?: string;
+  /**
+   * Origin of the action: 'manual' for human player actions, 'system' for
+   * background AI actions.  Used by Diary Room and activity routing to
+   * distinguish user-initiated interactions from background game activity.
+   */
+  source?: 'manual' | 'system';
 }
 
 /** Redux-serialisable state subtree owned by the social module. */

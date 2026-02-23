@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { SocialState } from '../social/types';
+import type { ActivityChannel, ActivitySource } from '../services/activityService';
 
 export type PlayerStatus =
   | 'active'
@@ -99,6 +100,18 @@ export interface TvEvent {
   meta?: { major?: string; week?: number; [key: string]: unknown };
   /** Shorthand major key (alternative to meta.major). */
   major?: string;
+  /**
+   * Destination channels for this event (activity routing).
+   * When absent the event is treated as a legacy event visible everywhere.
+   * Use activityService predicates (isVisibleInMainLog, isVisibleInDr, etc.)
+   * to check visibility rather than inspecting this field directly.
+   */
+  channels?: ActivityChannel[];
+  /**
+   * Origin of the event: 'manual' for user-initiated actions, 'system' for
+   * background / AI-driven events. Required when channels includes 'dr'.
+   */
+  source?: ActivitySource;
 }
 
 export interface GameState {

@@ -34,7 +34,7 @@ export default function SocialPanel({ actorId }: Props) {
   function handleExecute() {
     if (!selectedTarget || !selectedAction) return;
 
-    const result = executeAction(actorId, selectedTarget, selectedAction);
+    const result = executeAction(actorId, selectedTarget, selectedAction, { source: 'manual' });
     const actionDef = availableActions.find((a) => a.id === selectedAction);
     const targetName = targets.find((t) => t.id === selectedTarget)?.name ?? selectedTarget;
 

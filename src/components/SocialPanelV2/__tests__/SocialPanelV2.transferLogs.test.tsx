@@ -2,17 +2,19 @@
  * Tests for SocialPanelV2 session log transfer on close.
  *
  * Covers:
- *  1. Closing the panel when sessionLogs exist dispatches one diary entry per
- *     action to game.tvFeed.
- *  2. Each diary entry has type 'diary'.
- *  3. Each diary entry text includes actor → target, action, outcome, and week.
+ *  1. Closing the panel when sessionLogs exist dispatches exactly ONE concise diary
+ *     summary entry to game.tvFeed (not one entry per action).
+ *  2. The diary summary entry has type 'diary'.
+ *  3. The diary summary entry text includes the week and outcome counts.
  *  4. social.sessionLogs are cleared after the panel is closed.
  *  5. No diary entry is added when sessionLogs is empty on close.
- *  6. Multiple session logs (3) each produce their own diary entry (N logs → N diary entries).
+ *  6. Multiple session logs (3) still produce only ONE summary diary entry.
  *  7. A 'social' type TV event is dispatched on close when sessionLogs exist.
  *  8. The TV close message is one of the preset messages from TV_SOCIAL_CLOSE_MESSAGES.
  *  9. No 'social' type TV event is dispatched when sessionLogs is empty on close.
  * 10. AI-initiated logs (actorId !== humanId) are not written as diary entries.
+ * 11. The summary diary entry has source: 'manual' and channels: ['dr'].
+ * 12. The TV close message has channels that includes 'tv'.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -65,7 +67,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     store.dispatch(openSocialPanel());
   });
 
-  it('adds one diary entry to tvFeed per session log when sessionLogs exist on close', () => {
+  it('adds exactly one summary diary entry to tvFeed when sessionLogs exist on close', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -87,7 +89,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    // Exactly one diary entry per session log (1 log → 1 diary entry).
+    // Exactly one summary diary entry regardless of session log count.
     expect(diaryCountAfter).toBe(diaryCountBefore + 1);
   });
 
@@ -111,13 +113,12 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const feed = store.getState().game.tvFeed;
-    // The first diary-type entry should exist and have type 'diary'.
     const diaryEntry = feed.find((e) => e.type === 'diary');
     expect(diaryEntry).toBeDefined();
     expect(diaryEntry!.type).toBe('diary');
   });
 
-  it('diary entry text includes actor → target, outcome and week', () => {
+  it('diary entry text includes week and outcome counts', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -139,10 +140,8 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     const feed = store.getState().game.tvFeed;
     const diaryEntry = feed.find((e) => e.type === 'diary');
     expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.text).toContain('→');
-    expect(diaryEntry!.text).toContain('success');
-    // Should mention week
     expect(diaryEntry!.text).toContain('Week');
+    expect(diaryEntry!.text).toContain('success');
   });
 
   it('clears social.sessionLogs after close', () => {
@@ -179,7 +178,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     expect(diaryCountAfter).toBe(diaryCountBefore);
   });
 
-  it('multiple session logs produce one diary entry each', () => {
+  it('multiple session logs produce exactly ONE summary diary entry', () => {
     for (let i = 0; i < 3; i++) {
       store.dispatch(
         recordSocialAction({
@@ -203,8 +202,8 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    // 3 session logs → 3 individual diary entries.
-    expect(diaryCountAfter).toBe(diaryCountBefore + 3);
+    // 3 session logs → ONE summary diary entry (not 3 individual entries).
+    expect(diaryCountAfter).toBe(diaryCountBefore + 1);
   });
 
   it('dispatches a social type TV event on close when sessionLogs exist', () => {
@@ -298,5 +297,54 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
     expect(diaryCountAfter).toBe(diaryCountBefore);
     expect(socialCountAfter).toBe(socialCountBefore);
+  });
+
+  it('summary diary entry has source "manual" and channels ["dr"]', () => {
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: humanId,
+          targetId: otherPlayerId,
+          cost: 1,
+          delta: 5,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    renderPanel(store);
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
+    expect(diaryEntry).toBeDefined();
+    expect(diaryEntry!.source).toBe('manual');
+    expect(diaryEntry!.channels).toContain('dr');
+  });
+
+  it('TV close message has channels that includes "tv"', () => {
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: humanId,
+          targetId: otherPlayerId,
+          cost: 1,
+          delta: 5,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    renderPanel(store);
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social');
+    expect(socialEntry).toBeDefined();
+    expect(socialEntry!.channels).toContain('tv');
   });
 });
