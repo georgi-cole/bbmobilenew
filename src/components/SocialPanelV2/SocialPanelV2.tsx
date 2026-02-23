@@ -18,7 +18,8 @@ import './SocialPanelV2.css';
 
 // Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
 // One is picked at random so the message stays fresh across sessions.
-const TV_SOCIAL_CLOSE_MESSAGES = [
+// Exported so tests can verify messages are drawn from this pool.
+export const TV_SOCIAL_CLOSE_MESSAGES = [
   "The house is buzzing after that social session! 🏠",
   "Alliances are shifting like sand in the Big Brother house… 🌊",
   "Smooth operator — you've been working that social game! 💬",
@@ -65,21 +66,23 @@ export default function SocialPanelV2() {
   function handleClose() {
     if (sessionLogs.length > 0) {
       const playerNames = new Map(game.players.map((p) => [p.id, p.name]));
-      // One concise diary entry per manual interaction (user-initiated only).
+      // One concise diary entry per user-initiated interaction (filter out AI actions).
       for (const log of sessionLogs) {
+        if (log.actorId !== humanPlayer!.id) continue;
         const actor = playerNames.get(log.actorId) ?? log.actorId;
         const target = playerNames.get(log.targetId) ?? log.targetId;
         const actionTitle = SocialManeuvers.getActionById(log.actionId)?.title ?? log.actionId;
         const text = `📋 Week ${game.week}: ${actor} → ${target}: ${actionTitle} (${log.outcome})`;
         dispatch(addTvEvent({ text, type: 'diary' }));
       }
+      // Show a short, playful TV-zone sentence — dispatched last so it appears at
+      // the top of the feed (index 0) and is shown in the TV viewport after close.
+      const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
+        Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
+      ];
+      dispatch(addTvEvent({ text: tvMsg, type: 'social' }));
       dispatch(clearSessionLogs());
     }
-    // Show a short, playful TV-zone sentence — visible on the main screen after close.
-    const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
-      Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
-    ];
-    dispatch(addTvEvent({ text: tvMsg, type: 'social' }));
     dispatch(closeSocialPanel());
   }
 
@@ -110,9 +113,9 @@ export default function SocialPanelV2() {
     // For targetless actions (needsTargets: false), fall back to the human player's
     // own id so executeAction always receives a valid string.
     const targetId = selectedTarget ?? humanPlayer.id;
-    // Guard: block actions targeting evicted or jury players.
+    // Guard: block actions targeting unknown, evicted, or jury players.
     const targetPlayer = game.players.find((p) => p.id === targetId);
-    if (targetPlayer && (targetPlayer.status === 'evicted' || targetPlayer.status === 'jury')) {
+    if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
       setFeedbackMsg('Cannot target an evicted or jury player.');
       isExecutingRef.current = false;
       return;
