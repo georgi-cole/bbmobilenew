@@ -24,17 +24,16 @@ async function openDebugPanel(page: Page) {
 
 /**
  * Force two nominees via the "Force Nominees" row in the DebugPanel.
- * Picks the first two available options from each select (skipping the blank placeholder).
+ * `idx1` and `idx2` are the option indices to pick (0 is the blank placeholder).
+ * Default picks indices 1 and 2 (first two alive players).
  */
-async function forceNominees(page: Page) {
+async function forceNominees(page: Page, idx1 = 1, idx2 = 2) {
   const nomRow = page.locator('.dbg-row', { has: page.locator('.dbg-label', { hasText: 'Force Nominees' }) });
   const [sel1, sel2] = await nomRow.locator('select').all();
   const opts1 = await sel1.locator('option').all();
   const opts2 = await sel2.locator('option').all();
-  // Pick first real option (index 1 skips the blank placeholder)
-  if (opts1.length > 1) await sel1.selectOption({ index: 1 });
-  // Pick second real option (index 2) to avoid duplicate
-  if (opts2.length > 2) await sel2.selectOption({ index: 2 });
+  if (opts1.length > idx1) await sel1.selectOption({ index: idx1 });
+  if (opts2.length > idx2) await sel2.selectOption({ index: idx2 });
   await nomRow.getByRole('button', { name: 'Set' }).click();
 }
 
@@ -64,8 +63,9 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
-    // Set up nominees and a non-human (AI) POV winner
-    await forceNominees(page);
+    // Set up nominees (indices 1 & 3) and a non-human (AI) POV winner (index 2)
+    // POV holder (index 2) must NOT overlap with nominees (indices 1 and 3)
+    await forceNominees(page, 1, 3);
     await forcePov(page, 2); // index 2 = second alive player (AI)
 
     // Force the phase to final4_eviction
@@ -102,8 +102,8 @@ test.describe('Final 4 POV messaging & sequencing', () => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
-    // Set up nominees first (they must not be the human player)
-    await forceNominees(page);
+    // Set up nominees first — use indices 2 & 3 (non-human players; human is at index 1)
+    await forceNominees(page, 2, 3);
     // Force the human player as POV winner (index 1 = first alive player = human "You")
     await forcePov(page, 1);
 

@@ -13,17 +13,11 @@ import type { RootState } from './store';
  * - replacement nominee picker (pov_ceremony_results)
  * - human live vote (live_vote)
  * - tie-break (eviction_results)
- * - Final 4 solo eviction vote (human is POV holder)
+ * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
  * - Final 3 HOH eviction (awaitingFinal3Eviction)
  */
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game;
-
-  // Final 4: human POV holder must choose via TvDecisionModal, not advance()
-  const isFinal4HumanPovDecision =
-    game?.phase === 'final4_eviction' &&
-    Boolean(game?.povWinnerId) &&
-    game.players.some((p) => p.id === game.povWinnerId && p.isUser);
 
   return (
     Boolean(game.replacementNeeded) ||
@@ -32,8 +26,7 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.awaitingPovSaveTarget) ||
     Boolean(game.awaitingHumanVote) ||
     Boolean(game.awaitingTieBreak) ||
-    Boolean(game.awaitingFinal3Eviction) ||
-    isFinal4HumanPovDecision
+    Boolean(game.awaitingFinal3Eviction)
   );
 };
 
