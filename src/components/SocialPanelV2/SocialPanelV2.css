@@ -110,9 +110,13 @@
   flex: 1;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .sp2-body {
-    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    padding: 0.5rem;
+  }
+  .sp2-column {
+    padding: 0.5rem;
   }
 }
 

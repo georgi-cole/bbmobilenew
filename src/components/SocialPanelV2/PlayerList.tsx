@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import type { Player } from '../../types';
 import type { RelationshipsMap } from '../../social/types';
 import PlayerCard from './PlayerCard';
-import ExpandedPlayerView from './ExpandedPlayerView';
 
 interface PlayerListProps {
   players: Player[];
@@ -138,9 +137,6 @@ export default function PlayerList({
               }}
               affinity={affinity}
             />
-            {isSelected && (
-              <ExpandedPlayerView player={player} affinity={affinity} />
-            )}
           </div>
         );
       })}
