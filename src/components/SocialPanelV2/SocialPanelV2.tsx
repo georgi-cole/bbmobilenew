@@ -16,6 +16,19 @@ import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
 import './SocialPanelV2.css';
 
+// Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
+// One is picked at random so the message stays fresh across sessions.
+const TV_SOCIAL_CLOSE_MESSAGES = [
+  "The house is buzzing after that social session! 🏠",
+  "Alliances are shifting like sand in the Big Brother house… 🌊",
+  "Smooth operator — you've been working that social game! 💬",
+  "The whispers have started. Watch your back! 👀",
+  "Social butterfly in action — who's loyal and who isn't? 🦋",
+  "Every word counts in this house. Choose wisely. 🎙️",
+  "The social web just got a little more tangled. 🕸️",
+  "Another week, another batch of social chess moves. ♟️",
+];
+
 /**
  * SocialPanelV2 — full-screen modal overlay for social phases.
  *
@@ -50,19 +63,23 @@ export default function SocialPanelV2() {
   const open = !!humanPlayer && socialPanelOpen;
 
   function handleClose() {
-    // Export any accumulated session logs as one consolidated Diary Room entry.
     if (sessionLogs.length > 0) {
       const playerNames = new Map(game.players.map((p) => [p.id, p.name]));
-      const lines = sessionLogs.map((log) => {
+      // One concise diary entry per manual interaction (user-initiated only).
+      for (const log of sessionLogs) {
         const actor = playerNames.get(log.actorId) ?? log.actorId;
         const target = playerNames.get(log.targetId) ?? log.targetId;
         const actionTitle = SocialManeuvers.getActionById(log.actionId)?.title ?? log.actionId;
-        return `${actor} → ${target}: ${actionTitle} (${log.outcome})`;
-      });
-      const text = `📖 Social recap — Week ${game.week}: ${lines.join(' | ')}`;
-      dispatch(addTvEvent({ text, type: 'diary' }));
+        const text = `📋 Week ${game.week}: ${actor} → ${target}: ${actionTitle} (${log.outcome})`;
+        dispatch(addTvEvent({ text, type: 'diary' }));
+      }
       dispatch(clearSessionLogs());
     }
+    // Show a short, playful TV-zone sentence — visible on the main screen after close.
+    const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
+      Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
+    ];
+    dispatch(addTvEvent({ text: tvMsg, type: 'social' }));
     dispatch(closeSocialPanel());
   }
 
@@ -93,6 +110,13 @@ export default function SocialPanelV2() {
     // For targetless actions (needsTargets: false), fall back to the human player's
     // own id so executeAction always receives a valid string.
     const targetId = selectedTarget ?? humanPlayer.id;
+    // Guard: block actions targeting evicted or jury players.
+    const targetPlayer = game.players.find((p) => p.id === targetId);
+    if (targetPlayer && (targetPlayer.status === 'evicted' || targetPlayer.status === 'jury')) {
+      setFeedbackMsg('Cannot target an evicted or jury player.');
+      isExecutingRef.current = false;
+      return;
+    }
     const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId);
     setFeedbackMsg(result.summary);
     if (result.success) {
@@ -100,7 +124,7 @@ export default function SocialPanelV2() {
       setSelectedTarget(null);
     }
     isExecutingRef.current = false;
-  }, [canExecute, humanPlayer, selectedActionId, selectedTarget]);
+  }, [canExecute, humanPlayer, selectedActionId, selectedTarget, game.players]);
 
   if (!open) return null;
 
@@ -110,6 +134,23 @@ export default function SocialPanelV2() {
   const energyCost = selectedAction
     ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
     : null;
+
+  // ── Player list for Social module ─────────────────────────────────────────
+  // - Remove pre-jury evictees (status 'evicted' → didn't make jury) entirely.
+  // - Sort jury members (evicted but in jury house) to the bottom as disabled.
+  const allNonUser = game.players.filter((p) => !p.isUser && p.status !== 'evicted');
+  const activePlayers = allNonUser.filter((p) => p.status !== 'jury');
+  const juryPlayers = allNonUser.filter((p) => p.status === 'jury');
+  const orderedPlayers = [...activePlayers, ...juryPlayers];
+  const disabledPlayerIds = juryPlayers.map((p) => p.id);
+
+  // ── Relationship deltas from this session (actor → target sum of deltas) ──
+  const deltasByTargetId = new Map<string, number>();
+  for (const log of sessionLogs) {
+    if (log.actorId === humanPlayer!.id) {
+      deltasByTargetId.set(log.targetId, (deltasByTargetId.get(log.targetId) ?? 0) + log.delta);
+    }
+  }
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -153,11 +194,13 @@ export default function SocialPanelV2() {
           <div className="sp2-column" aria-label="Player roster">
             <span className="sp2-column__label">Players</span>
             <PlayerList
-              players={game.players.filter((p) => !p.isUser)}
+              players={orderedPlayers}
               humanPlayerId={humanPlayer!.id}
               relationships={relationships}
+              disabledIds={disabledPlayerIds}
               selectedIds={selectedTarget ? new Set([selectedTarget]) : new Set()}
               onSelectionChange={handleSelectionChange}
+              deltasByTargetId={deltasByTargetId}
             />
           </div>
 
@@ -168,7 +211,7 @@ export default function SocialPanelV2() {
               selectedId={selectedActionId}
               onActionClick={setSelectedActionId}
               selectedTargetIds={selectedTarget ? new Set([selectedTarget]) : undefined}
-              players={game.players.filter((p) => !p.isUser)}
+              players={orderedPlayers}
               actorId={humanPlayer!.id}
               actorEnergy={energy}
               relationships={relationships}
