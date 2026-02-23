@@ -5,55 +5,79 @@ import './TvAnnouncementModal.css';
 // ─── Phase copy ───────────────────────────────────────────────────────────────
 
 interface PhaseCopy {
+  icon: string;
   label: string;
+  category: string;
   body: string;
 }
 
 const PHASE_COPY: Record<string, PhaseCopy> = {
   week_start: {
+    icon: '📅',
     label: 'NEW WEEK',
+    category: 'Game Event',
     body: 'A new week begins in the Big Brother house. Houseguests reset their social games and strategise before the Head of Household competition. Alliances shift, targets are reconsidered, and the house dynamics evolve.',
   },
   nomination_ceremony: {
+    icon: '🎯',
     label: 'NOMINATIONS',
+    category: 'Ceremony',
     body: 'The Head of Household gathers all houseguests and places two nominees on the block for potential eviction. Nominees have the chance to save themselves by winning the Power of Veto. Every speech and every alliance is tested in this moment.',
   },
   veto_competition: {
+    icon: '🏆',
     label: 'VETO COMP',
+    category: 'Competition',
     body: 'Six players compete for the Power of Veto — the most powerful item in the game. The winner decides whether to keep the nominations the same or pull a nominee off the block, forcing the HOH to name a replacement.',
   },
   veto_ceremony: {
+    icon: '🏅',
     label: 'VETO CEREMONY',
+    category: 'Ceremony',
     body: 'The Power of Veto holder announces their decision: use the Veto to save a nominee, or keep the nominations unchanged. When used, the HOH must immediately name a replacement nominee — and they cannot choose the outgoing HOH.',
   },
   live_eviction: {
+    icon: '📺',
     label: 'LIVE EVICTION',
+    category: 'Live Event',
     body: 'The house votes live to evict one of the current nominees. All eligible voters cast their ballots privately. The nominee with the most votes is evicted and leaves the house immediately to join the jury (or go home, pre-jury). In a tie, the Head of Household casts the deciding vote.',
   },
   final4: {
+    icon: '4️⃣',
     label: 'FINAL 4',
+    category: 'Endgame',
     body: 'Only four players remain. The stakes are at their highest — every competition, every vote, every conversation could determine who makes it to the Final 3. At this stage there is no longer a traditional veto ceremony; the POV holder is the sole vote to evict.',
   },
   final3: {
+    icon: '3️⃣',
     label: 'FINAL 3',
+    category: 'Endgame',
     body: 'The Final 3 have earned their place. They now compete in the legendary three-part Head of Household competition. Part 1 is an endurance battle. Part 2 tests skill and memory. The winners of Parts 1 and 2 face off in Part 3, and the winner becomes the Final Head of Household.',
   },
   final_hoh: {
+    icon: '👑',
     label: 'FINAL HOH',
+    category: 'Endgame',
     body: 'The Final Head of Household holds the most consequential power in the game. They alone decide who sits beside them in the Final 2 — and who is sent to the jury just one step from the prize. This single choice often defines legacies.',
   },
   jury: {
+    icon: '⚖️',
     label: 'JURY VOTES',
+    category: 'Jury Phase',
     body: 'The jury — made up of the last evicted houseguests — casts their votes to award the grand prize. Each juror votes for the finalist they believe most deserves to win based on game play, social game, and competition performance. The finalist with the most jury votes is crowned the winner of Big Brother.',
   },
   twist: {
+    icon: '🌀',
     label: 'TWIST',
+    category: 'Special Event',
     body: 'Big Brother never plays by the same rules twice. A twist has been introduced that could change the course of the game. Pay close attention — nothing is certain, and the houseguests may need to adapt quickly to survive.',
   },
 };
 
 const FALLBACK_COPY: PhaseCopy = {
+  icon: '📢',
   label: 'ANNOUNCEMENT',
+  category: 'Big Brother',
   body: 'A significant moment has occurred in the Big Brother house. The houseguests — and you — must decide what comes next.',
 };
 
@@ -121,8 +145,13 @@ export default function TvAnnouncementModal({
           ✕
         </button>
 
-        <h2 className="tv-ann-modal__title">{copy.label}</h2>
-        <span className="tv-ann-modal__badge">{announcementKey}</span>
+        <div className="tv-ann-modal__header">
+          <span className="tv-ann-modal__icon" aria-hidden="true">{copy.icon}</span>
+          <h2 className="tv-ann-modal__title">{copy.label}</h2>
+        </div>
+        <span className="tv-ann-modal__badge">{copy.category}</span>
+
+        <hr className="tv-ann-modal__divider" />
 
         <div className="tv-ann-modal__body">
           {copy.body.split('\n').map((line, i) => (

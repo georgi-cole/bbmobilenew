@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import './TvAnnouncementOverlay.css';
 
 export interface Announcement {
@@ -21,8 +21,8 @@ export interface TvAnnouncementOverlayProps {
 /**
  * TvAnnouncementOverlay — broadcast stinger rendered inside the TV viewport.
  *
- * - If `autoDismissMs` is a positive number, a countdown progress bar is shown
- *   and the overlay auto-dismisses when it reaches zero.
+ * - If `autoDismissMs` is a positive number, the overlay auto-dismisses when
+ *   the countdown reaches zero (silently — no visible progress bar).
  * - The countdown pauses while the component is hovered, focused, or when
  *   `paused` is true (e.g. while the info modal is open).
  * - The info button calls `onInfo`; `onDismiss` hides the overlay.
@@ -37,8 +37,6 @@ export default function TvAnnouncementOverlay({
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
-  // progress: 1 → 0 (full → empty bar)
-  const [progress, setProgress] = useState(1);
   const hoverPausedRef = useRef(false);
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
@@ -63,7 +61,6 @@ export default function TvAnnouncementOverlay({
       elapsedRef.current += delta;
 
       const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
-      setProgress(remaining / (autoDismissMs as number));
 
       if (remaining <= 0) {
         onDismiss();
@@ -119,45 +116,38 @@ export default function TvAnnouncementOverlay({
   };
 
   return (
-    <div
-      className="tv-announcement"
-      role="dialog"
-      aria-modal="false"
-      aria-live="polite"
-      aria-label={`Announcement: ${title}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-    >
-      {isLive && (
-        <div className="tv-announcement__live" aria-label="Live broadcast">
-          <span className="tv-announcement__live-dot" aria-hidden="true" />
-          LIVE
-        </div>
-      )}
-
-      <div className="tv-announcement__body">
-        <p className="tv-announcement__title">{title}</p>
-        {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
-      </div>
-
-      <button
-        className="tv-announcement__info-btn"
-        onClick={onInfo}
-        aria-label={`More info about ${title}`}
+    <div className="tv-announcement-wrap">
+      <div
+        className="tv-announcement"
+        role="dialog"
+        aria-modal="false"
+        aria-live="polite"
+        aria-label={`Announcement: ${title}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       >
-        ℹ️
-      </button>
+        {isLive && (
+          <div className="tv-announcement__live" aria-label="Live broadcast">
+            <span className="tv-announcement__live-dot" aria-hidden="true" />
+            LIVE
+          </div>
+        )}
 
-      {isAuto && (
-        <div className="tv-announcement__progress-wrap" aria-hidden="true">
-          <div
-            className="tv-announcement__progress-fill"
-            style={{ transform: `scaleX(${progress})` }}
-          />
+        <div className="tv-announcement__body">
+          <p className="tv-announcement__title">{title}</p>
+          {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
         </div>
-      )}
+
+        <button
+          className="tv-announcement__info-btn"
+          onClick={onInfo}
+          aria-label={`More info about ${title}`}
+        >
+          ℹ️
+        </button>
+      </div>
     </div>
   );
 }
