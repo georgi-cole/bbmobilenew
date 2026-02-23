@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import './TvAnnouncementOverlay.css';
 
 export interface Announcement {
@@ -21,8 +21,8 @@ export interface TvAnnouncementOverlayProps {
 /**
  * TvAnnouncementOverlay — broadcast stinger rendered inside the TV viewport.
  *
- * - If `autoDismissMs` is a positive number, a countdown progress bar is shown
- *   and the overlay auto-dismisses when it reaches zero.
+ * - If `autoDismissMs` is a positive number, the overlay auto-dismisses when
+ *   the countdown reaches zero (silently — no visible progress bar).
  * - The countdown pauses while the component is hovered, focused, or when
  *   `paused` is true (e.g. while the info modal is open).
  * - The info button calls `onInfo`; `onDismiss` hides the overlay.
@@ -37,8 +37,6 @@ export default function TvAnnouncementOverlay({
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
-  // progress: 1 → 0 (full → empty bar)
-  const [progress, setProgress] = useState(1);
   const hoverPausedRef = useRef(false);
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
@@ -63,7 +61,6 @@ export default function TvAnnouncementOverlay({
       elapsedRef.current += delta;
 
       const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
-      setProgress(remaining / (autoDismissMs as number));
 
       if (remaining <= 0) {
         onDismiss();
