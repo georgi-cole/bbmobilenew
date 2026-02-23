@@ -47,28 +47,21 @@ export default function SocialPanelV2() {
   const [executing, setExecuting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  const handleSelectionChange = useCallback((ids: Set<string>) => {
-    setSelectedTargets(Array.from(ids));
-  }, []);
-
-  if (!open) return null;
-
-  const energy = energyBank?.[humanPlayer!.id] ?? 0;
-
+  // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
   const needsTargets = selectedAction?.needsTargets !== false;
   const canExecute = !executing && !!selectedActionId && (!needsTargets || selectedTargets.length > 0);
 
-  const energyCost = selectedAction
-    ? typeof selectedAction.baseCost === 'number'
-      ? selectedAction.baseCost
-      : (selectedAction.baseCost.energy ?? 0)
-    : null;
+  const handleSelectionChange = useCallback((ids: Set<string>) => {
+    setSelectedTargets(Array.from(ids));
+  }, []);
 
-  function handleExecute() {
+  const handleExecute = useCallback(() => {
     if (!canExecute || !humanPlayer || !selectedActionId) return;
     setExecuting(true);
     setFeedbackMsg(null);
+    // For targetless actions (needsTargets: false), fall back to the human player's
+    // own id so executeAction always receives a valid string.
     const targetId = selectedTargets[0] ?? humanPlayer.id;
     const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, { dispatch });
     setFeedbackMsg(result.summary);
@@ -77,7 +70,14 @@ export default function SocialPanelV2() {
       setSelectedTargets([]);
     }
     setExecuting(false);
-  }
+  }, [canExecute, humanPlayer, selectedActionId, selectedTargets, dispatch]);
+
+  if (!open) return null;
+
+  const energy = energyBank?.[humanPlayer!.id] ?? 0;
+  const energyCost = selectedAction
+    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTargets[0] ?? humanPlayer!.id)
+    : null;
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">

@@ -176,12 +176,11 @@ export function executeAction(
   );
   dispatch(recordSocialAction({ entry }));
 
+  const sign = delta > 0 ? '+' : '';
   const summary =
-    delta > 0
-      ? `${action.title} succeeded (+${delta} affinity)`
-      : delta < 0
-        ? `${action.title} succeeded (${delta} affinity)`
-        : `${action.title} performed`;
+    delta !== 0
+      ? `${action.title} succeeded (${sign}${delta} affinity)`
+      : `${action.title} performed`;
 
   return { success: true, delta, newEnergy, summary };
 }
