@@ -18,6 +18,8 @@ import { DEFAULT_ENERGY } from './constants';
 import { engineReady, engineComplete, setLastReport } from './socialSlice';
 import { initInfluence, update as influenceUpdate } from './SocialInfluence';
 import { initManeuvers } from './SocialManeuvers';
+import { socialAIDriver } from './socialAIDriver';
+import { dispatchSocialSummary } from './SocialSummaryBridge';
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown;
@@ -42,6 +44,7 @@ function init(store: StoreAPI): void {
   _store = store;
   initInfluence(store);
   initManeuvers(store);
+  socialAIDriver.setStore(store);
 }
 
 /**
@@ -94,15 +97,25 @@ function startPhase(phaseName: string): void {
   }
 
   _store.dispatch(engineReady({ budgets }));
+
+  // Start the AI action driver if any AI players have a positive budget.
+  const hasAIBudgets = aiPlayers.length > 0 && aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0);
+  if (hasAIBudgets) {
+    socialAIDriver.start();
+  }
 }
 
 /**
- * Finalize the social phase: generate a `SocialPhaseReport`, compute
- * per-player influence weights, dispatch `social/engineComplete`, and
- * persist the report via `social/setLastReport`.
+ * Finalize the social phase: stop the AI driver, generate a `SocialPhaseReport`,
+ * compute per-player influence weights, dispatch `social/engineComplete`, persist
+ * the report via `social/setLastReport`, and persist the summary to the Diary Room
+ * via `game/addSocialSummary`.
  */
 function endPhase(phaseName: string): void {
   if (!_store) return;
+
+  // Stop the AI driver if it is still running.
+  socialAIDriver.stop();
 
   const state = _store.getState() as GameSlice;
   const week = state.game?.week ?? 0;
@@ -132,6 +145,9 @@ function endPhase(phaseName: string): void {
 
   _store.dispatch(engineComplete());
   _store.dispatch(setLastReport(report));
+
+  // Persist the summary to the Diary Room (not the TV feed).
+  dispatchSocialSummary(_store, report.summary, week);
 }
 
 /** Returns a snapshot of current per-player energy budgets. */

@@ -5,7 +5,8 @@
  *  1. uiSlice — openSocialSummary / closeSocialSummary actions.
  *  2. gameSlice — addSocialSummary persists a diary entry.
  *  3. SocialSummaryPopup renders summary text and week.
- *  4. Clicking close dispatches addSocialSummary and closeSocialSummary.
+ *  4. Clicking close dispatches closeSocialSummary (diary persistence is handled
+ *     by SocialEngine.endPhase() via SocialSummaryBridge, not the popup).
  *  5. SocialSummaryPopup returns null when no lastReport is present.
  */
 
@@ -168,7 +169,7 @@ describe('SocialSummaryPopup – close behaviour', () => {
     expect(selectSocialSummaryOpen(store.getState())).toBe(false);
   });
 
-  it('dispatches addSocialSummary (persists diary entry) when closed', () => {
+  it('does not add a diary entry when closed (persistence is engine-side)', () => {
     const store = makeStore();
     store.dispatch(
       setLastReport({
@@ -183,9 +184,10 @@ describe('SocialSummaryPopup – close behaviour', () => {
 
     fireEvent.click(screen.getByRole('button'));
 
+    // The popup no longer dispatches addSocialSummary; diary persistence happens
+    // automatically in SocialEngine.endPhase() via SocialSummaryBridge.
     const { tvFeed } = store.getState().game;
     const diaryEntry = tvFeed.find((e) => e.type === 'diary');
-    expect(diaryEntry).toBeDefined();
-    expect(diaryEntry?.text).toContain('Everyone campaigned hard.');
+    expect(diaryEntry).toBeUndefined();
   });
 });

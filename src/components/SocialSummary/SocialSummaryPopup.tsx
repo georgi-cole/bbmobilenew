@@ -1,5 +1,4 @@
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addSocialSummary } from '../../store/gameSlice';
 import { closeSocialSummary } from '../../store/uiSlice';
 import { selectLastSocialReport } from '../../social/socialSlice';
 import './SocialSummaryPopup.css';
@@ -8,19 +7,15 @@ import './SocialSummaryPopup.css';
  * SocialSummaryPopup — modal overlay that displays the SocialPhaseReport
  * (state.social.lastReport) after a social phase ends.
  *
- * The Close / Save button:
- *   1. Dispatches `game/addSocialSummary` to persist the summary to the
- *      Diary Room log (stored as a 'diary' event, NOT shown on the TV feed).
- *   2. Dispatches `ui/closeSocialSummary` to hide the popup.
+ * The summary is persisted to the Diary Room automatically by SocialEngine.endPhase()
+ * via SocialSummaryBridge. This popup is purely informational; the Close button only
+ * dismisses the overlay.
  */
 export default function SocialSummaryPopup() {
   const dispatch = useAppDispatch();
   const report = useAppSelector(selectLastSocialReport);
 
   function handleClose() {
-    if (report) {
-      dispatch(addSocialSummary({ summary: report.summary, week: report.week }));
-    }
     dispatch(closeSocialSummary());
   }
 
@@ -44,12 +39,12 @@ export default function SocialSummaryPopup() {
 
         <div className="ssp__body">
           <p className="ssp__text">{report.summary}</p>
-          <p className="ssp__note">🔒 Saving to Diary Room only</p>
+          <p className="ssp__note">🔒 Saved to Diary Room automatically</p>
         </div>
 
         <footer className="ssp__footer">
           <button className="ssp__close-btn" onClick={handleClose} type="button">
-            Save to Diary &amp; Close
+            Close
           </button>
         </footer>
       </div>
