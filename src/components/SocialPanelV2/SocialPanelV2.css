@@ -2,6 +2,40 @@
  * Full-screen modal overlay for social_1 / social_2 phases.
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/* ── Skip link (keyboard shortcut to jump past header) ─────────────────── */
+.sp2-skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  z-index: 300;
+}
+
+.sp2-skip-link:focus-visible {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  height: auto;
+  padding: 0.4rem 1rem;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: var(--color-card, #141b26);
+  border: 2px solid var(--color-accent, #6366f1);
+  border-radius: 8px;
+  color: var(--color-accent, #6366f1);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 /* Backdrop */
 .sp2-backdrop {
   position: fixed;
@@ -100,6 +134,11 @@
   color: var(--color-text, rgba(255, 255, 255, 0.92));
 }
 
+.sp2-header__close:focus-visible {
+  outline: 2px solid var(--color-accent, #6366f1);
+  outline-offset: 2px;
+}
+
 /* ── Body ────────────────────────────────────────────────────────────────── */
 .sp2-body {
   display: grid;
@@ -119,6 +158,12 @@
   }
   .sp2-column {
     padding: 0.5rem;
+  }
+  /* Ensure minimum 44px touch targets on mobile */
+  .sp2-header__close,
+  .sp2-footer__execute {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -222,6 +267,11 @@
 .sp2-footer__execute:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.sp2-footer__execute:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .sp2-footer__execute:not(:disabled):active {

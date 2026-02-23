@@ -20,6 +20,10 @@
  * 16. After successful execute, action selection is cleared (button returns to disabled).
  * 17. Execute button gains the pulse class immediately after a successful execution.
  * 18. Execute button pulse class is removed after 850 ms.
+ * 19. [A11y] Resource chips have aria-live="polite".
+ * 20. [A11y] Execute button has aria-busy attribute (false when idle).
+ * 21. [A11y] Skip link is rendered inside the dialog.
+ * 22. [A11y] Skip link href points to the body section (#sp2-body).
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
@@ -300,5 +304,54 @@ describe('SocialPanelV2 – success pulse', () => {
 
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLElement).className).not.toContain('sp2-footer__execute--pulse');
+  });
+});
+
+// ── Accessibility attributes ───────────────────────────────────────────────
+
+describe('SocialPanelV2 – accessibility', () => {
+  it('resource chips have aria-live="polite"', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    const energyChip = screen.getByLabelText(/Energy: 0/);
+    expect(energyChip.getAttribute('aria-live')).toBe('polite');
+    const influenceChip = screen.getByLabelText(/Influence: 0/);
+    expect(influenceChip.getAttribute('aria-live')).toBe('polite');
+    const infoChip = screen.getByLabelText(/Info: 0/);
+    expect(infoChip.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('execute button has aria-busy="false" when idle', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect(btn.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('skip link is rendered in the dialog', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    const dialog = screen.getByRole('dialog');
+    const skipLink = dialog.querySelector('.sp2-skip-link');
+    expect(skipLink).not.toBeNull();
+  });
+
+  it('skip link href points to the body section', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    const dialog = screen.getByRole('dialog');
+    const skipLink = dialog.querySelector('.sp2-skip-link') as HTMLAnchorElement | null;
+    expect(skipLink?.getAttribute('href')).toBe('#sp2-body');
+  });
+
+  it('body section has id sp2-body for skip link target', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    expect(document.getElementById('sp2-body')).not.toBeNull();
   });
 });

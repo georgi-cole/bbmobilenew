@@ -13,6 +13,13 @@
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
   outline: none;
   overflow: hidden;
+  /* Button element resets */
+  -webkit-appearance: none;
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  padding: 0;
 }
 
 .pc:hover:not(.pc--disabled) {

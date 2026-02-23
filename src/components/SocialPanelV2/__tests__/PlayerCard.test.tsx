@@ -11,14 +11,17 @@
  *  7. Does not call onSelect when disabled.
  *  8. Renders affinity when provided (clamped to 0–100).
  *  9. Does not render affinity when not provided.
+ * 10. [A11y] Esc key calls onSelect to deselect when card is selected.
+ * 11. [A11y] Esc key does nothing when card is not selected.
+ * 12. [A11y] Uses a semantic <button> element.
  *
  * PlayerList covers:
- * 10. Renders a card for each player.
- * 11. Single-click selects only that player.
- * 12. Ctrl+click toggles multi-select.
- * 13. Shift+click performs range selection.
- * 14. Arrow key navigation moves focus.
- * 15. onSelectionChange callback is fired.
+ * 13. Renders a card for each player.
+ * 14. Single-click selects only that player.
+ * 15. Ctrl+click toggles multi-select.
+ * 16. Shift+click performs range selection.
+ * 17. Arrow key navigation moves focus.
+ * 18. onSelectionChange callback is fired.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -168,6 +171,35 @@ describe('PlayerCard', () => {
     );
     expect(screen.getByText('—')).toBeDefined();
     expect(screen.queryByText(/%/)).toBeNull();
+  });
+
+  it('calls onSelect with plain click args on Escape when selected (to deselect)', () => {
+    const onSelect = vi.fn();
+    const player = makePlayer({ id: 'p99', name: 'Alice' });
+    render(
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={onSelect} />,
+    );
+    fireEvent.keyDown(screen.getByRole('button', { name: /alice/i }), { key: 'Escape' });
+    expect(onSelect).toHaveBeenCalledWith('p99', false, false);
+  });
+
+  it('does not call onSelect on Escape when card is not selected', () => {
+    const onSelect = vi.fn();
+    const player = makePlayer({ name: 'Alice' });
+    render(
+      <PlayerCard player={player} selected={false} disabled={false} onSelect={onSelect} />,
+    );
+    fireEvent.keyDown(screen.getByRole('button', { name: /alice/i }), { key: 'Escape' });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('renders a semantic <button> element', () => {
+    const player = makePlayer({ name: 'Alice' });
+    render(
+      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} />,
+    );
+    const el = screen.getByRole('button', { name: /alice/i });
+    expect(el.tagName.toLowerCase()).toBe('button');
   });
 });
 
