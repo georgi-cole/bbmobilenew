@@ -30,7 +30,7 @@ export default function SocialPanelV2() {
     if (isSocialPhase && humanPlayer) {
       setOpen(true);
     }
-  }, [isSocialPhase, humanPlayer]);
+  }, [game.phase, humanPlayer]);
 
   if (!isSocialPhase || !humanPlayer || !open) return null;
 

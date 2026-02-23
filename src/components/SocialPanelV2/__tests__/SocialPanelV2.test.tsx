@@ -11,13 +11,14 @@
  *  7. Renders a disabled Execute button in the footer.
  *  8. Close button hides the modal.
  *  9. Does not render when there is no human player.
+ * 10. Modal re-opens when transitioning between social_1 and social_2 after being closed.
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../../store/gameSlice';
+import gameReducer, { setPhase } from '../../../store/gameSlice';
 import socialReducer, { setEnergyBankEntry } from '../../../social/socialSlice';
 import SocialPanelV2 from '../SocialPanelV2';
 import type { RootState } from '../../../store/store';
@@ -140,5 +141,20 @@ describe('SocialPanelV2 – close behaviour', () => {
     expect(screen.getByRole('dialog')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('re-opens when the phase transitions from social_1 to social_2 after closing', () => {
+    const store = makeStore({ phase: 'social_1' });
+    renderPanel(store);
+
+    // Close the modal.
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // Transition to social_2 — modal should re-open.
+    act(() => {
+      store.dispatch(setPhase('social_2'));
+    });
+    expect(screen.getByRole('dialog')).toBeDefined();
   });
 });
