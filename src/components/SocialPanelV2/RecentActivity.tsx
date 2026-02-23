@@ -82,16 +82,21 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
           newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}`);
         }
       }
-      setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
-      const timer = setTimeout(() => {
+      prevNewestTimestampRef.current = newestTimestamp;
+      const addTimer = setTimeout(() => {
+        setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
+      }, 0);
+      const removeTimer = setTimeout(() => {
         setHighlightedKeys((prev) => {
           const next = new Set(prev);
           newKeys.forEach((k) => next.delete(k));
           return next;
         });
       }, 1200);
-      prevNewestTimestampRef.current = newestTimestamp;
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(addTimer);
+        clearTimeout(removeTimer);
+      };
     }
     prevNewestTimestampRef.current = newestTimestamp;
   }, [visibleLogs]);
