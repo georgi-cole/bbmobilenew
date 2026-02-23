@@ -266,7 +266,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     expect(socialCountAfter).toBe(socialCountBefore);
   });
 
-  it('AI-initiated logs are not written as diary entries', () => {
+  it('AI-initiated logs are not written as diary entries and do not trigger a social TV event', () => {
     const aiPlayer = store.getState().game.players.find((p) => !p.isUser && p.id !== otherPlayerId);
     expect(aiPlayer).toBeDefined();
     const aiPlayerId = aiPlayer!.id;
@@ -288,12 +288,14 @@ describe('SocialPanelV2 – session log transfer on close', () => {
 
     renderPanel(store);
     const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
-    // The AI log should still trigger the social close message (sessionLogs.length > 0),
-    // but no diary entry should be created because the actor is not the human player.
+    // No diary entry and no social TV message — the only actor is AI, not the human player.
     const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
     expect(diaryCountAfter).toBe(diaryCountBefore);
+    expect(socialCountAfter).toBe(socialCountBefore);
   });
 });

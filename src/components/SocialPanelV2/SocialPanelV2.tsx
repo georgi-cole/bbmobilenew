@@ -20,14 +20,14 @@ import './SocialPanelV2.css';
 // One is picked at random so the message stays fresh across sessions.
 // Exported so tests can verify messages are drawn from this pool.
 export const TV_SOCIAL_CLOSE_MESSAGES = [
-  "The house is buzzing after that social session! 🏠",
-  "Alliances are shifting like sand in the Big Brother house… 🌊",
+  'The house is buzzing after that social session! 🏠',
+  'Alliances are shifting like sand in the Big Brother house… 🌊',
   "Smooth operator — you've been working that social game! 💬",
-  "The whispers have started. Watch your back! 👀",
+  'The whispers have started. Watch your back! 👀',
   "Social butterfly in action — who's loyal and who isn't? 🦋",
-  "Every word counts in this house. Choose wisely. 🎙️",
-  "The social web just got a little more tangled. 🕸️",
-  "Another week, another batch of social chess moves. ♟️",
+  'Every word counts in this house. Choose wisely. 🎙️',
+  'The social web just got a little more tangled. 🕸️',
+  'Another week, another batch of social chess moves. ♟️',
 ];
 
 /**
@@ -64,7 +64,8 @@ export default function SocialPanelV2() {
   const open = !!humanPlayer && socialPanelOpen;
 
   function handleClose() {
-    if (sessionLogs.length > 0) {
+    const hasUserActions = sessionLogs.some((log) => log.actorId === humanPlayer!.id);
+    if (hasUserActions) {
       const playerNames = new Map(game.players.map((p) => [p.id, p.name]));
       // One concise diary entry per user-initiated interaction (filter out AI actions).
       for (const log of sessionLogs) {
@@ -81,6 +82,8 @@ export default function SocialPanelV2() {
         Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
       ];
       dispatch(addTvEvent({ text: tvMsg, type: 'social' }));
+    }
+    if (sessionLogs.length > 0) {
       dispatch(clearSessionLogs());
     }
     dispatch(closeSocialPanel());
