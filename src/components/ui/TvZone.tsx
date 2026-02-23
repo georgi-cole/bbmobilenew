@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import type { Phase } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -39,15 +40,18 @@ const PHASE_LABELS: Record<string, string> = {
 
 // ─── Announcement configuration ──────────────────────────────────────────────
 
-/** Recognised major-key identifiers that trigger an inline TV announcement. */
+/**
+ * Recognised major-key identifiers that can trigger an inline TV announcement
+ * via an explicit event.meta.major or ev.major field.
+ * Note: week_start and veto_competition are intentionally excluded — those
+ * phases show normal text only (no overlay).
+ */
 const MAJOR_KEYS = new Set([
-  'week_start',
   'nomination_ceremony',
-  'veto_competition',
   'veto_ceremony',
   'live_eviction',
   'final4',
-  'final3',
+  'final3_announcement',
   'final_hoh',
   'jury',
   'twist',
@@ -55,38 +59,22 @@ const MAJOR_KEYS = new Set([
 
 /** Maps a major key to its announcement title and subtitle. */
 const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }> = {
-  week_start:           { title: 'New Week Begins',            subtitle: 'The game resets — alliances shift.',          isLive: false, autoDismissMs: 4500 },
-  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two houseguests are going on the block.',     isLive: true,  autoDismissMs: null },
-  veto_competition:     { title: 'Power of Veto Competition',  subtitle: 'Six players compete for the golden veto.',   isLive: true,  autoDismissMs: 4500 },
-  veto_ceremony:        { title: 'Veto Ceremony',              subtitle: 'Will the veto be used?',                     isLive: true,  autoDismissMs: 4500 },
-  live_eviction:        { title: 'Live Eviction',              subtitle: 'The house votes to evict.',                  isLive: true,  autoDismissMs: null },
-  final4:               { title: 'Final 4',                    subtitle: 'Only four players remain.',                  isLive: true,  autoDismissMs: null },
-  final3:               { title: 'Final 3',                    subtitle: 'The endgame begins.',                        isLive: true,  autoDismissMs: null },
-  final_hoh:            { title: 'Final Head of Household',    subtitle: 'The most powerful decision of the game.',    isLive: true,  autoDismissMs: null },
-  jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',               isLive: true,  autoDismissMs: null },
-  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                isLive: true,  autoDismissMs: 4500 },
+  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two houseguests are going on the block.',                      isLive: true,  autoDismissMs: null },
+  veto_ceremony:        { title: 'Veto Ceremony',              subtitle: 'Will the veto be used?',                                       isLive: true,  autoDismissMs: null },
+  live_eviction:        { title: 'Live Eviction',              subtitle: 'The house votes to evict.',                                    isLive: true,  autoDismissMs: null },
+  final4:               { title: 'Final 4 — Veto Ceremony',   subtitle: 'Only four players remain.',                                    isLive: true,  autoDismissMs: null },
+  final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final HOH begins.',      isLive: true,  autoDismissMs: null },
+  final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
+  jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
+  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
 };
 
-/** Derives a major key from the event's text when meta/major fields are absent. */
-function detectMajorFromText(ev: TvEvent): string | null {
-  const text = (ev?.text || '').toLowerCase();
-  if (!text) return null;
-  if (/week\s*\d+\s*begins|week start|new week/.test(text)) return 'week_start';
-  if (/\bnominat(?:ion|e)(?:\s+ceremony)?\b/.test(text)) return 'nomination_ceremony';
-  if (/pov ceremony|veto ceremony|veto results/.test(text)) return 'veto_ceremony';
-  if (/(?:veto|pov|power of veto)(?!\s*ceremony)/.test(text)) return 'veto_competition';
-  if (/live eviction|vote now|\bevict(?:ion|ed|s)?\b/.test(text)) return 'live_eviction';
-  if (/final\s*4|final4/.test(text)) return 'final4';
-  if (/final\s*3|final3/.test(text)) return 'final3';
-  if (/final hoh|final_hoh|final hoh decision/.test(text)) return 'final_hoh';
-  if (/jury|jury votes|jury members/.test(text)) return 'jury';
-  if (/twist|twist active|twist announced/.test(text)) return 'twist';
-  return null;
-}
-
-/** Extract the major key from a TvEvent using meta.major or ev.major heuristics. */
+/**
+ * Extract the major key from a TvEvent using only explicit meta.major or ev.major
+ * fields — text heuristics are intentionally removed to prevent scrambled popups.
+ */
 function extractMajorKey(ev: TvEvent): string | null {
-  const key = ev.meta?.major ?? ev.major ?? detectMajorFromText(ev);
+  const key = ev.meta?.major ?? ev.major ?? null;
   if (!key) return null;
   return MAJOR_KEYS.has(key) ? key : null;
 }
@@ -100,6 +88,21 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
     autoDismissMs: 4500,
   };
   return { key, ...meta };
+}
+
+/**
+ * Derive an announcement key from the current game phase and alive player count.
+ * Only the phases explicitly listed here will trigger an overlay — all others
+ * (week_start, hoh_comp, pov_comp, final3_comp1/2/3, …) remain normal text.
+ */
+function getPhaseAnnouncementKey(phase: Phase, aliveCount: number): string | null {
+  if (phase === 'pov_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
+  if (phase === 'nominations')     return 'nomination_ceremony';
+  if (phase === 'live_vote')       return 'live_eviction';
+  if (phase === 'final3')          return aliveCount === 3 ? 'final3_announcement' : null;
+  if (phase === 'final3_decision') return 'final_hoh';
+  if (phase === 'jury')            return 'jury';
+  return null;
 }
 
 
@@ -144,24 +147,68 @@ export default function TvZone() {
   // Track which event the user has manually dismissed so the overlay doesn't
   // reappear for the same event after dismissal.
   const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+  // Track which phase was dismissed to avoid re-showing within the same phase.
+  const [dismissedPhase, setDismissedPhase] = useState<Phase | null>(null);
+  // Phase-triggered announcement (set on phase transition, cleared on dismiss or non-popup phase).
+  const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null);
   // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
   const [postDismissBlocked, setPostDismissBlocked] = useState(false);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the previous phase to detect phase transitions.
+  const previousPhaseRef = useRef<Phase | null>(null);
+  // Stable ref so phase-transition effect always reads the latest latestEvent.
+  const latestEventRef = useRef(latestEvent);
+  latestEventRef.current = latestEvent;
 
-  // Derive the active announcement directly during render — no effect needed.
-  const activeAnnouncement = useMemo<Announcement | null>(() => {
+  // ── Phase-transition announcement detection ──────────────────────────────────
+  // Fires whenever the game phase or alive-player count changes.
+  // Only triggers on actual transitions (previousPhaseRef !== current phase).
+  useEffect(() => {
+    const currentPhase = gameState.phase;
+    const prevPhase = previousPhaseRef.current;
+    previousPhaseRef.current = currentPhase;
+
+    // Skip on initial mount (no previous phase) and when phase hasn't changed.
+    if (prevPhase === null || prevPhase === currentPhase) return;
+
+    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length);
+    if (key && currentPhase !== dismissedPhase) {
+      const ev = latestEventRef.current;
+      const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
+      setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
+      // Suppress any concurrent event-based popup with the same key to prevent duplication.
+      if (ev && extractMajorKey(ev) === key) {
+        setDismissedEventId(ev.id);
+      }
+    } else {
+      // Entering a non-popup phase: clear any stale phase announcement.
+      setPhaseAnnouncement(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.phase, alivePlayers.length]);
+
+  // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
+  const eventAnnouncement = useMemo<Announcement | null>(() => {
     if (!latestEvent) return null;
     if (latestEvent.id === dismissedEventId) return null;
     const majorKey = extractMajorKey(latestEvent);
     return majorKey ? buildAnnouncement(majorKey, latestEvent) : null;
   }, [latestEvent, dismissedEventId]);
 
+  // Active announcement: phase-based takes priority over event-based.
+  const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
+
   const handleDismiss = useCallback(() => {
-    if (latestEvent) setDismissedEventId(latestEvent.id);
+    if (phaseAnnouncement) {
+      setDismissedPhase(gameState.phase);
+      setPhaseAnnouncement(null);
+    } else if (latestEvent) {
+      setDismissedEventId(latestEvent.id);
+    }
     setPostDismissBlocked(true);
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
-  }, [latestEvent]);
+  }, [latestEvent, phaseAnnouncement, gameState.phase]);
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {
@@ -248,7 +295,7 @@ export default function TvZone() {
       {/* ── Event log (TVLog with duplicate suppression, 2 visible rows) ──── */}
       <TVLog
         entries={gameState.tvFeed}
-        mainTVMessage={latestEvent?.text}
+        mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
         maxVisible={2}
       />
 
