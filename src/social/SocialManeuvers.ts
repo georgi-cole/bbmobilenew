@@ -15,7 +15,7 @@ import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
 import { normalizeActionCost } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
-import { computeOutcomeDelta } from './SocialPolicy';
+import { computeOutcomeDelta, evaluateOutcome } from './SocialPolicy';
 import { recordSocialAction, updateRelationship } from './socialSlice';
 import type { SocialActionLogEntry, SocialState } from './types';
 
@@ -98,6 +98,11 @@ export function computeActionCost(
 export interface ExecuteActionOptions {
   /** Override the outcome instead of defaulting to 'success'. */
   outcome?: 'success' | 'failure';
+  /**
+   * When true, the action is simulated but no state changes are dispatched.
+   * Returns the outcome result without mutating energy, relationships, or logs.
+   */
+  previewOnly?: boolean;
 }
 
 export interface ExecuteActionResult {
@@ -109,6 +114,10 @@ export interface ExecuteActionResult {
   newEnergy: number;
   /** Human-readable summary of the outcome for UI display. */
   summary: string;
+  /** Normalised outcome score in [-1, +1] from the SocialPolicy evaluator. */
+  score: number;
+  /** Human-readable outcome label (e.g. 'Good', 'Bad'). */
+  label: string;
 }
 
 /**
@@ -132,23 +141,52 @@ export function executeAction(
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
   if (!_store) {
-    return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised' };
+    return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised', score: 0, label: 'Unmoved' };
   }
 
   const action = getActionById(actionId);
   if (!action) {
-    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action' };
+    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action', score: 0, label: 'Unmoved' };
   }
 
   const cost = computeActionCost(actorId, action, targetId);
   const currentEnergy = SocialEnergyBank.get(actorId);
 
   if (currentEnergy < cost) {
-    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient energy' };
+    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient energy', score: 0, label: 'Unmoved' };
   }
 
   const outcome = options?.outcome ?? 'success';
   const delta = computeOutcomeDelta(actionId, actorId, targetId, outcome);
+
+  // Evaluate outcome score and label using the SocialPolicy evaluator.
+  const mode = options?.previewOnly ? 'preview' : 'execute';
+  const state = _store.getState() as { social: SocialState };
+  const outcomeResult = evaluateOutcome({
+    actionId,
+    actorId,
+    targetIds: targetId,
+    mode,
+    relationships: state.social.relationships,
+  });
+
+  // previewOnly: return outcome without mutating state.
+  if (options?.previewOnly) {
+    const previewSign = delta > 0 ? '+' : '';
+    const previewSummary =
+      delta !== 0
+        ? `${action.title} preview (${previewSign}${delta} affinity)`
+        : `${action.title} preview`;
+    return {
+      success: true,
+      delta,
+      newEnergy: currentEnergy,
+      summary: previewSummary,
+      score: outcomeResult.score,
+      label: outcomeResult.label,
+    };
+  }
+
   const newEnergy = SocialEnergyBank.add(actorId, -cost);
 
   const entry: SocialActionLogEntry = {
@@ -160,6 +198,8 @@ export function executeAction(
     outcome,
     newEnergy,
     timestamp: Date.now(),
+    score: outcomeResult.score,
+    label: outcomeResult.label,
   };
 
   _store.dispatch(
@@ -179,7 +219,7 @@ export function executeAction(
       ? `${action.title} ${verb} (${sign}${delta} affinity)`
       : `${action.title} ${verb}`;
 
-  return { success: true, delta, newEnergy, summary };
+  return { success: true, delta, newEnergy, summary, score: outcomeResult.score, label: outcomeResult.label };
 }
 
 // ── Named export for convenience ──────────────────────────────────────────

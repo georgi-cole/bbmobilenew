@@ -32,6 +32,10 @@ export interface SocialActionLogEntry {
   outcome: 'success' | 'failure';
   newEnergy: number;
   timestamp: number;
+  /** Normalised outcome score in [-1, +1] produced by the SocialPolicy evaluator. */
+  score?: number;
+  /** Human-readable outcome label (e.g. 'Good', 'Bad') produced by the evaluator. */
+  label?: string;
 }
 
 /** Redux-serialisable state subtree owned by the social module. */

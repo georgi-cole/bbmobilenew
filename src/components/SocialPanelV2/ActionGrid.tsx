@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
 import { normalizeActionCost } from '../../social/smExecNormalize';
-import { computeOutcomeDelta } from '../../social/SocialPolicy';
+import { computeOutcomeScore } from '../../social/SocialPolicy';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
 import type { PreviewDeltaEntry } from './PreviewPopup';
@@ -116,7 +116,7 @@ export default function ActionGrid({
       previewDeltas = Array.from(selectedTargetIds).map((targetId) => ({
         targetId,
         targetName: playerById.get(targetId)?.name ?? targetId,
-        delta: computeOutcomeDelta(previewActionId, actorId, targetId, 'success'),
+        delta: computeOutcomeScore(previewActionId, actorId, targetId, 'preview'),
       }));
     }
   }

@@ -5,10 +5,63 @@
  *   chooseActionFor(playerId, context)                          → action id
  *   chooseTargetsFor(playerId, actionId, context)               → targetId[]
  *   computeOutcomeDelta(actionId, actorId, targetId, outcome)   → number
+ *   computeOutcomeScore(actionId, actorId, targetId, mode, rels?) → number [-1..+1]
+ *   evaluateOutcome(params)                                     → OutcomeResult
  */
 
 import { socialConfig } from './socialConfig';
-import type { PolicyContext } from './types';
+import type { PolicyContext, RelationshipsMap } from './types';
+
+// ── Evaluator configuration ───────────────────────────────────────────────
+
+/**
+ * Score thresholds that map a numeric score to a label.
+ * Tune these values to adjust how outcomes feel to players.
+ */
+export const OUTCOME_THRESHOLDS = {
+  /** score <= bad   → 'Bad'     */
+  bad: -0.25,
+  /** score <  unmoved → 'Unmoved' */
+  unmoved: 0.05,
+  /** score <  good  → 'Good', else 'Great' */
+  good: 0.3,
+} as const;
+
+/**
+ * Maximum RNG jitter added in 'execute' mode to mimic legacy variance.
+ * Set to 0 to make execution fully deterministic as well.
+ */
+const JITTER_MAGNITUDE = 0.08;
+
+/** Weight applied to existing affinity when computing actorBias. */
+const ACTOR_BIAS_WEIGHT = 0.1;
+
+// ── Evaluator types ───────────────────────────────────────────────────────
+
+export type OutcomeLabel = 'Bad' | 'Unmoved' | 'Good' | 'Great';
+
+/** Full outcome result returned by evaluateOutcome. */
+export interface OutcomeResult {
+  /** Normalised score in [-1, +1]. */
+  score: number;
+  /** Human-readable outcome label. */
+  label: OutcomeLabel;
+  /** Absolute magnitude of the score. */
+  magnitude: number;
+  /** Optional narrative description of the outcome. */
+  narrative?: string;
+}
+
+/** Parameters for evaluateOutcome. */
+export interface EvaluateOutcomeParams {
+  actionId: string;
+  actorId: string;
+  /** One or more target player ids. Score is averaged across all targets. */
+  targetIds: string | string[];
+  mode: 'preview' | 'execute';
+  /** Optional relationship graph for actor/target bias calculation. */
+  relationships?: RelationshipsMap;
+}
 
 /**
  * Deterministic weighted-random action selection for an AI player.
@@ -89,4 +142,76 @@ export function computeOutcomeDelta(
     return outcome === 'success' ? deltas.aggressiveSuccess : deltas.aggressiveFailure;
   }
   return 0;
+}
+
+// ── Outcome evaluator ─────────────────────────────────────────────────────
+
+/**
+ * Map a numeric score to a human-readable label using OUTCOME_THRESHOLDS.
+ */
+function scoreToLabel(score: number): OutcomeLabel {
+  if (score <= OUTCOME_THRESHOLDS.bad) return 'Bad';
+  if (score < OUTCOME_THRESHOLDS.unmoved) return 'Unmoved';
+  if (score < OUTCOME_THRESHOLDS.good) return 'Good';
+  return 'Great';
+}
+
+/**
+ * Compute a normalised outcome score in [-1, +1] for a single actor→target action.
+ *
+ * Deterministic in 'preview' mode — same inputs always yield the same score.
+ * In 'execute' mode a small configurable RNG jitter is added to mimic legacy
+ * variance. Pass the current relationship graph for a richer actor/target bias.
+ */
+export function computeOutcomeScore(
+  actionId: string,
+  actorId: string,
+  targetId: string,
+  mode: 'preview' | 'execute',
+  relationships?: RelationshipsMap,
+): number {
+  const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
+  const deltas = socialConfig.affinityDeltas;
+
+  // Base effect derived from action category.
+  const baseScore: number = friendlyActions.includes(actionId)
+    ? deltas.friendlySuccess
+    : aggressiveActions.includes(actionId)
+      ? deltas.aggressiveSuccess
+      : 0;
+
+  // Actor bias: scale by existing affinity from actor toward target.
+  const existingAffinity = relationships?.[actorId]?.[targetId]?.affinity ?? 0;
+  const actorBias = existingAffinity * ACTOR_BIAS_WEIGHT;
+
+  let score = Math.max(-1, Math.min(1, baseScore + actorBias));
+
+  // In execute mode add small RNG jitter to mimic legacy variance.
+  if (mode === 'execute') {
+    const jitter = (Math.random() * 2 - 1) * JITTER_MAGNITUDE;
+    score = Math.max(-1, Math.min(1, score + jitter));
+  }
+
+  return score;
+}
+
+/**
+ * Perform a full outcome evaluation for one or more targets.
+ * In 'execute' mode a small RNG jitter is applied (configurable via JITTER_MAGNITUDE).
+ * In 'preview' mode the result is fully deterministic.
+ *
+ * Returns an OutcomeResult with score (averaged across targets), label, and magnitude.
+ */
+export function evaluateOutcome(params: EvaluateOutcomeParams): OutcomeResult {
+  const { actionId, actorId, targetIds, mode, relationships } = params;
+  const targets = Array.isArray(targetIds) ? targetIds : [targetIds];
+
+  const scores = targets.map((t) =>
+    computeOutcomeScore(actionId, actorId, t, mode, relationships),
+  );
+  const score = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  const label = scoreToLabel(score);
+  const magnitude = Math.abs(score);
+
+  return { score, label, magnitude };
 }
