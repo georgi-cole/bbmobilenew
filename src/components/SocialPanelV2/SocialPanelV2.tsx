@@ -28,7 +28,7 @@ import './SocialPanelV2.css';
  *   - Header: energy chip for the human player + close button
  *   - Two-column body: Player roster with PlayerList (left) / Action grid placeholder (right)
  *   - Sticky footer: Execute button + cost display placeholders
- *   - Minimal internal open/closed state so DebugPanel phase changes re-open it
+ *   - FAB-driven open/close; panel does not auto-open on phase changes
  *
  * Open/close logic: opens exclusively when socialPanelOpen (Redux) is true,
  * which is set by the FAB 💬 button. The social engine continues to run in
