@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
+import { openSocialPanel } from '../../social/socialSlice';
 import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
@@ -36,6 +37,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label="Social"
           title="Social"
+          onClick={() => dispatch(openSocialPanel())}
         >
           💬
         </button>

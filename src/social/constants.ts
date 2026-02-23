@@ -8,8 +8,11 @@ export const DEFAULT_ENERGY = 5;
 /** Initial value for the Redux social state subtree. */
 export const SOCIAL_INITIAL_STATE: SocialState = {
   energyBank: {},
+  influenceBank: {},
+  infoBank: {},
   relationships: {},
   lastReport: null,
   sessionLogs: [],
   influenceWeights: {},
+  panelOpen: false,
 };

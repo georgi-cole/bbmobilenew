@@ -12,6 +12,7 @@
   border-radius: 10px;
   padding: 0.65rem 0.75rem;
   min-width: 9rem;
+  min-height: 6rem;
   cursor: pointer;
   transition:
     border-color 0.15s ease,
@@ -51,20 +52,62 @@
   opacity: 0.55;
 }
 
-.ac-card__disabled-overlay {
+/* ── Tooltip (replaces the old full-overlay): shown on hover/long-press ─────
+ * Hidden by default so the text never blocks card content. Appears above the
+ * card on desktop hover or when JS adds ac-card--tooltip-open (long-press). */
+.ac-card__tooltip {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.45);
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 16, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.88);
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  padding: 0.3rem 0.55rem;
+  border-radius: 6px;
+  white-space: normal;
+  max-width: 11rem;
   text-align: center;
-  padding: 0.25rem;
+  z-index: 20;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+/* Caret pointing down to the card */
+.ac-card__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(12, 16, 28, 0.96);
+}
+
+/* Show on desktop hover */
+.ac-card:hover .ac-card__tooltip {
+  opacity: 1;
+}
+
+/* Show on mobile long-press */
+.ac-card--tooltip-open .ac-card__tooltip {
+  opacity: 1;
+}
+
+/* ── Header (icon + title) ──────────────────────────────────────────────────  */
+.ac-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ac-card__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* ── Title ──────────────────────────────────────────────────────────────────  */

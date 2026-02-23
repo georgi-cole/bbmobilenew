@@ -4,9 +4,7 @@
 
 .pc {
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 0.5rem;
+  flex-direction: column;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.03);
@@ -14,6 +12,7 @@
   user-select: none;
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
   outline: none;
+  overflow: hidden;
 }
 
 .pc:hover:not(.pc--disabled) {
@@ -24,6 +23,14 @@
 .pc:focus-visible {
   outline: 2px solid var(--color-accent, #6366f1);
   outline-offset: 2px;
+}
+
+/* ── Compact header row (always visible) ────────────────────────────────── */
+.pc__row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
 }
 
 /* ── Selected state ─────────────────────────────────────────────────────── */
@@ -85,6 +92,23 @@
   color: var(--color-text-muted, rgba(255, 255, 255, 0.35));
 }
 
+/* ── Relationship label ──────────────────────────────────────────────────── */
+.pc__rel-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.pc__rel-label--neutral  { background: rgba(99, 179, 237, 0.12); color: #63b3ed; }
+.pc__rel-label--friendly { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.pc__rel-label--allies   { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.pc__rel-label--strained { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+.pc__rel-label--enemies  { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+
 /* ── Affinity percent ───────────────────────────────────────────────────── */
 .pc__affinity {
   font-size: 0.65rem;
@@ -92,6 +116,41 @@
   color: var(--color-accent, #6366f1);
   flex-shrink: 0;
 }
+
+/* ── Expanded detail panel (shown when selected) ────────────────────────── */
+/* Renders as a compact chip row: [Rel label] [Affinity] [Mood]
+   No large avatar, no repeated name/status — only new contextual info.      */
+.pc__expanded {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(99, 102, 241, 0.07);
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  overflow: hidden;
+}
+
+.pc__expanded-affinity {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-accent, #6366f1);
+  flex-shrink: 0;
+}
+
+/* ── Mood chip ──────────────────────────────────────────────────────────── */
+.pc__mood {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.pc__mood--good    { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.pc__mood--neutral { background: rgba(255, 255, 255, 0.07); color: rgba(255,255,255,0.55); }
+.pc__mood--bad     { background: rgba(239, 68, 68, 0.1);  color: #ef4444; }
 
 /* ── Reduce motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

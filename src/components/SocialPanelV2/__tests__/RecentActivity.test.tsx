@@ -6,9 +6,9 @@
  *  2. Shows "No recent actions." after clearing when logs exist.
  *  3. Renders an entry with action title for a known action id.
  *  4. Renders an entry with the target player's name when players prop is provided.
- *  5. Renders "Good" result label for positive delta.
- *  6. Renders "Bad" result label for negative delta.
- *  7. Renders "Unmoved" result label for zero delta.
+ *  5. Renders ✓ icon for positive delta.
+ *  6. Renders ✗ icon for negative delta.
+ *  7. Renders – icon for zero delta.
  *  8. Renders delta value when non-zero.
  *  9. Does not render delta when delta is 0.
  * 10. "Clear" button is absent when there are no visible entries.
@@ -81,57 +81,57 @@ describe('RecentActivity – entry rendering', () => {
   it('renders known action title for a recognised action id', () => {
     const store = makeStore([makeEntry({ actionId: 'compliment' })]);
     renderActivity(store);
-    // 'Compliment' is the title of actionId 'compliment'
-    expect(screen.getByText('Compliment')).toBeDefined();
+    // 'Compliment' appears within the narrative text
+    expect(screen.getByText(/Compliment/)).toBeDefined();
   });
 
   it('renders target player name when players prop is provided', () => {
     const store = makeStore([makeEntry({ targetId: 'p1' })]);
     const players = [{ id: 'p1', name: 'Alice', avatar: '😀', status: 'active' as const }];
     renderActivity(store, { players });
-    expect(screen.getByText('Alice')).toBeDefined();
+    expect(screen.getByText(/Alice/)).toBeDefined();
   });
 
   it('falls back to target id when player not found', () => {
     const store = makeStore([makeEntry({ targetId: 'unknown-id' })]);
     renderActivity(store);
-    expect(screen.getByText('unknown-id')).toBeDefined();
+    expect(screen.getByText(/unknown-id/)).toBeDefined();
   });
 
-  it('renders "Good" for positive delta', () => {
+  it('renders ✓ icon for positive delta', () => {
     const store = makeStore([makeEntry({ delta: 2 })]);
     renderActivity(store);
-    expect(screen.getByText('Good')).toBeDefined();
+    expect(screen.getByText('✓')).toBeDefined();
   });
 
-  it('renders "Bad" for negative delta', () => {
+  it('renders ✗ icon for negative delta', () => {
     const store = makeStore([makeEntry({ delta: -1 })]);
     renderActivity(store);
-    expect(screen.getByText('Bad')).toBeDefined();
+    expect(screen.getByText('✗')).toBeDefined();
   });
 
-  it('renders "Unmoved" for zero delta', () => {
+  it('renders – icon for zero delta', () => {
     const store = makeStore([makeEntry({ delta: 0 })]);
     renderActivity(store);
-    expect(screen.getByText('Unmoved')).toBeDefined();
+    expect(screen.getByText('–')).toBeDefined();
   });
 
   it('renders the delta value with sign when delta is positive', () => {
     const store = makeStore([makeEntry({ delta: 3 })]);
     renderActivity(store);
-    expect(screen.getByLabelText('Delta: +3')).toBeDefined();
+    expect(screen.getByText('+3')).toBeDefined();
   });
 
   it('renders the delta value without extra sign when delta is negative', () => {
     const store = makeStore([makeEntry({ delta: -2 })]);
     renderActivity(store);
-    expect(screen.getByLabelText('Delta: -2')).toBeDefined();
+    expect(screen.getByText('-2')).toBeDefined();
   });
 
   it('does not render a delta element when delta is 0', () => {
     const store = makeStore([makeEntry({ delta: 0 })]);
     renderActivity(store);
-    expect(screen.queryByLabelText(/^Delta:/)).toBeNull();
+    expect(screen.queryByText(/^\+0$/)).toBeNull();
   });
 });
 
@@ -145,7 +145,7 @@ describe('RecentActivity – Clear button', () => {
   it('clicking Clear hides existing entries', () => {
     const store = makeStore([makeEntry({ actionId: 'compliment' })]);
     renderActivity(store);
-    expect(screen.getByText('Compliment')).toBeDefined();
+    expect(screen.getByText(/Compliment/)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Clear recent activity' }));
     expect(screen.getByText('No recent actions.')).toBeDefined();
   });
@@ -163,3 +163,4 @@ describe('RecentActivity – maxEntries', () => {
     expect(items).toHaveLength(3);
   });
 });
+

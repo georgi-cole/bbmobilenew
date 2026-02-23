@@ -20,6 +20,10 @@ export interface SocialActionDefinition {
   category: ActionCategory;
   /** Energy cost as a plain number or a cost-shape object. */
   baseCost: number | { energy?: number; info?: number };
+  /** Emoji icon shown on the action card. */
+  icon?: string;
+  /** Short description shown on the action card below the title. */
+  description?: string;
   /** Optional weight hint for future AI probability weighting. */
   successWeight?: number;
   /** Tag applied to relationship entries when this action fires (e.g. 'betrayal'). */
@@ -41,6 +45,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'compliment',
     title: 'Compliment',
+    icon: '✨',
+    description: 'Give genuine praise to build rapport.',
     category: 'friendly',
     baseCost: 1,
     successWeight: 3,
@@ -48,6 +54,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'rumor',
     title: 'Spread Rumor',
+    icon: '💬',
+    description: 'Plant a damaging rumor about a houseguest.',
     category: 'aggressive',
     baseCost: 2,
     successWeight: 2,
@@ -56,6 +64,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'whisper',
     title: 'Whisper',
+    icon: '🤫',
+    description: 'Share private intel to gain trust.',
     category: 'strategic',
     baseCost: { energy: 1, info: 1 },
     successWeight: 2,
@@ -63,6 +73,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'proposeAlliance',
     title: 'Propose Alliance',
+    icon: '🤝',
+    description: 'Propose a formal alliance. Success creates a lasting bond.',
     category: 'alliance',
     baseCost: 3,
     successWeight: 1,
@@ -72,6 +84,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'startFight',
     title: 'Start Fight',
+    icon: '💥',
+    description: 'Escalate tension. Risky — may backfire.',
     category: 'aggressive',
     baseCost: 3,
     successWeight: 1,
@@ -82,6 +96,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'ally',
     title: 'Form Alliance',
+    icon: '🤝',
+    description: 'Propose a formal alliance with another player.',
     category: 'alliance',
     baseCost: 3,
     successWeight: 1,
@@ -90,6 +106,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'protect',
     title: 'Offer Protection',
+    icon: '🛡️',
+    description: 'Promise safety to a vulnerable houseguest.',
     category: 'friendly',
     baseCost: 2,
     successWeight: 2,
@@ -97,6 +115,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'betray',
     title: 'Betray Ally',
+    icon: '🗡️',
+    description: 'Break an existing alliance for personal gain.',
     category: 'aggressive',
     baseCost: 3,
     successWeight: 1,
@@ -106,6 +126,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'nominate',
     title: 'Nominate Player',
+    icon: '🎯',
+    description: 'Strategically name a target for eviction.',
     category: 'strategic',
     baseCost: { energy: 1 },
     successWeight: 2,
@@ -113,6 +135,8 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   {
     id: 'idle',
     title: 'Stay Idle',
+    icon: '😴',
+    description: 'Wait and observe. Costs nothing.',
     category: 'strategic',
     baseCost: 0,
     successWeight: 1,

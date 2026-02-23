@@ -1,5 +1,6 @@
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import type { Player } from '../../types';
+import { getRelationshipLabel, getPlayerMood, getMoodClass } from './relationshipUtils';
 import './PlayerCard.css';
 
 interface PlayerCardProps {
@@ -15,7 +16,9 @@ interface PlayerCardProps {
 /**
  * PlayerCard — selectable card for a single houseguest in the social phase roster.
  *
- * Renders an avatar, name, status pill, and optional affinity percent.
+ * Renders an avatar, name, status pill, relationship label, and optional affinity percent.
+ * When selected, the card expands vertically in-place to show a larger avatar and
+ * relationship detail row (no separate sibling component needed).
  * Keyboard accessible: responds to Enter and Space.
  */
 export default function PlayerCard({
@@ -32,6 +35,12 @@ export default function PlayerCard({
   ]
     .filter(Boolean)
     .join(' ');
+
+  const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null;
+  const affinityDisplay =
+    affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—';
+  const mood = getPlayerMood(player.id, affinity);
+  const moodClass = getMoodClass(mood);
 
   function handleClick(e: React.MouseEvent) {
     if (disabled) return;
@@ -53,16 +62,28 @@ export default function PlayerCard({
       tabIndex={disabled ? -1 : 0}
       aria-pressed={selected}
       aria-disabled={disabled}
+      aria-expanded={selected}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      <PlayerAvatar player={player} size="sm" />
-      <span className="pc__name">{player.name}</span>
-      <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
-        {player.status}
-      </span>
-      {affinity !== undefined && (
-        <span className="pc__affinity">{Math.max(0, Math.min(100, affinity))}%</span>
+      {/* ── Compact header row (always visible) ── */}
+      <div className="pc__row">
+        <PlayerAvatar player={player} size="sm" />
+        <span className="pc__name">{player.name}</span>
+        <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
+          {player.status}
+        </span>
+      </div>
+
+      {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
+      {selected && (
+        <div className="pc__expanded" aria-label={`${player.name} relationship details`}>
+          {rel && (
+            <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
+          )}
+          <span className="pc__expanded-affinity">{affinityDisplay}</span>
+          <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
+        </div>
       )}
     </div>
   );

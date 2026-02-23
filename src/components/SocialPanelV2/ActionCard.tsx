@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import type { SocialActionDefinition } from '../../social/socialActions';
 import './ActionCard.css';
 
@@ -61,8 +62,28 @@ export default function ActionCard({
   // set. The `availabilityReason` provides a visual dimming hint but keeps the
   // card clickable — the domain-level energy check enforces the real gate.
   const isDisabled = disabled;
-  const showOverlay = disabled || !!availabilityReason;
-  const overlayMessage = availabilityReason || disabledMessage;
+  const showTooltip = disabled || !!availabilityReason;
+  const tooltipMessage = availabilityReason || disabledMessage;
+
+  // Long-press support: show tooltip after 600 ms on touch devices.
+  const [longPressActive, setLongPressActive] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTouchStart() {
+    if (!showTooltip) return;
+    longPressTimer.current = setTimeout(() => {
+      setLongPressActive(true);
+      dismissTimer.current = setTimeout(() => setLongPressActive(false), 1800);
+    }, 600);
+  }
+
+  function handleTouchEnd() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
 
   function handleActivate() {
     if (!isDisabled) onClick?.(id);
@@ -90,6 +111,8 @@ export default function ActionCard({
     // Dim unavailable (unaffordable) cards even though they remain clickable.
     !isDisabled && availabilityReason ? 'ac-card--unavailable' : '',
     accentClass,
+    // Long-press tooltip open (mobile)
+    longPressActive ? 'ac-card--tooltip-open' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -105,11 +128,15 @@ export default function ActionCard({
       onKeyDown={handleKeyDown}
       onMouseEnter={() => !isDisabled && onHoverFocus?.(id)}
       onFocus={() => !isDisabled && onHoverFocus?.(id)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       data-action-id={id}
     >
-      <span className="ac-card__title">{title}</span>
-
-      {description && <span className="ac-card__description">{description}</span>}
+      <div className="ac-card__header">
+        {action.icon && <span className="ac-card__icon" aria-hidden="true">{action.icon}</span>}
+        <span className="ac-card__title">{title}</span>
+      </div>
 
       <div className="ac-card__chips">
         {energyCost > 0 && (
@@ -128,6 +155,10 @@ export default function ActionCard({
           </span>
         )}
       </div>
+
+      {(description ?? action.description) && (
+        <span className="ac-card__description">{description ?? action.description}</span>
+      )}
 
       {availabilityHint && (
         <span className="ac-badge" aria-label={`Requirement: ${availabilityHint}`}>
@@ -150,9 +181,10 @@ export default function ActionCard({
         </button>
       )}
 
-      {showOverlay && (
-        <div className="ac-card__disabled-overlay" aria-hidden="true">
-          {overlayMessage}
+      {/* Tooltip shown on hover (desktop) or long-press (mobile). Hidden by default — no overlay. */}
+      {showTooltip && (
+        <div className="ac-card__tooltip" aria-hidden="true">
+          {tooltipMessage}
         </div>
       )}
     </div>

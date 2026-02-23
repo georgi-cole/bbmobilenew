@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { useAppSelector } from '../../store/hooks';
-import { selectEnergyBank } from '../../social/socialSlice';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { selectEnergyBank, selectInfluenceBank, selectInfoBank, selectSocialPanelOpen, closeSocialPanel } from '../../social/socialSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
@@ -27,8 +27,12 @@ import './SocialPanelV2.css';
  * purely derived from state.
  */
 export default function SocialPanelV2() {
+  const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const energyBank = useAppSelector(selectEnergyBank);
+  const influenceBank = useAppSelector(selectInfluenceBank);
+  const infoBank = useAppSelector(selectInfoBank);
+  const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
   const relationships = useAppSelector((s) => s.social?.relationships);
 
   const humanPlayer = game.players.find((p) => p.isUser);
@@ -38,8 +42,14 @@ export default function SocialPanelV2() {
   // current phase is social and has not been explicitly closed by the user.
   // Transitioning to a new phase (e.g. social_1 → social_2) clears the closed
   // state automatically since game.phase no longer matches closedForPhase.
+  // socialPanelOpen (Redux) allows the FAB to re-open the panel at any time.
   const [closedForPhase, setClosedForPhase] = useState<string | null>(null);
-  const open = isSocialPhase && !!humanPlayer && closedForPhase !== game.phase;
+  const open = !!humanPlayer && (socialPanelOpen || (isSocialPhase && closedForPhase !== game.phase));
+
+  function handleClose() {
+    setClosedForPhase(game.phase);
+    dispatch(closeSocialPanel());
+  }
 
   // ── Execute flow state ────────────────────────────────────────────────────
   // Single-target selection: only the most-recently clicked player is kept.
@@ -80,6 +90,8 @@ export default function SocialPanelV2() {
   if (!open) return null;
 
   const energy = energyBank?.[humanPlayer!.id] ?? 0;
+  const influence = influenceBank?.[humanPlayer!.id] ?? 0;
+  const info = infoBank?.[humanPlayer!.id] ?? 0;
   const energyCost = selectedAction
     ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
     : null;
@@ -90,17 +102,29 @@ export default function SocialPanelV2() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
           <span className="sp2-header__title">💬 Social Phase</span>
-          <div className="sp2-header__energy">
+          <div className="sp2-header__resources">
             <span
               className="sp2-energy-chip"
               aria-label={`Energy: ${energy}`}
             >
               ⚡ {energy}
             </span>
+            <span
+              className="sp2-resource-chip sp2-resource-chip--influence"
+              aria-label={`Influence: ${influence}`}
+            >
+              🤝 {influence}
+            </span>
+            <span
+              className="sp2-resource-chip sp2-resource-chip--info"
+              aria-label={`Info: ${info}`}
+            >
+              💡 {info}
+            </span>
           </div>
           <button
             className="sp2-header__close"
-            onClick={() => setClosedForPhase(game.phase)}
+            onClick={handleClose}
             type="button"
             aria-label="Close social panel"
           >

@@ -41,6 +41,10 @@ export interface SocialActionLogEntry {
 /** Redux-serialisable state subtree owned by the social module. */
 export interface SocialState {
   energyBank: SocialEnergyBank;
+  /** Influence resource bank per player (🤝). */
+  influenceBank: SocialEnergyBank;
+  /** Info resource bank per player (💡). */
+  infoBank: SocialEnergyBank;
   relationships: RelationshipsMap;
   lastReport?: SocialPhaseReport | null;
   /** Append-only log of social actions executed this session. */
@@ -50,6 +54,11 @@ export interface SocialState {
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.
    */
   influenceWeights: Record<string, Record<string, Record<string, number>>>;
+  /**
+   * Whether the social panel has been manually opened by the player (e.g. via the FAB).
+   * When true the panel is visible regardless of the current game phase.
+   */
+  panelOpen: boolean;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

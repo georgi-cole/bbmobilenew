@@ -140,7 +140,7 @@ describe('PlayerCard', () => {
   it('renders affinity when provided', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={72} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={72} />,
     );
     expect(screen.getByText('72%')).toBeDefined();
   });
@@ -148,7 +148,7 @@ describe('PlayerCard', () => {
   it('clamps affinity above 100 to 100%', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={150} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={150} />,
     );
     expect(screen.getByText('100%')).toBeDefined();
   });
@@ -156,16 +156,17 @@ describe('PlayerCard', () => {
   it('clamps affinity below 0 to 0%', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={-10} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={-10} />,
     );
     expect(screen.getByText('0%')).toBeDefined();
   });
 
-  it('does not render affinity when not provided', () => {
+  it('renders "—" for affinity when not provided', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} />,
     );
+    expect(screen.getByText('—')).toBeDefined();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 });
@@ -193,6 +194,17 @@ describe('PlayerList', () => {
     const lastCall = onSelectionChange.mock.calls.at(-1)?.[0] as Set<string>;
     expect(lastCall.has('b')).toBe(true);
     expect(lastCall.size).toBe(1);
+  });
+
+  it('clicking an already-selected player deselects it (toggle-off)', () => {
+    const onSelectionChange = vi.fn();
+    render(<PlayerList players={players} onSelectionChange={onSelectionChange} />);
+    // First click selects Bob
+    fireEvent.click(screen.getByRole('button', { name: /bob/i }));
+    // Second click on the same player should deselect → empty selection
+    fireEvent.click(screen.getByRole('button', { name: /bob/i }));
+    const lastCall = onSelectionChange.mock.calls.at(-1)?.[0] as Set<string>;
+    expect(lastCall.size).toBe(0);
   });
 
   it('Ctrl+click toggles a second player into multi-select', () => {

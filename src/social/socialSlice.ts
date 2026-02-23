@@ -39,6 +39,24 @@ const socialSlice = createSlice({
       const current = state.energyBank[action.payload.playerId] ?? 0;
       state.energyBank[action.payload.playerId] = current + action.payload.delta;
     },
+    /** Set a player's influence bank value directly. */
+    setInfluenceBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
+      state.influenceBank[action.payload.playerId] = action.payload.value;
+    },
+    /** Add a delta to a player's influence bank (can be negative to deduct). */
+    applyInfluenceDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
+      const current = state.influenceBank[action.payload.playerId] ?? 0;
+      state.influenceBank[action.payload.playerId] = current + action.payload.delta;
+    },
+    /** Set a player's info bank value directly. */
+    setInfoBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
+      state.infoBank[action.payload.playerId] = action.payload.value;
+    },
+    /** Add a delta to a player's info bank (can be negative to deduct). */
+    applyInfoDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
+      const current = state.infoBank[action.payload.playerId] ?? 0;
+      state.infoBank[action.payload.playerId] = current + action.payload.delta;
+    },
     /** Append a social action log entry to sessionLogs. */
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
@@ -66,6 +84,14 @@ const socialSlice = createSlice({
         state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
       }
     },
+    /** Manually open the social panel (e.g. via the FAB 💬 button). */
+    openSocialPanel(state) {
+      state.panelOpen = true;
+    },
+    /** Manually close the social panel. */
+    closeSocialPanel(state) {
+      state.panelOpen = false;
+    },
   },
 });
 
@@ -76,8 +102,14 @@ export const {
   influenceUpdated,
   setEnergyBankEntry,
   applyEnergyDelta,
+  setInfluenceBankEntry,
+  applyInfluenceDelta,
+  setInfoBankEntry,
+  applyInfoDelta,
   recordSocialAction,
   updateRelationship,
+  openSocialPanel,
+  closeSocialPanel,
 } = socialSlice.actions;
 export default socialSlice.reducer;
 
@@ -85,9 +117,13 @@ export default socialSlice.reducer;
 export const selectSocialBudgets = (state: { social: SocialState }) => state.social?.energyBank;
 /** Alias for selectSocialBudgets – prefer this name in SocialManeuvers contexts. */
 export const selectEnergyBank = (state: { social: SocialState }) => state.social?.energyBank;
+export const selectInfluenceBank = (state: { social: SocialState }) => state.social?.influenceBank;
+export const selectInfoBank = (state: { social: SocialState }) => state.social?.infoBank;
 export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social?.lastReport ?? null;
 export const selectInfluenceWeights = (state: { social: SocialState }) =>
   state.social?.influenceWeights;
 export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs'];
+export const selectSocialPanelOpen = (state: { social: SocialState }) =>
+  state.social?.panelOpen ?? false;
