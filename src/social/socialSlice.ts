@@ -39,6 +39,24 @@ const socialSlice = createSlice({
       const current = state.energyBank[action.payload.playerId] ?? 0;
       state.energyBank[action.payload.playerId] = current + action.payload.delta;
     },
+    /** Set a player's influence bank value directly. */
+    setInfluenceBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
+      state.influenceBank[action.payload.playerId] = action.payload.value;
+    },
+    /** Add a delta to a player's influence bank (can be negative to deduct). */
+    applyInfluenceDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
+      const current = state.influenceBank[action.payload.playerId] ?? 0;
+      state.influenceBank[action.payload.playerId] = current + action.payload.delta;
+    },
+    /** Set a player's info bank value directly. */
+    setInfoBankEntry(state, action: PayloadAction<{ playerId: string; value: number }>) {
+      state.infoBank[action.payload.playerId] = action.payload.value;
+    },
+    /** Add a delta to a player's info bank (can be negative to deduct). */
+    applyInfoDelta(state, action: PayloadAction<{ playerId: string; delta: number }>) {
+      const current = state.infoBank[action.payload.playerId] ?? 0;
+      state.infoBank[action.payload.playerId] = current + action.payload.delta;
+    },
     /** Append a social action log entry to sessionLogs. */
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
@@ -76,6 +94,10 @@ export const {
   influenceUpdated,
   setEnergyBankEntry,
   applyEnergyDelta,
+  setInfluenceBankEntry,
+  applyInfluenceDelta,
+  setInfoBankEntry,
+  applyInfoDelta,
   recordSocialAction,
   updateRelationship,
 } = socialSlice.actions;
