@@ -1,0 +1,110 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   TvAnnouncementModal — fullscreen phase-info modal
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tv-ann-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  animation: tvModalFadeIn 0.2s ease both;
+}
+
+@keyframes tvModalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tv-ann-modal__card {
+  background: #0f1120;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 14px;
+  padding: 24px 20px 20px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: tvModalSlideUp 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tvModalSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tv-ann-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #9ca3af;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.tv-ann-modal__close:hover,
+.tv-ann-modal__close:focus {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  outline: none;
+}
+
+.tv-ann-modal__title {
+  margin: 0 32px 6px 0;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #eef2ff;
+  text-transform: uppercase;
+}
+
+.tv-ann-modal__badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tv-ann-modal__body {
+  color: rgba(224, 231, 255, 0.8);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.tv-ann-modal__body p {
+  margin: 0 0 10px;
+}
+
+.tv-ann-modal__body p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tv-ann-modal__backdrop,
+  .tv-ann-modal__card {
+    animation: none;
+  }
+}

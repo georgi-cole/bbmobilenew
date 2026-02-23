@@ -1,0 +1,49 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   TvZoneEnhancements — Continue FAB and overlay integration
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Continue FAB — positioned inside the bezel frame, bottom-right */
+.tv-zone__continue-fab {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 25;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.25);
+  color: #e0e7ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  animation: fabPopIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tv-zone__continue-fab:hover,
+.tv-zone__continue-fab:focus {
+  background: rgba(99, 102, 241, 0.45);
+  border-color: rgba(99, 102, 241, 0.9);
+  transform: scale(1.04);
+  outline: none;
+}
+
+@keyframes fabPopIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Ensure bezel-frame is a positioning context for the FAB */
+.tv-zone__bezel-frame {
+  position: relative;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tv-zone__continue-fab {
+    animation: none;
+    transition: none;
+  }
+}

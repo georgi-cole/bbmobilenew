@@ -87,6 +87,48 @@ pair for generating event text — intended for use at **event-creation time**
 itself.  The `tease(text, maxLen?)` function handles plain-text truncation of
 whatever text is passed into the component.
 
+### TV Announcement Overlay
+
+`TvZone` renders an inline broadcast-stinger overlay (`TvAnnouncementOverlay`)
+inside the TV viewport whenever a **major** game event arrives.  The overlay
+displays a styled announcement (title, subtitle, optional live badge and a
+progress bar for auto-dismissing announcements) and exposes an info button that
+opens a fullscreen `TvAnnouncementModal` with detailed phase copy.
+
+**Triggering an announcement**
+
+Set `meta.major` (or the top-level `major` field) on a `TvEvent` to one of the
+recognised keys:
+
+| Key | Auto-dismiss |
+|-----|-------------|
+| `week_start` | 4 s |
+| `nomination_ceremony` | manual |
+| `veto_competition` | 4 s |
+| `veto_ceremony` | 4 s |
+| `live_eviction` | manual |
+| `final4` | manual |
+| `final3` | manual |
+| `final_hoh` | manual |
+| `jury` | manual |
+| `twist` | 4 s |
+
+Example event shape:
+
+```ts
+addTvEvent({
+  id: 'evt-nom-1',
+  type: 'game',
+  text: 'The nominations are set — Rune and Nova are on the block.',
+  timestamp: Date.now(),
+  meta: { major: 'nomination_ceremony', week: 1 },
+});
+```
+
+Manual-dismiss announcements also show a **Continue ▶** FAB at the bottom-right
+of the TV bezel.  The countdown pauses automatically while the user hovers or
+focuses the overlay.
+
 ---
 
 ## iOS Home Screen (A2HS) / Standalone Testing
