@@ -9,7 +9,7 @@
 //  6. evaluateOutcome averages scores across multiple targets.
 //  7. Integration: executeAction returns score + label and sessionLogs include them.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import socialReducer, {
   setEnergyBankEntry,
@@ -21,7 +21,6 @@ import {
   OUTCOME_THRESHOLDS,
 } from '../../src/social/SocialPolicy';
 import { initManeuvers, executeAction } from '../../src/social/SocialManeuvers';
-import { socialConfig } from '../../src/social/socialConfig';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
