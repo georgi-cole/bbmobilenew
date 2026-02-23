@@ -286,3 +286,21 @@ All 15 integration tests should pass (create, fetch, patch, export, list).
 - [ ] Export JSON downloads a `.json` file
 - [ ] A non-admin `curl -X POST /api/seasons/1/weeks` returns `403 Forbidden`
 
+
+## TvZone Announcement Overlay — phase trigger reference
+
+The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, not text heuristics.  Popups are shown only for the following phases:
+
+| Phase              | Trigger condition                       | Announcement shown            |
+|--------------------|-----------------------------------------|-------------------------------|
+| `nominations`      | any alive count                         | Nomination Ceremony           |
+| `pov_ceremony`     | alive count !== 4                       | Veto Ceremony                 |
+| `pov_ceremony`     | alive count === 4                       | Final 4 — Veto Ceremony       |
+| `live_vote`        | any alive count                         | Live Eviction                 |
+| `final3`           | alive count === 3                       | Final 3                       |
+| `final3_decision`  | any alive count                         | Final HOH Decision            |
+| `jury`             | any alive count                         | Jury Votes                    |
+
+**No overlay** is shown for: `week_start`, `hoh_comp`, `pov_comp`, `final3_comp1`, `final3_comp2`, `final3_comp3`, and all other phases — these remain normal text messages.
+
+All overlay announcements require manual dismissal (FAB dispatches `tv:announcement-dismiss`).  An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`).

@@ -12,6 +12,8 @@
  *  8. Modal stays open after overlay dismisses (independent key tracking).
  *  9. Auto-dismiss onDismiss fires at completion; no visible progress bar.
  * 10. Countdown pauses on hover/focus and resumes on leave/blur.
+ * 11. Phase-based triggers: overlay shown on phase transition to popup phases.
+ * 12. Phase-based non-triggers: week_start, hoh_comp, pov_comp show no overlay.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -20,7 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
-import gameReducer, { addTvEvent } from '../../../store/gameSlice';
+import gameReducer, { addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import type { TvEvent } from '../../../types';
@@ -402,5 +404,168 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     // Mouse leave should NOT restart because paused=true
     act(() => { fireEvent.mouseLeave(overlay); });
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(requestCallsBefore);
+  });
+});
+
+// ── Phase-based announcement trigger tests ────────────────────────────────────
+
+describe('TvZone — phase-based announcement triggers', () => {
+  beforeEach(() => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((_cb) => {
+      return 0 as unknown as ReturnType<typeof requestAnimationFrame>;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('shows Nomination Ceremony overlay when phase transitions to nominations', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('nominations')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+  });
+
+  it('shows Veto Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    // Default state has 12 alive players (GAME_ROSTER_SIZE); pov_ceremony → veto_ceremony
+    act(() => { store.dispatch(setPhase('pov_ceremony')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Veto Ceremony/i })).toBeDefined();
+  });
+
+  it('shows Final 4 — Veto Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
+    const store = makeStore();
+
+    // Evict players until only 4 remain
+    const state = store.getState().game;
+    const toEvict = state.players.filter((p) => p.status !== 'evicted').slice(4);
+    act(() => {
+      toEvict.forEach((p) => store.dispatch(updatePlayer({ ...p, status: 'evicted' })));
+    });
+
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pov_ceremony')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Final 4/i })).toBeDefined();
+  });
+
+  it('shows Live Eviction overlay when phase transitions to live_vote', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('live_vote')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Live Eviction/i })).toBeDefined();
+  });
+
+  it('shows Final 3 overlay when phase transitions to final3 with exactly 3 alive players', () => {
+    const store = makeStore();
+
+    // Evict players until only 3 remain
+    const state = store.getState().game;
+    const toEvict = state.players.filter((p) => p.status !== 'evicted').slice(3);
+    act(() => {
+      toEvict.forEach((p) => store.dispatch(updatePlayer({ ...p, status: 'evicted' })));
+    });
+
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('final3')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Final 3/i })).toBeDefined();
+  });
+
+  it('shows Final HOH Decision overlay when phase transitions to final3_decision', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('final3_decision')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Final HOH Decision/i })).toBeDefined();
+  });
+
+  it('shows Jury Votes overlay when phase transitions to jury', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('jury')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Jury Votes/i })).toBeDefined();
+  });
+
+  it('does NOT show any overlay when phase transitions to week_start', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    // Move away from default week_start first, then come back
+    act(() => { store.dispatch(setPhase('nominations')); });
+    // Verify nomination overlay appeared before dismissing
+    expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+    // Dismiss the nomination overlay
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    act(() => { store.dispatch(setPhase('week_start')); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('does NOT show any overlay when phase transitions to hoh_comp', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('hoh_comp')); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('does NOT show any overlay when phase transitions to pov_comp', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pov_comp')); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('does NOT show any overlay when phase transitions to final3_comp1', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('final3_comp1')); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('does NOT show an overlay on initial mount (no phase transition)', () => {
+    // week_start is the default phase — no transition occurs on mount
+    const store = makeStore();
+    renderTvZone(store);
+
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('does NOT repeat the phase overlay after it has been dismissed (same phase)', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('nominations')); });
+    expect(screen.getByRole('dialog', { name: /Announcement:/i })).toBeDefined();
+
+    // Dismiss the overlay
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+
+    // Dispatching more events while still in 'nominations' must not re-show the overlay
+    act(() => {
+      store.dispatch(addTvEvent(makeEvent({ id: 'ev-extra', text: 'Houseguests deliberate.' })));
+    });
+    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 });
