@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { useState, useCallback, useRef } from 'react';
+import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
@@ -26,7 +26,6 @@ import './SocialPanelV2.css';
  * purely derived from state.
  */
 export default function SocialPanelV2() {
-  const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
   const energyBank = useAppSelector(selectEnergyBank);
   const relationships = useAppSelector((s) => s.social?.relationships);
@@ -42,41 +41,46 @@ export default function SocialPanelV2() {
   const open = isSocialPhase && !!humanPlayer && closedForPhase !== game.phase;
 
   // ── Execute flow state ────────────────────────────────────────────────────
-  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  // Single-target selection: only the most-recently clicked player is kept.
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
-  const [executing, setExecuting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  // Re-entrancy guard: prevents double-execution on rapid clicks (synchronous
+  // state updates are batched and `executing` state may not be visible yet).
+  const isExecutingRef = useRef(false);
 
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
   const needsTargets = selectedAction?.needsTargets !== false;
-  const canExecute = !executing && !!selectedActionId && (!needsTargets || selectedTargets.length > 0);
+  const canExecute = !!selectedActionId && (!needsTargets || selectedTarget !== null);
 
+  // Enforce single-selection: take only the last selected player.
   const handleSelectionChange = useCallback((ids: Set<string>) => {
-    setSelectedTargets(Array.from(ids));
+    const arr = Array.from(ids);
+    setSelectedTarget(arr[arr.length - 1] ?? null);
   }, []);
 
   const handleExecute = useCallback(() => {
-    if (!canExecute || !humanPlayer || !selectedActionId) return;
-    setExecuting(true);
+    if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
+    isExecutingRef.current = true;
     setFeedbackMsg(null);
     // For targetless actions (needsTargets: false), fall back to the human player's
     // own id so executeAction always receives a valid string.
-    const targetId = selectedTargets[0] ?? humanPlayer.id;
-    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, { dispatch });
+    const targetId = selectedTarget ?? humanPlayer.id;
+    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId);
     setFeedbackMsg(result.summary);
     if (result.success) {
       setSelectedActionId(null);
-      setSelectedTargets([]);
+      setSelectedTarget(null);
     }
-    setExecuting(false);
-  }, [canExecute, humanPlayer, selectedActionId, selectedTargets, dispatch]);
+    isExecutingRef.current = false;
+  }, [canExecute, humanPlayer, selectedActionId, selectedTarget]);
 
   if (!open) return null;
 
   const energy = energyBank?.[humanPlayer!.id] ?? 0;
   const energyCost = selectedAction
-    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTargets[0] ?? humanPlayer!.id)
+    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
     : null;
 
   return (
@@ -112,7 +116,7 @@ export default function SocialPanelV2() {
               players={game.players.filter((p) => !p.isUser)}
               humanPlayerId={humanPlayer!.id}
               relationships={relationships}
-              selectedIds={new Set(selectedTargets)}
+              selectedIds={selectedTarget ? new Set([selectedTarget]) : new Set()}
               onSelectionChange={handleSelectionChange}
             />
           </div>
@@ -142,7 +146,7 @@ export default function SocialPanelV2() {
             disabled={!canExecute}
             onClick={handleExecute}
           >
-            {executing ? 'Executing…' : 'Execute'}
+            Execute
           </button>
         </footer>
       </div>

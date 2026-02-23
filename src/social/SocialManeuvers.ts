@@ -98,9 +98,6 @@ export function computeActionCost(
 export interface ExecuteActionOptions {
   /** Override the outcome instead of defaulting to 'success'. */
   outcome?: 'success' | 'failure';
-  /** Redux dispatch function. When provided, used as a fallback when the store
-   *  is not yet initialised via initManeuvers(). */
-  dispatch?: (action: unknown) => unknown;
 }
 
 export interface ExecuteActionResult {
@@ -134,8 +131,7 @@ export function executeAction(
   actionId: string,
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
-  const dispatch = options?.dispatch ?? _store?.dispatch;
-  if (!dispatch) {
+  if (!_store) {
     return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised' };
   }
 
@@ -166,7 +162,7 @@ export function executeAction(
     timestamp: Date.now(),
   };
 
-  dispatch(
+  _store.dispatch(
     updateRelationship({
       source: actorId,
       target: targetId,
@@ -174,13 +170,14 @@ export function executeAction(
       tags: action.outcomeTag ? [action.outcomeTag] : undefined,
     }),
   );
-  dispatch(recordSocialAction({ entry }));
+  _store.dispatch(recordSocialAction({ entry }));
 
+  const verb = outcome === 'failure' ? 'failed' : 'succeeded';
   const sign = delta > 0 ? '+' : '';
   const summary =
     delta !== 0
-      ? `${action.title} succeeded (${sign}${delta} affinity)`
-      : `${action.title} performed`;
+      ? `${action.title} ${verb} (${sign}${delta} affinity)`
+      : `${action.title} ${verb}`;
 
   return { success: true, delta, newEnergy, summary };
 }
