@@ -41,6 +41,10 @@ export interface SocialActionLogEntry {
 /** Redux-serialisable state subtree owned by the social module. */
 export interface SocialState {
   energyBank: SocialEnergyBank;
+  /** Influence resource bank per player (🤝). */
+  influenceBank: SocialEnergyBank;
+  /** Info resource bank per player (💡). */
+  infoBank: SocialEnergyBank;
   relationships: RelationshipsMap;
   lastReport?: SocialPhaseReport | null;
   /** Append-only log of social actions executed this session. */

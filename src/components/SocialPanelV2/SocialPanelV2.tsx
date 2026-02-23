@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAppSelector } from '../../store/hooks';
-import { selectEnergyBank } from '../../social/socialSlice';
+import { selectEnergyBank, selectInfluenceBank, selectInfoBank } from '../../social/socialSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
@@ -29,6 +29,8 @@ import './SocialPanelV2.css';
 export default function SocialPanelV2() {
   const game = useAppSelector((s) => s.game);
   const energyBank = useAppSelector(selectEnergyBank);
+  const influenceBank = useAppSelector(selectInfluenceBank);
+  const infoBank = useAppSelector(selectInfoBank);
   const relationships = useAppSelector((s) => s.social?.relationships);
 
   const humanPlayer = game.players.find((p) => p.isUser);
@@ -80,6 +82,8 @@ export default function SocialPanelV2() {
   if (!open) return null;
 
   const energy = energyBank?.[humanPlayer!.id] ?? 0;
+  const influence = influenceBank?.[humanPlayer!.id] ?? 0;
+  const info = infoBank?.[humanPlayer!.id] ?? 0;
   const energyCost = selectedAction
     ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
     : null;
@@ -90,12 +94,24 @@ export default function SocialPanelV2() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header className="sp2-header">
           <span className="sp2-header__title">💬 Social Phase</span>
-          <div className="sp2-header__energy">
+          <div className="sp2-header__resources">
             <span
               className="sp2-energy-chip"
               aria-label={`Energy: ${energy}`}
             >
               ⚡ {energy}
+            </span>
+            <span
+              className="sp2-resource-chip sp2-resource-chip--influence"
+              aria-label={`Influence: ${influence}`}
+            >
+              🤝 {influence}
+            </span>
+            <span
+              className="sp2-resource-chip sp2-resource-chip--info"
+              aria-label={`Info: ${info}`}
+            >
+              💡 {info}
             </span>
           </div>
           <button

@@ -42,7 +42,7 @@
   text-transform: uppercase;
 }
 
-.sp2-header__energy {
+.sp2-header__resources {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -59,6 +59,28 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--color-gold-primary, #fbbf24);
+}
+
+.sp2-resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.sp2-resource-chip--influence {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+}
+
+.sp2-resource-chip--info {
+  background: rgba(99, 179, 237, 0.12);
+  border: 1px solid rgba(99, 179, 237, 0.3);
+  color: #63b3ed;
 }
 
 .sp2-header__close {
@@ -119,11 +141,16 @@
 
 /* ── Action grid ─────────────────────────────────────────────────────────── */
 .sp2-action-grid {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: 0.5rem;
-  overflow-x: auto;
   padding: 0.25rem 0.1rem;
+}
+
+@media (max-width: 480px) {
+  .sp2-action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Sticky bottom bar ───────────────────────────────────────────────────── */

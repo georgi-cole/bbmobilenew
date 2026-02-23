@@ -61,9 +61,9 @@ export default function PlayerCard({
       <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
         {player.status}
       </span>
-      {affinity !== undefined && (
-        <span className="pc__affinity">{Math.max(0, Math.min(100, affinity))}%</span>
-      )}
+      <span className="pc__affinity">
+        {affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—'}
+      </span>
     </div>
   );
 }

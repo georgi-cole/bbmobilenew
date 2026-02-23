@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import type { Player } from '../../types';
 import type { RelationshipsMap } from '../../social/types';
 import PlayerCard from './PlayerCard';
+import ExpandedPlayerView from './ExpandedPlayerView';
 
 interface PlayerListProps {
   players: Player[];
@@ -25,12 +26,13 @@ interface PlayerListProps {
  * PlayerList — scrollable roster of selectable PlayerCard tiles.
  *
  * Selection semantics:
- *  - Single click → replaces selection with the clicked player.
- *  - Ctrl/Cmd + click → toggles the clicked player in/out of selection.
+ *  - Single click → toggles selection (selects when unselected; deselects when selected).
+ *    Selecting a player also expands an ExpandedPlayerView beneath their card.
+ *  - Ctrl/Cmd + click → toggles the clicked player in/out of multi-select.
  *  - Shift + click → range-selects from the last-focused index to the clicked index
  *    (disabled players in the range are skipped).
  *  - Arrow Up/Down → moves keyboard focus between cards.
- *  - Enter / Space → toggles selection (additive when Ctrl/Cmd is held).
+ *  - Enter / Space → toggles selection and expands/collapses.
  */
 export default function PlayerList({
   players,
@@ -56,13 +58,18 @@ export default function PlayerList({
   );
 
   function handleSelect(playerId: string, additive: boolean) {
-    const next = additive
-      ? (() => {
-          const s = new Set(internalSelectedIds);
-          if (s.has(playerId)) { s.delete(playerId); } else { s.add(playerId); }
-          return s;
-        })()
-      : new Set([playerId]);
+    // Use the authoritative current selection (controlled or internal) for toggle logic.
+    const effectiveSelectedIds = controlledSelectedIds ?? internalSelectedIds;
+    let next: Set<string>;
+    if (additive) {
+      // Ctrl/Cmd: toggle individual player in/out of multi-select.
+      const s = new Set(effectiveSelectedIds);
+      if (s.has(playerId)) { s.delete(playerId); } else { s.add(playerId); }
+      next = s;
+    } else {
+      // Plain tap: select if unselected, deselect (collapse) if already selected.
+      next = effectiveSelectedIds.has(playerId) ? new Set<string>() : new Set([playerId]);
+    }
     updateSelection(next);
   }
 
@@ -104,6 +111,7 @@ export default function PlayerList({
     <div ref={containerRef} onKeyDown={handleContainerKeyDown}>
       {players.map((player, index) => {
         const disabled = disabledIds.includes(player.id);
+        const isSelected = displaySelectedIds.has(player.id);
 
         // Affinity: the human's perception of this player (human → player relationship).
         let affinity: number | undefined;
@@ -115,21 +123,25 @@ export default function PlayerList({
         }
 
         return (
-          <PlayerCard
-            key={player.id}
-            player={player}
-            selected={displaySelectedIds.has(player.id)}
-            disabled={disabled}
-            onSelect={(id, additive, shiftKey) => {
-              if (shiftKey) {
-                handleShiftSelect(index);
-              } else {
-                lastFocusedIndexRef.current = index;
-                handleSelect(id, additive);
-              }
-            }}
-            affinity={affinity}
-          />
+          <div key={player.id}>
+            <PlayerCard
+              player={player}
+              selected={isSelected}
+              disabled={disabled}
+              onSelect={(id, additive, shiftKey) => {
+                if (shiftKey) {
+                  handleShiftSelect(index);
+                } else {
+                  lastFocusedIndexRef.current = index;
+                  handleSelect(id, additive);
+                }
+              }}
+              affinity={affinity}
+            />
+            {isSelected && (
+              <ExpandedPlayerView player={player} affinity={affinity} />
+            )}
+          </div>
         );
       })}
     </div>

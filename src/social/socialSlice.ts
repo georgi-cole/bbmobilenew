@@ -85,6 +85,8 @@ export default socialSlice.reducer;
 export const selectSocialBudgets = (state: { social: SocialState }) => state.social?.energyBank;
 /** Alias for selectSocialBudgets – prefer this name in SocialManeuvers contexts. */
 export const selectEnergyBank = (state: { social: SocialState }) => state.social?.energyBank;
+export const selectInfluenceBank = (state: { social: SocialState }) => state.social?.influenceBank;
+export const selectInfoBank = (state: { social: SocialState }) => state.social?.infoBank;
 export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social?.lastReport ?? null;
 export const selectInfluenceWeights = (state: { social: SocialState }) =>
