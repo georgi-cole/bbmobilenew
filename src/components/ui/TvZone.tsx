@@ -71,17 +71,16 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
 function detectMajorFromText(ev: TvEvent): string | null {
   const text = (ev?.text || '').toLowerCase();
   if (!text) return null;
-  if (/week\s*\d+\s*begins|week start|new week/i.test(text)) return 'week_start';
-  if (/hoh|head of household|hoh competition/i.test(text)) return 'hoh_comp';
-  if (/nominat|nominat.*ceremony|nomination/i.test(text)) return 'nomination_ceremony';
-  if (/veto|pov|power of veto/i.test(text)) return 'veto_competition';
-  if (/pov ceremony|veto ceremony|veto results/i.test(text)) return 'veto_ceremony';
-  if (/live eviction|vote now|evict/i.test(text)) return 'live_eviction';
-  if (/final\s*4|final4/i.test(text)) return 'final4';
-  if (/final\s*3|final3/i.test(text)) return 'final3';
-  if (/final hoh|final_hoh|final hoh decision/i.test(text)) return 'final_hoh';
-  if (/jury|jury votes|jury members/i.test(text)) return 'jury';
-  if (/twist|twist active|twist announced/i.test(text)) return 'twist';
+  if (/week\s*\d+\s*begins|week start|new week/.test(text)) return 'week_start';
+  if (/\bnominat(?:ion|e)(?:\s+ceremony)?\b/.test(text)) return 'nomination_ceremony';
+  if (/pov ceremony|veto ceremony|veto results/.test(text)) return 'veto_ceremony';
+  if (/(?:veto|pov|power of veto)(?!\s*ceremony)/.test(text)) return 'veto_competition';
+  if (/live eviction|vote now|\bevict(?:ion|ed|s)?\b/.test(text)) return 'live_eviction';
+  if (/final\s*4|final4/.test(text)) return 'final4';
+  if (/final\s*3|final3/.test(text)) return 'final3';
+  if (/final hoh|final_hoh|final hoh decision/.test(text)) return 'final_hoh';
+  if (/jury|jury votes|jury members/.test(text)) return 'jury';
+  if (/twist|twist active|twist announced/.test(text)) return 'twist';
   return null;
 }
 
