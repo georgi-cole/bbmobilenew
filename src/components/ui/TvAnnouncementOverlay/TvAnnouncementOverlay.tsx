@@ -116,36 +116,38 @@ export default function TvAnnouncementOverlay({
   };
 
   return (
-    <div
-      className="tv-announcement"
-      role="dialog"
-      aria-modal="false"
-      aria-live="polite"
-      aria-label={`Announcement: ${title}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-    >
-      {isLive && (
-        <div className="tv-announcement__live" aria-label="Live broadcast">
-          <span className="tv-announcement__live-dot" aria-hidden="true" />
-          LIVE
-        </div>
-      )}
-
-      <div className="tv-announcement__body">
-        <p className="tv-announcement__title">{title}</p>
-        {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
-      </div>
-
-      <button
-        className="tv-announcement__info-btn"
-        onClick={onInfo}
-        aria-label={`More info about ${title}`}
+    <div className="tv-announcement-wrap">
+      <div
+        className="tv-announcement"
+        role="dialog"
+        aria-modal="false"
+        aria-live="polite"
+        aria-label={`Announcement: ${title}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       >
-        ℹ️
-      </button>
+        {isLive && (
+          <div className="tv-announcement__live" aria-label="Live broadcast">
+            <span className="tv-announcement__live-dot" aria-hidden="true" />
+            LIVE
+          </div>
+        )}
+
+        <div className="tv-announcement__body">
+          <p className="tv-announcement__title">{title}</p>
+          {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
+        </div>
+
+        <button
+          className="tv-announcement__info-btn"
+          onClick={onInfo}
+          aria-label={`More info about ${title}`}
+        >
+          ℹ️
+        </button>
+      </div>
     </div>
   );
 }

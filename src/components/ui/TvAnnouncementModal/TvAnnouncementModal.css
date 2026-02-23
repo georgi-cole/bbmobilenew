@@ -72,8 +72,21 @@
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
-.tv-ann-modal__title {
+.tv-ann-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin: 0 32px 6px 0;
+}
+
+.tv-ann-modal__icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tv-ann-modal__title {
+  margin: 0;
   font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.03em;
@@ -83,22 +96,28 @@
 
 .tv-ann-modal__badge {
   display: inline-block;
-  margin-bottom: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(99, 102, 241, 0.2);
+  margin-bottom: 10px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.15);
   border: 1px solid rgba(99, 102, 241, 0.35);
   color: #a5b4fc;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 
+.tv-ann-modal__divider {
+  border: none;
+  border-top: 1px solid rgba(99, 102, 241, 0.18);
+  margin: 2px 0 14px;
+}
+
 .tv-ann-modal__body {
-  color: rgba(224, 231, 255, 0.8);
-  font-size: 0.82rem;
-  line-height: 1.65;
+  color: rgba(224, 231, 255, 0.82);
+  font-size: 0.83rem;
+  line-height: 1.7;
 }
 
 .tv-ann-modal__body p {
