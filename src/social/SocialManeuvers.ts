@@ -107,6 +107,8 @@ export interface ExecuteActionResult {
   delta: number;
   /** Actor's energy after the action (unchanged on failure). */
   newEnergy: number;
+  /** Human-readable summary of the outcome for UI display. */
+  summary: string;
 }
 
 /**
@@ -130,19 +132,19 @@ export function executeAction(
   options?: ExecuteActionOptions,
 ): ExecuteActionResult {
   if (!_store) {
-    return { success: false, delta: 0, newEnergy: 0 };
+    return { success: false, delta: 0, newEnergy: 0, summary: 'Store not initialised' };
   }
 
   const action = getActionById(actionId);
   if (!action) {
-    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId) };
+    return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action' };
   }
 
   const cost = computeActionCost(actorId, action, targetId);
   const currentEnergy = SocialEnergyBank.get(actorId);
 
   if (currentEnergy < cost) {
-    return { success: false, delta: 0, newEnergy: currentEnergy };
+    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient energy' };
   }
 
   const outcome = options?.outcome ?? 'success';
@@ -170,7 +172,14 @@ export function executeAction(
   );
   _store.dispatch(recordSocialAction({ entry }));
 
-  return { success: true, delta, newEnergy };
+  const verb = outcome === 'failure' ? 'failed' : 'succeeded';
+  const sign = delta > 0 ? '+' : '';
+  const summary =
+    delta !== 0
+      ? `${action.title} ${verb} (${sign}${delta} affinity)`
+      : `${action.title} ${verb}`;
+
+  return { success: true, delta, newEnergy, summary };
 }
 
 // ── Named export for convenience ──────────────────────────────────────────

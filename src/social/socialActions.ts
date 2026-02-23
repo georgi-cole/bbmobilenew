@@ -24,6 +24,11 @@ export interface SocialActionDefinition {
   successWeight?: number;
   /** Tag applied to relationship entries when this action fires (e.g. 'betrayal'). */
   outcomeTag?: string;
+  /**
+   * When false the action does not require a target player to be selected.
+   * Defaults to true (most actions target another player).
+   */
+  needsTargets?: boolean;
 }
 
 /** Canonical list of social actions available in the game. */
@@ -103,5 +108,6 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     baseCost: 0,
     successWeight: 1,
+    needsTargets: false,
   },
 ];

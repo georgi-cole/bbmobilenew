@@ -142,6 +142,16 @@
   color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
 }
 
+.sp2-footer__feedback {
+  font-size: 0.82rem;
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  flex: 1;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sp2-footer__execute {
   padding: 0.55rem 1.5rem;
   background: linear-gradient(

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
+import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import './SocialPanelV2.css';
@@ -39,9 +40,48 @@ export default function SocialPanelV2() {
   const [closedForPhase, setClosedForPhase] = useState<string | null>(null);
   const open = isSocialPhase && !!humanPlayer && closedForPhase !== game.phase;
 
+  // ── Execute flow state ────────────────────────────────────────────────────
+  // Single-target selection: only the most-recently clicked player is kept.
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  // Re-entrancy guard: prevents double-execution on rapid clicks (synchronous
+  // state updates are batched and `executing` state may not be visible yet).
+  const isExecutingRef = useRef(false);
+
+  // Derived — computed before the early return so all hooks remain unconditional.
+  const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
+  const needsTargets = selectedAction?.needsTargets !== false;
+  const canExecute = !!selectedActionId && (!needsTargets || selectedTarget !== null);
+
+  // Enforce single-selection: take only the last selected player.
+  const handleSelectionChange = useCallback((ids: Set<string>) => {
+    const arr = Array.from(ids);
+    setSelectedTarget(arr[arr.length - 1] ?? null);
+  }, []);
+
+  const handleExecute = useCallback(() => {
+    if (!canExecute || !humanPlayer || !selectedActionId || isExecutingRef.current) return;
+    isExecutingRef.current = true;
+    setFeedbackMsg(null);
+    // For targetless actions (needsTargets: false), fall back to the human player's
+    // own id so executeAction always receives a valid string.
+    const targetId = selectedTarget ?? humanPlayer.id;
+    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId);
+    setFeedbackMsg(result.summary);
+    if (result.success) {
+      setSelectedActionId(null);
+      setSelectedTarget(null);
+    }
+    isExecutingRef.current = false;
+  }, [canExecute, humanPlayer, selectedActionId, selectedTarget]);
+
   if (!open) return null;
 
   const energy = energyBank?.[humanPlayer!.id] ?? 0;
+  const energyCost = selectedAction
+    ? SocialManeuvers.computeActionCost(humanPlayer!.id, selectedAction, selectedTarget ?? humanPlayer!.id)
+    : null;
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -76,23 +116,35 @@ export default function SocialPanelV2() {
               players={game.players.filter((p) => !p.isUser)}
               humanPlayerId={humanPlayer!.id}
               relationships={relationships}
+              selectedIds={selectedTarget ? new Set([selectedTarget]) : new Set()}
+              onSelectionChange={handleSelectionChange}
             />
           </div>
 
           {/* Right column – Action grid */}
           <div className="sp2-column" aria-label="Action grid">
             <span className="sp2-column__label">Actions</span>
-            <ActionGrid />
+            <ActionGrid
+              selectedId={selectedActionId}
+              onActionClick={setSelectedActionId}
+            />
           </div>
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}
         <footer className="sp2-footer">
-          <span className="sp2-footer__cost">Cost: —</span>
+          {feedbackMsg ? (
+            <span className="sp2-footer__feedback" role="status">{feedbackMsg}</span>
+          ) : (
+            <span className="sp2-footer__cost">
+              {energyCost !== null ? `Cost: ⚡${energyCost}` : 'Cost: —'}
+            </span>
+          )}
           <button
             className="sp2-footer__execute"
             type="button"
-            disabled
+            disabled={!canExecute}
+            onClick={handleExecute}
           >
             Execute
           </button>
