@@ -29,13 +29,6 @@ export default function ActionGrid({
     <div
       className="sp2-action-grid"
       role="group"
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '0.5rem',
-        overflowX: 'auto',
-        padding: '0.25rem 0.1rem',
-      }}
     >
       {SOCIAL_ACTIONS.map((action) => (
         <ActionCard
