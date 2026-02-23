@@ -132,13 +132,13 @@ function _tick(): void {
   const budgets = state.social?.energyBank ?? {};
 
   // Safety guard
-  if (_tickCount > MAX_TICKS()) {
+  if (_tickCount >= MAX_TICKS()) {
     stop();
     return;
   }
 
-  // Stop if all budgets exhausted
-  if (!aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0)) {
+  // Stop if all budgets exhausted (when allowOverspend is false)
+  if (!socialConfig.allowOverspend && !aiPlayers.some((p) => (budgets[p.id] ?? 0) > 0)) {
     stop();
     return;
   }
