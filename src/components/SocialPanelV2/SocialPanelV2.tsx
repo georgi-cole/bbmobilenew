@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
+import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import './SocialPanelV2.css';
 
@@ -78,12 +79,10 @@ export default function SocialPanelV2() {
             />
           </div>
 
-          {/* Right column – Action grid placeholder */}
+          {/* Right column – Action grid */}
           <div className="sp2-column" aria-label="Action grid">
             <span className="sp2-column__label">Actions</span>
-            <div className="sp2-column__placeholder">
-              Action cards coming soon
-            </div>
+            <ActionGrid />
           </div>
         </div>
 

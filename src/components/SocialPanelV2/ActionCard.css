@@ -1,0 +1,135 @@
+/* ─── ActionCard ────────────────────────────────────────────────────────────
+ * Styles for a single social-action card rendered inside ActionGrid.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.ac-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: var(--color-card-2, #1a2336);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  min-width: 9rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.1s ease;
+  user-select: none;
+  outline: none;
+}
+
+.ac-card:hover:not(.ac-card--disabled) {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: var(--color-card-hover, #1f2a40);
+}
+
+.ac-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent, #6366f1);
+}
+
+.ac-card:active:not(.ac-card--disabled) {
+  transform: scale(0.97);
+}
+
+/* ── Selected state ────────────────────────────────────────────────────────── */
+.ac-card--selected {
+  border-color: var(--color-accent, #6366f1);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* ── Disabled state ─────────────────────────────────────────────────────────  */
+.ac-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ac-card__disabled-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  text-align: center;
+  padding: 0.25rem;
+  pointer-events: none;
+}
+
+/* ── Title ──────────────────────────────────────────────────────────────────  */
+.ac-card__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  line-height: 1.2;
+}
+
+/* ── Description ────────────────────────────────────────────────────────────  */
+.ac-card__description {
+  font-size: 0.72rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  line-height: 1.3;
+}
+
+/* ── Cost chips ─────────────────────────────────────────────────────────────  */
+.ac-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.ac-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ac-chip--energy {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: var(--color-gold-primary, #fbbf24);
+}
+
+.ac-chip--info {
+  background: rgba(99, 179, 237, 0.12);
+  border: 1px solid rgba(99, 179, 237, 0.3);
+  color: #63b3ed;
+}
+
+/* ── Preview button ─────────────────────────────────────────────────────────  */
+.ac-card__preview-btn {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.ac-card__preview-btn:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  color: var(--color-accent, #6366f1);
+}
+
+/* ── Reduce motion ───────────────────────────────────────────────────────────  */
+@media (prefers-reduced-motion: reduce) {
+  .ac-card,
+  .ac-card__preview-btn {
+    transition: none !important;
+  }
+}
