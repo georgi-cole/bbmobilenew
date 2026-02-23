@@ -15,10 +15,17 @@ export interface RecentActivityProps {
   maxEntries?: number;
 }
 
+/** Format a numeric score as a signed two-decimal string, e.g. "+0.10" or "-0.15". */
+function formatScore(score: number): string {
+  return `${score >= 0 ? '+' : ''}${score.toFixed(2)}`;
+}
+
 /** Map a delta value to a short human-readable result label. */
-function getResultLabel(delta: number): string {
-  if (delta > 0) return 'Good';
-  if (delta < 0) return 'Bad';
+function getResultLabel(entry: { delta: number; label?: string }): string {
+  // Prefer evaluator label when present in the log entry.
+  if (entry.label) return entry.label;
+  if (entry.delta > 0) return 'Good';
+  if (entry.delta < 0) return 'Bad';
   return 'Unmoved';
 }
 
@@ -77,8 +84,9 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
           {visibleLogs.map((entry, i) => {
             const actionTitle = getActionById(entry.actionId)?.title ?? entry.actionId;
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
-            const resultLabel = getResultLabel(entry.delta);
+            const resultLabel = getResultLabel(entry);
             const sign = entry.delta > 0 ? '+' : '';
+            const scoreText = entry.score !== undefined ? ` ${formatScore(entry.score)}` : '';
             return (
               <li key={`${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`} className="ra-entry">
                 <span className="ra-entry__time" aria-label={`Time: ${getRelativeTime(entry.timestamp)}`}>
@@ -87,9 +95,9 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
                 <span className="ra-entry__action">{actionTitle}</span>
                 <span
                   className={`ra-entry__result ra-entry__result--${resultLabel.toLowerCase()}`}
-                  aria-label={`Result: ${resultLabel}`}
+                  aria-label={`Result: ${resultLabel}${scoreText}`}
                 >
-                  {resultLabel}
+                  {resultLabel}{scoreText}
                 </span>
                 {entry.delta !== 0 && (
                   <span className="ra-entry__delta" aria-label={`Delta: ${sign}${entry.delta}`}>

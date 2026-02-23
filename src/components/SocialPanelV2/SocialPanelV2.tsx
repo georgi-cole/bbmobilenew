@@ -132,6 +132,7 @@ export default function SocialPanelV2() {
               players={game.players.filter((p) => !p.isUser)}
               actorId={humanPlayer!.id}
               actorEnergy={energy}
+              relationships={relationships}
             />
             <RecentActivity players={game.players.filter((p) => !p.isUser)} />
           </div>
