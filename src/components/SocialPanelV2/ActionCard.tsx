@@ -11,6 +11,16 @@ export interface ActionCardProps {
   disabled?: boolean;
   /** Message shown in the disabled overlay. */
   disabledMessage?: string;
+  /**
+   * When non-empty, shows a dimmed availability-reason overlay and dims the card.
+   * Takes precedence over disabledMessage when both are set.
+   */
+  availabilityReason?: string;
+  /**
+   * When true, renders a green accent border (action is affordable/available).
+   * When false AND action category is 'aggressive', renders a red accent border.
+   */
+  available?: boolean;
   /** Called with the action id when the card is activated. */
   onClick?: (actionId: string) => void;
   /** Called with the action id when the "Preview" button is clicked. */
@@ -36,17 +46,26 @@ export default function ActionCard({
   selected = false,
   disabled = false,
   disabledMessage = 'Unavailable',
+  availabilityReason,
+  available,
   onClick,
   onPreview,
   onHoverFocus,
 }: ActionCardProps) {
-  const { id, title, baseCost } = action;
+  const { id, title, baseCost, category, availabilityHint } = action;
 
   const energyCost = typeof baseCost === 'number' ? baseCost : (baseCost.energy ?? 0);
   const infoCost = typeof baseCost === 'number' ? 0 : (baseCost.info ?? 0);
 
+  // A card is effectively non-interactive when the explicit `disabled` prop is
+  // set. The `availabilityReason` provides a visual dimming hint but keeps the
+  // card clickable — the domain-level energy check enforces the real gate.
+  const isDisabled = disabled;
+  const showOverlay = disabled || !!availabilityReason;
+  const overlayMessage = availabilityReason || disabledMessage;
+
   function handleActivate() {
-    if (!disabled) onClick?.(id);
+    if (!isDisabled) onClick?.(id);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -56,10 +75,21 @@ export default function ActionCard({
     }
   }
 
+  // Accent border class: green when available, red when aggressive/risky.
+  const accentClass =
+    available === true
+      ? 'ac-card--available'
+      : available === false && category === 'aggressive'
+        ? 'ac-card--risky'
+        : '';
+
   const classNames = [
     'ac-card',
     selected ? 'ac-card--selected' : '',
-    disabled ? 'ac-card--disabled' : '',
+    isDisabled ? 'ac-card--disabled' : '',
+    // Dim unavailable (unaffordable) cards even though they remain clickable.
+    !isDisabled && availabilityReason ? 'ac-card--unavailable' : '',
+    accentClass,
   ]
     .filter(Boolean)
     .join(' ');
@@ -68,13 +98,13 @@ export default function ActionCard({
     <div
       className={classNames}
       role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-disabled={disabled}
+      tabIndex={isDisabled ? -1 : 0}
+      aria-disabled={isDisabled}
       aria-pressed={selected}
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => !disabled && onHoverFocus?.(id)}
-      onFocus={() => !disabled && onHoverFocus?.(id)}
+      onMouseEnter={() => !isDisabled && onHoverFocus?.(id)}
+      onFocus={() => !isDisabled && onHoverFocus?.(id)}
       data-action-id={id}
     >
       <span className="ac-card__title">{title}</span>
@@ -99,24 +129,30 @@ export default function ActionCard({
         )}
       </div>
 
+      {availabilityHint && (
+        <span className="ac-badge" aria-label={`Requirement: ${availabilityHint}`}>
+          {availabilityHint}
+        </span>
+      )}
+
       {onPreview && (
         <button
           className="ac-card__preview-btn"
           type="button"
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={isDisabled ? -1 : 0}
           aria-label={`Preview ${title}`}
           onClick={(e) => {
             e.stopPropagation();
-            if (!disabled) onPreview(id);
+            if (!isDisabled) onPreview(id);
           }}
         >
           Preview
         </button>
       )}
 
-      {disabled && (
+      {showOverlay && (
         <div className="ac-card__disabled-overlay" aria-hidden="true">
-          {disabledMessage}
+          {overlayMessage}
         </div>
       )}
     </div>
