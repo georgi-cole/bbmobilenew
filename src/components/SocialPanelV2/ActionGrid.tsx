@@ -25,6 +25,11 @@ export interface ActionGridProps {
    * Optional — if omitted, target ids are shown as-is.
    */
   players?: readonly Player[];
+  /**
+   * Id of the acting player (human). Passed to computeOutcomeDelta so each
+   * delta is computed with the real actor context rather than an empty string.
+   */
+  actorId?: string;
 }
 
 /**
@@ -50,6 +55,7 @@ export default function ActionGrid({
   selectedId = null,
   selectedTargetIds,
   players,
+  actorId = '',
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +71,12 @@ export default function ActionGrid({
       containerRef.current?.querySelectorAll<HTMLElement>('[data-action-id][tabindex="0"]') ?? [],
     );
     if (cards.length === 0) return;
-    const idx = cards.indexOf(document.activeElement as HTMLElement);
+    // Resolve the active card via closest() so nested elements (e.g. Preview
+    // button inside a card) also work correctly.
+    const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+      '[data-action-id]',
+    );
+    const idx = activeCard ? cards.indexOf(activeCard) : -1;
     const next =
       idx === -1
         ? e.key === 'ArrowRight' ? 0 : cards.length - 1
@@ -91,14 +102,12 @@ export default function ActionGrid({
     if (!selectedTargetIds || selectedTargetIds.size === 0) {
       previewDeltas = [];
     } else {
-      // actorId and targetId are unused by computeOutcomeDelta (they are prefixed
-      // with _ in the implementation); the delta depends only on actionId + outcome.
-      const delta = computeOutcomeDelta(previewActionId, '', '', 'success');
       // Build a lookup map to avoid O(n*m) find inside the loop.
       const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
       previewDeltas = Array.from(selectedTargetIds).map((targetId) => ({
+        targetId,
         targetName: playerById.get(targetId)?.name ?? targetId,
-        delta,
+        delta: computeOutcomeDelta(previewActionId, actorId, targetId, 'success'),
       }));
     }
   }

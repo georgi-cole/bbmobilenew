@@ -1,6 +1,8 @@
 import './PreviewPopup.css';
 
 export interface PreviewDeltaEntry {
+  /** Stable unique id for the target player; used as the React list key. */
+  targetId: string;
   targetName: string;
   delta: number;
 }
@@ -23,18 +25,21 @@ export default function PreviewPopup({ deltas }: PreviewPopupProps) {
         <span className="pp__instruction">Select target(s) to preview</span>
       ) : (
         <ul className="pp__list">
-          {deltas.map(({ targetName, delta }) => (
-            <li
-              key={targetName}
-              className={`pp__entry pp__entry--${delta >= 0 ? 'pos' : 'neg'}`}
-            >
-              <span className="pp__name">{targetName}</span>
-              <span className="pp__delta">
-                {delta >= 0 ? '+' : ''}
-                {delta}%
-              </span>
-            </li>
-          ))}
+          {deltas.map(({ targetId, targetName, delta }) => {
+            const pct = Math.round(delta * 100);
+            return (
+              <li
+                key={targetId}
+                className={`pp__entry pp__entry--${delta >= 0 ? 'pos' : 'neg'}`}
+              >
+                <span className="pp__name">{targetName}</span>
+                <span className="pp__delta">
+                  {pct > 0 ? '+' : ''}
+                  {pct}%
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
