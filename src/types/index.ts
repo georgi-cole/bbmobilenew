@@ -95,6 +95,10 @@ export interface TvEvent {
   text: string;
   type: 'game' | 'social' | 'vote' | 'twist' | 'diary';
   timestamp: number;
+  /** Optional metadata for announcement classification. */
+  meta?: { major?: string; week?: number; [key: string]: unknown };
+  /** Shorthand major key (alternative to meta.major). */
+  major?: string;
 }
 
 export interface GameState {
