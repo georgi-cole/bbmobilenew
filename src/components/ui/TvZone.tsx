@@ -1,8 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
 import StatusPill from '../ui/StatusPill';
-import TVLog from '../TVLog/TVLog';
 import './TvZone.css';
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
@@ -48,8 +48,14 @@ export default function TvZone() {
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const navigate = useNavigate();
+  const feedRef = useRef<HTMLUListElement>(null);
 
   const latestEvent = gameState.tvFeed[0];
+
+  // Auto-scroll feed to top when new event arrives
+  useEffect(() => {
+    feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [gameState.tvFeed.length]);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
 
@@ -104,10 +110,16 @@ export default function TvZone() {
       </div>
 
       {/* ── Event feed ──────────────────────────────────────────────────── */}
-      <TVLog
-        entries={gameState.tvFeed}
-        mainTVMessage={latestEvent?.text}
-      />
+      <ul className="tv-zone__feed" data-testid="tv-feed" ref={feedRef} aria-label="Game event log">
+        {gameState.tvFeed.map((ev) => (
+          <li key={ev.id} className={`tv-zone__feed-item tv-zone__feed-item--${ev.type}`}>
+            <span className="tv-zone__feed-type" aria-hidden="true">
+              {{ game: '🎮', social: '💬', vote: '🗳️', twist: '🌀', diary: '📖' }[ev.type]}
+            </span>
+            <span className="tv-zone__feed-text">{ev.text}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

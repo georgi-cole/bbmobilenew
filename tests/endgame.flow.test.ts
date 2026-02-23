@@ -20,6 +20,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   finalizeFinal3Eviction,
+  finalizeFinal4Eviction,
   selectNominee1,
   finalizeNominations,
   submitPovDecision,
@@ -299,6 +300,13 @@ describe('endgame simulation — Final 5 through to jury', () => {
         const pool = alive.filter((p) => p.id !== state.hohId && p.id !== state.pendingNominee1Id);
         if (pool.length >= 1) {
           store.dispatch(finalizeNominations(pool[0].id));
+        } else {
+          store.dispatch(advance());
+        }
+      } else if (state.awaitingPovDecision && state.phase === 'final4_eviction') {
+        // Human is POV holder at Final 4; must choose who to evict via finalizeFinal4Eviction
+        if (state.nomineeIds.length > 0) {
+          store.dispatch(finalizeFinal4Eviction(state.nomineeIds[0]));
         } else {
           store.dispatch(advance());
         }
