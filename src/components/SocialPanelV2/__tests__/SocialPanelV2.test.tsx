@@ -139,6 +139,20 @@ describe('SocialPanelV2 – layout', () => {
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('renders the Recent Activity log above the footer', () => {
+    const store = makeStore({ phase: 'social_1' });
+    renderPanel(store);
+    expect(screen.getByLabelText('Recent Activity log')).toBeDefined();
+  });
+
+  it('Recent Activity log is outside the Action grid column', () => {
+    const store = makeStore({ phase: 'social_1' });
+    renderPanel(store);
+    const actionsColumn = screen.getByLabelText('Action grid');
+    const recentLog = screen.getByLabelText('Recent Activity log');
+    expect(actionsColumn.contains(recentLog)).toBe(false);
+  });
 });
 
 describe('SocialPanelV2 – close behaviour', () => {

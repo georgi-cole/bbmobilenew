@@ -6,11 +6,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin-top: 0.5rem;
-  max-height: 8rem;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
@@ -61,6 +58,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
 }
 
 .ra-entry {
