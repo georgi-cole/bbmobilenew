@@ -1,21 +1,31 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // NOTE: Start the dev server before running this test. The app should be
 // reachable at http://localhost:3000/bbmobilenew. Example: npm run dev -- --port 3000
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000/bbmobilenew';
 
+/** Open the debug panel by clicking the FAB toggle (if not already open). */
+async function openDebugPanel(page: Page) {
+  const fab = page.getByRole('button', { name: 'Toggle Debug Panel' });
+  await expect(fab).toBeVisible({ timeout: 10000 });
+  const panel = page.getByRole('complementary', { name: 'Debug Panel' });
+  if (!(await panel.isVisible())) {
+    await fab.click();
+  }
+  await expect(panel).toBeVisible({ timeout: 5000 });
+}
+
 test.describe('Finale / Jury flow', () => {
   test('mounts FinalFaceoff and completes finale via DebugPanel', async ({ page }) => {
-    await page.goto(`${BASE}/#/?debug=1`);
+    // Hash router: navigate to the game screen with debug=1 in the hash search string
+    await page.goto(`${BASE}/#/game?debug=1`);
 
-    // Open DebugPanel — DebugPanel is mounted in AppShell; ensure it's visible
-    // The debug controls render a section with title "Finale / Jury"; find the
-    // button that forces the phase to jury.
+    // Open the DebugPanel (starts closed — click the FAB first)
+    await openDebugPanel(page);
 
-    // Expand debug panel if collapsed (the panel markup may vary). We'll search
-    // for the button labelled '→ Force jury'.
-    const forceJury = page.getByRole('button', { name: /Force jury/ });
-    await expect(forceJury).toBeVisible();
+    // Force the game directly to jury phase (FinalFaceoff overlay initialises on next render)
+    const forceJury = page.getByRole('button', { name: '→ Force jury' });
+    await expect(forceJury).toBeVisible({ timeout: 5000 });
     await forceJury.click();
 
     // Wait for the FinalFaceoff overlay to mount — it has role=dialog and aria-label="Jury Finale"
@@ -23,8 +33,8 @@ test.describe('Finale / Jury flow', () => {
     await expect(overlay).toBeVisible({ timeout: 5000 });
 
     // Use the Fast-fwd Finale button in the DebugPanel to complete the finale quickly
-    const fastFwd = page.getByRole('button', { name: /Fast-fwd Finale/ });
-    await expect(fastFwd).toBeVisible();
+    const fastFwd = page.getByRole('button', { name: 'Fast-fwd Finale' });
+    await expect(fastFwd).toBeVisible({ timeout: 5000 });
     await fastFwd.click();
 
     // Wait until the overlay shows winner text (the subtitle shows winner when isComplete)
@@ -32,7 +42,7 @@ test.describe('Finale / Jury flow', () => {
     await expect(overlay).toContainText(/wins Big Brother|Winner declared/, { timeout: 5000 });
 
     // Optionally dismiss overlay if Dismiss button present
-    const dismiss = page.getByRole('button', { name: /Dismiss Overlay/ });
+    const dismiss = page.getByRole('button', { name: 'Dismiss Overlay' });
     if (await dismiss.isVisible()) {
       await dismiss.click();
     }

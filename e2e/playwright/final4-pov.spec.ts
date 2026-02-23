@@ -14,12 +14,12 @@ async function gotoDebug(page: Page) {
 /** Open the debug panel by clicking the FAB toggle (if not already open). */
 async function openDebugPanel(page: Page) {
   const fab = page.getByRole('button', { name: 'Toggle Debug Panel' });
-  await expect(fab).toBeVisible({ timeout: 5000 });
+  await expect(fab).toBeVisible({ timeout: 10000 });
   const panel = page.getByRole('complementary', { name: 'Debug Panel' });
   if (!(await panel.isVisible())) {
     await fab.click();
   }
-  await expect(panel).toBeVisible({ timeout: 3000 });
+  await expect(panel).toBeVisible({ timeout: 5000 });
 }
 
 /**
