@@ -126,7 +126,7 @@ export default function TvZone() {
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.log('TvZone latestEvent:', latestEvent);
     }
