@@ -19,7 +19,7 @@ import {
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
-import { openSocialSummary, selectSocialSummaryOpen } from '../../store/uiSlice'
+import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
@@ -66,14 +66,21 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
-  // ── Auto-open social summary popup when a new report is available ─────────
-  // Track the last report ID we've already opened so we don't re-open on
-  // re-renders or when the user navigates away and returns.
+  // ── Post a TV feed message when a new social report is available ─────────
+  // Track the last report ID so we don't repeat the message on re-renders.
   const prevReportIdRef = useRef<string | null>(lastSocialReport?.id ?? null)
   useEffect(() => {
     if (lastSocialReport && lastSocialReport.id !== prevReportIdRef.current) {
       prevReportIdRef.current = lastSocialReport.id
-      dispatch(openSocialSummary())
+      const templates = [
+        `You stirred up the pot in the house! Week ${lastSocialReport.week} is heating up. 🌶️`,
+        `Drama alert — Week ${lastSocialReport.week} social phase complete. Check the Diary Room for details.`,
+        `The house was buzzing: Week ${lastSocialReport.week} social moves have been logged. 📖`,
+      ]
+      const hash = lastSocialReport.id
+        .split('')
+        .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
+      dispatch(addTvEvent({ text: templates[hash % templates.length], type: 'game' }))
     }
   }, [lastSocialReport, dispatch])
 

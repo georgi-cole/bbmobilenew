@@ -122,3 +122,14 @@
   text-align: center;
   pointer-events: none;
 }
+
+/* ── Flash / pulse animation for social button on energy change ─────────── */
+@keyframes fab-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.0); background: rgba(255, 255, 255, 0.07); }
+  30%  { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.0); background: rgba(255, 255, 255, 0.07); }
+}
+
+.fab__side-btn--flash {
+  animation: fab-flash 0.6s ease-out forwards;
+}

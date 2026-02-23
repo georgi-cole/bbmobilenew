@@ -92,6 +92,10 @@ const socialSlice = createSlice({
     closeSocialPanel(state) {
       state.panelOpen = false;
     },
+    /** Clear all session log entries (e.g. after exporting to Diary Room). */
+    clearSessionLogs(state) {
+      state.sessionLogs = [];
+    },
   },
 });
 
@@ -110,6 +114,7 @@ export const {
   updateRelationship,
   openSocialPanel,
   closeSocialPanel,
+  clearSessionLogs,
 } = socialSlice.actions;
 export default socialSlice.reducer;
 

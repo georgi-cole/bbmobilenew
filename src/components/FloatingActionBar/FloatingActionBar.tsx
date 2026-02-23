@@ -1,6 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
-import { openSocialPanel } from '../../social/socialSlice';
+import { openSocialPanel, selectEnergyBank } from '../../social/socialSlice';
 import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
@@ -27,19 +28,42 @@ export default function FloatingActionBar() {
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
   const nomineesCount = useAppSelector(selectCurrentNomineesCount);
+  const players = useAppSelector((s) => s.game.players);
+  const energyBank = useAppSelector(selectEnergyBank);
+
+  const humanPlayer = players.find((p) => p.isUser);
+  const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
+
+  // Flash the social button whenever the human player's energy changes.
+  const [isFlashing, setIsFlashing] = useState(false);
+  const prevEnergyRef = useRef(humanEnergy);
+  useEffect(() => {
+    if (humanEnergy !== null && humanEnergy !== prevEnergyRef.current) {
+      setIsFlashing(true);
+      const timer = setTimeout(() => setIsFlashing(false), 600);
+      prevEnergyRef.current = humanEnergy;
+      return () => clearTimeout(timer);
+    }
+    prevEnergyRef.current = humanEnergy;
+  }, [humanEnergy]);
 
   return (
     <div className="fab" role="toolbar" aria-label="Game actions">
       {/* ── Left side: Social + Help (placeholders) ───────────────────── */}
       <div className="fab__side">
         <button
-          className="fab__side-btn"
+          className={`fab__side-btn${isFlashing ? ' fab__side-btn--flash' : ''}`}
           type="button"
-          aria-label="Social"
-          title="Social"
+          aria-label={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
+          title={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
           onClick={() => dispatch(openSocialPanel())}
         >
           💬
+          {humanEnergy !== null && (
+            <span className="fab__badge" aria-hidden="true">
+              {humanEnergy > 99 ? '99+' : humanEnergy}
+            </span>
+          )}
         </button>
         <button
           className="fab__side-btn"
