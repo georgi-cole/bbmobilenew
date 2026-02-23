@@ -76,6 +76,11 @@ export default function MinigameHost({
     setPhase('countdown');
   }, []);
 
+  // ── Dismiss challenge from rules (score 0) ───────────────────────────────
+  const handleRulesDismiss = useCallback(() => {
+    onDone(0, true);
+  }, [onDone]);
+
   // ── Countdown ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -136,6 +141,7 @@ export default function MinigameHost({
           game={game}
           onConfirm={handleRulesConfirm}
           onSkip={skipRules ? handleRulesConfirm : undefined}
+          onDismiss={handleRulesDismiss}
         />
       )}
 
