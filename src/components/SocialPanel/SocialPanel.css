@@ -1,0 +1,101 @@
+/* ─── SocialPanel ─────────────────────────────────────────────────────────────
+ * Inline panel shown during social_1 / social_2 phases for the human player.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.social-panel {
+  background: var(--color-card, #141b26);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 14px;
+  margin: 0.75rem 1rem;
+  overflow: hidden;
+}
+
+.social-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, #0f1225 0%, #131a2e 100%);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.social-panel__title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-accent, #6366f1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.social-panel__energy {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-gold-primary, #fbbf24);
+}
+
+.social-panel__body {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.social-panel__selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-panel__select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-card-2, #1a2336);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  font-size: 0.85rem;
+  appearance: auto;
+}
+
+.social-panel__select:disabled {
+  opacity: 0.45;
+}
+
+.social-panel__btn {
+  align-self: flex-end;
+  padding: 0.5rem 1.4rem;
+  background: linear-gradient(135deg, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.social-panel__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.social-panel__btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.social-panel__result {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  padding: 0.35rem 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  border-left: 2px solid rgba(99, 102, 241, 0.4);
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .social-panel__btn {
+    transition: none !important;
+  }
+}

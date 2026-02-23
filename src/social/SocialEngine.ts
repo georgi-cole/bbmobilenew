@@ -84,6 +84,15 @@ function startPhase(phaseName: string): void {
     budgets[k] = v;
   });
 
+  // Give the human player the default energy budget so they can participate.
+  const humanPlayer = players.find(
+    (p) => p.isUser && p.status !== 'evicted' && p.status !== 'jury',
+  );
+  if (humanPlayer) {
+    _budgets.set(humanPlayer.id, DEFAULT_ENERGY);
+    budgets[humanPlayer.id] = DEFAULT_ENERGY;
+  }
+
   _store.dispatch(engineReady({ budgets }));
 }
 
