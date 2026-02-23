@@ -14,4 +14,5 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   lastReport: null,
   sessionLogs: [],
   influenceWeights: {},
+  panelOpen: false,
 };

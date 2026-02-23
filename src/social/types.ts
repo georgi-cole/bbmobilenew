@@ -54,6 +54,11 @@ export interface SocialState {
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.
    */
   influenceWeights: Record<string, Record<string, Record<string, number>>>;
+  /**
+   * Whether the social panel has been manually opened by the player (e.g. via the FAB).
+   * When true the panel is visible regardless of the current game phase.
+   */
+  panelOpen: boolean;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

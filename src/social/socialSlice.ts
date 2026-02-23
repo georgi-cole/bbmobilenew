@@ -84,6 +84,14 @@ const socialSlice = createSlice({
         state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
       }
     },
+    /** Manually open the social panel (e.g. via the FAB 💬 button). */
+    openSocialPanel(state) {
+      state.panelOpen = true;
+    },
+    /** Manually close the social panel. */
+    closeSocialPanel(state) {
+      state.panelOpen = false;
+    },
   },
 });
 
@@ -100,6 +108,8 @@ export const {
   applyInfoDelta,
   recordSocialAction,
   updateRelationship,
+  openSocialPanel,
+  closeSocialPanel,
 } = socialSlice.actions;
 export default socialSlice.reducer;
 
@@ -115,3 +125,5 @@ export const selectInfluenceWeights = (state: { social: SocialState }) =>
   state.social?.influenceWeights;
 export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs'];
+export const selectSocialPanelOpen = (state: { social: SocialState }) =>
+  state.social?.panelOpen ?? false;
