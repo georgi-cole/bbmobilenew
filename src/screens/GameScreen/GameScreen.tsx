@@ -32,6 +32,7 @@ import FloatingActionBar from '../../components/FloatingActionBar/FloatingAction
 import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
+import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
@@ -495,6 +496,9 @@ export default function GameScreen() {
       {showSocialPanel && humanPlayer && (
         <SocialPanel actorId={humanPlayer.id} />
       )}
+
+      {/* ── Social Phase Panel V2 (modal overlay skeleton) ───────────────── */}
+      <SocialPanelV2 />
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
