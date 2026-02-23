@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectSessionLogs } from '../../social/socialSlice';
 import { getActionById } from '../../social/SocialManeuvers';
@@ -52,12 +52,16 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
   // Client-side clear: track the watermark timestamp; only show entries after it.
   const [clearedBefore, setClearedBefore] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
+  // Track keys of newly added entries for the highlight animation.
+  const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set());
+  const prevLengthRef = useRef(0);
 
   const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
 
-  const visibleLogs = sessionLogs
-    .filter((e) => e.timestamp > clearedBefore)
-    .slice(-maxEntries);
+  const visibleLogs = useMemo(
+    () => sessionLogs.filter((e) => e.timestamp > clearedBefore).slice(-maxEntries),
+    [sessionLogs, clearedBefore, maxEntries],
+  );
 
   // Auto-scroll to the newest entry whenever the visible list changes.
   useEffect(() => {
@@ -65,6 +69,28 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [visibleLogs.length]);
+
+  // Highlight newly added entries briefly.
+  useEffect(() => {
+    if (visibleLogs.length > prevLengthRef.current) {
+      const newKeys = new Set<string>();
+      for (let i = prevLengthRef.current; i < visibleLogs.length; i++) {
+        const e = visibleLogs[i];
+        newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}-${i}`);
+      }
+      setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
+      const timer = setTimeout(() => {
+        setHighlightedKeys((prev) => {
+          const next = new Set(prev);
+          newKeys.forEach((k) => next.delete(k));
+          return next;
+        });
+      }, 1200);
+      prevLengthRef.current = visibleLogs.length;
+      return () => clearTimeout(timer);
+    }
+    prevLengthRef.current = visibleLogs.length;
+  }, [visibleLogs]);
 
   function handleClear() {
     setClearedBefore(Date.now());
@@ -99,8 +125,10 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
             const narrative = getSocialNarrative(entry.actionId, targetName, entry.timestamp);
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`;
+            const isNew = highlightedKeys.has(key);
             return (
-              <li key={`${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`} className="ra-entry">
+              <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>
                 <span className={`ra-entry__icon ra-entry__icon--${resultClass}`} aria-hidden="true">
                   {icon}
                 </span>

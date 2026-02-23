@@ -235,3 +235,20 @@
     transition: none !important;
   }
 }
+
+/* ── Execute success pulse ───────────────────────────────────────────────── */
+@keyframes sp2-execute-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+  50%  { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+.sp2-footer__execute--pulse {
+  animation: sp2-execute-pulse 0.85s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp2-footer__execute--pulse {
+    animation: none;
+  }
+}

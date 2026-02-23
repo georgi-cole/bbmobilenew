@@ -18,6 +18,8 @@
 .pc:hover:not(.pc--disabled) {
   background: rgba(99, 102, 241, 0.1);
   border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .pc:focus-visible {
@@ -129,6 +131,12 @@
   background: rgba(99, 102, 241, 0.07);
   border-top: 1px solid rgba(99, 102, 241, 0.2);
   overflow: hidden;
+  animation: pc-expand-in 0.16s ease-out;
+}
+
+@keyframes pc-expand-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .pc__expanded-affinity {
@@ -156,5 +164,12 @@
 @media (prefers-reduced-motion: reduce) {
   .pc {
     transition: none !important;
+  }
+  .pc:hover:not(.pc--disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+  .pc__expanded {
+    animation: none;
   }
 }

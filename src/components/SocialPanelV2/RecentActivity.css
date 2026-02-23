@@ -134,9 +134,22 @@
   margin-left: auto;
 }
 
+/* ── New-entry highlight ─────────────────────────────────────────────────── */
+@keyframes ra-entry-highlight {
+  0%   { background: rgba(99, 102, 241, 0.2); }
+  100% { background: rgba(255, 255, 255, 0.03); }
+}
+
+.ra-entry--new {
+  animation: ra-entry-highlight 1.2s ease-out forwards;
+}
+
 /* ── Reduce motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .ra-clear-btn {
     transition: none !important;
+  }
+  .ra-entry--new {
+    animation: none;
   }
 }
