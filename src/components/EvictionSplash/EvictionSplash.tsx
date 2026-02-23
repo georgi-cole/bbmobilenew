@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatar, getDicebear, isEmoji } from '../../utils/avatar';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './EvictionSplash.css';
 
 interface Props {
@@ -22,10 +22,15 @@ interface Props {
  * Automatically calls onDone after `duration` ms. Tappable to skip.
  * onDone is guarded internally — it fires at most once.
  */
+/** Duration of the fade-out animation before onDone fires (ms). */
+const FADE_OUT_MS = 600;
+
 export default function EvictionSplash({ evictee, onDone, duration = 3200 }: Props) {
-  const [avatarSrc, setAvatarSrc] = useState(() => resolveAvatar(evictee));
+  const [candidates] = useState(() => resolveAvatarCandidates(evictee));
+  const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
   const [greyscale, setGreyscale] = useState(false);
+  const [fading, setFading] = useState(false);
   const firedRef = useRef(false);
 
   function fire() {
@@ -34,13 +39,19 @@ export default function EvictionSplash({ evictee, onDone, duration = 3200 }: Pro
     onDone();
   }
 
-  // Start colour→B&W transition halfway through the duration; call onDone at the end.
-  // Timers are cleared on unmount or when the user taps to skip.
+  // Sequence: colour → B&W at duration/2; fade-out starts at duration - FADE_OUT_MS; fire at duration.
   useEffect(() => {
     const halfId = setTimeout(() => setGreyscale(true), duration / 2);
+    const hasFadePhase = duration > FADE_OUT_MS;
+    const fadeId = hasFadePhase
+      ? setTimeout(() => setFading(true), Math.max(0, duration - FADE_OUT_MS))
+      : null;
     const doneId = setTimeout(fire, duration);
     return () => {
       clearTimeout(halfId);
+      if (fadeId !== null) {
+        clearTimeout(fadeId);
+      }
       clearTimeout(doneId);
     };
     // fire is stable within this render; eslint-disable below is intentional.
@@ -48,21 +59,21 @@ export default function EvictionSplash({ evictee, onDone, duration = 3200 }: Pro
   }, [duration]);
 
   function handleImgError() {
-    const dicebear = getDicebear(evictee.name);
-    if (avatarSrc !== dicebear) {
-      setAvatarSrc(dicebear);
+    if (candidateIdx < candidates.length - 1) {
+      setCandidateIdx((i) => i + 1);
     } else {
       setShowFallback(true);
     }
   }
 
+  const avatarSrc = candidates[candidateIdx] ?? '';
   const fallbackText = isEmoji(evictee.avatar ?? '')
     ? evictee.avatar
     : evictee.name.charAt(0).toUpperCase();
 
   return (
     <div
-      className="eviction-splash"
+      className={`eviction-splash${fading ? ' eviction-splash--fading' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${evictee.name} has been evicted`}

@@ -16,9 +16,19 @@
   overflow: hidden;
 }
 
+/* Fade-out when the sequence ends */
+.eviction-splash--fading {
+  animation: evictFadeOut 0.6s ease forwards;
+}
+
 @keyframes evictFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes evictFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 /* Dark vignette overlay to punch up the cinematic feel */
@@ -51,6 +61,12 @@
   height: 100%;
   object-fit: cover;
   object-position: center top;
+  animation: evictPhotoZoom 3.5s ease-out forwards;
+}
+
+@keyframes evictPhotoZoom {
+  from { transform: scale(1.08); }
+  to   { transform: scale(1.0); }
 }
 
 .eviction-splash__fallback {
@@ -108,10 +124,13 @@
 /* ── Reduce motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .eviction-splash,
+  .eviction-splash--fading,
   .eviction-splash__photo-wrap,
+  .eviction-splash__photo,
   .eviction-splash__content {
     animation: none !important;
   }
   .eviction-splash { opacity: 1; }
+  .eviction-splash--fading { opacity: 1; }
   .eviction-splash__photo-wrap { transition: none !important; }
 }
