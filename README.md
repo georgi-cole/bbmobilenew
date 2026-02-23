@@ -294,7 +294,7 @@ The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, 
 | Phase              | Trigger condition                       | Announcement shown            |
 |--------------------|-----------------------------------------|-------------------------------|
 | `nominations`      | any alive count                         | Nomination Ceremony           |
-| `pov_ceremony`     | alive count > 4                         | Veto Ceremony                 |
+| `pov_ceremony`     | alive count !== 4                       | Veto Ceremony                 |
 | `pov_ceremony`     | alive count === 4                       | Final 4 — Veto Ceremony       |
 | `live_vote`        | any alive count                         | Live Eviction                 |
 | `final3`           | alive count === 3                       | Final 3                       |

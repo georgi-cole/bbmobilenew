@@ -182,10 +182,13 @@ export default function TvZone() {
       }
     } else {
       // Entering a non-popup phase: clear any stale phase announcement.
+      // Also clear the dismissed guard so the same phase can show its popup again in a later week.
+      if (dismissedPhase && currentPhase !== dismissedPhase) {
+        setDismissedPhase(null);
+      }
       setPhaseAnnouncement(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState.phase, alivePlayers.length]);
+  }, [gameState.phase, alivePlayers.length, dismissedPhase]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
