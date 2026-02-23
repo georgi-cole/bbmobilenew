@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -108,30 +108,25 @@ export default function TvZone() {
   const latestEvent = gameState.tvFeed[0];
 
   // ── Announcement state ──────────────────────────────────────────────────────
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Announcement | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   // Keep the modal key alive independently so the modal stays open even if
   // the overlay dismisses (e.g. via auto-dismiss) while the user is reading.
   const [modalAnnouncementKey, setModalAnnouncementKey] = useState<string | null>(null);
-  const lastAnnouncedIdRef = useRef<string | null>(null);
+  // Track which event the user has manually dismissed so the overlay doesn't
+  // reappear for the same event after dismissal.
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
 
-  // Derive announcement from latest event; clear overlay when no major key
-  useEffect(() => {
-    if (!latestEvent) {
-      setActiveAnnouncement(null);
-      return;
-    }
-    if (latestEvent.id === lastAnnouncedIdRef.current) return;
-    lastAnnouncedIdRef.current = latestEvent.id;
+  // Derive the active announcement directly during render — no effect needed.
+  const activeAnnouncement = useMemo<Announcement | null>(() => {
+    if (!latestEvent) return null;
+    if (latestEvent.id === dismissedEventId) return null;
     const majorKey = extractMajorKey(latestEvent);
-    if (majorKey) {
-      setActiveAnnouncement(buildAnnouncement(majorKey, latestEvent));
-    } else {
-      setActiveAnnouncement(null);
-    }
-  }, [latestEvent]);
+    return majorKey ? buildAnnouncement(majorKey, latestEvent) : null;
+  }, [latestEvent, dismissedEventId]);
 
-  const handleDismiss = useCallback(() => setActiveAnnouncement(null), []);
+  const handleDismiss = useCallback(() => {
+    if (latestEvent) setDismissedEventId(latestEvent.id);
+  }, [latestEvent]);
   const handleInfo = useCallback(() => {
     if (activeAnnouncement) setModalAnnouncementKey(activeAnnouncement.key);
     setModalOpen(true);

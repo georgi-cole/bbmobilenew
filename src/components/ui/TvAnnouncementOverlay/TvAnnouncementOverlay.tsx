@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './TvAnnouncementOverlay.css';
 
 export interface Announcement {
@@ -43,35 +43,44 @@ export default function TvAnnouncementOverlay({
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
+  // Stable ref to the tick function — updated after every render via
+  // useLayoutEffect so it always closes over the latest props/state.
+  // Using a ref avoids the self-referencing useCallback pattern that the
+  // react-hooks/immutability rule rejects.
+  const tickRef = useRef<() => void>(() => {});
 
   const isPaused = () => hoverPausedRef.current || paused;
 
-  const tick = useCallback(() => {
-    if (!isAuto) return;
-    const now = performance.now();
-    const delta = now - startTimeRef.current;
-    startTimeRef.current = now;
-    elapsedRef.current += delta;
+  // Keep tickRef.current pointing at the latest implementation.
+  // useLayoutEffect runs synchronously after DOM mutations but before any
+  // browser paint or RAF callbacks, ensuring the function is always fresh.
+  useLayoutEffect(() => {
+    tickRef.current = () => {
+      if (!isAuto) return;
+      const now = performance.now();
+      const delta = now - startTimeRef.current;
+      startTimeRef.current = now;
+      elapsedRef.current += delta;
 
-    const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
-    const p = remaining / (autoDismissMs as number);
-    setProgress(p);
+      const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
+      setProgress(remaining / (autoDismissMs as number));
 
-    if (remaining <= 0) {
-      onDismiss();
-      return;
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, [isAuto, autoDismissMs, onDismiss]);
+      if (remaining <= 0) {
+        onDismiss();
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tickRef.current);
+    };
+  }); // No deps — intentionally runs after every render
 
-  // Start the RAF countdown on mount
+  // Start the RAF countdown when isAuto becomes true
   useEffect(() => {
     if (!isAuto) return;
     startTimeRef.current = performance.now();
     elapsedRef.current = 0;
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tickRef.current);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isAuto, tick]);
+  }, [isAuto]); // tickRef is a stable ref object; .current is always fresh
 
   // Cancel/restart RAF when `paused` prop changes
   useEffect(() => {
@@ -80,9 +89,9 @@ export default function TvAnnouncementOverlay({
       cancelAnimationFrame(rafRef.current);
     } else {
       startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
     }
-  }, [paused, isAuto, tick]);
+  }, [paused, isAuto]); // tickRef is a stable ref object; .current is always fresh
 
   const handleMouseEnter = () => {
     hoverPausedRef.current = true;
@@ -93,7 +102,7 @@ export default function TvAnnouncementOverlay({
     hoverPausedRef.current = false;
     if (!isPaused()) {
       startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
     }
   };
   const handleFocus = () => {
@@ -105,7 +114,7 @@ export default function TvAnnouncementOverlay({
     hoverPausedRef.current = false;
     if (!isPaused()) {
       startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tickRef.current);
     }
   };
 
