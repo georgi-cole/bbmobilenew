@@ -107,9 +107,10 @@ export default function ActionCard({
       onFocus={() => !isDisabled && onHoverFocus?.(id)}
       data-action-id={id}
     >
-      <span className="ac-card__title">{title}</span>
-
-      {description && <span className="ac-card__description">{description}</span>}
+      <div className="ac-card__header">
+        {action.icon && <span className="ac-card__icon" aria-hidden="true">{action.icon}</span>}
+        <span className="ac-card__title">{title}</span>
+      </div>
 
       <div className="ac-card__chips">
         {energyCost > 0 && (
@@ -128,6 +129,10 @@ export default function ActionCard({
           </span>
         )}
       </div>
+
+      {(description ?? action.description) && (
+        <span className="ac-card__description">{description ?? action.description}</span>
+      )}
 
       {availabilityHint && (
         <span className="ac-badge" aria-label={`Requirement: ${availabilityHint}`}>

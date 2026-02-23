@@ -15,18 +15,18 @@ export interface RecentActivityProps {
   maxEntries?: number;
 }
 
-/** Format a numeric score as a signed two-decimal string, e.g. "+0.10" or "-0.15". */
-function formatScore(score: number): string {
-  return `${score >= 0 ? '+' : ''}${score.toFixed(2)}`;
+/** Map a delta value to ✓/✗/– icon. */
+function getResultIcon(entry: { delta: number }): string {
+  if (entry.delta > 0) return '✓';
+  if (entry.delta < 0) return '✗';
+  return '–';
 }
 
-/** Map a delta value to a short human-readable result label. */
-function getResultLabel(entry: { delta: number; label?: string }): string {
-  // Prefer evaluator label when present in the log entry.
-  if (entry.label) return entry.label;
-  if (entry.delta > 0) return 'Good';
-  if (entry.delta < 0) return 'Bad';
-  return 'Unmoved';
+/** CSS modifier for the icon based on outcome. */
+function getResultClass(entry: { delta: number }): string {
+  if (entry.delta > 0) return 'positive';
+  if (entry.delta < 0) return 'negative';
+  return 'neutral';
 }
 
 /** Format a Unix timestamp as a relative "X ago" string. */
@@ -84,28 +84,21 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
           {visibleLogs.map((entry, i) => {
             const actionTitle = getActionById(entry.actionId)?.title ?? entry.actionId;
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
-            const resultLabel = getResultLabel(entry);
+            const icon = getResultIcon(entry);
+            const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
-            const scoreText = entry.score !== undefined ? ` ${formatScore(entry.score)}` : '';
+            const deltaText = entry.delta !== 0 ? ` ${sign}${entry.delta}` : '';
             return (
               <li key={`${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`} className="ra-entry">
+                <span className={`ra-entry__icon ra-entry__icon--${resultClass}`} aria-hidden="true">
+                  {icon}
+                </span>
+                <span className="ra-entry__narrative">
+                  {actionTitle} → {targetName}
+                  {deltaText && <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>{deltaText}</span>}
+                </span>
                 <span className="ra-entry__time" aria-label={`Time: ${getRelativeTime(entry.timestamp)}`}>
                   {getRelativeTime(entry.timestamp)}
-                </span>
-                <span className="ra-entry__action">{actionTitle}</span>
-                <span
-                  className={`ra-entry__result ra-entry__result--${resultLabel.toLowerCase()}`}
-                  aria-label={`Result: ${resultLabel}${scoreText}`}
-                >
-                  {resultLabel}{scoreText}
-                </span>
-                {entry.delta !== 0 && (
-                  <span className="ra-entry__delta" aria-label={`Delta: ${sign}${entry.delta}`}>
-                    {sign}{entry.delta}
-                  </span>
-                )}
-                <span className="ra-entry__target" aria-label={`Target: ${targetName}`}>
-                  {targetName}
                 </span>
               </li>
             );

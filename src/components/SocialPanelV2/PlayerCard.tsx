@@ -1,5 +1,6 @@
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import type { Player } from '../../types';
+import { getRelationshipLabel } from './relationshipUtils';
 import './PlayerCard.css';
 
 interface PlayerCardProps {
@@ -15,7 +16,7 @@ interface PlayerCardProps {
 /**
  * PlayerCard — selectable card for a single houseguest in the social phase roster.
  *
- * Renders an avatar, name, status pill, and optional affinity percent.
+ * Renders an avatar, name, status pill, relationship label, and optional affinity percent.
  * Keyboard accessible: responds to Enter and Space.
  */
 export default function PlayerCard({
@@ -32,6 +33,8 @@ export default function PlayerCard({
   ]
     .filter(Boolean)
     .join(' ');
+
+  const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null;
 
   function handleClick(e: React.MouseEvent) {
     if (disabled) return;
@@ -61,6 +64,9 @@ export default function PlayerCard({
       <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
         {player.status}
       </span>
+      {rel && (
+        <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
+      )}
       <span className="pc__affinity">
         {affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—'}
       </span>

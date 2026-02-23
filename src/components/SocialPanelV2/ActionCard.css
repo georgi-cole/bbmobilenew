@@ -68,6 +68,19 @@
   pointer-events: none;
 }
 
+/* ── Header (icon + title) ──────────────────────────────────────────────────  */
+.ac-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ac-card__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 /* ── Title ──────────────────────────────────────────────────────────────────  */
 .ac-card__title {
   font-size: 0.82rem;

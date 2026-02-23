@@ -77,6 +77,23 @@
   color: var(--color-text-muted, rgba(255, 255, 255, 0.35));
 }
 
+/* ── Relationship label ───────────────────────────────────────────────────── */
+.epv__rel-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.epv__rel-label--neutral  { background: rgba(99, 179, 237, 0.12); color: #63b3ed; }
+.epv__rel-label--friendly { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.epv__rel-label--allies   { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.epv__rel-label--strained { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+.epv__rel-label--enemies  { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+
 /* ── Affinity row ────────────────────────────────────────────────────────── */
 .epv__affinity-row {
   display: flex;

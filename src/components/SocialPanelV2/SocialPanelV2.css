@@ -110,6 +110,12 @@
   flex: 1;
 }
 
+@media (max-width: 600px) {
+  .sp2-body {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sp2-column {
   background: var(--color-card-2, #1a2336);
   border: 1px solid rgba(255, 255, 255, 0.06);
