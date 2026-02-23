@@ -156,12 +156,14 @@ describe('SocialPanelV2 – layout', () => {
 
   it('renders the Recent Activity log above the footer', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByLabelText('Recent Activity log')).toBeDefined();
   });
 
   it('Recent Activity log is outside the Action grid column', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     const actionsColumn = screen.getByLabelText('Action grid');
     const recentLog = screen.getByLabelText('Recent Activity log');

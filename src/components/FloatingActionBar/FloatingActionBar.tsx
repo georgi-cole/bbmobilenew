@@ -38,13 +38,18 @@ export default function FloatingActionBar() {
   const [isFlashing, setIsFlashing] = useState(false);
   const prevEnergyRef = useRef(humanEnergy);
   useEffect(() => {
-    if (humanEnergy !== null && humanEnergy !== prevEnergyRef.current) {
-      setIsFlashing(true);
-      const timer = setTimeout(() => setIsFlashing(false), 600);
+    if (humanEnergy === null || humanEnergy === prevEnergyRef.current) {
       prevEnergyRef.current = humanEnergy;
-      return () => clearTimeout(timer);
+      return;
     }
     prevEnergyRef.current = humanEnergy;
+    // Defer to avoid synchronous setState inside an effect body.
+    const flashOn = setTimeout(() => setIsFlashing(true), 0);
+    const flashOff = setTimeout(() => setIsFlashing(false), 600);
+    return () => {
+      clearTimeout(flashOn);
+      clearTimeout(flashOff);
+    };
   }, [humanEnergy]);
 
   return (

@@ -2,12 +2,17 @@
  * Tests for SocialPanelV2 session log transfer on close.
  *
  * Covers:
- *  1. Closing the panel when sessionLogs exist dispatches one consolidated
- *     diary entry to game.tvFeed.
- *  2. The consolidated diary entry has type 'diary'.
- *  3. The consolidated entry text includes actor/target names and action outcome.
+ *  1. Closing the panel when sessionLogs exist dispatches one diary entry per
+ *     action to game.tvFeed.
+ *  2. Each diary entry has type 'diary'.
+ *  3. Each diary entry text includes actor → target, action, outcome, and week.
  *  4. social.sessionLogs are cleared after the panel is closed.
  *  5. No diary entry is added when sessionLogs is empty on close.
+ *  6. Multiple session logs (3) each produce their own diary entry (N logs → N diary entries).
+ *  7. A 'social' type TV event is dispatched on close when sessionLogs exist.
+ *  8. The TV close message is one of the preset messages from TV_SOCIAL_CLOSE_MESSAGES.
+ *  9. No 'social' type TV event is dispatched when sessionLogs is empty on close.
+ * 10. AI-initiated logs (actorId !== humanId) are not written as diary entries.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -18,6 +23,7 @@ import gameReducer from '../../../store/gameSlice';
 import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
 import SocialPanelV2 from '../SocialPanelV2';
+import { TV_SOCIAL_CLOSE_MESSAGES } from '../socialNarratives';
 import type { RootState } from '../../../store/store';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -59,7 +65,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     store.dispatch(openSocialPanel());
   });
 
-  it('adds one consolidated diary entry to tvFeed when sessionLogs exist on close', () => {
+  it('adds one diary entry to tvFeed per session log when sessionLogs exist on close', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -81,11 +87,11 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    // Exactly one consolidated entry should have been added.
+    // Exactly one diary entry per session log (1 log → 1 diary entry).
     expect(diaryCountAfter).toBe(diaryCountBefore + 1);
   });
 
-  it('consolidated diary entry has type "diary"', () => {
+  it('diary entry has type "diary"', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -105,11 +111,13 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const feed = store.getState().game.tvFeed;
-    // addTvEvent prepends; newest entry is at index 0
-    expect(feed[0].type).toBe('diary');
+    // The first diary-type entry should exist and have type 'diary'.
+    const diaryEntry = feed.find((e) => e.type === 'diary');
+    expect(diaryEntry).toBeDefined();
+    expect(diaryEntry!.type).toBe('diary');
   });
 
-  it('consolidated entry text includes actor → target and outcome', () => {
+  it('diary entry text includes actor → target, outcome and week', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -128,12 +136,13 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     renderPanel(store);
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
-    // addTvEvent prepends; newest entry is at index 0
-    const entry = store.getState().game.tvFeed[0];
-    expect(entry.text).toContain('→');
-    expect(entry.text).toContain('success');
+    const feed = store.getState().game.tvFeed;
+    const diaryEntry = feed.find((e) => e.type === 'diary');
+    expect(diaryEntry).toBeDefined();
+    expect(diaryEntry!.text).toContain('→');
+    expect(diaryEntry!.text).toContain('success');
     // Should mention week
-    expect(entry.text).toContain('Week');
+    expect(diaryEntry!.text).toContain('Week');
   });
 
   it('clears social.sessionLogs after close', () => {
@@ -170,7 +179,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     expect(diaryCountAfter).toBe(diaryCountBefore);
   });
 
-  it('adds multiple action summaries in a single consolidated entry', () => {
+  it('multiple session logs produce one diary entry each', () => {
     for (let i = 0; i < 3; i++) {
       store.dispatch(
         recordSocialAction({
@@ -189,13 +198,105 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     }
 
     renderPanel(store);
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
-    const feed = store.getState().game.tvFeed;
-    // addTvEvent prepends; newest entry is at index 0
-    const newEntry = feed[0];
-    expect(newEntry.type).toBe('diary');
-    // The separator '|' should appear twice for 3 actions
-    expect((newEntry.text.match(/\|/g) ?? []).length).toBe(2);
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    // 3 session logs → 3 individual diary entries.
+    expect(diaryCountAfter).toBe(diaryCountBefore + 3);
+  });
+
+  it('dispatches a social type TV event on close when sessionLogs exist', () => {
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: humanId,
+          targetId: otherPlayerId,
+          cost: 1,
+          delta: 5,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    renderPanel(store);
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    expect(socialCountAfter).toBe(socialCountBefore + 1);
+  });
+
+  it('TV close message text is one of the preset messages', () => {
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: humanId,
+          targetId: otherPlayerId,
+          cost: 1,
+          delta: 5,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    renderPanel(store);
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    // The social message is the newest entry (index 0) since it is dispatched last.
+    const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social');
+    expect(socialEntry).toBeDefined();
+    expect(TV_SOCIAL_CLOSE_MESSAGES).toContain(socialEntry!.text);
+  });
+
+  it('does not dispatch a social type TV event when sessionLogs is empty on close', () => {
+    renderPanel(store);
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    expect(socialCountAfter).toBe(socialCountBefore);
+  });
+
+  it('AI-initiated logs are not written as diary entries and do not trigger a social TV event', () => {
+    const aiPlayer = store.getState().game.players.find((p) => !p.isUser && p.id !== otherPlayerId);
+    expect(aiPlayer).toBeDefined();
+    const aiPlayerId = aiPlayer!.id;
+    // Record a log where an AI player is the actor (not the human)
+    store.dispatch(
+      recordSocialAction({
+        entry: {
+          actionId: 'compliment',
+          actorId: aiPlayerId,
+          targetId: otherPlayerId,
+          cost: 1,
+          delta: 3,
+          outcome: 'success',
+          newEnergy: 4,
+          timestamp: Date.now(),
+        },
+      }),
+    );
+
+    renderPanel(store);
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+
+    // No diary entry and no social TV message — the only actor is AI, not the human player.
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    expect(diaryCountAfter).toBe(diaryCountBefore);
+    expect(socialCountAfter).toBe(socialCountBefore);
   });
 });

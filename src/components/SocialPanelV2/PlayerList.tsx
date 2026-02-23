@@ -19,6 +19,12 @@ interface PlayerListProps {
    * manages selection internally (uncontrolled mode — backwards-compatible).
    */
   selectedIds?: ReadonlySet<string>;
+  /**
+   * Per-target relationship deltas accumulated this session (actorId → sum of
+   * delta values from sessionLogs). Used to render the delta arrow in the
+   * expanded PlayerCard view.
+   */
+  deltasByTargetId?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -40,6 +46,7 @@ export default function PlayerList({
   disabledIds = [],
   onSelectionChange,
   selectedIds: controlledSelectedIds,
+  deltasByTargetId,
 }: PlayerListProps) {
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const lastFocusedIndexRef = useRef<number>(-1);
@@ -136,6 +143,7 @@ export default function PlayerList({
                 }
               }}
               affinity={affinity}
+              affinityDelta={deltasByTargetId?.get(player.id)}
             />
           </div>
         );

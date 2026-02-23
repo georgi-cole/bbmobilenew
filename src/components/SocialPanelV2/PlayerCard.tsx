@@ -11,6 +11,12 @@ interface PlayerCardProps {
   onSelect: (playerId: string, additive: boolean, shiftKey: boolean) => void;
   /** Optional affinity percentage toward the human player. Clamped to 0–100 before display. */
   affinity?: number;
+  /**
+   * Relationship delta accumulated this session (sum of action deltas for this
+   * actor→target pair). Positive → green up arrow, negative → red down arrow,
+   * zero or undefined → hidden.
+   */
+  affinityDelta?: number;
 }
 
 /**
@@ -27,6 +33,7 @@ export default function PlayerCard({
   disabled,
   onSelect,
   affinity,
+  affinityDelta,
 }: PlayerCardProps) {
   const classes = [
     'pc',
@@ -82,6 +89,14 @@ export default function PlayerCard({
             <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
           )}
           <span className="pc__expanded-affinity">{affinityDisplay}</span>
+          {affinityDelta !== undefined && affinityDelta !== 0 && (
+            <span
+              className={`pc__delta-arrow pc__delta-arrow--${affinityDelta > 0 ? 'up' : 'down'}`}
+              aria-label={affinityDelta > 0 ? 'Relationship improved' : 'Relationship declined'}
+            >
+              {affinityDelta > 0 ? '↑' : '↓'}
+            </span>
+          )}
           <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
         </div>
       )}
