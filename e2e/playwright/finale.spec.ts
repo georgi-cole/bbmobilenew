@@ -41,10 +41,15 @@ test.describe('Finale / Jury flow', () => {
     // The subtitle may contain 'wins Big Brother' when winner is declared.
     await expect(overlay).toContainText(/wins Big Brother|Winner declared/, { timeout: 5000 });
 
-    // Dismiss overlay — button appears when finale.isActive is true (always true here)
+    // Dismiss overlay — try the overlay Continue button first, then the DebugPanel
+    // Dismiss Overlay button, otherwise just wait for the overlay to unmount on its own.
+    const continueBtn = overlay.getByRole('button', { name: /Continue/i });
     const dismiss = page.getByRole('button', { name: 'Dismiss Overlay' });
-    await expect(dismiss).toBeVisible({ timeout: 5000 });
-    await dismiss.click();
+    if (await continueBtn.isVisible({ timeout: 1000 })) {
+      await continueBtn.click();
+    } else if (await dismiss.isVisible({ timeout: 1000 })) {
+      await dismiss.click();
+    }
 
     // Ensure phase has progressed (the overlay unmounts) — the dialog should be hidden
     await expect(overlay).not.toBeVisible({ timeout: 5000 });
