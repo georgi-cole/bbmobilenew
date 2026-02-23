@@ -6,17 +6,19 @@
  *  2. Has role="button" and aria-pressed.
  *  3. Calls onSelect on click.
  *  4. Calls onSelect with additive=true when Ctrl key is held.
- *  5. Calls onSelect on Enter / Space keydown.
- *  6. Does not call onSelect when disabled.
- *  7. Renders affinity when provided.
- *  8. Does not render affinity when not provided.
+ *  5. Calls onSelect with additive=true when Meta (Cmd) key is held.
+ *  6. Calls onSelect on Enter / Space keydown.
+ *  7. Does not call onSelect when disabled.
+ *  8. Renders affinity when provided (clamped to 0–100).
+ *  9. Does not render affinity when not provided.
  *
  * PlayerList covers:
- *  9.  Renders a card for each player.
- * 10. Single-click selects only that player.
- * 11. Ctrl+click toggles multi-select.
- * 12. Arrow key navigation moves focus.
- * 13. onSelectionChange callback is fired.
+ * 10. Renders a card for each player.
+ * 11. Single-click selects only that player.
+ * 12. Ctrl+click toggles multi-select.
+ * 13. Shift+click performs range selection.
+ * 14. Arrow key navigation moves focus.
+ * 15. onSelectionChange callback is fired.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -94,6 +96,16 @@ describe('PlayerCard', () => {
     expect(onSelect).toHaveBeenCalledWith('p99', true, false);
   });
 
+  it('calls onSelect with additive=true on Meta+click', () => {
+    const onSelect = vi.fn();
+    const player = makePlayer({ id: 'p99', name: 'Alice' });
+    render(
+      <PlayerCard player={player} selected={false} disabled={false} onSelect={onSelect} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /alice/i }), { metaKey: true });
+    expect(onSelect).toHaveBeenCalledWith('p99', true, false);
+  });
+
   it('calls onSelect on Enter keydown', () => {
     const onSelect = vi.fn();
     const player = makePlayer({ id: 'p99', name: 'Alice' });
@@ -131,6 +143,22 @@ describe('PlayerCard', () => {
       <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={72} />,
     );
     expect(screen.getByText('72%')).toBeDefined();
+  });
+
+  it('clamps affinity above 100 to 100%', () => {
+    const player = makePlayer();
+    render(
+      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={150} />,
+    );
+    expect(screen.getByText('100%')).toBeDefined();
+  });
+
+  it('clamps affinity below 0 to 0%', () => {
+    const player = makePlayer();
+    render(
+      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={-10} />,
+    );
+    expect(screen.getByText('0%')).toBeDefined();
   });
 
   it('does not render affinity when not provided', () => {
@@ -185,5 +213,42 @@ describe('PlayerList', () => {
     render(<PlayerList players={players} onSelectionChange={onSelectionChange} />);
     fireEvent.click(screen.getByRole('button', { name: /carol/i }));
     expect(onSelectionChange).toHaveBeenCalled();
+  });
+
+  it('supports shift-click range selection between players', () => {
+    const onSelectionChange = vi.fn();
+    render(<PlayerList players={players} onSelectionChange={onSelectionChange} />);
+
+    // First click Alice to set the selection anchor.
+    fireEvent.click(screen.getByRole('button', { name: /alice/i }));
+
+    // Then shift-click Carol to select the contiguous range [Alice, Bob, Carol].
+    fireEvent.click(screen.getByRole('button', { name: /carol/i }), { shiftKey: true });
+
+    const lastCall = onSelectionChange.mock.calls.at(-1)?.[0] as Set<string>;
+    expect(lastCall.has('a')).toBe(true);
+    expect(lastCall.has('b')).toBe(true);
+    expect(lastCall.has('c')).toBe(true);
+    expect(lastCall.size).toBe(3);
+  });
+
+  it('arrow key navigation moves focus to the next card', () => {
+    render(<PlayerList players={players} />);
+    const aliceBtn = screen.getByRole('button', { name: /alice/i });
+    const bobBtn = screen.getByRole('button', { name: /bob/i });
+
+    aliceBtn.focus();
+    fireEvent.keyDown(aliceBtn.parentElement!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(bobBtn);
+  });
+
+  it('arrow key navigation moves focus to the previous card', () => {
+    render(<PlayerList players={players} />);
+    const aliceBtn = screen.getByRole('button', { name: /alice/i });
+    const bobBtn = screen.getByRole('button', { name: /bob/i });
+
+    bobBtn.focus();
+    fireEvent.keyDown(bobBtn.parentElement!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(aliceBtn);
   });
 });

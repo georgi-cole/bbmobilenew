@@ -21,8 +21,9 @@ interface PlayerListProps {
  * Selection semantics:
  *  - Single click → replaces selection with the clicked player.
  *  - Ctrl/Cmd + click → toggles the clicked player in/out of selection.
- *  - Shift + click → range-selects from the last-focused index to the clicked index.
- *  - Arrow Up/Down → moves keyboard focus.
+ *  - Shift + click → range-selects from the last-focused index to the clicked index
+ *    (disabled players in the range are skipped).
+ *  - Arrow Up/Down → moves keyboard focus between cards.
  *  - Enter / Space → toggles selection (additive when Ctrl/Cmd is held).
  */
 export default function PlayerList({
@@ -34,7 +35,7 @@ export default function PlayerList({
 }: PlayerListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastFocusedIndexRef = useRef<number>(-1);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const updateSelection = useCallback(
     (next: Set<string>) => {
@@ -56,31 +57,43 @@ export default function PlayerList({
   }
 
   function handleShiftSelect(clickedIndex: number) {
+    const disabledSet = new Set(disabledIds);
+    const clickedPlayer = players[clickedIndex];
+    if (clickedPlayer && disabledSet.has(clickedPlayer.id)) return;
+
     const anchor = lastFocusedIndexRef.current < 0 ? 0 : lastFocusedIndexRef.current;
     const lo = Math.min(anchor, clickedIndex);
     const hi = Math.max(anchor, clickedIndex);
-    const rangeIds = players.slice(lo, hi + 1).map((p) => p.id);
+    const rangeIds = players
+      .slice(lo, hi + 1)
+      .filter((p) => !disabledSet.has(p.id))
+      .map((p) => p.id);
+    if (rangeIds.length === 0) return;
     updateSelection(new Set(rangeIds));
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>, index: number) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = Math.min(index + 1, players.length - 1);
-      itemRefs.current[next]?.focus();
-      lastFocusedIndexRef.current = next;
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prev = Math.max(index - 1, 0);
-      itemRefs.current[prev]?.focus();
-      lastFocusedIndexRef.current = prev;
-    }
+  function handleContainerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const buttons = Array.from(
+      containerRef.current?.querySelectorAll<HTMLElement>('[role="button"]') ?? [],
+    );
+    if (buttons.length === 0) return;
+    const idx = buttons.indexOf(document.activeElement as HTMLElement);
+    const next =
+      idx === -1
+        ? e.key === 'ArrowDown' ? 0 : buttons.length - 1
+        : e.key === 'ArrowDown'
+          ? Math.min(idx + 1, buttons.length - 1)
+          : Math.max(idx - 1, 0);
+    buttons[next]?.focus();
+    lastFocusedIndexRef.current = next;
   }
 
   return (
-    <div className="pl" role="listbox" aria-multiselectable="true">
+    <div ref={containerRef} onKeyDown={handleContainerKeyDown}>
       {players.map((player, index) => {
-        const disabled = (disabledIds as string[]).includes(player.id);
+        const disabled = disabledIds.includes(player.id);
 
         // Affinity: the human's perception of this player (human → player relationship).
         let affinity: number | undefined;
@@ -92,28 +105,21 @@ export default function PlayerList({
         }
 
         return (
-          <div
+          <PlayerCard
             key={player.id}
-            role="option"
-            aria-selected={selectedIds.has(player.id)}
-            ref={(el) => { itemRefs.current[index] = el; }}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-          >
-            <PlayerCard
-              player={player}
-              selected={selectedIds.has(player.id)}
-              disabled={disabled}
-              onSelect={(id, additive, shiftKey) => {
+            player={player}
+            selected={selectedIds.has(player.id)}
+            disabled={disabled}
+            onSelect={(id, additive, shiftKey) => {
+              if (shiftKey) {
+                handleShiftSelect(index);
+              } else {
                 lastFocusedIndexRef.current = index;
-                if (shiftKey) {
-                  handleShiftSelect(index);
-                } else {
-                  handleSelect(id, additive);
-                }
-              }}
-              affinity={affinity}
-            />
-          </div>
+                handleSelect(id, additive);
+              }
+            }}
+            affinity={affinity}
+          />
         );
       })}
     </div>

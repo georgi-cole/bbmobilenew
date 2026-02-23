@@ -8,7 +8,7 @@ interface PlayerCardProps {
   disabled: boolean;
   /** Called when the card is activated. additive=true when Ctrl/Cmd is held; shiftKey=true when Shift is held. */
   onSelect: (playerId: string, additive: boolean, shiftKey: boolean) => void;
-  /** Optional affinity percentage (0–100) toward the human player. */
+  /** Optional affinity percentage toward the human player. Clamped to 0–100 before display. */
   affinity?: number;
 }
 
@@ -58,11 +58,11 @@ export default function PlayerCard({
     >
       <PlayerAvatar player={player} size="sm" />
       <span className="pc__name">{player.name}</span>
-      <span className={`pc__status pc__status--${player.status}`}>
+      <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
         {player.status}
       </span>
       {affinity !== undefined && (
-        <span className="pc__affinity">{affinity}%</span>
+        <span className="pc__affinity">{Math.max(0, Math.min(100, affinity))}%</span>
       )}
     </div>
   );
