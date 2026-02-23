@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -67,9 +67,26 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                isLive: true,  autoDismissMs: 4000 },
 };
 
+/** Derives a major key from the event's text when meta/major fields are absent. */
+function detectMajorFromText(ev: TvEvent): string | null {
+  const text = (ev?.text || '').toLowerCase();
+  if (!text) return null;
+  if (/week\s*\d+\s*begins|week start|new week/.test(text)) return 'week_start';
+  if (/\bnominat(?:ion|e)(?:\s+ceremony)?\b/.test(text)) return 'nomination_ceremony';
+  if (/pov ceremony|veto ceremony|veto results/.test(text)) return 'veto_ceremony';
+  if (/(?:veto|pov|power of veto)(?!\s*ceremony)/.test(text)) return 'veto_competition';
+  if (/live eviction|vote now|\bevict(?:ion|ed|s)?\b/.test(text)) return 'live_eviction';
+  if (/final\s*4|final4/.test(text)) return 'final4';
+  if (/final\s*3|final3/.test(text)) return 'final3';
+  if (/final hoh|final_hoh|final hoh decision/.test(text)) return 'final_hoh';
+  if (/jury|jury votes|jury members/.test(text)) return 'jury';
+  if (/twist|twist active|twist announced/.test(text)) return 'twist';
+  return null;
+}
+
 /** Extract the major key from a TvEvent using meta.major or ev.major heuristics. */
 function extractMajorKey(ev: TvEvent): string | null {
-  const key = ev.meta?.major ?? ev.major;
+  const key = ev.meta?.major ?? ev.major ?? detectMajorFromText(ev);
   if (!key) return null;
   return MAJOR_KEYS.has(key) ? key : null;
 }
@@ -106,6 +123,14 @@ export default function TvZone() {
   const navigate = useNavigate();
 
   const latestEvent = gameState.tvFeed[0];
+
+  // ── Development logging ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('TvZone latestEvent:', latestEvent);
+    }
+  }, [latestEvent?.id]);
 
   // ── Announcement state ──────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
