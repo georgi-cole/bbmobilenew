@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
 import './SocialPanelV2.css';
@@ -16,6 +16,11 @@ import './SocialPanelV2.css';
  *   - Two-column body: Player roster (left) / Action grid (right) placeholders
  *   - Sticky footer: Execute button + cost display placeholders
  *   - Minimal internal open/closed state so DebugPanel phase changes re-open it
+ *
+ * Open/close logic: tracks which phase the user last dismissed. The modal is
+ * visible whenever the current phase is a social phase AND differs from the
+ * last-dismissed phase — no useEffect needed, making re-open on phase change
+ * purely derived from state.
  */
 export default function SocialPanelV2() {
   const game = useAppSelector((s) => s.game);
@@ -24,17 +29,16 @@ export default function SocialPanelV2() {
   const humanPlayer = game.players.find((p) => p.isUser);
   const isSocialPhase = game.phase === 'social_1' || game.phase === 'social_2';
 
-  // Auto-open whenever we enter a social phase so the DebugPanel can trigger it.
-  const [open, setOpen] = useState(isSocialPhase && !!humanPlayer);
-  useEffect(() => {
-    if (isSocialPhase && humanPlayer) {
-      setOpen(true);
-    }
-  }, [game.phase, humanPlayer]);
+  // Track which phase the user last closed. The modal is open whenever the
+  // current phase is social and has not been explicitly closed by the user.
+  // Transitioning to a new phase (e.g. social_1 → social_2) clears the closed
+  // state automatically since game.phase no longer matches closedForPhase.
+  const [closedForPhase, setClosedForPhase] = useState<string | null>(null);
+  const open = isSocialPhase && !!humanPlayer && closedForPhase !== game.phase;
 
-  if (!isSocialPhase || !humanPlayer || !open) return null;
+  if (!open) return null;
 
-  const energy = energyBank?.[humanPlayer.id] ?? 0;
+  const energy = energyBank?.[humanPlayer!.id] ?? 0;
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -52,7 +56,7 @@ export default function SocialPanelV2() {
           </div>
           <button
             className="sp2-header__close"
-            onClick={() => setOpen(false)}
+            onClick={() => setClosedForPhase(game.phase)}
             type="button"
             aria-label="Close social panel"
           >
