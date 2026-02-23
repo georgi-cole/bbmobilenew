@@ -143,3 +143,27 @@ describe('ActionCard – ARIA attributes', () => {
     expect(card.getAttribute('aria-pressed')).toBe('true');
   });
 });
+
+describe('ActionCard – hover / focus preview', () => {
+  it('calls onHoverFocus with action id on mouseEnter', () => {
+    const onHoverFocus = vi.fn();
+    render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Compliment/i }));
+    expect(onHoverFocus).toHaveBeenCalledWith('compliment');
+  });
+
+  it('calls onHoverFocus with action id on focus', () => {
+    const onHoverFocus = vi.fn();
+    render(<ActionCard action={baseAction} onHoverFocus={onHoverFocus} />);
+    fireEvent.focus(screen.getByRole('button', { name: /Compliment/i }));
+    expect(onHoverFocus).toHaveBeenCalledWith('compliment');
+  });
+
+  it('does not call onHoverFocus when the card is disabled', () => {
+    const onHoverFocus = vi.fn();
+    render(<ActionCard action={baseAction} disabled onHoverFocus={onHoverFocus} />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Compliment/i }));
+    fireEvent.focus(screen.getByRole('button', { name: /Compliment/i }));
+    expect(onHoverFocus).not.toHaveBeenCalled();
+  });
+});

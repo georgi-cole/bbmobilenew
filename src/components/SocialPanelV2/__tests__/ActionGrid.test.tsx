@@ -7,10 +7,15 @@
  *  3. Calls onPreview with the action id when a Preview button is clicked.
  *  4. Cards in disabledIds are rendered as disabled.
  *  5. The selectedId card has aria-pressed="true"; others have aria-pressed="false".
+ *  6. ArrowRight moves focus to the next action card.
+ *  7. ArrowLeft moves focus to the previous action card.
+ *  8. Hovering a card shows the PreviewPopup with "Select target(s) to preview" when no targets.
+ *  9. Hovering a card shows per-target deltas when selectedTargetIds and players are provided.
+ * 10. Mouse leaving the grid clears the preview.
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import ActionGrid from '../ActionGrid';
 import { SOCIAL_ACTIONS } from '../../../social/socialActions';
 
@@ -77,3 +82,74 @@ describe('ActionGrid – disabled and selected state', () => {
     expect(otherCard.getAttribute('aria-pressed')).toBe('false');
   });
 });
+
+describe('ActionGrid – keyboard navigation', () => {
+  it('ArrowRight moves focus to the next card', () => {
+    render(<ActionGrid />);
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+    });
+    const secondCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[1].title, 'i'),
+    });
+    firstCard.focus();
+    act(() => {
+      fireEvent.keyDown(firstCard.closest('[role="group"]')!, { key: 'ArrowRight' });
+    });
+    expect(document.activeElement).toBe(secondCard);
+  });
+
+  it('ArrowLeft moves focus to the previous card', () => {
+    render(<ActionGrid />);
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+    });
+    const secondCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[1].title, 'i'),
+    });
+    secondCard.focus();
+    act(() => {
+      fireEvent.keyDown(secondCard.closest('[role="group"]')!, { key: 'ArrowLeft' });
+    });
+    expect(document.activeElement).toBe(firstCard);
+  });
+});
+
+describe('ActionGrid – preview popup', () => {
+  it('shows "Select target(s) to preview" when no targets are selected on hover', () => {
+    render(<ActionGrid />);
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+    });
+    fireEvent.mouseEnter(firstCard);
+    expect(screen.getByText('Select target(s) to preview')).toBeDefined();
+  });
+
+  it('shows per-target deltas when selectedTargetIds and players are provided', () => {
+    const players = [{ id: 'p1', name: 'Alice', avatar: '😀', status: 'active' as const }];
+    render(
+      <ActionGrid
+        selectedTargetIds={new Set(['p1'])}
+        players={players}
+      />,
+    );
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+    });
+    fireEvent.mouseEnter(firstCard);
+    expect(screen.getByText('Alice')).toBeDefined();
+  });
+
+  it('clears the preview when the mouse leaves the grid', () => {
+    render(<ActionGrid />);
+    const firstCard = screen.getByRole('button', {
+      name: new RegExp(SOCIAL_ACTIONS[0].title, 'i'),
+    });
+    const grid = firstCard.closest('[role="group"]')!;
+    fireEvent.mouseEnter(firstCard);
+    expect(screen.queryByText('Select target(s) to preview')).not.toBeNull();
+    fireEvent.mouseLeave(grid);
+    expect(screen.queryByText('Select target(s) to preview')).toBeNull();
+  });
+});
+

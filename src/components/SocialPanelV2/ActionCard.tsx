@@ -15,6 +15,12 @@ export interface ActionCardProps {
   onClick?: (actionId: string) => void;
   /** Called with the action id when the "Preview" button is clicked. */
   onPreview?: (actionId: string) => void;
+  /**
+   * Called with the action id when the card is hovered (mouseenter) or receives
+   * keyboard focus. Used by ActionGrid to drive the inline PreviewPopup without
+   * changing the existing `onPreview` / Preview-button semantics.
+   */
+  onHoverFocus?: (actionId: string) => void;
 }
 
 /**
@@ -32,6 +38,7 @@ export default function ActionCard({
   disabledMessage = 'Unavailable',
   onClick,
   onPreview,
+  onHoverFocus,
 }: ActionCardProps) {
   const { id, title, baseCost } = action;
 
@@ -66,6 +73,8 @@ export default function ActionCard({
       aria-pressed={selected}
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
+      onMouseEnter={() => !disabled && onHoverFocus?.(id)}
+      onFocus={() => !disabled && onHoverFocus?.(id)}
       data-action-id={id}
     >
       <span className="ac-card__title">{title}</span>

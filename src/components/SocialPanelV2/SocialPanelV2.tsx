@@ -127,6 +127,8 @@ export default function SocialPanelV2() {
             <ActionGrid
               selectedId={selectedActionId}
               onActionClick={setSelectedActionId}
+              selectedTargetIds={selectedTarget ? new Set([selectedTarget]) : undefined}
+              players={game.players.filter((p) => !p.isUser)}
             />
           </div>
         </div>
