@@ -82,12 +82,12 @@ export const {
 export default socialSlice.reducer;
 
 // Selectors – typed against a minimal shape to avoid circular imports with store.ts
-export const selectSocialBudgets = (state: { social: SocialState }) => state.social.energyBank;
+export const selectSocialBudgets = (state: { social: SocialState }) => state.social?.energyBank;
 /** Alias for selectSocialBudgets – prefer this name in SocialManeuvers contexts. */
-export const selectEnergyBank = (state: { social: SocialState }) => state.social.energyBank;
+export const selectEnergyBank = (state: { social: SocialState }) => state.social?.energyBank;
 export const selectLastSocialReport = (state: { social: SocialState }) =>
-  state.social.lastReport ?? null;
+  state.social?.lastReport ?? null;
 export const selectInfluenceWeights = (state: { social: SocialState }) =>
-  state.social.influenceWeights;
+  state.social?.influenceWeights;
 export const selectSessionLogs = (state: { social: SocialState }) =>
-  state.social.sessionLogs as SocialState['sessionLogs'];
+  state.social?.sessionLogs as SocialState['sessionLogs'];

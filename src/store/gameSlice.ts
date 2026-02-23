@@ -288,6 +288,14 @@ const gameSlice = createSlice({
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
+    /** Persist a social phase summary to the Diary Room log (not the TV feed). */
+    addSocialSummary(state, action: PayloadAction<{ summary: string; week: number }>) {
+      pushEvent(
+        state,
+        `📊 Social Summary (Week ${action.payload.week}): ${action.payload.summary}`,
+        'diary',
+      );
+    },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
     },
@@ -1397,6 +1405,7 @@ export const {
   advanceWeek,
   updatePlayer,
   addTvEvent,
+  addSocialSummary,
   setLive,
   launchMinigame,
   completeMinigame,

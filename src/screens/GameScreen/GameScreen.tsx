@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -18,6 +18,8 @@ import {
   advance,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
+import { selectLastSocialReport } from '../../social/socialSlice'
+import { openSocialSummary, selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
@@ -29,6 +31,8 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
+import SocialPanel from '../../components/SocialPanel/SocialPanel'
+import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
 import './GameScreen.css'
@@ -56,8 +60,21 @@ export default function GameScreen() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const pendingChallenge = useAppSelector(selectPendingChallenge)
+  const lastSocialReport = useAppSelector(selectLastSocialReport)
+  const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
 
   const humanPlayer = game.players.find((p) => p.isUser)
+
+  // ── Auto-open social summary popup when a new report is available ─────────
+  // Track the last report ID we've already opened so we don't re-open on
+  // re-renders or when the user navigates away and returns.
+  const prevReportIdRef = useRef<string | null>(lastSocialReport?.id ?? null)
+  useEffect(() => {
+    if (lastSocialReport && lastSocialReport.id !== prevReportIdRef.current) {
+      prevReportIdRef.current = lastSocialReport.id
+      dispatch(openSocialSummary())
+    }
+  }, [lastSocialReport, dispatch])
 
   // ── Auto-start challenge on competition phase transitions ─────────────────
   // The challenge system (startChallenge / MinigameHost) is the sole owner of
@@ -258,6 +275,11 @@ export default function GameScreen() {
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
   const showTapRace = !showMinigameHost && humanIsParticipant
+
+  // ── Social phase panel ────────────────────────────────────────────────────
+  // Show the SocialPanel for the human player during social_1 and social_2.
+  const isSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
+  const showSocialPanel = isSocialPhase && !!humanPlayer
 
   // Hide Continue button while waiting for any human-only decision modal.
   // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
@@ -467,6 +489,14 @@ export default function GameScreen() {
           onDone={handleEvictionSplashDone}
         />
       )}
+
+      {/* ── Social Phase Panel (human player actions) ────────────────────── */}
+      {showSocialPanel && humanPlayer && (
+        <SocialPanel actorId={humanPlayer.id} />
+      )}
+
+      {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
+      {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}
       {!awaitingHumanDecision && <FloatingActionBar />}
