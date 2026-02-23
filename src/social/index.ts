@@ -59,3 +59,5 @@ export {
   executeAction,
   SocialManeuvers,
 } from './SocialManeuvers';
+export { socialAIDriver } from './socialAIDriver';
+export { dispatchSocialSummary, SocialSummaryBridge } from './SocialSummaryBridge';

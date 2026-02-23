@@ -39,4 +39,18 @@ export const socialConfig = {
   nomBiasBounds: [-0.15, 0.15] as [number, number],
   /** Clamping bounds [min, max] for veto bias values. */
   vetoBiasBounds: [-0.1, 0.2] as [number, number],
+
+  // ── SocialAIDriver ───────────────────────────────────────────────────────
+  /** Milliseconds between AI action ticks. */
+  tickIntervalMs: 375,
+  /** When false the driver stops as soon as all budgets reach 0. */
+  allowOverspend: false,
+  /** Verbose console logging from the AI driver when true. */
+  verbose: false,
+  /**
+   * Safety guard: maximum number of ticks before the driver auto-stops,
+   * regardless of remaining budget. At one tick per 375 ms and at most
+   * 4 actions per player, 30 ticks comfortably covers any realistic phase.
+   */
+  maxTicksPerPhase: 30,
 };
