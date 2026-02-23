@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
+import PlayerList from './PlayerList';
 import './SocialPanelV2.css';
 
 /**
@@ -13,7 +14,7 @@ import './SocialPanelV2.css';
  * Features:
  *   - Backdrop + bottom-sheet modal
  *   - Header: energy chip for the human player + close button
- *   - Two-column body: Player roster (left) / Action grid (right) placeholders
+ *   - Two-column body: Player roster with PlayerList (left) / Action grid placeholder (right)
  *   - Sticky footer: Execute button + cost display placeholders
  *   - Minimal internal open/closed state so DebugPanel phase changes re-open it
  *
@@ -25,6 +26,7 @@ import './SocialPanelV2.css';
 export default function SocialPanelV2() {
   const game = useAppSelector((s) => s.game);
   const energyBank = useAppSelector(selectEnergyBank);
+  const relationships = useAppSelector((s) => s.social?.relationships);
 
   const humanPlayer = game.players.find((p) => p.isUser);
   const isSocialPhase = game.phase === 'social_1' || game.phase === 'social_2';
@@ -66,12 +68,14 @@ export default function SocialPanelV2() {
 
         {/* ── Two-column body ──────────────────────────────────────────────── */}
         <div className="sp2-body">
-          {/* Left column – Player roster placeholder */}
+          {/* Left column – Player roster */}
           <div className="sp2-column" aria-label="Player roster">
             <span className="sp2-column__label">Players</span>
-            <div className="sp2-column__placeholder">
-              Player cards coming soon
-            </div>
+            <PlayerList
+              players={game.players.filter((p) => !p.isUser)}
+              humanPlayerId={humanPlayer!.id}
+              relationships={relationships}
+            />
           </div>
 
           {/* Right column – Action grid placeholder */}

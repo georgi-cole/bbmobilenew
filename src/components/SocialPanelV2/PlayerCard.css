@@ -1,0 +1,101 @@
+/* ─── PlayerCard ─────────────────────────────────────────────────────────────
+ * Selectable houseguest card used inside the SocialPanelV2 roster column.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.pc {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  outline: none;
+}
+
+.pc:hover:not(.pc--disabled) {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.pc:focus-visible {
+  outline: 2px solid var(--color-accent, #6366f1);
+  outline-offset: 2px;
+}
+
+/* ── Selected state ─────────────────────────────────────────────────────── */
+.pc--selected {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Disabled state ─────────────────────────────────────────────────────── */
+.pc--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Name ───────────────────────────────────────────────────────────────── */
+.pc__name {
+  flex: 1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Status pill ────────────────────────────────────────────────────────── */
+.pc__status {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  flex-shrink: 0;
+}
+
+.pc__status--hoh {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--color-gold-primary, #fbbf24);
+}
+
+.pc__status--nominated {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.pc__status--pov {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.pc__status--evicted,
+.pc__status--jury {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.35));
+}
+
+/* ── Affinity percent ───────────────────────────────────────────────────── */
+.pc__affinity {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-accent, #6366f1);
+  flex-shrink: 0;
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .pc {
+    transition: none !important;
+  }
+}
