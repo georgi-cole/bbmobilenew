@@ -158,8 +158,12 @@ export default function SocialPanelV2() {
               actorEnergy={energy}
               relationships={relationships}
             />
-            <RecentActivity players={game.players.filter((p) => !p.isUser)} />
           </div>
+        </div>
+
+        {/* ── Recent Activity – compact fixed-height log above footer ─────── */}
+        <div className="sp2-recent" aria-label="Recent Activity log">
+          <RecentActivity players={game.players.filter((p) => !p.isUser)} />
         </div>
 
         {/* ── Sticky bottom bar ────────────────────────────────────────────── */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectSessionLogs } from '../../social/socialSlice';
 import { getActionById } from '../../social/SocialManeuvers';
@@ -51,12 +51,20 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
   const sessionLogs = useAppSelector(selectSessionLogs);
   // Client-side clear: track the watermark timestamp; only show entries after it.
   const [clearedBefore, setClearedBefore] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
 
   const visibleLogs = sessionLogs
     .filter((e) => e.timestamp > clearedBefore)
     .slice(-maxEntries);
+
+  // Auto-scroll to the newest entry whenever the visible list changes.
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [visibleLogs.length]);
 
   function handleClear() {
     setClearedBefore(Date.now());
@@ -81,7 +89,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       {visibleLogs.length === 0 ? (
         <span className="ra-empty">No recent actions.</span>
       ) : (
-        <ul className="ra-list" aria-label="Recent actions">
+        <ul className="ra-list" ref={listRef} aria-label="Recent actions">
           {visibleLogs.map((entry, i) => {
             const action = getActionById(entry.actionId);
             const actionTitle = action?.title ?? entry.actionId;

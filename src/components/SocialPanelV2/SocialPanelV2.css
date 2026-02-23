@@ -168,6 +168,15 @@
   }
 }
 
+/* ── Recent Activity – compact log above footer ──────────────────────────── */
+.sp2-recent {
+  height: 5.5rem; /* ~88 px — shows ~2–3 activity cards */
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.4rem 0.75rem 0.5rem;
+  overflow: hidden;
+}
+
 /* ── Sticky bottom bar ───────────────────────────────────────────────────── */
 .sp2-footer {
   display: flex;
