@@ -167,6 +167,7 @@ export function executeAction(
     actorId,
     targetIds: targetId,
     mode,
+    outcome,
     relationships: state.social.relationships,
   });
 

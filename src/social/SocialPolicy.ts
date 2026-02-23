@@ -59,6 +59,8 @@ export interface EvaluateOutcomeParams {
   /** One or more target player ids. Score is averaged across all targets. */
   targetIds: string | string[];
   mode: 'preview' | 'execute';
+  /** The action outcome — affects the base score (failure uses smaller deltas). Defaults to 'success'. */
+  outcome?: 'success' | 'failure';
   /** Optional relationship graph for actor/target bias calculation. */
   relationships?: RelationshipsMap;
 }
@@ -162,6 +164,8 @@ function scoreToLabel(score: number): OutcomeLabel {
  * Deterministic in 'preview' mode — same inputs always yield the same score.
  * In 'execute' mode a small configurable RNG jitter is added to mimic legacy
  * variance. Pass the current relationship graph for a richer actor/target bias.
+ * The `outcome` parameter ('success' | 'failure') controls which delta is used
+ * as the base score so score, delta, and label stay consistent.
  */
 export function computeOutcomeScore(
   actionId: string,
@@ -169,15 +173,16 @@ export function computeOutcomeScore(
   targetId: string,
   mode: 'preview' | 'execute',
   relationships?: RelationshipsMap,
+  outcome: 'success' | 'failure' = 'success',
 ): number {
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
   const deltas = socialConfig.affinityDeltas;
 
-  // Base effect derived from action category.
+  // Base effect derived from action category and outcome.
   const baseScore: number = friendlyActions.includes(actionId)
-    ? deltas.friendlySuccess
+    ? outcome === 'success' ? deltas.friendlySuccess : deltas.friendlyFailure
     : aggressiveActions.includes(actionId)
-      ? deltas.aggressiveSuccess
+      ? outcome === 'success' ? deltas.aggressiveSuccess : deltas.aggressiveFailure
       : 0;
 
   // Actor bias: scale by existing affinity from actor toward target.
@@ -203,11 +208,11 @@ export function computeOutcomeScore(
  * Returns an OutcomeResult with score (averaged across targets), label, and magnitude.
  */
 export function evaluateOutcome(params: EvaluateOutcomeParams): OutcomeResult {
-  const { actionId, actorId, targetIds, mode, relationships } = params;
+  const { actionId, actorId, targetIds, mode, outcome = 'success', relationships } = params;
   const targets = Array.isArray(targetIds) ? targetIds : [targetIds];
 
   const scores = targets.map((t) =>
-    computeOutcomeScore(actionId, actorId, t, mode, relationships),
+    computeOutcomeScore(actionId, actorId, t, mode, relationships, outcome),
   );
   const score = scores.reduce((sum, s) => sum + s, 0) / scores.length;
   const label = scoreToLabel(score);

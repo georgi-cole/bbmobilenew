@@ -6,6 +6,7 @@ import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
 import type { PreviewDeltaEntry } from './PreviewPopup';
 import type { Player } from '../../types';
+import type { RelationshipsMap } from '../../social/types';
 
 export interface ActionGridProps {
   /** Called with the action id when a card is clicked/activated. */
@@ -27,7 +28,7 @@ export interface ActionGridProps {
    */
   players?: readonly Player[];
   /**
-   * Id of the acting player (human). Passed to computeOutcomeDelta so each
+   * Id of the acting player (human). Passed to computeOutcomeScore so each
    * delta is computed with the real actor context rather than an empty string.
    */
   actorId?: string;
@@ -38,6 +39,11 @@ export interface ActionGridProps {
    * overlay (backwards-compatible with tests that don't supply energy).
    */
   actorEnergy?: number;
+  /**
+   * Current relationship graph. When provided, preview scores include the
+   * actor→target affinity bias so previews match execution-time scores.
+   */
+  relationships?: RelationshipsMap;
 }
 
 /**
@@ -65,6 +71,7 @@ export default function ActionGrid({
   players,
   actorId = '',
   actorEnergy,
+  relationships,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,7 +123,7 @@ export default function ActionGrid({
       previewDeltas = Array.from(selectedTargetIds).map((targetId) => ({
         targetId,
         targetName: playerById.get(targetId)?.name ?? targetId,
-        delta: computeOutcomeScore(previewActionId, actorId, targetId, 'preview'),
+        delta: computeOutcomeScore(previewActionId, actorId, targetId, 'preview', relationships),
       }));
     }
   }

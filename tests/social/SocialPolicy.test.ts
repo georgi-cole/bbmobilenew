@@ -209,12 +209,6 @@ describe('OUTCOME_THRESHOLDS constants', () => {
 // ── Integration: executeAction wires evaluator ─────────────────────────────
 
 describe('executeAction – evaluator integration', () => {
-  beforeEach(() => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-  });
-
   it('returns score and label fields on success', () => {
     const store = makeStore();
     initManeuvers(store);
@@ -271,16 +265,15 @@ describe('executeAction – evaluator integration', () => {
     expect(r1.label).toBe(r2.label);
   });
 
-  it('label in sessionLog matches expected label for friendly action', () => {
+  it('label in sessionLog is within expected range for friendly action (ally)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
     executeAction('p1', 'p2', 'ally');
     const logs = selectSessionLogs(store.getState());
-    // ally is friendly with friendlySuccess = 0.1, which maps to 'Good'
-    expect(logs[0].label).toBe(
-      socialConfig.affinityDeltas.friendlySuccess >= OUTCOME_THRESHOLDS.good ? 'Great' : 'Good',
-    );
+    // ally is friendly: base score = friendlySuccess (0.1) ± JITTER_MAGNITUDE (0.08)
+    // So score is in [0.02, 0.18] → label is 'Unmoved' or 'Good', never 'Bad' or 'Great'.
+    expect(['Unmoved', 'Good']).toContain(logs[0].label);
   });
 });
