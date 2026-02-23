@@ -1,6 +1,6 @@
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import type { Player } from '../../types';
-import { getRelationshipLabel } from './relationshipUtils';
+import { getRelationshipLabel, getPlayerMood, getMoodClass } from './relationshipUtils';
 import './PlayerCard.css';
 
 interface PlayerCardProps {
@@ -39,6 +39,8 @@ export default function PlayerCard({
   const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null;
   const affinityDisplay =
     affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—';
+  const mood = getPlayerMood(player.id, affinity);
+  const moodClass = getMoodClass(mood);
 
   function handleClick(e: React.MouseEvent) {
     if (disabled) return;
@@ -71,29 +73,16 @@ export default function PlayerCard({
         <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
           {player.status}
         </span>
-        {rel && (
-          <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
-        )}
-        <span className="pc__affinity">{affinityDisplay}</span>
       </div>
 
-      {/* ── Expanded detail panel (visible when selected) ── */}
+      {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
       {selected && (
-        <div className="pc__expanded" aria-label={`${player.name} details`}>
-          <PlayerAvatar player={player} size="md" />
-          <div className="pc__expanded-details">
-            <span className="pc__expanded-name">{player.name}</span>
-            <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
-              {player.status}
-            </span>
-            {rel && (
-              <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
-            )}
-            <span className="pc__expanded-affinity-row">
-              <span className="pc__expanded-affinity-label">Affinity</span>
-              <span className="pc__expanded-affinity">{affinityDisplay}</span>
-            </span>
-          </div>
+        <div className="pc__expanded" aria-label={`${player.name} relationship details`}>
+          {rel && (
+            <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
+          )}
+          <span className="pc__expanded-affinity">{affinityDisplay}</span>
+          <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
         </div>
       )}
     </div>

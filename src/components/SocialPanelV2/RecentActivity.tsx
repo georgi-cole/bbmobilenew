@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectSessionLogs } from '../../social/socialSlice';
 import { getActionById } from '../../social/SocialManeuvers';
+import { getSocialNarrative } from './socialNarratives';
 import type { Player } from '../../types';
 import './RecentActivity.css';
 
@@ -82,20 +83,27 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       ) : (
         <ul className="ra-list" aria-label="Recent actions">
           {visibleLogs.map((entry, i) => {
-            const actionTitle = getActionById(entry.actionId)?.title ?? entry.actionId;
+            const action = getActionById(entry.actionId);
+            const actionTitle = action?.title ?? entry.actionId;
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
             const icon = getResultIcon(entry);
             const resultClass = getResultClass(entry);
             const sign = entry.delta > 0 ? '+' : '';
-            const deltaText = entry.delta !== 0 ? ` ${sign}${entry.delta}` : '';
+            const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
+            const narrative = getSocialNarrative(entry.actionId, targetName, entry.timestamp);
             return (
               <li key={`${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`} className="ra-entry">
                 <span className={`ra-entry__icon ra-entry__icon--${resultClass}`} aria-hidden="true">
                   {icon}
                 </span>
-                <span className="ra-entry__narrative">
-                  {actionTitle} → {targetName}
-                  {deltaText && <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>{deltaText}</span>}
+                <span className="ra-entry__body">
+                  <span className="ra-entry__action-tag">{actionTitle}</span>
+                  <span className="ra-entry__narrative">{narrative}</span>
+                  {deltaText && (
+                    <span className={`ra-entry__delta ra-entry__delta--${resultClass}`}>
+                      {deltaText}
+                    </span>
+                  )}
                 </span>
                 <span className="ra-entry__time" aria-label={`Time: ${getRelativeTime(entry.timestamp)}`}>
                   {getRelativeTime(entry.timestamp)}

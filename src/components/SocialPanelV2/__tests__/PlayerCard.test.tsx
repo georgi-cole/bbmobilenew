@@ -140,7 +140,7 @@ describe('PlayerCard', () => {
   it('renders affinity when provided', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={72} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={72} />,
     );
     expect(screen.getByText('72%')).toBeDefined();
   });
@@ -148,7 +148,7 @@ describe('PlayerCard', () => {
   it('clamps affinity above 100 to 100%', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={150} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={150} />,
     );
     expect(screen.getByText('100%')).toBeDefined();
   });
@@ -156,7 +156,7 @@ describe('PlayerCard', () => {
   it('clamps affinity below 0 to 0%', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} affinity={-10} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} affinity={-10} />,
     );
     expect(screen.getByText('0%')).toBeDefined();
   });
@@ -164,7 +164,7 @@ describe('PlayerCard', () => {
   it('renders "—" for affinity when not provided', () => {
     const player = makePlayer();
     render(
-      <PlayerCard player={player} selected={false} disabled={false} onSelect={() => {}} />,
+      <PlayerCard player={player} selected={true} disabled={false} onSelect={() => {}} />,
     );
     expect(screen.getByText('—')).toBeDefined();
     expect(screen.queryByText(/%/)).toBeNull();
