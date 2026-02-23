@@ -14,6 +14,12 @@ interface Props {
    * When provided a "Skip rules" link is shown (used by debug controls).
    */
   onSkip?: () => void;
+  /**
+   * Optional callback for dismissing the challenge entirely.
+   * When provided an ✕ button is shown in the upper-right corner.
+   * The player is assigned 0 points automatically.
+   */
+  onDismiss?: () => void;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -30,12 +36,22 @@ function formatTime(ms: number): string {
   return `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim();
 }
 
-export default function MinigameRules({ game, onConfirm, onSkip }: Props) {
+export default function MinigameRules({ game, onConfirm, onSkip, onDismiss }: Props) {
   const emoji = CATEGORY_EMOJI[game.category] ?? '🎮';
 
   return (
     <div className="minigame-rules-overlay" role="dialog" aria-modal="true" aria-label={`${game.title} rules`}>
       <div className="minigame-rules-modal">
+        {onDismiss && (
+          <button
+            className="minigame-rules-btn-dismiss"
+            onClick={onDismiss}
+            aria-label="Dismiss challenge (score 0)"
+            title="Dismiss — score 0 points"
+          >
+            ✕
+          </button>
+        )}
         <h2 className="minigame-rules-title">
           {emoji} {game.title}
         </h2>
