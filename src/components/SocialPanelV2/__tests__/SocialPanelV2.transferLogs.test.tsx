@@ -22,7 +22,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../../store/gameSlice';
 import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
-import SocialPanelV2, { TV_SOCIAL_CLOSE_MESSAGES } from '../SocialPanelV2';
+import SocialPanelV2 from '../SocialPanelV2';
+import { TV_SOCIAL_CLOSE_MESSAGES } from '../socialNarratives';
 import type { RootState } from '../../../store/store';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

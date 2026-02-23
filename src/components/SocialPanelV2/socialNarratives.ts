@@ -6,6 +6,20 @@
  * same log entry always renders the same sentence.
  */
 
+// Preset pool of short, playful TV-zone sentences shown when the Social modal closes.
+// One is picked at random so the message stays fresh across sessions.
+// Exported so tests can verify messages are drawn from this pool.
+export const TV_SOCIAL_CLOSE_MESSAGES = [
+  'The house is buzzing after that social session! 🏠',
+  'Alliances are shifting like sand in the Big Brother house… 🌊',
+  "Smooth operator — you've been working that social game! 💬",
+  'The whispers have started. Watch your back! 👀',
+  "Social butterfly in action — who's loyal and who isn't? 🦋",
+  'Every word counts in this house. Choose wisely. 🎙️',
+  'The social web just got a little more tangled. 🕸️',
+  'Another week, another batch of social chess moves. ♟️',
+];
+
 const NARRATIVES: Record<string, string[]> = {
   compliment: [
     "You told {target} their hair smelled like a summer breeze.",

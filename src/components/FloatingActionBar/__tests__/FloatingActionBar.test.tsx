@@ -86,10 +86,11 @@ describe('FloatingActionBar – social button flash animation', () => {
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     renderFAB(store);
 
-    // Change energy — should trigger flash
+    // Change energy — should trigger flash (deferred via setTimeout(0))
     act(() => {
       store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }));
     });
+    act(() => { vi.advanceTimersByTime(0); });
 
     const btn = screen.getByRole('button', { name: /energy: 10/i });
     expect(btn.className).toContain('fab__side-btn--flash');
@@ -114,11 +115,13 @@ describe('FloatingActionBar – social button flash animation', () => {
     const store = makeStore();
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     act(() => { store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 })); });
+    act(() => { vi.advanceTimersByTime(0); }); // flush deferred flash-on from initial change
     renderFAB(store);
 
     act(() => {
       store.dispatch(applyEnergyDelta({ playerId: humanId, delta: -2 }));
     });
+    act(() => { vi.advanceTimersByTime(0); });
 
     const btn = screen.getByRole('button', { name: /energy: 3/i });
     expect(btn.className).toContain('fab__side-btn--flash');
