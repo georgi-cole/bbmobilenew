@@ -25,7 +25,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../../store/gameSlice';
-import socialReducer, { setEnergyBankEntry } from '../../../social/socialSlice';
+import socialReducer, { setEnergyBankEntry, openSocialPanel } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
 import SocialPanelV2 from '../SocialPanelV2';
 import type { RootState } from '../../../store/store';
@@ -85,20 +85,29 @@ describe('SocialPanelV2 – visibility', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('renders during social_1 phase', () => {
+  it('does not render during social_1 unless explicitly opened', () => {
     const store = makeStore({ phase: 'social_1' });
+    renderPanel(store);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('renders during social_1 phase when opened via FAB', () => {
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByRole('dialog')).toBeDefined();
   });
 
-  it('renders during social_2 phase', () => {
+  it('renders during social_2 phase when opened via FAB', () => {
     const store = makeStore({ phase: 'social_2' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByRole('dialog')).toBeDefined();
   });
 
   it('does not render when there is no human player', () => {
     const store = makeStore({ phase: 'social_1', hasHuman: false });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -109,12 +118,14 @@ describe('SocialPanelV2 – energy display', () => {
     const store = makeStore({ phase: 'social_1' });
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 7 }));
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByLabelText(/Energy: 7/)).toBeDefined();
   });
 
   it('shows energy as 0 when no energyBank entry exists', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByLabelText(/Energy: 0/)).toBeDefined();
   });
@@ -123,18 +134,21 @@ describe('SocialPanelV2 – energy display', () => {
 describe('SocialPanelV2 – layout', () => {
   it('renders player roster placeholder', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByLabelText('Player roster')).toBeDefined();
   });
 
   it('renders action grid placeholder', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByLabelText('Action grid')).toBeDefined();
   });
 
   it('renders a disabled Execute button', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
@@ -158,25 +172,27 @@ describe('SocialPanelV2 – layout', () => {
 describe('SocialPanelV2 – close behaviour', () => {
   it('hides the modal when the close button is clicked', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByRole('dialog')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('re-opens when the phase transitions from social_1 to social_2 after closing', () => {
+  it('does not re-open when the phase transitions after closing (FAB-only open)', () => {
     const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
 
     // Close the modal.
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    // Transition to social_2 — modal should re-open.
+    // Phase transition should NOT re-open the panel.
     act(() => {
       store.dispatch(setPhase('social_2'));
     });
-    expect(screen.getByRole('dialog')).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 
@@ -190,6 +206,7 @@ describe('SocialPanelV2 – execute flow', () => {
     store = makeStore({ phase: 'social_1' });
     humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 }));
+    store.dispatch(openSocialPanel());
     initManeuvers(store);
     renderPanel(store);
   });

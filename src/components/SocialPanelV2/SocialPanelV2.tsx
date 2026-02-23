@@ -1,6 +1,15 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { selectEnergyBank, selectInfluenceBank, selectInfoBank, selectSocialPanelOpen, closeSocialPanel } from '../../social/socialSlice';
+import {
+  selectEnergyBank,
+  selectInfluenceBank,
+  selectInfoBank,
+  selectSocialPanelOpen,
+  selectSessionLogs,
+  closeSocialPanel,
+  clearSessionLogs,
+} from '../../social/socialSlice';
+import { addTvEvent } from '../../store/gameSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
@@ -19,12 +28,11 @@ import './SocialPanelV2.css';
  *   - Header: energy chip for the human player + close button
  *   - Two-column body: Player roster with PlayerList (left) / Action grid placeholder (right)
  *   - Sticky footer: Execute button + cost display placeholders
- *   - Minimal internal open/closed state so DebugPanel phase changes re-open it
+ *   - FAB-driven open/close; panel does not auto-open on phase changes
  *
- * Open/close logic: tracks which phase the user last dismissed. The modal is
- * visible whenever the current phase is a social phase AND differs from the
- * last-dismissed phase — no useEffect needed, making re-open on phase change
- * purely derived from state.
+ * Open/close logic: opens exclusively when socialPanelOpen (Redux) is true,
+ * which is set by the FAB 💬 button. The social engine continues to run in
+ * the background; the panel simply won't auto-open anymore.
  */
 export default function SocialPanelV2() {
   const dispatch = useAppDispatch();
@@ -33,21 +41,28 @@ export default function SocialPanelV2() {
   const influenceBank = useAppSelector(selectInfluenceBank);
   const infoBank = useAppSelector(selectInfoBank);
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
+  const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
 
   const humanPlayer = game.players.find((p) => p.isUser);
-  const isSocialPhase = game.phase === 'social_1' || game.phase === 'social_2';
 
-  // Track which phase the user last closed. The modal is open whenever the
-  // current phase is social and has not been explicitly closed by the user.
-  // Transitioning to a new phase (e.g. social_1 → social_2) clears the closed
-  // state automatically since game.phase no longer matches closedForPhase.
-  // socialPanelOpen (Redux) allows the FAB to re-open the panel at any time.
-  const [closedForPhase, setClosedForPhase] = useState<string | null>(null);
-  const open = !!humanPlayer && (socialPanelOpen || (isSocialPhase && closedForPhase !== game.phase));
+  // Panel opens exclusively when the FAB dispatches openSocialPanel().
+  const open = !!humanPlayer && socialPanelOpen;
 
   function handleClose() {
-    setClosedForPhase(game.phase);
+    // Export any accumulated session logs as one consolidated Diary Room entry.
+    if (sessionLogs.length > 0) {
+      const playerNames = new Map(game.players.map((p) => [p.id, p.name]));
+      const lines = sessionLogs.map((log) => {
+        const actor = playerNames.get(log.actorId) ?? log.actorId;
+        const target = playerNames.get(log.targetId) ?? log.targetId;
+        const actionTitle = SocialManeuvers.getActionById(log.actionId)?.title ?? log.actionId;
+        return `${actor} → ${target}: ${actionTitle} (${log.outcome})`;
+      });
+      const text = `📖 Social recap — Week ${game.week}: ${lines.join(' | ')}`;
+      dispatch(addTvEvent({ text, type: 'diary' }));
+      dispatch(clearSessionLogs());
+    }
     dispatch(closeSocialPanel());
   }
 

@@ -63,6 +63,7 @@ export default function TVLog({ entries, mainTVMessage, maxVisible = 3 }: TVLogP
   return (
     <ul
       className="tv-log"
+      data-testid="tv-feed"
       style={{ '--tv-log-max-vis': maxVisible } as React.CSSProperties}
       aria-label="Game event log"
     >
