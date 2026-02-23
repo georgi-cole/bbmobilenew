@@ -54,7 +54,9 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
   const listRef = useRef<HTMLUListElement>(null);
   // Track keys of newly added entries for the highlight animation.
   const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set());
-  const prevLengthRef = useRef(0);
+  // Track the latest entry timestamp seen so new entries are detected even when
+  // maxEntries is at capacity (array length doesn't change in that case).
+  const prevNewestTimestampRef = useRef(0);
 
   const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
 
@@ -72,11 +74,13 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
 
   // Highlight newly added entries briefly.
   useEffect(() => {
-    if (visibleLogs.length > prevLengthRef.current) {
+    const newestTimestamp = visibleLogs.length > 0 ? visibleLogs[visibleLogs.length - 1].timestamp : 0;
+    if (newestTimestamp > prevNewestTimestampRef.current) {
       const newKeys = new Set<string>();
-      for (let i = prevLengthRef.current; i < visibleLogs.length; i++) {
-        const e = visibleLogs[i];
-        newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}-${i}`);
+      for (const e of visibleLogs) {
+        if (e.timestamp > prevNewestTimestampRef.current) {
+          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}`);
+        }
       }
       setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
       const timer = setTimeout(() => {
@@ -86,10 +90,10 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
           return next;
         });
       }, 1200);
-      prevLengthRef.current = visibleLogs.length;
+      prevNewestTimestampRef.current = newestTimestamp;
       return () => clearTimeout(timer);
     }
-    prevLengthRef.current = visibleLogs.length;
+    prevNewestTimestampRef.current = newestTimestamp;
   }, [visibleLogs]);
 
   function handleClear() {
@@ -116,7 +120,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
         <span className="ra-empty">No recent actions.</span>
       ) : (
         <ul className="ra-list" ref={listRef} aria-label="Recent actions">
-          {visibleLogs.map((entry, i) => {
+          {visibleLogs.map((entry) => {
             const action = getActionById(entry.actionId);
             const actionTitle = action?.title ?? entry.actionId;
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
@@ -125,7 +129,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
             const narrative = getSocialNarrative(entry.actionId, targetName, entry.timestamp);
-            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`;
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}`;
             const isNew = highlightedKeys.has(key);
             return (
               <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>

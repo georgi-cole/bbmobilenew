@@ -1,5 +1,8 @@
 /* ─── Toast ──────────────────────────────────────────────────────────────────
  * Slide + fade animation for toast notification components.
+ *
+ * NOTE: This file is preparatory CSS for a future Toast component (Toast.tsx).
+ * Import this file from the Toast component when it is implemented.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /* ── Entry animation ─────────────────────────────────────────────────────── */
