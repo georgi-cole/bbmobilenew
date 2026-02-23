@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectEnergyBank } from '../../social/socialSlice';
 import ActionGrid from './ActionGrid';
+import PlayerList from './PlayerList';
 import './SocialPanelV2.css';
 
 /**
