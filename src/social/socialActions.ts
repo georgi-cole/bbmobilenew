@@ -29,6 +29,11 @@ export interface SocialActionDefinition {
    * Defaults to true (most actions target another player).
    */
   needsTargets?: boolean;
+  /**
+   * Optional short hint displayed as a requirement badge on the action card
+   * (e.g. "Requires 20% affinity"). Pure UI metadata — does not gate execution.
+   */
+  availabilityHint?: string;
 }
 
 /** Canonical list of social actions available in the game. */
@@ -62,6 +67,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: 3,
     successWeight: 1,
     outcomeTag: 'alliance',
+    availabilityHint: 'Requires positive affinity',
   },
   {
     id: 'startFight',
@@ -70,6 +76,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: 3,
     successWeight: 1,
     outcomeTag: 'conflict',
+    availabilityHint: 'Risky — may backfire',
   },
   // Actions referenced by socialConfig.ts (used by SocialPolicy).
   {
@@ -94,6 +101,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: 3,
     successWeight: 1,
     outcomeTag: 'betrayal',
+    availabilityHint: 'High-risk betrayal',
   },
   {
     id: 'nominate',

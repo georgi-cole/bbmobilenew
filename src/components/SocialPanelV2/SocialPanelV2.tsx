@@ -4,6 +4,7 @@ import { selectEnergyBank } from '../../social/socialSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
+import RecentActivity from './RecentActivity';
 import './SocialPanelV2.css';
 
 /**
@@ -130,7 +131,9 @@ export default function SocialPanelV2() {
               selectedTargetIds={selectedTarget ? new Set([selectedTarget]) : undefined}
               players={game.players.filter((p) => !p.isUser)}
               actorId={humanPlayer!.id}
+              actorEnergy={energy}
             />
+            <RecentActivity players={game.players.filter((p) => !p.isUser)} />
           </div>
         </div>
 

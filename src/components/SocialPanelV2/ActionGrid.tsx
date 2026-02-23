@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
+import { normalizeActionCost } from '../../social/smExecNormalize';
 import { computeOutcomeDelta } from '../../social/SocialPolicy';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
@@ -30,6 +31,13 @@ export interface ActionGridProps {
    * delta is computed with the real actor context rather than an empty string.
    */
   actorId?: string;
+  /**
+   * Actor's current energy. When provided, actions are sorted so affordable
+   * ones appear first; unavailable actions are dimmed with a reason badge.
+   * When omitted, actions render in their canonical order with no availability
+   * overlay (backwards-compatible with tests that don't supply energy).
+   */
+  actorEnergy?: number;
 }
 
 /**
@@ -56,6 +64,7 @@ export default function ActionGrid({
   selectedTargetIds,
   players,
   actorId = '',
+  actorEnergy,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +121,29 @@ export default function ActionGrid({
     }
   }
 
+  // Sort actions when actorEnergy is provided: affordable actions first.
+  // When actorEnergy is undefined, preserve canonical order (backwards-compat).
+  const sortedActions =
+    actorEnergy !== undefined
+      ? [...SOCIAL_ACTIONS].sort((a, b) => {
+          const aCost = normalizeActionCost(a);
+          const bCost = normalizeActionCost(b);
+          const aAffordable = aCost <= actorEnergy;
+          const bAffordable = bCost <= actorEnergy;
+          if (aAffordable === bAffordable) return 0;
+          return aAffordable ? -1 : 1;
+        })
+      : SOCIAL_ACTIONS;
+
+  /** Returns an availability reason string, or empty string if the action is affordable. */
+  function getAvailabilityReason(actionCost: number): string {
+    if (actorEnergy === undefined) return '';
+    if (actionCost > actorEnergy) {
+      return `Insufficient energy: ${actionCost} ⚡ needed`;
+    }
+    return '';
+  }
+
   return (
     <>
       <div
@@ -122,17 +154,24 @@ export default function ActionGrid({
         onMouseLeave={handleMouseLeave}
         onBlur={handleBlur}
       >
-        {SOCIAL_ACTIONS.map((action) => (
-          <ActionCard
-            key={action.id}
-            action={action}
-            selected={selectedId === action.id}
-            disabled={disabledIds.has(action.id)}
-            onClick={onActionClick}
-            onPreview={onPreview}
-            onHoverFocus={handleHoverFocus}
-          />
-        ))}
+        {sortedActions.map((action) => {
+          const cost = normalizeActionCost(action);
+          const availabilityReason = getAvailabilityReason(cost);
+          const isAvailable = actorEnergy !== undefined && !availabilityReason;
+          return (
+            <ActionCard
+              key={action.id}
+              action={action}
+              selected={selectedId === action.id}
+              disabled={disabledIds.has(action.id)}
+              availabilityReason={availabilityReason}
+              available={actorEnergy !== undefined ? isAvailable : undefined}
+              onClick={onActionClick}
+              onPreview={onPreview}
+              onHoverFocus={handleHoverFocus}
+            />
+          );
+        })}
       </div>
       {previewDeltas !== null && <PreviewPopup deltas={previewDeltas} />}
     </>

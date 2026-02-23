@@ -15,6 +15,13 @@
  * 11. Preview button click does not trigger onClick.
  * 12. aria-pressed reflects selected state.
  * 13. aria-disabled reflects disabled state.
+ * 14. Renders availability hint badge when action.availabilityHint is set.
+ * 15. Does not render availability hint badge when action.availabilityHint is absent.
+ * 16. availabilityReason shows overlay while card remains clickable.
+ * 17. availabilityReason overlay uses reason text (takes precedence over disabledMessage).
+ * 18. available=true adds ac-card--available class (green accent border).
+ * 19. available=false + aggressive category adds ac-card--risky class (red accent border).
+ * 20. available=false + non-aggressive category does not add ac-card--risky class.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -43,6 +50,21 @@ const zeroCostAction: SocialActionDefinition = {
   title: 'Stay Idle',
   category: 'strategic',
   baseCost: 0,
+};
+
+const aggressiveAction: SocialActionDefinition = {
+  id: 'startFight',
+  title: 'Start Fight',
+  category: 'aggressive',
+  baseCost: 3,
+};
+
+const hintAction: SocialActionDefinition = {
+  id: 'proposeAlliance',
+  title: 'Propose Alliance',
+  category: 'alliance',
+  baseCost: 3,
+  availabilityHint: 'Requires positive affinity',
 };
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -165,5 +187,92 @@ describe('ActionCard – hover / focus preview', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: /Compliment/i }));
     fireEvent.focus(screen.getByRole('button', { name: /Compliment/i }));
     expect(onHoverFocus).not.toHaveBeenCalled();
+  });
+});
+
+describe('ActionCard – availabilityHint badge', () => {
+  it('renders availability hint badge when action.availabilityHint is set', () => {
+    render(<ActionCard action={hintAction} />);
+    expect(screen.getByLabelText('Requirement: Requires positive affinity')).toBeDefined();
+    expect(screen.getByText('Requires positive affinity')).toBeDefined();
+  });
+
+  it('does not render availability hint badge when action.availabilityHint is absent', () => {
+    render(<ActionCard action={baseAction} />);
+    expect(screen.queryByLabelText(/^Requirement:/)).toBeNull();
+  });
+});
+
+describe('ActionCard – availabilityReason prop', () => {
+  it('shows an overlay with the reason text when availabilityReason is provided', () => {
+    render(<ActionCard action={baseAction} availabilityReason="Insufficient energy: 1 ⚡ needed" />);
+    expect(screen.getByText('Insufficient energy: 1 ⚡ needed')).toBeDefined();
+  });
+
+  it('card remains clickable when availabilityReason is set (not disabled)', () => {
+    const onClick = vi.fn();
+    render(
+      <ActionCard
+        action={baseAction}
+        availabilityReason="Insufficient energy: 1 ⚡ needed"
+        onClick={onClick}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
+    expect(onClick).toHaveBeenCalledWith('compliment');
+  });
+
+  it('availabilityReason takes precedence over disabledMessage when both are set (card is disabled)', () => {
+    render(
+      <ActionCard
+        action={baseAction}
+        disabled
+        disabledMessage="Unavailable"
+        availabilityReason="Insufficient energy: 1 ⚡ needed"
+      />,
+    );
+    // availabilityReason overrides disabledMessage in the overlay text
+    expect(screen.getByText('Insufficient energy: 1 ⚡ needed')).toBeDefined();
+    expect(screen.queryByText('Unavailable')).toBeNull();
+  });
+
+  it('aria-disabled remains false when only availabilityReason is set', () => {
+    render(<ActionCard action={baseAction} availabilityReason="Insufficient energy: 1 ⚡ needed" />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    expect(card.getAttribute('aria-disabled')).toBe('false');
+  });
+});
+
+describe('ActionCard – available prop accent border', () => {
+  it('adds ac-card--available class when available is true', () => {
+    render(<ActionCard action={baseAction} available={true} />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    expect(card.className).toContain('ac-card--available');
+  });
+
+  it('does not add ac-card--risky class when available is true', () => {
+    render(<ActionCard action={aggressiveAction} available={true} />);
+    const card = screen.getByRole('button', { name: /Start Fight/i });
+    expect(card.className).not.toContain('ac-card--risky');
+  });
+
+  it('adds ac-card--risky class when available is false and category is aggressive', () => {
+    render(<ActionCard action={aggressiveAction} available={false} />);
+    const card = screen.getByRole('button', { name: /Start Fight/i });
+    expect(card.className).toContain('ac-card--risky');
+  });
+
+  it('does not add ac-card--risky class when available is false and category is not aggressive', () => {
+    render(<ActionCard action={baseAction} available={false} />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    expect(card.className).not.toContain('ac-card--risky');
+    expect(card.className).not.toContain('ac-card--available');
+  });
+
+  it('adds neither accent class when available is undefined', () => {
+    render(<ActionCard action={baseAction} />);
+    const card = screen.getByRole('button', { name: /Compliment/i });
+    expect(card.className).not.toContain('ac-card--available');
+    expect(card.className).not.toContain('ac-card--risky');
   });
 });

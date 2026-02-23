@@ -46,6 +46,11 @@
   opacity: 0.5;
 }
 
+/* Unavailable (unaffordable) — dimmed but still clickable */
+.ac-card--unavailable {
+  opacity: 0.55;
+}
+
 .ac-card__disabled-overlay {
   position: absolute;
   inset: 0;
@@ -124,6 +129,29 @@
 .ac-card__preview-btn:hover {
   border-color: rgba(99, 102, 241, 0.5);
   color: var(--color-accent, #6366f1);
+}
+
+/* ── Availability accent borders ─────────────────────────────────────────── */
+.ac-card--available {
+  border-left: 3px solid rgba(52, 211, 153, 0.7);
+}
+
+.ac-card--risky {
+  border-left: 3px solid rgba(239, 68, 68, 0.7);
+}
+
+/* ── Requirement badge ──────────────────────────────────────────────────────  */
+.ac-badge {
+  display: inline-block;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.48));
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 0.1rem;
 }
 
 /* ── Reduce motion ───────────────────────────────────────────────────────────  */
