@@ -18,9 +18,11 @@
  * 14. Execute shows success feedback after idle action is performed.
  * 15. Execute shows 'Insufficient energy' feedback when player cannot afford action.
  * 16. After successful execute, action selection is cleared (button returns to disabled).
+ * 17. Execute button gains the pulse class immediately after a successful execution.
+ * 18. Execute button pulse class is removed after 850 ms.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -256,5 +258,47 @@ describe('SocialPanelV2 – execute flow', () => {
     // After success, selectedActionId is cleared → button disabled again
     const btn = screen.getByRole('button', { name: 'Execute' });
     expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+// ── Success pulse animation ────────────────────────────────────────────────
+
+describe('SocialPanelV2 – success pulse', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('execute button gains the pulse class immediately after a successful execution', () => {
+    vi.useFakeTimers();
+    const store = makeStore({ phase: 'social_1' });
+    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLElement).className).toContain('sp2-footer__execute--pulse');
+  });
+
+  it('execute button pulse class is removed after 850 ms', () => {
+    vi.useFakeTimers();
+    const store = makeStore({ phase: 'social_1' });
+    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 }));
+    store.dispatch(openSocialPanel());
+    initManeuvers(store);
+    renderPanel(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
+
+    act(() => { vi.advanceTimersByTime(850); });
+
+    const btn = screen.getByRole('button', { name: 'Execute' });
+    expect((btn as HTMLElement).className).not.toContain('sp2-footer__execute--pulse');
   });
 });

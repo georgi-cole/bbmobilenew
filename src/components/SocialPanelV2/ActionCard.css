@@ -25,6 +25,8 @@
 .ac-card:hover:not(.ac-card--disabled) {
   border-color: rgba(99, 102, 241, 0.4);
   background: var(--color-card-hover, #1f2a40);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .ac-card:focus-visible {
@@ -36,9 +38,16 @@
 }
 
 /* ── Selected state ────────────────────────────────────────────────────────── */
+@keyframes ac-selected-outline {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+  60%  { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+  100% { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+}
+
 .ac-card--selected {
   border-color: var(--color-accent, #6366f1);
   background: rgba(99, 102, 241, 0.1);
+  animation: ac-selected-outline 0.26s ease-out forwards;
 }
 
 /* ── Disabled state ─────────────────────────────────────────────────────────  */
@@ -202,5 +211,11 @@
   .ac-card,
   .ac-card__preview-btn {
     transition: none !important;
+  }
+  .ac-card--selected,
+  .ac-card:hover:not(.ac-card--disabled) {
+    animation: none;
+    transform: none;
+    box-shadow: none;
   }
 }

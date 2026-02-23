@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectEnergyBank,
@@ -81,9 +81,16 @@ export default function SocialPanelV2() {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [successPulse, setSuccessPulse] = useState(false);
+  const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Re-entrancy guard: prevents double-execution on rapid clicks (synchronous
   // state updates are batched and `executing` state may not be visible yet).
   const isExecutingRef = useRef(false);
+
+  // Clean up the success pulse timer on unmount.
+  useEffect(() => () => {
+    if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
+  }, []);
 
   // Derived — computed before the early return so all hooks remain unconditional.
   const selectedAction = selectedActionId ? SocialManeuvers.getActionById(selectedActionId) : null;
@@ -115,6 +122,12 @@ export default function SocialPanelV2() {
     if (result.success) {
       setSelectedActionId(null);
       setSelectedTarget(null);
+      setSuccessPulse(true);
+      if (successPulseTimerRef.current !== null) clearTimeout(successPulseTimerRef.current);
+      successPulseTimerRef.current = setTimeout(() => {
+        setSuccessPulse(false);
+        successPulseTimerRef.current = null;
+      }, 850);
     }
     isExecutingRef.current = false;
   }, [canExecute, humanPlayer, selectedActionId, selectedTarget, game.players]);
@@ -227,7 +240,7 @@ export default function SocialPanelV2() {
             </span>
           )}
           <button
-            className="sp2-footer__execute"
+            className={`sp2-footer__execute${successPulse ? ' sp2-footer__execute--pulse' : ''}`}
             type="button"
             disabled={!canExecute}
             onClick={handleExecute}

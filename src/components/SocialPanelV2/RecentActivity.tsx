@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppSelector } from '../../store/hooks';
 import { selectSessionLogs } from '../../social/socialSlice';
 import { getActionById } from '../../social/SocialManeuvers';
@@ -52,12 +52,18 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
   // Client-side clear: track the watermark timestamp; only show entries after it.
   const [clearedBefore, setClearedBefore] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
+  // Track keys of newly added entries for the highlight animation.
+  const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set());
+  // Track the latest entry timestamp seen so new entries are detected even when
+  // maxEntries is at capacity (array length doesn't change in that case).
+  const prevNewestTimestampRef = useRef(0);
 
   const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
 
-  const visibleLogs = sessionLogs
-    .filter((e) => e.timestamp > clearedBefore)
-    .slice(-maxEntries);
+  const visibleLogs = useMemo(
+    () => sessionLogs.filter((e) => e.timestamp > clearedBefore).slice(-maxEntries),
+    [sessionLogs, clearedBefore, maxEntries],
+  );
 
   // Auto-scroll to the newest entry whenever the visible list changes.
   useEffect(() => {
@@ -65,6 +71,35 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [visibleLogs.length]);
+
+  // Highlight newly added entries briefly.
+  useEffect(() => {
+    const newestTimestamp = visibleLogs.length > 0 ? visibleLogs[visibleLogs.length - 1].timestamp : 0;
+    if (newestTimestamp > prevNewestTimestampRef.current) {
+      const newKeys = new Set<string>();
+      for (const e of visibleLogs) {
+        if (e.timestamp > prevNewestTimestampRef.current) {
+          newKeys.add(`${e.timestamp}-${e.actionId}-${e.targetId}`);
+        }
+      }
+      prevNewestTimestampRef.current = newestTimestamp;
+      const addTimer = setTimeout(() => {
+        setHighlightedKeys((prev) => new Set([...prev, ...newKeys]));
+      }, 0);
+      const removeTimer = setTimeout(() => {
+        setHighlightedKeys((prev) => {
+          const next = new Set(prev);
+          newKeys.forEach((k) => next.delete(k));
+          return next;
+        });
+      }, 1200);
+      return () => {
+        clearTimeout(addTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+    prevNewestTimestampRef.current = newestTimestamp;
+  }, [visibleLogs]);
 
   function handleClear() {
     setClearedBefore(Date.now());
@@ -90,7 +125,7 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
         <span className="ra-empty">No recent actions.</span>
       ) : (
         <ul className="ra-list" ref={listRef} aria-label="Recent actions">
-          {visibleLogs.map((entry, i) => {
+          {visibleLogs.map((entry) => {
             const action = getActionById(entry.actionId);
             const actionTitle = action?.title ?? entry.actionId;
             const targetName = playerById.get(entry.targetId)?.name ?? entry.targetId;
@@ -99,8 +134,10 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
             const sign = entry.delta > 0 ? '+' : '';
             const deltaText = entry.delta !== 0 ? `${sign}${entry.delta}` : '';
             const narrative = getSocialNarrative(entry.actionId, targetName, entry.timestamp);
+            const key = `${entry.timestamp}-${entry.actionId}-${entry.targetId}`;
+            const isNew = highlightedKeys.has(key);
             return (
-              <li key={`${entry.timestamp}-${entry.actionId}-${entry.targetId}-${i}`} className="ra-entry">
+              <li key={key} className={`ra-entry${isNew ? ' ra-entry--new' : ''}`}>
                 <span className={`ra-entry__icon ra-entry__icon--${resultClass}`} aria-hidden="true">
                   {icon}
                 </span>
