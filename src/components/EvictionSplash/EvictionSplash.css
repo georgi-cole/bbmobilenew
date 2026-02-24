@@ -65,8 +65,8 @@
 }
 
 @keyframes evictPhotoZoom {
-  from { transform: scale(1.08); }
-  to   { transform: scale(1.0); }
+  from { transform: scale(1.0); }
+  to   { transform: scale(1.08); }
 }
 
 .eviction-splash__fallback {
