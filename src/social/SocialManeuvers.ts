@@ -221,11 +221,15 @@ export function executeAction(
 
   // Deduct all resources
   const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
-  if (costs.influence > 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+  const currentInfluence = state.social.influenceBank[actorId] ?? 0;
+  const influenceSpend = Math.min(costs.influence, currentInfluence);
+  if (influenceSpend > 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -influenceSpend }));
   }
-  if (costs.info > 0) {
-    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+  const currentInfo = state.social.infoBank[actorId] ?? 0;
+  const infoSpend = Math.min(costs.info, currentInfo);
+  if (infoSpend > 0) {
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -infoSpend }));
   }
 
   // Apply yields (success only — yields are not granted on failure)
