@@ -20,6 +20,8 @@
  * 16.  buildDrSessionSummary — zero failures produces correct copy.
  * 17.  Social action entries with source 'manual' pass isVisibleInDr when channels includes 'dr'.
  * 18.  Social action entries with source 'system' do NOT pass isVisibleInDr.
+ * 19.  buildDrSessionSummary — returns a single line when summarising a session.
+ * 20.  TV close message is visible on TV and in main log but not in DR.
  */
 
 import { describe, it, expect } from 'vitest';
