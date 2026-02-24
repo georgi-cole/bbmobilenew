@@ -108,3 +108,22 @@ button.pa:focus-visible {
   .pa, .pa__img, .pa__ring { animation: none !important; transition: none !important; }
   .pa__img { opacity: 1; }
 }
+
+/* ── Relationship-tone outline rings ─────────────────────────────────────
+ * Applied via pa--rel-{tone} classes. Uses box-shadow to avoid layout shift
+ * and support circular crops. Transition matches the base .pa transition.
+ * ────────────────────────────────────────────────────────────────────────── */
+.pa--rel-good {
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.85), 0 0 6px rgba(46, 204, 113, 0.35);
+  transition: box-shadow 0.25s ease;
+}
+
+.pa--rel-neutral {
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.85), 0 0 6px rgba(234, 179, 8, 0.35);
+  transition: box-shadow 0.25s ease;
+}
+
+.pa--rel-bad {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.85), 0 0 6px rgba(239, 68, 68, 0.35);
+  transition: box-shadow 0.25s ease;
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { getRelationshipTone } from './relationshipOutline';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -11,6 +12,10 @@ interface PlayerAvatarProps {
   size?: 'sm' | 'md' | 'lg';
   /** Called when avatar is tapped/clicked */
   onClick?: (player: Player) => void;
+  /** Affinity value toward this player (normalized -1..1 or percent 0..100). When provided, a relationship-tone ring is shown. */
+  affinity?: number | null;
+  /** Whether to show the relationship-tone outline ring. Defaults to true. Set to false to opt out (e.g. main roster tiles, jury panel). */
+  showRelationshipOutline?: boolean;
 }
 
 /**
@@ -29,6 +34,8 @@ export default function PlayerAvatar({
   selected = false,
   size = 'md',
   onClick,
+  affinity,
+  showRelationshipOutline = true,
 }: PlayerAvatarProps) {
   const [candidates] = useState(() => resolveAvatarCandidates(player));
   const [candidateIdx, setCandidateIdx] = useState(0);
@@ -47,11 +54,16 @@ export default function PlayerAvatar({
 
   const isEvicted = player.status === 'evicted' || player.status === 'jury';
 
+  const tone = showRelationshipOutline ? getRelationshipTone(affinity) : 'none';
+  const toneLabel =
+    tone === 'good' ? 'Allies' : tone === 'neutral' ? 'Neutral' : tone === 'bad' ? 'Rivals' : null;
+
   const classes = [
     'pa',
     `pa--${size}`,
     selected ? 'pa--selected' : '',
     isEvicted ? 'pa--evicted' : '',
+    tone !== 'none' ? `pa--rel-${tone}` : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -77,7 +89,8 @@ export default function PlayerAvatar({
         className={classes}
         onClick={() => onClick(player)}
         aria-pressed={selected}
-        aria-label={player.name}
+        aria-label={toneLabel ? `${player.name} — ${toneLabel}` : player.name}
+        title={toneLabel ? `${player.name} — ${toneLabel}` : player.name}
         type="button"
       >
         <span className="pa__ring" aria-hidden="true" />
@@ -87,7 +100,11 @@ export default function PlayerAvatar({
   }
 
   return (
-    <span className={classes}>
+    <span
+      className={classes}
+      aria-label={toneLabel ? `${player.name} — ${toneLabel}` : undefined}
+      title={toneLabel ? `${player.name} — ${toneLabel}` : undefined}
+    >
       <span className="pa__ring" aria-hidden="true" />
       {inner}
     </span>

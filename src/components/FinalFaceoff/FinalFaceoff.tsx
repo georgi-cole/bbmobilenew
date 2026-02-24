@@ -188,7 +188,7 @@ export default function FinalFaceoff() {
             className={`fo-finalist${finale.winnerId === f.id ? ' fo-finalist--winner' : ''}`}
           >
             {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
-            <PlayerAvatar player={f} size="md" />
+            <PlayerAvatar player={f} size="md" showRelationshipOutline={false} />
             <span className="fo-finalist__name">{f.name}</span>
             <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
           </div>
@@ -214,7 +214,7 @@ export default function FinalFaceoff() {
       {awaitingHumanPlayer && !finale.isComplete && (
         <div className="fo-human-vote">
           <span className="fo-human-vote__prompt">
-            <PlayerAvatar player={awaitingHumanPlayer} size="sm" />
+            <PlayerAvatar player={awaitingHumanPlayer} size="sm" showRelationshipOutline={false} />
             <span className="fo-human-vote__prompt-text">
               {awaitingHumanPlayer.name}, cast your jury vote:
             </span>
@@ -228,7 +228,7 @@ export default function FinalFaceoff() {
                 aria-label={`Cast jury vote for ${f.name}`}
                 onClick={() => handleCastVote(f.id)}
               >
-                <PlayerAvatar player={f} size="sm" />
+                <PlayerAvatar player={f} size="sm" showRelationshipOutline={false} />
                 <span className="fo-human-vote__choice-name">{f.name}</span>
               </button>
             ))}

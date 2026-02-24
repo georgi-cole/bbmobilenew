@@ -14,13 +14,13 @@ interface Props {
 export default function JurorBubble({ juror, finalist, reveal }: Props) {
   return (
     <div className="jb-bubble">
-      <PlayerAvatar player={juror} size="sm" />
+      <PlayerAvatar player={juror} size="sm" showRelationshipOutline={false} />
       <div className="jb-body">
         <span className="jb-name">{juror.name}</span>
         <span className="jb-phrase">{reveal.phrase}</span>
         {finalist && (
           <span className="jb-vote">
-            <PlayerAvatar player={finalist} size="sm" />
+            <PlayerAvatar player={finalist} size="sm" showRelationshipOutline={false} />
             <strong>{finalist.name}</strong>
           </span>
         )}

@@ -22,7 +22,7 @@ export default function ExpandedPlayerView({ player, affinity }: ExpandedPlayerV
 
   return (
     <div className="epv" aria-label={`${player.name} details`}>
-      <PlayerAvatar player={player} size="md" />
+      <PlayerAvatar player={player} size="md" affinity={affinity} />
       <div className="epv__details">
         <span className="epv__name">{player.name}</span>
         <span className={`epv__status epv__status--${player.status.split('+')[0]}`}>
