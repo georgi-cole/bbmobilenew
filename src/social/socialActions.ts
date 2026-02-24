@@ -18,8 +18,13 @@ export interface SocialActionDefinition {
    * `socialConfig.actionCategories.friendlyActions` / `aggressiveActions`.
    */
   category: ActionCategory;
-  /** Energy cost as a plain number or a cost-shape object. */
-  baseCost: number | { energy?: number; info?: number };
+  /** Energy cost as a plain number or a multi-resource cost-shape object. */
+  baseCost: number | { energy?: number; influence?: number; info?: number };
+  /**
+   * Optional resource yields granted to the actor on a successful execution.
+   * Dispatches applyInfluenceDelta / applyInfoDelta with positive deltas.
+   */
+  yields?: { influence?: number; info?: number };
   /** Emoji icon shown on the action card. */
   icon?: string;
   /** Short description shown on the action card below the title. */
@@ -50,6 +55,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'friendly',
     baseCost: 1,
     successWeight: 3,
+    yields: { influence: 1 },
   },
   {
     id: 'rumor',
@@ -57,7 +63,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '💬',
     description: 'Plant a damaging rumor about a houseguest.',
     category: 'aggressive',
-    baseCost: 2,
+    baseCost: { energy: 2, info: 1 },
     successWeight: 2,
     outcomeTag: 'rumor',
   },
@@ -69,6 +75,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     baseCost: { energy: 1, info: 1 },
     successWeight: 2,
+    yields: { influence: 1 },
   },
   {
     id: 'proposeAlliance',
@@ -76,7 +83,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     icon: '🤝',
     description: 'Propose a formal alliance. Success creates a lasting bond.',
     category: 'alliance',
-    baseCost: 3,
+    baseCost: { energy: 3, influence: 1 },
     successWeight: 1,
     outcomeTag: 'alliance',
     availabilityHint: 'Requires positive affinity',

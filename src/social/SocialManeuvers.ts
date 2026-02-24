@@ -13,10 +13,10 @@
 
 import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
-import { normalizeActionCost } from './smExecNormalize';
+import { normalizeActionCost, normalizeActionCosts } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome } from './SocialPolicy';
-import { recordSocialAction, updateRelationship } from './socialSlice';
+import { recordSocialAction, updateRelationship, applyInfluenceDelta, applyInfoDelta } from './socialSlice';
 import type { SocialActionLogEntry, SocialState } from './types';
 
 // ── Internal store reference ──────────────────────────────────────────────
@@ -30,8 +30,16 @@ interface StoreAPI {
  * Partial SocialState snapshot accepted by getAvailableActions and
  * computeActionCost. Only the fields actively read by those functions are
  * required — lastReport and influenceWeights are not needed here.
+ * influenceBank and infoBank are optional to allow snapshots that pre-date
+ * multi-resource support (absent banks are treated as empty / all zeros).
  */
-type PartialSocialState = Pick<SocialState, 'energyBank' | 'relationships' | 'sessionLogs'>;
+type PartialSocialState = {
+  energyBank: Record<string, number>;
+  influenceBank?: Record<string, number>;
+  infoBank?: Record<string, number>;
+  relationships: Record<string, unknown>;
+  sessionLogs: unknown[];
+};
 
 interface StateForManeuvers {
   social: PartialSocialState;
@@ -58,26 +66,42 @@ export function getActionById(id: string): SocialActionDefinition | undefined {
 // ── Availability & cost ───────────────────────────────────────────────────
 
 /**
- * Return all actions the actor can currently afford.
- * Reads energy from the provided state snapshot, or falls back to the Redux
- * store when no state is supplied.
- *
- * NOTE: Uses the base normalized cost. When `computeActionCost` is extended to
- * apply trait or target-based modifiers, update this filter to use the same
- * cost logic (likely via `computeActionCost`) so availability checks remain
- * consistent with execution-time costs.
+ * Check whether an actor can afford a set of multi-resource costs.
+ * Reads from the provided state snapshot, or falls back to the Redux store.
+ * Returns false when the store is not initialised and no state is provided.
+ */
+export function canAfford(
+  actorId: string,
+  costs: { energy: number; influence: number; info: number },
+  state?: StateForManeuvers,
+): boolean {
+  let energy: number;
+  let influence: number;
+  let info: number;
+
+  if (state) {
+    energy = state.social.energyBank[actorId] ?? 0;
+    influence = state.social.influenceBank?.[actorId] ?? 0;
+    info = state.social.infoBank?.[actorId] ?? 0;
+  } else {
+    const s = _store?.getState() as { social: SocialState } | null;
+    energy = s?.social.energyBank[actorId] ?? 0;
+    influence = s?.social.influenceBank?.[actorId] ?? 0;
+    info = s?.social.infoBank?.[actorId] ?? 0;
+  }
+
+  return energy >= costs.energy && influence >= costs.influence && info >= costs.info;
+}
+
+/**
+ * Return all actions the actor can currently afford (all resources checked).
+ * Reads from the provided state snapshot, or falls back to the Redux store.
  */
 export function getAvailableActions(
   actorId: string,
   state?: StateForManeuvers,
 ): SocialActionDefinition[] {
-  let energy: number;
-  if (state) {
-    energy = state.social.energyBank[actorId] ?? 0;
-  } else {
-    energy = SocialEnergyBank.get(actorId);
-  }
-  return SOCIAL_ACTIONS.filter((a) => normalizeActionCost(a) <= energy);
+  return SOCIAL_ACTIONS.filter((a) => canAfford(actorId, normalizeActionCosts(a), state));
 }
 
 /**
@@ -131,12 +155,13 @@ export interface ExecuteActionResult {
  *
  * Steps:
  *  1. Fail fast if the store is not initialised.
- *  2. Validate the action exists and the actor has enough energy.
- *  3. Deduct energy via SocialEnergyBank.
+ *  2. Validate the action exists and the actor can afford all resources.
+ *  3. Deduct energy (SocialEnergyBank), influence and info (applyInfluenceDelta / applyInfoDelta).
  *  4. Compute affinity delta via SocialPolicy.computeOutcomeDelta.
- *  5. Dispatch updateRelationship to persist the affinity change.
- *  6. Dispatch recordSocialAction to append an entry to sessionLogs.
- *  7. Return { success, delta, newEnergy }.
+ *  5. Apply any resource yields defined on the action.
+ *  6. Dispatch updateRelationship to persist the affinity change.
+ *  7. Dispatch recordSocialAction with full cost, balancesAfter and yieldsApplied.
+ *  8. Return { success, delta, newEnergy }.
  *
  * Returns { success: false } without mutating state if validation fails.
  */
@@ -155,11 +180,11 @@ export function executeAction(
     return { success: false, delta: 0, newEnergy: SocialEnergyBank.get(actorId), summary: 'Unknown action', score: 0, label: 'Unmoved' };
   }
 
-  const cost = computeActionCost(actorId, action, targetId);
+  const costs = normalizeActionCosts(action);
   const currentEnergy = SocialEnergyBank.get(actorId);
 
-  if (currentEnergy < cost) {
-    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient energy', score: 0, label: 'Unmoved' };
+  if (!canAfford(actorId, costs)) {
+    return { success: false, delta: 0, newEnergy: currentEnergy, summary: 'Insufficient resources', score: 0, label: 'Unmoved' };
   }
 
   const outcome = options?.outcome ?? 'success';
@@ -194,21 +219,52 @@ export function executeAction(
     };
   }
 
-  const newEnergy = SocialEnergyBank.add(actorId, -cost);
+  // Deduct all resources
+  const newEnergy = SocialEnergyBank.add(actorId, -costs.energy);
+  if (costs.influence > 0) {
+    _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: -costs.influence }));
+  }
+  if (costs.info > 0) {
+    _store.dispatch(applyInfoDelta({ playerId: actorId, delta: -costs.info }));
+  }
+
+  // Apply yields (success only — yields are not granted on failure)
+  const yields = action.yields ?? {};
+  if (outcome === 'success') {
+    if (yields.influence && yields.influence > 0) {
+      _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: yields.influence }));
+    }
+    if (yields.info && yields.info > 0) {
+      _store.dispatch(applyInfoDelta({ playerId: actorId, delta: yields.info }));
+    }
+  }
+
+  // Read balances after all mutations
+  const stateAfter = _store.getState() as { social: SocialState };
+  const balancesAfter = {
+    energy: stateAfter.social.energyBank[actorId] ?? 0,
+    influence: stateAfter.social.influenceBank[actorId] ?? 0,
+    info: stateAfter.social.infoBank[actorId] ?? 0,
+  };
 
   const entry: SocialActionLogEntry = {
     actionId,
     actorId,
     targetId,
-    cost,
+    cost: costs.energy,
+    costs,
     delta,
     outcome,
     newEnergy,
+    balancesAfter,
     timestamp: Date.now(),
     score: outcomeResult.score,
     label: outcomeResult.label,
     source: options?.source ?? 'system',
   };
+  if (Object.keys(yields).length > 0) {
+    entry.yieldsApplied = yields;
+  }
 
   _store.dispatch(
     updateRelationship({
@@ -235,6 +291,7 @@ export function executeAction(
 export const SocialManeuvers = {
   getActionById,
   getAvailableActions,
+  canAfford,
   computeActionCost,
   executeAction,
 };
@@ -245,6 +302,7 @@ if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>)['__socialManeuvers'] = {
     getActionById,
     getAvailableActions,
+    canAfford,
     computeActionCost,
     executeAction,
   };

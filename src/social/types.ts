@@ -27,9 +27,11 @@ export interface SocialActionLogEntry {
   actionId: string;
   actorId: string;
   targetId: string;
+  /** Energy deducted (backward-compatible; prefer `costs.energy`). */
   cost: number;
   delta: number;
   outcome: 'success' | 'failure';
+  /** Actor's energy after the action (backward-compatible; prefer `balancesAfter.energy`). */
   newEnergy: number;
   timestamp: number;
   /** Normalised outcome score in [-1, +1] produced by the SocialPolicy evaluator. */
@@ -42,6 +44,12 @@ export interface SocialActionLogEntry {
    * distinguish user-initiated interactions from background game activity.
    */
   source?: 'manual' | 'system';
+  /** Full multi-resource costs deducted for this action. */
+  costs?: { energy: number; influence: number; info: number };
+  /** All resource balances after deductions and yields were applied. */
+  balancesAfter?: { energy: number; influence: number; info: number };
+  /** Resource yields granted to the actor on success, if any. */
+  yieldsApplied?: { influence?: number; info?: number };
 }
 
 /** Redux-serialisable state subtree owned by the social module. */
