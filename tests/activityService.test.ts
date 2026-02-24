@@ -125,14 +125,14 @@ describe('buildDrSessionSummary', () => {
     const summary = buildDrSessionSummary(3, 5, 4, 1);
     expect(summary).toContain('Week 3');
     expect(summary).toContain('5');
-    expect(summary).toContain('4 success');
+    expect(summary).toContain('4 successes');
     expect(summary).toContain('1 failure');
   });
 
   it('formats correctly when all actions succeed (zero failures)', () => {
     const summary = buildDrSessionSummary(1, 2, 2, 0);
     expect(summary).toContain('Week 1');
-    expect(summary).toContain('2 success');
+    expect(summary).toContain('2 successes');
     expect(summary).toContain('0 failure');
   });
 
