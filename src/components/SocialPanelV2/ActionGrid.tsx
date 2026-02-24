@@ -136,10 +136,14 @@ export default function ActionGrid({
 
   // Sort actions when actorEnergy is provided: affordable (all resources) first,
   // then unaffordable. Within each group, preserve canonical order.
+  //
+  // When actorInfluence/actorInfo are omitted (undefined), those resource axes are
+  // treated as unconstrained (Infinity), so energy-only callers do not accidentally
+  // mark influence/info-cost actions as unaffordable.
   const actorResources = {
     energy: actorEnergy ?? 0,
-    influence: actorInfluence ?? 0,
-    info: actorInfo ?? 0,
+    influence: actorInfluence ?? Infinity,
+    info: actorInfo ?? Infinity,
   };
 
   function isActionAffordable(costs: { energy: number; influence: number; info: number }): boolean {

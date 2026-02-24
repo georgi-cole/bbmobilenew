@@ -120,7 +120,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     category: 'strategic',
     baseCost: { energy: 2, influence: 5.0 },
     successWeight: 1,
-    availabilityHint: 'Requires 5.0 influence',
+    availabilityHint: 'Requires 500 influence',
     yields: { influence: 0.04 },
   },
   {

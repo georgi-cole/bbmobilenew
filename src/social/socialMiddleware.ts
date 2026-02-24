@@ -3,14 +3,15 @@
  * game phase lifecycle and dispatches social resource deltas for game events.
  *
  * Listens for:
- *   - game/setPhase            (explicit phase override, e.g. from DebugPanel)
- *   - game/forcePhase          (dev-only forced transition)
- *   - game/advance             (normal gameplay phase progression)
- *   - game/completeMinigame    (HOH/POV winner from tap-race; zero-score penalty)
- *   - game/applyMinigameWinner (HOH/POV winner from challenge flow)
- *   - game/skipMinigame        (competition skipped: -3 energy to all alive)
- *   - social/updateRelationship (alliance formed: +2 energy +200 influence;
- *                                betrayal: -3 energy to actor)
+ *   - game/setPhase              (explicit phase override, e.g. from DebugPanel)
+ *   - game/forcePhase            (dev-only forced transition)
+ *   - game/advance               (normal gameplay phase progression)
+ *   - game/completeMinigame      (HOH/POV winner from tap-race; zero-score penalty)
+ *   - game/applyMinigameWinner   (HOH/POV winner from challenge flow)
+ *   - game/skipMinigame          (competition skipped: -3 energy to all alive)
+ *   - game/submitPovSaveTarget   (POV holder saves a nominee: +2 energy to saved player)
+ *   - social/updateRelationship  (alliance formed: +2 energy +200 influence;
+ *                                 betrayal: -3 energy to actor)
  *
  * Event delta rules:
  *   HOH win               → +5  energy to winner
@@ -46,6 +47,7 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState;
+  social?: { energyBank?: Record<string, number> };
 }
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
@@ -56,9 +58,22 @@ function handleWeekStart(api: MiddlewareAPI): void {
   api.dispatch(snapshotWeekRelationships());
 }
 
-/** Dispatch energy delta to a player, clamped so result never goes negative. */
+/**
+ * Dispatch an energy delta to a player, clamped so the result never goes negative.
+ * Reads the current bank value from state before dispatching so negative deltas
+ * cannot drive energy below zero.
+ */
 function grantEnergy(api: MiddlewareAPI, playerId: string, delta: number): void {
-  api.dispatch(applyEnergyDelta({ playerId, delta }));
+  if (delta === 0) return;
+  if (delta < 0) {
+    const state = api.getState() as StateWithGame;
+    const current = state.social?.energyBank?.[playerId] ?? 0;
+    const clamped = Math.max(delta, -current); // delta that won't push energy below 0
+    if (clamped === 0) return;
+    api.dispatch(applyEnergyDelta({ playerId, delta: clamped }));
+  } else {
+    api.dispatch(applyEnergyDelta({ playerId, delta }));
+  }
 }
 
 /** Dispatch influence delta (integer pts ×100) to a player. */
@@ -86,18 +101,6 @@ function applySurvivedNomBonus(api: MiddlewareAPI, newPhase: string, state: Stat
     for (const id of state.game.nomineeIds) {
       grantEnergy(api, id, 4);
     }
-  }
-}
-
-/** Grant +2 energy to any player removed from the nomination block (saved by POV). */
-function applySavedByPovBonus(
-  api: MiddlewareAPI,
-  prevNominees: string[],
-  newNominees: string[],
-): void {
-  const saved = prevNominees.filter((id) => !newNominees.includes(id));
-  for (const id of saved) {
-    grantEnergy(api, id, 2);
   }
 }
 
@@ -182,12 +185,33 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
+  // ── submitPovSaveTarget: saved-by-POV bonus (+2 energy to the saved player) ─
+  // Handles the explicit human-POV-holder saves a nominee case.
+  // The auto-save case (nominee wins POV themselves, pov_ceremony_results advance)
+  // is handled by comparing nomineeIds before/after in the game/advance handler.
+  if (type === 'game/submitPovSaveTarget') {
+    const prevState = api.getState() as StateWithGame;
+    const prevNominees = prevState.game?.nomineeIds ?? [];
+    const saveId = (action as { payload: string }).payload;
+
+    const result = next(action);
+
+    // Verify the save actually happened (action guard may have rejected it)
+    const afterNominees = (api.getState() as StateWithGame).game?.nomineeIds ?? [];
+    if (!afterNominees.includes(saveId) && prevNominees.includes(saveId)) {
+      grantEnergy(api as unknown as MiddlewareAPI, saveId, 2);
+    }
+
+    return result;
+  }
+
   // ── Advance action (phase determined by comparing before/after state) ───────
   if (type === 'game/advance') {
     const prevState = api.getState() as StateWithGame;
     const prevPhase = prevState.game?.phase;
     const prevHohId = prevState.game?.hohId ?? null;
     const prevPovId = prevState.game?.povWinnerId ?? null;
+    // Track POV-auto-save: nominee who wins POV saves themselves in pov_ceremony_results.
     const prevNominees = prevState.game?.nomineeIds ?? [];
 
     const result = next(action);
@@ -217,12 +241,16 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     // Survived nomination: nominees entering live_vote get +4 energy.
     applySurvivedNomBonus(api as unknown as MiddlewareAPI, newPhase, afterState);
 
-    // Saved by POV: players removed from the block get +2 energy.
-    applySavedByPovBonus(
-      api as unknown as MiddlewareAPI,
-      prevNominees,
-      afterState.game?.nomineeIds ?? [],
-    );
+    // POV auto-save: during pov_ceremony_results a nominee who won POV saves themselves.
+    // We detect this by checking if a nominee was removed from the block during that
+    // specific phase transition only, to avoid false positives during evictions.
+    if (prevPhase === 'pov_ceremony_results') {
+      const afterNominees = afterState.game?.nomineeIds ?? [];
+      const autoSaved = prevNominees.filter((id) => !afterNominees.includes(id));
+      for (const id of autoSaved) {
+        grantEnergy(api as unknown as MiddlewareAPI, id, 2);
+      }
+    }
 
     return result;
   }

@@ -37,20 +37,27 @@ describe('event delta – HOH win (+5 energy)', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
-    // Provision all alive players with some energy so the middleware can check
+    // Provision all alive players with some energy
     const players = store.getState().game.players;
     const budgets: Record<string, number> = {};
     players.forEach((p: { id: string }) => { budgets[p.id] = 3; });
     store.dispatch(engineReady({ budgets }));
 
-    // Advance into hoh_results (triggers HOH winner selection)
+    // Game starts at week_start.
+    // First advance: week_start → hoh_comp (no HOH set yet)
+    store.dispatch({ type: 'game/advance' });
+    expect(store.getState().game.phase).toBe('hoh_comp');
+
+    // Second advance: hoh_comp → hoh_results (applyHohWinner runs, sets hohId)
     store.dispatch({ type: 'game/advance' });
     const stateAfterHoh = store.getState();
+    expect(stateAfterHoh.game.phase).toBe('hoh_results');
+
     const hohId = stateAfterHoh.game.hohId;
-    if (!hohId) return; // guard for edge cases
+    expect(hohId).not.toBeNull();
 
     // HOH winner should have gained +5 energy (started at 3, now 8)
-    expect(selectEnergyBank(stateAfterHoh)[hohId]).toBe(8);
+    expect(selectEnergyBank(stateAfterHoh)[hohId!]).toBe(8);
   });
 });
 
@@ -68,17 +75,25 @@ describe('event delta – survived nomination (+4 energy)', () => {
     alivePlayers.forEach((p: { id: string }) => { budgets[p.id] = 5; });
     store.dispatch(engineReady({ budgets }));
 
-    // Fast-forward the game to just before live_vote by advancing through phases.
-    // We'll use game/setPhase to set up nominees and then advance.
-    // Directly dispatch a state where there are nominees and the phase is pov_ceremony_results.
-    store.dispatch({ type: 'game/setPhase', payload: 'live_vote' });
+    // Advance through phases until we reach live_vote so that the
+    // game/advance-based survived-nomination middleware bonus fires.
+    let phase = store.getState().game.phase;
+    for (let i = 0; i < 60 && phase !== 'live_vote'; i += 1) {
+      store.dispatch({ type: 'game/advance' });
+      phase = store.getState().game.phase;
+    }
 
     const state = store.getState();
-    const nominees = state.game.nomineeIds;
-    if (nominees.length === 0) return; // guard: no nominees set in this state path
+    expect(state.game.phase).toBe('live_vote');
 
+    const nominees = state.game.nomineeIds;
+    expect(nominees.length).toBeGreaterThan(0);
+
+    // Each nominee still on the block should have received +4 energy.
+    // Their energy started at 5; HOH and POV bonuses may also have applied
+    // to some players. The nominees themselves should have at least 5 + 4 = 9.
     nominees.forEach((id: string) => {
-      expect(selectEnergyBank(state)[id]).toBe(9); // 5 + 4
+      expect(selectEnergyBank(state)[id]).toBeGreaterThanOrEqual(9);
     });
   });
 });
