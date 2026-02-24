@@ -214,7 +214,10 @@ export default function FinalFaceoff() {
       {awaitingHumanPlayer && !finale.isComplete && (
         <div className="fo-human-vote">
           <span className="fo-human-vote__prompt">
-            {awaitingHumanPlayer.name}, cast your jury vote:
+            <PlayerAvatar player={awaitingHumanPlayer} size="sm" />
+            <span className="fo-human-vote__prompt-text">
+              {awaitingHumanPlayer.name}, cast your jury vote:
+            </span>
           </span>
           <div className="fo-human-vote__choices">
             {finalists.map((f) => (
