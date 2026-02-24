@@ -83,7 +83,8 @@ describe('ActionCard – rendering', () => {
   it('renders energy and info chips for object baseCost', () => {
     render(<ActionCard action={objectCostAction} />);
     expect(screen.getByLabelText('Energy cost: 1')).toBeDefined();
-    expect(screen.getByLabelText('Info cost: 2')).toBeDefined();
+    // baseCost.info = 2 → ×100 scaling → chip shows 200
+    expect(screen.getByLabelText('Info cost: 200')).toBeDefined();
   });
 
   it('renders zero-cost chip when baseCost is 0', () => {

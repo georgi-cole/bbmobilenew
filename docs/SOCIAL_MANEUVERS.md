@@ -231,13 +231,3 @@ interface ExecuteActionResult {
 - `normalizeActionCost(action)` (energy-only) is preserved alongside `normalizeActionCosts`.
 - `SocialActionLogEntry.cost` and `SocialActionLogEntry.newEnergy` are preserved.
 
-
-Actions can cost **energy**, **influence**, and **info** — all tracked separately in Redux:
-
-| Resource | Bank field | Slice reducers |
-|---|---|---|
-| Energy | `state.social.energyBank` | `setEnergyBankEntry`, `applyEnergyDelta` |
-| Influence | `state.social.influenceBank` | `setInfluenceBankEntry`, `applyInfluenceDelta` |
-| Info | `state.social.infoBank` | `setInfoBankEntry`, `applyInfoDelta` |
-
-### Cost shape
