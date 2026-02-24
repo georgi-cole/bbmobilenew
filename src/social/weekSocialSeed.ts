@@ -1,11 +1,16 @@
 /**
  * weekSocialSeed — seeds background social relationships at the start of each week.
  *
- * Runs when the game transitions to `week_start`.  For every pair of active
- * (non-evicted, non-jury) players it dispatches `updateRelationship` with a
- * small seeded-random affinity adjustment.  This creates the organic, non-zero
- * relationship web the user sees in the social panel, without cluttering
- * sessionLogs or Diary Room entries.
+ * Runs when the game transitions to `week_start`.  For every ordered pair of
+ * **active** (non-evicted, non-jury) players it dispatches `updateRelationship`
+ * with a small seeded-random affinity adjustment.  This creates the organic,
+ * non-zero relationship web the user sees in the social panel, without
+ * cluttering sessionLogs or Diary Room entries.
+ *
+ * Eviction rule: only players whose status is neither 'evicted' nor 'jury'
+ * participate.  Once a houseguest is evicted they are permanently excluded —
+ * no in-game player generates interactions with them and they generate none
+ * themselves, in this week or any subsequent week.
  *
  * Design notes:
  *  - If a relationship pair already exists the delta is small (±3), so
@@ -14,6 +19,10 @@
  *    week-1 relationships start at a meaningful non-zero value, and can begin slightly negative.
  *  - All deltas use the display-scale (0–100), matching `affinityDeltas`.
  *  - Uses a deterministic LCG seeded by `game.seed XOR week` for reproducibility.
+ *  - Time complexity: O(n²) in the number of active players.  For a standard
+ *    Big Brother season (≤16 houseguests, shrinking each week as players are
+ *    evicted) the worst-case is 240 dispatches (16 × 15) — acceptable and
+ *    expected to shrink weekly as the cast is reduced.
  */
 
 import { updateRelationship } from './socialSlice';
@@ -58,6 +67,9 @@ export function seedWeekRelationships(store: StoreAPI): void {
   const gameSeed = state.game?.seed ?? 0;
   const relationships = state.social?.relationships ?? {};
 
+  // Only non-evicted, non-jury players participate.  Evicted houseguests are
+  // permanently excluded: once a player's status becomes 'evicted' or 'jury'
+  // they never generate — or receive — background interactions again.
   const active = players.filter(
     (p) => p.status !== 'evicted' && p.status !== 'jury',
   );
