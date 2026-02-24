@@ -8,7 +8,7 @@
  * sessionLogs or Diary Room entries.
  *
  * Design notes:
- *  - If a relationship pair already exists the delta is small (±2–4), so
+ *  - If a relationship pair already exists the delta is small (±3), so
  *    existing history is preserved and only gently drifts.
  *  - If a pair has never interacted a larger seed delta (5–25) is applied so
  *    week-1 relationships start at a meaningful non-zero value.
