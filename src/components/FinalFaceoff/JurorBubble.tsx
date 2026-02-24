@@ -3,6 +3,7 @@
  */
 import type { Player } from '../../types';
 import type { JurorReveal } from '../../store/finaleSlice';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 
 interface Props {
   juror: Player;
@@ -13,13 +14,13 @@ interface Props {
 export default function JurorBubble({ juror, finalist, reveal }: Props) {
   return (
     <div className="jb-bubble">
-      <span className="jb-avatar">{juror.avatar}</span>
+      <PlayerAvatar player={juror} size="sm" />
       <div className="jb-body">
         <span className="jb-name">{juror.name}</span>
         <span className="jb-phrase">{reveal.phrase}</span>
         {finalist && (
           <span className="jb-vote">
-            {finalist.avatar} <strong>{finalist.name}</strong>
+            <strong>{finalist.name}</strong>
           </span>
         )}
       </div>

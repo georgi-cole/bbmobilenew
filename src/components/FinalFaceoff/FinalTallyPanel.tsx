@@ -2,6 +2,7 @@
  * FinalTallyPanel — running vote counts per finalist.
  */
 import type { Player } from '../../types';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 
 interface Props {
   finalists: Player[];
@@ -14,7 +15,8 @@ export default function FinalTallyPanel({ finalists, tally }: Props) {
       {finalists.map((f) => (
         <div key={f.id} className="fo-tally__item">
           <span className="fo-tally__name">
-            {f.avatar} {f.name}
+            <PlayerAvatar player={f} size="sm" />
+            {' '}{f.name}
           </span>
           <span className="fo-tally__count">{tally[f.id] ?? 0}</span>
         </div>

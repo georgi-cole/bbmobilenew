@@ -23,6 +23,7 @@ import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './FinalFaceoff.css';
 
 export default function FinalFaceoff() {
@@ -187,7 +188,7 @@ export default function FinalFaceoff() {
             className={`fo-finalist${finale.winnerId === f.id ? ' fo-finalist--winner' : ''}`}
           >
             {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
-            <span className="fo-finalist__avatar">{f.avatar}</span>
+            <PlayerAvatar player={f} size="md" />
             <span className="fo-finalist__name">{f.name}</span>
             <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
           </div>
@@ -213,7 +214,7 @@ export default function FinalFaceoff() {
       {awaitingHumanPlayer && !finale.isComplete && (
         <div className="fo-human-vote">
           <span className="fo-human-vote__prompt">
-            {awaitingHumanPlayer.avatar} {awaitingHumanPlayer.name}, cast your jury vote:
+            {awaitingHumanPlayer.name}, cast your jury vote:
           </span>
           <div className="fo-human-vote__choices">
             {finalists.map((f) => (
@@ -224,7 +225,7 @@ export default function FinalFaceoff() {
                 aria-label={`Cast jury vote for ${f.name}`}
                 onClick={() => handleCastVote(f.id)}
               >
-                <span className="fo-human-vote__choice-avatar">{f.avatar}</span>
+                <PlayerAvatar player={f} size="sm" />
                 <span className="fo-human-vote__choice-name">{f.name}</span>
               </button>
             ))}
