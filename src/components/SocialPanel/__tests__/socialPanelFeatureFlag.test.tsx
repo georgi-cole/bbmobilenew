@@ -1,19 +1,18 @@
 /**
  * Smoke tests: FEATURE_SOCIAL_V2 flag gates old SocialPanel rendering.
  *
- * Strategy: vi.mock the featureFlags module to control the flag value, then
- * render a minimal wrapper that mirrors GameScreen's conditional logic and
- * assert presence / absence of the old SocialPanel's heading.
+ * Strategy: stub VITE_FEATURE_SOCIAL_V2 via vi.stubEnv, reset the module
+ * registry so featureFlags re-evaluates, then dynamically import the flag and
+ * render a conditional that mirrors GameScreen's logic.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../../store/gameSlice';
 import socialReducer, { setEnergyBankEntry } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
-import SocialPanel from '../SocialPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -26,14 +25,6 @@ function makeStore() {
   return store;
 }
 
-/**
- * Minimal wrapper that replicates GameScreen's feature-flag conditional:
- *   {!FEATURE_SOCIAL_V2 && <SocialPanel actorId="user" />}
- */
-function ConditionalSocialPanel({ flagEnabled }: { flagEnabled: boolean }) {
-  return flagEnabled ? null : <SocialPanel actorId="user" />;
-}
-
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('FEATURE_SOCIAL_V2 feature flag – SocialPanel visibility', () => {
@@ -43,38 +34,44 @@ describe('FEATURE_SOCIAL_V2 feature flag – SocialPanel visibility', () => {
     store = makeStore();
   });
 
-  it('hides the old SocialPanel when FEATURE_SOCIAL_V2 is enabled (true)', () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  it('hides the old SocialPanel when FEATURE_SOCIAL_V2 is enabled (true)', async () => {
+    vi.stubEnv('VITE_FEATURE_SOCIAL_V2', 'true');
+    const { FEATURE_SOCIAL_V2 } = await import('../../../config/featureFlags');
+    const { default: SocialPanel } = await import('../SocialPanel');
     render(
       <Provider store={store}>
-        <ConditionalSocialPanel flagEnabled={true} />
+        {!FEATURE_SOCIAL_V2 && <SocialPanel actorId="user" />}
       </Provider>,
     );
     expect(screen.queryByText(/Social Actions/)).toBeNull();
   });
 
-  it('renders the old SocialPanel when FEATURE_SOCIAL_V2 is disabled (false)', () => {
+  it('renders the old SocialPanel when FEATURE_SOCIAL_V2 is disabled (false)', async () => {
+    vi.stubEnv('VITE_FEATURE_SOCIAL_V2', 'false');
+    const { FEATURE_SOCIAL_V2 } = await import('../../../config/featureFlags');
+    const { default: SocialPanel } = await import('../SocialPanel');
     render(
       <Provider store={store}>
-        <ConditionalSocialPanel flagEnabled={false} />
+        {!FEATURE_SOCIAL_V2 && <SocialPanel actorId="user" />}
       </Provider>,
     );
     expect(screen.getByText(/Social Actions/)).toBeDefined();
   });
 
   it('FEATURE_SOCIAL_V2 defaults to true when env var is not set', async () => {
-    vi.stubEnv('VITE_FEATURE_SOCIAL_V2', undefined as unknown as string);
-    vi.stubEnv('REACT_APP_FEATURE_SOCIAL_V2', undefined as unknown as string);
+    // No stub — env var absent; ?? 'true' fallback should apply
     const { FEATURE_SOCIAL_V2 } = await import('../../../config/featureFlags');
     expect(FEATURE_SOCIAL_V2).toBe(true);
-    vi.unstubAllEnvs();
   });
 
   it('FEATURE_SOCIAL_V2 is false when VITE_FEATURE_SOCIAL_V2=false', async () => {
-    vi.resetModules();
     vi.stubEnv('VITE_FEATURE_SOCIAL_V2', 'false');
     const { FEATURE_SOCIAL_V2 } = await import('../../../config/featureFlags');
     expect(FEATURE_SOCIAL_V2).toBe(false);
-    vi.unstubAllEnvs();
-    vi.resetModules();
   });
 });

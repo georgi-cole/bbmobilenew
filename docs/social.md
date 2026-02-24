@@ -17,7 +17,9 @@ The old (legacy) `SocialPanel` is gated behind the `FEATURE_SOCIAL_V2` flag defi
 | Env var | Default | Effect |
 |---|---|---|
 | `VITE_FEATURE_SOCIAL_V2` | `true` | Set to `false` to re-enable the legacy SocialPanel |
-| `REACT_APP_FEATURE_SOCIAL_V2` | `true` | CRA-style alias — same behaviour |
+
+> **Note:** Vite only exposes `VITE_`-prefixed env vars to `import.meta.env` by default.
+> `REACT_APP_*` variables have no effect unless `envPrefix` is configured in `vite.config.ts`.
 
 When the flag is **`true`** (default):
 - `SocialPanelV2` handles all social-phase UI (full-screen modal overlay).
