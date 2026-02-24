@@ -36,6 +36,12 @@ export interface SocialActionLogEntry {
   score?: number;
   /** Human-readable outcome label (e.g. 'Good', 'Bad') produced by the evaluator. */
   label?: string;
+  /**
+   * Origin of the action: 'manual' for human player actions, 'system' for
+   * background AI actions.  Used by Diary Room and activity routing to
+   * distinguish user-initiated interactions from background game activity.
+   */
+  source?: 'manual' | 'system';
 }
 
 /** Redux-serialisable state subtree owned by the social module. */
@@ -59,6 +65,12 @@ export interface SocialState {
    * When true the panel is visible regardless of the current game phase.
    */
   panelOpen: boolean;
+  /**
+   * Snapshot of affinity values taken at the start of each week (when transitioning to
+   * `week_start`). Used to compute the week-over-week relationship trend arrow shown in
+   * the expanded PlayerCard.  Shape: actorId → targetId → affinity.
+   */
+  weekStartRelSnapshot: Record<string, Record<string, number>>;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

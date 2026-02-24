@@ -6,12 +6,14 @@ import {
   selectInfoBank,
   selectSocialPanelOpen,
   selectSessionLogs,
+  selectWeekStartRelSnapshot,
   closeSocialPanel,
   clearSessionLogs,
 } from '../../social/socialSlice';
 import { addTvEvent } from '../../store/gameSlice';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import { TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
+import { buildDrSessionSummary } from '../../services/activityService';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
@@ -44,6 +46,7 @@ export default function SocialPanelV2() {
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
+  const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
 
   const humanPlayer = game.players.find((p) => p.isUser);
 
@@ -51,24 +54,26 @@ export default function SocialPanelV2() {
   const open = !!humanPlayer && socialPanelOpen;
 
   function handleClose() {
-    const hasUserActions = sessionLogs.some((log) => log.actorId === humanPlayer!.id);
-    if (hasUserActions) {
-      const playerNames = new Map(game.players.map((p) => [p.id, p.name]));
-      // One concise diary entry per user-initiated interaction (filter out AI actions).
-      for (const log of sessionLogs) {
-        if (log.actorId !== humanPlayer!.id) continue;
-        const actor = playerNames.get(log.actorId) ?? log.actorId;
-        const target = playerNames.get(log.targetId) ?? log.targetId;
-        const actionTitle = SocialManeuvers.getActionById(log.actionId)?.title ?? log.actionId;
-        const text = `📋 Week ${game.week}: ${actor} → ${target}: ${actionTitle} (${log.outcome})`;
-        dispatch(addTvEvent({ text, type: 'diary' }));
-      }
+    if (!humanPlayer) {
+      dispatch(closeSocialPanel());
+      return;
+    }
+    const userLogs = sessionLogs.filter((log) => log.actorId === humanPlayer.id);
+    if (userLogs.length > 0) {
+      // Publish one concise Diary Room summary for the whole session.
+      // Routed exclusively to the DR channel so it does NOT appear in the
+      // main-screen TVLog or TV viewport.
+      const successCount = userLogs.filter((l) => l.outcome === 'success').length;
+      const failCount = userLogs.length - successCount;
+      const drText = buildDrSessionSummary(game.week, userLogs.length, successCount, failCount);
+      dispatch(addTvEvent({ text: drText, type: 'diary', source: 'manual', channels: ['dr'] }));
+
       // Show a short, playful TV-zone sentence — dispatched last so it appears at
       // the top of the feed (index 0) and is shown in the TV viewport after close.
       const tvMsg = TV_SOCIAL_CLOSE_MESSAGES[
         Math.floor(Math.random() * TV_SOCIAL_CLOSE_MESSAGES.length)
       ];
-      dispatch(addTvEvent({ text: tvMsg, type: 'social' }));
+      dispatch(addTvEvent({ text: tvMsg, type: 'social', channels: ['tv', 'mainLog'] }));
     }
     if (sessionLogs.length > 0) {
       dispatch(clearSessionLogs());
@@ -119,7 +124,7 @@ export default function SocialPanelV2() {
       isExecutingRef.current = false;
       return;
     }
-    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId);
+    const result = SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, { source: 'manual' });
     setFeedbackMsg(result.summary);
     if (result.success) {
       setSelectedActionId(null);
@@ -153,11 +158,26 @@ export default function SocialPanelV2() {
   const orderedPlayers = [...activePlayers, ...juryPlayers];
   const disabledPlayerIds = juryPlayers.map((p) => p.id);
 
-  // ── Relationship deltas from this session (actor → target sum of deltas) ──
+  // ── Week-over-week relationship deltas (current - snapshot at week start) ──
+  // Shows how the human player's relationship with each houseguest changed
+  // over the course of this week (includes background seeding + social actions).
   const deltasByTargetId = new Map<string, number>();
-  for (const log of sessionLogs) {
-    if (log.actorId === humanPlayer!.id) {
-      deltasByTargetId.set(log.targetId, (deltasByTargetId.get(log.targetId) ?? 0) + log.delta);
+  if (humanPlayer) {
+    const currentRels = relationships?.[humanPlayer.id] ?? {};
+    const snapshotRels = weekStartRelSnapshot[humanPlayer.id] ?? {};
+    for (const [targetId, rel] of Object.entries(currentRels)) {
+      // Note: If a relationship exists now but not in the week-start snapshot,
+      // we treat its starting affinity as 0. This is intentional so that
+      // deltas reflect all changes this week, including initial seeding and
+      // background adjustments. As a consequence, relationships that are
+      // first seeded in week 1 will show their full seeded value as a
+      // positive delta, which may look like a large "jump" even though it is
+      // just the initial seed rather than organic growth.
+      const snapAffinity = snapshotRels[targetId] ?? 0;
+      const weeklyDelta = rel.affinity - snapAffinity;
+      if (weeklyDelta !== 0) {
+        deltasByTargetId.set(targetId, weeklyDelta);
+      }
     }
   }
 

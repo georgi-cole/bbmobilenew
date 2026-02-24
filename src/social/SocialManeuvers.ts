@@ -103,6 +103,12 @@ export interface ExecuteActionOptions {
    * Returns the outcome result without mutating energy, relationships, or logs.
    */
   previewOnly?: boolean;
+  /**
+   * Origin of the action for activity routing.
+   * Set to 'manual' for human-player actions and 'system' for AI/background actions.
+   * Defaults to 'system' when omitted so un-tagged callers are treated conservatively.
+   */
+  source?: 'manual' | 'system';
 }
 
 export interface ExecuteActionResult {
@@ -201,6 +207,7 @@ export function executeAction(
     timestamp: Date.now(),
     score: outcomeResult.score,
     label: outcomeResult.label,
+    source: options?.source ?? 'system',
   };
 
   _store.dispatch(

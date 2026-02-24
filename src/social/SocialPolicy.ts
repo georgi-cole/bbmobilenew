@@ -166,6 +166,9 @@ function scoreToLabel(score: number): OutcomeLabel {
  * variance. Pass the current relationship graph for a richer actor/target bias.
  * The `outcome` parameter ('success' | 'failure') controls which delta is used
  * as the base score so score, delta, and label stay consistent.
+ *
+ * NOTE: uses `socialConfig.scoreDeltas` (small [-1,+1]-scale values) — NOT the
+ * display-scale `affinityDeltas` — so the quality label stays meaningful.
  */
 export function computeOutcomeScore(
   actionId: string,
@@ -176,7 +179,7 @@ export function computeOutcomeScore(
   outcome: 'success' | 'failure' = 'success',
 ): number {
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories;
-  const deltas = socialConfig.affinityDeltas;
+  const deltas = socialConfig.scoreDeltas;
 
   // Base effect derived from action category and outcome.
   const baseScore: number = friendlyActions.includes(actionId)

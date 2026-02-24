@@ -160,7 +160,7 @@ function _tick(): void {
     const targets = chooseTargetsFor(player.id, actionId, context);
     if (targets.length === 0) continue;
 
-    const result = executeAction(player.id, targets[0], actionId);
+    const result = executeAction(player.id, targets[0], actionId, { source: 'system' });
     if (result.success) {
       _actionsExecuted++;
       if (socialConfig.verbose) {

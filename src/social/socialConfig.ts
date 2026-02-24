@@ -26,8 +26,23 @@ export const socialConfig = {
     friendlyActions: ['ally', 'protect'] as string[],
     aggressiveActions: ['betray', 'nominate'] as string[],
   },
-  /** Affinity delta magnitudes applied by computeOutcomeDelta. */
+  /**
+   * Affinity delta magnitudes used for the DISPLAY / relationship storage.
+   * Values are in the 0–100 display scale so each action produces a visible
+   * percentage change in the social panel.
+   */
   affinityDeltas: {
+    friendlySuccess: 5,
+    friendlyFailure: 1,
+    aggressiveSuccess: -8,
+    aggressiveFailure: -2,
+  },
+  /**
+   * Score delta magnitudes used exclusively by computeOutcomeScore / evaluateOutcome
+   * to derive the quality label ('Good', 'Bad', etc.) in the [-1, +1] range.
+   * Kept separate from affinityDeltas so scaling one doesn't affect the other.
+   */
+  scoreDeltas: {
     friendlySuccess: 0.1,
     friendlyFailure: 0.02,
     aggressiveSuccess: -0.15,

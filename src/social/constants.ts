@@ -15,4 +15,5 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   sessionLogs: [],
   influenceWeights: {},
   panelOpen: false,
+  weekStartRelSnapshot: {},
 };

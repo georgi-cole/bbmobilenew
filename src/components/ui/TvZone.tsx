@@ -9,6 +9,7 @@ import TvAnnouncementOverlay, {
   type Announcement,
 } from './TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
+import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
@@ -129,7 +130,18 @@ export default function TvZone() {
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const navigate = useNavigate();
 
-  const latestEvent = gameState.tvFeed[0];
+  // Filter entries for the TV viewport (excludes DR-only events).
+  const tvVisibleFeed = useMemo(
+    () => gameState.tvFeed.filter(isVisibleOnTv),
+    [gameState.tvFeed],
+  );
+  // Filter entries for the main-screen log strip (excludes DR-only events).
+  const mainLogFeed = useMemo(
+    () => gameState.tvFeed.filter(isVisibleInMainLog),
+    [gameState.tvFeed],
+  );
+
+  const latestEvent = tvVisibleFeed[0];
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -304,7 +316,7 @@ export default function TvZone() {
 
       {/* ── Event log (TVLog with duplicate suppression, 2 visible rows) ──── */}
       <TVLog
-        entries={gameState.tvFeed}
+        entries={mainLogFeed}
         mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
         maxVisible={2}
       />

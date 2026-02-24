@@ -96,6 +96,21 @@ const socialSlice = createSlice({
     clearSessionLogs(state) {
       state.sessionLogs = [];
     },
+    /**
+     * Snapshot current relationship affinities into weekStartRelSnapshot.
+     * Called at the start of each week so the week-over-week trend arrow can
+     * compare current affinities against the baseline captured here.
+     */
+    snapshotWeekRelationships(state) {
+      const snapshot: Record<string, Record<string, number>> = {};
+      for (const [actorId, targets] of Object.entries(state.relationships)) {
+        snapshot[actorId] = {};
+        for (const [targetId, rel] of Object.entries(targets)) {
+          snapshot[actorId][targetId] = rel.affinity;
+        }
+      }
+      state.weekStartRelSnapshot = snapshot;
+    },
   },
 });
 
@@ -115,6 +130,7 @@ export const {
   openSocialPanel,
   closeSocialPanel,
   clearSessionLogs,
+  snapshotWeekRelationships,
 } = socialSlice.actions;
 export default socialSlice.reducer;
 
@@ -132,3 +148,5 @@ export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs'];
 export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false;
+export const selectWeekStartRelSnapshot = (state: { social: SocialState }) =>
+  state.social?.weekStartRelSnapshot ?? {};
