@@ -6,6 +6,7 @@ import {
   selectInfoBank,
   selectSocialPanelOpen,
   selectSessionLogs,
+  selectWeekStartRelSnapshot,
   closeSocialPanel,
   clearSessionLogs,
 } from '../../social/socialSlice';
@@ -45,6 +46,7 @@ export default function SocialPanelV2() {
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
+  const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
 
   const humanPlayer = game.players.find((p) => p.isUser);
 
@@ -153,11 +155,19 @@ export default function SocialPanelV2() {
   const orderedPlayers = [...activePlayers, ...juryPlayers];
   const disabledPlayerIds = juryPlayers.map((p) => p.id);
 
-  // ── Relationship deltas from this session (actor → target sum of deltas) ──
+  // ── Week-over-week relationship deltas (current - snapshot at week start) ──
+  // Shows how the human player's relationship with each houseguest changed
+  // over the course of this week (includes background seeding + social actions).
   const deltasByTargetId = new Map<string, number>();
-  for (const log of sessionLogs) {
-    if (log.actorId === humanPlayer!.id) {
-      deltasByTargetId.set(log.targetId, (deltasByTargetId.get(log.targetId) ?? 0) + log.delta);
+  if (humanPlayer) {
+    const currentRels = relationships?.[humanPlayer.id] ?? {};
+    const snapshotRels = weekStartRelSnapshot[humanPlayer.id] ?? {};
+    for (const [targetId, rel] of Object.entries(currentRels)) {
+      const snapAffinity = snapshotRels[targetId] ?? 0;
+      const weeklyDelta = rel.affinity - snapAffinity;
+      if (weeklyDelta !== 0) {
+        deltasByTargetId.set(targetId, weeklyDelta);
+      }
     }
   }
 

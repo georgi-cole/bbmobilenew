@@ -65,6 +65,12 @@ export interface SocialState {
    * When true the panel is visible regardless of the current game phase.
    */
   panelOpen: boolean;
+  /**
+   * Snapshot of affinity values taken at the start of each week (when transitioning to
+   * `week_start`). Used to compute the week-over-week relationship trend arrow shown in
+   * the expanded PlayerCard.  Shape: actorId → targetId → affinity.
+   */
+  weekStartRelSnapshot: Record<string, Record<string, number>>;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

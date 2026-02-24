@@ -11,10 +11,13 @@
  *   • Entering social_1 or social_2  → SocialEngine.startPhase(newPhase)
  *   • Leaving  social_1 or social_2  → SocialEngine.endPhase(prevPhase)
  *   • Direct social → social (debug only) → endPhase(prev) + startPhase(next)
+ *   • Entering week_start             → snapshot relationships + seed background affinities
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
 import { SocialEngine } from './SocialEngine';
+import { snapshotWeekRelationships } from './socialSlice';
+import { seedWeekRelationships } from './weekSocialSeed';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
 
@@ -22,6 +25,14 @@ const PHASE_SET_ACTIONS = new Set(['game/setPhase', 'game/forcePhase']);
 
 interface StateWithGame {
   game: { phase: string };
+}
+
+type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
+
+/** Snapshot relationships and seed week-start background affinities. */
+function handleWeekStart(api: MiddlewareAPI): void {
+  api.dispatch(snapshotWeekRelationships());
+  seedWeekRelationships(api);
 }
 
 export const socialMiddleware: Middleware = (api) => (next) => (action) => {
@@ -42,6 +53,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     const result = next(action);
 
+    if (nextPhase === 'week_start' && prevPhase !== 'week_start') {
+      handleWeekStart(api as unknown as MiddlewareAPI);
+    }
+
     if (SOCIAL_PHASES.has(nextPhase) && prevPhase !== nextPhase) {
       SocialEngine.startPhase(nextPhase);
     }
@@ -59,6 +74,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       if (SOCIAL_PHASES.has(prevPhase)) {
         SocialEngine.endPhase(prevPhase);
       }
+
+      if (newPhase === 'week_start') {
+        handleWeekStart(api as unknown as MiddlewareAPI);
+      }
+
       if (SOCIAL_PHASES.has(newPhase)) {
         SocialEngine.startPhase(newPhase);
       }
