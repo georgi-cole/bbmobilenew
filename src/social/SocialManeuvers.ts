@@ -262,7 +262,7 @@ export function executeAction(
     label: outcomeResult.label,
     source: options?.source ?? 'system',
   };
-  if (Object.keys(yields).length > 0) {
+  if (outcome === 'success' && Object.keys(yields).length > 0) {
     entry.yieldsApplied = yields;
   }
 
