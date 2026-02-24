@@ -23,13 +23,11 @@ import socialReducer, {
   setInfluenceBankEntry,
   setInfoBankEntry,
   applyEnergyDelta,
-  applyInfluenceDelta,
-  applyInfoDelta,
   recordSocialAction,
   updateRelationship,
 } from '../../src/social/socialSlice';
 import { SOCIAL_ACTIONS } from '../../src/social/socialActions';
-import { normalizeCost, normalizeActionCost, normalizeActionCosts } from '../../src/social/smExecNormalize';
+import { normalizeCost, normalizeActionCost } from '../../src/social/smExecNormalize';
 import {
   initEnergyBank,
   get as bankGet,
@@ -767,5 +765,15 @@ describe('executeAction – balancesAfter in sessionLogs', () => {
     const infoBank = selectInfoBank(store.getState());
     expect(influenceBank['p1']).toBe(2); // 3 - 1
     expect(infoBank['p1']).toBe(2); // unchanged
+  });
+
+  it('session log entry does not have yieldsApplied when an action with yields fails', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+
+    executeAction('p1', 'p2', 'compliment', { outcome: 'failure' });
+    const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
+    expect(entry.yieldsApplied).toBeUndefined();
   });
 });

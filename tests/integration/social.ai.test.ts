@@ -16,7 +16,7 @@ import socialReducer, {
 import { initManeuvers, canAfford } from '../../src/social/SocialManeuvers';
 import { normalizeActionCosts } from '../../src/social/smExecNormalize';
 import { getActionById } from '../../src/social/SocialManeuvers';
-import { socialAIDriver, setStore, start, stop, getStatus } from '../../src/social/socialAIDriver';
+import { setStore, start, stop, getStatus } from '../../src/social/socialAIDriver';
 import { socialConfig } from '../../src/social/socialConfig';
 import * as SocialPolicy from '../../src/social/SocialPolicy';
 
