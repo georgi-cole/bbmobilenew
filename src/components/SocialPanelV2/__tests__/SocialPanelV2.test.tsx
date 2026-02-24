@@ -16,7 +16,7 @@
  * 12. Execute button disabled when target-requiring action is selected without a player.
  * 13. Execute button enabled when action and a player are both selected.
  * 14. Execute shows success feedback after idle action is performed.
- * 15. Execute shows 'Insufficient energy' feedback when player cannot afford action.
+ * 15. Execute shows 'Insufficient resources' feedback when player cannot afford action.
  * 16. After successful execute, action selection is cleared (button returns to disabled).
  * 17. Execute button gains the pulse class immediately after a successful execution.
  * 18. Execute button pulse class is removed after 850 ms.
@@ -253,7 +253,7 @@ describe('SocialPanelV2 – execute flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }));
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
-    expect(screen.getByRole('status').textContent).toContain('Insufficient energy');
+    expect(screen.getByRole('status').textContent).toContain('Insufficient resources');
   });
 
   it('execute button returns to disabled after successful execution', () => {

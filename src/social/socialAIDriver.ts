@@ -21,7 +21,8 @@
  */
 
 import { chooseActionFor, chooseTargetsFor } from './SocialPolicy';
-import { executeAction } from './SocialManeuvers';
+import { executeAction, getActionById, canAfford } from './SocialManeuvers';
+import { normalizeActionCosts } from './smExecNormalize';
 import { socialConfig } from './socialConfig';
 import type { RelationshipsMap } from './types';
 
@@ -40,6 +41,8 @@ interface DriverState {
   };
   social: {
     energyBank: Record<string, number>;
+    influenceBank: Record<string, number>;
+    infoBank: Record<string, number>;
     relationships: RelationshipsMap;
   };
 }
@@ -156,6 +159,11 @@ function _tick(): void {
 
     const actionId = chooseActionFor(player.id, context);
     if (actionId === 'idle') continue;
+
+    // Check full affordability (energy + influence + info) before attempting
+    const actionDef = getActionById(actionId);
+    if (!actionDef) continue;
+    if (!canAfford(player.id, normalizeActionCosts(actionDef))) continue;
 
     const targets = chooseTargetsFor(player.id, actionId, context);
     if (targets.length === 0) continue;
