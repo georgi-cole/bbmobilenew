@@ -22,6 +22,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import ActionGrid from '../ActionGrid';
 import { SOCIAL_ACTIONS } from '../../../social/socialActions';
+import { normalizeActionCosts } from '../../../social/smExecNormalize';
 
 describe('ActionGrid – rendering', () => {
   it('renders a card for every action in SOCIAL_ACTIONS', () => {
@@ -169,21 +170,30 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
   });
 
   it('places affordable actions before unaffordable ones when actorEnergy is provided', () => {
-    // With energy=1: only actions with cost<=1 are affordable (compliment=1, whisper={energy:1}, nominate={energy:1}, idle=0).
-    // Actions with cost 2 or 3 are unaffordable.
-    render(<ActionGrid actorEnergy={1} />);
+    // With energy=1, influence=0, info=0: affordable actions are those with
+    // energy<=1 AND no influence/info costs. Unaffordable are all others.
+    render(<ActionGrid actorEnergy={1} actorInfluence={0} actorInfo={0} />);
     const cards = screen.getAllByRole('button', { name: /./i }).filter(
       (el) => el.hasAttribute('data-action-id'),
     );
     const renderedIds = cards.map((c) => c.getAttribute('data-action-id'));
-    // Affordable actions (cost <= 1) should come before unaffordable (cost > 1).
+    // Compute affordable/unaffordable using the same logic as the component
+    const actorResources = { energy: 1, influence: 0, info: 0 };
     const affordableIds = SOCIAL_ACTIONS.filter((a) => {
-      const cost = typeof a.baseCost === 'number' ? a.baseCost : (a.baseCost.energy ?? 0);
-      return cost <= 1;
+      const costs = normalizeActionCosts(a);
+      return (
+        costs.energy <= actorResources.energy &&
+        costs.influence <= actorResources.influence &&
+        costs.info <= actorResources.info
+      );
     }).map((a) => a.id);
     const unaffordableIds = SOCIAL_ACTIONS.filter((a) => {
-      const cost = typeof a.baseCost === 'number' ? a.baseCost : (a.baseCost.energy ?? 0);
-      return cost > 1;
+      const costs = normalizeActionCosts(a);
+      return !(
+        costs.energy <= actorResources.energy &&
+        costs.influence <= actorResources.influence &&
+        costs.info <= actorResources.info
+      );
     }).map((a) => a.id);
     // All affordable ids should appear before all unaffordable ids
     const lastAffordableIndex = Math.max(...affordableIds.map((id) => renderedIds.indexOf(id)));
@@ -192,17 +202,19 @@ describe('ActionGrid – actorEnergy sorting and availability', () => {
   });
 
   it('shows the availability reason overlay on unaffordable cards', () => {
-    // With energy=0: every action with cost>0 is unaffordable
+    // With energy=0: every action with energy cost >0 is unaffordable
     render(<ActionGrid actorEnergy={0} />);
-    // Several actions cost 1 — at least one overlay with this text should be present
-    const overlays = screen.getAllByText('Insufficient energy: 1 ⚡ needed');
+    // Several actions cost 1 energy — at least one overlay should be present
+    const overlays = screen.getAllByText(/Need ⚡\d/);
     expect(overlays.length).toBeGreaterThan(0);
   });
 
   it('does not show availability reason for affordable actions', () => {
-    // With sufficient energy all actions are affordable — no overlays
-    render(<ActionGrid actorEnergy={100} />);
-    expect(screen.queryByText(/Insufficient energy/)).toBeNull();
+    // With ample resources all actions are affordable — no overlays
+    render(<ActionGrid actorEnergy={100} actorInfluence={1000} actorInfo={1000} />);
+    expect(screen.queryByText(/Need ⚡/)).toBeNull();
+    expect(screen.queryByText(/Need 🤝/)).toBeNull();
+    expect(screen.queryByText(/Need 💡/)).toBeNull();
   });
 });
 

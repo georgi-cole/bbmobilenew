@@ -56,6 +56,7 @@ export default function ActionCard({
   const { id, title, baseCost, category, availabilityHint } = action;
 
   const energyCost = typeof baseCost === 'number' ? baseCost : (baseCost.energy ?? 0);
+  const influenceCost = typeof baseCost === 'number' ? 0 : (baseCost.influence ?? 0);
   const infoCost = typeof baseCost === 'number' ? 0 : (baseCost.info ?? 0);
 
   // A card is effectively non-interactive when the explicit `disabled` prop is
@@ -144,12 +145,17 @@ export default function ActionCard({
             ⚡ {energyCost}
           </span>
         )}
-        {infoCost > 0 && (
-          <span className="ac-chip ac-chip--info" aria-label={`Info cost: ${infoCost}`}>
-            🔍 {infoCost}
+        {influenceCost > 0 && (
+          <span className="ac-chip ac-chip--influence" aria-label={`Influence cost: ${influenceCost}`}>
+            🤝 {influenceCost}
           </span>
         )}
-        {energyCost === 0 && infoCost === 0 && (
+        {infoCost > 0 && (
+          <span className="ac-chip ac-chip--info" aria-label={`Info cost: ${infoCost}`}>
+            💡 {infoCost}
+          </span>
+        )}
+        {energyCost === 0 && influenceCost === 0 && infoCost === 0 && (
           <span className="ac-chip ac-chip--energy" aria-label="Energy cost: 0">
             ⚡ 0
           </span>

@@ -102,8 +102,8 @@ describe('socialAIDriver – canAfford gating', () => {
     store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
     // influenceBank left empty (0)
 
-    // Force the AI to always choose proposeAlliance ({ energy:3, influence:1 })
-    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('proposeAlliance');
+    // Force the AI to always choose vote_rally ({ energy:2, influence:500 })
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('vote_rally');
 
     start();
     vi.advanceTimersByTime(socialConfig.tickIntervalMs);
@@ -120,8 +120,8 @@ describe('socialAIDriver – canAfford gating', () => {
     store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
     // infoBank left empty (0)
 
-    // Force the AI to always choose whisper ({ energy:1, info:1 })
-    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('whisper');
+    // Force the AI to always choose rumor ({ energy:2, info:100 })
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('rumor');
 
     start();
     vi.advanceTimersByTime(socialConfig.tickIntervalMs);
@@ -151,36 +151,37 @@ describe('socialAIDriver – canAfford gating', () => {
 // ── normalizeActionCosts integration with canAfford ───────────────────────
 
 describe('normalizeActionCosts + canAfford integration', () => {
-  it('proposeAlliance is unaffordable without influence', () => {
+  it('proposeAlliance is unaffordable without info (costs info:200)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    // infoBank not set → 0 < 200 required
 
     const action = getActionById('proposeAlliance')!;
     const costs = normalizeActionCosts(action);
-    expect(costs).toEqual({ energy: 3, influence: 1, info: 0 });
+    expect(costs).toEqual({ energy: 3, influence: 0, info: 200 });
     expect(canAfford('p1', costs)).toBe(false);
   });
 
-  it('proposeAlliance becomes affordable when influence is provisioned', () => {
+  it('proposeAlliance becomes affordable when info is provisioned (200+ pts)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 1 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 200 }));
 
     const action = getActionById('proposeAlliance')!;
     const costs = normalizeActionCosts(action);
     expect(canAfford('p1', costs)).toBe(true);
   });
 
-  it('rumor is unaffordable without info', () => {
+  it('rumor is unaffordable without info (costs info:100)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
 
     const action = getActionById('rumor')!;
     const costs = normalizeActionCosts(action);
-    expect(costs).toEqual({ energy: 2, influence: 0, info: 1 });
+    expect(costs).toEqual({ energy: 2, influence: 0, info: 100 });
     expect(canAfford('p1', costs)).toBe(false);
   });
 });

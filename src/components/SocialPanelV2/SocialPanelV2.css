@@ -127,6 +127,7 @@
   line-height: 1;
   padding: 0.3rem 0.55rem;
   transition: background 0.15s ease, color 0.15s ease;
+  margin-left: 0.75rem;
 }
 
 .sp2-header__close:hover {
