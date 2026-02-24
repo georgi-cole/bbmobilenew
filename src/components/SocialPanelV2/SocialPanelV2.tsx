@@ -163,6 +163,13 @@ export default function SocialPanelV2() {
     const currentRels = relationships?.[humanPlayer.id] ?? {};
     const snapshotRels = weekStartRelSnapshot[humanPlayer.id] ?? {};
     for (const [targetId, rel] of Object.entries(currentRels)) {
+      // Note: If a relationship exists now but not in the week-start snapshot,
+      // we treat its starting affinity as 0. This is intentional so that
+      // deltas reflect all changes this week, including initial seeding and
+      // background adjustments. As a consequence, relationships that are
+      // first seeded in week 1 will show their full seeded value as a
+      // positive delta, which may look like a large "jump" even though it is
+      // just the initial seed rather than organic growth.
       const snapAffinity = snapshotRels[targetId] ?? 0;
       const weeklyDelta = rel.affinity - snapAffinity;
       if (weeklyDelta !== 0) {
