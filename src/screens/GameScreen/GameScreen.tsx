@@ -33,6 +33,7 @@ import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
+import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
@@ -500,7 +501,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Social Phase Panel (human player actions) ────────────────────── */}
-      {showSocialPanel && humanPlayer && (
+      {!FEATURE_SOCIAL_V2 && showSocialPanel && humanPlayer && (
         <SocialPanel actorId={humanPlayer.id} />
       )}
 
