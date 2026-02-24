@@ -20,6 +20,7 @@ export default function JurorBubble({ juror, finalist, reveal }: Props) {
         <span className="jb-phrase">{reveal.phrase}</span>
         {finalist && (
           <span className="jb-vote">
+            <PlayerAvatar player={finalist} size="sm" />
             <strong>{finalist.name}</strong>
           </span>
         )}
