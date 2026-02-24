@@ -90,28 +90,31 @@ whatever text is passed into the component.
 ### TV Announcement Overlay
 
 `TvZone` renders an inline broadcast-stinger overlay (`TvAnnouncementOverlay`)
-inside the TV viewport whenever a **major** game event arrives.  The overlay
-displays a styled announcement (title, subtitle, optional live badge and a
-progress bar for auto-dismissing announcements) and exposes an info button that
-opens a fullscreen `TvAnnouncementModal` with detailed phase copy.
+inside the TV viewport whenever a **major** game event arrives or a popup phase
+transition is detected.  The overlay displays a styled full-bleed announcement
+(title, subtitle, optional live badge) and exposes an info button that opens a
+fullscreen `TvAnnouncementModal` with detailed phase copy.
 
 **Triggering an announcement**
 
-Set `meta.major` (or the top-level `major` field) on a `TvEvent` to one of the
-recognised keys:
+Announcements are driven by **game-phase transitions** (see phase reference
+table below).  For backwards compatibility, setting `meta.major` (or the
+top-level `major` field) on a `TvEvent` to one of the recognised keys also
+triggers an overlay:
 
 | Key | Auto-dismiss |
 |-----|-------------|
-| `week_start` | 4 s |
 | `nomination_ceremony` | manual |
-| `veto_competition` | 4 s |
-| `veto_ceremony` | 4 s |
+| `veto_ceremony` | manual |
 | `live_eviction` | manual |
 | `final4` | manual |
-| `final3` | manual |
+| `final3_announcement` | manual |
 | `final_hoh` | manual |
 | `jury` | manual |
-| `twist` | 4 s |
+| `twist` | 4.5 s |
+
+> **Note:** The correct key for the Final 3 announcement is `final3_announcement`.
+> Earlier documentation erroneously listed this as `final3`.
 
 Example event shape:
 
@@ -125,9 +128,9 @@ addTvEvent({
 });
 ```
 
-Manual-dismiss announcements also show a **Continue ▶** FAB at the bottom-right
-of the TV bezel.  The countdown pauses automatically while the user hovers or
-focuses the overlay.
+All manual-dismiss announcements are dismissed by the central Play/Continue FAB
+via the `tv:announcement-dismiss` custom event (see phase reference below).
+The countdown pauses automatically while the user hovers or focuses the overlay.
 
 ---
 
@@ -303,4 +306,12 @@ The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, 
 
 **No overlay** is shown for: `week_start`, `hoh_comp`, `pov_comp`, `final3_comp1`, `final3_comp2`, `final3_comp3`, and all other phases — these remain normal text messages.
 
-All overlay announcements require manual dismissal (FAB dispatches `tv:announcement-dismiss`).  An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`).
+All overlay announcements require manual dismissal.  The central Play/Continue FAB should dispatch the following event to dismiss an active announcement:
+
+```js
+window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+```
+
+An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`).
+
+> **After merging**, please attach a screenshot of the updated TV area (full-bleed announcement visible) to this PR for visual verification.

@@ -1,58 +1,60 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   TvAnnouncementOverlay — broadcast stinger / low-third
+   TvAnnouncementOverlay — broadcast stinger / full-bleed TV viewport fill
    ───────────────────────────────────────────────────────────────────────────── */
 
-/* ── Dim backdrop (full viewport fill) ───────────────────────────────────── */
+/* ── Full viewport wrapper ───────────────────────────────────────────────── */
 .tv-announcement-wrap {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 7, 20, 0.82);
   z-index: 20;
 }
 
-/* ── Centered card ────────────────────────────────────────────────────────── */
+/* ── Full-bleed fill — no card border or shadow ───────────────────────────── */
 .tv-announcement {
-  position: relative;
-  width: 88%;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Cinematic gradient background */
+  /* Semi-transparent blue gradient — fills the TV viewport */
   background: linear-gradient(
     160deg,
-    rgba(14, 16, 38, 0.98) 0%,
-    rgba(32, 20, 64, 0.99) 50%,
-    rgba(14, 16, 38, 0.98) 100%
+    rgba(8, 24, 72, 0.90) 0%,
+    rgba(16, 48, 128, 0.84) 50%,
+    rgba(8, 24, 72, 0.90) 100%
   );
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: 14px;
   padding: 20px 16px 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
-  animation: tvAnnouncePop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tvAnnouncementPop 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes tvAnnouncePop {
-  from { opacity: 0; transform: scale(0.93) translateY(10px); }
+@keyframes tvAnnouncementPop {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Subtle scanline overlay on the announcement card */
+/* ── Breathing gradient pseudo-element (separated from content layer) ─────── */
 .tv-announcement::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.018) 0 1px,
-    transparent 1px 3px
+  background: linear-gradient(
+    160deg,
+    rgba(30, 80, 200, 0.18) 0%,
+    rgba(50, 130, 255, 0.28) 50%,
+    rgba(30, 80, 200, 0.18) 100%
   );
+  animation: tvAnnouncementBreathe 6.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
+}
+
+@keyframes tvAnnouncementBreathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.03); }
 }
 
 /* ── Live badge ───────────────────────────────────────────────────────────── */
@@ -159,10 +161,10 @@
 
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .tv-announcement-wrap {
+  .tv-announcement {
     animation: none;
   }
-  .tv-announcement {
+  .tv-announcement::before {
     animation: none;
   }
   .tv-announcement__live,
