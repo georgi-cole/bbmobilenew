@@ -746,6 +746,15 @@ describe('executeAction – balancesAfter in sessionLogs', () => {
     expect(entry.yieldsApplied).toBeUndefined();
   });
 
+  it('session log entry does not have yieldsApplied when an action with yields fails', () => {
+    const store = makeStore();
+    initManeuvers(store);
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
+
+    executeAction('p1', 'p2', 'compliment', { outcome: 'failure' });
+    const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
+    expect(entry.yieldsApplied).toBeUndefined();
+  });
   it('selectInfluenceBank and selectInfoBank return correct values after action', () => {
     const store = makeStore();
     initManeuvers(store);
