@@ -29,10 +29,10 @@ interface StateWithGame {
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown };
 
-/** Snapshot relationships and seed week-start background affinities. */
+/** Seed week-start background affinities, then snapshot relationships as baseline. */
 function handleWeekStart(api: MiddlewareAPI): void {
-  api.dispatch(snapshotWeekRelationships());
   seedWeekRelationships(api);
+  api.dispatch(snapshotWeekRelationships());
 }
 
 export const socialMiddleware: Middleware = (api) => (next) => (action) => {
