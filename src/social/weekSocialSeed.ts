@@ -10,8 +10,8 @@
  * Design notes:
  *  - If a relationship pair already exists the delta is small (±3), so
  *    existing history is preserved and only gently drifts.
- *  - If a pair has never interacted a larger seed delta (5–25) is applied so
- *    week-1 relationships start at a meaningful non-zero value.
+ *  - If a pair has never interacted a larger seed delta (-12–25) is applied so
+ *    week-1 relationships start at a meaningful non-zero value, and can begin slightly negative.
  *  - All deltas use the display-scale (0–100), matching `affinityDeltas`.
  *  - Uses a deterministic LCG seeded by `game.seed XOR week` for reproducibility.
  */
