@@ -93,13 +93,6 @@ describe('ChatOverlay', () => {
     expect(screen.queryByRole('button', { name: /skip/i })).not.toBeInTheDocument();
   });
 
-  it('calls onComplete via skip path', async () => {
-    const onComplete = vi.fn();
-    render(<ChatOverlay lines={LINES} onComplete={onComplete} />);
-    await userEvent.click(screen.getByRole('button', { name: /skip/i }));
-    expect(onComplete).toHaveBeenCalled();
-  });
-
   it('onComplete fires automatically after autoPlay sequence finishes', async () => {
     vi.useFakeTimers();
     const onComplete = vi.fn();

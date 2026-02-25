@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Player } from '../../types';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './ChatOverlay.css';
 
 export interface ChatLine {
@@ -49,21 +50,35 @@ const BASE_TYPING_MS = 800;
 /** How long the typing indicator shows before the next line appears (ms). */
 const TYPING_INDICATOR_MS = 600;
 
-function defaultAvatarRenderer(p: Player): React.ReactNode {
-  const avatar = p.avatar ?? '';
-  if (typeof avatar === 'string' && avatar.endsWith('.png')) {
-    return <img className="chat-overlay__avatar-img" src={avatar} alt={p.name} />;
-  }
-  // If it looks like an emoji (single grapheme cluster), render it directly
-  if (avatar && [...avatar].length <= 2) {
+function ChatAvatar({ player }: { player: Player }) {
+  const avatar = player.avatar ?? '';
+  const [candidates] = useState(() => resolveAvatarCandidates(player));
+  const [candidateIdx, setCandidateIdx] = useState(0);
+
+  if (isEmoji(avatar)) {
     return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
   }
-  // Fallback: first initial
+
+  const src = candidates[candidateIdx];
+  if (src) {
+    return (
+      <img
+        className="chat-overlay__avatar-img"
+        src={src}
+        alt={player.name}
+        onError={() => setCandidateIdx((i) => Math.min(i + 1, candidates.length - 1))}
+      />
+    );
+  }
   return (
     <span className="chat-overlay__avatar-initial">
-      {p.name ? p.name[0].toUpperCase() : '?'}
+      {player.name ? player.name[0].toUpperCase() : '?'}
     </span>
   );
+}
+
+function defaultAvatarRenderer(p: Player): React.ReactNode {
+  return <ChatAvatar player={p} />;
 }
 
 export default function ChatOverlay({
@@ -84,8 +99,10 @@ export default function ChatOverlay({
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const onLineRevealRef = useRef(onLineReveal);
   const onCompleteRef = useRef(onComplete);
+  const linesRef = useRef(lines);
   onLineRevealRef.current = onLineReveal;
   onCompleteRef.current = onComplete;
+  linesRef.current = lines;
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -114,6 +131,7 @@ export default function ChatOverlay({
   }, [clearTimers, lines.length, markComplete]);
 
   useEffect(() => {
+    const lines = linesRef.current;
     if (!autoPlay || lines.length === 0) {
       // Nothing to reveal; fire complete immediately
       if (lines.length === 0) {
@@ -125,7 +143,8 @@ export default function ChatOverlay({
     let currentIdx = 0;
 
     function revealNext() {
-      if (currentIdx >= lines.length) {
+      const currentLines = linesRef.current;
+      if (currentIdx >= currentLines.length) {
         setShowTyping(false);
         markComplete();
         return;
@@ -139,7 +158,7 @@ export default function ChatOverlay({
         setShowTyping(false);
         const idx = currentIdx;
         setRevealedCount(idx + 1);
-        onLineRevealRef.current?.(lines[idx], idx);
+        onLineRevealRef.current?.(linesRef.current[idx], idx);
         currentIdx++;
         // Schedule next line
         addTimer(revealNext, delay / 2);
@@ -150,8 +169,7 @@ export default function ChatOverlay({
     addTimer(revealNext, 200);
 
     return clearTimers;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, lines.length, typingSpeed]);
+  }, [autoPlay, lines.length, typingSpeed, addTimer, clearTimers, markComplete]);
 
   // If lines is empty, render nothing (onComplete was already called in effect)
   if (lines.length === 0 && completed) return null;
@@ -206,9 +224,9 @@ export default function ChatOverlay({
 
           {showTyping && (
             <div className="chat-overlay__typing" aria-label="Typing…">
-              <span />
-              <span />
-              <span />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
             </div>
           )}
         </div>

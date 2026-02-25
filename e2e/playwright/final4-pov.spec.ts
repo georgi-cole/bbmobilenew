@@ -126,7 +126,7 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     // If the ChatOverlay is present (skippable plea cinematic), click Skip to
     // immediately complete it so the decision modal appears without delay.
     const skipBtn = page.getByRole('button', { name: /skip/i });
-    if (await skipBtn.isVisible()) {
+    if (await skipBtn.isVisible({ timeout: 1000 })) {
       await skipBtn.click();
     }
 

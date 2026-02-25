@@ -485,7 +485,14 @@ export default function GameScreen() {
   // modal appear (final4ChatDone guards the modal).
   const [final4ChatDone, setFinal4ChatDone] = useState(false)
 
-  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
+  // Reset the final4 chat completion flag when leaving the final4_eviction phase
+  // so that re-entering the phase (e.g., via debug tools) replays the chat.
+  // Uses window.setTimeout to keep the setState async (avoids set-state-in-effect lint error).
+  useEffect(() => {
+    if (game.phase === 'final4_eviction' || !final4ChatDone) return
+    const id = window.setTimeout(() => setFinal4ChatDone(false), 0)
+    return () => window.clearTimeout(id)
+  }, [game.phase, final4ChatDone])  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
   // tvFeed is newest-first; we reverse to get chronological order and filter
   // to the plea-related lines for this phase.
   const final4ChatLines = useMemo((): ChatLine[] => {
@@ -500,13 +507,15 @@ export default function GameScreen() {
       const isPleasIntro = /asks nominees for their pleas/i.test(ev.text)
       const nomineeMatch = nominees.find((n) => ev.text.startsWith(`${n.name}:`))
       if (isPleasIntro || nomineeMatch) {
+        const rawText = nomineeMatch
+          ? ev.text.replace(new RegExp(`^${nomineeMatch.name}:\\s*"?`), '').replace(/"$/, '').trim()
+          : ev.text
+        if (!rawText) return
         pleaLines.push({
           id: ev.id,
           role: nomineeMatch ? 'nominee' : 'host',
           player: nomineeMatch,
-          text: nomineeMatch
-            ? ev.text.replace(/^[^:]+:\s*"?/, '').replace(/"$/, '')
-            : ev.text,
+          text: rawText,
         })
       }
     })
