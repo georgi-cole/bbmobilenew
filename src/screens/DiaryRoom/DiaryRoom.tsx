@@ -23,12 +23,17 @@ import './DiaryRoom.css';
 
 type DiaryTab = 'confess' | 'log' | 'weekly';
 
+/** Delivery status of a user-sent message. */
+type MessageStatus = 'sending' | 'delivered' | 'seen';
+
 /** A single message in the private chat. */
 interface ChatMessage {
   id: string;
   role: 'user' | 'bb';
   text: string;
   timestamp: number;
+  /** Only present on user messages. */
+  status?: MessageStatus;
 }
 
 /**
@@ -120,6 +125,24 @@ interface ChatBubblesProps {
   endRef: React.RefObject<HTMLDivElement | null>;
 }
 
+/** Renders the status indicator for a user message. */
+function MessageStatusIcon({ status }: { status?: MessageStatus }) {
+  if (!status) return null;
+  if (status === 'sending') {
+    return (
+      <span className="diary-room__status diary-room__status--sending" aria-label="Sending">
+        <span className="diary-room__status-dot" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`diary-room__status diary-room__status--${status}`}
+      aria-label={status === 'seen' ? 'Seen' : 'Delivered'}
+    />
+  );
+}
+
 /** Renders private chat messages as styled bubbles. */
 function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
   return (
@@ -136,9 +159,12 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
               {msg.role === 'user' ? playerName : '📺 Big Brother'}
             </span>
             <span className="diary-room__bubble-text">{msg.text}</span>
-            <time className="diary-room__bubble-time">
-              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </time>
+            <div className="diary-room__bubble-footer">
+              <time className="diary-room__bubble-time">
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </time>
+              {msg.role === 'user' && <MessageStatusIcon status={msg.status} />}
+            </div>
           </div>
         ))
       )}
@@ -236,18 +262,34 @@ export default function DiaryRoom() {
     const text = entry.trim();
     if (!text) return;
 
+    const msgId = crypto.randomUUID();
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: msgId,
       role: 'user',
       text,
       timestamp: Date.now(),
+      status: 'sending',
     };
+
+    /** Update the status of a specific message by id in both state and sessionStorage. */
+    function updateStatus(id: string, status: MessageStatus, prev: ChatMessage[]): ChatMessage[] {
+      return prev.map((m) => (m.id === id ? { ...m, status } : m));
+    }
+
     const next = [...messages, userMsg];
     setMessages(next);
     saveChat(playerId, next);
     setEntry('');
     setLoading(true);
     setBbTyping(false);
+
+    // Transition: sending → delivered after a short artificial delay
+    await new Promise<void>((resolve) => setTimeout(resolve, 350));
+    setMessages((prev) => {
+      const updated = updateStatus(msgId, 'delivered', prev);
+      saveChat(playerId, updated);
+      return updated;
+    });
 
     try {
       const resp = await generateBigBrotherReply({
@@ -270,9 +312,16 @@ export default function DiaryRoom() {
         text: resp.text,
         timestamp: Date.now(),
       };
-      const withReply = [...next, bbMsg];
-      setMessages(withReply);
-      saveChat(playerId, withReply);
+
+      // Mark all previous user messages as 'seen' when BB replies
+      setMessages((prev) => {
+        const withSeen = prev.map((m) =>
+          m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
+        );
+        const withReply = [...withSeen, bbMsg];
+        saveChat(playerId, withReply);
+        return withReply;
+      });
     } catch (err) {
       console.error('Big Brother AI error:', err);
       const detail = err instanceof Error ? err.message : 'Unknown error.';
@@ -282,9 +331,11 @@ export default function DiaryRoom() {
         text: `Big Brother is unavailable: ${detail}`,
         timestamp: Date.now(),
       };
-      const withErr = [...next, bbErr];
-      setMessages(withErr);
-      saveChat(playerId, withErr);
+      setMessages((prev) => {
+        const withErr = [...prev, bbErr];
+        saveChat(playerId, withErr);
+        return withErr;
+      });
     } finally {
       setBbTyping(false);
       setLoading(false);
@@ -331,9 +382,12 @@ export default function DiaryRoom() {
             </p>
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             {bbTyping && (
-              <p className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
-                🎙️ Big Brother is typing…
-              </p>
+              <div className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
+                <span className="diary-room__bb-typing-label">📺 Big Brother</span>
+                <span className="diary-room__typing-dot" />
+                <span className="diary-room__typing-dot" />
+                <span className="diary-room__typing-dot" />
+              </div>
             )}
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>
               <textarea
