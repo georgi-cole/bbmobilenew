@@ -1,0 +1,146 @@
+/* ─── SpotlightAnimation ────────────────────────────────────────────────────
+ * Full-screen celebratory overlay for HOH / POV winner announcements.
+ * Mirrors CrownAnimation but with a configurable symbol and a tile-origin beam.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.spotlight-anim {
+  position: fixed;
+  inset: 0;
+  z-index: 8700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.spotlight-anim--visible { opacity: 1; }
+.spotlight-anim--exiting { opacity: 0; }
+
+.spotlight-anim__backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(255,180,0,0.14) 0%, rgba(0,0,0,0.86) 70%);
+}
+
+/* Expanding ring that bursts outward from the winning tile's centre */
+.spotlight-anim__beam {
+  position: absolute;
+  left: var(--beam-x, 50%);
+  top: var(--beam-y, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 220, 100, 0.22);
+  transform: translate(-50%, -50%);
+  animation: beamExpand 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes beamExpand {
+  from { width: 0;      height: 0;      opacity: 0.85; }
+  to   { width: 320vmax; height: 320vmax; opacity: 0;  }
+}
+
+.spotlight-anim__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+/* Symbol emoji — scales in and gently rotates */
+.spotlight-anim__symbol {
+  font-size: 4rem;
+  line-height: 1;
+  display: block;
+  animation: symbolScaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             symbolWobble 2s ease-in-out 0.6s infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes symbolScaleIn {
+  from { transform: scale(0) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);  opacity: 1; }
+}
+
+@keyframes symbolWobble {
+  0%   { transform: rotate(0deg)  scale(1.05); }
+  25%  { transform: rotate(8deg)  scale(1.05); }
+  50%  { transform: rotate(-8deg) scale(1.05); }
+  75%  { transform: rotate(4deg)  scale(1.05); }
+  100% { transform: rotate(0deg)  scale(1.05); }
+}
+
+.spotlight-anim__avatar {
+  animation: spotlightAvatarIn 0.5s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes spotlightAvatarIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.spotlight-anim__name {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  animation: spotlightTextIn 0.4s 0.3s ease both;
+}
+
+.spotlight-anim__label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 200, 60, 0.9);
+  animation: spotlightTextIn 0.4s 0.45s ease both;
+}
+
+@keyframes spotlightTextIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Diagonal shine sweep */
+.spotlight-anim__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 220, 100, 0.35) 50%,
+    transparent 70%
+  );
+  animation: spotlightShine 1.4s 0.2s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes spotlightShine {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-anim__symbol,
+  .spotlight-anim__avatar,
+  .spotlight-anim__name,
+  .spotlight-anim__label,
+  .spotlight-anim__shine,
+  .spotlight-anim__beam {
+    animation: none !important;
+  }
+  .spotlight-anim__symbol { opacity: 1; transform: none; }
+  .spotlight-anim__avatar { opacity: 1; transform: none; }
+  .spotlight-anim__name,
+  .spotlight-anim__label { opacity: 1; transform: none; }
+  .spotlight-anim__shine { display: none; }
+  .spotlight-anim__beam  { display: none; }
+}

@@ -198,4 +198,51 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('Nomination Ceremony')).toBeNull();
   });
+
+  it('shows NominationAnimator for AI HOH nominations (nominees already in store)', async () => {
+    // AI HOH (p1) has already nominated p2 and p3 — awaitingNominations is false.
+    // GameScreen should detect this and trigger the animation automatically.
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingNominations: false,
+    });
+    renderWithStore(store);
+
+    // The AI nomination detection effect should fire and show the animator.
+    await act(async () => {});
+
+    const animStatus = screen.getByRole('status');
+    expect(animStatus).toBeTruthy();
+    expect(animStatus.getAttribute('aria-label')).toContain('Nomination ceremony');
+
+    // Store state is already committed (AI nominated directly); game retains nominees.
+    expect(store.getState().game.nomineeIds).toContain('p2');
+    expect(store.getState().game.nomineeIds).toContain('p3');
+  });
+
+  it('does not double-animate AI HOH nominees after the animation completes', async () => {
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingNominations: false,
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    // Animation is visible.
+    expect(screen.getByRole('status')).toBeTruthy();
+
+    // Advance through full NominationAnimator lifecycle.
+    await act(async () => { vi.advanceTimersByTime(600); });
+    await act(async () => { vi.advanceTimersByTime(2000); });
+    await act(async () => { vi.advanceTimersByTime(500 + 100); });
+
+    // Animation done — no duplicate animator should appear.
+    expect(screen.queryByRole('status')).toBeNull();
+
+    // Nominees remain committed (commitNominees no-op when awaitingNominations=false).
+    expect(store.getState().game.nomineeIds).toHaveLength(2);
+  });
 });

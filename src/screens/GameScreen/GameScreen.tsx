@@ -32,6 +32,7 @@ import FloatingActionBar from '../../components/FloatingActionBar/FloatingAction
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import NominationAnimator from '../../components/NominationAnimator/NominationAnimator'
+import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
@@ -67,6 +68,40 @@ export default function GameScreen() {
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
 
   const humanPlayer = game.players.find((p) => p.isUser)
+
+  // ── Tile refs: keyed by player ID → outer <div> of the AvatarTile ─────────
+  // Used to obtain screen positions for SpotlightAnimation.
+  const tileRefsMap = useRef<Record<string, HTMLDivElement | null>>({})
+
+  /** Get a non-zero DOMRect for a player tile, or null if unavailable (headless). */
+  const getTileRect = useCallback((playerId: string): DOMRect | null => {
+    const el = tileRefsMap.current[playerId]
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    return rect.width > 0 || rect.height > 0 ? rect : null
+  }, [])
+
+  // ── SpotlightAnimation — deferred HOH / POV winner commit ─────────────────
+  // When MinigameHost reports a winner, we first show the SpotlightAnimation and
+  // only dispatch applyMinigameWinner in its onDone callback.  When DOMRects are
+  // unavailable (tests / headless) the animation component fires onDone immediately
+  // so the store mutation still happens — just without the visual.
+  //
+  // pendingWinnerDispatchRef stores the deferred thunk so handleSpotlightDone
+  // can call it without stale-closure issues.
+  const [pendingWinnerInfo, setPendingWinnerInfo] = useState<{
+    winner: Player
+    symbol: string
+    label: string
+    sourceDomRect: DOMRect | null
+  } | null>(null)
+  const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
+
+  const handleSpotlightDone = useCallback(() => {
+    pendingWinnerDispatchRef.current?.()
+    pendingWinnerDispatchRef.current = null
+    setPendingWinnerInfo(null)
+  }, [])
 
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
@@ -106,12 +141,14 @@ export default function GameScreen() {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
     // Do not start a challenge when the human player is the outgoing HOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
-    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh) {
+    // Also skip when a SpotlightAnimation is pending (challenge result already
+    // captured; avoid launching a second challenge while the old one is animating).
+    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerInfo) {
       // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
       const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
       dispatch(startChallenge(game.seed, participants))
     }
-  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh])
+  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerInfo])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -139,6 +176,8 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       onClick: () => handleAvatarSelect(p),
+      // Callback ref: stores the tile's DOM node so we can measure it for animations.
+      tileRef: (el: HTMLDivElement | null) => { tileRefsMap.current[p.id] = el },
     }
   }
 
@@ -153,44 +192,90 @@ export default function GameScreen() {
     (p) => p.id !== game.hohId && p.id !== game.povWinnerId && !game.nomineeIds.includes(p.id)
   )
 
-  // ── Human HOH nomination flow (single multi-select modal) ────────────────
-  // Shown when the human HOH must pick their two nominees simultaneously.
-  const showNominationsModal =
-    game.phase === 'nomination_results' &&
-    Boolean(game.awaitingNominations) &&
-    humanIsHoH
-
-  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
-
   // ── Nomination animation state ────────────────────────────────────────────
-  // pendingNominees holds the selected IDs while the animation plays; once the
-  // animation's onDone fires we dispatch commitNominees to update game state.
-  // A ref mirrors the state so handleNomAnimDone always reads the current value
-  // regardless of stale closures after 3+ seconds of animation.
+  // pendingNominees holds the player IDs while the animation plays.
+  //
+  // This state is driven by TWO sources:
+  //   1. Human HOH: handleCommitNominees() is called from TvMultiSelectModal's
+  //      onConfirm after the stinger finishes.  commitNominees is dispatched in
+  //      handleNomAnimDone — AFTER the animation completes.
+  //   2. AI HOH: a useEffect detects when nomination_results commits nominees to
+  //      the store without awaitingNominations (AI flow) and triggers the same
+  //      animation.  commitNominees is a no-op in this path (already committed).
+  //
+  // A ref mirrors the state so handleNomAnimDone always reads the current IDs
+  // regardless of stale closures after several seconds of animation.
+  //
+  // Two animation sources are unified here:
+  //   • Human HOH  — pendingNominees is set by handleCommitNominees; store
+  //     mutation is deferred to handleNomAnimDone.
+  //   • AI HOH     — nominees are already in game.nomineeIds; the animation
+  //     is gated by showAiNomAnim (computed, no setState-in-effect).
+  //     handleAiNomAnimDone just marks the key as consumed (no store dispatch).
+  //
+  // aiNomAnimConsumedKey tracks which "week-nominee-key" was most recently
+  // consumed by the AI animation path so it doesn't replay.  It is also
+  // pre-set by handleCommitNominees to prevent double-animation when the
+  // human HOH's commitNominees call lands and nomineeIds becomes non-empty.
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
+  const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
   useEffect(() => {
     pendingNomineesRef.current = pendingNominees
   })
-  const showNomAnim = pendingNominees.length > 0
-  const nomAnimPlayers = pendingNominees
-    .map((id) => game.players.find((p) => p.id === id))
-    .filter(Boolean) as Player[]
 
+  // AI HOH animation: computed directly from game state — no setState-in-effect.
+  const aiNomKey =
+    game.phase === 'nomination_results' &&
+    game.nomineeIds.length > 0 &&
+    !game.awaitingNominations
+      ? `w${game.week}-${[...game.nomineeIds].sort().join(',')}`
+      : ''
+
+  const showHumanNomAnim = pendingNominees.length > 0
+  const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
+  const showNomAnim = showHumanNomAnim || showAiNomAnim
+
+  const nomAnimPlayers = (
+    showHumanNomAnim
+      ? pendingNominees.map((id) => game.players.find((p) => p.id === id))
+      : game.nomineeIds.map((id) => game.players.find((p) => p.id === id))
+  ).filter(Boolean) as Player[]
+
+  // ── Human HOH nomination flow (single multi-select modal) ────────────────
+  // Shown when the human HOH must pick their two nominees simultaneously.
+  // Hidden while the nomination animation is playing to prevent stacking.
+  const showNominationsModal =
+    game.phase === 'nomination_results' &&
+    Boolean(game.awaitingNominations) &&
+    humanIsHoH &&
+    !showNomAnim
+
+  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
+
+  // Human HOH confirmed nominees: pre-consume the AI key so the AI animation
+  // path does not fire a second animation once commitNominees lands.
   const handleCommitNominees = useCallback(
     (ids: string[]) => {
       const currentUserIsHoh = !!humanIsHoH
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
+      setAiNomAnimConsumedKey(`w${game.week}-${[...ids].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [humanIsHoH, setPendingNominees]
+    [humanIsHoH, game.week]
   )
 
   const handleNomAnimDone = useCallback(() => {
     const ids = pendingNomineesRef.current
     setPendingNominees([])
+    // commitNominees is a no-op when awaitingNominations is false (AI HOH path).
     dispatch(commitNominees(ids))
-  }, [dispatch, setPendingNominees])
+  }, [dispatch])
+
+  // AI HOH onDone: mark this key consumed so the animation doesn't replay.
+  const handleAiNomAnimDone = useCallback(() => {
+    setAiNomAnimConsumedKey(aiNomKey)
+  }, [aiNomKey])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -326,6 +411,7 @@ export default function GameScreen() {
   // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
   // be advanced under those full-screen overlays.
   // Keep this in sync with the conditions that control human decision modals above.
+  const showSpotlight = pendingWinnerInfo !== null
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
@@ -340,6 +426,7 @@ export default function GameScreen() {
     showVoteResults ||
     showEvictionSplash ||
     showMinigameHost ||
+    showSpotlight ||
     showTapRace
 
   return (
@@ -387,10 +474,11 @@ export default function GameScreen() {
       )}
 
       {/* ── Nomination ceremony animation overlay ────────────────────────── */}
+      {/* Shown for BOTH human HOH (deferred commit) and AI HOH (already committed). */}
       {showNomAnim && nomAnimPlayers.length > 0 && (
         <NominationAnimator
           nominees={nomAnimPlayers}
-          onDone={handleNomAnimDone}
+          onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
         />
       )}
 
@@ -511,9 +599,22 @@ export default function GameScreen() {
               ),
               lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
-            // Advance game state: apply HOH/POV winner and transition phase.
-            // Fall back to first participant if winner determination fails.
-            dispatch(applyMinigameWinner(winnerId ?? pendingChallenge.participants[0]));
+            // Determine the winner and show the SpotlightAnimation before committing
+            // to the store.  Fall back to first participant if winner is undetermined.
+            const finalWinnerId = winnerId ?? pendingChallenge.participants[0];
+            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
+            const sourceDomRect = getTileRect(finalWinnerId);
+            const isHohComp = game.phase === 'hoh_comp';
+            const winSymbol = isHohComp ? '👑' : '🛡️';
+            const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
+            if (!winnerPlayer || !sourceDomRect) {
+              // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+              dispatch(applyMinigameWinner(finalWinnerId));
+              return;
+            }
+            // Defer the store mutation until after the SpotlightAnimation completes.
+            pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
+            setPendingWinnerInfo({ winner: winnerPlayer, symbol: winSymbol, label: winLabel, sourceDomRect });
           }}
         />
       )}
@@ -521,6 +622,17 @@ export default function GameScreen() {
       {/* ── TapRace minigame overlay ─────────────────────────────────────── */}
       {showTapRace && pendingMinigame && (
         <TapRace session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── SpotlightAnimation — HOH / POV winner reveal ─────────────────── */}
+      {showSpotlight && pendingWinnerInfo && (
+        <SpotlightAnimation
+          winner={pendingWinnerInfo.winner}
+          label={pendingWinnerInfo.label}
+          symbol={pendingWinnerInfo.symbol}
+          sourceDomRect={pendingWinnerInfo.sourceDomRect}
+          onDone={handleSpotlightDone}
+        />
       )}
 
       {/* ── Vote Results (animated sequential reveal) ────────────────────── */}
