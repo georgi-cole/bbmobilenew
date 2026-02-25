@@ -15,6 +15,7 @@ import {
   submitTieBreak,
   dismissVoteResults,
   dismissEvictionSplash,
+  aiReplacementRendered,
   advance,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
@@ -429,6 +430,13 @@ export default function GameScreen() {
   }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players, game.povSavedId])
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
+
+  // Acknowledge the AI replacement intermediate announcement so advance() can proceed to step 2.
+  useEffect(() => {
+    if (aiReplacementKey !== '') {
+      dispatch(aiReplacementRendered())
+    }
+  }, [aiReplacementKey, dispatch])
 
   const handleAiReplacementDone = useCallback(() => {
     setAiReplacementConsumedKey(aiReplacementKey)

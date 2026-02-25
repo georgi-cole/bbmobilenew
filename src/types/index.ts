@@ -206,6 +206,12 @@ export interface GameState {
    */
   aiReplacementStep?: number;
   /**
+   * When true, the UI has not yet acknowledged the step-1 "HOH must name a
+   * replacement nominee" announcement. advance() will not process step 2
+   * until the UI dispatches `aiReplacementRendered` to clear this flag.
+   */
+  aiReplacementWaiting?: boolean;
+  /**
    * Active minigame session. Set when the human player needs to play a
    * minigame (e.g. TapRace for HOH/POV). The Continue button is hidden and
    * the TapRace overlay is shown instead. Null when no minigame is active.
