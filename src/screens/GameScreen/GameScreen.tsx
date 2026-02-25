@@ -173,7 +173,10 @@ export default function GameScreen() {
     const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
     if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id) && !isAnimatingNominee) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')
-    const statuses = parts.length > 0 ? parts.join('+') : (p.status ?? 'active')
+    // When suppressing the nominated badge, also guard the p.status fallback so
+    // that players whose p.status is already 'nominated' (AI-committed nominees)
+    // don't have that status leak through when parts is empty.
+    const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
     return {
       id: p.id,
       name: p.name,
@@ -182,6 +185,7 @@ export default function GameScreen() {
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
       isYou: p.isUser,
+      showPermanentBadge: !isAnimatingNominee,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -383,21 +387,23 @@ export default function GameScreen() {
     const replacementPlayer = game.players.find((p) => p.id === id)
     const replacementRect = getTileRect(id)
 
-    // Find the saved nominee (the one who was removed from nominations by POV)
-    // — that's the nominee who is no longer in nomineeIds.
-    // Since the POV save already happened, we can look at who the POV winner saved.
-    const povHolderRect = game.povWinnerId ? getTileRect(game.povWinnerId) : null
-
-    if (!replacementPlayer || !replacementRect) {
-      // Headless fallback: commit immediately.
+    // Only animate when the veto was actually used (povSavedId is set).
+    // If not, commit immediately without animation.
+    if (!game.povSavedId || !replacementPlayer || !replacementRect) {
+      // Headless/no-veto fallback: commit immediately.
       dispatch(setReplacementNominee(id))
       return
     }
 
+    // Badge flies from HOH tile → replacement tile (HOH is naming the replacement).
+    const hohRect = game.hohId ? getTileRect(game.hohId) : null
+
+    console.log('POV_SAVE_ANIM_STARTED', { replacementId: id, hohId: game.hohId, screen: 'GameScreen' })
+
     const tiles: CeremonyTile[] = [{
       rect: replacementRect,
       badge: '❓',
-      badgeStart: povHolderRect ?? 'center',
+      badgeStart: hohRect ?? 'center',
       badgeLabel: `${replacementPlayer.name} nominated as replacement`,
     }]
 
@@ -407,7 +413,7 @@ export default function GameScreen() {
       caption: `${replacementPlayer.name} is the replacement nominee!`,
       subtitle: '🎯 Nominations are set',
     })
-  }, [dispatch, game.players, game.povWinnerId, getTileRect])
+  }, [dispatch, game.players, game.povSavedId, game.hohId, getTileRect])
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony

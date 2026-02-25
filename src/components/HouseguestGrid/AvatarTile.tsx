@@ -22,9 +22,16 @@ type Props = {
    * When set, replaces other status badges with the corresponding medal.
    */
   finalRank?: 1 | 2 | 3 | null
+  /**
+   * When false, the permanent badge stack (❓, 👑, etc.) is not rendered.
+   * Use this to suppress permanent badges while a ceremony animation is playing
+   * so the animated badge is the only one visible during the sequence.
+   * Defaults to true.
+   */
+  showPermanentBadge?: boolean
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -103,7 +110,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         )}
 
         {/* Status badge stack — top-left corner, stacked vertically */}
-        {badges.length > 0 && (
+        {showPermanentBadge && badges.length > 0 && (
           <div className={styles.badgeStack} role="list">
             {badges.map((b) => (
               <span
