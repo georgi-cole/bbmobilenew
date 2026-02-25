@@ -80,6 +80,7 @@ const initialState: GameState = {
   nomineeIds: [],
   povWinnerId: null,
   replacementNeeded: false,
+  povSavedId: null,
   awaitingNominations: false,
   pendingNominee1Id: null,
   awaitingPovDecision: false,
@@ -442,11 +443,12 @@ const gameSlice = createSlice({
      */
     setReplacementNominee(state, action: PayloadAction<string>) {
       const id = action.payload;
-      // Eligibility guard: reject HOH, POV holder, or already-nominated players
+      // Eligibility guard: reject HOH, POV holder, already-nominated players, or the player saved by the veto
       if (
         id === state.hohId ||
         id === state.povWinnerId ||
-        state.nomineeIds.includes(id)
+        state.nomineeIds.includes(id) ||
+        id === state.povSavedId
       ) {
         return;
       }
@@ -457,6 +459,7 @@ const gameSlice = createSlice({
       state.nomineeIds.push(id);
       player.status = 'nominated';
       state.replacementNeeded = false;
+      state.povSavedId = null;
       pushEvent(
         state,
         `${hohPlayer.name} named ${player.name} as the replacement nominee. 🎯`,
@@ -585,6 +588,8 @@ const gameSlice = createSlice({
       state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
       savedPlayer.status = 'active';
       state.awaitingPovSaveTarget = false;
+      // Track the saved player so they cannot be immediately re-nominated as the replacement
+      state.povSavedId = saveId;
       pushEvent(
         state,
         `${povWinner.name} used the Power of Veto on ${savedPlayer.name}! 🛡️`,
@@ -606,7 +611,8 @@ const gameSlice = createSlice({
           (pl) =>
             pl.id !== state.hohId &&
             pl.id !== state.povWinnerId &&
-            !state.nomineeIds.includes(pl.id),
+            !state.nomineeIds.includes(pl.id) &&
+            pl.id !== saveId,
         );
         if (eligible.length > 0) {
           const rng = mulberry32(state.seed);
@@ -614,6 +620,7 @@ const gameSlice = createSlice({
           state.nomineeIds.push(replacement.id);
           const rp = state.players.find((pl) => pl.id === replacement.id);
           if (rp) rp.status = 'nominated';
+          state.povSavedId = null;
           pushEvent(
             state,
             `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
@@ -855,6 +862,7 @@ const gameSlice = createSlice({
         nomineeIds: [],
         povWinnerId: null,
         replacementNeeded: false,
+        povSavedId: null,
         awaitingNominations: false,
         pendingNominee1Id: null,
         awaitingPovDecision: false,
@@ -1192,6 +1200,7 @@ const gameSlice = createSlice({
           state.nomineeIds = [];
           state.povWinnerId = null;
           state.replacementNeeded = false;
+          state.povSavedId = null;
           state.awaitingNominations = false;
           state.pendingNominee1Id = null;
           state.awaitingPovDecision = false;
@@ -1287,9 +1296,12 @@ const gameSlice = createSlice({
           if (isNominee && povWinner !== null) {
             // ── POV auto-use rule: nominee who wins POV MUST use it on themselves ──
             const savedName = povWinner.name;
+            const autoSavedId = povWinner.id;
             state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
             // Update status: was 'nominated+pov', now just 'pov' (saved themselves)
             povWinner.status = 'pov';
+            // Track the self-saved player so they cannot be re-nominated as the replacement
+            state.povSavedId = autoSavedId;
             pushEvent(state, `${savedName} used the Veto and saved themselves! 🛡️`, 'game');
 
             // HOH must name a replacement
@@ -1303,18 +1315,20 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              // AI HOH: deterministically pick replacement (exclude HOH, POV holder, current nominees)
+              // AI HOH: deterministically pick replacement (exclude HOH, POV holder, current nominees, and the self-saved player)
               const eligible = alive.filter(
                 (pl) =>
                   pl.id !== state.hohId &&
                   pl.id !== state.povWinnerId &&
-                  !state.nomineeIds.includes(pl.id),
+                  !state.nomineeIds.includes(pl.id) &&
+                  pl.id !== autoSavedId,
               );
               if (eligible.length > 0) {
                 const replacement = seededPick(rng, eligible);
                 state.nomineeIds.push(replacement.id);
                 const rp = state.players.find((pl) => pl.id === replacement.id);
                 if (rp) rp.status = 'nominated';
+                state.povSavedId = null;
                 pushEvent(
                   state,
                   `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,

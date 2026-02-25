@@ -6,6 +6,8 @@ import gameReducer, {
   finalizeNominations,
   commitNominees,
   submitPovDecision,
+  submitPovSaveTarget,
+  setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
 } from '../src/store/gameSlice';
@@ -287,5 +289,94 @@ describe('commitNominees (single-action nomination)', () => {
     const store = makeStore({ phase: 'nominations', hohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1', 'p2']));
     expect(store.getState().game.nomineeIds).toHaveLength(0);
+  });
+});
+
+describe('Replacement nominee — saved player exclusion', () => {
+  function makeReplacementStore() {
+    // p0 is user (HOH + POV holder), p1 and p2 are nominated
+    const players = makePlayers(6);
+    players[0].status = 'hoh+pov';
+    players[1].status = 'nominated';
+    players[2].status = 'nominated';
+    return makeStore({
+      phase: 'pov_ceremony_results',
+      hohId: 'p0',
+      povWinnerId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      awaitingPovSaveTarget: true,
+      players,
+    });
+  }
+
+  it('submitPovSaveTarget sets povSavedId to the saved player', () => {
+    const store = makeReplacementStore();
+    store.dispatch(submitPovSaveTarget('p1'));
+    const state = store.getState().game;
+    expect(state.povSavedId).toBe('p1');
+    expect(state.replacementNeeded).toBe(true);
+    expect(state.nomineeIds).not.toContain('p1');
+  });
+
+  it('setReplacementNominee rejects the saved player (povSavedId)', () => {
+    const store = makeReplacementStore();
+    store.dispatch(submitPovSaveTarget('p1')); // p1 is saved
+    // Attempt to pick p1 (the saved player) as replacement — should be rejected
+    store.dispatch(setReplacementNominee('p1'));
+    const state = store.getState().game;
+    expect(state.replacementNeeded).toBe(true); // still waiting — was rejected
+    expect(state.nomineeIds).not.toContain('p1');
+  });
+
+  it('setReplacementNominee accepts an eligible player and clears povSavedId', () => {
+    const store = makeReplacementStore();
+    store.dispatch(submitPovSaveTarget('p1')); // p1 is saved
+    // Pick p3 as replacement — eligible (not HOH, not POV, not saved, not already nominated)
+    store.dispatch(setReplacementNominee('p3'));
+    const state = store.getState().game;
+    expect(state.replacementNeeded).toBeFalsy();
+    expect(state.nomineeIds).toContain('p3');
+    expect(state.povSavedId).toBeNull();
+  });
+});
+
+describe('AI HOH POV replacement flow', () => {
+  function makeAiHohReplacementStore() {
+    // p0 is user, p1 is AI HOH + POV holder, p2 and p3 are initially nominated
+    const players = makePlayers(6);
+    players[1].status = 'hoh+pov';
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    return makeStore({
+      phase: 'pov_ceremony_results',
+      hohId: 'p1',
+      povWinnerId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingPovSaveTarget: true,
+      players,
+    });
+  }
+
+  it('AI replacement never re-nominates the saved player', () => {
+    const store = makeAiHohReplacementStore();
+    // AI HOH (p1) holds POV; saving p2 triggers automatic AI replacement selection
+    store.dispatch(submitPovSaveTarget('p2'));
+    const state = store.getState().game;
+    // The saved player must not appear among the final nominees
+    expect(state.nomineeIds).not.toContain('p2');
+    // We should still have two nominees after AI picks a replacement
+    expect(state.nomineeIds).toHaveLength(2);
+    // povSavedId cleared after AI picks replacement
+    expect(state.povSavedId).toBeNull();
+  });
+
+  it('AI replacement does not include p2 even after removal from nomineeIds', () => {
+    const store = makeAiHohReplacementStore();
+    store.dispatch(submitPovSaveTarget('p2'));
+    const state = store.getState().game;
+    // p2 was saved and must remain out of the nominee list
+    expect(state.nomineeIds).not.toContain('p2');
+    // p3 remains on the block (was the other original nominee)
+    expect(state.nomineeIds).toContain('p3');
   });
 });

@@ -141,6 +141,13 @@ export interface GameState {
    */
   replacementNeeded?: boolean;
   /**
+   * The ID of the player who was saved by the Power of Veto this week.
+   * Excluded from the replacement nominee pool so the saved player cannot be
+   * immediately re-nominated as the replacement.
+   * Cleared after the replacement nominee is confirmed.
+   */
+  povSavedId?: string | null;
+  /**
    * When true, the human HOH must pick two nominees in the `nomination_results` phase.
    * The Continue button is hidden and a two-step nominee picker is shown instead.
    */

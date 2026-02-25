@@ -150,7 +150,11 @@ export default function GameScreen() {
   const showReplacementModal = replacementNeeded && humanIsHoH
 
   const replacementOptions = alivePlayers.filter(
-    (p) => p.id !== game.hohId && p.id !== game.povWinnerId && !game.nomineeIds.includes(p.id)
+    (p) =>
+      p.id !== game.hohId &&
+      p.id !== game.povWinnerId &&
+      !game.nomineeIds.includes(p.id) &&
+      p.id !== game.povSavedId
   )
 
   // ── Human HOH nomination flow (single multi-select modal) ────────────────
