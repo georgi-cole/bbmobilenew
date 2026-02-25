@@ -65,8 +65,18 @@ export function normalizeAuxCost(value: CostValue, field: 'influence' | 'info'):
 }
 
 /**
+ * Convert a float resource value to integer points (×100, rounded).
+ * e.g. 1.0 → 100, 0.02 → 2, 2.0 → 200.
+ */
+function toIntPts(v: number): number {
+  return Math.round(v * 100);
+}
+
+/**
  * Return the full { energy, influence, info } cost object for a social action.
  * energy defaults to 1 if unspecified; influence and info default to 0.
+ * Influence and info are returned as integer points scaled by 100
+ * (i.e. 1.00 float == 100 integer pts).
  */
 export function normalizeActionCosts(action: SocialActionDefinition): {
   energy: number;
@@ -75,7 +85,22 @@ export function normalizeActionCosts(action: SocialActionDefinition): {
 } {
   return {
     energy: normalizeCost(action.baseCost),
-    influence: normalizeAuxCost(action.baseCost, 'influence'),
-    info: normalizeAuxCost(action.baseCost, 'info'),
+    influence: toIntPts(normalizeAuxCost(action.baseCost, 'influence')),
+    info: toIntPts(normalizeAuxCost(action.baseCost, 'info')),
+  };
+}
+
+/**
+ * Return the { influence, info } yields for a social action as integer points
+ * scaled by 100.  Absent or zero yields return 0.
+ */
+export function normalizeActionYields(action: SocialActionDefinition): {
+  influence: number;
+  info: number;
+} {
+  const y = action.yields ?? {};
+  return {
+    influence: toIntPts(y.influence ?? 0),
+    info: toIntPts(y.info ?? 0),
   };
 }

@@ -325,8 +325,10 @@ describe('getAvailableActions', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 100 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 100 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 100 }));
+    // vote_rally costs influence 500, favor_request costs influence 200 → need 500+
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    // proposeAlliance costs info 200, rumor costs info 100 → need 200+
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
     expect(getAvailableActions('p1').length).toBe(SOCIAL_ACTIONS.length);
   });
 
@@ -600,20 +602,21 @@ describe('getAvailableActions – multi-resource filtering', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    // No influence → proposeAlliance ({ energy: 3, influence: 1 }) must be excluded
+    // No influence → vote_rally (energy:2, influence:500) and favor_request (energy:1, influence:200) must be excluded
     const available = getAvailableActions('p1');
     const ids = available.map((a) => a.id);
-    expect(ids).not.toContain('proposeAlliance');
+    expect(ids).not.toContain('vote_rally');
+    expect(ids).not.toContain('favor_request');
   });
 
   it('filters out actions that require info when player has none', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    // No info → whisper ({ energy: 1, info: 1 }) and rumor ({ energy: 2, info: 1 }) excluded
+    // No info → proposeAlliance ({ energy:3, info:200 }) and rumor ({ energy:2, info:100 }) excluded
     const available = getAvailableActions('p1');
     const ids = available.map((a) => a.id);
-    expect(ids).not.toContain('whisper');
+    expect(ids).not.toContain('proposeAlliance');
     expect(ids).not.toContain('rumor');
   });
 
@@ -621,12 +624,14 @@ describe('getAvailableActions – multi-resource filtering', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 10 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 10 }));
+    // vote_rally needs influence 500; favor_request needs influence 200
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    // proposeAlliance needs info 200; rumor needs info 100
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }));
     const available = getAvailableActions('p1');
     const ids = available.map((a) => a.id);
     expect(ids).toContain('proposeAlliance');
-    expect(ids).toContain('whisper');
+    expect(ids).toContain('vote_rally');
     expect(ids).toContain('rumor');
   });
 });
@@ -634,55 +639,56 @@ describe('getAvailableActions – multi-resource filtering', () => {
 // ── executeAction – multi-resource deductions ─────────────────────────────
 
 describe('executeAction – multi-resource deductions', () => {
-  it('deducts info cost when executing whisper', () => {
+  it('deducts info cost when executing rumor (info cost 100 pts)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 3 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 150 }));
 
-    executeAction('p1', 'p2', 'whisper');
-    expect(store.getState().social.infoBank['p1']).toBe(2); // 3 - 1
+    executeAction('p1', 'p2', 'rumor');
+    expect(store.getState().social.infoBank['p1']).toBe(50); // 150 - 100
   });
 
-  it('deducts influence cost when executing proposeAlliance', () => {
+  it('deducts influence cost when executing vote_rally (influence cost 500 pts)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 2 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
 
-    executeAction('p1', 'p2', 'proposeAlliance');
-    expect(store.getState().social.influenceBank['p1']).toBe(1); // 2 - 1
+    // Force failure so no yield is applied — isolates the cost deduction
+    executeAction('p1', 'p2', 'vote_rally', { outcome: 'failure' });
+    expect(store.getState().social.influenceBank['p1']).toBe(100); // 600 - 500
   });
 
-  it('returns failure when info is insufficient for whisper', () => {
+  it('returns failure when info is insufficient for rumor', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    // No info set → 0 < 1 required
+    // No info set → 0 < 100 required
 
-    const result = executeAction('p1', 'p2', 'whisper');
+    const result = executeAction('p1', 'p2', 'rumor');
     expect(result.success).toBe(false);
     expect(result.summary).toBe('Insufficient resources');
   });
 
-  it('does not mutate any state when info is insufficient', () => {
+  it('does not mutate any state when info is insufficient for rumor', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
 
-    executeAction('p1', 'p2', 'whisper');
+    executeAction('p1', 'p2', 'rumor');
     expect(store.getState().social.energyBank['p1']).toBe(5);
     expect(store.getState().social.sessionLogs).toHaveLength(0);
   });
 
-  it('applies influence yield on successful compliment', () => {
+  it('applies influence yield (2 pts) on successful compliment', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
     store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 0 }));
 
     executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
-    expect(store.getState().social.influenceBank['p1']).toBe(1); // 0 + yield(1)
+    expect(store.getState().social.influenceBank['p1']).toBe(2); // 0 + yield(2 pts)
   });
 
   it('does not apply influence yield on failure', () => {
@@ -699,31 +705,31 @@ describe('executeAction – multi-resource deductions', () => {
 // ── executeAction – balancesAfter in session log ──────────────────────────
 
 describe('executeAction – balancesAfter in sessionLogs', () => {
-  it('session log entry contains costs with all three resources', () => {
+  it('session log entry contains costs with all three resources (rumor: energy+info)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 2 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 200 }));
 
-    executeAction('p1', 'p2', 'whisper');
+    executeAction('p1', 'p2', 'rumor');
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
-    expect(entry.costs).toEqual({ energy: 1, influence: 0, info: 1 });
+    expect(entry.costs).toEqual({ energy: 2, influence: 0, info: 100 });
   });
 
-  it('session log entry contains balancesAfter', () => {
+  it('session log entry contains balancesAfter (whisper: costs energy 1, yields info +100)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
     store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 0 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 2 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 0 }));
 
-    // whisper: energy-1=4, info-1=1; whisper yields influence+1=1
+    // whisper: costs energy 1 only; yields info +100 on success
     executeAction('p1', 'p2', 'whisper', { outcome: 'success' });
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
-    expect(entry.balancesAfter).toEqual({ energy: 4, influence: 1, info: 1 });
+    expect(entry.balancesAfter).toEqual({ energy: 4, influence: 0, info: 100 });
   });
 
-  it('session log entry contains yieldsApplied for actions with yields', () => {
+  it('session log entry contains yieldsApplied for compliment (influence: 2 pts)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
@@ -731,7 +737,7 @@ describe('executeAction – balancesAfter in sessionLogs', () => {
     executeAction('p1', 'p2', 'compliment', { outcome: 'success' });
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
     expect(entry.yieldsApplied).toBeDefined();
-    expect(entry.yieldsApplied?.influence).toBe(1);
+    expect(entry.yieldsApplied?.influence).toBe(2); // 0.02 × 100
   });
 
   it('session log entry does not have yieldsApplied for actions without yields', () => {
@@ -753,27 +759,31 @@ describe('executeAction – balancesAfter in sessionLogs', () => {
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
     expect(entry.yieldsApplied).toBeUndefined();
   });
-  it('selectInfluenceBank and selectInfoBank return correct values after action', () => {
+
+  it('selectInfluenceBank and selectInfoBank after vote_rally deduction (influence -500)', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 3 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 2 }));
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 600 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 0 }));
 
-    executeAction('p1', 'p2', 'proposeAlliance');
+    executeAction('p1', 'p2', 'vote_rally');
     const influenceBank = selectInfluenceBank(store.getState());
     const infoBank = selectInfoBank(store.getState());
-    expect(influenceBank['p1']).toBe(2); // 3 - 1
-    expect(infoBank['p1']).toBe(2); // unchanged
+    // vote_rally costs influence 500; on success yields influence +4
+    expect(influenceBank['p1']).toBe(104); // 600 - 500 + 4
+    expect(infoBank['p1']).toBe(0); // unchanged
   });
 
-  it('session log entry does not have yieldsApplied when an action with yields fails', () => {
+  it('whisper info yield: session log entry contains yieldsApplied.info = 100', () => {
     const store = makeStore();
     initManeuvers(store);
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }));
 
-    executeAction('p1', 'p2', 'compliment', { outcome: 'failure' });
+    executeAction('p1', 'p2', 'whisper', { outcome: 'success' });
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry;
-    expect(entry.yieldsApplied).toBeUndefined();
+    expect(entry.yieldsApplied).toBeDefined();
+    expect(entry.yieldsApplied?.info).toBe(100); // 1.0 × 100
+    expect(entry.yieldsApplied?.influence).toBeUndefined();
   });
 });

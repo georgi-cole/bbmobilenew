@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
-import { normalizeActionCost } from '../../social/smExecNormalize';
+import { normalizeActionCosts } from '../../social/smExecNormalize';
 import { computeOutcomeScore } from '../../social/SocialPolicy';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
@@ -39,6 +39,10 @@ export interface ActionGridProps {
    * overlay (backwards-compatible with tests that don't supply energy).
    */
   actorEnergy?: number;
+  /** Actor's current influence (integer pts ×100). Used for multi-resource affordability. */
+  actorInfluence?: number;
+  /** Actor's current info (integer pts ×100). Used for multi-resource affordability. */
+  actorInfo?: number;
   /**
    * Current relationship graph. When provided, preview scores include the
    * actor→target affinity bias so previews match execution-time scores.
@@ -71,6 +75,8 @@ export default function ActionGrid({
   players,
   actorId = '',
   actorEnergy,
+  actorInfluence,
+  actorInfo,
   relationships,
 }: ActionGridProps) {
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
@@ -128,25 +134,47 @@ export default function ActionGrid({
     }
   }
 
-  // Sort actions when actorEnergy is provided: affordable actions first.
-  // When actorEnergy is undefined, preserve canonical order (backwards-compat).
+  // Sort actions when actorEnergy is provided: affordable (all resources) first,
+  // then unaffordable. Within each group, preserve canonical order.
+  //
+  // When actorInfluence/actorInfo are omitted (undefined), those resource axes are
+  // treated as unconstrained (Infinity), so energy-only callers do not accidentally
+  // mark influence/info-cost actions as unaffordable.
+  const actorResources = {
+    energy: actorEnergy ?? 0,
+    influence: actorInfluence ?? Infinity,
+    info: actorInfo ?? Infinity,
+  };
+
+  function isActionAffordable(costs: { energy: number; influence: number; info: number }): boolean {
+    return (
+      costs.energy <= actorResources.energy &&
+      costs.influence <= actorResources.influence &&
+      costs.info <= actorResources.info
+    );
+  }
+
   const sortedActions =
     actorEnergy !== undefined
       ? [...SOCIAL_ACTIONS].sort((a, b) => {
-          const aCost = normalizeActionCost(a);
-          const bCost = normalizeActionCost(b);
-          const aAffordable = aCost <= actorEnergy;
-          const bAffordable = bCost <= actorEnergy;
+          const aAffordable = isActionAffordable(normalizeActionCosts(a));
+          const bAffordable = isActionAffordable(normalizeActionCosts(b));
           if (aAffordable === bAffordable) return 0;
           return aAffordable ? -1 : 1;
         })
       : SOCIAL_ACTIONS;
 
   /** Returns an availability reason string, or empty string if the action is affordable. */
-  function getAvailabilityReason(actionCost: number): string {
+  function getAvailabilityReason(costs: { energy: number; influence: number; info: number }): string {
     if (actorEnergy === undefined) return '';
-    if (actionCost > actorEnergy) {
-      return `Insufficient energy: ${actionCost} ⚡ needed`;
+    if (costs.energy > actorResources.energy) {
+      return `Need ⚡${costs.energy} (have ${actorResources.energy})`;
+    }
+    if (costs.influence > actorResources.influence) {
+      return `Need 🤝${costs.influence} (have ${actorResources.influence})`;
+    }
+    if (costs.info > actorResources.info) {
+      return `Need 💡${costs.info} (have ${actorResources.info})`;
     }
     return '';
   }
@@ -162,8 +190,8 @@ export default function ActionGrid({
         onBlur={handleBlur}
       >
         {sortedActions.map((action) => {
-          const cost = normalizeActionCost(action);
-          const availabilityReason = getAvailabilityReason(cost);
+          const costs = normalizeActionCosts(action);
+          const availabilityReason = getAvailabilityReason(costs);
           const isAvailable = actorEnergy !== undefined && !availabilityReason;
           return (
             <ActionCard
