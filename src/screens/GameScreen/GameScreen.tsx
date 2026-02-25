@@ -169,7 +169,9 @@ export default function GameScreen() {
   // regardless of stale closures after 3+ seconds of animation.
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
-  pendingNomineesRef.current = pendingNominees
+  useEffect(() => {
+    pendingNomineesRef.current = pendingNominees
+  })
   const showNomAnim = pendingNominees.length > 0
   const nomAnimPlayers = pendingNominees
     .map((id) => game.players.find((p) => p.id === id))
