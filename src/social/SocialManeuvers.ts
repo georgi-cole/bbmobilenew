@@ -13,7 +13,7 @@
 
 import { SOCIAL_ACTIONS } from './socialActions';
 import type { SocialActionDefinition } from './socialActions';
-import { normalizeActionCost, normalizeActionCosts } from './smExecNormalize';
+import { normalizeActionCost, normalizeActionCosts, normalizeActionYields } from './smExecNormalize';
 import { initEnergyBank, SocialEnergyBank } from './SocialEnergyBank';
 import { computeOutcomeDelta, evaluateOutcome } from './SocialPolicy';
 import { recordSocialAction, updateRelationship, applyInfluenceDelta, applyInfoDelta } from './socialSlice';
@@ -233,13 +233,13 @@ export function executeAction(
   }
 
   // Apply yields (success only — yields are not granted on failure)
-  const yields = action.yields ?? {};
+  const scaledYields = normalizeActionYields(action);
   if (outcome === 'success') {
-    if (yields.influence && yields.influence > 0) {
-      _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: yields.influence }));
+    if (scaledYields.influence > 0) {
+      _store.dispatch(applyInfluenceDelta({ playerId: actorId, delta: scaledYields.influence }));
     }
-    if (yields.info && yields.info > 0) {
-      _store.dispatch(applyInfoDelta({ playerId: actorId, delta: yields.info }));
+    if (scaledYields.info > 0) {
+      _store.dispatch(applyInfoDelta({ playerId: actorId, delta: scaledYields.info }));
     }
   }
 
@@ -266,8 +266,11 @@ export function executeAction(
     label: outcomeResult.label,
     source: options?.source ?? 'system',
   };
-  if (outcome === 'success' && Object.keys(yields).length > 0) {
-    entry.yieldsApplied = yields;
+  if (outcome === 'success' && (scaledYields.influence > 0 || scaledYields.info > 0)) {
+    entry.yieldsApplied = {
+      ...(scaledYields.influence > 0 ? { influence: scaledYields.influence } : {}),
+      ...(scaledYields.info > 0 ? { info: scaledYields.info } : {}),
+    };
   }
 
   _store.dispatch(

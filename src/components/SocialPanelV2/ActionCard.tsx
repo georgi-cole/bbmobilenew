@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { SocialActionDefinition } from '../../social/socialActions';
+import { normalizeActionCosts } from '../../social/smExecNormalize';
 import './ActionCard.css';
 
 export interface ActionCardProps {
@@ -53,10 +54,11 @@ export default function ActionCard({
   onPreview,
   onHoverFocus,
 }: ActionCardProps) {
-  const { id, title, baseCost, category, availabilityHint } = action;
+  const { id, title, category, availabilityHint } = action;
 
-  const energyCost = typeof baseCost === 'number' ? baseCost : (baseCost.energy ?? 0);
-  const infoCost = typeof baseCost === 'number' ? 0 : (baseCost.info ?? 0);
+  // Use normalizeActionCosts to get integer-scaled values (influence/info ×100)
+  // so chip values are consistent with the bank values shown in the header.
+  const { energy: energyCost, influence: influenceCost, info: infoCost } = normalizeActionCosts(action);
 
   // A card is effectively non-interactive when the explicit `disabled` prop is
   // set. The `availabilityReason` provides a visual dimming hint but keeps the
@@ -144,12 +146,17 @@ export default function ActionCard({
             ⚡ {energyCost}
           </span>
         )}
-        {infoCost > 0 && (
-          <span className="ac-chip ac-chip--info" aria-label={`Info cost: ${infoCost}`}>
-            🔍 {infoCost}
+        {influenceCost > 0 && (
+          <span className="ac-chip ac-chip--influence" aria-label={`Influence cost: ${influenceCost}`}>
+            🤝 {influenceCost}
           </span>
         )}
-        {energyCost === 0 && infoCost === 0 && (
+        {infoCost > 0 && (
+          <span className="ac-chip ac-chip--info" aria-label={`Info cost: ${infoCost}`}>
+            💡 {infoCost}
+          </span>
+        )}
+        {energyCost === 0 && influenceCost === 0 && infoCost === 0 && (
           <span className="ac-chip ac-chip--energy" aria-label="Energy cost: 0">
             ⚡ 0
           </span>

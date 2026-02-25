@@ -248,6 +248,8 @@ export default function SocialPanelV2() {
               players={orderedPlayers}
               actorId={humanPlayer!.id}
               actorEnergy={energy}
+              actorInfluence={influence}
+              actorInfo={info}
               relationships={relationships}
             />
           </div>

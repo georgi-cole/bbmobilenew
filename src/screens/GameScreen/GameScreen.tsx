@@ -67,23 +67,16 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
-  // ── Post a TV feed message when a new social report is available ─────────
-  // Track the last report ID so we don't repeat the message on re-renders.
+  // ── Track last report ID so re-renders don't trigger duplicate effects ────
+  // Social summaries are posted exclusively to the Diary Room via
+  // SocialSummaryBridge.dispatchSocialSummary → game/addSocialSummary (type 'diary').
+  // We do NOT post a TV feed event here; social summaries remain DR-only.
   const prevReportIdRef = useRef<string | null>(lastSocialReport?.id ?? null)
   useEffect(() => {
     if (lastSocialReport && lastSocialReport.id !== prevReportIdRef.current) {
       prevReportIdRef.current = lastSocialReport.id
-      const templates = [
-        `You stirred up the pot in the house! Week ${lastSocialReport.week} is heating up. 🌶️`,
-        `Drama alert — Week ${lastSocialReport.week} social phase complete. Check the Diary Room for details.`,
-        `The house was buzzing: Week ${lastSocialReport.week} social moves have been logged. 📖`,
-      ]
-      const hash = lastSocialReport.id
-        .split('')
-        .reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
-      dispatch(addTvEvent({ text: templates[hash % templates.length], type: 'game' }))
     }
-  }, [lastSocialReport, dispatch])
+  }, [lastSocialReport])
 
   // ── Auto-start challenge on competition phase transitions ─────────────────
   // The challenge system (startChallenge / MinigameHost) is the sole owner of
