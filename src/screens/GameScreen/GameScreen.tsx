@@ -419,7 +419,7 @@ export default function GameScreen() {
     // Badge flies from HOH tile → replacement tile (HOH is naming the replacement).
     const hohRect = game.hohId ? getTileRect(game.hohId) : null
 
-    console.log('POV_SAVE_ANIM_STARTED', { replacementId: id, hohId: game.hohId, screen: 'GameScreen' })
+    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, hohId: game.hohId, screen: 'GameScreen' })
 
     const tiles: CeremonyTile[] = [{
       rect: replacementRect,
