@@ -1155,8 +1155,12 @@ const gameSlice = createSlice({
 
       // Guard: handle intermediate AI replacement steps (after veto auto-save or human POV use).
       // Each call to advance() processes one step so the TV shows each message separately.
+      // Each step advances the seed to maintain the deterministic RNG sequence.
       if (state.aiReplacementStep === 1) {
         // Step 1: show "HOH must name a replacement" message; AI will pick on next advance.
+        // Advance seed to keep the RNG sequence consistent with normal advance() calls.
+        const seedRng1 = mulberry32(state.seed);
+        state.seed = (seedRng1() * 0x100000000) >>> 0;
         const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
         pushEvent(
           state,
@@ -1168,6 +1172,9 @@ const gameSlice = createSlice({
       }
       if (state.aiReplacementStep === 2) {
         // Step 2: AI HOH picks the replacement nominee.
+        // Advance seed first, then use the new seed for the pick.
+        const seedRng2 = mulberry32(state.seed);
+        state.seed = (seedRng2() * 0x100000000) >>> 0;
         const rng = mulberry32(state.seed);
         const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
