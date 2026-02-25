@@ -33,8 +33,11 @@ const PHASE_LABELS: Record<string, string> = {
   final4_eviction:      'F4 EVICT',
   final3:               'FINAL 3',
   final3_comp1:         'F3 P1',
+  final3_comp1_minigame: 'F3 P1',
   final3_comp2:         'F3 P2',
+  final3_comp2_minigame: 'F3 P2',
   final3_comp3:         'F3 P3',
+  final3_comp3_minigame: 'F3 P3',
   final3_decision:      'FINAL HOH',
   jury:                 'JURY',
 };
