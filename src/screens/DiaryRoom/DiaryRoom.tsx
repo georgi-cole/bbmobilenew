@@ -180,10 +180,6 @@ export default function DiaryRoom() {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
 
-  // Ref to track whether we need to emit a summary on unmount
-  const messagesRef = useRef<ChatMessage[]>(messages);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
 
@@ -208,11 +204,13 @@ export default function DiaryRoom() {
     }
   }, [messages, activeTab]);
 
-  // On unmount: emit a single generic summary to tvFeed if chat is non-empty
+  // On unmount: emit a single generic summary to tvFeed if chat is non-empty.
+  // Use loadChat() from sessionStorage rather than messagesRef so the check
+  // is always accurate even if the user navigates before the ref-sync effect runs.
   useEffect(() => {
     return () => {
       const pid = playerIdRef.current;
-      const msgs = messagesRef.current;
+      const msgs = loadChat(pid);
       if (msgs.length > 0 && !hasSummaryEmitted(pid)) {
         markSummaryEmitted(pid);
         const text = pickSummary(playerNameRef.current, seedRef.current ?? 0);
