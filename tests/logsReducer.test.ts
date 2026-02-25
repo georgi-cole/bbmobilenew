@@ -206,7 +206,9 @@ describe('replacement nominee — log entry uniqueness', () => {
       tvFeed: [],
     });
 
-    store.dispatch(advance()); // pov_ceremony → pov_ceremony_results (triggers replacement)
+    store.dispatch(advance()); // pov_ceremony → pov_ceremony_results (pushes "used veto", sets aiReplacementStep=1)
+    store.dispatch(advance()); // aiReplacementStep=1 → pushes "HOH must name replacement", sets step=2
+    store.dispatch(advance()); // aiReplacementStep=2 → AI picks replacement, pushes replacement event
 
     const feed = store.getState().game.tvFeed;
     const ids = feed.map((e) => e.id);
