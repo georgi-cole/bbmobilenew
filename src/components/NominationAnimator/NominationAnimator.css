@@ -29,14 +29,16 @@
   background: rgba(0, 0, 0, 0);
 }
 
-/* Stage (avatar group) */
+/* Stage (avatar group) — row layout so nominees appear side-by-side */
 .nom-anim__stage {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  gap: 1.5rem;
   transform: scale(0.4);
   opacity: 0;
   transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
@@ -52,14 +54,6 @@
   transform: scale(0.7);
   opacity: 0;
   transition: transform 0.4s ease, opacity 0.35s ease;
-}
-
-/* Nominees row */
-.nom-anim__stage {
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.5rem;
 }
 
 .nom-anim__nominee {
