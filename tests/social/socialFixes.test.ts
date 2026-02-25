@@ -63,24 +63,22 @@ describe('addSocialSummary — channel routing', () => {
     expect(isVisibleInMainLog(summaryEvent!)).toBe(false);
   });
 
-  it('summary event IS visible in DR', () => {
+  it('summary event IS visible in DR (isVisibleInDr predicate)', () => {
     const store = makeGameStore();
     store.dispatch(addSocialSummary({ summary: 'Test summary', week: 3 }));
     const feed = store.getState().game.tvFeed;
     const summaryEvent = feed.find((e) => e.text.includes('Social Summary'));
     expect(summaryEvent).toBeDefined();
-    // isVisibleInDr checks channels['dr'] && source === 'manual'; source is 'system'
-    // so we check the channel directly — the DR display logic reads the channel
-    // and applies its own source filter separately.
-    expect(summaryEvent!.channels).toContain('dr');
+    // source: 'manual' + channels: ['dr'] → isVisibleInDr returns true
+    expect(isVisibleInDr(summaryEvent!)).toBe(true);
   });
 
-  it('summary event has source "system" (not user-initiated)', () => {
+  it('summary event has source "manual" so it passes DR visibility', () => {
     const store = makeGameStore();
     store.dispatch(addSocialSummary({ summary: 'AI summary', week: 1 }));
     const feed = store.getState().game.tvFeed;
     const summaryEvent = feed.find((e) => e.text.includes('Social Summary'));
-    expect(summaryEvent!.source).toBe('system');
+    expect(summaryEvent!.source).toBe('manual');
   });
 });
 

@@ -293,13 +293,15 @@ const gameSlice = createSlice({
     addSocialSummary(state, action: PayloadAction<{ summary: string; week: number }>) {
       // Route ONLY to the DR channel so the summary never appears in the main-screen
       // TVLog strip. isVisibleInMainLog() returns false for events with channels=['dr'].
+      // source: 'manual' is required for isVisibleInDr() to return true.
+      const now = Date.now();
       const event: TvEvent = {
-        id: `social-summary-w${action.payload.week}-${Date.now()}`,
+        id: crypto.randomUUID(),
         text: `📊 Social Summary (Week ${action.payload.week}): ${action.payload.summary}`,
         type: 'diary',
-        timestamp: Date.now(),
+        timestamp: now,
         channels: ['dr'],
-        source: 'system',
+        source: 'manual',
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
