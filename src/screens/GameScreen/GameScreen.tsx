@@ -31,7 +31,8 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
-import NominationAnimator from '../../components/NominationAnimator/NominationAnimator'
+import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
+import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
@@ -67,6 +68,43 @@ export default function GameScreen() {
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
 
   const humanPlayer = game.players.find((p) => p.isUser)
+
+  // ── Tile position lookup for CeremonyOverlay ──────────────────────────────
+  // Queries a `data-player-id` attribute on the houseguest grid's <li> items so
+  // we can get a bounding rect without needing to pass refs through render.
+  const getTileRect = useCallback((playerId: string): DOMRect | null => {
+    // CSS.escape may be unavailable in some environments (jsdom); fall back to
+    // a simple attribute selector when it isn't defined.
+    const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(playerId) : playerId
+    const el = document.querySelector<HTMLElement>(`[data-player-id="${escaped}"]`)
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    return rect.width > 0 || rect.height > 0 ? rect : null
+  }, [])
+
+  // ── CeremonyOverlay — deferred HOH / POV winner commit ─────────────────
+  // When MinigameHost reports a winner, we show the CeremonyOverlay with a
+  // spotlight cutout over the winner's tile and a badge (👑/🛡️) that
+  // flies from screen centre to the tile.  Only after the animation completes
+  // do we dispatch applyMinigameWinner.  When DOMRects are unavailable
+  // (tests / headless) the overlay fires onDone immediately so the store
+  // mutation still happens — just without the visual.
+  //
+  // pendingWinnerDispatchRef stores the deferred thunk so handleCeremonyDone
+  // can call it without stale-closure issues.
+  const [pendingWinnerCeremony, setPendingWinnerCeremony] = useState<{
+    tiles: CeremonyTile[]
+    caption: string
+    subtitle?: string
+    ariaLabel: string
+  } | null>(null)
+  const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
+
+  const handleWinnerCeremonyDone = useCallback(() => {
+    pendingWinnerDispatchRef.current?.()
+    pendingWinnerDispatchRef.current = null
+    setPendingWinnerCeremony(null)
+  }, [])
 
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
@@ -106,12 +144,14 @@ export default function GameScreen() {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
     // Do not start a challenge when the human player is the outgoing HOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
-    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh) {
+    // Also skip when a CeremonyOverlay is pending (challenge result already
+    // captured; avoid launching a second challenge while the old one is animating).
+    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
       // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
       const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
       dispatch(startChallenge(game.seed, participants))
     }
-  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh])
+  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -145,9 +185,9 @@ export default function GameScreen() {
   // ── Human HOH replacement picker ─────────────────────────────────────────
   // Shown when a nominee auto-saved themselves and the human HOH must pick a
   // replacement. The Continue button is hidden while this modal is open.
+  // (showReplacementModal is defined below after pendingReplacementCeremony.)
   const replacementNeeded = game.replacementNeeded === true
   const humanIsHoH = humanPlayer && game.hohId === humanPlayer.id
-  const showReplacementModal = replacementNeeded && humanIsHoH
 
   const replacementOptions = alivePlayers.filter(
     (p) =>
@@ -157,44 +197,96 @@ export default function GameScreen() {
       p.id !== game.povSavedId
   )
 
+  // ── Nomination animation state ────────────────────────────────────────────
+  // pendingNominees holds the player IDs while the animation plays.
+  //
+  // This state is driven by TWO sources:
+  //   1. Human HOH: handleCommitNominees() is called from TvMultiSelectModal's
+  //      onConfirm after the stinger finishes.  commitNominees is dispatched in
+  //      handleNomAnimDone — AFTER the animation completes.
+  //   2. AI HOH: a useEffect detects when nomination_results commits nominees to
+  //      the store without awaitingNominations (AI flow) and triggers the same
+  //      animation.  commitNominees is a no-op in this path (already committed).
+  //
+  // A ref mirrors the state so handleNomAnimDone always reads the current IDs
+  // regardless of stale closures after several seconds of animation.
+  //
+  // Two animation sources are unified here:
+  //   • Human HOH  — pendingNominees is set by handleCommitNominees; store
+  //     mutation is deferred to handleNomAnimDone.
+  //   • AI HOH     — nominees are already in game.nomineeIds; the animation
+  //     is gated by showAiNomAnim (computed, no setState-in-effect).
+  //     handleAiNomAnimDone just marks the key as consumed (no store dispatch).
+  //
+  // aiNomAnimConsumedKey tracks which "week-nominee-key" was most recently
+  // consumed by the AI animation path so it doesn't replay.  It is also
+  // pre-set by handleCommitNominees to prevent double-animation when the
+  // human HOH's commitNominees call lands and nomineeIds becomes non-empty.
+  const [pendingNominees, setPendingNominees] = useState<string[]>([])
+  const pendingNomineesRef = useRef<string[]>([])
+  const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
+  useEffect(() => {
+    pendingNomineesRef.current = pendingNominees
+  }, [pendingNominees])
+
+  // AI HOH animation: computed directly from game state — no setState-in-effect.
+  const aiNomKey =
+    game.phase === 'nomination_results' &&
+    game.nomineeIds.length > 0 &&
+    !game.awaitingNominations
+      ? `w${game.week}-${[...game.nomineeIds].sort().join(',')}`
+      : ''
+
+  const showHumanNomAnim = pendingNominees.length > 0
+  const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
+  const showNomAnim = showHumanNomAnim || showAiNomAnim
+
+  const nomAnimPlayers = (
+    showHumanNomAnim
+      ? pendingNominees.map((id) => game.players.find((p) => p.id === id))
+      : game.nomineeIds.map((id) => game.players.find((p) => p.id === id))
+  ).filter(Boolean) as Player[]
+
+  // Build CeremonyOverlay tiles for nominations: ❓ badges fly to nominee tiles.
+  // Tile rects are resolved lazily by the CeremonyOverlay via getTileRect
+  // so we pass a resolver function rather than pre-computed rects (avoids
+  // calling document.querySelector during the render phase before DOM is committed).
+  const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []
+
   // ── Human HOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human HOH must pick their two nominees simultaneously.
+  // Hidden while the nomination animation is playing to prevent stacking.
   const showNominationsModal =
     game.phase === 'nomination_results' &&
     Boolean(game.awaitingNominations) &&
-    humanIsHoH
+    humanIsHoH &&
+    !showNomAnim
 
   const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
 
-  // ── Nomination animation state ────────────────────────────────────────────
-  // pendingNominees holds the selected IDs while the animation plays; once the
-  // animation's onDone fires we dispatch commitNominees to update game state.
-  // A ref mirrors the state so handleNomAnimDone always reads the current value
-  // regardless of stale closures after 3+ seconds of animation.
-  const [pendingNominees, setPendingNominees] = useState<string[]>([])
-  const pendingNomineesRef = useRef<string[]>([])
-  useEffect(() => {
-    pendingNomineesRef.current = pendingNominees
-  })
-  const showNomAnim = pendingNominees.length > 0
-  const nomAnimPlayers = pendingNominees
-    .map((id) => game.players.find((p) => p.id === id))
-    .filter(Boolean) as Player[]
-
+  // Human HOH confirmed nominees: pre-consume the AI key so the AI animation
+  // path does not fire a second animation once commitNominees lands.
   const handleCommitNominees = useCallback(
     (ids: string[]) => {
       const currentUserIsHoh = !!humanIsHoH
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
+      setAiNomAnimConsumedKey(`w${game.week}-${[...ids].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [humanIsHoH, setPendingNominees]
+    [humanIsHoH, game.week]
   )
 
   const handleNomAnimDone = useCallback(() => {
     const ids = pendingNomineesRef.current
     setPendingNominees([])
+    // commitNominees is a no-op when awaitingNominations is false (AI HOH path).
     dispatch(commitNominees(ids))
-  }, [dispatch, setPendingNominees])
+  }, [dispatch])
+
+  // AI HOH onDone: mark this key consumed so the animation doesn't replay.
+  const handleAiNomAnimDone = useCallback(() => {
+    setAiNomAnimConsumedKey(aiNomKey)
+  }, [aiNomKey])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -216,11 +308,128 @@ export default function GameScreen() {
     humanIsPovHolder
 
   // ── Human POV holder picks who to save ───────────────────────────────────
+  // Defers submitPovSaveTarget dispatch until the save ceremony animation
+  // plays, showing the 🛡️ badge landing on the saved nominee's tile.
+  const [pendingSaveCeremony, setPendingSaveCeremony] = useState<{
+    tiles: CeremonyTile[]
+    caption: string
+    subtitle?: string
+  } | null>(null)
+  const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
+
+  const handleSaveCeremonyDone = useCallback(() => {
+    pendingSaveDispatchRef.current?.()
+    pendingSaveDispatchRef.current = null
+    setPendingSaveCeremony(null)
+  }, [])
+
+  const handlePovSaveTarget = useCallback((id: string) => {
+    const savedPlayer = game.players.find((p) => p.id === id)
+    const savedRect = getTileRect(id)
+
+    if (!savedPlayer || !savedRect) {
+      // Headless fallback: commit immediately.
+      dispatch(submitPovSaveTarget(id))
+      return
+    }
+
+    const tiles: CeremonyTile[] = [{
+      rect: savedRect,
+      badge: '🛡️',
+      badgeStart: 'center',
+      badgeLabel: `${savedPlayer.name} saved by veto`,
+    }]
+
+    pendingSaveDispatchRef.current = () => dispatch(submitPovSaveTarget(id))
+    setPendingSaveCeremony({
+      tiles,
+      caption: `${savedPlayer.name} has been saved!`,
+      subtitle: '🛡️ Power of Veto used',
+    })
+  }, [dispatch, game.players, getTileRect])
+
+  // Hide the save modal while the save ceremony is playing.
   const showPovSaveModal =
     game.phase === 'pov_ceremony_results' &&
     Boolean(game.awaitingPovSaveTarget) &&
-    humanIsPovHolder
+    humanIsPovHolder &&
+    !pendingSaveCeremony
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  // ── Replacement nominee ceremony animation ─────────────────────────────
+  // When the human HOH picks a replacement nominee via TvDecisionModal,
+  // we defer the setReplacementNominee dispatch until the CeremonyOverlay
+  // animation completes.  The badge (❓) flies from the saved nominee's
+  // tile to the replacement nominee's tile.
+  const [pendingReplacementCeremony, setPendingReplacementCeremony] = useState<{
+    tiles: CeremonyTile[]
+    caption: string
+    subtitle?: string
+  } | null>(null)
+  const pendingReplacementDispatchRef = useRef<(() => void) | null>(null)
+
+  const handleReplacementCeremonyDone = useCallback(() => {
+    pendingReplacementDispatchRef.current?.()
+    pendingReplacementDispatchRef.current = null
+    setPendingReplacementCeremony(null)
+  }, [])
+
+  const handleReplacementNominee = useCallback((id: string) => {
+    const replacementPlayer = game.players.find((p) => p.id === id)
+    const replacementRect = getTileRect(id)
+
+    // Find the saved nominee (the one who was removed from nominations by POV)
+    // — that's the nominee who is no longer in nomineeIds.
+    // Since the POV save already happened, we can look at who the POV winner saved.
+    const povHolderRect = game.povWinnerId ? getTileRect(game.povWinnerId) : null
+
+    if (!replacementPlayer || !replacementRect) {
+      // Headless fallback: commit immediately.
+      dispatch(setReplacementNominee(id))
+      return
+    }
+
+    const tiles: CeremonyTile[] = [{
+      rect: replacementRect,
+      badge: '❓',
+      badgeStart: povHolderRect ?? 'center',
+      badgeLabel: `${replacementPlayer.name} nominated as replacement`,
+    }]
+
+    pendingReplacementDispatchRef.current = () => dispatch(setReplacementNominee(id))
+    setPendingReplacementCeremony({
+      tiles,
+      caption: `${replacementPlayer.name} is the replacement nominee!`,
+      subtitle: '🎯 Nominations are set',
+    })
+  }, [dispatch, game.players, game.povWinnerId, getTileRect])
+
+  // Hide the replacement modal while the replacement animation is playing.
+  const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
+
+  // ── AI replacement nominee animation ───────────────────────────────────
+  // When an AI HOH picks a replacement nominee, the store already has the
+  // replacement committed. We detect this and show an animation.
+  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = useState<string>('')
+
+  const aiReplacementKey = useMemo(() => {
+    // Only trigger on pov_ceremony_results phase when nominees just changed (replacement happened)
+    // and no human decision is pending.
+    if (game.phase !== 'pov_ceremony_results') return ''
+    if (game.replacementNeeded) return '' // human HOH hasn't picked yet
+    if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
+    // If the AI HOH handled it, nomineeIds was updated in the same advance() call
+    // and no awaiting flags are set. Use a key based on week + nomineeIds.
+    const hohPlayer = game.players.find((p) => p.id === game.hohId)
+    if (hohPlayer?.isUser) return '' // human HOH handles this differently
+    return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
+  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players])
+
+  const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
+
+  const handleAiReplacementDone = useCallback(() => {
+    setAiReplacementConsumedKey(aiReplacementKey)
+  }, [aiReplacementKey])
 
   // ── Final 4 human POV holder vote ────────────────────────────────────────
   // Shown when phase is final4_eviction, the human player is the POV holder,
@@ -237,8 +446,10 @@ export default function GameScreen() {
 
   // ── Human HOH tie-break ───────────────────────────────────────────────────
   // Shown when the live vote ended in a tie and the human is HOH.
+  // Only shown after the vote results modal has been dismissed (voteResults cleared),
+  // so the house votes are always seen before the HOH is asked to break the tie.
   const showTieBreakModal =
-    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH
+    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH && !game.voteResults
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
@@ -252,7 +463,9 @@ export default function GameScreen() {
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── Vote Results Popup ────────────────────────────────────────────────────
-  const showVoteResults = Boolean(game.voteResults) && !game.awaitingTieBreak
+  // Show vote results whenever they are available, including during a tie-break
+  // wait so the house votes are always revealed before the HOH is prompted.
+  const showVoteResults = Boolean(game.voteResults)
   const voteResultsTallies = showVoteResults
     ? game.players
         .filter((p) => game.voteResults && p.id in game.voteResults)
@@ -260,14 +473,17 @@ export default function GameScreen() {
     : []
   // After dismissing vote results: show the eviction splash if one is pending,
   // otherwise advance the game phase directly.
+  // When a tie-break is still pending (awaitingTieBreak), do not advance — the
+  // tie-break modal will appear once voteResults has been cleared.
   const handleVoteResultsDone = useCallback(() => {
     dispatch(dismissVoteResults())
-    // If no eviction splash is queued, advance the phase now.
+    // If no eviction splash is queued AND no tie-break is pending, advance the phase now.
     // (If evictionSplashId is set, EvictionSplash's onDone will advance instead.)
-    if (!game.evictionSplashId) {
+    // (If awaitingTieBreak is true, the tie-break modal will take over after this.)
+    if (!game.evictionSplashId && !game.awaitingTieBreak) {
       dispatch(advance())
     }
-  }, [dispatch, game.evictionSplashId])
+  }, [dispatch, game.evictionSplashId, game.awaitingTieBreak])
 
   // ── Eviction Splash ───────────────────────────────────────────────────────
   const evictionSplashPlayer = game.evictionSplashId
@@ -330,11 +546,16 @@ export default function GameScreen() {
   // Also hide during VoteResultsPopup / EvictionSplash so the phase cannot
   // be advanced under those full-screen overlays.
   // Keep this in sync with the conditions that control human decision modals above.
+  const showWinnerCeremony = pendingWinnerCeremony !== null
+  const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
+  const showSaveCeremony = pendingSaveCeremony !== null
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
     showNominationsModal ||
     showNomAnim ||
+    showReplacementCeremony ||
+    showSaveCeremony ||
     showPovDecisionModal ||
     showPovSaveModal ||
     showFinal4Modal ||
@@ -344,6 +565,7 @@ export default function GameScreen() {
     showVoteResults ||
     showEvictionSplash ||
     showMinigameHost ||
+    showWinnerCeremony ||
     showTapRace
 
   return (
@@ -390,11 +612,25 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Nomination ceremony animation overlay ────────────────────────── */}
-      {showNomAnim && nomAnimPlayers.length > 0 && (
-        <NominationAnimator
-          nominees={nomAnimPlayers}
-          onDone={handleNomAnimDone}
+      {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
+      {/* Shown for BOTH human HOH (deferred commit) and AI HOH (already committed). */}
+      {showNomAnim && nomCeremonyTileIds.length > 0 && (
+        <CeremonyOverlay
+          tiles={[]}
+          resolveTiles={() => nomAnimPlayers.map((p) => ({
+            rect: getTileRect(p.id),
+            badge: '❓',
+            badgeStart: 'center' as const,
+            badgeLabel: `${p.name} nominated`,
+          }))}
+          caption={
+            nomAnimPlayers.length === 1
+              ? `${nomAnimPlayers[0].name} has been nominated`
+              : `${nomAnimPlayers.map((n) => n.name).join(' & ')} have been nominated`
+          }
+          subtitle="🎯 Nominations are set"
+          onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
+          ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
         />
       )}
 
@@ -416,7 +652,7 @@ export default function GameScreen() {
           title="Power of Veto — Save a Nominee"
           subtitle={`${humanPlayer?.name}, choose which nominee to save with the veto.`}
           options={povSaveOptions}
-          onSelect={(id) => dispatch(submitPovSaveTarget(id))}
+          onSelect={handlePovSaveTarget}
           stingerMessage="VETO USED"
         />
       )}
@@ -427,7 +663,7 @@ export default function GameScreen() {
           title="Name a Replacement Nominee"
           subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
           options={replacementOptions}
-          onSelect={(id) => dispatch(setReplacementNominee(id))}
+          onSelect={handleReplacementNominee}
           stingerMessage="NOMINATIONS SET"
         />
       )}
@@ -515,9 +751,34 @@ export default function GameScreen() {
               ),
               lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
-            // Advance game state: apply HOH/POV winner and transition phase.
-            // Fall back to first participant if winner determination fails.
-            dispatch(applyMinigameWinner(winnerId ?? pendingChallenge.participants[0]));
+            // Determine the winner and show the CeremonyOverlay cutout before
+            // committing to the store.  Fall back to first participant if winner
+            // is undetermined.
+            const finalWinnerId = winnerId ?? pendingChallenge.participants[0];
+            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
+            const sourceDomRect = getTileRect(finalWinnerId);
+            const isHohComp = game.phase === 'hoh_comp';
+            const winSymbol = isHohComp ? '👑' : '🛡️';
+            const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
+            if (!winnerPlayer || !sourceDomRect) {
+              // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+              dispatch(applyMinigameWinner(finalWinnerId));
+              return;
+            }
+            // Defer the store mutation until after the CeremonyOverlay completes.
+            const tiles: CeremonyTile[] = [{
+              rect: sourceDomRect,
+              badge: winSymbol,
+              badgeStart: 'center',
+              badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
+            }];
+            pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
+            setPendingWinnerCeremony({
+              tiles,
+              caption: `${winnerPlayer.name} wins ${winLabel}!`,
+              subtitle: winSymbol,
+              ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
+            });
           }}
         />
       )}
@@ -527,11 +788,62 @@ export default function GameScreen() {
         <TapRace session={pendingMinigame} players={game.players} />
       )}
 
+      {/* ── CeremonyOverlay — HOH / POV winner reveal (spotlight cutout) ──── */}
+      {showWinnerCeremony && pendingWinnerCeremony && (
+        <CeremonyOverlay
+          tiles={pendingWinnerCeremony.tiles}
+          caption={pendingWinnerCeremony.caption}
+          subtitle={pendingWinnerCeremony.subtitle}
+          onDone={handleWinnerCeremonyDone}
+          ariaLabel={pendingWinnerCeremony.ariaLabel}
+        />
+      )}
+
+      {/* ── CeremonyOverlay — Replacement nominee (human HOH deferred) ──── */}
+      {pendingReplacementCeremony && (
+        <CeremonyOverlay
+          tiles={pendingReplacementCeremony.tiles}
+          caption={pendingReplacementCeremony.caption}
+          subtitle={pendingReplacementCeremony.subtitle}
+          onDone={handleReplacementCeremonyDone}
+          ariaLabel={pendingReplacementCeremony.caption}
+        />
+      )}
+
+      {/* ── CeremonyOverlay — AI replacement nominee animation ─────────── */}
+      {showAiReplacementAnim && game.nomineeIds.length > 0 && (
+        <CeremonyOverlay
+          tiles={[]}
+          resolveTiles={() => game.nomineeIds.map((id) => ({
+            rect: getTileRect(id),
+            badge: '❓',
+            badgeStart: 'center' as const,
+            badgeLabel: `${game.players.find((p) => p.id === id)?.name ?? id} nominated`,
+          }))}
+          caption="Replacement nominee named"
+          subtitle="🎯 Nominations are set"
+          onDone={handleAiReplacementDone}
+          ariaLabel="Replacement nominee ceremony"
+        />
+      )}
+
+      {/* ── CeremonyOverlay — POV save ceremony (human POV holder) ────── */}
+      {showSaveCeremony && pendingSaveCeremony && (
+        <CeremonyOverlay
+          tiles={pendingSaveCeremony.tiles}
+          caption={pendingSaveCeremony.caption}
+          subtitle={pendingSaveCeremony.subtitle}
+          onDone={handleSaveCeremonyDone}
+          ariaLabel={pendingSaveCeremony.caption}
+        />
+      )}
+
       {/* ── Vote Results (animated sequential reveal) ────────────────────── */}
       {showVoteResults && (
         <AnimatedVoteResultsModal
           nominees={voteResultsTallies}
           evictee={voteResultsEvictee}
+          onTiebreakerRequired={handleVoteResultsDone}
           onDone={handleVoteResultsDone}
         />
       )}

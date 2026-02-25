@@ -215,6 +215,10 @@ describe('Live vote + eviction tally', () => {
     expect(state.awaitingTieBreak).toBe(true);
     expect(state.tiedNomineeIds).toContain('p1');
     expect(state.tiedNomineeIds).toContain('p2');
+    // voteResults must be set so the house votes are shown BEFORE the tie-break prompt
+    expect(state.voteResults).not.toBeNull();
+    expect(state.voteResults?.['p1']).toBe(1);
+    expect(state.voteResults?.['p2']).toBe(1);
   });
 
   it('submitTieBreak evicts chosen nominee and moves to week_end', () => {
@@ -235,6 +239,8 @@ describe('Live vote + eviction tally', () => {
     expect(state.phase).toBe('week_end');
     const p1 = state.players.find(p => p.id === 'p1');
     expect(p1?.status).toMatch(/evicted|jury/);
+    // voteResults is cleared after tie-break (already shown before; no re-show)
+    expect(state.voteResults).toBeNull();
   });
 });
 
@@ -357,32 +363,22 @@ describe('AI HOH POV replacement flow', () => {
     });
   }
 
-  it('AI replacement never re-nominates the saved player (after staged advance())', () => {
+  it('AI replacement never re-nominates the saved player', () => {
     const store = makeAiHohReplacementStore();
-    // AI HOH (p1) holds POV; saving p2 defers replacement to advance() steps
+    // AI HOH (p1) holds POV; saving p2 triggers automatic AI replacement selection
     store.dispatch(submitPovSaveTarget('p2'));
-    // After save: p2 removed from nominees, aiReplacementStep=1
-    expect(store.getState().game.nomineeIds).not.toContain('p2');
-    expect(store.getState().game.povSavedId).toBe('p2');
-
-    // Step 1: push "HOH must name replacement" message
-    store.dispatch(advance());
-    // Step 2: AI picks replacement (must not pick p2)
-    store.dispatch(advance());
-
     const state = store.getState().game;
+    // The saved player must not appear among the final nominees
     expect(state.nomineeIds).not.toContain('p2');
+    // We should still have two nominees after AI picks a replacement
     expect(state.nomineeIds).toHaveLength(2);
+    // povSavedId cleared after AI picks replacement
     expect(state.povSavedId).toBeNull();
-    expect(state.aiReplacementStep).toBe(0);
   });
 
   it('AI replacement does not include p2 even after removal from nomineeIds', () => {
     const store = makeAiHohReplacementStore();
     store.dispatch(submitPovSaveTarget('p2'));
-    store.dispatch(advance()); // step 1
-    store.dispatch(advance()); // step 2: AI picks replacement
-
     const state = store.getState().game;
     // p2 was saved and must remain out of the nominee list
     expect(state.nomineeIds).not.toContain('p2');

@@ -16,6 +16,8 @@ interface PlayerAvatarProps {
   affinity?: number | null;
   /** Whether to show the relationship-tone outline ring. Defaults to true. Set to false to opt out (e.g. main roster tiles, jury panel). */
   showRelationshipOutline?: boolean;
+  /** Whether to apply the greyscale evicted style when player.status is 'evicted'/'jury'. Defaults to true. Set to false to suppress during animations (e.g. vote reveal). */
+  showEvictedStyle?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export default function PlayerAvatar({
   onClick,
   affinity,
   showRelationshipOutline = true,
+  showEvictedStyle = true,
 }: PlayerAvatarProps) {
   const [candidates] = useState(() => resolveAvatarCandidates(player));
   const [candidateIdx, setCandidateIdx] = useState(0);
@@ -52,7 +55,7 @@ export default function PlayerAvatar({
     }
   }
 
-  const isEvicted = player.status === 'evicted' || player.status === 'jury';
+  const isEvicted = showEvictedStyle && (player.status === 'evicted' || player.status === 'jury');
 
   const tone = showRelationshipOutline ? getRelationshipTone(affinity) : 'none';
   const toneLabel =

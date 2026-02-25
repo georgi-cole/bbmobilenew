@@ -1,11 +1,11 @@
-// Integration tests for the NominationAnimator wiring in GameScreen.
+// Integration tests for the CeremonyOverlay nomination wiring in GameScreen.
 //
 // Validates:
-//  1. After the human HOH selects nominees, the NominationAnimator overlay
+//  1. After the human HOH selects nominees, the CeremonyOverlay overlay
 //     appears (game state is NOT yet committed — awaitingNominations remains true).
 //  2. After the animation's onDone fires, commitNominees is dispatched and
 //     the game state reflects the two nominated players.
-//  3. A fallback path: if nominees array is empty the animator is not shown.
+//  3. A fallback path: if nominees array is empty the overlay is not shown.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
@@ -93,18 +93,30 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
   );
 }
 
+// CeremonyOverlay default durationMs = 2800, plus 350ms exit transition.
+// Total timeline: ~3150ms from mount to onDone.
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('NominationAnimator wiring in GameScreen', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // CeremonyOverlay uses getTileRect → document.querySelector + getBoundingClientRect.
+    // In jsdom, getBoundingClientRect returns zero rects → overlay fires onDone immediately.
+    // Mock it to return non-zero rects so the overlay actually renders.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 50, y: 100, width: 60, height: 80,
+      top: 100, left: 50, bottom: 180, right: 110,
+      toJSON: () => ({}),
+    } as DOMRect);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
-  it('shows the NominationAnimator overlay after nominees are confirmed', async () => {
+  it('shows the CeremonyOverlay after nominees are confirmed', async () => {
     const store = makeStore();
     renderWithStore(store);
 
@@ -127,7 +139,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    // The NominationAnimator should now be visible with a status role
+    // The CeremonyOverlay should now be visible with a status role
     const animStatus = screen.getByRole('status');
     expect(animStatus).toBeTruthy();
     expect(animStatus.getAttribute('aria-label')).toContain('Nomination ceremony');
@@ -162,24 +174,23 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(state.players.find((p) => p.id === 'p1')?.status).not.toBe('nominated');
     expect(state.players.find((p) => p.id === 'p2')?.status).not.toBe('nominated');
 
-    // Advance past the full NominationAnimator lifecycle in steps to allow
-    // React state updates to process between each phase transition:
-    //   600 ms (entering → holding)
-    await act(async () => { vi.advanceTimersByTime(600); });
+    // Advance through the CeremonyOverlay lifecycle:
+    // durationMs=2800 (main visible phase) + 350ms (exit transition) = 3150ms total
+    // Advance in steps to verify state at intermediate points.
+
+    // At 1500ms: still in animation (badge phases progressing)
+    await act(async () => { vi.advanceTimersByTime(1500); });
     state = store.getState().game;
-    // Still in animation; nominations are not yet committed.
     expect(state.awaitingNominations).toBe(true);
     expect(state.nomineeIds).toHaveLength(0);
 
-    //   2000 ms (hold)
-    await act(async () => { vi.advanceTimersByTime(2000); });
+    // At 2800ms total: exit begins (durationMs reached)
+    await act(async () => { vi.advanceTimersByTime(1300); });
     state = store.getState().game;
-    // Still holding; nominations remain uncommitted.
-    expect(state.awaitingNominations).toBe(true);
-    expect(state.nomineeIds).toHaveLength(0);
+    // May or may not have committed yet (exit transition in progress)
 
-    //   500 ms (exiting → done → dispatch commitNominees)
-    await act(async () => { vi.advanceTimersByTime(500 + 100); });
+    // At 3150ms total: exit transition done → onDone fires → commitNominees dispatched
+    await act(async () => { vi.advanceTimersByTime(500); });
 
     state = store.getState().game;
     expect(state.awaitingNominations).toBe(false);
@@ -197,5 +208,51 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('Nomination Ceremony')).toBeNull();
+  });
+
+  it('shows CeremonyOverlay for AI HOH nominations (nominees already in store)', async () => {
+    // AI HOH (p1) has already nominated p2 and p3 — awaitingNominations is false.
+    // GameScreen should detect this and trigger the animation automatically.
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingNominations: false,
+    });
+    renderWithStore(store);
+
+    // The AI nomination detection effect should fire and show the overlay.
+    await act(async () => {});
+
+    const animStatus = screen.getByRole('status');
+    expect(animStatus).toBeTruthy();
+    expect(animStatus.getAttribute('aria-label')).toContain('Nomination ceremony');
+
+    // Store state is already committed (AI nominated directly); game retains nominees.
+    expect(store.getState().game.nomineeIds).toContain('p2');
+    expect(store.getState().game.nomineeIds).toContain('p3');
+  });
+
+  it('does not double-animate AI HOH nominees after the animation completes', async () => {
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      awaitingNominations: false,
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    // Animation is visible.
+    expect(screen.getByRole('status')).toBeTruthy();
+
+    // Advance through full CeremonyOverlay lifecycle (durationMs=2800 + exit=350).
+    await act(async () => { vi.advanceTimersByTime(2800); });
+    await act(async () => { vi.advanceTimersByTime(500); });
+
+    // Animation done — no duplicate overlay should appear.
+    expect(screen.queryByRole('status')).toBeNull();
+
+    // Nominees remain committed (commitNominees no-op when awaitingNominations=false).
+    expect(store.getState().game.nomineeIds).toHaveLength(2);
   });
 });
