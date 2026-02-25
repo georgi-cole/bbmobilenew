@@ -126,6 +126,38 @@
   cursor: not-allowed;
 }
 
+<<<<<<< copilot/featurebigbrother-improvements
+/* ── BB Typing indicator ─────────────────────────────────────────────────── */
+.diary-room__bb-typing {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--color-accent);
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
+  border-left: 3px solid var(--color-accent);
+  animation: bb-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bb-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diary-room__bb-typing {
+    animation: none;
+  }
+}
+
+/* ── Log tab ─────────────────────────────────────────────────────────────── */
+.diary-room__log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+=======
 /* ── Confess tab — chat layout ───────────────────────────────────────────── */
 .diary-room__confess {
   display: flex;
@@ -212,6 +244,7 @@
 
 /* ── Log tab wrapper ─────────────────────────────────────────────────────── */
 .diary-room__log-tab {
+>>>>>>> main
   display: flex;
   flex-direction: column;
   gap: 8px;

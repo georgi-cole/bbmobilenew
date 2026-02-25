@@ -178,6 +178,7 @@ export default function DiaryRoom() {
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bbTyping, setBbTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
 
   const dispatchRef = useRef(dispatch);
@@ -246,6 +247,7 @@ export default function DiaryRoom() {
     saveChat(playerId, next);
     setEntry('');
     setLoading(true);
+    setBbTyping(false);
 
     try {
       const resp = await generateBigBrotherReply({
@@ -254,6 +256,14 @@ export default function DiaryRoom() {
         phase,
         seed,
       });
+
+      // Simulate BB typing: delay proportional to reply length (client-side only).
+      // Does NOT affect tvFeed — the summary emission on unmount is unchanged.
+      const typingDelay = Math.max(500, Math.min(2200, 400 + resp.text.length * 6));
+      setBbTyping(true);
+      await new Promise<void>((resolve) => setTimeout(resolve, typingDelay));
+      setBbTyping(false);
+
       const bbMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'bb',
@@ -276,6 +286,7 @@ export default function DiaryRoom() {
       setMessages(withErr);
       saveChat(playerId, withErr);
     } finally {
+      setBbTyping(false);
       setLoading(false);
     }
   }
@@ -319,6 +330,11 @@ export default function DiaryRoom() {
               "You are now in the Diary Room. No one can hear you. Speak freely."
             </p>
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
+            {bbTyping && (
+              <p className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
+                🎙️ Big Brother is typing…
+              </p>
+            )}
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>
               <textarea
                 className="diary-room__textarea"
