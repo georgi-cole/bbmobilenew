@@ -95,11 +95,14 @@ export default function AnimatedVoteResultsModal({
   useEffect(() => {
     if (!allRevealed) return;
     const id = setTimeout(() => {
-      if (isTied && onTiebreakerRequired) {
-        onTiebreakerRequired(tiedIds);
-      } else {
-        setOutcomeVisible(true);
+      if (isTied) {
+        if (onTiebreakerRequired) {
+          onTiebreakerRequired(tiedIds);
+        }
+        // If tied and no tiebreaker callback is provided, do not proceed to outcome/eviction.
+        return;
       }
+      setOutcomeVisible(true);
     }, postRevealDelayMs);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
