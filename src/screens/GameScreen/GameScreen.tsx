@@ -912,6 +912,7 @@ export default function GameScreen() {
       {aiTiebreakerPending && (
         <div
           className="tv-binary-modal"
+          style={{ zIndex: 8600 }}
           role="status"
           aria-live="assertive"
           aria-label="HOH is breaking the tie"
