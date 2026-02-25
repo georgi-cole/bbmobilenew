@@ -280,7 +280,6 @@ export default function CeremonyOverlay({
             ...getBadgeStyle(i),
             zIndex: 8701,
             position: 'fixed',
-            transform: 'translate(-50%, -100%)',
           }}
           aria-label={t.badgeLabel ?? `${t.badge} badge`}
           aria-hidden={badgePhase === 'hidden'}

@@ -167,7 +167,11 @@ export default function GameScreen() {
     const parts: string[] = []
     if (game.hohId === p.id) parts.push('hoh')
     if (game.povWinnerId === p.id) parts.push('pov')
-    if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id)) parts.push('nominated')
+    // Suppress permanent nomination badge while the nomination animation is
+    // playing — otherwise AI-HOH nominees (already in game.nomineeIds) would
+    // show the permanent ❓ badge before the animated badge lands.
+    const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
+    if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id) && !isAnimatingNominee) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')
     const statuses = parts.length > 0 ? parts.join('+') : (p.status ?? 'active')
     return {
