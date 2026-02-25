@@ -234,7 +234,10 @@ export const completeChallenge =
     const canonicalScores: Record<string, number> = {};
     for (const r of ranked) canonicalScores[r.playerId] = r.score;
 
-    const winner = ranked[0];
+    // Guard: prefer a winner with a positive canonical score. If all scored <= 0,
+    // fall back to the first ranked entry, then the first participant.
+    const positiveWinner = ranked.find((r) => r.score > 0);
+    const winner = positiveWinner ?? ranked[0];
     const winnerId = winner?.playerId ?? participants[0] ?? '';
 
     const run: ChallengeRun = {

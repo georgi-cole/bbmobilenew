@@ -1,0 +1,225 @@
+/* ─── AnimatedVoteResultsModal ────────────────────────────────────────────────
+ * Sequential vote reveal overlay with per-vote pulse and outcome announcement.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.avrm {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  padding: 1rem;
+  animation: avrmFadeIn 0.3s ease;
+  cursor: default;
+}
+
+@supports (backdrop-filter: blur(6px)) {
+  .avrm { backdrop-filter: blur(6px); }
+}
+
+@keyframes avrmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.avrm__card {
+  background: linear-gradient(160deg, #0e1020 0%, #09091a 100%);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  border-radius: 20px;
+  width: min(26rem, 100vw - 2rem);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 12px 60px rgba(0,0,0,0.8),
+    0 0 60px rgba(200, 30, 30, 0.12);
+  animation: avrmSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes avrmSlideIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.avrm__header {
+  background: linear-gradient(135deg, #1e0a0a 0%, #200a14 100%);
+  padding: 1rem 1.2rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 80, 80, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.avrm__header-icon { font-size: 1.5rem; }
+
+.avrm__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff8080;
+  text-transform: uppercase;
+}
+
+/* ── Tally rows ─────────────────────────────────────────────────────────── */
+.avrm__tallies {
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.avrm__tally {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.avrm__tally--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Pulse animation on the most-recently revealed row */
+.avrm__tally--pulse {
+  animation: avrmPulse 0.5s ease;
+}
+
+@keyframes avrmPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+  50%  { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+  100% { box-shadow: none; }
+}
+
+/* Red outline applied after all votes are revealed for the evictee */
+.avrm__tally--evictee {
+  border-color: rgba(255, 80, 80, 0.6);
+  background: rgba(200, 30, 30, 0.15);
+  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.2), 0 0 12px rgba(255, 50, 50, 0.15);
+}
+
+.avrm__tally-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #d8ddf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.avrm__tally-bar-wrap {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.avrm__tally-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avrm__tally--evictee .avrm__tally-bar {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.avrm__tally-count {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #8b9dcc;
+  min-width: 1.2rem;
+  text-align: right;
+}
+
+.avrm__tally--evictee .avrm__tally-count { color: #ff8080; }
+
+/* ── Evictee announcement ───────────────────────────────────────────────── */
+.avrm__evictee {
+  padding: 0.75rem 1.2rem;
+  border-top: 1px solid rgba(255, 80, 80, 0.2);
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  animation: avrmEvicteePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes avrmEvicteePop {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.avrm__evictee-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 80, 80, 0.7);
+  text-transform: uppercase;
+}
+
+.avrm__evictee-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* ── Tie banner ─────────────────────────────────────────────────────────── */
+.avrm__tie-banner {
+  padding: 0.75rem 1.2rem;
+  border-top: 1px solid rgba(255, 200, 60, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  animation: avrmEvicteePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: rgba(255, 200, 60, 0.07);
+}
+
+.avrm__tie-icon { font-size: 1.2rem; }
+
+.avrm__tie-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffc83c;
+}
+
+/* ── Footer countdown ───────────────────────────────────────────────────── */
+.avrm__footer {
+  padding: 0.65rem 1.2rem 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.25);
+  cursor: pointer;
+}
+
+.avrm__countdown {
+  font-size: 0.8rem;
+  color: #8b9dcc;
+}
+
+.avrm__skip {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.04em;
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .avrm, .avrm__card, .avrm__tally, .avrm__evictee, .avrm__tie-banner {
+    animation: none !important;
+    transition: none !important;
+  }
+  .avrm { opacity: 1; }
+  .avrm__tally { opacity: 1; transform: none; }
+}
