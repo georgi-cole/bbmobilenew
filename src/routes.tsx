@@ -42,7 +42,7 @@ export const router = createHashRouter([
       { path: 'create-player',    element: <CreatePlayer /> },
       { path: 'game-over',        element: <GameOver />     },
       { path: 'rules',            element: <Rules />        },
-      { path: '/settings',        element: <Settings />     },
+      { path: 'settings',         element: <Settings />     },
       { path: '*',                element: <NotFound />     },
     ],
   },
