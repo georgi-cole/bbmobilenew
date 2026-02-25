@@ -29,7 +29,7 @@ import TapRace from '../../components/TapRace/TapRace'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
-import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup'
+import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import NominationAnimator from '../../components/NominationAnimator/NominationAnimator'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
@@ -179,7 +179,8 @@ export default function GameScreen() {
 
   const handleCommitNominees = useCallback(
     (ids: string[]) => {
-      console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh: !!humanIsHoH })
+      const currentUserIsHoh = !!humanIsHoH
+      console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
       setPendingNominees(ids)
     },
     [humanIsHoH, setPendingNominees]
@@ -522,11 +523,12 @@ export default function GameScreen() {
         <TapRace session={pendingMinigame} players={game.players} />
       )}
 
-      {/* ── Vote Results Popup ───────────────────────────────────────────── */}
+      {/* ── Vote Results (animated sequential reveal) ────────────────────── */}
       {showVoteResults && (
-        <VoteResultsPopup
-          tallies={voteResultsTallies}
+        <AnimatedVoteResultsModal
+          nominees={voteResultsTallies}
           evictee={voteResultsEvictee}
+          onTiebreakerRequired={(tiedIds) => dispatch({ type: 'game/tieRequested', payload: tiedIds })}
           onDone={handleVoteResultsDone}
         />
       )}
