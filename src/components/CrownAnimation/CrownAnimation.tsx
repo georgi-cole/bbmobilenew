@@ -35,12 +35,18 @@ export default function CrownAnimation({
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    let exitTimeoutId: number | undefined;
     const id = setTimeout(() => {
       setVisible(false);
       // Allow exit animation to play before calling onDone.
-      setTimeout(onDone, 400);
+      exitTimeoutId = window.setTimeout(onDone, 400);
     }, durationMs);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      if (exitTimeoutId !== undefined) {
+        clearTimeout(exitTimeoutId);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMs]);
 
