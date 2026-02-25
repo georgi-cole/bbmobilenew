@@ -165,7 +165,11 @@ export default function GameScreen() {
   // ── Nomination animation state ────────────────────────────────────────────
   // pendingNominees holds the selected IDs while the animation plays; once the
   // animation's onDone fires we dispatch commitNominees to update game state.
+  // A ref mirrors the state so handleNomAnimDone always reads the current value
+  // regardless of stale closures after 3+ seconds of animation.
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
+  const pendingNomineesRef = useRef<string[]>([])
+  pendingNomineesRef.current = pendingNominees
   const showNomAnim = pendingNominees.length > 0
   const nomAnimPlayers = pendingNominees
     .map((id) => game.players.find((p) => p.id === id))
@@ -176,14 +180,14 @@ export default function GameScreen() {
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh: !!humanIsHoH })
       setPendingNominees(ids)
     },
-    [humanIsHoH]
+    [humanIsHoH, setPendingNominees]
   )
 
   const handleNomAnimDone = useCallback(() => {
-    const ids = pendingNominees
+    const ids = pendingNomineesRef.current
     setPendingNominees([])
     dispatch(commitNominees(ids))
-  }, [dispatch, pendingNominees])
+  }, [dispatch, setPendingNominees])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -191,11 +195,11 @@ export default function GameScreen() {
   const handleDevPlayNomAnim = useCallback(() => {
     const eligible = alivePlayers.filter((p) => !p.isUser)
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
-    if (devNominees.length > 0) {
+    if (devNominees.length === 2) {
       console.log('DEV: Play Nomination Animation', devNominees)
       setPendingNominees(devNominees)
     }
-  }, [alivePlayers])
+  }, [alivePlayers, setPendingNominees])
 
   // ── Human POV holder decision (use veto or not) ──────────────────────────
   const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id

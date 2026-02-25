@@ -48,20 +48,26 @@ function makeStore(overrides: Partial<GameState> = {}) {
     phase: 'nomination_results',
     seed: 42,
     hohId: 'p0',
+    prevHohId: null,
     nomineeIds: [],
     povWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: true,
     pendingNominee1Id: null,
+    pendingMinigame: null,
+    minigameResult: null,
+    twistActive: false,
     awaitingPovDecision: false,
     awaitingPovSaveTarget: false,
     votes: {},
+    voteResults: null,
     awaitingHumanVote: false,
     awaitingTieBreak: false,
     tiedNomineeIds: null,
     awaitingFinal3Eviction: false,
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
+    evictionSplashId: null,
     players: makePlayers(6),
     tvFeed: [],
     isLive: false,
@@ -149,16 +155,33 @@ describe('NominationAnimator wiring in GameScreen', () => {
       vi.advanceTimersByTime(1000);
     });
 
+    // After the stinger, nominations should not yet be committed.
+    let state = store.getState().game;
+    expect(state.awaitingNominations).toBe(true);
+    expect(state.nomineeIds).toHaveLength(0);
+    expect(state.players.find((p) => p.id === 'p1')?.status).not.toBe('nominated');
+    expect(state.players.find((p) => p.id === 'p2')?.status).not.toBe('nominated');
+
     // Advance past the full NominationAnimator lifecycle in steps to allow
     // React state updates to process between each phase transition:
     //   600 ms (entering → holding)
     await act(async () => { vi.advanceTimersByTime(600); });
+    state = store.getState().game;
+    // Still in animation; nominations are not yet committed.
+    expect(state.awaitingNominations).toBe(true);
+    expect(state.nomineeIds).toHaveLength(0);
+
     //   2000 ms (hold)
     await act(async () => { vi.advanceTimersByTime(2000); });
+    state = store.getState().game;
+    // Still holding; nominations remain uncommitted.
+    expect(state.awaitingNominations).toBe(true);
+    expect(state.nomineeIds).toHaveLength(0);
+
     //   500 ms (exiting → done → dispatch commitNominees)
     await act(async () => { vi.advanceTimersByTime(500 + 100); });
 
-    const state = store.getState().game;
+    state = store.getState().game;
     expect(state.awaitingNominations).toBe(false);
     expect(state.nomineeIds).toContain('p1');
     expect(state.nomineeIds).toContain('p2');

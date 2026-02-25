@@ -44,7 +44,7 @@ for two eligible houseguests without needing to reach the nomination ceremony.
 
 ---
 
-
+## Running the Project
 
 ```bash
 # Install dependencies
