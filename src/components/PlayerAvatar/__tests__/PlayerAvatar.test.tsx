@@ -9,6 +9,8 @@
  *  5. Applies no rel class when showRelationshipOutline={false} even if affinity is provided.
  *  6. Includes tone in aria-label when tone is not 'none' (button variant).
  *  7. Does not modify aria-label when tone is 'none'.
+ *  8. Applies pa--evicted class for evicted player by default.
+ *  9. Suppresses pa--evicted class when showEvictedStyle={false}.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -66,5 +68,17 @@ describe('PlayerAvatar relationship outline', () => {
     render(<PlayerAvatar player={makePlayer({ name: 'Nova' })} onClick={() => {}} />);
     const btn = screen.getByRole('button');
     expect(btn.getAttribute('aria-label')).toBe('Nova');
+  });
+
+  it('applies pa--evicted class for an evicted player by default', () => {
+    const { container } = render(<PlayerAvatar player={makePlayer({ status: 'evicted' })} />);
+    expect(container.firstElementChild?.classList.contains('pa--evicted')).toBe(true);
+  });
+
+  it('suppresses pa--evicted class when showEvictedStyle is false', () => {
+    const { container } = render(
+      <PlayerAvatar player={makePlayer({ status: 'evicted' })} showEvictedStyle={false} />,
+    );
+    expect(container.firstElementChild?.classList.contains('pa--evicted')).toBe(false);
   });
 });

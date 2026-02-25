@@ -103,7 +103,7 @@ export default function VoteResultsPopup({
                   .join(' ')}
                 aria-hidden={!isVisible}
               >
-                <PlayerAvatar player={t.nominee} size="sm" />
+                <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
                 <span className="vrp__tally-name">{t.nominee.name}</span>
                 <div className="vrp__tally-bar-wrap">
                   <div

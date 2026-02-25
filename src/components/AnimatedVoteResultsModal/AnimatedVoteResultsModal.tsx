@@ -186,7 +186,7 @@ export default function AnimatedVoteResultsModal({
                   .filter(Boolean)
                   .join(' ')}
               >
-                <PlayerAvatar player={t.nominee} size="sm" />
+                <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
                 <span className="avrm__tally-name">{t.nominee.name}</span>
                 <div className="avrm__tally-bar-wrap">
                   <div
