@@ -304,10 +304,52 @@ export default function GameScreen() {
     humanIsPovHolder
 
   // ── Human POV holder picks who to save ───────────────────────────────────
+  // Defers submitPovSaveTarget dispatch until the save ceremony animation
+  // plays, showing the 🛡️ badge landing on the saved nominee's tile.
+  const [pendingSaveCeremony, setPendingSaveCeremony] = useState<{
+    tiles: CeremonyTile[]
+    caption: string
+    subtitle?: string
+  } | null>(null)
+  const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
+
+  const handleSaveCeremonyDone = useCallback(() => {
+    pendingSaveDispatchRef.current?.()
+    pendingSaveDispatchRef.current = null
+    setPendingSaveCeremony(null)
+  }, [])
+
+  const handlePovSaveTarget = useCallback((id: string) => {
+    const savedPlayer = game.players.find((p) => p.id === id)
+    const savedRect = getTileRect(id)
+
+    if (!savedPlayer || !savedRect) {
+      // Headless fallback: commit immediately.
+      dispatch(submitPovSaveTarget(id))
+      return
+    }
+
+    const tiles: CeremonyTile[] = [{
+      rect: savedRect,
+      badge: '🛡️',
+      badgeStart: 'center',
+      badgeLabel: `${savedPlayer.name} saved by veto`,
+    }]
+
+    pendingSaveDispatchRef.current = () => dispatch(submitPovSaveTarget(id))
+    setPendingSaveCeremony({
+      tiles,
+      caption: `${savedPlayer.name} has been saved!`,
+      subtitle: '🛡️ Power of Veto used',
+    })
+  }, [dispatch, game.players, getTileRect])
+
+  // Hide the save modal while the save ceremony is playing.
   const showPovSaveModal =
     game.phase === 'pov_ceremony_results' &&
     Boolean(game.awaitingPovSaveTarget) &&
-    humanIsPovHolder
+    humanIsPovHolder &&
+    !pendingSaveCeremony
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── Replacement nominee ceremony animation ─────────────────────────────
@@ -505,12 +547,14 @@ export default function GameScreen() {
   // Keep this in sync with the conditions that control human decision modals above.
   const showWinnerCeremony = pendingWinnerCeremony !== null
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
+  const showSaveCeremony = pendingSaveCeremony !== null
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
     showNominationsModal ||
     showNomAnim ||
     showReplacementCeremony ||
+    showSaveCeremony ||
     showPovDecisionModal ||
     showPovSaveModal ||
     showFinal4Modal ||
@@ -607,7 +651,7 @@ export default function GameScreen() {
           title="Power of Veto — Save a Nominee"
           subtitle={`${humanPlayer?.name}, choose which nominee to save with the veto.`}
           options={povSaveOptions}
-          onSelect={(id) => dispatch(submitPovSaveTarget(id))}
+          onSelect={handlePovSaveTarget}
           stingerMessage="VETO USED"
         />
       )}
@@ -773,6 +817,17 @@ export default function GameScreen() {
           subtitle="🎯 Nominations are set"
           onDone={handleAiReplacementDone}
           ariaLabel="Replacement nominee ceremony"
+        />
+      )}
+
+      {/* ── CeremonyOverlay — POV save ceremony (human POV holder) ────── */}
+      {showSaveCeremony && pendingSaveCeremony && (
+        <CeremonyOverlay
+          tiles={pendingSaveCeremony.tiles}
+          caption={pendingSaveCeremony.caption}
+          subtitle={pendingSaveCeremony.subtitle}
+          onDone={handleSaveCeremonyDone}
+          ariaLabel={pendingSaveCeremony.caption}
         />
       )}
 
