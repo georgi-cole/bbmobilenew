@@ -664,17 +664,11 @@ const gameSlice = createSlice({
       state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeId);
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
-      // Preserve the tally and trigger the eviction splash sequence
+      // Trigger the eviction splash sequence
       state.evictionSplashId = nomineeId;
-      const votes = state.votes ?? {};
       state.votes = {};
-      // Build vote counts for the popup from the existing votes record
-      const voteCounts: Record<string, number> = {};
-      for (const nid of (tied as string[])) voteCounts[nid] = 0;
-      for (const nid of Object.values(votes)) {
-        if (nid in voteCounts) voteCounts[nid]++;
-      }
-      state.voteResults = voteCounts;
+      // voteResults was already shown before the tie-break prompt; clear it now.
+      state.voteResults = null;
       pushEvent(
         state,
         `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
@@ -1427,7 +1421,8 @@ const gameSlice = createSlice({
             // Tie — HOH breaks the tie
             const hohPlayer = state.players.find((p) => p.id === state.hohId);
             if (hohPlayer?.isUser) {
-              // Human HOH: block and show tie-break modal
+              // Human HOH: show vote results first, then the tie-break modal
+              state.voteResults = { ...voteCounts };
               state.awaitingTieBreak = true;
               state.tiedNomineeIds = topNominees;
               const tiedNames = topNominees

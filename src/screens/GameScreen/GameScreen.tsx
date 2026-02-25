@@ -237,8 +237,10 @@ export default function GameScreen() {
 
   // ── Human HOH tie-break ───────────────────────────────────────────────────
   // Shown when the live vote ended in a tie and the human is HOH.
+  // Only shown after the vote results modal has been dismissed (voteResults cleared),
+  // so the house votes are always seen before the HOH is asked to break the tie.
   const showTieBreakModal =
-    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH
+    game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH && !game.voteResults
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
@@ -252,7 +254,9 @@ export default function GameScreen() {
   const final3Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── Vote Results Popup ────────────────────────────────────────────────────
-  const showVoteResults = Boolean(game.voteResults) && !game.awaitingTieBreak
+  // Show vote results whenever they are available, including during a tie-break
+  // wait so the house votes are always revealed before the HOH is prompted.
+  const showVoteResults = Boolean(game.voteResults)
   const voteResultsTallies = showVoteResults
     ? game.players
         .filter((p) => game.voteResults && p.id in game.voteResults)
@@ -260,14 +264,17 @@ export default function GameScreen() {
     : []
   // After dismissing vote results: show the eviction splash if one is pending,
   // otherwise advance the game phase directly.
+  // When a tie-break is still pending (awaitingTieBreak), do not advance — the
+  // tie-break modal will appear once voteResults has been cleared.
   const handleVoteResultsDone = useCallback(() => {
     dispatch(dismissVoteResults())
-    // If no eviction splash is queued, advance the phase now.
+    // If no eviction splash is queued AND no tie-break is pending, advance the phase now.
     // (If evictionSplashId is set, EvictionSplash's onDone will advance instead.)
-    if (!game.evictionSplashId) {
+    // (If awaitingTieBreak is true, the tie-break modal will take over after this.)
+    if (!game.evictionSplashId && !game.awaitingTieBreak) {
       dispatch(advance())
     }
-  }, [dispatch, game.evictionSplashId])
+  }, [dispatch, game.evictionSplashId, game.awaitingTieBreak])
 
   // ── Eviction Splash ───────────────────────────────────────────────────────
   const evictionSplashPlayer = game.evictionSplashId
@@ -532,6 +539,7 @@ export default function GameScreen() {
         <AnimatedVoteResultsModal
           nominees={voteResultsTallies}
           evictee={voteResultsEvictee}
+          onTiebreakerRequired={handleVoteResultsDone}
           onDone={handleVoteResultsDone}
         />
       )}

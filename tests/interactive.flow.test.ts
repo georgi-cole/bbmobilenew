@@ -215,6 +215,10 @@ describe('Live vote + eviction tally', () => {
     expect(state.awaitingTieBreak).toBe(true);
     expect(state.tiedNomineeIds).toContain('p1');
     expect(state.tiedNomineeIds).toContain('p2');
+    // voteResults must be set so the house votes are shown BEFORE the tie-break prompt
+    expect(state.voteResults).not.toBeNull();
+    expect(state.voteResults?.['p1']).toBe(1);
+    expect(state.voteResults?.['p2']).toBe(1);
   });
 
   it('submitTieBreak evicts chosen nominee and moves to week_end', () => {
@@ -235,6 +239,8 @@ describe('Live vote + eviction tally', () => {
     expect(state.phase).toBe('week_end');
     const p1 = state.players.find(p => p.id === 'p1');
     expect(p1?.status).toMatch(/evicted|jury/);
+    // voteResults is cleared after tie-break (already shown before; no re-show)
+    expect(state.voteResults).toBeNull();
   });
 });
 
