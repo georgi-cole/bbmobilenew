@@ -64,7 +64,14 @@ const socialSlice = createSlice({
     /** Update the affinity (and optionally tags) for a directed relationship. */
     updateRelationship(
       state,
-      action: PayloadAction<{ source: string; target: string; delta: number; tags?: string[] }>,
+      action: PayloadAction<{
+        source: string;
+        target: string;
+        delta: number;
+        tags?: string[];
+        /** Origin of the action that produced this relationship change. */
+        actionSource?: 'manual' | 'system';
+      }>,
     ) {
       const { source, target, delta, tags } = action.payload;
       if (!state.relationships[source]) {

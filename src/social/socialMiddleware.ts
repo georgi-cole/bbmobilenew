@@ -258,10 +258,14 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   // ── Alliance formed / betrayal: relationship-tag-driven deltas ───────────
   if (type === 'social/updateRelationship') {
     const payload = (action as unknown as {
-      payload: { source: string; target: string; tags?: string[] };
+      payload: { source: string; target: string; tags?: string[]; actionSource?: 'manual' | 'system' };
     }).payload;
     const result = next(action);
-    if (payload.tags) {
+    // Only apply game-event bonuses for manual (human) actions.
+    // System/AI actions must not trigger alliance or betrayal resource grants —
+    // they are the root cause of influence/energy inflation when many AI players
+    // target the human player with 'ally' actions each phase.
+    if (payload.tags && payload.actionSource !== 'system') {
       if (payload.tags.includes('alliance')) {
         // New alliance formed: both parties get +2 energy and +200 influence pts.
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, 2);

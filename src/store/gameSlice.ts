@@ -291,11 +291,17 @@ const gameSlice = createSlice({
     },
     /** Persist a social phase summary to the Diary Room log (not the TV feed). */
     addSocialSummary(state, action: PayloadAction<{ summary: string; week: number }>) {
-      pushEvent(
-        state,
-        `📊 Social Summary (Week ${action.payload.week}): ${action.payload.summary}`,
-        'diary',
-      );
+      // Route ONLY to the DR channel so the summary never appears in the main-screen
+      // TVLog strip. isVisibleInMainLog() returns false for events with channels=['dr'].
+      const event: TvEvent = {
+        id: `social-summary-w${action.payload.week}-${Date.now()}`,
+        text: `📊 Social Summary (Week ${action.payload.week}): ${action.payload.summary}`,
+        type: 'diary',
+        timestamp: Date.now(),
+        channels: ['dr'],
+        source: 'system',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
     setLive(state, action: PayloadAction<boolean>) {
       state.isLive = action.payload;
