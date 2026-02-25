@@ -15,7 +15,7 @@ export default function FinalTallyPanel({ finalists, tally }: Props) {
       {finalists.map((f) => (
         <div key={f.id} className="fo-tally__item">
           <span className="fo-tally__name">
-            <PlayerAvatar player={f} size="sm" />
+            <PlayerAvatar player={f} size="sm" showRelationshipOutline={false} />
             {' '}{f.name}
           </span>
           <span className="fo-tally__count">{tally[f.id] ?? 0}</span>
