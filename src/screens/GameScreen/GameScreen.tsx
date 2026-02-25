@@ -106,6 +106,27 @@ export default function GameScreen() {
     setPendingWinnerCeremony(null)
   }, [])
 
+  // ── Advance-picked HOH winner ceremony (outgoing HOH bypass) ──────────
+  // When the human is the outgoing HOH, no MinigameHost challenge runs.
+  // advance() picks the winner randomly → phase becomes hoh_results with
+  // hohId set, but no CeremonyOverlay was shown.  Detect this and fire
+  // a spotlight ceremony so the winner reveal is still animated.
+  const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = useState<string>('')
+
+  const advanceHohKey = useMemo(() => {
+    if (game.phase !== 'hoh_results' || !game.hohId) return ''
+    // Only trigger when the human was the outgoing HOH (prevHohId === human id)
+    // and the winner ceremony was NOT already shown by MinigameHost.
+    if (!game.prevHohId || game.prevHohId !== humanPlayer?.id) return ''
+    return `w${game.week}-hoh-${game.hohId}`
+  }, [game.phase, game.hohId, game.week, game.prevHohId, humanPlayer?.id])
+
+  const showAdvanceHohCeremony = advanceHohKey !== '' && advanceHohKey !== advanceHohConsumedKey && !pendingWinnerCeremony
+
+  const handleAdvanceHohCeremonyDone = useCallback(() => {
+    setAdvanceHohConsumedKey(advanceHohKey)
+  }, [advanceHohKey])
+
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
   // SocialSummaryBridge.dispatchSocialSummary → game/addSocialSummary (type 'diary').
@@ -625,6 +646,7 @@ export default function GameScreen() {
     showEvictionSplash ||
     showMinigameHost ||
     showWinnerCeremony ||
+    showAdvanceHohCeremony ||
     showTapRace ||
     aiTiebreakerPending
 
@@ -857,6 +879,29 @@ export default function GameScreen() {
           subtitle={pendingWinnerCeremony.subtitle}
           onDone={handleWinnerCeremonyDone}
           ariaLabel={pendingWinnerCeremony.ariaLabel}
+        />
+      )}
+
+      {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
+      {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
+      {/* picks the winner directly. This overlay shows the 👑 ceremony.         */}
+      {showAdvanceHohCeremony && game.hohId && (
+        <CeremonyOverlay
+          tiles={[]}
+          resolveTiles={() => {
+            const winnerId = game.hohId!
+            const winnerPlayer = game.players.find((p) => p.id === winnerId)
+            return [{
+              rect: getTileRect(winnerId),
+              badge: '👑',
+              badgeStart: 'center' as const,
+              badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Head of Household`,
+            }]
+          }}
+          caption={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household!`}
+          subtitle="👑"
+          onDone={handleAdvanceHohCeremonyDone}
+          ariaLabel={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household`}
         />
       )}
 

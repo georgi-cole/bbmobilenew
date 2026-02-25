@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { commitNominees, setReplacementNominee } from '../src/store/gameSlice';
+import gameReducer, { commitNominees, setReplacementNominee, advance, submitPovSaveTarget } from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -201,5 +201,93 @@ describe('spotlight flow — replacement nomination after veto save', () => {
 
     // No timers needed — applied synchronously.
     expect(store.getState().game.nomineeIds).toContain(replacementId);
+  });
+});
+
+describe('spotlight flow — AI HOH replacement keeps povSavedId for animation detection', () => {
+  it('povSavedId remains set after AI HOH picks replacement via submitPovSaveTarget', () => {
+    // Scenario: Human POV holder saves a nominee → submitPovSaveTarget dispatched.
+    // AI HOH picks replacement inline in the same reducer call.
+    // povSavedId should remain set so the UI can detect "veto was used" and
+    // trigger the AI replacement animation.
+    const players = makePlayers(6);
+    players[1].status = 'hoh' as any;    // p1 is AI HOH
+    players[2].status = 'nominated' as any;
+    players[3].status = 'nominated+pov' as any; // p3 is nominee + POV holder
+    const store = makeStore({
+      phase: 'pov_ceremony_results',
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      povWinnerId: 'p3',
+      awaitingPovSaveTarget: true,
+      awaitingNominations: false,
+      players,
+    });
+
+    // Human POV holder (p3) saves p2.
+    store.dispatch(submitPovSaveTarget('p2'));
+
+    const state = store.getState().game;
+    // AI HOH should have picked a replacement — nomineeIds should have 2 entries.
+    expect(state.nomineeIds).toHaveLength(2);
+    expect(state.nomineeIds).not.toContain('p2'); // p2 was saved
+
+    // CRITICAL: povSavedId should still be set so the UI animation can detect
+    // that the veto was used.
+    expect(state.povSavedId).toBe('p2');
+  });
+
+  it('povSavedId remains set after AI HOH auto-save + replacement via advance()', () => {
+    // Scenario: Nominee wins POV → auto-save → AI HOH picks replacement.
+    // All happens in a single advance() call.
+    const players = makePlayers(6);
+    players[1].status = 'hoh' as any;           // p1 is AI HOH
+    players[2].status = 'nominated' as any;
+    players[3].status = 'nominated+pov' as any;  // p3 is nominee + POV holder
+    const store = makeStore({
+      phase: 'pov_ceremony',                    // will advance to pov_ceremony_results
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      povWinnerId: 'p3',
+      awaitingNominations: false,
+      players,
+    });
+
+    // advance() from pov_ceremony → pov_ceremony_results: nominee auto-saves,
+    // AI HOH picks replacement.
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('pov_ceremony_results');
+    // p3 auto-saved themselves, so they should NOT be in nomineeIds.
+    expect(state.nomineeIds).not.toContain('p3');
+    // A replacement should have been picked.
+    expect(state.nomineeIds).toHaveLength(2);
+
+    // CRITICAL: povSavedId should still be set for animation detection.
+    expect(state.povSavedId).toBe('p3');
+  });
+});
+
+describe('spotlight flow — outgoing HOH winner ceremony detection', () => {
+  it('advance() picks HOH winner when phase is hoh_comp → hoh_results', () => {
+    // When human was outgoing HOH, no MinigameHost runs. advance() picks winner.
+    const players = makePlayers(6);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      prevHohId: 'p0',          // human is outgoing HOH
+      awaitingNominations: false,
+      players,
+    });
+
+    // advance() should transition to hoh_results and pick a winner.
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('hoh_results');
+    expect(state.hohId).not.toBeNull();
+    // Winner should not be the outgoing HOH.
+    expect(state.hohId).not.toBe('p0');
   });
 });

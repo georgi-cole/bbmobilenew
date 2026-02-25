@@ -372,8 +372,10 @@ describe('AI HOH POV replacement flow', () => {
     expect(state.nomineeIds).not.toContain('p2');
     // We should still have two nominees after AI picks a replacement
     expect(state.nomineeIds).toHaveLength(2);
-    // povSavedId cleared after AI picks replacement
-    expect(state.povSavedId).toBeNull();
+    // povSavedId remains set after AI picks replacement so the UI can
+    // detect "veto was used" and show the replacement animation.
+    // It is cleared at week_start.
+    expect(state.povSavedId).toBe('p2');
   });
 
   it('AI replacement does not include p2 even after removal from nomineeIds', () => {
