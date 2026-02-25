@@ -1,0 +1,162 @@
+/* ─── TiebreakerModal ─────────────────────────────────────────────────────────
+ * Displayed when the live eviction vote is tied; HOH breaks the tie.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.tbm {
+  position: fixed;
+  inset: 0;
+  z-index: 8600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  padding: 1rem;
+  animation: tbmFadeIn 0.3s ease;
+}
+
+@supports (backdrop-filter: blur(6px)) {
+  .tbm { backdrop-filter: blur(6px); }
+}
+
+@keyframes tbmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tbm__card {
+  background: linear-gradient(160deg, #0e1020 0%, #09091a 100%);
+  border: 1px solid rgba(255, 200, 60, 0.4);
+  border-radius: 20px;
+  width: min(24rem, 100vw - 2rem);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 12px 60px rgba(0,0,0,0.8),
+    0 0 60px rgba(255, 200, 60, 0.08);
+  animation: tbmSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tbmSlideIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tbm__header {
+  background: linear-gradient(135deg, #1a1500 0%, #1e1800 100%);
+  padding: 1rem 1.2rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 200, 60, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tbm__header-icon { font-size: 1.5rem; }
+
+.tbm__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffc83c;
+  text-transform: uppercase;
+}
+
+.tbm__subtitle {
+  margin: 0;
+  padding: 0.9rem 1.2rem 0.5rem;
+  font-size: 0.88rem;
+  color: #b0bcd8;
+  line-height: 1.4;
+}
+
+/* ── HOH picks ──────────────────────────────────────────────────────────── */
+.tbm__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem 1rem;
+}
+
+.tbm__option {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  background: rgba(200, 30, 30, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.tbm__option:hover {
+  background: rgba(200, 30, 30, 0.2);
+  border-color: rgba(255, 80, 80, 0.6);
+  transform: translateX(3px);
+}
+
+.tbm__option:active { transform: translateX(1px) scale(0.98); }
+
+.tbm__option-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #d8ddf0;
+}
+
+.tbm__option-cta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 80, 80, 0.8);
+  text-transform: uppercase;
+}
+
+/* ── AI waiting countdown ───────────────────────────────────────────────── */
+.tbm__ai-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.2rem;
+}
+
+.tbm__countdown-ring {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 200, 60, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tbmPulseRing 1s ease infinite;
+}
+
+@keyframes tbmPulseRing {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 200, 60, 0.4); }
+  70%  { box-shadow: 0 0 0 8px rgba(255, 200, 60, 0); }
+  100% { box-shadow: none; }
+}
+
+.tbm__countdown-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffc83c;
+  line-height: 1;
+}
+
+.tbm__ai-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #8b9dcc;
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tbm, .tbm__card, .tbm__countdown-ring {
+    animation: none !important;
+    transition: none !important;
+  }
+  .tbm { opacity: 1; }
+}

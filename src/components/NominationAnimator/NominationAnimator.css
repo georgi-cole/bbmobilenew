@@ -1,0 +1,123 @@
+/* ─── NominationAnimator ──────────────────────────────────────────────────────
+ * Dramatic full-screen overlay for the nomination ceremony moment.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.nom-anim {
+  position: fixed;
+  inset: 0;
+  z-index: 8400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Dim backdrop */
+.nom-anim__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.4s ease;
+}
+
+.nom-anim--entering .nom-anim__backdrop,
+.nom-anim--holding .nom-anim__backdrop {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.nom-anim--exiting .nom-anim__backdrop {
+  background: rgba(0, 0, 0, 0);
+}
+
+/* Stage (avatar group) — row layout so nominees appear side-by-side */
+.nom-anim__stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  transform: scale(0.4);
+  opacity: 0;
+  transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+}
+
+.nom-anim--entering .nom-anim__stage,
+.nom-anim--holding .nom-anim__stage {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.nom-anim--exiting .nom-anim__stage {
+  transform: scale(0.7);
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.35s ease;
+}
+
+.nom-anim__nominee {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nom-anim__avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Pulsing question-mark badge */
+.nom-anim__badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 1.3rem;
+  line-height: 1;
+  animation: nomBadgePulse 0.8s ease infinite alternate;
+}
+
+@keyframes nomBadgePulse {
+  from { transform: scale(0.85); }
+  to   { transform: scale(1.15); }
+}
+
+.nom-anim--exiting .nom-anim__badge {
+  animation: none;
+}
+
+.nom-anim__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+}
+
+.nom-anim__label {
+  position: absolute;
+  bottom: -2.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+}
+
+/* ── Reduce motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .nom-anim__backdrop,
+  .nom-anim__stage,
+  .nom-anim__badge {
+    animation: none !important;
+    transition: none !important;
+  }
+  .nom-anim--entering .nom-anim__stage,
+  .nom-anim--holding .nom-anim__stage {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

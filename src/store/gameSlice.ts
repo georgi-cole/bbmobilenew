@@ -101,12 +101,16 @@ const initialState: GameState = {
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
+/** Monotonic counter to guarantee unique event IDs within the same millisecond. */
+let _pushEventCounter = 0;
+
 function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
+  const ts = Date.now();
   const event: TvEvent = {
-    id: `${state.phase}-w${state.week}-${Date.now()}`,
+    id: `${state.phase}-w${state.week}-${ts}-${++_pushEventCounter}`,
     text,
     type,
-    timestamp: Date.now(),
+    timestamp: ts,
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
@@ -201,21 +205,28 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
  *
  * Ties are broken deterministically using an FNV-1a hash of the sorted tied
  * IDs + high score, so equal tap counts never bias toward earlier IDs.
+ *
+ * Guard: participants with score <= 0 are excluded from winning unless all
+ * participants have score <= 0 (fallback to the full list).
  */
 function determineWinner(participants: string[], scores: Record<string, number>): string {
   if (participants.length === 0) {
     throw new Error('determineWinner called with no participants');
   }
 
-  // Find the highest score.
+  // Prefer participants with a positive score; fall back to all if none qualify.
+  const positivePool = participants.filter((id) => (scores[id] ?? 0) > 0);
+  const pool = positivePool.length > 0 ? positivePool : participants;
+
+  // Find the highest score within the eligible pool.
   let highScore = -1;
-  for (const id of participants) {
+  for (const id of pool) {
     const score = scores[id] ?? 0;
     if (score > highScore) highScore = score;
   }
 
-  // Collect all participants that share the top score.
-  const topIds = participants.filter((id) => (scores[id] ?? 0) === highScore);
+  // Collect all pool participants that share the top score.
+  const topIds = pool.filter((id) => (scores[id] ?? 0) === highScore);
 
   // Single winner — return directly.
   if (topIds.length === 1) return topIds[0];
