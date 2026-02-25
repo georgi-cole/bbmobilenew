@@ -23,6 +23,27 @@ or Babel plugin is required.
 
 ---
 
+## Debug Steps
+
+### Verify nomination animation is firing
+
+1. Start the dev server: `npm run dev`
+2. Play until you are HOH and reach the nomination ceremony.
+3. Select two houseguests and confirm nominees.
+4. You should see the full-screen animation overlay (backdrop dims, avatars scale up with ❓ badge).
+5. Check the browser console for the log line:
+   ```
+   NOMINATION_TRIGGERED ['<id1>', '<id2>'] { currentUserIsHoh: true }
+   ```
+
+### Dev button
+
+In development builds a gold **"🎬 Dev: Play Nomination Animation"** button appears in the
+lower-left corner of the Game screen. Tapping it immediately plays the `NominationAnimator`
+for two eligible houseguests without needing to reach the nomination ceremony.
+
+---
+
 ## Running the Project
 
 ```bash
