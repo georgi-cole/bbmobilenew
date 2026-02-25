@@ -151,6 +151,12 @@
   50%       { opacity: 0.5; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .diary-room__bb-typing {
+    animation: none;
+  }
+}
+
 /* ── Log tab ─────────────────────────────────────────────────────────────── */
 .diary-room__log {
   list-style: none;

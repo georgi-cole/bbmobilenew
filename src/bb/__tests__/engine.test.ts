@@ -180,6 +180,10 @@ describe('detectIntent', () => {
     expect(detectIntent('I want to leave')).toBe('quit');
   });
 
+  it('phrase priority negation: "I don\'t want to quit" should NOT be quit', () => {
+    expect(detectIntent("I don't want to quit")).not.toBe('quit');
+  });
+
   it('phrase priority: "I miss my parents" -> grief_family (not generic loneliness)', () => {
     expect(detectIntent('I miss my parents')).toBe('grief_family');
   });

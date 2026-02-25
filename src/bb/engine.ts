@@ -51,13 +51,17 @@ export interface ReplyTemplate {
 }
 
 export interface BBContext {
-  /** Intents from recent turns — used for mood weighting */
+  /** Intents from recent turns — reserved for future cross-turn intent weighting */
   lastIntents?: IntentId[];
   /** Reply IDs from recent turns — avoided in selection */
   lastReplyIds?: string[];
-  /** Accumulated mood score (-1 … +1) */
+  /**
+   * Accumulated mood score (-1 … +1).
+   * Incorporated into the PRNG seed to shift reply distribution based on the
+   * player's ongoing emotional state (more negative mood → different pool slice).
+   */
   moodScore?: number;
-  /** Housemate names recently mentioned */
+  /** Housemate names recently mentioned — reserved for future personalisation */
   recentNames?: string[];
   /** Player name for {{name}} substitution */
   playerName?: string;
@@ -333,10 +337,21 @@ const INTENT_SPECS: Record<Exclude<IntentId, 'safety'>, IntentSpec> = {
 // ─── Safety patterns ─────────────────────────────────────────────────────────
 
 const SAFETY_PATTERNS: RegExp[] = [
+  // Physical harm / violence against others
   /\b(kill|murder|stab|shoot|assault|attack|beat up|hurt|harm)\b.{0,30}\b(him|her|them|someone|person|player|houseguest|everybody|everyone)\b/i,
+  // Weapons / dangerous materials / hacking for harmful purposes
   /\b(how (do|can|to)|instructions? (for|to)|tell me (how|to))\b.{0,40}\b(make|build|create|get)\b.{0,30}\b(weapon|bomb|drug|poison|explosive|meth|hack)\b/i,
+  // Self-harm and suicide
   /\bself.?harm\b|\bcut myself\b|\bkill myself\b|\bend (my|it all)\b|\bsuicide\b/i,
+  // Doxxing / leaking private information
   /\b(dox|doxx|leak|expose|reveal)\b.{0,30}\b(address|phone|number|info|personal|private|identity)\b/i,
+  // General illegal activities
+  /\b(how (do|can|to)|instructions? (for|to)|tell me (how|to))\b.{0,40}\b(steal|rob|burglary|shoplift|loot|arson|kidnap|extort|blackmail|fraud|scam|counterfeit|forge|smuggle|launder money)\b/i,
+  /\b(commit(ting)?|do(ing)?)\b.{0,20}\b(a crime|crimes|something illegal|illegal acts?|felon(y|ies))\b/i,
+  /\b(get away with|not get caught for|avoid getting caught for)\b.{0,40}\b(crime|murder|theft|fraud|arson|illegal (stuff|things|activity|activities))\b/i,
+  // Cheating / exploiting the game, show, or systems
+  /\b(how (do|can|should|to)|instructions? (for|to)|tell me (how|to)|what(?:'s| is) (the )?best way to|show me how to)\b.{0,60}\b(cheat(?: the game)?|rig the vote|steal|break the law|do something illegal|illegally)\b/i,
+  /\b(ways? to|best way to|method(s)? to)\b.{0,40}\b(cheat|exploit|rig|fix|throw|sabotage|undermine)\b.{0,40}\b(game|show|competition|vote|voting|system|house)\b/i,
 ];
 
 // ─── detectIntent ────────────────────────────────────────────────────────────
@@ -357,14 +372,34 @@ export function detectIntent(text: string): IntentId {
   const normalText = normalize(text);
   const { score } = scoreSentiment(text);
 
+  // Precompute the character start position of each token in normalText so that
+  // phrase matching can resolve token indices without re-tokenizing per match.
+  const tokenStartPositions: number[] = [];
+  let searchPos = 0;
+  for (const token of tokens) {
+    const pos = normalText.indexOf(token, searchPos);
+    tokenStartPositions.push(pos === -1 ? searchPos : pos);
+    searchPos = (pos === -1 ? searchPos : pos) + token.length;
+  }
+
   const scores: Partial<Record<IntentId, number>> = {};
 
   for (const [intentKey, spec] of Object.entries(INTENT_SPECS) as [Exclude<IntentId, 'safety'>, IntentSpec][]) {
     let intentScore = 0;
 
-    // Phase 1: phrase matching (highest priority)
+    // Phase 1: phrase matching (highest priority, negation-aware)
     for (const phrase of spec.phrases) {
-      if (normalText.includes(phrase)) {
+      const phraseStart = normalText.indexOf(phrase);
+      if (phraseStart !== -1) {
+        // Find the token index corresponding to the phrase start using the
+        // precomputed positions — avoids a tokenize() call per phrase match.
+        const phraseIdx = tokenStartPositions.findIndex((p, i) =>
+          p >= phraseStart && (i === 0 || tokenStartPositions[i - 1] < phraseStart + 1),
+        );
+        // Skip if the first token of the phrase is inside a negation window
+        if (phraseIdx !== -1 && phraseIdx < mask.length && mask[phraseIdx]) {
+          continue;
+        }
         intentScore += spec.weight * 2;
       }
     }
@@ -373,10 +408,12 @@ export function detectIntent(text: string): IntentId {
     for (const pattern of spec.patterns) {
       const m = pattern.exec(text);
       if (m) {
-        // Find the token-array index of the match start
-        const before = tokenize(text.slice(0, m.index));
-        const matchIdx = before.length;
-        if (matchIdx < mask.length && mask[matchIdx]) {
+        // Map match character index to token index via precomputed positions
+        const matchCharIdx = m.index;
+        const matchTokenIdx = tokenStartPositions.findIndex((p, i) =>
+          p >= matchCharIdx && (i === 0 || tokenStartPositions[i - 1] < matchCharIdx + 1),
+        );
+        if (matchTokenIdx !== -1 && matchTokenIdx < mask.length && mask[matchTokenIdx]) {
           // Match starts in a negation window — skip
           continue;
         }
@@ -605,6 +642,8 @@ function hashText(text: string): number {
 
 const MAX_REPLY_CHARS = 205;
 const ADD_SUFFIX = true;
+/** Maps moodScore (-1…+1) to an 8-bit unsigned int (0…255) for PRNG seeding. */
+const MOOD_TO_BITS_MULTIPLIER = 127.5;
 
 // ─── Core reply function ──────────────────────────────────────────────────────
 
@@ -624,7 +663,12 @@ export function bigBrotherReply(input: string, ctx?: BBContext): EngineReply {
   const excluded = new Set(ctx?.lastReplyIds ?? []);
 
   const textHash = hashText(input);
-  const combinedSeed = ((ctx?.seed ?? 0) ^ textHash) >>> 0;
+
+  // Incorporate moodScore into seed for mood-sensitive variation.
+  // moodScore is clamped to 0-255 and XORed in to shift reply distribution
+  // when the player's ongoing mood is known.
+  const moodBits = Math.round(((ctx?.moodScore ?? 0) + 1) * MOOD_TO_BITS_MULTIPLIER) & 0xff;
+  const combinedSeed = ((ctx?.seed ?? 0) ^ textHash ^ (moodBits << 16)) >>> 0;
   const rand = mulberry32(combinedSeed);
 
   // Prefer templates not seen recently; fall back to full pool if all excluded

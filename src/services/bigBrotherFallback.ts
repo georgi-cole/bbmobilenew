@@ -9,7 +9,7 @@
  */
 
 import { bigBrotherReply } from '../bb/engine';
-import type { BBContext, SentimentResult as _SentimentResult } from '../bb/engine';
+import type { BBContext, SentimentResult as _SentimentResult, IntentId } from '../bb/engine';
 
 // ─── Re-exports for backward compatibility ────────────────────────────────────
 
@@ -33,7 +33,7 @@ export interface FallbackResponse {
   /** Intent id used to select the reply (e.g. "grief_family"). */
   reason: string;
   /** Same as reason — explicit intent field for consumers that want it. */
-  intent?: string;
+  intent?: IntentId;
   /** Sentiment of the input text. */
   sentiment?: _SentimentResult;
 }
@@ -52,7 +52,11 @@ export async function generateOfflineBigBrotherReply(
   req: FallbackRequest,
 ): Promise<FallbackResponse> {
   const { diaryText, playerName, seed, context } = req;
-  const reply = bigBrotherReply(diaryText, { ...context, playerName, seed });
+  const reply = bigBrotherReply(diaryText, {
+    ...context,
+    playerName: playerName !== undefined ? playerName : context?.playerName,
+    seed: seed !== undefined ? seed : context?.seed,
+  });
   return {
     text: reply.text,
     reason: reply.intent,
