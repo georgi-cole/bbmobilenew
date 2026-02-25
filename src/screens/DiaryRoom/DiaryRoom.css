@@ -63,12 +63,6 @@
 }
 
 /* ── Confess tab ─────────────────────────────────────────────────────────── */
-.diary-room__confess {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .diary-room__prompt {
   margin: 0;
   font-size: 0.82rem;
@@ -132,7 +126,110 @@
   cursor: not-allowed;
 }
 
-/* ── Log tab ─────────────────────────────────────────────────────────────── */
+/* ── Confess tab — chat layout ───────────────────────────────────────────── */
+.diary-room__confess {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diary-room__confess-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Chat bubble list ────────────────────────────────────────────────────── */
+.diary-room__chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+  /* Custom scrollbar — webkit */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.4) transparent;
+}
+
+.diary-room__chat::-webkit-scrollbar {
+  width: 4px;
+}
+
+.diary-room__chat::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 4px;
+}
+
+/* ── Individual bubble ───────────────────────────────────────────────────── */
+.diary-room__bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 84%;
+  border-radius: 14px;
+  padding: 10px 14px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/* User bubble — right-aligned, purple tint */
+.diary-room__bubble--user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(91, 33, 182, 0.35) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-bottom-right-radius: 4px;
+}
+
+/* Big Brother bubble — left-aligned, dark card tint */
+.diary-room__bubble--bb {
+  align-self: flex-start;
+  background: var(--color-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom-left-radius: 4px;
+}
+
+.diary-room__bubble-author {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.diary-room__bubble-text {
+  font-size: 0.88rem;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diary-room__bubble-time {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  align-self: flex-end;
+}
+
+/* ── Log tab wrapper ─────────────────────────────────────────────────────── */
+.diary-room__log-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diary-room__log-tab .diary-room__chat {
+  max-height: 70vh;
+}
+
+/* ── Empty / muted hint ──────────────────────────────────────────────────── */
+.diary-room__empty {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Legacy log styles kept for backward compatibility ─────────────────────── */
 .diary-room__log {
   list-style: none;
   margin: 0;
@@ -140,13 +237,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.diary-room__empty {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  text-align: center;
-  padding: 24px 0;
 }
 
 .diary-room__log-item {
