@@ -81,7 +81,7 @@ export default function HouseguestGrid({
 
       <ul className={styles.grid} role="list">
         {houseguests.map((hg) => (
-          <li key={hg.id} className={styles.gridItem}>
+          <li key={hg.id} className={styles.gridItem} data-player-id={String(hg.id)}>
             <AvatarTile
               name={hg.name}
               avatarUrl={hg.avatarUrl}
