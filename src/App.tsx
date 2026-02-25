@@ -12,6 +12,10 @@ import { RouterProvider } from 'react-router-dom';
 import { store } from './store/store';
 import { router } from './routes';
 
+if (import.meta.env.DEV) {
+  console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
+}
+
 export default function App() {
   return (
     <Provider store={store}>
