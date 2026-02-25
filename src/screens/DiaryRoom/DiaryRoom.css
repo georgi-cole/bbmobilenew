@@ -200,6 +200,8 @@
 .diary-room__bubble-text {
   font-size: 0.88rem;
   color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .diary-room__bubble-time {
