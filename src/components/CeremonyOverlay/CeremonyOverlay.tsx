@@ -169,8 +169,11 @@ export default function CeremonyOverlay({
   // Badge start/target positions
   const badgePositions = validTiles.map((t) => {
     const r = t.rect!;
-    const targetX = r.left + r.width / 2;
-    const targetY = r.top - 4; // slightly above tile top-left corner (badge stack area)
+    // Left-side anchor: align with .badgeStack { top: 4px; left: 4px } in AvatarTile.
+    // Badge uses transform translate(-50%, -100%), so targetX = badge center x,
+    // targetY = badge bottom y. Permanent badge center ≈ tile.left+14, bottom ≈ tile.top+24.
+    const targetX = r.left + 14;
+    const targetY = r.top + 24;
 
     let startX: number;
     let startY: number;

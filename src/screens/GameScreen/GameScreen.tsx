@@ -333,6 +333,7 @@ export default function GameScreen() {
       return
     }
 
+    console.log('POV_SAVE_ANIM_STARTED', { savedId: id, screen: 'GameScreen' })
     const tiles: CeremonyTile[] = [{
       rect: savedRect,
       badge: '🛡️',
@@ -418,12 +419,14 @@ export default function GameScreen() {
     if (game.phase !== 'pov_ceremony_results') return ''
     if (game.replacementNeeded) return '' // human HOH hasn't picked yet
     if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
+    // Gate on the veto actually being used: if no player was saved, skip animation.
+    if (!game.povSavedId) return ''
     // If the AI HOH handled it, nomineeIds was updated in the same advance() call
     // and no awaiting flags are set. Use a key based on week + nomineeIds.
     const hohPlayer = game.players.find((p) => p.id === game.hohId)
     if (hohPlayer?.isUser) return '' // human HOH handles this differently
     return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
-  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players])
+  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players, game.povSavedId])
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
 
@@ -485,25 +488,38 @@ export default function GameScreen() {
     }
   }, [dispatch, game.evictionSplashId, game.awaitingTieBreak])
 
-  // ── Eviction Splash ───────────────────────────────────────────────────────
-  const evictionSplashPlayer = game.evictionSplashId
-    ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
-    : null
-  const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
-  // After the eviction splash completes, dismiss it and advance the phase.
-  const handleEvictionSplashDone = useCallback(() => {
-    dispatch(dismissEvictionSplash())
-    dispatch(advance())
-  }, [dispatch])
+  // ── AI HOH tiebreak choreography ─────────────────────────────────────────
+  // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
+  //   • Human HOH: dismiss the modal → showTieBreakModal appears (existing path).
+  //   • AI HOH:    the AI already picked (evictionSplashId is set). Show a short
+  //                "HOH is deciding…" overlay for 3 s, then dismiss to let the
+  //                eviction splash play.  No additional dispatch needed.
+  const [aiTiebreakerPending, setAiTiebreakerPending] = useState(false)
 
-  // Determine evictee for vote results.
-  // Prefer the actual eviction decision (evictionSplashId) and fall back to
-  // vote tallies, returning null if the tallies are tied.
+  // For AI tiebreak: pass evictee=null to the modal so it surfaces the tie banner
+  // and calls onTiebreakerRequired, giving us the hook to run choreography.
+  // Condition: vote tallies have equal max counts AND AI already picked (evictionSplashId set)
+  // AND the human is NOT the HOH.
   const voteResultsEvictee = useMemo(() => {
     if (!game.voteResults) return null
 
-    // If we have an explicit eviction decision, use that as the source of truth.
+    // If we have an explicit eviction decision, use that as the source of truth
+    // — UNLESS this is an AI tiebreak where we want the modal to show the tie
+    // banner first and call onTiebreakerRequired.
     if (game.evictionSplashId) {
+      if (!humanIsHoH) {
+        // Check whether the tallies are actually tied (AI tiebreak case).
+        let maxVotes = -1
+        let topCount = 0
+        for (const count of Object.values(game.voteResults)) {
+          if (count > maxVotes) { maxVotes = count; topCount = 1 }
+          else if (count === maxVotes) topCount++
+        }
+        if (topCount > 1) {
+          // AI tiebreak — pass null so the modal shows the tie banner.
+          return null
+        }
+      }
       return game.players.find((p) => p.id === game.evictionSplashId) ?? null
     }
 
@@ -522,7 +538,40 @@ export default function GameScreen() {
     if (evicteeIds.length !== 1) return null
 
     return game.players.find((p) => p.id === evicteeIds[0]) ?? null
-  }, [game.voteResults, game.evictionSplashId, game.players])
+  }, [game.voteResults, game.evictionSplashId, game.players, humanIsHoH])
+
+  const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
+    console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
+    if (!humanIsHoH) {
+      // AI HOH already decided; run a short choreography then proceed.
+      setAiTiebreakerPending(true)
+    } else {
+      // Human HOH: dismiss the vote results modal — showTieBreakModal will appear.
+      handleVoteResultsDone()
+    }
+  }, [humanIsHoH, handleVoteResultsDone])
+
+  // After 3 s of "thinking" choreography, dismiss vote results for AI tiebreak.
+  useEffect(() => {
+    if (!aiTiebreakerPending) return
+    const id = window.setTimeout(() => {
+      setAiTiebreakerPending(false)
+      handleVoteResultsDone()
+    }, 3000)
+    return () => window.clearTimeout(id)
+  }, [aiTiebreakerPending, handleVoteResultsDone])
+
+  // ── Eviction Splash ───────────────────────────────────────────────────────
+  const evictionSplashPlayer = game.evictionSplashId
+    ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
+    : null
+  const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
+  // After the eviction splash completes, dismiss it and advance the phase.
+  const handleEvictionSplashDone = useCallback(() => {
+    dispatch(dismissEvictionSplash())
+    dispatch(advance())
+  }, [dispatch])
+
 
   // ── TapRace minigame ──────────────────────────────────────────────────────
   // Shown when a HOH or POV competition is in progress and the human player
@@ -566,7 +615,8 @@ export default function GameScreen() {
     showEvictionSplash ||
     showMinigameHost ||
     showWinnerCeremony ||
-    showTapRace
+    showTapRace ||
+    aiTiebreakerPending
 
   return (
     <div className="game-screen game-screen-shell">
@@ -766,6 +816,7 @@ export default function GameScreen() {
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
+            console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
             const tiles: CeremonyTile[] = [{
               rect: sourceDomRect,
               badge: winSymbol,
@@ -811,15 +862,22 @@ export default function GameScreen() {
       )}
 
       {/* ── CeremonyOverlay — AI replacement nominee animation ─────────── */}
+      {/* Only the replacement nominee (last in nomineeIds, pushed by store) gets */}
+      {/* a badge. The badge flies from the HOH tile → replacement tile.          */}
       {showAiReplacementAnim && game.nomineeIds.length > 0 && (
         <CeremonyOverlay
           tiles={[]}
-          resolveTiles={() => game.nomineeIds.map((id) => ({
-            rect: getTileRect(id),
-            badge: '❓',
-            badgeStart: 'center' as const,
-            badgeLabel: `${game.players.find((p) => p.id === id)?.name ?? id} nominated`,
-          }))}
+          resolveTiles={() => {
+            const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
+            const hohRect = game.hohId ? getTileRect(game.hohId) : null
+            const replacementPlayer = game.players.find((p) => p.id === replacementId)
+            return [{
+              rect: getTileRect(replacementId),
+              badge: '❓',
+              badgeStart: hohRect ?? 'center' as const,
+              badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
+            }]
+          }}
           caption="Replacement nominee named"
           subtitle="🎯 Nominations are set"
           onDone={handleAiReplacementDone}
@@ -843,9 +901,31 @@ export default function GameScreen() {
         <AnimatedVoteResultsModal
           nominees={voteResultsTallies}
           evictee={voteResultsEvictee}
-          onTiebreakerRequired={handleVoteResultsDone}
+          onTiebreakerRequired={handleTiebreakerRequired}
           onDone={handleVoteResultsDone}
         />
+      )}
+
+      {/* ── AI HOH tiebreak choreography overlay ─────────────────────────── */}
+      {/* Shown for 3 s while the "AI HOH is deciding" suspense plays.        */}
+      {/* onTiebreakerRequired triggers this; handleVoteResultsDone fires after */}
+      {aiTiebreakerPending && (
+        <div
+          className="tv-binary-modal"
+          style={{ zIndex: 8600 }}
+          role="status"
+          aria-live="assertive"
+          aria-label="HOH is breaking the tie"
+        >
+          <div className="tv-binary-modal__card">
+            <header className="tv-binary-modal__header">
+              <h2 className="tv-binary-modal__title">⚖️ It&rsquo;s a Tie!</h2>
+              <p className="tv-binary-modal__subtitle">
+                👑 HOH is breaking the tie&hellip;
+              </p>
+            </header>
+          </div>
+        </div>
       )}
 
       {/* ── Eviction Splash (colour → B&W cinematic) ────────────────────── */}
