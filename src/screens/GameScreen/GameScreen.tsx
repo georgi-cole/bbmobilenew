@@ -34,6 +34,8 @@ import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
+import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
+import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
@@ -479,7 +481,60 @@ export default function GameScreen() {
   // ── Final 4 human POV holder vote ────────────────────────────────────────
   // Shown when phase is final4_eviction, the human player is the POV holder,
   // and awaitingPovDecision is set (meaning plea messages have been emitted).
-  const showFinal4Modal = game.phase === 'final4_eviction' && humanIsPovHolder && game.awaitingPovDecision
+  // The ChatOverlay plays first; only after it completes does the decision
+  // modal appear (final4ChatDone guards the modal).
+  const [final4ChatDone, setFinal4ChatDone] = useState(false)
+
+  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
+  // tvFeed is newest-first; we reverse to get chronological order and filter
+  // to the plea-related lines for this phase.
+  const final4ChatLines = useMemo((): ChatLine[] => {
+    if (game.phase !== 'final4_eviction' || !humanIsPovHolder) return []
+    const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+    // Look in tvFeed for plea lines emitted this phase (type 'game', recent).
+    // tvFeed is stored newest-first; take up to 10 recent entries then reverse.
+    const recentEvents = [...game.tvFeed].slice(0, 10).reverse()
+    const pleaLines: ChatLine[] = []
+    recentEvents.forEach((ev) => {
+      if (!ev.text) return
+      const isPleasIntro = /asks nominees for their pleas/i.test(ev.text)
+      const nomineeMatch = nominees.find((n) => ev.text.startsWith(`${n.name}:`))
+      if (isPleasIntro || nomineeMatch) {
+        pleaLines.push({
+          id: ev.id,
+          role: nomineeMatch ? 'nominee' : 'host',
+          player: nomineeMatch,
+          text: nomineeMatch
+            ? ev.text.replace(/^[^:]+:\s*"?/, '').replace(/"$/, '')
+            : ev.text,
+        })
+      }
+    })
+    // If tvFeed didn't contain plea lines yet, synthesize polite fallbacks.
+    if (pleaLines.length === 0) {
+      nominees.forEach((n) => {
+        pleaLines.push({
+          id: `fallback-${n.id}`,
+          role: 'nominee',
+          player: n,
+          text: `Please keep me — I have so much more to give this game.`,
+        })
+      })
+    }
+    return pleaLines
+  }, [game.phase, game.tvFeed, game.nomineeIds, alivePlayers, humanIsPovHolder])
+
+  const showFinal4Chat =
+    game.phase === 'final4_eviction' &&
+    !!humanIsPovHolder &&
+    Boolean(game.awaitingPovDecision) &&
+    !final4ChatDone
+
+  const showFinal4Modal =
+    game.phase === 'final4_eviction' &&
+    !!humanIsPovHolder &&
+    Boolean(game.awaitingPovDecision) &&
+    final4ChatDone
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
@@ -649,6 +704,7 @@ export default function GameScreen() {
     showSaveCeremony ||
     showPovDecisionModal ||
     showPovSaveModal ||
+    showFinal4Chat ||
     showFinal4Modal ||
     showLiveVoteModal ||
     showTieBreakModal ||
@@ -782,6 +838,17 @@ export default function GameScreen() {
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
           stingerMessage="TIE BREAKER CAST"
+        />
+      )}
+
+      {/* ── Final 4 plea chat overlay (human POV holder sees pleas first) ── */}
+      {showFinal4Chat && (
+        <ChatOverlay
+          lines={final4ChatLines}
+          skippable
+          header={{ title: 'Final 4', subtitle: 'Hear the nominees out before casting your vote.' }}
+          onComplete={() => setFinal4ChatDone(true)}
+          ariaLabel="Final 4 plea chat"
         />
       )}
 

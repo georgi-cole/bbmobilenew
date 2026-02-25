@@ -1,0 +1,181 @@
+/* ─── ChatOverlay ──────────────────────────────────────────────────────────────
+ * Cinematic chat overlay that reveals lines sequentially with a typing
+ * indicator. Floats over the game UI as a modal dialog.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.chat-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────────── */
+.chat-overlay__panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 70vh;
+  background: #0e0e1a;
+  border-top: 2px solid #7b61ff;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8px 32px rgba(123, 97, 255, 0.25);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.chat-overlay__header {
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-overlay__header-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7b61ff;
+}
+
+.chat-overlay__header-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Feed ───────────────────────────────────────────────────────────────────── */
+.chat-overlay__feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Line ───────────────────────────────────────────────────────────────────── */
+.chat-overlay__line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  animation: chatLineIn 0.22s ease both;
+}
+
+@keyframes chatLineIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Avatar ─────────────────────────────────────────────────────────────────── */
+.chat-overlay__avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-overlay__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-overlay__avatar-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.chat-overlay__avatar-initial {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ── Bubble ─────────────────────────────────────────────────────────────────── */
+.chat-overlay__bubble {
+  max-width: 80%;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px 12px 12px 4px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-overlay__speaker {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7b61ff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chat-overlay__text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+/* ── Typing indicator ───────────────────────────────────────────────────────── */
+.chat-overlay__typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.chat-overlay__typing span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: typingDot 1s infinite ease-in-out;
+}
+
+.chat-overlay__typing span:nth-child(2) { animation-delay: 0.15s; }
+.chat-overlay__typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30%            { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Skip button ────────────────────────────────────────────────────────────── */
+.chat-overlay__skip {
+  align-self: flex-end;
+  margin: 8px 12px 12px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chat-overlay__skip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}

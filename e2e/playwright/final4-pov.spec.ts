@@ -123,6 +123,13 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     // Plea messages must appear in the TV feed
     await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 });
 
+    // If the ChatOverlay is present (skippable plea cinematic), click Skip to
+    // immediately complete it so the decision modal appears without delay.
+    const skipBtn = page.getByRole('button', { name: /skip/i });
+    if (await skipBtn.isVisible()) {
+      await skipBtn.click();
+    }
+
     // Decision modal must appear (awaitingPovDecision is now true)
     const decisionModal = page.getByRole('dialog');
     await expect(decisionModal).toBeVisible({ timeout: 5000 });
