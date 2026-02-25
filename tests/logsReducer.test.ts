@@ -17,10 +17,8 @@ import gameReducer, {
   addTvEvent,
   setReplacementNominee,
   submitPovSaveTarget,
-  launchMinigame,
-  completeMinigame,
 } from '../src/store/gameSlice';
-import type { GameState, Player, MinigameSession } from '../src/types';
+import type { GameState, Player } from '../src/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
