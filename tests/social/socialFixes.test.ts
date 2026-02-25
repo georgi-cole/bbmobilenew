@@ -15,7 +15,6 @@ import socialReducer, {
   setInfluenceBankEntry,
   recordSocialAction,
   selectSessionLogs,
-  selectInfluenceBank,
 } from '../../src/social/socialSlice';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
 import { isVisibleInMainLog, isVisibleInDr } from '../../src/services/activityService';
