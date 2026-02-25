@@ -178,9 +178,7 @@ export default function DiaryRoom() {
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
-<<<<<<< copilot/featurebigbrother-improvements
   const [bbTyping, setBbTyping] = useState(false);
-=======
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
 
   const dispatchRef = useRef(dispatch);
@@ -221,7 +219,6 @@ export default function DiaryRoom() {
       }
     };
   }, []);
->>>>>>> main
 
   // ── Weekly tab state ──────────────────────────────────────────────────────
   const isAdmin = useIsAdmin();
@@ -259,16 +256,14 @@ export default function DiaryRoom() {
         phase,
         seed,
       });
-<<<<<<< copilot/featurebigbrother-improvements
 
-      // Simulate BB typing: delay proportional to reply length (client-side only)
+      // Simulate BB typing: delay proportional to reply length (client-side only).
+      // Does NOT affect tvFeed — the summary emission on unmount is unchanged.
       const typingDelay = Math.max(500, Math.min(2200, 400 + resp.text.length * 6));
       setBbTyping(true);
       await new Promise<void>((resolve) => setTimeout(resolve, typingDelay));
       setBbTyping(false);
 
-      dispatch(addTvEvent({ text: `📺 Big Brother: ${resp.text}`, type: 'game' }));
-=======
       const bbMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'bb',
@@ -278,7 +273,6 @@ export default function DiaryRoom() {
       const withReply = [...next, bbMsg];
       setMessages(withReply);
       saveChat(playerId, withReply);
->>>>>>> main
     } catch (err) {
       console.error('Big Brother AI error:', err);
       const detail = err instanceof Error ? err.message : 'Unknown error.';
@@ -331,30 +325,23 @@ export default function DiaryRoom() {
       {/* Tab body */}
       <div className="diary-room__body">
         {activeTab === 'confess' && (
-<<<<<<< copilot/featurebigbrother-improvements
-          <>
-            <form className="diary-room__confess" onSubmit={handleSubmit}>
-              <p className="diary-room__prompt">
-                "You are now in the Diary Room. No one can hear you. Speak freely."
-              </p>
-=======
           <div className="diary-room__confess">
             <p className="diary-room__prompt">
               "You are now in the Diary Room. No one can hear you. Speak freely."
             </p>
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
+            {bbTyping && (
+              <p className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
+                🎙️ Big Brother is typing…
+              </p>
+            )}
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>
->>>>>>> main
               <textarea
                 className="diary-room__textarea"
                 value={entry}
                 onChange={(e) => setEntry(e.target.value)}
                 placeholder="What are you thinking?"
-<<<<<<< copilot/featurebigbrother-improvements
-                rows={4}
-=======
                 rows={3}
->>>>>>> main
                 maxLength={280}
                 aria-label="Diary entry"
               />
@@ -364,19 +351,6 @@ export default function DiaryRoom() {
                   className="diary-room__submit"
                   type="submit"
                   disabled={!entry.trim() || loading}
-<<<<<<< copilot/featurebigbrother-improvements
-                >
-                  {loading ? '⏳ Waiting…' : '📣 Submit Entry'}
-                </button>
-              </div>
-            </form>
-            {bbTyping && (
-              <p className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
-                🎙️ Big Brother is typing…
-              </p>
-            )}
-          </>
-=======
                   aria-label="Send message"
                 >
                   {loading ? '⏳ Waiting…' : '📣 Send'}
@@ -384,7 +358,6 @@ export default function DiaryRoom() {
               </div>
             </form>
           </div>
->>>>>>> main
         )}
 
         {activeTab === 'log' && (
