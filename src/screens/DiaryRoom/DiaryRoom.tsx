@@ -96,7 +96,12 @@ function saveChat(playerId: string, messages: ChatMessage[]): void {
 }
 
 function hasSummaryEmitted(playerId: string): boolean {
-  return sessionStorage.getItem(summaryKey(playerId)) === '1';
+  try {
+    return sessionStorage.getItem(summaryKey(playerId)) === '1';
+  } catch {
+    // sessionStorage may be unavailable; treat as "not emitted"
+    return false;
+  }
 }
 
 function markSummaryEmitted(playerId: string): void {
