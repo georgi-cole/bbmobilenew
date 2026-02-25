@@ -154,7 +154,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const prevPhase = prevState.game?.phase;
     // Identify the human player to apply zero-score penalty if relevant.
     const humanPlayer = (prevState.game?.players ?? []).find((p) => p.isUser);
-    const humanScore = (action as { payload: number }).payload;
+    const humanScore = (action as unknown as { payload: number }).payload;
 
     const result = next(action);
 
@@ -192,7 +192,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'game/submitPovSaveTarget') {
     const prevState = api.getState() as StateWithGame;
     const prevNominees = prevState.game?.nomineeIds ?? [];
-    const saveId = (action as { payload: string }).payload;
+    const saveId = (action as unknown as { payload: string }).payload;
 
     const result = next(action);
 
@@ -257,7 +257,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   // ── Alliance formed / betrayal: relationship-tag-driven deltas ───────────
   if (type === 'social/updateRelationship') {
-    const payload = (action as {
+    const payload = (action as unknown as {
       payload: { source: string; target: string; tags?: string[] };
     }).payload;
     const result = next(action);

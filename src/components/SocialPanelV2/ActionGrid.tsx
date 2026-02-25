@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { SOCIAL_ACTIONS } from '../../social/socialActions';
-import { normalizeActionCost, normalizeActionCosts } from '../../social/smExecNormalize';
+import { normalizeActionCosts } from '../../social/smExecNormalize';
 import { computeOutcomeScore } from '../../social/SocialPolicy';
 import ActionCard from './ActionCard';
 import PreviewPopup from './PreviewPopup';
