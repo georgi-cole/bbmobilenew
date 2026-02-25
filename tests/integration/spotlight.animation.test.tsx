@@ -1,10 +1,10 @@
-// Integration and unit tests for SpotlightAnimation and the
-// MinigameHost → SpotlightAnimation → store-mutation deferred flow in GameScreen.
+// Integration and unit tests for CeremonyOverlay and the
+// MinigameHost → CeremonyOverlay → store-mutation deferred flow in GameScreen.
 //
 // Validates:
-//   1. SpotlightAnimation fires onDone after durationMs when rect is valid (fake timers).
-//   2. SpotlightAnimation fires onDone immediately when sourceDomRect is null/zero (fallback).
-//   3. GameScreen defers applyMinigameWinner until SpotlightAnimation completes
+//   1. CeremonyOverlay fires onDone after durationMs when tiles have valid rects (fake timers).
+//   2. CeremonyOverlay fires onDone immediately when tile rects are null/zero (fallback).
+//   3. GameScreen defers applyMinigameWinner until CeremonyOverlay completes
 //      (when getBoundingClientRect returns valid dimensions).
 //   4. GameScreen commits immediately when DOMRect is unavailable (headless fallback).
 
@@ -18,7 +18,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import type { GameState, Player } from '../../src/types';
-import SpotlightAnimation from '../../src/components/SpotlightAnimation/spotlight-animation';
+import CeremonyOverlay from '../../src/components/CeremonyOverlay/CeremonyOverlay';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Module-level captured callbacks ────────────────────────────────────────
@@ -104,12 +104,9 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
   );
 }
 
-/** A minimal Player fixture used for SpotlightAnimation unit tests. */
-const stubPlayer: Player = { id: 'p0', name: 'Alice', avatar: '🧑', status: 'active' };
+// ── CeremonyOverlay unit tests ────────────────────────────────────────────
 
-// ── SpotlightAnimation unit tests ─────────────────────────────────────────
-
-describe('SpotlightAnimation', () => {
+describe('CeremonyOverlay', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -118,32 +115,27 @@ describe('SpotlightAnimation', () => {
     vi.useRealTimers();
   });
 
-  it('renders winner name when sourceDomRect has valid dimensions', async () => {
+  it('renders caption and dim layer when tiles have valid rects', async () => {
     const rect = new DOMRect(50, 100, 60, 80);
     const onDone = vi.fn();
     render(
-      <SpotlightAnimation
-        winner={stubPlayer}
-        label="Head of Household"
-        symbol="👑"
-        sourceDomRect={rect}
+      <CeremonyOverlay
+        tiles={[{ rect, badge: '👑', badgeStart: 'center' }]}
+        caption="Alice wins Head of Household!"
         onDone={onDone}
         durationMs={1000}
       />,
     );
-    expect(screen.getByText('Alice')).toBeTruthy();
-    expect(screen.getByText('wins Head of Household!')).toBeTruthy();
+    expect(screen.getByText('Alice wins Head of Household!')).toBeTruthy();
   });
 
-  it('fires onDone after durationMs (+ exit delay) when rect is valid', async () => {
+  it('fires onDone after durationMs (+ exit delay) when tiles are valid', async () => {
     const rect = new DOMRect(50, 100, 60, 80);
     const onDone = vi.fn();
     render(
-      <SpotlightAnimation
-        winner={stubPlayer}
-        label="Head of Household"
-        symbol="👑"
-        sourceDomRect={rect}
+      <CeremonyOverlay
+        tiles={[{ rect, badge: '👑', badgeStart: 'center' }]}
+        caption="Alice wins Head of Household!"
         onDone={onDone}
         durationMs={1000}
       />,
@@ -160,13 +152,12 @@ describe('SpotlightAnimation', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('fires onDone immediately and renders nothing when sourceDomRect is null', async () => {
+  it('fires onDone immediately and renders nothing when all tile rects are null', async () => {
     const onDone = vi.fn();
     const { container } = render(
-      <SpotlightAnimation
-        winner={stubPlayer}
-        label="Head of Household"
-        sourceDomRect={null}
+      <CeremonyOverlay
+        tiles={[{ rect: null, badge: '👑' }]}
+        caption="Alice wins Head of Household!"
         onDone={onDone}
       />,
     );
@@ -178,15 +169,13 @@ describe('SpotlightAnimation', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('fires onDone immediately when sourceDomRect has zero dimensions (headless / jsdom)', async () => {
+  it('fires onDone immediately when tile rects have zero dimensions (headless / jsdom)', async () => {
     const onDone = vi.fn();
     const zeroRect = new DOMRect(0, 0, 0, 0);
     render(
-      <SpotlightAnimation
-        winner={stubPlayer}
-        label="Power of Veto"
-        symbol="🛡️"
-        sourceDomRect={zeroRect}
+      <CeremonyOverlay
+        tiles={[{ rect: zeroRect, badge: '🛡️' }]}
+        caption="Bob wins Power of Veto!"
         onDone={onDone}
       />,
     );
@@ -196,9 +185,9 @@ describe('SpotlightAnimation', () => {
   });
 });
 
-// ── GameScreen × SpotlightAnimation integration tests ─────────────────────
+// ── GameScreen × CeremonyOverlay integration tests ────────────────────────
 
-describe('GameScreen – SpotlightAnimation defers HOH/POV store mutations', () => {
+describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => {
   beforeEach(() => {
     capturedMinigameOnDone = null;
     vi.useFakeTimers();
@@ -229,7 +218,7 @@ describe('GameScreen – SpotlightAnimation defers HOH/POV store mutations', () 
     expect(store.getState().game.hohId).not.toBeNull();
   });
 
-  it('defers applyMinigameWinner until SpotlightAnimation completes when rects are valid', async () => {
+  it('defers applyMinigameWinner until CeremonyOverlay completes when rects are valid', async () => {
     // Mock getBoundingClientRect to return a valid non-zero rect.
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 50, y: 100, width: 60, height: 80,
@@ -247,11 +236,11 @@ describe('GameScreen – SpotlightAnimation defers HOH/POV store mutations', () 
     // Trigger minigame done.
     await act(async () => { capturedMinigameOnDone!(100); });
 
-    // Valid DOMRect → SpotlightAnimation is showing → phase NOT yet committed.
+    // Valid DOMRect → CeremonyOverlay is showing → phase NOT yet committed.
     expect(store.getState().game.phase).toBe('hoh_comp');
     expect(store.getState().game.hohId).toBeNull();
 
-    // SpotlightAnimation overlay should be visible.
+    // CeremonyOverlay should be visible with appropriate aria label.
     const statusEl = screen.getByRole('status');
     expect(statusEl.getAttribute('aria-label')).toContain('wins Head of Household');
 
