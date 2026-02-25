@@ -59,6 +59,8 @@ function makeStore(overrides: Partial<GameState> = {}) {
     players: makePlayers(6),
     tvFeed: [],
     isLive: false,
+    povSavedId: null,
+    aiReplacementStep: 0,
   };
   return configureStore({
     reducer: { game: gameReducer },
@@ -183,7 +185,8 @@ describe('spotlight flow — replacement nomination after veto save', () => {
   });
 
   it('setReplacementNominee is applied immediately (no animation) when veto was NOT used', () => {
-    // When povSavedId is null, handleReplacementNominee falls back to immediate dispatch.
+    // When povSavedId is null, GameScreen's handleReplacementNominee would dispatch immediately;
+    // this test only verifies that setReplacementNominee applies synchronously in that scenario.
     const store = makeStore({
       phase: 'pov_ceremony_results',
       hohId: 'p0',
@@ -211,9 +214,9 @@ describe('spotlight flow — AI HOH replacement keeps povSavedId for animation d
     // povSavedId should remain set so the UI can detect "veto was used" and
     // trigger the AI replacement animation.
     const players = makePlayers(6);
-    players[1].status = 'hoh' as any;    // p1 is AI HOH
-    players[2].status = 'nominated' as any;
-    players[3].status = 'nominated+pov' as any; // p3 is nominee + POV holder
+    players[1].status = 'hoh';    // p1 is AI HOH
+    players[2].status = 'nominated';
+    players[3].status = 'nominated+pov'; // p3 is nominee + POV holder
     const store = makeStore({
       phase: 'pov_ceremony_results',
       hohId: 'p1',
@@ -241,9 +244,9 @@ describe('spotlight flow — AI HOH replacement keeps povSavedId for animation d
     // Scenario: Nominee wins POV → auto-save → AI HOH picks replacement.
     // All happens in a single advance() call.
     const players = makePlayers(6);
-    players[1].status = 'hoh' as any;           // p1 is AI HOH
-    players[2].status = 'nominated' as any;
-    players[3].status = 'nominated+pov' as any;  // p3 is nominee + POV holder
+    players[1].status = 'hoh';           // p1 is AI HOH
+    players[2].status = 'nominated';
+    players[3].status = 'nominated+pov';  // p3 is nominee + POV holder
     const store = makeStore({
       phase: 'pov_ceremony',                    // will advance to pov_ceremony_results
       hohId: 'p1',
