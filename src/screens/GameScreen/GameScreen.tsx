@@ -423,16 +423,6 @@ export default function GameScreen() {
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
 
-  const aiReplacementTiles: CeremonyTile[] = useMemo(() => {
-    if (!showAiReplacementAnim) return []
-    return game.nomineeIds.map((id) => ({
-      rect: getTileRect(id),
-      badge: '❓',
-      badgeStart: 'center' as const,
-      badgeLabel: `${game.players.find((p) => p.id === id)?.name ?? id} nominated`,
-    }))
-  }, [showAiReplacementAnim, game.nomineeIds, game.players, getTileRect])
-
   const handleAiReplacementDone = useCallback(() => {
     setAiReplacementConsumedKey(aiReplacementKey)
   }, [aiReplacementKey])
@@ -810,9 +800,15 @@ export default function GameScreen() {
       )}
 
       {/* ── CeremonyOverlay — AI replacement nominee animation ─────────── */}
-      {showAiReplacementAnim && aiReplacementTiles.length > 0 && (
+      {showAiReplacementAnim && game.nomineeIds.length > 0 && (
         <CeremonyOverlay
-          tiles={aiReplacementTiles}
+          tiles={[]}
+          resolveTiles={() => game.nomineeIds.map((id) => ({
+            rect: getTileRect(id),
+            badge: '❓',
+            badgeStart: 'center' as const,
+            badgeLabel: `${game.players.find((p) => p.id === id)?.name ?? id} nominated`,
+          }))}
           caption="Replacement nominee named"
           subtitle="🎯 Nominations are set"
           onDone={handleAiReplacementDone}

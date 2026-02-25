@@ -24,10 +24,7 @@ type Props = {
   finalRank?: 1 | 2 | 3 | null
 }
 
-const AvatarTile = React.forwardRef<HTMLDivElement, Props>(function AvatarTile(
-  { name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank }: Props,
-  ref,
-) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -71,7 +68,6 @@ const AvatarTile = React.forwardRef<HTMLDivElement, Props>(function AvatarTile(
 
   return (
     <div
-      ref={ref}
       className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
       aria-label={ariaLabel}
       title={name}
@@ -156,8 +152,4 @@ const AvatarTile = React.forwardRef<HTMLDivElement, Props>(function AvatarTile(
       <div className={styles.nameRow} aria-hidden="true" />
     </div>
   )
-})
-
-AvatarTile.displayName = 'AvatarTile'
-
-export default AvatarTile
+}
