@@ -528,7 +528,6 @@ export default function GameScreen() {
         <AnimatedVoteResultsModal
           nominees={voteResultsTallies}
           evictee={voteResultsEvictee}
-          onTiebreakerRequired={(tiedIds) => dispatch(submitTieBreak(tiedIds))}
           onDone={handleVoteResultsDone}
         />
       )}
