@@ -144,7 +144,7 @@ export default function GameScreen() {
     const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
     // Do not start a challenge when the human player is the outgoing HOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
-    // Also skip when a SpotlightAnimation is pending (challenge result already
+    // Also skip when a CeremonyOverlay is pending (challenge result already
     // captured; avoid launching a second challenge while the old one is animating).
     if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
       // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
