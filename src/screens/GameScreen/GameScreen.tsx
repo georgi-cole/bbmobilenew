@@ -107,6 +107,27 @@ export default function GameScreen() {
     setPendingWinnerCeremony(null)
   }, [])
 
+  // ── Advance-picked HOH winner ceremony (outgoing HOH bypass) ──────────
+  // When the human is the outgoing HOH, no MinigameHost challenge runs.
+  // advance() picks the winner randomly → phase becomes hoh_results with
+  // hohId set, but no CeremonyOverlay was shown.  Detect this and fire
+  // a spotlight ceremony so the winner reveal is still animated.
+  const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = useState<string>('')
+
+  const advanceHohKey = useMemo(() => {
+    if (game.phase !== 'hoh_results' || !game.hohId) return ''
+    // Only trigger when the human was the outgoing HOH (prevHohId === human id)
+    // and the winner ceremony was NOT already shown by MinigameHost.
+    if (!game.prevHohId || game.prevHohId !== humanPlayer?.id) return ''
+    return `w${game.week}-hoh-${game.hohId}`
+  }, [game.phase, game.hohId, game.week, game.prevHohId, humanPlayer?.id])
+
+  const showAdvanceHohCeremony = advanceHohKey !== '' && advanceHohKey !== advanceHohConsumedKey && !pendingWinnerCeremony
+
+  const handleAdvanceHohCeremonyDone = useCallback(() => {
+    setAdvanceHohConsumedKey(advanceHohKey)
+  }, [advanceHohKey])
+
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
   // SocialSummaryBridge.dispatchSocialSummary → game/addSocialSummary (type 'diary').
@@ -174,7 +195,10 @@ export default function GameScreen() {
     const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
     if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id) && !isAnimatingNominee) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')
-    const statuses = parts.length > 0 ? parts.join('+') : (p.status ?? 'active')
+    // When suppressing the nominated badge, also guard the p.status fallback so
+    // that players whose p.status is already 'nominated' (AI-committed nominees)
+    // don't have that status leak through when parts is empty.
+    const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
     return {
       id: p.id,
       name: p.name,
@@ -183,6 +207,7 @@ export default function GameScreen() {
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
       isYou: p.isUser,
+      showPermanentBadge: !isAnimatingNominee,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -384,21 +409,23 @@ export default function GameScreen() {
     const replacementPlayer = game.players.find((p) => p.id === id)
     const replacementRect = getTileRect(id)
 
-    // Find the saved nominee (the one who was removed from nominations by POV)
-    // — that's the nominee who is no longer in nomineeIds.
-    // Since the POV save already happened, we can look at who the POV winner saved.
-    const povHolderRect = game.povWinnerId ? getTileRect(game.povWinnerId) : null
-
-    if (!replacementPlayer || !replacementRect) {
-      // Headless fallback: commit immediately.
+    // Only animate when the veto was actually used (povSavedId is set).
+    // If not, commit immediately without animation.
+    if (!game.povSavedId || !replacementPlayer || !replacementRect) {
+      // Headless/no-veto fallback: commit immediately.
       dispatch(setReplacementNominee(id))
       return
     }
 
+    // Badge flies from HOH tile → replacement tile (HOH is naming the replacement).
+    const hohRect = game.hohId ? getTileRect(game.hohId) : null
+
+    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, hohId: game.hohId, screen: 'GameScreen' })
+
     const tiles: CeremonyTile[] = [{
       rect: replacementRect,
       badge: '❓',
-      badgeStart: povHolderRect ?? 'center',
+      badgeStart: hohRect ?? 'center',
       badgeLabel: `${replacementPlayer.name} nominated as replacement`,
     }]
 
@@ -408,7 +435,7 @@ export default function GameScreen() {
       caption: `${replacementPlayer.name} is the replacement nominee!`,
       subtitle: '🎯 Nominations are set',
     })
-  }, [dispatch, game.players, game.povWinnerId, getTileRect])
+  }, [dispatch, game.players, game.povSavedId, game.hohId, getTileRect])
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
@@ -630,6 +657,7 @@ export default function GameScreen() {
     showEvictionSplash ||
     showMinigameHost ||
     showWinnerCeremony ||
+    showAdvanceHohCeremony ||
     showTapRace ||
     aiTiebreakerPending
 
@@ -862,6 +890,29 @@ export default function GameScreen() {
           subtitle={pendingWinnerCeremony.subtitle}
           onDone={handleWinnerCeremonyDone}
           ariaLabel={pendingWinnerCeremony.ariaLabel}
+        />
+      )}
+
+      {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
+      {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
+      {/* picks the winner directly. This overlay shows the 👑 ceremony.         */}
+      {showAdvanceHohCeremony && game.hohId && (
+        <CeremonyOverlay
+          tiles={[]}
+          resolveTiles={() => {
+            const winnerId = game.hohId!
+            const winnerPlayer = game.players.find((p) => p.id === winnerId)
+            return [{
+              rect: getTileRect(winnerId),
+              badge: '👑',
+              badgeStart: 'center' as const,
+              badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Head of Household`,
+            }]
+          }}
+          caption={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household!`}
+          subtitle="👑"
+          onDone={handleAdvanceHohCeremonyDone}
+          ariaLabel={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household`}
         />
       )}
 

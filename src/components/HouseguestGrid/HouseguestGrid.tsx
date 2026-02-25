@@ -19,6 +19,12 @@ export type Houseguest = {
    * Final placement rank: 1 (winner 🥇), 2 (runner-up 🥈), or 3 (3rd 🥉).
    */
   finalRank?: 1 | 2 | 3 | null
+  /**
+   * When false, suppresses the permanent badge stack on this tile.
+   * Set to false while a ceremony animation is playing so the animated badge
+   * is the only badge visible during the sequence.
+   */
+  showPermanentBadge?: boolean
 }
 
 type Props = {
@@ -90,6 +96,7 @@ export default function HouseguestGrid({
               onClick={hg.onClick}
               statuses={hg.statuses}
               finalRank={hg.finalRank}
+              showPermanentBadge={hg.showPermanentBadge}
             />
           </li>
         ))}

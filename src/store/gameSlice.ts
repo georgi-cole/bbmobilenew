@@ -622,7 +622,8 @@ const gameSlice = createSlice({
           state.nomineeIds.push(replacement.id);
           const rp = state.players.find((pl) => pl.id === replacement.id);
           if (rp) rp.status = 'nominated';
-          state.povSavedId = null;
+          // Keep povSavedId set so the UI can detect "veto was used" and show
+          // the AI replacement animation. Cleared at week_start.
           pushEvent(
             state,
             `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
@@ -1228,6 +1229,8 @@ const gameSlice = createSlice({
             'game',
           );
         }
+        // Keep povSavedId set so the UI can detect "veto was used" and show
+        // the AI replacement animation. Cleared at week_start.
         state.aiReplacementStep = 0;
         return;
       }
@@ -1372,10 +1375,27 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              // AI HOH: stage replacement across multiple advance() steps so the
-              // UI can show the intermediate "HOH must name a replacement" announcement.
-              state.aiReplacementStep = 1;
-              state.aiReplacementWaiting = true;
+              // AI HOH: deterministically pick replacement (exclude HOH, POV holder, current nominees, and the self-saved player)
+              const eligible = alive.filter(
+                (pl) =>
+                  pl.id !== state.hohId &&
+                  pl.id !== state.povWinnerId &&
+                  !state.nomineeIds.includes(pl.id) &&
+                  pl.id !== autoSavedId,
+              );
+              if (eligible.length > 0) {
+                const replacement = seededPick(rng, eligible);
+                state.nomineeIds.push(replacement.id);
+                const rp = state.players.find((pl) => pl.id === replacement.id);
+                if (rp) rp.status = 'nominated';
+                // Keep povSavedId set so the UI can detect "veto was used" and show
+                // the AI replacement animation. Cleared at week_start.
+                pushEvent(
+                  state,
+                  `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+                  'game',
+                );
+              }
             }
           } else if (povWinner?.isUser) {
             // Human POV holder who is not a nominee: they must decide whether to use it
