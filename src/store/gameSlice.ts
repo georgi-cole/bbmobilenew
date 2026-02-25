@@ -1228,7 +1228,6 @@ const gameSlice = createSlice({
             'game',
           );
         }
-        state.povSavedId = null;
         state.aiReplacementStep = 0;
         return;
       }

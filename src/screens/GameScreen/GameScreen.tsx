@@ -422,21 +422,24 @@ export default function GameScreen() {
     if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
     // Gate on the veto actually being used: if no player was saved, skip animation.
     if (!game.povSavedId) return ''
+    // Wait until the staged replacement flow is complete (step 0 = replacement committed).
+    if (game.aiReplacementStep) return ''
     // If the AI HOH handled it, nomineeIds was updated in the same advance() call
     // and no awaiting flags are set. Use a key based on week + nomineeIds.
     const hohPlayer = game.players.find((p) => p.id === game.hohId)
     if (hohPlayer?.isUser) return '' // human HOH handles this differently
     return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
-  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players, game.povSavedId])
+  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players, game.povSavedId, game.aiReplacementStep])
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
 
-  // Acknowledge the AI replacement intermediate announcement so advance() can proceed to step 2.
+  // Acknowledge the step-1 "HOH must name a replacement" announcement so advance() can
+  // proceed to step 2. Fires when the step-1 handler has run (aiReplacementStep reaches 2).
   useEffect(() => {
-    if (aiReplacementKey !== '') {
+    if (game.aiReplacementStep === 2) {
       dispatch(aiReplacementRendered())
     }
-  }, [aiReplacementKey, dispatch])
+  }, [game.aiReplacementStep, dispatch])
 
   const handleAiReplacementDone = useCallback(() => {
     setAiReplacementConsumedKey(aiReplacementKey)
