@@ -271,7 +271,10 @@ export default function DiaryRoom() {
       status: 'sending',
     };
 
-    /** Update the status of a specific message by id in both state and sessionStorage. */
+    /**
+     * Return a new messages array with the status of the message matching `id` updated.
+     * Caller is responsible for persisting the updated array to state and sessionStorage.
+     */
     function updateStatus(id: string, status: MessageStatus, prev: ChatMessage[]): ChatMessage[] {
       return prev.map((m) => (m.id === id ? { ...m, status } : m));
     }
