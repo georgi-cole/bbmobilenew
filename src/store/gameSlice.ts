@@ -442,11 +442,12 @@ const gameSlice = createSlice({
      */
     setReplacementNominee(state, action: PayloadAction<string>) {
       const id = action.payload;
-      // Eligibility guard: reject HOH, POV holder, or already-nominated players
+      // Eligibility guard: reject HOH, POV holder, already-nominated players, or the player saved by the veto
       if (
         id === state.hohId ||
         id === state.povWinnerId ||
-        state.nomineeIds.includes(id)
+        state.nomineeIds.includes(id) ||
+        id === state.povSavedId
       ) {
         return;
       }
@@ -457,6 +458,7 @@ const gameSlice = createSlice({
       state.nomineeIds.push(id);
       player.status = 'nominated';
       state.replacementNeeded = false;
+      state.povSavedId = null;
       pushEvent(
         state,
         `${hohPlayer.name} named ${player.name} as the replacement nominee. 🎯`,
@@ -585,6 +587,8 @@ const gameSlice = createSlice({
       state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
       savedPlayer.status = 'active';
       state.awaitingPovSaveTarget = false;
+      // Track the saved player so they cannot be immediately re-nominated as the replacement
+      state.povSavedId = saveId;
       pushEvent(
         state,
         `${povWinner.name} used the Power of Veto on ${savedPlayer.name}! 🛡️`,
