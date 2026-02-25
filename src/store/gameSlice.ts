@@ -89,6 +89,7 @@ const initialState: GameState = {
   awaitingTieBreak: false,
   tiedNomineeIds: null,
   awaitingFinal3Eviction: false,
+  aiReplacementStep: 0,
   f3Part1WinnerId: null,
   f3Part2WinnerId: null,
   voteResults: null,
@@ -600,26 +601,9 @@ const gameSlice = createSlice({
           'game',
         );
       } else {
-        // AI HOH: deterministically pick replacement
-        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-        const eligible = alive.filter(
-          (pl) =>
-            pl.id !== state.hohId &&
-            pl.id !== state.povWinnerId &&
-            !state.nomineeIds.includes(pl.id),
-        );
-        if (eligible.length > 0) {
-          const rng = mulberry32(state.seed);
-          const replacement = seededPick(rng, eligible);
-          state.nomineeIds.push(replacement.id);
-          const rp = state.players.find((pl) => pl.id === replacement.id);
-          if (rp) rp.status = 'nominated';
-          pushEvent(
-            state,
-            `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
-            'game',
-          );
-        }
+        // AI HOH: defer replacement to intermediate steps so the user sees
+        // "used veto" → "HOH must name replacement" → "HOH named X" in sequence.
+        state.aiReplacementStep = 1;
       }
     },
 
@@ -1169,6 +1153,45 @@ const gameSlice = createSlice({
         }
       }
 
+      // Guard: handle intermediate AI replacement steps (after veto auto-save or human POV use).
+      // Each call to advance() processes one step so the TV shows each message separately.
+      if (state.aiReplacementStep === 1) {
+        // Step 1: show "HOH must name a replacement" message; AI will pick on next advance.
+        const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+        pushEvent(
+          state,
+          `${hohPlayer?.name ?? 'The HOH'} must now name a replacement nominee. 🎯`,
+          'game',
+        );
+        state.aiReplacementStep = 2;
+        return;
+      }
+      if (state.aiReplacementStep === 2) {
+        // Step 2: AI HOH picks the replacement nominee.
+        const rng = mulberry32(state.seed);
+        const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+        const eligible = aliveNow.filter(
+          (pl) =>
+            pl.id !== state.hohId &&
+            pl.id !== state.povWinnerId &&
+            !state.nomineeIds.includes(pl.id),
+        );
+        if (eligible.length > 0) {
+          const replacement = seededPick(rng, eligible);
+          state.nomineeIds.push(replacement.id);
+          const rp = state.players.find((pl) => pl.id === replacement.id);
+          if (rp) rp.status = 'nominated';
+          pushEvent(
+            state,
+            `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+            'game',
+          );
+        }
+        state.aiReplacementStep = 0;
+        return;
+      }
+
       const currentIdx = PHASE_ORDER.indexOf(state.phase);
       const nextIdx = (currentIdx + 1) % PHASE_ORDER.length;
       let nextPhase: Phase = PHASE_ORDER[nextIdx];
@@ -1200,6 +1223,7 @@ const gameSlice = createSlice({
           state.awaitingHumanVote = false;
           state.awaitingTieBreak = false;
           state.tiedNomineeIds = null;
+          state.aiReplacementStep = 0;
           state.players.forEach((p) => {
             if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
               p.status = 'active';
@@ -1303,24 +1327,9 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              // AI HOH: deterministically pick replacement (exclude HOH, POV holder, current nominees)
-              const eligible = alive.filter(
-                (pl) =>
-                  pl.id !== state.hohId &&
-                  pl.id !== state.povWinnerId &&
-                  !state.nomineeIds.includes(pl.id),
-              );
-              if (eligible.length > 0) {
-                const replacement = seededPick(rng, eligible);
-                state.nomineeIds.push(replacement.id);
-                const rp = state.players.find((pl) => pl.id === replacement.id);
-                if (rp) rp.status = 'nominated';
-                pushEvent(
-                  state,
-                  `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
-                  'game',
-                );
-              }
+              // AI HOH: defer replacement to intermediate steps so the user sees
+              // "used veto" → "HOH must name replacement" → "HOH named X" in sequence.
+              state.aiReplacementStep = 1;
             }
           } else if (povWinner?.isUser) {
             // Human POV holder who is not a nominee: they must decide whether to use it

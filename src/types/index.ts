@@ -191,6 +191,14 @@ export interface GameState {
    */
   awaitingFinal3Eviction?: boolean;
   /**
+   * Tracks intermediate AI replacement steps after a veto is used on a nominated player.
+   * 0 (or undefined) = not in progress.
+   * 1 = waiting to show "HOH must name a replacement nominee" message.
+   * 2 = waiting for AI HOH to pick the replacement.
+   * The phase stays at `pov_ceremony_results` until this reaches 0.
+   */
+  aiReplacementStep?: number;
+  /**
    * Active minigame session. Set when the human player needs to play a
    * minigame (e.g. TapRace for HOH/POV). The Continue button is hidden and
    * the TapRace overlay is shown instead. Null when no minigame is active.
