@@ -6,7 +6,8 @@
  *
  * Defensive fallback: if `sourceDomRect` is null or has zero dimensions
  * (headless / jsdom environments) the component is NOT rendered and `onDone`
- * fires synchronously so callers commit store state immediately.
+ * fires immediately (no timers) inside a useEffect so callers commit store
+ * state without any delay.
  *
  * Props:
  *   winner        – winning player
@@ -30,7 +31,7 @@ export interface SpotlightAnimationProps {
   /**
    * Bounding rect of the winning player's avatar tile.
    * When null or zero-sized (headless / jsdom), `onDone` fires immediately
-   * and nothing is rendered — callers should commit state without animation.
+   * (no timers) and nothing is rendered — callers should commit state without animation.
    */
   sourceDomRect?: DOMRect | null;
   onDone: () => void;
@@ -54,15 +55,22 @@ export default function SpotlightAnimation({
 
   useEffect(() => {
     if (!hasValidRect) {
-      // No visible animation — commit immediately.
+      // No visible animation — commit immediately (no timers).
       onDone();
       return;
     }
+    let exitTimeoutId: number | undefined;
     const exitId = window.setTimeout(() => {
       setVisible(false);
-      window.setTimeout(onDone, 350);
+      // Allow the CSS exit transition to finish before calling onDone.
+      exitTimeoutId = window.setTimeout(onDone, 350);
     }, durationMs);
-    return () => window.clearTimeout(exitId);
+    return () => {
+      window.clearTimeout(exitId);
+      if (exitTimeoutId !== undefined) {
+        window.clearTimeout(exitTimeoutId);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasValidRect, durationMs]);
 

@@ -69,13 +69,11 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
-  // ── Tile refs: keyed by player ID → outer <div> of the AvatarTile ─────────
-  // Used to obtain screen positions for SpotlightAnimation.
-  const tileRefsMap = useRef<Record<string, HTMLDivElement | null>>({})
-
-  /** Get a non-zero DOMRect for a player tile, or null if unavailable (headless). */
+  // ── Tile position lookup for SpotlightAnimation ───────────────────────────
+  // Queries a `data-player-id` attribute on the houseguest grid's <li> items so
+  // we can get a bounding rect without needing to pass refs through render.
   const getTileRect = useCallback((playerId: string): DOMRect | null => {
-    const el = tileRefsMap.current[playerId]
+    const el = document.querySelector<HTMLElement>(`[data-player-id="${CSS.escape(playerId)}"]`)
     if (!el) return null
     const rect = el.getBoundingClientRect()
     return rect.width > 0 || rect.height > 0 ? rect : null
@@ -176,8 +174,6 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       onClick: () => handleAvatarSelect(p),
-      // Callback ref: stores the tile's DOM node so we can measure it for animations.
-      tileRef: (el: HTMLDivElement | null) => { tileRefsMap.current[p.id] = el },
     }
   }
 
@@ -222,7 +218,7 @@ export default function GameScreen() {
   const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
   useEffect(() => {
     pendingNomineesRef.current = pendingNominees
-  })
+  }, [pendingNominees])
 
   // AI HOH animation: computed directly from game state — no setState-in-effect.
   const aiNomKey =

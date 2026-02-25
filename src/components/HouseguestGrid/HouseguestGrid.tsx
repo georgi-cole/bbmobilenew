@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import styles from './HouseguestGrid.module.css'
 
@@ -19,11 +19,6 @@ export type Houseguest = {
    * Final placement rank: 1 (winner 🥇), 2 (runner-up 🥈), or 3 (3rd 🥉).
    */
   finalRank?: 1 | 2 | 3 | null
-  /**
-   * Optional ref forwarded to the outer tile `<div>` so that callers (e.g.
-   * GameScreen) can measure the tile's DOM position for animations.
-   */
-  tileRef?: React.Ref<HTMLDivElement>
 }
 
 type Props = {
@@ -86,9 +81,8 @@ export default function HouseguestGrid({
 
       <ul className={styles.grid} role="list">
         {houseguests.map((hg) => (
-          <li key={hg.id} className={styles.gridItem}>
+          <li key={hg.id} className={styles.gridItem} data-player-id={String(hg.id)}>
             <AvatarTile
-              ref={hg.tileRef}
               name={hg.name}
               avatarUrl={hg.avatarUrl}
               isEvicted={hg.isEvicted}
