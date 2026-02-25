@@ -31,6 +31,7 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import VoteResultsPopup from '../../components/VoteResultsPopup/VoteResultsPopup'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
+import NominationAnimator from '../../components/NominationAnimator/NominationAnimator'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
@@ -161,10 +162,40 @@ export default function GameScreen() {
 
   const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
 
+  // ── Nomination animation state ────────────────────────────────────────────
+  // pendingNominees holds the selected IDs while the animation plays; once the
+  // animation's onDone fires we dispatch commitNominees to update game state.
+  const [pendingNominees, setPendingNominees] = useState<string[]>([])
+  const showNomAnim = pendingNominees.length > 0
+  const nomAnimPlayers = pendingNominees
+    .map((id) => game.players.find((p) => p.id === id))
+    .filter(Boolean) as Player[]
+
   const handleCommitNominees = useCallback(
-    (ids: string[]) => dispatch(commitNominees(ids)),
-    [dispatch]
+    (ids: string[]) => {
+      console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh: !!humanIsHoH })
+      setPendingNominees(ids)
+    },
+    [humanIsHoH]
   )
+
+  const handleNomAnimDone = useCallback(() => {
+    const ids = pendingNominees
+    setPendingNominees([])
+    dispatch(commitNominees(ids))
+  }, [dispatch, pendingNominees])
+
+  // ── Dev: manually trigger nomination animation ────────────────────────────
+  // Only visible in development builds for easy QA verification.
+  const isDev = import.meta.env.DEV
+  const handleDevPlayNomAnim = useCallback(() => {
+    const eligible = alivePlayers.filter((p) => !p.isUser)
+    const devNominees = eligible.slice(0, 2).map((p) => p.id)
+    if (devNominees.length > 0) {
+      console.log('DEV: Play Nomination Animation', devNominees)
+      setPendingNominees(devNominees)
+    }
+  }, [alivePlayers])
 
   // ── Human POV holder decision (use veto or not) ──────────────────────────
   const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
@@ -292,6 +323,7 @@ export default function GameScreen() {
     showOutgoingHohWarning ||
     showReplacementModal ||
     showNominationsModal ||
+    showNomAnim ||
     showPovDecisionModal ||
     showPovSaveModal ||
     showFinal4Modal ||
@@ -344,6 +376,14 @@ export default function GameScreen() {
           subtitle={`${humanPlayer?.name}, choose two houseguests to nominate for eviction.`}
           options={nomineeOptions}
           onConfirm={handleCommitNominees}
+        />
+      )}
+
+      {/* ── Nomination ceremony animation overlay ────────────────────────── */}
+      {showNomAnim && nomAnimPlayers.length > 0 && (
+        <NominationAnimator
+          nominees={nomAnimPlayers}
+          onDone={handleNomAnimDone}
         />
       )}
 
@@ -503,6 +543,18 @@ export default function GameScreen() {
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
+
+      {/* ── Dev: trigger nomination animation (dev builds only) ──────────── */}
+      {isDev && !awaitingHumanDecision && (
+        <button
+          className="dev-nom-anim-btn"
+          onClick={handleDevPlayNomAnim}
+          type="button"
+          aria-label="Dev: Play Nomination Animation"
+        >
+          🎬 Dev: Play Nomination Animation
+        </button>
+      )}
 
       {/* ── Floating Action Bar ───────────────────────────────────────────── */}
       {!awaitingHumanDecision && <FloatingActionBar />}

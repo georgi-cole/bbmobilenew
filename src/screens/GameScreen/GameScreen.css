@@ -97,3 +97,20 @@
 .game-screen__evicted-caret {
   font-size: 0.6rem;
 }
+
+/* ── Dev: nomination animation debug button (dev builds only) ────────────── */
+.dev-nom-anim-btn {
+  position: fixed;
+  bottom: calc(var(--nav-bar-height, 56px) + 8px);
+  left: 8px;
+  z-index: 9000;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 200, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd700;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
