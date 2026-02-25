@@ -279,6 +279,7 @@ export function executeAction(
       target: targetId,
       delta,
       tags: action.outcomeTag ? [action.outcomeTag] : undefined,
+      actionSource: options?.source ?? 'system',
     }),
   );
   _store.dispatch(recordSocialAction({ entry }));

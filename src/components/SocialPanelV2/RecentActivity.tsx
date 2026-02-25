@@ -61,7 +61,10 @@ export default function RecentActivity({ players, maxEntries = 6 }: RecentActivi
   const playerById = new Map(players?.map((p) => [p.id, p]) ?? []);
 
   const visibleLogs = useMemo(
-    () => sessionLogs.filter((e) => e.timestamp > clearedBefore).slice(-maxEntries),
+    () =>
+      sessionLogs
+        .filter((e) => e.timestamp > clearedBefore && e.source !== 'system')
+        .slice(-maxEntries),
     [sessionLogs, clearedBefore, maxEntries],
   );
 
