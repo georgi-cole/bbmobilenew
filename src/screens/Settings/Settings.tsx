@@ -6,6 +6,7 @@ import {
   setAudio,
   setDisplay,
   setGameUX,
+  setSim,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import './Settings.css';
@@ -31,6 +32,7 @@ export default function Settings() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
+  const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
 
   return (
     <div className="settings-screen">
@@ -215,6 +217,74 @@ export default function Settings() {
                 onChange={(e) => dispatch(setGameUX({ useHaptics: e.target.checked }))}
                 aria-label="Toggle haptic feedback"
               />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Animations</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.animations}
+                onChange={(e) => dispatch(setGameUX({ animations: e.target.checked }))}
+                aria-label="Toggle animations"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Twists</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.sim.enableTwists}
+                onChange={(e) => dispatch(setSim({ enableTwists: e.target.checked }))}
+                aria-label="Toggle twists"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Spectator Mode</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.spectatorMode}
+                onChange={(e) => dispatch(setGameUX({ spectatorMode: e.target.checked }))}
+                aria-label="Toggle spectator mode"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Jury House</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.sim.enableJuryHouse}
+                onChange={(e) => dispatch(setSim({ enableJuryHouse: e.target.checked }))}
+                aria-label="Toggle jury house"
+              />
+            </div>
+
+            <div className="settings-row settings-row--col">
+              <label className="settings-row__label">
+                Cast Size — {settings.gameUX.castSize}
+              </label>
+              <input
+                type="number"
+                className="settings-number"
+                min={4}
+                max={16}
+                value={castSizeInput}
+                onChange={(e) => setCastSizeInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(castSizeInput, 10);
+                  const clamped = isNaN(parsed) ? settings.gameUX.castSize : Math.min(16, Math.max(4, parsed));
+                  setCastSizeInput(String(clamped));
+                  dispatch(setGameUX({ castSize: clamped }));
+                }}
+                aria-label="Cast size"
+              />
+              <p className="settings-helper-text">
+                Choose between 4 and 16 houseguests. Grid will show placeholders to preserve layout.
+              </p>
             </div>
           </section>
         )}

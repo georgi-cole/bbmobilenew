@@ -32,6 +32,10 @@ type Props = {
   showCountInHeader?: boolean
   headerSelector?: string
   footerSelector?: string
+  /** Total grid size (12 or 16). Placeholder tiles will pad to this count. */
+  gridSize?: number
+  /** Number of placeholder tiles to append after real houseguests. */
+  placeholderCount?: number
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -46,6 +50,8 @@ export default function HouseguestGrid({
   showCountInHeader = false,
   headerSelector = '.tv-zone',
   footerSelector = '.nav-bar',
+  gridSize,
+  placeholderCount = 0,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
 
@@ -75,6 +81,8 @@ export default function HouseguestGrid({
     return () => window.removeEventListener('resize', setAvailableHeight)
   }, [headerSelector, footerSelector])
 
+  const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
+
   return (
     <section ref={containerRef} className={styles.container} aria-labelledby="houseguests-heading">
       <div className={styles.headerRow}>
@@ -85,7 +93,7 @@ export default function HouseguestGrid({
         </h3>
       </div>
 
-      <ul className={styles.grid} role="list">
+      <ul className={`${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`} role="list">
         {houseguests.map((hg) => (
           <li key={hg.id} className={styles.gridItem} data-player-id={String(hg.id)}>
             <AvatarTile
@@ -98,6 +106,17 @@ export default function HouseguestGrid({
               finalRank={hg.finalRank}
               showPermanentBadge={hg.showPermanentBadge}
             />
+          </li>
+        ))}
+        {Array.from({ length: placeholderCount }).map((_, i) => (
+          <li key={`placeholder-${i}`} className={`${styles.gridItem} ${styles.hgTileInactive}`}>
+            <img
+              src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
+              alt=""
+              aria-hidden="true"
+              className={styles.hgPlaceholderImg}
+            />
+            <span className={styles.hgPlaceholderLabel}>Inactive</span>
           </li>
         ))}
       </ul>
