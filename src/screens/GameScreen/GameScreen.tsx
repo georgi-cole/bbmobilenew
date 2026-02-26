@@ -492,7 +492,8 @@ export default function GameScreen() {
     if (game.phase === 'final4_eviction' || !final4ChatDone) return
     const id = window.setTimeout(() => setFinal4ChatDone(false), 0)
     return () => window.clearTimeout(id)
-  }, [game.phase, final4ChatDone])  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
+  }, [game.phase, final4ChatDone])
+  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
   // tvFeed is newest-first; we reverse to get chronological order and filter
   // to the plea-related lines for this phase.
   const final4ChatLines = useMemo((): ChatLine[] => {
