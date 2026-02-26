@@ -1,6 +1,6 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
-import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, MinigameContext } from '../types';
+import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
@@ -1009,6 +1009,17 @@ const gameSlice = createSlice({
       // open TapRace overlay and leaving it stuck on screen.
       if (state.pendingMinigame) {
         state.pendingMinigame = null; // Auto-dismiss; winner falls back to random pick below.
+      }
+
+      // Guard: if a Final 3 minigame is in progress, advance() must not proceed.
+      // The player must complete (or dismiss) the minigame; applyF3MinigameWinner
+      // handles the phase transition after the minigame result is received.
+      if (
+        state.phase === 'final3_comp1_minigame' ||
+        state.phase === 'final3_comp2_minigame' ||
+        state.phase === 'final3_comp3_minigame'
+      ) {
+        return;
       }
 
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──

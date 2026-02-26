@@ -147,9 +147,10 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
    * 2. Advance through all three competition parts.
    * 3. Assert TV feed announcement messages appear before each part's result.
    *
-   * NOTE: This test forces the phase directly. The alive player pool in a fresh
-   * game may contain more than 3 players; the competition logic picks from
-   * whoever is alive, which is valid for messaging/sequencing verification.
+   * NOTE: Because the default game has a human player, advancing from a comp phase
+   * launches an interactive minigame. Each minigame is dismissed via the
+   * "Dismiss challenge" button (which scores 0 for the human; an AI wins the part).
+   * This tests the full human-in-final3 flow end-to-end.
    */
   test('Final 3 competition phases run sequentially with TV feed messages', async ({ page }) => {
     await gotoDebug(page);
@@ -164,28 +165,45 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     const tvFeed = page.getByTestId('tv-feed');
 
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
+    const dismissBtn = page.getByRole('button', { name: 'Dismiss challenge (score 0)' });
 
     // final3 → final3_comp1: "three-part HOH" announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
     await expect(tvFeed).toContainText(/three-part HOH/i, { timeout: 10000 });
 
-    // final3_comp1 → final3_comp2: Part 1 underway + result messages
+    // final3_comp1 → final3_comp1_minigame (human present): Part 1 underway message appears.
+    // Dismiss the minigame (scores 0 for human; AI wins Part 1).
+    // Then advance() result: "Part 1 result" message appears and phase goes to final3_comp2.
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
     await expect(tvFeed).toContainText(/Part 1 is underway/i, { timeout: 10000 });
+    await expect(dismissBtn).toBeVisible({ timeout: 5000 });
+    await dismissBtn.click();
     await expect(tvFeed).toContainText(/Part 1 result/i, { timeout: 10000 });
 
-    // final3_comp2 → final3_comp3: Part 2 underway + result messages
+    // final3_comp2 → final3_comp2_minigame (human is a Part-2 competitor unless they won Part 1).
+    // Dismiss the minigame → "Part 2 result" message appears and phase goes to final3_comp3.
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
     await expect(tvFeed).toContainText(/Part 2 is underway/i, { timeout: 10000 });
+    // Part 2 involves the two Part-1 losers. If the human won Part 1, they sit out Part 2
+    // and the game advances deterministically (no minigame). Otherwise dismiss the minigame.
+    const isDismissVisible = await dismissBtn.isVisible().catch(() => false);
+    if (isDismissVisible) {
+      await dismissBtn.click();
+    }
     await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 10000 });
 
-    // final3_comp3 → final3_decision or week_end: Part 3 underway + winner announcement
+    // final3_comp3 → final3_comp3_minigame: Part 3 underway + Final HOH winner announcement.
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
     await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 10000 });
+    // Dismiss the Part 3 minigame if the human is a finalist.
+    const isDismissVisible3 = await dismissBtn.isVisible().catch(() => false);
+    if (isDismissVisible3) {
+      await dismissBtn.click();
+    }
     await expect(tvFeed).toContainText(/Final Head of Household/i, { timeout: 10000 });
   });
 });

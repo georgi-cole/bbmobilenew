@@ -183,13 +183,16 @@ export default function GameScreen() {
     game.phase === 'final3_comp1_minigame' ||
     game.phase === 'final3_comp2_minigame' ||
     game.phase === 'final3_comp3_minigame'
-  const f3MinigameContext = game.minigameContext ?? null
 
   useEffect(() => {
-    if (isF3MinigamePhase && !pendingChallenge && f3MinigameContext) {
-      dispatch(startChallenge(f3MinigameContext.seed, f3MinigameContext.participants))
+    const inF3Minigame =
+      game.phase === 'final3_comp1_minigame' ||
+      game.phase === 'final3_comp2_minigame' ||
+      game.phase === 'final3_comp3_minigame'
+    if (inF3Minigame && !pendingChallenge && game.minigameContext) {
+      dispatch(startChallenge(game.minigameContext.seed, game.minigameContext.participants))
     }
-  }, [game.phase, pendingChallenge, f3MinigameContext, dispatch])
+  }, [game.phase, pendingChallenge, game.minigameContext, dispatch])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
