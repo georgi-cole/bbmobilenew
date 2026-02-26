@@ -110,7 +110,11 @@ export default function HouseguestGrid({
         ))}
         {Array.from({ length: placeholderCount }).map((_, i) => (
           <li key={`placeholder-${i}`} className={`${styles.gridItem} hg-tile--inactive`}>
-            <img src="/avatars/placeholder.png" alt="Inactive" className="hg-placeholder-img" />
+            <img
+              src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
+              alt="Inactive"
+              className="hg-placeholder-img"
+            />
             <span className="hg-placeholder-label">Inactive</span>
           </li>
         ))}
