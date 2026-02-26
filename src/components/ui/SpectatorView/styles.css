@@ -1,0 +1,441 @@
+/* ── SpectatorView styles ──────────────────────────────────────────────────── */
+/* Uses CSS variables from index.css (dark theme, --color-* tokens).           */
+
+/* ── Fullscreen overlay ──────────────────────────────────────────────────────*/
+
+.spectator-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: sv-fade-in 0.35s ease both;
+}
+
+.spectator-overlay--immediate {
+  animation: none;
+}
+
+@keyframes sv-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Backdrop with blur */
+.spectator-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────────*/
+
+.spectator-overlay__card {
+  position: relative;
+  z-index: 1;
+  width: min(540px, 96vw);
+  max-height: 92dvh;
+  overflow-y: auto;
+  background: var(--color-card, #141b26);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 18px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.15),
+    0 24px 64px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: sv-card-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes sv-card-in {
+  from { transform: translateY(40px) scale(0.95); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────*/
+
+.spectator-overlay__header {
+  text-align: center;
+}
+
+.spectator-overlay__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-gold-primary, #fbbf24);
+  letter-spacing: 0.02em;
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.spectator-overlay__status {
+  font-size: 0.85rem;
+  color: var(--color-text-muted, rgba(255,255,255,0.48));
+  margin: 0;
+  min-height: 1.2em;
+}
+
+/* ── Competitor chips ────────────────────────────────────────────────────────*/
+
+.spectator-overlay__competitors {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.spectator-overlay__chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--color-text, rgba(255,255,255,0.92));
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.spectator-overlay__chip--winner {
+  background: rgba(251,191,36, 0.18);
+  border-color: var(--color-gold-primary, #fbbf24);
+  animation: sv-winner-pulse 1.4s ease infinite;
+}
+
+@keyframes sv-winner-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  50%       { box-shadow: 0 0 12px 4px rgba(251,191,36,0.35); }
+}
+
+.spectator-overlay__chip-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255,255,255,0.1);
+}
+
+.spectator-overlay__chip-name {
+  font-weight: 600;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spectator-overlay__chip-crown {
+  font-size: 1rem;
+}
+
+/* ── Skip hint ───────────────────────────────────────────────────────────────*/
+
+.spectator-overlay__skip-hint {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted, rgba(255,255,255,0.4));
+  margin: 0;
+}
+
+/* ── Shared result caption ───────────────────────────────────────────────────*/
+
+.sv-result-caption {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-gold-primary, #fbbf24);
+  margin: 0.25rem 0 0;
+  animation: sv-fade-in 0.5s ease both;
+}
+
+/* ── Variant base ────────────────────────────────────────────────────────────*/
+
+.sv-variant {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* HoldWall variant                                                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.sv-holdwall__track {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: flex-end;
+  height: 180px;
+}
+
+.sv-holdwall__lane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 70px;
+  position: relative;
+}
+
+.sv-holdwall__bar-bg {
+  width: 24px;
+  height: 140px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.sv-holdwall__bar-fill {
+  width: 100%;
+  background: linear-gradient(to top, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
+  border-radius: 4px;
+  transition: height 0.25s ease;
+  min-height: 4px;
+}
+
+.sv-holdwall__lane--winner .sv-holdwall__bar-fill {
+  background: linear-gradient(to top, var(--color-gold-primary, #fbbf24), #f59e0b);
+}
+
+.sv-holdwall__climber {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: bottom 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+
+.sv-holdwall__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  object-fit: cover;
+  background: rgba(255,255,255,0.08);
+}
+
+.sv-holdwall__lane--winner .sv-holdwall__avatar {
+  border-color: var(--color-gold-primary, #fbbf24);
+}
+
+.sv-holdwall__crown {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.sv-holdwall__name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted, rgba(255,255,255,0.55));
+  text-align: center;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.2rem;
+}
+
+.sv-holdwall__score {
+  font-size: 0.65rem;
+  color: var(--color-text-muted, rgba(255,255,255,0.4));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Trivia variant                                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.sv-trivia__board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sv-trivia__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.3s;
+}
+
+.sv-trivia__row--winner {
+  border-color: var(--color-gold-primary, #fbbf24);
+  background: rgba(251,191,36,0.08);
+}
+
+.sv-trivia__rank {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted, rgba(255,255,255,0.4));
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sv-trivia__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.sv-trivia__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text, rgba(255,255,255,0.92));
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.sv-trivia__bar-bg {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sv-trivia__bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
+  border-radius: 4px;
+  transition: width 0.25s ease;
+  min-width: 4px;
+}
+
+.sv-trivia__row--winner .sv-trivia__bar-fill {
+  background: linear-gradient(to right, #f59e0b, var(--color-gold-primary, #fbbf24));
+}
+
+.sv-trivia__pts {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted, rgba(255,255,255,0.55));
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: right;
+}
+
+.sv-trivia__badge {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Maze variant                                                                 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.sv-maze__track {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.sv-maze__cell {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.4s, border-color 0.4s;
+}
+
+.sv-maze__cell--open {
+  background: rgba(99,102,241,0.25);
+  border-color: rgba(99,102,241,0.5);
+}
+
+.sv-maze__lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sv-maze__lane {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sv-maze__lane--winner .sv-maze__path {
+  background: rgba(251,191,36,0.12);
+  border-color: rgba(251,191,36,0.4);
+}
+
+.sv-maze__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.sv-maze__path {
+  flex: 1;
+  height: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sv-maze__dot {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent, #6366f1);
+  box-shadow: 0 0 8px var(--color-accent, #6366f1);
+  transition: left 0.25s ease;
+}
+
+.sv-maze__dot--winner {
+  background: var(--color-gold-primary, #fbbf24);
+  box-shadow: 0 0 12px var(--color-gold-primary, #fbbf24);
+}
+
+.sv-maze__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted, rgba(255,255,255,0.6));
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.sv-maze__crown {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────*/
+
+@media (max-width: 400px) {
+  .spectator-overlay__card {
+    padding: 1rem 0.9rem;
+  }
+
+  .sv-holdwall__track {
+    height: 140px;
+  }
+
+  .sv-holdwall__bar-bg {
+    height: 110px;
+  }
+}

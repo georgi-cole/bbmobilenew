@@ -39,8 +39,9 @@ import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
-import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
+import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
+import SpectatorView from '../../components/ui/SpectatorView'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
 import './GameScreen.css'
@@ -195,6 +196,66 @@ export default function GameScreen() {
       dispatch(startChallenge(game.minigameContext.seed, game.minigameContext.participants))
     }
   }, [game.phase, pendingChallenge, game.minigameContext, dispatch])
+
+  // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
+  // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
+  // battle as a spectator. We immediately dispatch advance() to let the AI
+  // compute the authoritative winner (sets game.hohId), and show SpectatorView
+  // which subscribes to game.hohId from Redux and reconciles to that winner.
+  const [spectatorF3Active, setSpectatorF3Active] = useState(false)
+  const spectatorF3CompetitorIds = useRef<string[]>([])
+  const spectatorF3AdvancedRef = useRef(false)
+
+  const isF3Part3SpectatorPhase =
+    game.phase === 'final3_comp3' &&
+    !!humanPlayer &&
+    humanPlayer.id !== game.f3Part1WinnerId &&
+    humanPlayer.id !== game.f3Part2WinnerId
+
+  // Enter spectator mode on phase arrival; pre-advance to compute the winner.
+  useEffect(() => {
+    if (isF3Part3SpectatorPhase && !spectatorF3Active && FEATURE_SPECTATOR_REACT) {
+      const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
+      spectatorF3CompetitorIds.current = finalists
+      setSpectatorF3Active(true)
+      if (!spectatorF3AdvancedRef.current) {
+        spectatorF3AdvancedRef.current = true
+        dispatch(advance())
+      }
+    }
+  // Intentionally depend only on `isF3Part3SpectatorPhase` — `dispatch` is
+  // stable from useAppDispatch and `advance` is a constant action creator;
+  // including them would not change behavior but would widen the dep list.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isF3Part3SpectatorPhase])
+
+  const handleSpectatorF3Done = useCallback(() => {
+    setSpectatorF3Active(false)
+    spectatorF3AdvancedRef.current = false
+  }, [])
+
+  // ── Legacy 'spectator:show' event listener ─────────────────────────────────
+  // The legacySpectatorAdapter dispatches this event when window.Spectator.show()
+  // is called by legacy minigame code.
+  const [spectatorLegacyActive, setSpectatorLegacyActive] = useState(false)
+  const spectatorLegacyCompetitorIds = useRef<string[]>([])
+
+  useEffect(() => {
+    if (!FEATURE_SPECTATOR_REACT) return
+    function handleSpectatorShow(e: Event) {
+      const detail = (e as CustomEvent<{ competitorIds?: string[] }>).detail
+      const ids = detail?.competitorIds
+      if (!ids?.length) return
+      spectatorLegacyCompetitorIds.current = ids
+      setSpectatorLegacyActive(true)
+    }
+    window.addEventListener('spectator:show', handleSpectatorShow)
+    return () => window.removeEventListener('spectator:show', handleSpectatorShow)
+  }, [])
+
+  const handleSpectatorLegacyDone = useCallback(() => {
+    setSpectatorLegacyActive(false)
+  }, [])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -744,7 +805,9 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showTapRace ||
-    aiTiebreakerPending
+    aiTiebreakerPending ||
+    spectatorF3Active ||
+    spectatorLegacyActive
 
   return (
     <div className="game-screen game-screen-shell">
@@ -1115,6 +1178,23 @@ export default function GameScreen() {
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
+
+      {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
+      {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
+        <SpectatorView
+          competitorIds={spectatorF3CompetitorIds.current}
+          variant="holdwall"
+          onDone={handleSpectatorF3Done}
+        />
+      )}
+
+      {/* ── SpectatorView — legacy spectator:show event ───────────────────── */}
+      {spectatorLegacyActive && FEATURE_SPECTATOR_REACT && (
+        <SpectatorView
+          competitorIds={spectatorLegacyCompetitorIds.current}
+          onDone={handleSpectatorLegacyDone}
+        />
+      )}
 
       {/* ── Dev: trigger nomination animation (dev builds only) ──────────── */}
       {isDev && !awaitingHumanDecision && (
