@@ -223,6 +223,8 @@
   letter-spacing: 0.04em;
 }
 
+.tile:focus-within,
+.tile:focus {
   outline: 3px solid rgba(75,108,255,0.14);
   outline-offset: 4px;
   border-radius: 12px;
