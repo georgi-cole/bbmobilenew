@@ -216,6 +216,73 @@ export default function Settings() {
                 aria-label="Toggle haptic feedback"
               />
             </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Animations</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.animations}
+                onChange={(e) => dispatch(setGameUX({ animations: e.target.checked }))}
+                aria-label="Toggle animations"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Twists</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.twists}
+                onChange={(e) => dispatch(setGameUX({ twists: e.target.checked }))}
+                aria-label="Toggle twists"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Spectator Mode</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.spectatorMode}
+                onChange={(e) => dispatch(setGameUX({ spectatorMode: e.target.checked }))}
+                aria-label="Toggle spectator mode"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Jury House</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.gameUX.juryHouse}
+                onChange={(e) => dispatch(setGameUX({ juryHouse: e.target.checked }))}
+                aria-label="Toggle jury house"
+              />
+            </div>
+
+            <div className="settings-row settings-row--col">
+              <label className="settings-row__label">
+                Cast Size — {settings.gameUX.castSize}
+              </label>
+              <input
+                type="number"
+                className="settings-number"
+                min={4}
+                max={16}
+                value={settings.gameUX.castSize}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value, 10);
+                  if (!isNaN(parsed)) {
+                    dispatch(setGameUX({ castSize: Math.min(16, Math.max(4, parsed)) }));
+                  }
+                }}
+                aria-label="Cast size"
+              />
+              <p className="settings-helper-text">
+                Choose between 4 and 16 houseguests. Grid will show placeholders to preserve layout.
+              </p>
+            </div>
           </section>
         )}
 

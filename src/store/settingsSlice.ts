@@ -22,6 +22,11 @@ export interface SettingsState {
     showTooltips: boolean;
     compactRoster: boolean;
     useHaptics: boolean;
+    animations: boolean;
+    twists: boolean;
+    spectatorMode: boolean;
+    juryHouse: boolean;
+    castSize: number;
   };
   sim: {
     enableJuryHouse: boolean;
@@ -48,6 +53,11 @@ export const DEFAULT_SETTINGS: SettingsState = {
     showTooltips: true,
     compactRoster: false,
     useHaptics: true,
+    animations: true,
+    twists: false,
+    spectatorMode: false,
+    juryHouse: false,
+    castSize: 12,
   },
   sim: {
     enableJuryHouse: false,
