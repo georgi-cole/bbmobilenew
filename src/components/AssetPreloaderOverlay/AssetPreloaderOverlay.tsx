@@ -45,7 +45,6 @@ export default function AssetPreloaderOverlay() {
       doneFiredRef.current = true;
       navigate('/game');
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   return (
