@@ -11,12 +11,8 @@
   opacity: 0.6;
 }
 
-/* 12-tile grid layout */
-.hg-grid--12 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-/* 16-tile grid layout */
+/* 12-tile and 16-tile grid layouts (both use 4 columns) */
+.hg-grid--12,
 .hg-grid--16 {
   grid-template-columns: repeat(4, 1fr);
 }
