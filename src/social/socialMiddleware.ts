@@ -185,6 +185,22 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
+  // ── applyF3MinigameWinner: Final HOH energy bonus when Part 3 winner is crowned ─
+  // Mirrors the applyMinigameWinner handler for HOH/POV comps.
+  // Only the Final HOH (Part 3 winner) receives the HOH energy bonus;
+  // Parts 1 and 2 are intermediate comps that don't change the hohId.
+  if (type === 'game/applyF3MinigameWinner') {
+    const prevState = api.getState() as StateWithGame;
+    const prevHohId = prevState.game?.hohId ?? null;
+
+    const result = next(action);
+
+    const afterState = api.getState() as StateWithGame;
+    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.hohId ?? null);
+
+    return result;
+  }
+
   // ── submitPovSaveTarget: saved-by-POV bonus (+2 energy to the saved player) ─
   // Handles the explicit human-POV-holder saves a nominee case.
   // The auto-save case (nominee wins POV themselves, pov_ceremony_results advance)

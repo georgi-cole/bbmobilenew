@@ -60,6 +60,19 @@ export interface MinigameSession {
   aiScores: Record<string, number>;
 }
 
+/**
+ * Context stored in game state while a Final 3 part minigame is running.
+ * Set when a human participant is detected in a Final 3 competition phase.
+ */
+export interface MinigameContext {
+  /** Which Final 3 part this minigame belongs to. */
+  phaseKey: 'final3_comp1' | 'final3_comp2' | 'final3_comp3';
+  /** Player IDs competing in this part. */
+  participants: string[];
+  /** Seed at the time the minigame was launched (for the challenge system). */
+  seed: number;
+}
+
 // Canonical weekly-game phase list (in execution order)
 export type Phase =
   | 'week_start'
@@ -82,10 +95,16 @@ export type Phase =
   | 'final3'
   /** Final 3 Part 1: all 3 houseguests compete; winner advances to Part 3. */
   | 'final3_comp1'
+  /** Minigame sub-phase: human is competing in Final 3 Part 1. */
+  | 'final3_comp1_minigame'
   /** Final 3 Part 2: the 2 Part-1 losers compete; winner advances to Part 3. */
   | 'final3_comp2'
+  /** Minigame sub-phase: human is competing in Final 3 Part 2. */
+  | 'final3_comp2_minigame'
   /** Final 3 Part 3: Part-1 winner vs Part-2 winner → Final HOH crowned. */
   | 'final3_comp3'
+  /** Minigame sub-phase: human is competing in Final 3 Part 3. */
+  | 'final3_comp3_minigame'
   /** Final HOH evicts one of the 2 remaining houseguests directly (no vote). */
   | 'final3_decision'
   /** Jury phase: the Final 2 faces the jury for votes; finale overlay active. */
@@ -232,6 +251,12 @@ export interface GameState {
    * Set during `final3_comp2` advance.
    */
   f3Part2WinnerId?: string | null;
+  /**
+   * Active Final 3 competition minigame context.
+   * Set when the human player is competing in a Final 3 part (final3_comp*_minigame phases).
+   * Cleared by `applyF3MinigameWinner` after the minigame completes.
+   */
+  minigameContext?: MinigameContext | null;
   /**
    * When truthy, a TWIST is active and the TWIST pill will be shown in the TvZone header.
    * Set this field in game logic when a twist is introduced.

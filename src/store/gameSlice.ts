@@ -415,6 +415,92 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Apply the result of a Final 3 part minigame.
+     *
+     * Called by the GameScreen after the MinigameHost completes in a
+     * final3_comp*_minigame phase.  Sets the part winner, clears
+     * minigameContext, pushes result TV events, and advances to the
+     * next Final 3 phase (same logic as the deterministic AI-only path).
+     */
+    applyF3MinigameWinner(state, action: PayloadAction<string>) {
+      const winnerId = action.payload;
+      const winner = state.players.find((p) => p.id === winnerId);
+
+      if (state.phase === 'final3_comp1_minigame') {
+        state.f3Part1WinnerId = winnerId;
+        pushEvent(
+          state,
+          `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two houseguests will compete in Part 2. 🏆`,
+          'game',
+        );
+        state.minigameContext = null;
+        state.phase = 'final3_comp2';
+      } else if (state.phase === 'final3_comp2_minigame') {
+        state.f3Part2WinnerId = winnerId;
+        pushEvent(
+          state,
+          `Final 3 Part 2 result: ${winner?.name ?? winnerId} wins and advances to face the Part 1 winner in Part 3! 🏆`,
+          'game',
+        );
+        state.minigameContext = null;
+        state.phase = 'final3_comp3';
+      } else if (state.phase === 'final3_comp3_minigame') {
+        // Crown the Final HOH (mirrors the deterministic path in advance() for final3_comp3).
+        const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        state.hohId = winnerId;
+        state.players.forEach((p) => {
+          if (p.status === 'hoh') p.status = 'active';
+        });
+        const hohPlayer = state.players.find((p) => p.id === winnerId);
+        if (hohPlayer) hohPlayer.status = 'hoh';
+
+        const nominees = alive.filter((p) => p.id !== winnerId);
+        state.nomineeIds = nominees.map((p) => p.id);
+        nominees.forEach((p) => {
+          const np = state.players.find((x) => x.id === p.id);
+          if (np && np.status !== 'nominated') np.status = 'nominated';
+        });
+
+        pushEvent(
+          state,
+          `Final 3 Part 3: ${winner?.name ?? winnerId} wins and is crowned the Final Head of Household! 👑`,
+          'game',
+        );
+
+        state.minigameContext = null;
+
+        if (hohPlayer?.isUser) {
+          state.awaitingFinal3Eviction = true;
+          const nomineeNames = state.nomineeIds
+            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
+            .join(' and ');
+          pushEvent(
+            state,
+            `${winner?.name ?? winnerId}, you must now evict either ${nomineeNames} to set the Final 2. 🎯`,
+            'game',
+          );
+          state.phase = 'final3_decision';
+        } else {
+          // AI Final HOH: deterministically evict (same as advance() AI path).
+          const aiRng = mulberry32(state.seed + 1);
+          const evictee = seededPick(aiRng, nominees);
+          const evicteePlayer = state.players.find((p) => p.id === evictee.id);
+          if (evicteePlayer) {
+            evicteePlayer.status = evictedStatus(state);
+            state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
+          }
+          pushEvent(
+            state,
+            `${winner?.name ?? winnerId} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+            'game',
+          );
+          pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+          state.phase = 'week_end';
+        }
+      }
+    },
+
+    /**
      * Record per-game personal-record scores for all participants after a
      * challenge completes.  Only updates a player's PR if the new score beats
      * their previous best.  `lowerIsBetter` controls comparison direction.
@@ -925,6 +1011,17 @@ const gameSlice = createSlice({
         state.pendingMinigame = null; // Auto-dismiss; winner falls back to random pick below.
       }
 
+      // Guard: if a Final 3 minigame is in progress, advance() must not proceed.
+      // The player must complete (or dismiss) the minigame; applyF3MinigameWinner
+      // handles the phase transition after the minigame result is received.
+      if (
+        state.phase === 'final3_comp1_minigame' ||
+        state.phase === 'final3_comp2_minigame' ||
+        state.phase === 'final3_comp3_minigame'
+      ) {
+        return;
+      }
+
       // ── Special-phase handling (Final4 / Final3 are outside PHASE_ORDER) ──
       if (state.phase === 'final4_eviction') {
         // Guard: Final 4 eviction requires a valid POV holder
@@ -1015,6 +1112,19 @@ const gameSlice = createSlice({
           `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final HOH. 🏁`,
           'game',
         );
+
+        // If any participant is human, launch interactive minigame instead of deterministic pick.
+        const hasHuman = alive.some((p) => p.isUser);
+        if (hasHuman) {
+          state.minigameContext = {
+            phaseKey: 'final3_comp1',
+            participants: alive.map((p) => p.id),
+            seed: state.seed,
+          };
+          state.phase = 'final3_comp1_minigame';
+          return;
+        }
+
         const winner = seededPick(rng, alive);
         state.f3Part1WinnerId = winner.id;
 
@@ -1046,6 +1156,19 @@ const gameSlice = createSlice({
           `Final 3 Part 2 is underway! The remaining two houseguests battle to join the Part 1 winner in Part 3. 🏁`,
           'game',
         );
+
+        // If any Part-2 competitor is human, launch interactive minigame.
+        const hasHuman = losers.some((p) => p.isUser);
+        if (hasHuman) {
+          state.minigameContext = {
+            phaseKey: 'final3_comp2',
+            participants: losers.map((p) => p.id),
+            seed: state.seed,
+          };
+          state.phase = 'final3_comp2_minigame';
+          return;
+        }
+
         const winner = seededPick(rng, losers);
         state.f3Part2WinnerId = winner.id;
 
@@ -1083,6 +1206,18 @@ const gameSlice = createSlice({
             `Final 3 Part 3 is underway! ${f3Part1Name} (Part 1 winner) vs ${f3Part2Name} (Part 2 winner) — the winner becomes the Final Head of Household! 🏁`,
             'game',
           );
+        }
+
+        // If any Part-3 competitor is human, launch interactive minigame.
+        const hasHuman = pool.some((p) => p.isUser);
+        if (hasHuman) {
+          state.minigameContext = {
+            phaseKey: 'final3_comp3',
+            participants: pool.map((p) => p.id),
+            seed: state.seed,
+          };
+          state.phase = 'final3_comp3_minigame';
+          return;
         }
 
         const finalHoh = seededPick(rng, pool);
@@ -1544,6 +1679,7 @@ export const {
   completeMinigame,
   skipMinigame,
   applyMinigameWinner,
+  applyF3MinigameWinner,
   updateGamePRs,
   advance,
   setReplacementNominee,

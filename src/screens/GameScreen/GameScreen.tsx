@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
   applyMinigameWinner,
+  applyF3MinigameWinner,
   updateGamePRs,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
@@ -176,6 +177,24 @@ export default function GameScreen() {
       dispatch(startChallenge(game.seed, participants))
     }
   }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony])
+
+  // ── Auto-start challenge for Final 3 minigame phases ─────────────────────
+  // When advance() sets phase to final3_comp*_minigame (because a human is
+  // participating), start the challenge system so MinigameHost renders.
+  const isF3MinigamePhase =
+    game.phase === 'final3_comp1_minigame' ||
+    game.phase === 'final3_comp2_minigame' ||
+    game.phase === 'final3_comp3_minigame'
+
+  useEffect(() => {
+    const inF3Minigame =
+      game.phase === 'final3_comp1_minigame' ||
+      game.phase === 'final3_comp2_minigame' ||
+      game.phase === 'final3_comp3_minigame'
+    if (inF3Minigame && !pendingChallenge && game.minigameContext) {
+      dispatch(startChallenge(game.minigameContext.seed, game.minigameContext.participants))
+    }
+  }, [game.phase, pendingChallenge, game.minigameContext, dispatch])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -921,10 +940,17 @@ export default function GameScreen() {
               ),
               lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
-            // Determine the winner and show the CeremonyOverlay cutout before
-            // committing to the store.  Fall back to first participant if winner
-            // is undetermined.
             const finalWinnerId = winnerId ?? pendingChallenge.participants[0];
+
+            // ── Final 3 minigame completion ──────────────────────────────────
+            // Apply the winner to the Final 3 part (no ceremony overlay for F3 parts).
+            if (isF3MinigamePhase) {
+              dispatch(applyF3MinigameWinner(finalWinnerId));
+              return;
+            }
+
+            // ── HOH / POV completion (ceremony overlay) ──────────────────────
+            // Show the CeremonyOverlay cutout before committing the winner to the store.
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
             const sourceDomRect = getTileRect(finalWinnerId);
             const isHohComp = game.phase === 'hoh_comp';

@@ -21,6 +21,7 @@ import gameReducer, {
   advance,
   finalizeFinal3Eviction,
   finalizeFinal4Eviction,
+  applyF3MinigameWinner,
   selectNominee1,
   finalizeNominations,
   submitPovDecision,
@@ -654,6 +655,139 @@ describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
     const alive = store
       .getState()
       .game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+    expect(alive).toHaveLength(2);
+  });
+});
+
+// ── Final 3 flow tests — human player present ─────────────────────────────────
+
+describe('Final 3 flow — human player participating in minigame', () => {
+  function makeFinal3HumanStore(overrides: Partial<GameState> = {}) {
+    const players: Player[] = [
+      { id: 'user', name: 'You', avatar: '👤', status: 'active', isUser: true },
+      { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
+      { id: 'p2', name: 'Carol', avatar: '👩', status: 'active' },
+      ...Array.from({ length: 9 }, (_, i) => ({
+        id: `j${i}`,
+        name: `Juror ${i}`,
+        avatar: '🧑',
+        status: 'jury' as const,
+      })),
+    ];
+    const base: GameState = {
+      season: 1,
+      week: 10,
+      phase: 'final3_comp1',
+      seed: 99,
+      hohId: null,
+      nomineeIds: [],
+      povWinnerId: null,
+      replacementNeeded: false,
+      awaitingFinal3Eviction: false,
+      f3Part1WinnerId: null,
+      f3Part2WinnerId: null,
+      players,
+      tvFeed: [],
+      isLive: false,
+    };
+    return configureStore({
+      reducer: { game: gameReducer },
+      preloadedState: { game: { ...base, ...overrides } },
+    });
+  }
+
+  it('final3_comp1 with human player → phase becomes final3_comp1_minigame (not comp2)', () => {
+    const store = makeFinal3HumanStore();
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp1_minigame');
+    expect(state.f3Part1WinnerId).toBeNull(); // winner not yet set
+    expect(state.minigameContext).toBeTruthy();
+    expect(state.minigameContext?.phaseKey).toBe('final3_comp1');
+    expect(state.minigameContext?.participants).toContain('user');
+  });
+
+  it('applyF3MinigameWinner for comp1 → sets f3Part1WinnerId and phase becomes final3_comp2', () => {
+    const store = makeFinal3HumanStore();
+    store.dispatch(advance()); // → final3_comp1_minigame
+    store.dispatch(applyF3MinigameWinner('user'));
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp2');
+    expect(state.f3Part1WinnerId).toBe('user');
+    expect(state.minigameContext).toBeNull();
+  });
+
+  it('final3_comp2 with human as Part-1 loser → phase becomes final3_comp2_minigame', () => {
+    // user did NOT win Part 1 (p1 won), so user competes in Part 2
+    const store = makeFinal3HumanStore({ phase: 'final3_comp2', f3Part1WinnerId: 'p1' });
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp2_minigame');
+    expect(state.minigameContext?.phaseKey).toBe('final3_comp2');
+    expect(state.minigameContext?.participants).toContain('user');
+    expect(state.minigameContext?.participants).not.toContain('p1'); // Part 1 winner excluded
+  });
+
+  it('final3_comp2 with human as Part-1 winner → deterministic AI path (no minigame)', () => {
+    // user won Part 1, so they sit out Part 2; losers (p1, p2) are AI-only → deterministic
+    const store = makeFinal3HumanStore({ phase: 'final3_comp2', f3Part1WinnerId: 'user' });
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp3');
+    expect(state.f3Part2WinnerId).not.toBeNull();
+    expect(state.minigameContext).toBeFalsy();
+  });
+
+  it('applyF3MinigameWinner for comp2 → sets f3Part2WinnerId and phase becomes final3_comp3', () => {
+    const store = makeFinal3HumanStore({ phase: 'final3_comp2_minigame', f3Part1WinnerId: 'p1', minigameContext: { phaseKey: 'final3_comp2', participants: ['user', 'p2'], seed: 99 } });
+    store.dispatch(applyF3MinigameWinner('user'));
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp3');
+    expect(state.f3Part2WinnerId).toBe('user');
+    expect(state.minigameContext).toBeNull();
+  });
+
+  it('final3_comp3 with human as finalist → phase becomes final3_comp3_minigame', () => {
+    const store = makeFinal3HumanStore({ phase: 'final3_comp3', f3Part1WinnerId: 'user', f3Part2WinnerId: 'p2' });
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('final3_comp3_minigame');
+    expect(state.minigameContext?.phaseKey).toBe('final3_comp3');
+    expect(state.minigameContext?.participants).toContain('user');
+  });
+
+  it('applyF3MinigameWinner with human winning Part 3 → sets HOH, awaitingFinal3Eviction, phase final3_decision', () => {
+    const store = makeFinal3HumanStore({
+      phase: 'final3_comp3_minigame',
+      f3Part1WinnerId: 'user',
+      f3Part2WinnerId: 'p2',
+      minigameContext: { phaseKey: 'final3_comp3', participants: ['user', 'p2'], seed: 99 },
+    });
+    store.dispatch(applyF3MinigameWinner('user'));
+    const state = store.getState().game;
+    expect(state.hohId).toBe('user');
+    expect(state.awaitingFinal3Eviction).toBe(true);
+    expect(state.phase).toBe('final3_decision');
+    expect(state.minigameContext).toBeNull();
+    // Nominees should be set for the eviction decision
+    expect(state.nomineeIds.length).toBeGreaterThan(0);
+    expect(state.nomineeIds).not.toContain('user');
+  });
+
+  it('applyF3MinigameWinner with AI winning Part 3 → AI evicts, phase becomes week_end', () => {
+    const store = makeFinal3HumanStore({
+      phase: 'final3_comp3_minigame',
+      f3Part1WinnerId: 'p1',
+      f3Part2WinnerId: 'user',
+      minigameContext: { phaseKey: 'final3_comp3', participants: ['p1', 'user'], seed: 99 },
+    });
+    store.dispatch(applyF3MinigameWinner('p1')); // AI wins Part 3
+    const state = store.getState().game;
+    expect(state.hohId).toBe('p1');
+    expect(state.phase).toBe('week_end');
+    expect(state.minigameContext).toBeNull();
+    // AI already evicted someone; exactly 2 alive players should remain
+    const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
     expect(alive).toHaveLength(2);
   });
 });
