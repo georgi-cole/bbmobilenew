@@ -164,11 +164,15 @@ export function useSpectatorSimulation({
         }
         const idx = Math.floor(rng() * ids.length);
         const simulatedWinner = ids[idx] ?? ids[0];
+        let shouldReconcile = false;
         setState((prev) => {
           if (prev.authoritativeWinnerId) return prev;
+          shouldReconcile = true;
           return { ...prev, authoritativeWinnerId: simulatedWinner };
         });
-        doReconcileRef.current(simulatedWinner);
+        if (shouldReconcile) {
+          doReconcileRef.current(simulatedWinner);
+        }
       }
     }, TICK_MS);
 
