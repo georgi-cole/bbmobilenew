@@ -13,7 +13,7 @@ interface MazeVariantProps {
   competitors: CompetitorProgress[];
   phase: 'simulating' | 'reconciling' | 'revealed';
   resolveAvatar: (id: string) => string;
-  getPlayerName: (id: string) => string;
+  getPlayerName: (id: string | undefined) => string;
 }
 
 const MAZE_CELLS = 12;

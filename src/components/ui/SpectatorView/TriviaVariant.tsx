@@ -11,7 +11,7 @@ interface TriviaVariantProps {
   competitors: CompetitorProgress[];
   phase: 'simulating' | 'reconciling' | 'revealed';
   resolveAvatar: (id: string) => string;
-  getPlayerName: (id: string) => string;
+  getPlayerName: (id: string | undefined) => string;
 }
 
 export default function TriviaVariant({

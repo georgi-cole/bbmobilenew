@@ -147,7 +147,7 @@ In this scenario the human has lost both Part 1 and Part 2 competitions and is w
 
 ### Accessibility
 
-- [ ] Open SpectatorView and tab through it. Verify focus is trapped inside the dialog (`role="dialog"`, `aria-modal="true"`).
+- [ ] Open SpectatorView and tab through it. Verify all interactive elements are reachable via keyboard and the overlay is announced as a dialog (`role="dialog"`, `aria-modal="true"`).
 - [ ] Screen reader: verify the `aria-live="polite"` status message announces phase changes ("Competition in progress…", "Revealing winner…", winner name).
 - [ ] Press **Space** or **Enter** while `phase === 'simulating'`. Verify the overlay skips to the reveal.
 

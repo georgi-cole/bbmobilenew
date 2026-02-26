@@ -67,10 +67,13 @@ export function useSpectatorSimulation({
   state: SpectatorSimulationState;
   setAuthoritativeWinner: (winnerId: string) => void;
 } {
-  const seed = useRef(Date.now());
-  const rngRef = useRef(mulberry32(seed.current));
+  // rngRef is initialised inside the mount effect because Date.now() is an
+  // impure function that cannot be called during render.
+  const rngRef = useRef<(() => number) | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks whether a winner has been locked in; prevents double-reconcile calls.
+  const lockedRef = useRef(false);
 
   const [state, setState] = useState<SpectatorSimulationState>(() => ({
     competitors: competitorIds.map((id) => ({ id, score: 0, isWinner: false })),
@@ -78,9 +81,14 @@ export function useSpectatorSimulation({
     authoritativeWinnerId: initialWinnerId ?? null,
   }));
 
+  // Sync onReconciled callback via effect (not during render) to satisfy
+  // the react-hooks/refs lint rule.
   const onReconciledRef = useRef(onReconciled);
-  onReconciledRef.current = onReconciled;
+  useEffect(() => {
+    onReconciledRef.current = onReconciled;
+  }, [onReconciled]);
 
+  // `setState` is stable from useState — empty deps intentional.
   const doReconcile = useCallback((winnerId: string) => {
     setState((prev) => ({
       ...prev,
@@ -92,6 +100,11 @@ export function useSpectatorSimulation({
       })),
     }));
 
+    // Clear any existing reveal timeout before scheduling a new one so
+    // multiple rapid calls to doReconcile don't fire onReconciled twice.
+    if (reconcileRef.current) {
+      clearTimeout(reconcileRef.current);
+    }
     reconcileRef.current = setTimeout(() => {
       setState((prev) => ({
         ...prev,
@@ -104,18 +117,19 @@ export function useSpectatorSimulation({
       }));
       onReconciledRef.current?.(winnerId);
     }, RECONCILE_DURATION_MS);
-  }, []);
+  }, []); // setState is stable from useState; empty deps intentional
 
   const setAuthoritativeWinner = useCallback(
     (winnerId: string) => {
-      setState((prev) => {
-        if (prev.authoritativeWinnerId) return prev; // already locked
-        return { ...prev, authoritativeWinnerId: winnerId };
-      });
+      // No-op once a winner is locked — prevents multiple reconcile timeouts
+      // from repeated Space/Enter key presses or duplicate events.
+      if (lockedRef.current) return;
+      lockedRef.current = true;
       if (tickRef.current) {
         clearInterval(tickRef.current);
         tickRef.current = null;
       }
+      setState((prev) => ({ ...prev, authoritativeWinnerId: winnerId }));
       doReconcile(winnerId);
     },
     [doReconcile],
@@ -125,18 +139,24 @@ export function useSpectatorSimulation({
   // while still having access to the initial configuration.
   const competitorIdsRef = useRef(competitorIds);
   const initialWinnerRef = useRef(initialWinnerId);
-  const doReconcileRef = useRef(doReconcile);
-  doReconcileRef.current = doReconcile;
 
-  // Start simulation tick
+  // Start simulation tick — runs once on mount; values captured via refs above.
   useEffect(() => {
+    // Initialise RNG here (Date.now() is impure, cannot be called during render).
+    rngRef.current = mulberry32(Date.now());
+
     if (initialWinnerRef.current) {
-      // Winner already known → reconcile immediately
-      doReconcileRef.current(initialWinnerRef.current);
+      // Winner already known → lock and reconcile immediately.
+      lockedRef.current = true;
+      doReconcile(initialWinnerRef.current);
       return;
     }
 
     const ids = competitorIdsRef.current;
+
+    // Guard: if no competitors, nothing to simulate.
+    if (!ids.length) return;
+
     const startTime = Date.now();
     const rng = rngRef.current;
 
@@ -157,31 +177,28 @@ export function useSpectatorSimulation({
       });
 
       if (elapsed >= SIM_DURATION_MS) {
-        // Simulation time expired — pick a pseudo-random winner
+        // Simulation time expired — pick a pseudo-random winner.
         if (tickRef.current) {
           clearInterval(tickRef.current);
           tickRef.current = null;
         }
+        // Skip if an authoritative source already locked in a winner.
+        if (lockedRef.current) return;
         const idx = Math.floor(rng() * ids.length);
         const simulatedWinner = ids[idx] ?? ids[0];
-        let shouldReconcile = false;
-        setState((prev) => {
-          if (prev.authoritativeWinnerId) return prev;
-          shouldReconcile = true;
-          return { ...prev, authoritativeWinnerId: simulatedWinner };
-        });
-        if (shouldReconcile) {
-          doReconcileRef.current(simulatedWinner);
-        }
+        lockedRef.current = true;
+        setState((prev) => ({ ...prev, authoritativeWinnerId: simulatedWinner }));
+        doReconcile(simulatedWinner);
       }
     }, TICK_MS);
 
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, []); // run once on mount — values captured via refs above
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; values captured via refs
+  }, []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount.
   useEffect(
     () => () => {
       if (tickRef.current) clearInterval(tickRef.current);
@@ -192,3 +209,4 @@ export function useSpectatorSimulation({
 
   return { state, setAuthoritativeWinner };
 }
+

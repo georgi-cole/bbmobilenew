@@ -64,18 +64,25 @@ export default function SpectatorView({
   const players = useAppSelector((s) => s.game.players);
   const hohId   = useAppSelector((s) => s.game.hohId);
 
+  // Sync onDone into a ref via effect (not during render) to satisfy the
+  // react-hooks/refs lint rule while still keeping the callback fresh.
   const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   // ── Resolve authoritative winner from multiple sources ────────────────────
 
-  // Check window.game.__authoritativeWinner eagerly (synchronous legacy path)
+  // Synchronous check at mount time only — window.game.__authoritativeWinner
+  // is a legacy mutable global. Validated against competitorIds so a stale or
+  // unrelated winner ID is ignored.
   const windowAuthWinner = useMemo<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const w = window.game?.__authoritativeWinner;
     if (w && competitorIds.includes(w)) return w;
     return null;
-  }, [competitorIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once at mount — this is synchronous detection only
 
   // hohId from Redux store — may be set before or after mount
   const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
@@ -95,68 +102,85 @@ export default function SpectatorView({
     }, []),
   });
 
+  // Capture competitorIds in a ref so event handlers always see the current
+  // list without needing to re-register on every render.
+  const competitorIdsRef = useRef(competitorIds);
+  useEffect(() => {
+    competitorIdsRef.current = competitorIds;
+  }, [competitorIds]);
+
   // ── Listen for Redux hohId arriving after mount ───────────────────────────
 
   useEffect(() => {
-    if (reduxWinner && simState.phase === 'simulating') {
+    if (reduxWinner) {
       setAuthoritativeWinner(reduxWinner);
     }
-  }, [reduxWinner, simState.phase, setAuthoritativeWinner]);
+  }, [reduxWinner, setAuthoritativeWinner]);
 
   // ── Listen for 'minigame:end' CustomEvent ─────────────────────────────────
+  // setAuthoritativeWinner is idempotent (no-op if already locked), so no
+  // need to gate on simState.phase — removing the phase dependency avoids
+  // the listener being torn down and re-registered on every phase transition.
 
   useEffect(() => {
     function handleMinigameEnd(e: Event) {
       const detail = (e as CustomEvent<{ winnerId?: string; winner?: string }>).detail;
       const wid = detail?.winnerId ?? detail?.winner;
-      if (!wid) return;
-      if (simState.phase === 'simulating') {
-        setAuthoritativeWinner(wid);
-      }
+      // Only accept a winner that is one of the known competitors.
+      if (!wid || !competitorIdsRef.current.includes(wid)) return;
+      setAuthoritativeWinner(wid);
     }
     window.addEventListener('minigame:end', handleMinigameEnd);
     return () => window.removeEventListener('minigame:end', handleMinigameEnd);
-  }, [simState.phase, setAuthoritativeWinner]);
+  }, [setAuthoritativeWinner]); // setAuthoritativeWinner is stable
 
-  // ── Listen for legacy 'spectator:show' (for completeness / secondary show) ─
+  // ── Listen for legacy 'spectator:show' (optional winnerId in detail) ──────
 
   useEffect(() => {
     function handleSpectatorShow(e: Event) {
       const detail = (e as CustomEvent<{ winnerId?: string }>).detail;
       const wid = detail?.winnerId;
-      if (!wid) return;
-      if (simState.phase === 'simulating') {
-        setAuthoritativeWinner(wid);
-      }
+      if (!wid || !competitorIdsRef.current.includes(wid)) return;
+      setAuthoritativeWinner(wid);
     }
     window.addEventListener('spectator:show', handleSpectatorShow);
     return () => window.removeEventListener('spectator:show', handleSpectatorShow);
-  }, [simState.phase, setAuthoritativeWinner]);
+  }, [setAuthoritativeWinner]); // setAuthoritativeWinner is stable
 
   // ── Keyboard support — Space / Enter to skip to results ──────────────────
+  // Only active during the simulating phase to prevent double-reconcile if the
+  // user presses Space after results are already showing.
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        // Resolve to winner immediately if known, otherwise fallback
-        const winner =
-          simState.authoritativeWinnerId ??
-          window.game?.__authoritativeWinner ??
-          competitorIds[0];
-        if (winner) {
-          setAuthoritativeWinner(winner);
-        }
+      if (simState.phase !== 'simulating') return;
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      e.preventDefault();
+      // Resolve to winner in priority order; always validate against competitorIds.
+      const ids = competitorIdsRef.current;
+      const authWin = simState.authoritativeWinnerId;
+      const globalWin =
+        typeof window !== 'undefined' &&
+        window.game?.__authoritativeWinner &&
+        ids.includes(window.game.__authoritativeWinner)
+          ? window.game.__authoritativeWinner
+          : null;
+      const winner = (authWin && ids.includes(authWin) ? authWin : null) ?? globalWin ?? ids[0];
+      if (winner) {
+        setAuthoritativeWinner(winner);
       }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [simState.authoritativeWinnerId, competitorIds, setAuthoritativeWinner]);
+  }, [simState.phase, simState.authoritativeWinnerId, setAuthoritativeWinner]);
 
   // ── Avatar + name helpers ─────────────────────────────────────────────────
 
   const getPlayerName = useCallback(
-    (id: string) => players.find((p) => p.id === id)?.name ?? id,
+    (id: string | undefined) => {
+      if (!id) return 'Unknown';
+      return players.find((p) => p.id === id)?.name ?? id;
+    },
     [players],
   );
 
@@ -164,17 +188,21 @@ export default function SpectatorView({
     (id: string) => {
       const player = players.find((p) => p.id === id);
       if (player) return resolveAvatar(player);
-      // Dicebear fallback
-      return `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(id)}`;
+      // Dicebear fallback — version pinned for stable avatar appearance.
+      return `https://api.dicebear.com/7.0/pixel-art/svg?seed=${encodeURIComponent(id)}`;
     },
     [players],
   );
 
   // ── Determine status label ────────────────────────────────────────────────
 
+  const winnerName = simState.authoritativeWinnerId
+    ? getPlayerName(simState.authoritativeWinnerId)
+    : 'Winner';
+
   const statusLabel =
     simState.phase === 'revealed'
-      ? `${getPlayerName(simState.authoritativeWinnerId ?? '')} wins!`
+      ? `${winnerName} wins!`
       : simState.phase === 'reconciling'
       ? 'Revealing winner…'
       : 'Competition in progress…';
@@ -274,3 +302,4 @@ export default function SpectatorView({
 
   return createPortal(overlay, document.body);
 }
+
