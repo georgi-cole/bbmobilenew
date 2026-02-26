@@ -6,6 +6,7 @@ import {
   setAudio,
   setDisplay,
   setGameUX,
+  setSim,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import './Settings.css';
@@ -31,6 +32,7 @@ export default function Settings() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
+  const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
 
   return (
     <div className="settings-screen">
@@ -233,8 +235,8 @@ export default function Settings() {
               <input
                 type="checkbox"
                 className="settings-toggle"
-                checked={settings.gameUX.twists}
-                onChange={(e) => dispatch(setGameUX({ twists: e.target.checked }))}
+                checked={settings.sim.enableTwists}
+                onChange={(e) => dispatch(setSim({ enableTwists: e.target.checked }))}
                 aria-label="Toggle twists"
               />
             </div>
@@ -255,8 +257,8 @@ export default function Settings() {
               <input
                 type="checkbox"
                 className="settings-toggle"
-                checked={settings.gameUX.juryHouse}
-                onChange={(e) => dispatch(setGameUX({ juryHouse: e.target.checked }))}
+                checked={settings.sim.enableJuryHouse}
+                onChange={(e) => dispatch(setSim({ enableJuryHouse: e.target.checked }))}
                 aria-label="Toggle jury house"
               />
             </div>
@@ -270,12 +272,13 @@ export default function Settings() {
                 className="settings-number"
                 min={4}
                 max={16}
-                value={settings.gameUX.castSize}
-                onChange={(e) => {
-                  const parsed = parseInt(e.target.value, 10);
-                  if (!isNaN(parsed)) {
-                    dispatch(setGameUX({ castSize: Math.min(16, Math.max(4, parsed)) }));
-                  }
+                value={castSizeInput}
+                onChange={(e) => setCastSizeInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(castSizeInput, 10);
+                  const clamped = isNaN(parsed) ? settings.gameUX.castSize : Math.min(16, Math.max(4, parsed));
+                  setCastSizeInput(String(clamped));
+                  dispatch(setGameUX({ castSize: clamped }));
                 }}
                 aria-label="Cast size"
               />

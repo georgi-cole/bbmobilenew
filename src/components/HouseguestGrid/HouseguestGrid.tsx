@@ -81,7 +81,7 @@ export default function HouseguestGrid({
     return () => window.removeEventListener('resize', setAvailableHeight)
   }, [headerSelector, footerSelector])
 
-  const gridSizeClass = gridSize === 16 ? 'hg-grid--16' : gridSize === 12 ? 'hg-grid--12' : ''
+  const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
 
   return (
     <section ref={containerRef} className={styles.container} aria-labelledby="houseguests-heading">
@@ -109,13 +109,14 @@ export default function HouseguestGrid({
           </li>
         ))}
         {Array.from({ length: placeholderCount }).map((_, i) => (
-          <li key={`placeholder-${i}`} className={`${styles.gridItem} hg-tile--inactive`}>
+          <li key={`placeholder-${i}`} className={`${styles.gridItem} ${styles.hgTileInactive}`}>
             <img
               src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
-              alt="Inactive"
-              className="hg-placeholder-img"
+              alt=""
+              aria-hidden="true"
+              className={styles.hgPlaceholderImg}
             />
-            <span className="hg-placeholder-label">Inactive</span>
+            <span className={styles.hgPlaceholderLabel}>Inactive</span>
           </li>
         ))}
       </ul>
