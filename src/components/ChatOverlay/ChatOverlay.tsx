@@ -1,9 +1,12 @@
 /**
- * ChatOverlay — reusable cinematic chat overlay.
+ * ChatOverlay — full-page messenger-style cinematic chat overlay.
  *
- * Reveals chat lines sequentially with a typing indicator between each line.
- * Supports skip (reveals all lines immediately and fires onComplete).
- * Accessible: role="dialog", aria-live region for line announcements.
+ * Slides up to fill the screen, reveals chat lines sequentially with a typing
+ * indicator, then slides back down when the user taps Continue (or Skip).
+ *
+ * Skip:     instantly reveals all lines and fires onComplete immediately.
+ * Continue: appears after all lines are revealed; starts the exit animation
+ *           then fires onComplete once the animation finishes.
  *
  * Usage:
  *   <ChatOverlay
@@ -39,7 +42,12 @@ export interface ChatOverlayProps {
   showAvatars?: boolean;
   /** Called each time a new line becomes visible */
   onLineReveal?: (line: ChatLine, idx: number) => void;
-  /** Called when all lines have been revealed */
+  /**
+   * Called when the overlay has fully exited.
+   * • Skip  → fires immediately (synchronously).
+   * • Continue (after autoPlay) → fires after the exit animation (~340 ms).
+   * • Empty lines → fires immediately.
+   */
   onComplete?: () => void;
   /** Accessible label for the dialog */
   ariaLabel?: string;
@@ -49,6 +57,8 @@ export interface ChatOverlayProps {
 const BASE_TYPING_MS = 800;
 /** How long the typing indicator shows before the next line appears (ms). */
 const TYPING_INDICATOR_MS = 600;
+/** Duration of the slide-down exit animation (ms). Must match CSS. */
+export const EXIT_ANIM_MS = 340;
 
 function ChatAvatar({ player }: { player: Player }) {
   const avatar = player.avatar ?? '';
@@ -96,7 +106,9 @@ export default function ChatOverlay({
   const [revealedCount, setRevealedCount] = useState(0);
   const [showTyping, setShowTyping] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const feedRef = useRef<HTMLDivElement>(null);
   const onLineRevealRef = useRef(onLineReveal);
   const onCompleteRef = useRef(onComplete);
   const linesRef = useRef(lines);
@@ -114,31 +126,54 @@ export default function ChatOverlay({
     timersRef.current.push(id);
   }, []);
 
+  /** Sets completed flag; onComplete is NOT called here — see handleSkip / handleDismiss. */
   const markComplete = useCallback(() => {
     setCompleted(true);
     setShowTyping(false);
-    onCompleteRef.current?.();
   }, []);
 
-  // Skip: reveal all lines immediately and complete
+  /**
+   * Skip: instantly reveals all lines and fires onComplete NOW (synchronously),
+   * while playing the exit animation in the background.
+   */
   const handleSkip = useCallback(() => {
     clearTimers();
     setShowTyping(false);
     setRevealedCount(lines.length);
-    // Call onLineReveal for any not-yet-revealed lines
-    // (We don't loop here to keep it simple — callers that care can compare final count)
-    markComplete();
-  }, [clearTimers, lines.length, markComplete]);
+    setCompleted(true);
+    setExiting(true);
+    onCompleteRef.current?.();
+  }, [clearTimers, lines.length]);
+
+  /**
+   * Continue: starts the slide-down exit animation then fires onComplete after
+   * the animation has finished (~EXIT_ANIM_MS).
+   */
+  const handleDismiss = useCallback(() => {
+    setExiting(true);
+    addTimer(() => {
+      onCompleteRef.current?.();
+    }, EXIT_ANIM_MS);
+  }, [addTimer]);
+
+  // Auto-scroll the feed to the bottom whenever a new line appears, but only if
+  // the user hasn't manually scrolled up (within 100 px of the bottom counts as "at bottom")
+  useEffect(() => {
+    const el = feedRef.current;
+    if (el) {
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+      if (isNearBottom) el.scrollTop = el.scrollHeight;
+    }
+  }, [revealedCount, showTyping]);
 
   useEffect(() => {
     const lines = linesRef.current;
-    if (!autoPlay || lines.length === 0) {
-      // Nothing to reveal; fire complete immediately
-      if (lines.length === 0) {
-        markComplete();
-      }
+    if (lines.length === 0) {
+      // Nothing to reveal: fire complete immediately (no animation needed)
+      onCompleteRef.current?.();
       return;
     }
+    if (!autoPlay) return;
 
     let currentIdx = 0;
 
@@ -172,19 +207,18 @@ export default function ChatOverlay({
   }, [autoPlay, lines.length, typingSpeed, addTimer, clearTimers, markComplete]);
 
   // If lines is empty, render nothing (onComplete was already called in effect)
-  if (lines.length === 0 && completed) return null;
+  if (lines.length === 0) return null;
 
   const revealedLines = lines.slice(0, revealedCount);
   const renderAvatar = avatarRenderer ?? defaultAvatarRenderer;
 
   return (
     <div
-      className="chat-overlay"
+      className={`chat-overlay${exiting ? ' chat-overlay--exiting' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel ?? header?.title ?? 'Chat'}
     >
-      <div className="chat-overlay__backdrop" />
       <div className="chat-overlay__panel">
         {(header?.title || header?.subtitle) && (
           <div className="chat-overlay__header">
@@ -198,6 +232,7 @@ export default function ChatOverlay({
         )}
 
         <div
+          ref={feedRef}
           className="chat-overlay__feed"
           role="log"
           aria-live="polite"
@@ -231,15 +266,25 @@ export default function ChatOverlay({
           )}
         </div>
 
-        {skippable && !completed && (
-          <button
-            className="chat-overlay__skip"
-            onClick={handleSkip}
-            aria-label="Skip to end"
-          >
-            Skip
-          </button>
-        )}
+        <div className="chat-overlay__footer">
+          {skippable && !completed && !exiting && (
+            <button
+              className="chat-overlay__skip"
+              onClick={handleSkip}
+              aria-label="Skip to end"
+            >
+              Skip
+            </button>
+          )}
+          {completed && !exiting && (
+            <button
+              className="chat-overlay__done"
+              onClick={handleDismiss}
+            >
+              Continue →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

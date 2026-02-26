@@ -17,7 +17,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ChatOverlay from '../../src/components/ChatOverlay/ChatOverlay';
+import ChatOverlay, { EXIT_ANIM_MS } from '../../src/components/ChatOverlay/ChatOverlay';
 import type { ChatLine } from '../../src/components/ChatOverlay/ChatOverlay';
 
 const LINES: ChatLine[] = [
@@ -93,7 +93,7 @@ describe('ChatOverlay', () => {
     expect(screen.queryByRole('button', { name: /skip/i })).not.toBeInTheDocument();
   });
 
-  it('onComplete fires automatically after autoPlay sequence finishes', async () => {
+  it('onComplete fires after autoPlay sequence finishes and user clicks Continue', async () => {
     vi.useFakeTimers();
     const onComplete = vi.fn();
     render(<ChatOverlay lines={[{ id: 'x', role: 'host', text: 'Hello' }]} onComplete={onComplete} />);
@@ -103,7 +103,21 @@ describe('ChatOverlay', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(onComplete).toHaveBeenCalled();
+    // onComplete must NOT have fired yet — waiting for user to dismiss
+    expect(onComplete).not.toHaveBeenCalled();
+
+    // Continue button should be visible after autoPlay completes
+    const continueBtn = screen.getByRole('button', { name: /continue/i });
+    await act(async () => {
+      continueBtn.click();
+    });
+
+    // Advance past the exit animation
+    await act(async () => {
+      vi.advanceTimersByTime(EXIT_ANIM_MS + 50);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
