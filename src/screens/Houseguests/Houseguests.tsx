@@ -15,10 +15,12 @@ export default function Houseguests() {
   const settings = useAppSelector(selectSettings)
 
   const { castSize } = settings.gameUX
+  const playerCount = players.length
+  const effectiveCastSize = Math.max(castSize, playerCount)
   // Determine grid size: 12 tiles for castSize 4–12, 16 tiles for castSize 13–16
-  const gridSize = castSize <= 12 ? 12 : 16
+  const gridSize = effectiveCastSize <= 12 ? 12 : 16
 
-  const houseguests = players.slice(0, castSize).map((p) => {
+  const houseguests = players.slice(0, effectiveCastSize).map((p) => {
     // Derive statuses from authoritative game-level fields
     const parts: string[] = []
     if (hohId === p.id) parts.push('hoh')
