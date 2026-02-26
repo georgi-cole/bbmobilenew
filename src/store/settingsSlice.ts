@@ -32,6 +32,10 @@ export interface SettingsState {
     enableTwists: boolean;
     allowSelfEvict: boolean;
   };
+  visual: {
+    /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
+    enableZoom: boolean;
+  };
 }
 
 export const DEFAULT_SETTINGS: SettingsState = {
@@ -61,6 +65,9 @@ export const DEFAULT_SETTINGS: SettingsState = {
     enableTwists: false,
     allowSelfEvict: false,
   },
+  visual: {
+    enableZoom: false,
+  },
 };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -76,6 +83,7 @@ export function loadSettings(): SettingsState {
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...parsed.gameUX },
       sim:     { ...DEFAULT_SETTINGS.sim,     ...parsed.sim },
+      visual:  { ...DEFAULT_SETTINGS.visual,  ...parsed.visual },
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -116,16 +124,27 @@ const settingsSlice = createSlice({
     setSim(state, action: PayloadAction<Partial<SettingsState['sim']>>) {
       Object.assign(state.sim, action.payload);
     },
+    setVisual(state, action: PayloadAction<Partial<SettingsState['visual']>>) {
+      Object.assign(state.visual, action.payload);
+    },
     resetSettings() {
       return DEFAULT_SETTINGS;
     },
     importSettings(_state, action: PayloadAction<SettingsState>) {
-      return action.payload;
+      // Deep-merge with DEFAULT_SETTINGS so importing older saved state that
+      // lacks newer sections (e.g. visual) never leaves them undefined.
+      return {
+        audio:   { ...DEFAULT_SETTINGS.audio,   ...action.payload.audio },
+        display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
+        gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...action.payload.gameUX },
+        sim:     { ...DEFAULT_SETTINGS.sim,     ...action.payload.sim },
+        visual:  { ...DEFAULT_SETTINGS.visual,  ...action.payload.visual },
+      };
     },
   },
 });
 
-export const { setAudio, setDisplay, setGameUX, setSim, resetSettings, importSettings } =
+export const { setAudio, setDisplay, setGameUX, setSim, setVisual, resetSettings, importSettings } =
   settingsSlice.actions;
 
 export const selectSettings = (state: RootState) => state.settings;
