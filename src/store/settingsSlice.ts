@@ -131,7 +131,15 @@ const settingsSlice = createSlice({
       return DEFAULT_SETTINGS;
     },
     importSettings(_state, action: PayloadAction<SettingsState>) {
-      return action.payload;
+      // Deep-merge with DEFAULT_SETTINGS so importing older saved state that
+      // lacks newer sections (e.g. visual) never leaves them undefined.
+      return {
+        audio:   { ...DEFAULT_SETTINGS.audio,   ...action.payload.audio },
+        display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
+        gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...action.payload.gameUX },
+        sim:     { ...DEFAULT_SETTINGS.sim,     ...action.payload.sim },
+        visual:  { ...DEFAULT_SETTINGS.visual,  ...action.payload.visual },
+      };
     },
   },
 });

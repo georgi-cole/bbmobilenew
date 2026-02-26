@@ -96,12 +96,16 @@ export default function SpotlightAnimation({
 
     // ResizeObserver for tile element reflow.
     let ro: ResizeObserver | null = null;
-    if (hasRefs) {
+    if (hasRefs && typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(remeasure);
       for (const ref of tileRefs!) {
         if (ref.current) ro.observe(ref.current);
       }
     }
+
+    // Trigger an initial re-measure in case applying overflow:hidden caused a
+    // layout shift (e.g. scrollbar removal) that staled the passed-in DOMRects.
+    remeasure();
 
     return () => {
       activeRef.current = false;

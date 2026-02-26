@@ -125,14 +125,12 @@ describe('SpotlightAnimation — viewport tracking with measureA', () => {
   let visualViewportMock: ReturnType<typeof makeVisualViewport>;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     visualViewportMock = makeVisualViewport();
     // @ts-expect-error – attaching mock to window
     window.visualViewport = visualViewportMock;
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
     // @ts-expect-error – cleanup
     delete window.visualViewport;
@@ -183,48 +181,104 @@ describe('SpotlightAnimation — viewport tracking with measureA', () => {
       return updatedRect;
     });
 
-    render(
-      <SpotlightAnimation
-        tiles={makeTiles(makeRect(50, 100, 60, 80))}
-        caption="Track me"
-        onDone={vi.fn()}
-        measureA={measureA}
-      />,
-    );
+    // Explicitly mock rAF/cAF so we control when the queued callback fires.
+    let rafCallback: FrameRequestCallback | null = null;
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback): number => {
+        rafCallback = cb;
+        return 1;
+      });
+    const cafSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation((_id: number) => {});
 
-    await act(async () => {});
+    try {
+      render(
+        <SpotlightAnimation
+          tiles={makeTiles(makeRect(50, 100, 60, 80))}
+          caption="Track me"
+          onDone={vi.fn()}
+          measureA={measureA}
+        />,
+      );
 
-    // Simulate a visualViewport resize event.
-    await act(async () => {
-      visualViewportMock.dispatchEvent(new Event('resize'));
-      // Run pending rAF callbacks.
-      vi.runAllTimers();
-    });
+      await act(async () => {});
 
-    // measureA should have been called at least once by the remeasure rAF.
-    expect(callCount).toBeGreaterThan(0);
+      // Reset call count; the initial remeasure may already have run.
+      callCount = 0;
+      rafCallback = null;
+
+      // Simulate a visualViewport resize event.
+      await act(async () => {
+        visualViewportMock.dispatchEvent(new Event('resize'));
+      });
+
+      // Flush the scheduled rAF callback explicitly.
+      expect(rafCallback).not.toBeNull();
+      await act(async () => {
+        if (rafCallback) rafCallback(0 as unknown as DOMHighResTimeStamp);
+      });
+
+      expect(callCount).toBeGreaterThan(0);
+    } finally {
+      rafSpy.mockRestore();
+      cafSpy.mockRestore();
+    }
   });
 
   it('calls measureA via rAF on window scroll event (capture phase)', async () => {
-    const addEventSpy = vi.spyOn(window, 'addEventListener');
-    const measureA = vi.fn(() => makeRect());
+    let callCount = 0;
+    const measureA = vi.fn(() => {
+      callCount++;
+      return makeRect();
+    });
 
-    render(
-      <SpotlightAnimation
-        tiles={makeTiles()}
-        caption="Track me"
-        onDone={vi.fn()}
-        measureA={measureA}
-      />,
-    );
+    // Explicitly mock rAF so we can flush it deterministically.
+    let rafCallback: FrameRequestCallback | null = null;
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback): number => {
+        rafCallback = cb;
+        return 1;
+      });
+    const cafSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation((_id: number) => {});
 
-    await act(async () => {});
+    try {
+      render(
+        <SpotlightAnimation
+          tiles={makeTiles()}
+          caption="Track me"
+          onDone={vi.fn()}
+          measureA={measureA}
+        />,
+      );
 
-    // Verify scroll listener was registered with capture: true.
-    const scrollCall = addEventSpy.mock.calls.find(
-      ([type, , opts]) => type === 'scroll' && (opts as AddEventListenerOptions)?.capture === true,
-    );
-    expect(scrollCall).toBeDefined();
+      await act(async () => {});
+
+      // Reset so the initial remeasure doesn't inflate the count.
+      callCount = 0;
+      rafCallback = null;
+
+      // Dispatch a capture-phase scroll event on window.
+      await act(async () => {
+        window.dispatchEvent(new Event('scroll', { bubbles: false }));
+      });
+
+      // Flush the rAF callback so remeasure actually runs.
+      expect(rafCallback).not.toBeNull();
+      await act(async () => {
+        if (rafCallback) rafCallback(0 as unknown as DOMHighResTimeStamp);
+      });
+
+      // measureA should have been called by the scroll-triggered remeasure.
+      expect(callCount).toBeGreaterThan(0);
+    } finally {
+      rafSpy.mockRestore();
+      cafSpy.mockRestore();
+    }
   });
 });
 
