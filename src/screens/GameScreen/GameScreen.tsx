@@ -223,9 +223,12 @@ export default function GameScreen() {
         dispatch(advance())
       }
     }
-  // Intentionally depend only on `isF3Part3SpectatorPhase` — `dispatch` is
-  // stable from useAppDispatch and `advance` is a constant action creator;
-  // including them would not change behavior but would widen the dep list.
+  // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
+  // stable from useAppDispatch and `advance` is a constant action creator, so
+  // including them would not change behavior. `spectatorF3Active` is read only
+  // as a guard (to avoid re-entering spectator mode within a phase), not as a
+  // reactive dependency; if its usage changes, update this dep list and
+  // remove/adjust this eslint-disable.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isF3Part3SpectatorPhase])
 
