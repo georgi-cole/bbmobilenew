@@ -189,7 +189,7 @@ export default function GameScreen() {
     if (isF3MinigamePhase && !pendingChallenge && f3MinigameContext) {
       dispatch(startChallenge(f3MinigameContext.seed, f3MinigameContext.participants))
     }
-  }, [game.phase, pendingChallenge, f3MinigameContext, dispatch, isF3MinigamePhase])
+  }, [game.phase, pendingChallenge, f3MinigameContext, dispatch])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
