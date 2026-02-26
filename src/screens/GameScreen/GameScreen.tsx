@@ -35,6 +35,7 @@ import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
+import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
@@ -101,6 +102,8 @@ export default function GameScreen() {
     caption: string
     subtitle?: string
     ariaLabel: string
+    /** Optional live-measure callback for viewport-tracking during zoom/scroll. */
+    measureA?: () => DOMRect | null
   } | null>(null)
   const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
 
@@ -975,6 +978,7 @@ export default function GameScreen() {
               caption: `${winnerPlayer.name} wins ${winLabel}!`,
               subtitle: winSymbol,
               ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
+              measureA: () => getTileRect(finalWinnerId),
             });
           }}
         />
@@ -985,14 +989,15 @@ export default function GameScreen() {
         <TapRace session={pendingMinigame} players={game.players} />
       )}
 
-      {/* ── CeremonyOverlay — HOH / POV winner reveal (spotlight cutout) ──── */}
+      {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}
       {showWinnerCeremony && pendingWinnerCeremony && (
-        <CeremonyOverlay
+        <SpotlightAnimation
           tiles={pendingWinnerCeremony.tiles}
           caption={pendingWinnerCeremony.caption}
           subtitle={pendingWinnerCeremony.subtitle}
           onDone={handleWinnerCeremonyDone}
           ariaLabel={pendingWinnerCeremony.ariaLabel}
+          measureA={pendingWinnerCeremony.measureA}
         />
       )}
 

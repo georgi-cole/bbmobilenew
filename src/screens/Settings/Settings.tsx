@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -7,6 +7,7 @@ import {
   setDisplay,
   setGameUX,
   setSim,
+  setVisual,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import './Settings.css';
@@ -33,6 +34,17 @@ export default function Settings() {
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
+
+  // Keep the viewport meta tag in sync with the enableZoom setting.
+  const enableZoom = settings.visual?.enableZoom ?? false;
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (meta) {
+      meta.content = enableZoom
+        ? 'width=device-width, initial-scale=1.0'
+        : 'width=device-width, initial-scale=1.0, user-scalable=no';
+    }
+  }, [enableZoom]);
 
   return (
     <div className="settings-screen">
@@ -167,6 +179,17 @@ export default function Settings() {
                 checked={settings.display.highContrast}
                 onChange={(e) => dispatch(setDisplay({ highContrast: e.target.checked }))}
                 aria-label="Toggle high contrast"
+              />
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-row__label">Allow pinch-zoom</label>
+              <input
+                type="checkbox"
+                className="settings-toggle"
+                checked={settings.visual?.enableZoom ?? false}
+                onChange={(e) => dispatch(setVisual({ enableZoom: e.target.checked }))}
+                aria-label="Toggle pinch zoom"
               />
             </div>
           </section>

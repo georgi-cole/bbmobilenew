@@ -32,6 +32,10 @@ export interface SettingsState {
     enableTwists: boolean;
     allowSelfEvict: boolean;
   };
+  visual: {
+    /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
+    enableZoom: boolean;
+  };
 }
 
 export const DEFAULT_SETTINGS: SettingsState = {
@@ -61,6 +65,9 @@ export const DEFAULT_SETTINGS: SettingsState = {
     enableTwists: false,
     allowSelfEvict: false,
   },
+  visual: {
+    enableZoom: false,
+  },
 };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -76,6 +83,7 @@ export function loadSettings(): SettingsState {
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...parsed.gameUX },
       sim:     { ...DEFAULT_SETTINGS.sim,     ...parsed.sim },
+      visual:  { ...DEFAULT_SETTINGS.visual,  ...parsed.visual },
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -116,6 +124,9 @@ const settingsSlice = createSlice({
     setSim(state, action: PayloadAction<Partial<SettingsState['sim']>>) {
       Object.assign(state.sim, action.payload);
     },
+    setVisual(state, action: PayloadAction<Partial<SettingsState['visual']>>) {
+      Object.assign(state.visual, action.payload);
+    },
     resetSettings() {
       return DEFAULT_SETTINGS;
     },
@@ -125,7 +136,7 @@ const settingsSlice = createSlice({
   },
 });
 
-export const { setAudio, setDisplay, setGameUX, setSim, resetSettings, importSettings } =
+export const { setAudio, setDisplay, setGameUX, setSim, setVisual, resetSettings, importSettings } =
   settingsSlice.actions;
 
 export const selectSettings = (state: RootState) => state.settings;
