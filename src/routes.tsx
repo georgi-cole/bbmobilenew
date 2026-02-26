@@ -9,23 +9,27 @@
  */
 import { createHashRouter } from 'react-router-dom';
 
-import AppShell      from './components/layout/AppShell';
-import HomeHub       from './screens/HomeHub/HomeHub';
-import GameScreen    from './screens/GameScreen/GameScreen';
-import DiaryRoom     from './screens/DiaryRoom/DiaryRoom';
-import Houseguests   from './screens/Houseguests/Houseguests';
-import Profile       from './screens/Profile/Profile';
-import Leaderboard   from './screens/Leaderboard/Leaderboard';
-import Credits       from './screens/Credits/Credits';
-import Week          from './screens/Week/Week';
-import CreatePlayer  from './screens/CreatePlayer/CreatePlayer';
-import GameOver      from './screens/GameOver/GameOver';
-import Rules         from './screens/Rules/Rules';
+import AppShell             from './components/layout/AppShell';
+import RouteErrorBoundary   from './components/RouteErrorBoundary/RouteErrorBoundary';
+import HomeHub              from './screens/HomeHub/HomeHub';
+import GameScreen           from './screens/GameScreen/GameScreen';
+import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
+import Houseguests          from './screens/Houseguests/Houseguests';
+import Profile              from './screens/Profile/Profile';
+import Leaderboard          from './screens/Leaderboard/Leaderboard';
+import Credits              from './screens/Credits/Credits';
+import Week                 from './screens/Week/Week';
+import CreatePlayer         from './screens/CreatePlayer/CreatePlayer';
+import GameOver             from './screens/GameOver/GameOver';
+import Rules                from './screens/Rules/Rules';
+import Settings             from './screens/Settings/Settings';
+import NotFound             from './screens/NotFound/NotFound';
 
 export const router = createHashRouter([
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true,              element: <HomeHub />      },
       { path: 'game',             element: <GameScreen />   },
@@ -38,6 +42,8 @@ export const router = createHashRouter([
       { path: 'create-player',    element: <CreatePlayer /> },
       { path: 'game-over',        element: <GameOver />     },
       { path: 'rules',            element: <Rules />        },
+      { path: 'settings',         element: <Settings />     },
+      { path: '*',                element: <NotFound />     },
     ],
   },
 ]);
