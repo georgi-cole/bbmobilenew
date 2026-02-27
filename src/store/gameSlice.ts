@@ -880,20 +880,31 @@ const gameSlice = createSlice({
      */
     completeBattleBack(state, action: PayloadAction<string>) {
       const winnerId = action.payload;
+      const bb = state.battleBack;
+
+      // Validate that the Battle Back is active and the winnerId is a valid jury candidate.
+      if (!bb || !bb.active) {
+        return;
+      }
+
+      const isCandidate = bb.candidates.includes(winnerId);
       const winner = state.players.find((p) => p.id === winnerId);
-      if (winner) {
-        winner.status = 'active';
-        pushEvent(
-          state,
-          `🔥 ${winner.name} has survived the Battle Back and RETURNS to the Big Brother house! 🏠✨`,
-          'twist',
-        );
+
+      // Require the winner to be a current juror in the candidates list.
+      if (!isCandidate || !winner || winner.status !== 'jury') {
+        return;
       }
-      if (state.battleBack) {
-        state.battleBack.active = false;
-        state.battleBack.used = true;
-        state.battleBack.winnerId = winnerId;
-      }
+
+      winner.status = 'active';
+      pushEvent(
+        state,
+        `🔥 ${winner.name} has survived the Battle Back and RETURNS to the Big Brother house! 🏠✨`,
+        'twist',
+      );
+
+      bb.active = false;
+      bb.used = true;
+      bb.winnerId = winnerId;
       state.twistActive = false;
     },
 
