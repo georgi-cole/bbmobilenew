@@ -144,15 +144,40 @@
 /* ── Live voting area (Memory Wall) ─────────────────────────────────────── */
 
 /* Full-screen broadcast wrapper — sits on top of the dim layer, covers the
-   entire overlay so the game screen is completely hidden during the vote. */
+   entire overlay so the game screen is completely hidden during the vote.
+   CRT broadcast aesthetic: dark charcoal base, scanlines + warm top-glow. */
 .bb-wall {
+  /* Scanline tuning knobs */
+  --bb-scanline-gap: 3px;
+  --bb-scanline-size: 4px;
+  --bb-scanline-opacity: 0.12;
+
   position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #080818 0%, #130020 100%);
+  background: #0a0a0d;
   overflow: hidden;
+}
+
+/* CRT scanlines + warm broadcast glow from the top */
+.bb-wall::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent var(--bb-scanline-gap),
+      rgba(0, 0, 0, var(--bb-scanline-opacity)) var(--bb-scanline-gap),
+      rgba(0, 0, 0, var(--bb-scanline-opacity)) var(--bb-scanline-size)
+    ),
+    radial-gradient(ellipse 140% 45% at 50% 0%, rgba(249, 115, 22, 0.11) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(220, 38, 38, 0.07) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 /* ── Broadcast header ──────────────────────────────────────────────────── */
@@ -299,6 +324,16 @@
   height: 100%;
 }
 
+/* Danger-zone ring: full light-red circle, pulsing to signal "at risk" */
+.bb-wall__danger-ring {
+  animation: bbDangerPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bbDangerPulse {
+  0%, 100% { opacity: 1;    }
+  50%       { opacity: 0.45; }
+}
+
 /* Portrait photo */
 .bb-wall__avatar {
   position: absolute;
@@ -317,21 +352,21 @@
   filter: grayscale(1) brightness(0.5);
 }
 
-/* ── ELIMINATED stamp ──────────────────────────────────────────────────── */
+/* ── GONE stamp ────────────────────────────────────────────────────────── */
 .bb-wall__elim-stamp {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(-15deg);
-  background: rgba(220, 38, 38, 0.9);
+  transform: translate(-50%, -50%) rotate(-12deg);
+  background: rgba(185, 28, 28, 0.92);
   color: #fff;
-  font-size: 0.48rem;
+  font-size: 0.58rem;
   font-weight: 900;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.12em;
   text-align: center;
-  line-height: 1.15;
-  padding: 0.14rem 0.28rem;
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  line-height: 1;
+  padding: 0.16rem 0.36rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
   border-radius: 2px;
   pointer-events: none;
@@ -340,8 +375,8 @@
 }
 
 @keyframes bbStampIn {
-  from { opacity: 0; transform: translate(-50%, -50%) rotate(-15deg) scale(0.3); }
-  to   { opacity: 1; transform: translate(-50%, -50%) rotate(-15deg) scale(1);   }
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.3); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1);   }
 }
 
 /* ── Tile name + percentage ────────────────────────────────────────────── */
@@ -359,7 +394,11 @@
 .bb-wall__tile-pct {
   font-size: 0.68rem;
   font-weight: 800;
-  color: #f97316;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.bb-wall__tile-pct--danger {
+  color: #f87171;
 }
 
 /* ── Countdown footer strip ────────────────────────────────────────────── */
@@ -417,11 +456,9 @@
   .bb-wall__ticker,
   .bb-wall__live-dot,
   .bb-wall__elim-stamp,
+  .bb-wall__danger-ring,
   .bb-wall__ring-wrap::after {
     animation: none !important;
-  }
-  .bb-wall__ring-svg circle {
-    transition: none !important;
   }
   .bb-wall__avatar {
     transition: none !important;

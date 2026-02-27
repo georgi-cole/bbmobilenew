@@ -30,13 +30,11 @@ interface Props {
 type Step = 'announcement' | 'info' | 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
-/** Centre and radius of the SVG ring gauge (px inside a 76×76 viewBox). */
+/** Centre and radius of the SVG danger-zone ring (px inside a 76×76 viewBox). */
 const RING_CX = 38;
 const RING_CY = 38;
 const RING_R = 34;
-const RING_STROKE = 3.5;
-const RING_TRACK_COLOR = 'rgba(255,255,255,0.1)';
-const RING_CIRC = 2 * Math.PI * RING_R;
+const RING_STROKE = 4;
 /** Repeated twice in the DOM so the CSS marquee loops seamlessly. */
 const TICKER_MSG = 'The public is voting to save a juror… One will return to the Big Brother house! ✦  ';
 
@@ -158,50 +156,64 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
 
           {/* Memory wall grid */}
           <ul className="bb-wall__grid" role="list">
-            {candidates.map((player) => {
-              const isEliminated = eliminated.includes(player.id);
-              const pct = isEliminated ? 0 : (votes[player.id] ?? 0);
-              const dashOffset = RING_CIRC * (1 - pct / 100);
-              return (
-                <li
-                  key={player.id}
-                  className={`bb-wall__tile${isEliminated ? ' bb-wall__tile--eliminated' : ''}`}
-                  aria-label={`${player.name}: ${isEliminated ? 'eliminated' : `${pct}%`}`}
-                >
-                  <div className="bb-wall__ring-wrap">
-                    <svg className="bb-wall__ring-svg" viewBox="0 0 76 76" aria-hidden="true">
-                      {/* Track */}
-                      <circle cx={RING_CX} cy={RING_CY} r={RING_R} fill="none" stroke={RING_TRACK_COLOR} strokeWidth={RING_STROKE} />
-                      {/* Vote gauge */}
-                      {!isEliminated && (
-                        <circle
-                          cx={RING_CX} cy={RING_CY} r={RING_R}
-                          fill="none"
-                          stroke="#f97316"
-                          strokeWidth={RING_STROKE}
-                          strokeDasharray={RING_CIRC}
-                          strokeDashoffset={dashOffset}
-                          strokeLinecap="round"
-                          transform={`rotate(-90 ${RING_CX} ${RING_CY})`}
-                          style={{ transition: 'stroke-dashoffset 0.35s ease' }}
-                        />
-                      )}
-                    </svg>
-                    <img
-                      src={resolveAvatar(player)}
-                      alt={player.name}
-                      className="bb-wall__avatar"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    {isEliminated && (
-                      <div className="bb-wall__elim-stamp" aria-hidden="true">ELIM<br />INATED</div>
-                    )}
-                  </div>
-                  <span className="bb-wall__tile-name">{player.name}</span>
-                  {!isEliminated && <span className="bb-wall__tile-pct">{pct}%</span>}
-                </li>
+            {(() => {
+              // Compute danger zone: the lowest-voted active candidates get a
+              // red ring. Show 2 in danger when > 2 active remain; only 1 when
+              // exactly 2 remain (the higher-voted one will be the winner).
+              const active = candidates.filter(p => !eliminated.includes(p.id));
+              let dangerCount: number;
+              if (active.length > 2) {
+                dangerCount = 2;
+              } else if (active.length === 2) {
+                dangerCount = 1;
+              } else {
+                dangerCount = 0;
+              }
+              const dangerIds = new Set(
+                [...active]
+                  .sort((a, b) => (votes[a.id] ?? 0) - (votes[b.id] ?? 0))
+                  .slice(0, dangerCount)
+                  .map(p => p.id)
               );
-            })}
+              return candidates.map((player) => {
+                const isEliminated = eliminated.includes(player.id);
+                const isDanger = dangerIds.has(player.id);
+                const pct = isEliminated ? 0 : (votes[player.id] ?? 0);
+                return (
+                  <li
+                    key={player.id}
+                    className={`bb-wall__tile${isEliminated ? ' bb-wall__tile--eliminated' : ''}${isDanger ? ' bb-wall__tile--danger' : ''}`}
+                    aria-label={`${player.name}: ${isEliminated ? 'gone' : `${pct}%`}`}
+                  >
+                    <div className="bb-wall__ring-wrap">
+                      <svg className="bb-wall__ring-svg" viewBox="0 0 76 76" aria-hidden="true">
+                        {/* Danger-zone ring: full circle, light red, pulsing */}
+                        {isDanger && (
+                          <circle
+                            className="bb-wall__danger-ring"
+                            cx={RING_CX} cy={RING_CY} r={RING_R}
+                            fill="none"
+                            stroke="#f87171"
+                            strokeWidth={RING_STROKE}
+                          />
+                        )}
+                      </svg>
+                      <img
+                        src={resolveAvatar(player)}
+                        alt={player.name}
+                        className="bb-wall__avatar"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      {isEliminated && (
+                        <div className="bb-wall__elim-stamp" aria-hidden="true">GONE</div>
+                      )}
+                    </div>
+                    <span className="bb-wall__tile-name">{player.name}</span>
+                    {!isEliminated && <span className={`bb-wall__tile-pct${isDanger ? ' bb-wall__tile-pct--danger' : ''}`}>{pct}%</span>}
+                  </li>
+                );
+              });
+            })()}
           </ul>
 
           {/* Countdown footer */}
