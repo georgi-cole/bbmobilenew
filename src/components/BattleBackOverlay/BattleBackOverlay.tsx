@@ -4,8 +4,9 @@
  * UX flow (4 steps):
  *  1. announcement — orange full-screen splash; tap to continue.
  *  2. info         — explanation card; tap to start voting.
- *  3. voting       — live voting UI with candidate % bars; lowest eliminated
- *                    every 3.5 s via the useBattleBackVoting simulator.
+ *  3. voting       — TV-broadcast Memory Wall: portrait grid with SVG ring
+ *                    gauges, scrolling ticker, and countdown strip. Lowest
+ *                    candidate eliminated every 3.5 s.
  *  4. winner       — winner reveal with colour animation; tap to close.
  *
  * Props:
@@ -28,6 +29,17 @@ interface Props {
 
 type Step = 'announcement' | 'info' | 'voting' | 'winner';
 
+const ELIM_INTERVAL_MS = 3500;
+/** Centre and radius of the SVG ring gauge (px inside a 76×76 viewBox). */
+const RING_CX = 38;
+const RING_CY = 38;
+const RING_R = 34;
+const RING_STROKE = 3.5;
+const RING_TRACK_COLOR = 'rgba(255,255,255,0.1)';
+const RING_CIRC = 2 * Math.PI * RING_R;
+/** Repeated twice in the DOM so the CSS marquee loops seamlessly. */
+const TICKER_MSG = 'The public is voting to save a juror… One will return to the Big Brother house! ✦  ';
+
 export default function BattleBackOverlay({ candidates, seed, onComplete }: Props) {
   const [step, setStep] = useState<Step>('announcement');
   const firedRef = useRef(false);
@@ -39,9 +51,28 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
-    eliminationIntervalMs: 3500,
+    eliminationIntervalMs: ELIM_INTERVAL_MS,
     tickIntervalMs: 400,
   });
+
+  // Countdown strip: counts down from floor(ELIM_INTERVAL_MS/1000) to 0,
+  // resetting each time a new elimination is detected.
+  const [countdown, setCountdown] = useState(Math.floor(ELIM_INTERVAL_MS / 1000));
+  const prevElimLenRef = useRef(0);
+  useEffect(() => {
+    if (eliminated.length > prevElimLenRef.current) {
+      prevElimLenRef.current = eliminated.length;
+      setCountdown(Math.floor(ELIM_INTERVAL_MS / 1000));
+    }
+  }, [eliminated]);
+  useEffect(() => {
+    if (step !== 'voting' || isComplete) return;
+    const id = setInterval(
+      () => setCountdown((prev) => Math.max(0, prev - 1)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [step, isComplete]);
 
   // When voting finishes, transition to winner step automatically.
   useEffect(() => {
@@ -96,64 +127,93 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
           <div className="bb-overlay__emoji" aria-hidden="true">🏆</div>
           <h2 className="bb-overlay__title bb-overlay__title--md">How It Works</h2>
           <ul className="bb-overlay__info-list" role="list">
-            <li>America votes for their favourite juror to return.</li>
-            <li>The lowest-voted houseguest is eliminated every few seconds.</li>
+            <li>The public votes for their favourite juror to return.</li>
+            <li>One by one the jurors with the lowest viewer support are eliminated.</li>
             <li>The last juror standing wins and re-enters the house!</li>
           </ul>
           <p className="bb-overlay__tap-hint">tap to watch the vote live</p>
         </div>
       )}
 
-      {/* ── Step 3: Live Voting ───────────────────────────────────────────── */}
+      {/* ── Step 3: Memory Wall — Live Voting ────────────────────────────── */}
       {step === 'voting' && (
-        <div className="bb-overlay__voting" role="region" aria-label="Live Battle Back voting">
-          <header className="bb-overlay__voting-header">
-            <p className="bb-overlay__label">LIVE VOTE</p>
-            <h2 className="bb-overlay__title bb-overlay__title--md">Battle Back</h2>
-            <p className="bb-overlay__voting-subtitle">America is voting to save a juror…</p>
+        <div className="bb-wall" role="region" aria-label="Live Battle Back voting">
+
+          {/* Broadcast header */}
+          <header className="bb-wall__header">
+            <div className="bb-wall__header-inner">
+              <span className="bb-wall__brand" aria-hidden="true">📺</span>
+              <span className="bb-wall__brand-title">BATTLE BACK</span>
+              <div className="bb-wall__live-badge" aria-label="Live broadcast">
+                <span className="bb-wall__live-dot" aria-hidden="true" />
+                LIVE
+              </div>
+            </div>
           </header>
 
-          <ul className="bb-overlay__candidate-list" role="list">
+          {/* Scrolling ticker */}
+          <div className="bb-wall__ticker-wrap" aria-hidden="true">
+            <span className="bb-wall__ticker">{TICKER_MSG}{TICKER_MSG}</span>
+          </div>
+
+          {/* Memory wall grid */}
+          <ul className="bb-wall__grid" role="list">
             {candidates.map((player) => {
               const isEliminated = eliminated.includes(player.id);
-              const pct = votes[player.id] ?? 0;
+              const pct = isEliminated ? 0 : (votes[player.id] ?? 0);
+              const dashOffset = RING_CIRC * (1 - pct / 100);
               return (
                 <li
                   key={player.id}
-                  className={`bb-overlay__candidate${isEliminated ? ' bb-overlay__candidate--eliminated' : ''}`}
+                  className={`bb-wall__tile${isEliminated ? ' bb-wall__tile--eliminated' : ''}`}
                   aria-label={`${player.name}: ${isEliminated ? 'eliminated' : `${pct}%`}`}
                 >
-                  <div className="bb-overlay__candidate-avatar" aria-hidden="true">
+                  <div className="bb-wall__ring-wrap">
+                    <svg className="bb-wall__ring-svg" viewBox="0 0 76 76" aria-hidden="true">
+                      {/* Track */}
+                      <circle cx={RING_CX} cy={RING_CY} r={RING_R} fill="none" stroke={RING_TRACK_COLOR} strokeWidth={RING_STROKE} />
+                      {/* Vote gauge */}
+                      {!isEliminated && (
+                        <circle
+                          cx={RING_CX} cy={RING_CY} r={RING_R}
+                          fill="none"
+                          stroke="#f97316"
+                          strokeWidth={RING_STROKE}
+                          strokeDasharray={RING_CIRC}
+                          strokeDashoffset={dashOffset}
+                          strokeLinecap="round"
+                          transform={`rotate(-90 ${RING_CX} ${RING_CY})`}
+                          style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+                        />
+                      )}
+                    </svg>
                     <img
                       src={resolveAvatar(player)}
                       alt={player.name}
-                      className="bb-overlay__avatar-img"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
+                      className="bb-wall__avatar"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     {isEliminated && (
-                      <span className="bb-overlay__eliminated-cross" aria-hidden="true">✗</span>
+                      <div className="bb-wall__elim-stamp" aria-hidden="true">ELIM<br />INATED</div>
                     )}
                   </div>
-                  <div className="bb-overlay__candidate-info">
-                    <span className="bb-overlay__candidate-name">{player.name}</span>
-                    {isEliminated ? (
-                      <span className="bb-overlay__candidate-status">eliminated</span>
-                    ) : (
-                      <div className="bb-overlay__bar-wrap" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                        <div
-                          className="bb-overlay__bar"
-                          style={{ width: `${pct}%` }}
-                        />
-                        <span className="bb-overlay__pct">{pct}%</span>
-                      </div>
-                    )}
-                  </div>
+                  <span className="bb-wall__tile-name">{player.name}</span>
+                  {!isEliminated && <span className="bb-wall__tile-pct">{pct}%</span>}
                 </li>
               );
             })}
           </ul>
+
+          {/* Countdown footer */}
+          <div className="bb-wall__footer" aria-live="polite">
+            <span className="bb-wall__footer-text">
+              {isComplete
+                ? '🏆 Winner found!'
+                : countdown === 0
+                  ? '⚡ ELIMINATING…'
+                  : `⚡ NEXT ELIMINATION IN ${countdown}…`}
+            </span>
+          </div>
         </div>
       )}
 

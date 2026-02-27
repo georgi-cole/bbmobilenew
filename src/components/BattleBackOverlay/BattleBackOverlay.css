@@ -141,136 +141,242 @@
   top: 0.15em;
 }
 
-/* ── Live voting area ────────────────────────────────────────────────────── */
-.bb-overlay__voting {
-  position: relative;
+/* ── Live voting area (Memory Wall) ─────────────────────────────────────── */
+
+/* Full-screen broadcast wrapper — sits on top of the dim layer, covers the
+   entire overlay so the game screen is completely hidden during the vote. */
+.bb-wall {
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: 90%;
-  max-width: 400px;
-  max-height: 92vh;
-  overflow-y: auto;
-  gap: 0.75rem;
+  background: linear-gradient(180deg, #080818 0%, #130020 100%);
+  overflow: hidden;
 }
 
-.bb-overlay__voting-header {
-  text-align: center;
-  padding: 1rem 0 0.5rem;
+/* ── Broadcast header ──────────────────────────────────────────────────── */
+.bb-wall__header {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.65);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.4);
+  padding: 0.55rem 1rem;
 }
 
-.bb-overlay__voting-subtitle {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-/* ── Candidate list ──────────────────────────────────────────────────────── */
-.bb-overlay__candidate-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.bb-wall__header-inner {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.bb-overlay__candidate {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 0.75rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: opacity 0.4s ease, filter 0.5s ease;
-}
-
-.bb-overlay__candidate--eliminated {
-  opacity: 0.38;
-  filter: grayscale(1);
-}
-
-.bb-overlay__candidate-avatar {
-  position: relative;
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: visible;
-}
-
-.bb-overlay__avatar-img {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.bb-overlay__eliminated-cross {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  color: #ef4444;
-  font-weight: 900;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+.bb-wall__brand {
+  font-size: 1.1rem;
   line-height: 1;
 }
 
-.bb-overlay__candidate-info {
+.bb-wall__brand-title {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.bb-overlay__candidate-name {
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
   color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bb-overlay__candidate-status {
-  font-size: 0.72rem;
-  color: #ef4444;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.bb-overlay__bar-wrap {
+.bb-wall__live-badge {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  overflow: visible;
-  position: relative;
+  gap: 0.3rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
 }
 
-.bb-overlay__bar {
-  height: 100%;
-  background: linear-gradient(90deg, #f97316, #fb923c);
-  border-radius: 4px;
-  transition: width 0.35s ease;
-  min-width: 2px;
+.bb-wall__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: bbLivePulse 1.2s ease-in-out infinite;
 }
 
-.bb-overlay__pct {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+@keyframes bbLivePulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.4; transform: scale(0.65); }
+}
+
+/* ── Scrolling ticker ──────────────────────────────────────────────────── */
+.bb-wall__ticker-wrap {
+  flex-shrink: 0;
+  overflow: hidden;
   white-space: nowrap;
-  min-width: 2.8rem;
-  text-align: right;
+  background: rgba(249, 115, 22, 0.1);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.22);
+  padding: 0.22rem 0;
+}
+
+.bb-wall__ticker {
+  display: inline-block;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  animation: bbTicker 20s linear infinite;
+}
+
+@keyframes bbTicker {
+  0%   { transform: translateX(0);    }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Memory wall portrait grid ─────────────────────────────────────────── */
+.bb-wall__grid {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 0.55rem;
+  align-content: center;
+  overflow-y: auto;
+}
+
+/* ── Individual tile ───────────────────────────────────────────────────── */
+.bb-wall__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  transition: opacity 0.4s ease;
+}
+
+.bb-wall__tile--eliminated {
+  opacity: 0.5;
+}
+
+/* ── Ring gauge wrapper ────────────────────────────────────────────────── */
+.bb-wall__ring-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+/* Scanline/glitch flash fires once when tile becomes eliminated */
+.bb-wall__tile--eliminated .bb-wall__ring-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 0, 0, 0.09) 3px,
+    rgba(255, 0, 0, 0.09) 4px
+  );
+  pointer-events: none;
+  animation: bbGlitch 0.55s ease 0.05s 1 forwards;
+}
+
+@keyframes bbGlitch {
+  0%   { opacity: 0.9; clip-path: inset(5% 0 85% 0);  }
+  20%  { clip-path: inset(55% 0 20% 0);               }
+  40%  { clip-path: inset(25% 0 55% 0); opacity: 0.7; }
+  70%  { clip-path: inset(75% 0 8% 0);                }
+  100% { opacity: 0;  clip-path: inset(0 0 0 0);      }
+}
+
+.bb-wall__ring-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Portrait photo */
+.bb-wall__avatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: filter 0.5s ease;
+}
+
+.bb-wall__tile--eliminated .bb-wall__avatar {
+  filter: grayscale(1) brightness(0.5);
+}
+
+/* ── ELIMINATED stamp ──────────────────────────────────────────────────── */
+.bb-wall__elim-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-align: center;
+  line-height: 1.15;
+  padding: 0.14rem 0.28rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+  animation: bbStampIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bbStampIn {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-15deg) scale(0.3); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(-15deg) scale(1);   }
+}
+
+/* ── Tile name + percentage ────────────────────────────────────────────── */
+.bb-wall__tile-name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 76px;
+}
+
+.bb-wall__tile-pct {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #f97316;
+}
+
+/* ── Countdown footer strip ────────────────────────────────────────────── */
+.bb-wall__footer {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-top: 1px solid rgba(249, 115, 22, 0.4);
+  padding: 0.55rem 1rem;
+  text-align: center;
+}
+
+.bb-wall__footer-text {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.82);
+  text-transform: uppercase;
 }
 
 /* ── Winner avatar ───────────────────────────────────────────────────────── */
@@ -308,10 +414,16 @@
   .bb-overlay__winner-avatar {
     animation: none !important;
   }
-  .bb-overlay__bar {
+  .bb-wall__ticker,
+  .bb-wall__live-dot,
+  .bb-wall__elim-stamp,
+  .bb-wall__ring-wrap::after {
+    animation: none !important;
+  }
+  .bb-wall__ring-svg circle {
     transition: none !important;
   }
-  .bb-overlay__candidate {
+  .bb-wall__avatar {
     transition: none !important;
   }
 }
