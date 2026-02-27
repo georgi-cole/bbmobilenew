@@ -1225,6 +1225,7 @@ export default function GameScreen() {
           competitorIds={spectatorLegacyPayload.competitorIds}
           variant={spectatorLegacyPayload.variant}
           minigameId={spectatorLegacyPayload.minigameId}
+          initialWinnerId={spectatorLegacyPayload.winnerId}
           onDone={handleSpectatorLegacyDone}
         />
       )}
