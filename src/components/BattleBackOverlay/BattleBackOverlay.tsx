@@ -15,7 +15,7 @@
  *  onComplete  — Called with the winning player ID when the overlay closes.
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
@@ -30,6 +30,7 @@ interface Props {
 type Step = 'announcement' | 'info' | 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
+const COUNTDOWN_START = Math.floor(ELIM_INTERVAL_MS / 1000);
 /** Centre and radius of the SVG danger-zone ring (px inside a 76×76 viewBox). */
 const RING_CX = 38;
 const RING_CY = 38;
@@ -53,37 +54,32 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
     tickIntervalMs: 400,
   });
 
-  // Countdown strip: counts down from floor(ELIM_INTERVAL_MS/1000) to 0,
-  // resetting each time a new elimination is detected.
-  const [countdown, setCountdown] = useState(Math.floor(ELIM_INTERVAL_MS / 1000));
-  const prevElimLenRef = useRef(0);
-  useEffect(() => {
-    if (eliminated.length > prevElimLenRef.current) {
-      prevElimLenRef.current = eliminated.length;
-      setCountdown(Math.floor(ELIM_INTERVAL_MS / 1000));
-    }
-  }, [eliminated]);
+  // Countdown strip: counts down from COUNTDOWN_START to 0.
+  // Adding `eliminated.length` to deps re-starts the effect (and resets the
+  // countdown) each time a candidate is eliminated.  The reset is scheduled
+  // via setTimeout so setState is called from a callback, not the effect body.
+  const [countdown, setCountdown] = useState(COUNTDOWN_START);
   useEffect(() => {
     if (step !== 'voting' || isComplete) return;
+    const resetId = setTimeout(() => setCountdown(COUNTDOWN_START), 0);
     const id = setInterval(
       () => setCountdown((prev) => Math.max(0, prev - 1)),
       1000,
     );
-    return () => clearInterval(id);
-  }, [step, isComplete]);
+    return () => {
+      clearTimeout(resetId);
+      clearInterval(id);
+    };
+  }, [step, isComplete, eliminated.length]);
 
-  // When voting finishes, transition to winner step automatically.
-  useEffect(() => {
-    if (isComplete && step === 'voting') {
-      setStep('winner');
-    }
-  }, [isComplete, step]);
+  // Derive winner step from isComplete to avoid a setState-in-effect.
+  const displayStep = (isComplete && step === 'voting') ? 'winner' : step;
 
-  function handleClose() {
+  const handleClose = useCallback(() => {
     if (firedRef.current || !winnerId) return;
     firedRef.current = true;
     onComplete(winnerId);
-  }
+  }, [winnerId, onComplete]);
 
   return (
     <div
@@ -95,7 +91,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
       <div className="bb-overlay__dim" />
 
       {/* ── Step 1: Announcement ─────────────────────────────────────────── */}
-      {step === 'announcement' && (
+      {displayStep === 'announcement' && (
         <div
           className="bb-overlay__card bb-overlay__card--announcement"
           onClick={() => setStep('info')}
@@ -113,7 +109,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
       )}
 
       {/* ── Step 2: Info ─────────────────────────────────────────────────── */}
-      {step === 'info' && (
+      {displayStep === 'info' && (
         <div
           className="bb-overlay__card bb-overlay__card--info"
           onClick={() => setStep('voting')}
@@ -134,7 +130,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
       )}
 
       {/* ── Step 3: Memory Wall — Live Voting ────────────────────────────── */}
-      {step === 'voting' && (
+      {displayStep === 'voting' && (
         <div className="bb-wall" role="region" aria-label="Live Battle Back voting">
 
           {/* Broadcast header */}
@@ -230,7 +226,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
       )}
 
       {/* ── Step 4: Winner ───────────────────────────────────────────────── */}
-      {step === 'winner' && winnerId && (
+      {displayStep === 'winner' && winnerId && (
         <div
           className="bb-overlay__card bb-overlay__card--winner"
           onClick={handleClose}

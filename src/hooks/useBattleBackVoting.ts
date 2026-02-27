@@ -11,7 +11,7 @@
  * keeping the same returned interface.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useReducer, useEffect, useRef, useCallback } from 'react';
 
 export interface BattleBackVoteState {
   /** Current vote percentages keyed by candidate ID (0–100, sum ≈ 100). */
@@ -82,6 +82,52 @@ function driftPercentages(
   return toIntPercentages(next);
 }
 
+// ── Internal reducer ─────────────────────────────────────────────────────────
+
+type VotingState = {
+  active: string[];
+  pcts: number[];
+  eliminated: string[];
+  winnerId: string | null;
+  isComplete: boolean;
+};
+
+type VotingAction =
+  | { type: 'reset'; active: string[]; pcts: number[] }
+  | { type: 'drift'; pcts: number[] }
+  | { type: 'eliminate'; remaining: string[]; pcts: number[]; lowestId: string; winnerId: string | null };
+
+function votingReducer(state: VotingState, action: VotingAction): VotingState {
+  switch (action.type) {
+    case 'reset':
+      return { active: action.active, pcts: action.pcts, eliminated: [], winnerId: null, isComplete: false };
+    case 'drift':
+      return { ...state, pcts: action.pcts };
+    case 'eliminate':
+      return {
+        ...state,
+        active: action.remaining,
+        pcts: action.pcts,
+        eliminated: [...state.eliminated, action.lowestId],
+        winnerId: action.winnerId,
+        isComplete: action.winnerId !== null,
+      };
+  }
+}
+
+function makeInitialState(candidateList: string[], rngSeed: number): VotingState {
+  const rng = mulberry32(rngSeed);
+  return {
+    active: [...candidateList],
+    pcts: randomPercentages(rng, candidateList.length),
+    eliminated: [],
+    winnerId: null,
+    isComplete: false,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function useBattleBackVoting({
   candidates,
   seed,
@@ -90,58 +136,48 @@ export function useBattleBackVoting({
 }: Options): BattleBackVoteState {
   const rngRef = useRef(mulberry32(seed));
 
-  // Build initial vote state from candidates
-  const [eliminated, setEliminated] = useState<string[]>([]);
-  const [winnerId, setWinnerId] = useState<string | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
-
-  // Track active candidates and their percentages as parallel arrays so
-  // ordering is stable (React state must be serialisable).
-  const [active, setActive] = useState<string[]>(() => [...candidates]);
-  const [pcts, setPcts] = useState<number[]>(() => {
-    const rng = mulberry32(seed);
-    return randomPercentages(rng, candidates.length);
-  });
+  // All mutable voting state in a single reducer so the reset effect only
+  // needs one dispatch call (satisfies react-hooks/set-state-in-effect).
+  const [state, dispatch] = useReducer(
+    votingReducer,
+    undefined,
+    () => makeInitialState(candidates, seed),
+  );
 
   // Stable refs so interval callbacks always see fresh state without
   // creating new intervals.
-  const activeRef = useRef(active);
-  const pctsRef = useRef(pcts);
-  const eliminatedRef = useRef(eliminated);
-  useEffect(() => { activeRef.current = active; }, [active]);
-  useEffect(() => { pctsRef.current = pcts; }, [pcts]);
-  useEffect(() => { eliminatedRef.current = eliminated; }, [eliminated]);
+  const activeRef = useRef(state.active);
+  const pctsRef = useRef(state.pcts);
+  const eliminatedRef = useRef(state.eliminated);
+  useEffect(() => { activeRef.current = state.active; }, [state.active]);
+  useEffect(() => { pctsRef.current = state.pcts; }, [state.pcts]);
+  useEffect(() => { eliminatedRef.current = state.eliminated; }, [state.eliminated]);
 
-  // Reset simulation and re-seed RNG when seed changes
+  // Reset simulation and re-seed RNG when seed or candidates change.
+  // Single dispatch satisfies react-hooks/set-state-in-effect.
   useEffect(() => {
-    // Fresh initial state for a new Battle Back session
     const nextActive = [...candidates];
     const baseRng = mulberry32(seed);
     const initialPcts = randomPercentages(baseRng, candidates.length);
 
-    // Update RNG used for drift (XOR with twist-specific constant)
     rngRef.current = mulberry32((seed ^ 0x5a7d3c1e) >>> 0);
-
-    // Reset React state
-    setActive(nextActive);
-    setPcts(initialPcts);
-    setEliminated([]);
-    setWinnerId(null);
-    setIsComplete(false);
 
     // Ensure interval callbacks see the reset state immediately
     activeRef.current = nextActive;
     pctsRef.current = initialPcts;
     eliminatedRef.current = [];
+
+    dispatch({ type: 'reset', active: nextActive, pcts: initialPcts });
   }, [seed, candidates]);
+
   // ── Percentage drift tick ───────────────────────────────────────────────
   useEffect(() => {
-    if (isComplete) return;
+    if (state.isComplete) return;
     const id = setInterval(() => {
-      setPcts((prev) => driftPercentages(prev, rngRef.current, 5));
+      dispatch({ type: 'drift', pcts: driftPercentages(pctsRef.current, rngRef.current, 5) });
     }, tickIntervalMs);
     return () => clearInterval(id);
-  }, [isComplete, tickIntervalMs]);
+  }, [state.isComplete, tickIntervalMs]);
 
   // ── Elimination tick ─────────────────────────────────────────────────────
   const eliminateLowest = useCallback(() => {
@@ -164,26 +200,25 @@ export function useBattleBackVoting({
     const bumped = remainingPcts.map((v) => v + (v / total) * freed);
     const newPcts = toIntPercentages(bumped);
 
-    setEliminated((prev) => [...prev, lowestId]);
-    setActive(remaining);
-    setPcts(newPcts);
-
-    if (remaining.length === 1) {
-      setWinnerId(remaining[0]);
-      setIsComplete(true);
-    }
+    dispatch({
+      type: 'eliminate',
+      remaining,
+      pcts: newPcts,
+      lowestId,
+      winnerId: remaining.length === 1 ? remaining[0] : null,
+    });
   }, []);
 
   useEffect(() => {
-    if (isComplete) return;
+    if (state.isComplete) return;
     const id = setInterval(eliminateLowest, eliminationIntervalMs);
     return () => clearInterval(id);
-  }, [isComplete, eliminationIntervalMs, eliminateLowest]);
+  }, [state.isComplete, eliminationIntervalMs, eliminateLowest]);
 
   // ── Build votes map ──────────────────────────────────────────────────────
   const votes: Record<string, number> = {};
-  active.forEach((id, i) => { votes[id] = pcts[i] ?? 0; });
-  eliminated.forEach((id) => { votes[id] = 0; });
+  state.active.forEach((id, i) => { votes[id] = state.pcts[i] ?? 0; });
+  state.eliminated.forEach((id) => { votes[id] = 0; });
 
-  return { votes, eliminated, winnerId, isComplete };
+  return { votes, eliminated: state.eliminated, winnerId: state.winnerId, isComplete: state.isComplete };
 }
