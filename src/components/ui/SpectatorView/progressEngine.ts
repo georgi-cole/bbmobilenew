@@ -25,6 +25,8 @@ export interface SpectatorSimulationState {
   phase: 'simulating' | 'reconciling' | 'revealed';
   /** The authoritative winner ID once known. */
   authoritativeWinnerId: string | null;
+  /** Simulation progress 0–99 during 'simulating', 100 when complete. */
+  simPct: number;
 }
 
 export interface UseSpectatorSimulationOptions {
@@ -79,6 +81,7 @@ export function useSpectatorSimulation({
     competitors: competitorIds.map((id) => ({ id, score: 0, isWinner: false })),
     phase: initialWinnerId ? 'reconciling' : 'simulating',
     authoritativeWinnerId: initialWinnerId ?? null,
+    simPct: initialWinnerId ? 100 : 0,
   }));
 
   // Sync onReconciled callback via effect (not during render) to satisfy
@@ -94,6 +97,7 @@ export function useSpectatorSimulation({
       ...prev,
       phase: 'reconciling',
       authoritativeWinnerId: winnerId,
+      simPct: 100,
       competitors: prev.competitors.map((c) => ({
         ...c,
         score: c.id === winnerId ? 100 : Math.min(c.score, 85),
@@ -163,6 +167,7 @@ export function useSpectatorSimulation({
     tickRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progress = clamp(elapsed / SIM_DURATION_MS, 0, 1);
+      const simPct = Math.min(99, Math.round(progress * 100));
 
       setState((prev) => {
         if (prev.phase !== 'simulating') return prev;
@@ -173,7 +178,7 @@ export function useSpectatorSimulation({
           return { ...c, score: clamp(c.score + delta, 0, cap) };
         });
 
-        return { ...prev, competitors: updated };
+        return { ...prev, competitors: updated, simPct };
       });
 
       if (elapsed >= SIM_DURATION_MS) {

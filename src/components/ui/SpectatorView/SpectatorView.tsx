@@ -10,6 +10,7 @@
  *   variant         — visual style ('holdwall' | 'trivia' | 'maze')
  *   onDone          — called once the reveal animation completes
  *   showImmediately — skip the entry animation (default false)
+ *   roundLabel      — e.g. "Final 3 · Part 3" shown in the HUD
  */
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
@@ -32,6 +33,7 @@ export interface SpectatorViewProps {
   variant?: SpectatorVariant;
   onDone?: () => void;
   showImmediately?: boolean;
+  roundLabel?: string;
 }
 
 // ── Window type augmentation ──────────────────────────────────────────────────
@@ -52,6 +54,18 @@ const VARIANT_LABELS: Record<SpectatorVariant, string> = {
   maze:     'Maze Run',
 };
 
+const VARIANT_ICONS: Record<SpectatorVariant, string> = {
+  holdwall: '🧱',
+  trivia:   '❓',
+  maze:     '🌀',
+};
+
+const VARIANT_SIM_STATUS: Record<SpectatorVariant, string> = {
+  holdwall: 'Simulating endurance…',
+  trivia:   'Calculating scores…',
+  maze:     'Generating maze paths…',
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SpectatorView({
@@ -60,6 +74,7 @@ export default function SpectatorView({
   variant = 'holdwall',
   onDone,
   showImmediately = false,
+  roundLabel = 'Final 3 · Part 3',
 }: SpectatorViewProps) {
   const players = useAppSelector((s) => s.game.players);
   const hohId   = useAppSelector((s) => s.game.hohId);
@@ -205,7 +220,23 @@ export default function SpectatorView({
       ? `${winnerName} wins!`
       : simState.phase === 'reconciling'
       ? 'Revealing winner…'
-      : 'Competition in progress…';
+      : VARIANT_SIM_STATUS[variant];
+
+  // ── HUD timer text ────────────────────────────────────────────────────────
+
+  const hudTimerText = simState.phase === 'simulating'
+    ? simState.simPct >= 90
+      ? 'Reveal soon…'
+      : `Sim ${simState.simPct}%`
+    : simState.phase === 'reconciling'
+    ? 'Revealing…'
+    : '';
+
+  const hudPillLabel = simState.phase === 'simulating'
+    ? 'Simulating'
+    : simState.phase === 'reconciling'
+    ? 'Reveal'
+    : 'Result';
 
   // ── Render via portal ─────────────────────────────────────────────────────
 
@@ -218,16 +249,41 @@ export default function SpectatorView({
       data-phase={simState.phase}
       data-minigame-id={minigameId}
     >
-      {/* Backdrop */}
+      {/* Animated backdrop */}
       <div className="spectator-overlay__backdrop" aria-hidden="true" />
+
+      {/* Broadcast HUD bar */}
+      <div className="spectator-hud" aria-hidden="true">
+        <div className="spectator-hud__left">
+          <span className="spectator-hud__icon">{VARIANT_ICONS[variant]}</span>
+          <div>
+            <div className="spectator-hud__now-playing">Now Playing</div>
+            <div className="spectator-hud__round">{roundLabel}</div>
+          </div>
+        </div>
+        <div className="spectator-hud__right">
+          <span className={`spectator-hud__pill spectator-hud__pill--${simState.phase}`}>
+            <span className="spectator-hud__pill-dot" />
+            {hudPillLabel}
+          </span>
+          {hudTimerText && (
+            <span className="spectator-hud__timer">{hudTimerText}</span>
+          )}
+        </div>
+      </div>
 
       {/* Content card */}
       <div className="spectator-overlay__card">
         {/* Header */}
         <header className="spectator-overlay__header">
-          <h2 className="spectator-overlay__title">
-            {VARIANT_LABELS[variant]}
-          </h2>
+          <div className="spectator-overlay__header-row">
+            <h2 className="spectator-overlay__title">
+              {VARIANT_ICONS[variant]} {VARIANT_LABELS[variant]}
+            </h2>
+            <span className={`spectator-overlay__status-chip spectator-overlay__status-chip--${simState.phase}`}>
+              {hudPillLabel}
+            </span>
+          </div>
           <p
             className="spectator-overlay__status"
             aria-live="polite"
@@ -237,7 +293,7 @@ export default function SpectatorView({
           </p>
         </header>
 
-        {/* Competitor chips */}
+        {/* Competitor chips (cast row) */}
         <div className="spectator-overlay__competitors" aria-label="Competitors">
           {simState.competitors.map((c) => (
             <div
@@ -260,6 +316,13 @@ export default function SpectatorView({
                   👑
                 </span>
               )}
+              {simState.phase === 'simulating' && !c.isWinner && (
+                <span className="sv-thinking-dots" aria-hidden="true">
+                  <span className="sv-thinking-dot" />
+                  <span className="sv-thinking-dot" />
+                  <span className="sv-thinking-dot" />
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -277,6 +340,7 @@ export default function SpectatorView({
           <TriviaVariant
             competitors={simState.competitors}
             phase={simState.phase}
+            simPct={simState.simPct}
             resolveAvatar={resolveAvatarForId}
             getPlayerName={getPlayerName}
           />
