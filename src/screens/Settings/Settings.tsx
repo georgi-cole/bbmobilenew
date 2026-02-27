@@ -311,7 +311,7 @@ export default function Settings() {
 
             <div className="settings-row settings-row--col">
               <label className="settings-row__label">
-                Cast Size — {settings.gameUX.castSize}
+                Houseguests
               </label>
               <input
                 type="number"

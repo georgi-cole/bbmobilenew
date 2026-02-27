@@ -11,6 +11,7 @@ import type { GameState, Player, Phase, TvEvent } from '../types';
 import HOUSEGUESTS from '../data/houseguests';
 import { mulberry32, seededPickN } from './rng';
 import { loadUserProfile } from './userProfileSlice';
+import { loadSettings } from './settingsSlice';
 import { SOCIAL_INITIAL_STATE } from '../social/constants';
 
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
@@ -34,9 +35,13 @@ function buildUserPlayer(): Player {
 }
 
 function buildInitialPlayers(): Player[] {
+  const raw = loadSettings().gameUX.castSize;
+  const rosterSize = Number.isFinite(raw)
+    ? Math.min(16, Math.max(4, Math.floor(raw)))
+    : GAME_ROSTER_SIZE;
   const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
-  const picked = seededPickN(rng, HOUSEGUEST_POOL, GAME_ROSTER_SIZE - 1).map((hg) => ({
+  const picked = seededPickN(rng, HOUSEGUEST_POOL, rosterSize - 1).map((hg) => ({
     ...hg,
     status: 'active' as const,
   }));

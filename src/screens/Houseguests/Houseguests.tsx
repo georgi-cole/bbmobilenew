@@ -49,7 +49,7 @@ export default function Houseguests() {
     <div className="placeholder-screen houseguests-screen">
       <h1 className="placeholder-screen__title">👥 Houseguests</h1>
 
-      <HouseguestGrid houseguests={houseguests} gridSize={gridSize} placeholderCount={placeholderCount} />
+      <HouseguestGrid houseguests={houseguests} gridSize={gridSize} placeholderCount={placeholderCount} compact={settings.gameUX.compactRoster} />
 
       {selectedPlayer && (
         <HouseguestProfile player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />

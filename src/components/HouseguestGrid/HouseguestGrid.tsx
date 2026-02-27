@@ -36,6 +36,8 @@ type Props = {
   gridSize?: number
   /** Number of placeholder tiles to append after real houseguests. */
   placeholderCount?: number
+  /** When true, reduces avatar/tile size and spacing for a denser layout. */
+  compact?: boolean
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -52,6 +54,7 @@ export default function HouseguestGrid({
   footerSelector = '.nav-bar',
   gridSize,
   placeholderCount = 0,
+  compact = false,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
 
@@ -84,7 +87,7 @@ export default function HouseguestGrid({
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
 
   return (
-    <section ref={containerRef} className={styles.container} aria-labelledby="houseguests-heading">
+    <section ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} aria-labelledby="houseguests-heading">
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
           HOUSEGUESTS

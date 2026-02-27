@@ -49,6 +49,7 @@ import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
 import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay'
+import { selectSettings } from '../../store/settingsSlice'
 import './GameScreen.css'
 
 /**
@@ -73,6 +74,7 @@ export default function GameScreen() {
   const dispatch = useAppDispatch()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
+  const settings = useAppSelector(selectSettings)
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
@@ -223,7 +225,7 @@ export default function GameScreen() {
   // The ref is checked FIRST to prevent a race where a rapid re-render could
   // dispatch advance() a second time before the ref is set.
   useEffect(() => {
-    if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT) {
+    if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT && settings.gameUX.spectatorMode) {
       spectatorF3AdvancedRef.current = true
       const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
       setSpectatorF3CompetitorIds(finalists)
@@ -261,9 +263,17 @@ export default function GameScreen() {
     playersRef.current = game.players
   }, [game.players])
 
+  // Keep a ref to spectatorMode so the event handler reads the current value
+  // without needing to re-register on every settings change.
+  const spectatorModeRef = useRef(settings.gameUX.spectatorMode)
+  useEffect(() => {
+    spectatorModeRef.current = settings.gameUX.spectatorMode
+  }, [settings.gameUX.spectatorMode])
+
   useEffect(() => {
     if (!FEATURE_SPECTATOR_REACT) return
     function handleSpectatorShow(e: Event) {
+      if (!spectatorModeRef.current) return
       const detail = (e as CustomEvent<{
         competitorIds?: string[]
         variant?: string

@@ -29,7 +29,8 @@ const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
 export default function AppShell() {
   const phase = useAppSelector((s) => s.game.phase);
   const finale = useAppSelector(selectFinale);
-  const { display } = useAppSelector(selectSettings);
+  const settings = useAppSelector(selectSettings);
+  const { display } = settings;
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
@@ -44,6 +45,10 @@ export default function AppShell() {
   useEffect(() => {
     document.body.classList.toggle('high-contrast', display.highContrast);
   }, [display.highContrast]);
+
+  useEffect(() => {
+    document.body.classList.toggle('no-animations', !settings.gameUX.animations);
+  }, [settings.gameUX.animations]);
 
   return (
     <div className="app-shell">

@@ -33,10 +33,17 @@ export default function NominationAnimator({
 }: NominationAnimatorProps) {
   const [animState, setAnimState] = useState<AnimState>('entering');
 
+  // Fast-path: skip animation entirely when the global no-animations class is set.
   useEffect(() => {
+    if (document.body.classList.contains('no-animations')) {
+      onDone();
+      return;
+    }
+
     // After the CSS enter transition completes (~600 ms), hold.
     const enterTimer = setTimeout(() => setAnimState('holding'), 600);
     return () => clearTimeout(enterTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

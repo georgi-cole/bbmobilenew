@@ -17,6 +17,7 @@ import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
+import settingsReducer from '../../src/store/settingsSlice';
 import type { GameState, Player } from '../../src/types';
 import CeremonyOverlay from '../../src/components/CeremonyOverlay/CeremonyOverlay';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
@@ -89,6 +90,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       challenge: challengeReducer,
       social: socialReducer,
       ui: uiReducer,
+      settings: settingsReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
   });
