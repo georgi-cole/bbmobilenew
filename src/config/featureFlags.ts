@@ -14,3 +14,13 @@
  */
 export const FEATURE_SOCIAL_V2: boolean =
   (import.meta.env.VITE_FEATURE_SOCIAL_V2 ?? 'true') !== 'false';
+
+/**
+ * FEATURE_SPECTATOR_REACT — when true (default) the React SpectatorView
+ * overlay is mounted by GameScreen during Final 3 Part 3 when the human
+ * player is a spectator (not a finalist), and also in response to the
+ * 'spectator:show' CustomEvent dispatched by the legacy adapter.
+ * Set VITE_FEATURE_SPECTATOR_REACT=false in .env to disable it.
+ */
+export const FEATURE_SPECTATOR_REACT: boolean =
+  (import.meta.env.VITE_FEATURE_SPECTATOR_REACT ?? 'true') !== 'false';

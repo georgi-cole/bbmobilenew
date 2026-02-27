@@ -40,8 +40,10 @@ import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
-import { FEATURE_SOCIAL_V2 } from '../../config/featureFlags'
+import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
+import SpectatorView from '../../components/ui/SpectatorView'
+import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
 import './GameScreen.css'
@@ -198,6 +200,96 @@ export default function GameScreen() {
       dispatch(startChallenge(game.minigameContext.seed, game.minigameContext.participants))
     }
   }, [game.phase, pendingChallenge, game.minigameContext, dispatch])
+
+  // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
+  // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
+  // battle as a spectator. We immediately dispatch advance() to let the AI
+  // compute the authoritative winner (sets game.hohId), and show SpectatorView
+  // which subscribes to game.hohId from Redux and reconciles to that winner.
+  const [spectatorF3Active, setSpectatorF3Active] = useState(false)
+  const [spectatorF3CompetitorIds, setSpectatorF3CompetitorIds] = useState<string[]>([])
+  const spectatorF3AdvancedRef = useRef(false)
+
+  const isF3Part3SpectatorPhase =
+    game.phase === 'final3_comp3' &&
+    !!humanPlayer &&
+    humanPlayer.id !== game.f3Part1WinnerId &&
+    humanPlayer.id !== game.f3Part2WinnerId
+
+  // Enter spectator mode on phase arrival; pre-advance to compute the winner.
+  // The ref is checked FIRST to prevent a race where a rapid re-render could
+  // dispatch advance() a second time before the ref is set.
+  useEffect(() => {
+    if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT) {
+      spectatorF3AdvancedRef.current = true
+      const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
+      setSpectatorF3CompetitorIds(finalists)
+      setSpectatorF3Active(true)
+      dispatch(advance())
+    }
+  // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
+  // stable from useAppDispatch and `advance` is a constant action creator, so
+  // including them would not change behavior. `spectatorF3AdvancedRef` is a
+  // ref (not reactive); if its usage changes, update this dep list.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isF3Part3SpectatorPhase])
+
+  const handleSpectatorF3Done = useCallback(() => {
+    setSpectatorF3Active(false)
+    spectatorF3AdvancedRef.current = false
+  }, [])
+
+  // ── Legacy 'spectator:show' event listener ─────────────────────────────────
+  // The legacySpectatorAdapter dispatches this event when window.Spectator.show()
+  // is called by legacy minigame code. The full event payload (variant, minigameId,
+  // winnerId) is stored in state so repeated events update the mounted overlay.
+  const [spectatorLegacyPayload, setSpectatorLegacyPayload] = useState<{
+    competitorIds: string[]
+    variant?: SpectatorVariant
+    minigameId?: string
+    winnerId?: string
+  } | null>(null)
+  const spectatorLegacyActive = spectatorLegacyPayload !== null
+
+  // Keep a ref to the current players list so the event handler always validates
+  // against up-to-date player IDs without needing to re-register on every change.
+  const playersRef = useRef(game.players)
+  useEffect(() => {
+    playersRef.current = game.players
+  }, [game.players])
+
+  useEffect(() => {
+    if (!FEATURE_SPECTATOR_REACT) return
+    function handleSpectatorShow(e: Event) {
+      const detail = (e as CustomEvent<{
+        competitorIds?: string[]
+        variant?: string
+        minigameId?: string
+        winnerId?: string
+      }>).detail
+      const rawIds = detail?.competitorIds ?? []
+      // Validate IDs against the current players list (via ref to avoid stale closure).
+      const validIds = rawIds.filter((id) => playersRef.current.some((p) => p.id === id))
+      if (!validIds.length) return
+      const variant = (['holdwall', 'trivia', 'maze'] as SpectatorVariant[]).includes(
+        detail?.variant as SpectatorVariant,
+      )
+        ? (detail.variant as SpectatorVariant)
+        : undefined
+      setSpectatorLegacyPayload({
+        competitorIds: validIds,
+        variant,
+        minigameId: detail?.minigameId ?? undefined,
+        winnerId: detail?.winnerId ?? undefined,
+      })
+    }
+    window.addEventListener('spectator:show', handleSpectatorShow)
+    return () => window.removeEventListener('spectator:show', handleSpectatorShow)
+  }, []) // registered once; players accessed via ref above
+
+  const handleSpectatorLegacyDone = useCallback(() => {
+    setSpectatorLegacyPayload(null)
+  }, [])
 
   function handleAvatarSelect(player: Player) {
     // Demo: log selection to TV feed when you tap your own avatar
@@ -747,7 +839,9 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showTapRace ||
-    aiTiebreakerPending
+    aiTiebreakerPending ||
+    spectatorF3Active ||
+    spectatorLegacyActive
 
   return (
     <div className="game-screen game-screen-shell">
@@ -1120,6 +1214,30 @@ export default function GameScreen() {
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
+
+      {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
+      {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
+        <SpectatorView
+          key={spectatorF3CompetitorIds.join('-')}
+          competitorIds={spectatorF3CompetitorIds}
+          variant="holdwall"
+          onDone={handleSpectatorF3Done}
+        />
+      )}
+
+      {/* ── SpectatorView — legacy spectator:show event ───────────────────── */}
+      {/* key forces a full remount when the competitor list or minigame changes,
+          because useSpectatorSimulation initialises once per mount (see progressEngine). */}
+      {spectatorLegacyPayload && FEATURE_SPECTATOR_REACT && (
+        <SpectatorView
+          key={`${spectatorLegacyPayload.competitorIds.join('-')}-${spectatorLegacyPayload.minigameId ?? ''}`}
+          competitorIds={spectatorLegacyPayload.competitorIds}
+          variant={spectatorLegacyPayload.variant}
+          minigameId={spectatorLegacyPayload.minigameId}
+          initialWinnerId={spectatorLegacyPayload.winnerId}
+          onDone={handleSpectatorLegacyDone}
+        />
+      )}
 
       {/* ── Dev: trigger nomination animation (dev builds only) ──────────── */}
       {isDev && !awaitingHumanDecision && (
