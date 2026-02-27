@@ -120,13 +120,37 @@ describe('completeBattleBack', () => {
   });
 
   it('marks used=true and stores winnerId', () => {
-    const store = makeStore();
+    const players = makePlayers(10);
+    players[1].status = 'jury';
+    players[2].status = 'jury';
+    const store = makeStore({ players });
     store.dispatch(activateBattleBack({ candidates: ['p1', 'p2'], week: 4 }));
     store.dispatch(completeBattleBack('p1'));
     const bb = store.getState().game.battleBack;
     expect(bb!.used).toBe(true);
     expect(bb!.active).toBe(false);
     expect(bb!.winnerId).toBe('p1');
+  });
+
+  it('is a no-op when the winner is not a juror', () => {
+    // p1 is 'active' (not jury) — validation should reject
+    const store = makeStore();
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+    store.dispatch(completeBattleBack('p1'));
+    const bb = store.getState().game.battleBack;
+    expect(bb!.used).toBe(false);  // validation rejected — twist still pending
+    expect(bb!.active).toBe(true);
+  });
+
+  it('is a no-op when winnerId is not in candidates', () => {
+    const players = makePlayers(10);
+    players[2].status = 'jury';
+    const store = makeStore({ players });
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 })); // p2 not in candidates
+    store.dispatch(completeBattleBack('p2'));
+    const bb = store.getState().game.battleBack;
+    expect(bb!.used).toBe(false);
+    expect(bb!.active).toBe(true);
   });
 
   it('pushes a twist TV event announcing the return', () => {

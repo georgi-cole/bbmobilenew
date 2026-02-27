@@ -14,7 +14,7 @@
  *  onComplete  — Called with the winning player ID when the overlay closes.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
 import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
 import { resolveAvatar } from '../../utils/avatar';
@@ -32,8 +32,12 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
   const [step, setStep] = useState<Step>('announcement');
   const firedRef = useRef(false);
 
+  // Memoize the ID list so the hook's dep array sees a stable reference across
+  // re-renders (candidates list doesn't change during a single Battle Back session).
+  const candidateIds = useMemo(() => candidates.map((c) => c.id), [candidates]);
+
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
-    candidates: candidates.map((c) => c.id),
+    candidates: candidateIds,
     seed,
     eliminationIntervalMs: 3500,
     tickIntervalMs: 400,
@@ -68,7 +72,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
           onClick={() => setStep('info')}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setStep('info')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('info')}
           aria-label="Battle Back announcement — tap to continue"
         >
           <div className="bb-overlay__emoji" aria-hidden="true">🔥</div>
@@ -86,7 +90,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
           onClick={() => setStep('voting')}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setStep('voting')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('voting')}
           aria-label="Battle Back info — tap to start voting"
         >
           <div className="bb-overlay__emoji" aria-hidden="true">🏆</div>
