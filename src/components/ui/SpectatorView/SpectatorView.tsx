@@ -34,6 +34,8 @@ export interface SpectatorViewProps {
   onDone?: () => void;
   showImmediately?: boolean;
   roundLabel?: string;
+  /** Pre-known authoritative winner (e.g. from legacy adapter's winnerId). */
+  initialWinnerId?: string;
 }
 
 // ── Window type augmentation ──────────────────────────────────────────────────
@@ -75,6 +77,7 @@ export default function SpectatorView({
   onDone,
   showImmediately = false,
   roundLabel = 'Final 3 · Part 3',
+  initialWinnerId: propInitialWinnerId,
 }: SpectatorViewProps) {
   const players = useAppSelector((s) => s.game.players);
   const hohId   = useAppSelector((s) => s.game.hohId);
@@ -102,7 +105,9 @@ export default function SpectatorView({
   // hohId from Redux store — may be set before or after mount
   const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
 
-  const initialWinner = windowAuthWinner ?? reduxWinner ?? null;
+  const initialWinner = windowAuthWinner ?? reduxWinner
+    ?? (propInitialWinnerId && competitorIds.includes(propInitialWinnerId) ? propInitialWinnerId : null)
+    ?? null;
 
   // ── Simulation hook ───────────────────────────────────────────────────────
 
