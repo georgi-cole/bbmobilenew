@@ -35,7 +35,10 @@ function buildUserPlayer(): Player {
 }
 
 function buildInitialPlayers(): Player[] {
-  const rosterSize = loadSettings().gameUX.castSize ?? GAME_ROSTER_SIZE;
+  const raw = loadSettings().gameUX.castSize;
+  const rosterSize = Number.isFinite(raw)
+    ? Math.min(16, Math.max(4, Math.floor(raw)))
+    : GAME_ROSTER_SIZE;
   const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
   const picked = seededPickN(rng, HOUSEGUEST_POOL, rosterSize - 1).map((hg) => ({

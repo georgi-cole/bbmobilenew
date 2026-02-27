@@ -70,7 +70,10 @@ function pickHouseguests(rosterSize = GAME_ROSTER_SIZE): Player[] {
 }
 
 function buildInitialPlayers(): Player[] {
-  const rosterSize = loadSettings().gameUX.castSize ?? GAME_ROSTER_SIZE;
+  const raw = loadSettings().gameUX.castSize;
+  const rosterSize = Number.isFinite(raw)
+    ? Math.min(16, Math.max(4, Math.floor(raw)))
+    : GAME_ROSTER_SIZE;
   return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
 }
 
