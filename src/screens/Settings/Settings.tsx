@@ -264,6 +264,29 @@ export default function Settings() {
               />
             </div>
 
+            {settings.sim.enableTwists && (
+              <div className="settings-row settings-row--col">
+                <label className="settings-row__label">
+                  Battle Back Chance — {settings.sim.battleBackChance ?? 30}%
+                </label>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={settings.sim.battleBackChance ?? 30}
+                  onChange={(e) =>
+                    dispatch(setSim({ battleBackChance: Number(e.target.value) }))
+                  }
+                  aria-label="Battle Back chance percentage"
+                />
+                <p className="settings-helper-text">
+                  Probability that a Jury Return twist activates after each eligible eviction (requires Twists on).
+                </p>
+              </div>
+            )}
+
             <div className="settings-row">
               <label className="settings-row__label">Spectator Mode</label>
               <input

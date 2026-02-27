@@ -133,6 +133,30 @@ export interface TvEvent {
   source?: ActivitySource;
 }
 
+// ─── Battle Back / Jury Return twist ─────────────────────────────────────────
+
+/**
+ * State for the one-time-per-season "Jury Return / Battle Back" twist.
+ * Stored in GameState.battleBack; undefined when the twist has never been
+ * attempted (first-time lazy initialisation).
+ */
+export interface BattleBackState {
+  /** True once the twist has fired (or been decided) this season — prevents repeats. */
+  used: boolean;
+  /** True while the full-screen Battle Back overlay is open. Blocks advance(). */
+  active: boolean;
+  /** Week number when the twist was decided (week the eviction happened). Null before decided. */
+  weekDecided: number | null;
+  /** IDs of jurors eligible to compete in the Battle Back. */
+  candidates: string[];
+  /** IDs eliminated during the live voting round (in elimination order). */
+  eliminated: string[];
+  /** Simulated public vote tallies keyed by candidate ID (whole integers). */
+  votes: Record<string, number>;
+  /** ID of the winning juror who returns to the house; null while voting is in progress. */
+  winnerId: string | null;
+}
+
 export interface GameState {
   season: number;
   week: number;
@@ -262,6 +286,11 @@ export interface GameState {
    * Set this field in game logic when a twist is introduced.
    */
   twistActive?: boolean;
+  /**
+   * Battle Back / Jury Return twist state.
+   * Undefined until the twist is first attempted.
+   */
+  battleBack?: BattleBackState;
   /**
    * When set, the VoteResultsPopup is shown with the vote tally before
    * advancing. Maps nominee ID → number of votes received.

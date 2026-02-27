@@ -1,6 +1,6 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
-import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession } from '../types';
+import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
@@ -844,6 +844,72 @@ const gameSlice = createSlice({
       pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
     },
 
+    // ─── Battle Back / Jury Return twist actions ──────────────────────────────
+
+    /**
+     * Activate the Battle Back twist after an eligible eviction.
+     * Sets `battleBack.active` (shows full-screen overlay) and records candidates.
+     * Called by the `tryActivateBattleBack` thunk when the probability roll passes.
+     */
+    activateBattleBack(
+      state,
+      action: PayloadAction<{ candidates: string[]; week: number }>,
+    ) {
+      const bb: BattleBackState = {
+        used: false,
+        active: true,
+        weekDecided: action.payload.week,
+        candidates: action.payload.candidates,
+        eliminated: [],
+        votes: {},
+        winnerId: null,
+      };
+      state.battleBack = bb;
+      state.twistActive = true;
+      pushEvent(
+        state,
+        `🔥 TWIST: The Jury Return / Battle Back is underway! A juror will have a chance to return! 🏆`,
+        'twist',
+      );
+    },
+
+    /**
+     * Complete the Battle Back twist — the winning juror returns to the house.
+     * Changes their status from 'jury' to 'active', pushes a TV event,
+     * marks the twist as used, and clears the active overlay flag.
+     */
+    completeBattleBack(state, action: PayloadAction<string>) {
+      const winnerId = action.payload;
+      const winner = state.players.find((p) => p.id === winnerId);
+      if (winner) {
+        winner.status = 'active';
+        pushEvent(
+          state,
+          `🔥 ${winner.name} has survived the Battle Back and RETURNS to the Big Brother house! 🏠✨`,
+          'twist',
+        );
+      }
+      if (state.battleBack) {
+        state.battleBack.active = false;
+        state.battleBack.used = true;
+        state.battleBack.winnerId = winnerId;
+      }
+      state.twistActive = false;
+    },
+
+    /**
+     * Dismiss the Battle Back overlay without a winner (e.g., cancelled or
+     * all candidates were eliminated with no result). Marks the twist as used
+     * so it does not fire again this season.
+     */
+    dismissBattleBack(state) {
+      if (state.battleBack) {
+        state.battleBack.active = false;
+        state.battleBack.used = true;
+      }
+      state.twistActive = false;
+    },
+
     // ─── Debug-only actions ───────────────────────────────────────────────────
     /** Force a specific player to be HOH (debug only). */
     forceHoH(state, action: PayloadAction<string>) {
@@ -999,7 +1065,8 @@ const gameSlice = createSlice({
         state.awaitingPovSaveTarget ||
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
-        state.awaitingFinal3Eviction
+        state.awaitingFinal3Eviction ||
+        state.battleBack?.active
       ) {
         return;
       }
@@ -1696,6 +1763,9 @@ export const {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizeGame,
+  activateBattleBack,
+  completeBattleBack,
+  dismissBattleBack,
   forceHoH,
   forceNominees,
   forcePovWinner,
@@ -1781,4 +1851,49 @@ export const startMinigame =
     // Human present: launch UI and return undefined (UI resolves via completeMinigame)
     dispatch(launchMinigame(session));
     return undefined;
+  };
+
+/**
+ * Attempt to activate the Battle Back / Jury Return twist after an eviction.
+ *
+ * Eligibility:
+ *  - `settings.sim.enableTwists` must be true
+ *  - twist has not been used this season (`!game.battleBack?.used`)
+ *  - at least 3 jurors currently in the game
+ *  - at least 5 active players remaining after the eviction
+ *  - current phase is `eviction_results`
+ *
+ * If eligible, rolls a probability check using `settings.sim.battleBackChance`
+ * (percentage, 0–100; default 30) and a seeded RNG derived from the game seed.
+ *
+ * Returns `true` if the twist was activated (overlay will appear); `false` otherwise.
+ */
+export const tryActivateBattleBack =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.battleBack?.used) return false;
+    if (game.phase !== 'eviction_results') return false;
+
+    const jurors = game.players.filter((p) => p.status === 'jury');
+    const active = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+
+    if (jurors.length < 3) return false;
+    if (active.length < 5) return false;
+
+    const chance = settings.sim.battleBackChance ?? 30;
+    // Use a twist-specific RNG offset so this roll is independent of the main
+    // game seed sequence and does not perturb future HOH/POV/vote outcomes.
+    const rng = mulberry32((game.seed ^ 0xba77eba0) >>> 0);
+    const roll = rng() * 100;
+
+    if (roll >= chance) return false;
+
+    const candidates = jurors.map((p) => p.id);
+    dispatch(activateBattleBack({ candidates, week: game.week }));
+    return true;
   };

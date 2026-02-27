@@ -31,6 +31,8 @@ export interface SettingsState {
     enableFanFavorite: boolean;
     enableTwists: boolean;
     allowSelfEvict: boolean;
+    /** Probability (0–100) that the Battle Back twist activates after an eligible eviction. */
+    battleBackChance: number;
   };
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -64,6 +66,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     enableFanFavorite: false,
     enableTwists: false,
     allowSelfEvict: false,
+    battleBackChance: 30,
   },
   visual: {
     enableZoom: false,
