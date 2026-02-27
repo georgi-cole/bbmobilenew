@@ -1,0 +1,466 @@
+/* ─── BattleBackOverlay ───────────────────────────────────────────────────────
+ * Full-screen overlay for the Jury Return / Battle Back twist.
+ * Orange theme to differentiate from regular gameplay screens.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.bb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: bbFadeIn 0.4s ease;
+}
+
+@keyframes bbFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Semi-transparent dimming layer behind card content */
+.bb-overlay__dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 0;
+}
+
+/* ── Shared card layout ──────────────────────────────────────────────────── */
+.bb-overlay__card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  border-radius: 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  max-width: 360px;
+  width: 90%;
+  gap: 0.6rem;
+  animation: bbCardPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bbCardPop {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Announcement step ───────────────────────────────────────────────────── */
+.bb-overlay__card--announcement {
+  background: linear-gradient(145deg, #f97316 0%, #ea580c 60%, #c2410c 100%);
+  box-shadow: 0 0 60px rgba(249, 115, 22, 0.6), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Info step ───────────────────────────────────────────────────────────── */
+.bb-overlay__card--info {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid rgba(249, 115, 22, 0.5);
+  box-shadow: 0 0 40px rgba(249, 115, 22, 0.3), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Winner step ─────────────────────────────────────────────────────────── */
+.bb-overlay__card--winner {
+  background: linear-gradient(145deg, #f97316 0%, #ea580c 50%, #dc2626 100%);
+  box-shadow: 0 0 80px rgba(249, 115, 22, 0.7), 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+.bb-overlay__emoji {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.bb-overlay__label {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.bb-overlay__title {
+  margin: 0;
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.bb-overlay__title--md {
+  font-size: 1.8rem;
+}
+
+.bb-overlay__subtitle {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.bb-overlay__tap-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.06em;
+}
+
+/* ── Info list ───────────────────────────────────────────────────────────── */
+.bb-overlay__info-list {
+  margin: 0.5rem 0;
+  padding: 0 0.5rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.bb-overlay__info-list li {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  padding-left: 1.2rem;
+  position: relative;
+}
+
+.bb-overlay__info-list li::before {
+  content: '▶';
+  position: absolute;
+  left: 0;
+  color: #f97316;
+  font-size: 0.65rem;
+  top: 0.15em;
+}
+
+/* ── Live voting area (Memory Wall) ─────────────────────────────────────── */
+
+/* Full-screen broadcast wrapper — sits on top of the dim layer, covers the
+   entire overlay so the game screen is completely hidden during the vote.
+   CRT broadcast aesthetic: dark charcoal base, scanlines + warm top-glow. */
+.bb-wall {
+  /* Scanline tuning knobs */
+  --bb-scanline-gap: 3px;
+  --bb-scanline-size: 4px;
+  --bb-scanline-opacity: 0.12;
+
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0d;
+  overflow: hidden;
+}
+
+/* CRT scanlines + warm broadcast glow from the top */
+.bb-wall::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent var(--bb-scanline-gap),
+      rgba(0, 0, 0, var(--bb-scanline-opacity)) var(--bb-scanline-gap),
+      rgba(0, 0, 0, var(--bb-scanline-opacity)) var(--bb-scanline-size)
+    ),
+    radial-gradient(ellipse 140% 45% at 50% 0%, rgba(249, 115, 22, 0.11) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(220, 38, 38, 0.07) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ── Broadcast header ──────────────────────────────────────────────────── */
+.bb-wall__header {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.65);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.4);
+  padding: 0.55rem 1rem;
+}
+
+.bb-wall__header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bb-wall__brand {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.bb-wall__brand-title {
+  flex: 1;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.bb-wall__live-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+}
+
+.bb-wall__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: bbLivePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bbLivePulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.4; transform: scale(0.65); }
+}
+
+/* ── Scrolling ticker ──────────────────────────────────────────────────── */
+.bb-wall__ticker-wrap {
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(249, 115, 22, 0.1);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.22);
+  padding: 0.22rem 0;
+}
+
+.bb-wall__ticker {
+  display: inline-block;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  animation: bbTicker 20s linear infinite;
+}
+
+@keyframes bbTicker {
+  0%   { transform: translateX(0);    }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Memory wall portrait grid ─────────────────────────────────────────── */
+.bb-wall__grid {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 0.55rem;
+  align-content: center;
+  overflow-y: auto;
+}
+
+/* ── Individual tile ───────────────────────────────────────────────────── */
+.bb-wall__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  transition: opacity 0.4s ease;
+}
+
+.bb-wall__tile--eliminated {
+  opacity: 0.5;
+}
+
+/* ── Ring gauge wrapper ────────────────────────────────────────────────── */
+.bb-wall__ring-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+/* Scanline/glitch flash fires once when tile becomes eliminated */
+.bb-wall__tile--eliminated .bb-wall__ring-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 0, 0, 0.09) 3px,
+    rgba(255, 0, 0, 0.09) 4px
+  );
+  pointer-events: none;
+  animation: bbGlitch 0.55s ease 0.05s 1 forwards;
+}
+
+@keyframes bbGlitch {
+  0%   { opacity: 0.9; clip-path: inset(5% 0 85% 0);  }
+  20%  { clip-path: inset(55% 0 20% 0);               }
+  40%  { clip-path: inset(25% 0 55% 0); opacity: 0.7; }
+  70%  { clip-path: inset(75% 0 8% 0);                }
+  100% { opacity: 0;  clip-path: inset(0 0 0 0);      }
+}
+
+.bb-wall__ring-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Danger-zone ring: full light-red circle, pulsing to signal "at risk" */
+.bb-wall__danger-ring {
+  animation: bbDangerPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bbDangerPulse {
+  0%, 100% { opacity: 1;    }
+  50%       { opacity: 0.45; }
+}
+
+/* Portrait photo */
+.bb-wall__avatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: filter 0.5s ease;
+}
+
+.bb-wall__tile--eliminated .bb-wall__avatar {
+  filter: grayscale(1) brightness(0.5);
+}
+
+/* ── GONE stamp ────────────────────────────────────────────────────────── */
+.bb-wall__elim-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  background: rgba(185, 28, 28, 0.92);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: center;
+  line-height: 1;
+  padding: 0.16rem 0.36rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+  animation: bbStampIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bbStampIn {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.3); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1);   }
+}
+
+/* ── Tile name + percentage ────────────────────────────────────────────── */
+.bb-wall__tile-name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 76px;
+}
+
+.bb-wall__tile-pct {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.bb-wall__tile-pct--danger {
+  color: #f87171;
+}
+
+/* ── Countdown footer strip ────────────────────────────────────────────── */
+.bb-wall__footer {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-top: 1px solid rgba(249, 115, 22, 0.4);
+  padding: 0.55rem 1rem;
+  text-align: center;
+}
+
+.bb-wall__footer-text {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.82);
+  text-transform: uppercase;
+}
+
+/* ── Winner avatar ───────────────────────────────────────────────────────── */
+.bb-overlay__winner-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #fff;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+  animation: bbWinnerPulse 1s ease infinite alternate;
+}
+
+@keyframes bbWinnerPulse {
+  from { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+  to   { box-shadow: 0 0 50px rgba(255, 255, 255, 0.7); }
+}
+
+.bb-overlay__winner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bb-overlay__winner-msg {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ── Reduce motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .bb-overlay,
+  .bb-overlay__card,
+  .bb-overlay__winner-avatar {
+    animation: none !important;
+  }
+  .bb-wall__ticker,
+  .bb-wall__live-dot,
+  .bb-wall__elim-stamp,
+  .bb-wall__danger-ring,
+  .bb-wall__ring-wrap::after {
+    animation: none !important;
+  }
+  .bb-wall__avatar {
+    transition: none !important;
+  }
+}

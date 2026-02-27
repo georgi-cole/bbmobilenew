@@ -18,6 +18,8 @@ import {
   dismissEvictionSplash,
   aiReplacementRendered,
   advance,
+  completeBattleBack,
+  tryActivateBattleBack,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -46,6 +48,7 @@ import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
+import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay'
 import './GameScreen.css'
 
 /**
@@ -787,14 +790,28 @@ export default function GameScreen() {
     ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
     : null
   const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
-  // After the eviction splash completes, dismiss it and advance the phase.
+  // After the eviction splash completes, attempt Battle Back activation.
+  // If the twist activates the overlay will appear; otherwise advance normally.
   const handleEvictionSplashDone = useCallback(() => {
     dispatch(dismissEvictionSplash())
-    dispatch(advance())
+    const activated = dispatch(tryActivateBattleBack()) as unknown as boolean
+    if (!activated) {
+      dispatch(advance())
+    }
   }, [dispatch])
 
 
-  // ── TapRace minigame ──────────────────────────────────────────────────────
+  // ── Battle Back / Jury Return twist ──────────────────────────────────────
+  const battleBack = game.battleBack
+  const showBattleBack = battleBack?.active === true
+  const battleBackCandidates = showBattleBack
+    ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id))
+    : []
+
+  const handleBattleBackComplete = useCallback((winnerId: string) => {
+    dispatch(completeBattleBack(winnerId))
+    dispatch(advance())
+  }, [dispatch])
   // Shown when a HOH or POV competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
   const pendingMinigame = game.pendingMinigame
@@ -835,6 +852,7 @@ export default function GameScreen() {
     showFinal3Modal ||
     showVoteResults ||
     showEvictionSplash ||
+    showBattleBack ||
     showMinigameHost ||
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
@@ -1201,6 +1219,15 @@ export default function GameScreen() {
         <EvictionSplash
           evictee={evictionSplashPlayer}
           onDone={handleEvictionSplashDone}
+        />
+      )}
+
+      {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
+      {showBattleBack && battleBackCandidates.length > 0 && (
+        <BattleBackOverlay
+          candidates={battleBackCandidates}
+          seed={game.seed}
+          onComplete={handleBattleBackComplete}
         />
       )}
 
