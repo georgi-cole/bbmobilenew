@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/_ios-standalone-fixes.css'
 import './styles/_introhub-buttons.css'
+// @ts-ignore: legacy JS compatibility shim imported for side effects only
 import './compat/legacySpectatorAdapter.js'
 import { applyDisplayModeClasses } from './utils/displayMode'
 import { store } from './store/store'
