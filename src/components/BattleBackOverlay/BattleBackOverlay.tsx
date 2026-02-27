@@ -160,7 +160,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
           onClick={handleClose}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleClose()}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClose()}
           aria-label="Battle Back winner — tap to continue"
         >
           {(() => {
