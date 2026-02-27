@@ -14,6 +14,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer, { startChallenge } from '../../src/store/challengeSlice';
+import settingsReducer from '../../src/store/settingsSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ function makeStore() {
     reducer: {
       game: gameReducer,
       challenge: challengeReducer,
+      settings: settingsReducer,
     },
   });
 }

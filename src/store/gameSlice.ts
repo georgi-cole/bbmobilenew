@@ -5,6 +5,7 @@ import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
+import { loadSettings } from './settingsSlice';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -54,20 +55,23 @@ function buildUserPlayer(): Player {
 }
 
 /**
- * Pick (GAME_ROSTER_SIZE - 1) houseguests at random from the full pool.
+ * Pick (rosterSize - 1) houseguests at random from the full pool.
  * Uses Math.random() to seed the pick so each new game has a fresh roster.
+ * rosterSize is read from persisted settings (gameUX.castSize) with a
+ * fallback to the GAME_ROSTER_SIZE constant.
  */
-function pickHouseguests(): Player[] {
+function pickHouseguests(rosterSize = GAME_ROSTER_SIZE): Player[] {
   const seed = (Math.floor(Math.random() * 0x100000000)) >>> 0;
   const rng = mulberry32(seed);
-  return seededPickN(rng, HOUSEGUEST_POOL, GAME_ROSTER_SIZE - 1).map((hg) => ({
+  return seededPickN(rng, HOUSEGUEST_POOL, rosterSize - 1).map((hg) => ({
     ...hg,
     status: 'active' as const,
   }));
 }
 
 function buildInitialPlayers(): Player[] {
-  return [buildUserPlayer(), ...pickHouseguests()];
+  const rosterSize = loadSettings().gameUX.castSize ?? GAME_ROSTER_SIZE;
+  return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
 }
 
 const initialState: GameState = {

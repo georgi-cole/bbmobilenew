@@ -35,6 +35,12 @@ export default function CrownAnimation({
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    // Fast-path: skip animation entirely when the global no-animations class is set.
+    if (document.body.classList.contains('no-animations')) {
+      onDone();
+      return;
+    }
+
     let exitTimeoutId: number | undefined;
     const id = setTimeout(() => {
       setVisible(false);

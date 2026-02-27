@@ -309,3 +309,12 @@ body.high-contrast {
   --color-text-muted: rgba(255, 255, 255, 0.75);
   --color-line:       rgba(255, 255, 255, 0.3);
 }
+
+/* ── Animations toggle ──────────────────────────────────────────────────── */
+
+body.no-animations *,
+body.no-animations *::before,
+body.no-animations *::after {
+  animation: none !important;
+  transition: none !important;
+}

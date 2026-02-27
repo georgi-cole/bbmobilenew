@@ -229,3 +229,28 @@
   outline-offset: 4px;
   border-radius: 12px;
 }
+
+/* ── Compact mode ────────────────────────────────────────────────────────── */
+.compact {
+  padding: 4px 4px 2px;
+}
+
+.compact .grid {
+  gap: 3px;
+}
+
+.compact .avatarWrap {
+  border-radius: 7px;
+}
+
+.compact .nameOverlay {
+  font-size: 8px;
+  bottom: 3px;
+  right: 4px;
+  left: 4px;
+}
+
+.compact .statusBadge {
+  font-size: 9px;
+  padding: 1px 2px;
+}
