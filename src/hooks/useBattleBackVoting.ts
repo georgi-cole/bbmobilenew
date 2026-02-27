@@ -112,11 +112,28 @@ export function useBattleBackVoting({
   useEffect(() => { pctsRef.current = pcts; }, [pcts]);
   useEffect(() => { eliminatedRef.current = eliminated; }, [eliminated]);
 
-  // Re-seed rng on candidates change (XOR with twist-specific constant)
+  // Reset simulation and re-seed RNG when seed changes
   useEffect(() => {
-    rngRef.current = mulberry32((seed ^ 0x5a7d3c1e) >>> 0);
-  }, [seed]);
+    // Fresh initial state for a new Battle Back session
+    const nextActive = [...candidates];
+    const baseRng = mulberry32(seed);
+    const initialPcts = randomPercentages(baseRng, candidates.length);
 
+    // Update RNG used for drift (XOR with twist-specific constant)
+    rngRef.current = mulberry32((seed ^ 0x5a7d3c1e) >>> 0);
+
+    // Reset React state
+    setActive(nextActive);
+    setPcts(initialPcts);
+    setEliminated([]);
+    setWinnerId(null);
+    setIsComplete(false);
+
+    // Ensure interval callbacks see the reset state immediately
+    activeRef.current = nextActive;
+    pctsRef.current = initialPcts;
+    eliminatedRef.current = [];
+  }, [seed, candidates]);
   // ── Percentage drift tick ───────────────────────────────────────────────
   useEffect(() => {
     if (isComplete) return;
