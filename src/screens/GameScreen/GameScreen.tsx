@@ -1213,6 +1213,7 @@ export default function GameScreen() {
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
       {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
         <SpectatorView
+          key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
           variant="holdwall"
           onDone={handleSpectatorF3Done}
@@ -1220,8 +1221,11 @@ export default function GameScreen() {
       )}
 
       {/* ── SpectatorView — legacy spectator:show event ───────────────────── */}
+      {/* key forces a full remount when the competitor list or minigame changes,
+          because useSpectatorSimulation initialises once per mount (see progressEngine). */}
       {spectatorLegacyPayload && FEATURE_SPECTATOR_REACT && (
         <SpectatorView
+          key={`${spectatorLegacyPayload.competitorIds.join('-')}-${spectatorLegacyPayload.minigameId ?? ''}`}
           competitorIds={spectatorLegacyPayload.competitorIds}
           variant={spectatorLegacyPayload.variant}
           minigameId={spectatorLegacyPayload.minigameId}

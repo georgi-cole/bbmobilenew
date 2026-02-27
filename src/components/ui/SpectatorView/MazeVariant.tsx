@@ -48,7 +48,6 @@ export default function MazeVariant({
   // Update trail whenever competitor positions change
   useEffect(() => {
     if (phase !== 'simulating') return;
-    const newTrails: Record<string, number[]> = {};
     competitors.forEach((c) => {
       const pct = (Math.floor((c.score / 100) * (MAZE_CELLS - 1)) / (MAZE_CELLS - 1)) * 100;
       const prev = prevPositionsRef.current[c.id] ?? pct;
@@ -59,7 +58,6 @@ export default function MazeVariant({
         });
       }
       prevPositionsRef.current[c.id] = pct;
-      newTrails[c.id] = pct;
     });
   }, [competitors, phase]);
 

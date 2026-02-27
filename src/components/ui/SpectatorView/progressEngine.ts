@@ -141,6 +141,12 @@ export function useSpectatorSimulation({
 
   // Capture initial values in refs so the effect runs exactly once on mount
   // while still having access to the initial configuration.
+  //
+  // NOTE: this hook intentionally does NOT react to `competitorIds` changes
+  // after mount. If the caller needs to show a completely different set of
+  // competitors, it must remount `SpectatorView` (and therefore this hook) by
+  // changing the component `key` prop. This avoids mid-simulation state resets
+  // while still supporting the repeated `spectator:show` use-case via remount.
   const competitorIdsRef = useRef(competitorIds);
   const initialWinnerRef = useRef(initialWinnerId);
 
@@ -162,7 +168,8 @@ export function useSpectatorSimulation({
     if (!ids.length) return;
 
     const startTime = Date.now();
-    const rng = rngRef.current;
+    // rngRef.current is set two lines above (line 150); non-null assertion is safe here.
+    const rng = rngRef.current!;
 
     tickRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
