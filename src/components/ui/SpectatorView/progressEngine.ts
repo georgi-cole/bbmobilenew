@@ -3,9 +3,14 @@
  *
  * Provides a React hook that:
  *   1. Runs a bounded speculative progress simulation for each competitor.
+ *      The full SIM_DURATION_MS sequence always plays — even when the winner
+ *      is known at mount — so spectators see the complete visualization.
  *   2. Reconciles smoothly to the authoritative winner when it arrives
  *      (via Redux store, 'minigame:end' CustomEvent, or window.game.__authoritativeWinner).
- *   3. Fires `onReconciled` once the reveal animation completes.
+ *   3. Enforces a MIN_FLOOR_MS (15 s) minimum overlay duration: onReconciled
+ *      will not fire until at least MIN_FLOOR_MS has elapsed since mount
+ *      unless the user explicitly calls skip() after sequenceComplete.
+ *   4. Fires `onReconciled` once the reveal animation completes.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -27,6 +32,11 @@ export interface SpectatorSimulationState {
   authoritativeWinnerId: string | null;
   /** Simulation progress 0–99 during 'simulating', 100 when complete. */
   simPct: number;
+  /**
+   * True once the full simulation sequence has finished playing (all
+   * questions / content shown).  The Skip button becomes enabled at this point.
+   */
+  sequenceComplete: boolean;
 }
 
 export interface UseSpectatorSimulationOptions {
@@ -60,6 +70,12 @@ function clamp(v: number, lo: number, hi: number) {
 const TICK_MS = 80;
 const SIM_DURATION_MS = 6000;
 const RECONCILE_DURATION_MS = 1200;
+/**
+ * Minimum time the SpectatorView overlay must stay visible (ms).
+ * Even if the sequence finishes before this, the close callback is deferred
+ * until the floor has elapsed — unless the user presses Skip.
+ */
+const MIN_FLOOR_MS = 15000;
 
 export function useSpectatorSimulation({
   competitorIds,
@@ -68,6 +84,8 @@ export function useSpectatorSimulation({
 }: UseSpectatorSimulationOptions): {
   state: SpectatorSimulationState;
   setAuthoritativeWinner: (winnerId: string) => void;
+  /** Call once sequenceComplete to finish immediately (bypasses the 15 s floor). */
+  skip: () => void;
 } {
   // rngRef is initialised inside the mount effect because Date.now() is an
   // impure function that cannot be called during render.
@@ -76,12 +94,24 @@ export function useSpectatorSimulation({
   const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether a winner has been locked in; prevents double-reconcile calls.
   const lockedRef = useRef(false);
+  // Guards against repeated skip() calls pushing the reveal timeout indefinitely.
+  const skipInitiatedRef = useRef(false);
+  // Authoritative winner that arrived before the sequence ended (stored so the
+  // sim can continue playing and pick up the winner when it finishes).
+  const pendingWinnerRef = useRef<string | null>(initialWinnerId ?? null);
+  // Mirrors state.sequenceComplete for use inside callbacks without a re-render dep.
+  const sequenceCompleteRef = useRef(false);
+  // Unix timestamp recorded when the mount effect runs (used for MIN_FLOOR_MS).
+  const mountTimeRef = useRef<number>(0);
 
   const [state, setState] = useState<SpectatorSimulationState>(() => ({
     competitors: competitorIds.map((id) => ({ id, score: 0, isWinner: false })),
-    phase: initialWinnerId ? 'reconciling' : 'simulating',
-    authoritativeWinnerId: initialWinnerId ?? null,
-    simPct: initialWinnerId ? 100 : 0,
+    // Always start in 'simulating' — the full sequence must play even when the
+    // winner is already known (initialWinnerId is stored and used at sequence end).
+    phase: 'simulating',
+    authoritativeWinnerId: null,
+    simPct: 0,
+    sequenceComplete: false,
   }));
 
   // Sync onReconciled callback via effect (not during render) to satisfy
@@ -92,7 +122,7 @@ export function useSpectatorSimulation({
   }, [onReconciled]);
 
   // `setState` is stable from useState — empty deps intentional.
-  const doReconcile = useCallback((winnerId: string) => {
+  const doReconcile = useCallback((winnerId: string, skipFloor = false) => {
     setState((prev) => ({
       ...prev,
       phase: 'reconciling',
@@ -103,6 +133,11 @@ export function useSpectatorSimulation({
         score: c.id === winnerId ? 100 : Math.min(c.score, 85),
       })),
     }));
+
+    // Enforce minimum overlay duration unless the user explicitly skipped.
+    const elapsed = mountTimeRef.current ? Date.now() - mountTimeRef.current : 0;
+    const floorRemaining = skipFloor ? 0 : Math.max(0, MIN_FLOOR_MS - elapsed);
+    const revealDelay = Math.max(RECONCILE_DURATION_MS, floorRemaining);
 
     // Clear any existing reveal timeout before scheduling a new one so
     // multiple rapid calls to doReconcile don't fire onReconciled twice.
@@ -120,24 +155,52 @@ export function useSpectatorSimulation({
         })),
       }));
       onReconciledRef.current?.(winnerId);
-    }, RECONCILE_DURATION_MS);
+    }, revealDelay);
   }, []); // setState is stable from useState; empty deps intentional
 
   const setAuthoritativeWinner = useCallback(
     (winnerId: string) => {
-      // No-op once a winner is locked — prevents multiple reconcile timeouts
-      // from repeated Space/Enter key presses or duplicate events.
+      // No-op once a winner has been locked — prevents desyncing UI state
+      // (e.g. competitors[].isWinner already reflects the locked winner).
       if (lockedRef.current) return;
-      lockedRef.current = true;
-      if (tickRef.current) {
-        clearInterval(tickRef.current);
-        tickRef.current = null;
-      }
+
+      // Store as the pending winner so the sim uses it when it ends.
+      pendingWinnerRef.current = winnerId;
       setState((prev) => ({ ...prev, authoritativeWinnerId: winnerId }));
-      doReconcile(winnerId);
+
+      // If the sequence has already completed, reconcile now.
+      if (sequenceCompleteRef.current) {
+        lockedRef.current = true;
+        if (tickRef.current) {
+          clearInterval(tickRef.current);
+          tickRef.current = null;
+        }
+        doReconcile(winnerId);
+      }
+      // Otherwise the sim tick will pick up pendingWinnerRef when it ends.
     },
     [doReconcile],
   );
+
+  /**
+   * Skip to the immediate reveal (bypasses the MIN_FLOOR_MS wait).
+   * Only has an effect after sequenceComplete is true.
+   * Subsequent calls after the first skip are ignored — prevents button spam
+   * or repeated Space/Enter from pushing the reveal timeout indefinitely.
+   */
+  const skip = useCallback(() => {
+    if (!sequenceCompleteRef.current) return; // sequence not done — cannot skip yet
+    // Ignore subsequent skip() calls once a skip-based reconcile has started.
+    if (skipInitiatedRef.current) return;
+    skipInitiatedRef.current = true;
+    const winner = pendingWinnerRef.current ?? competitorIdsRef.current[0];
+    if (!winner) return;
+    // Lock reconcile so no other path can start a parallel reconcile.
+    lockedRef.current = true;
+    // doReconcile clears any pending reconcileRef internally, then schedules
+    // the reveal with skipFloor = true (RECONCILE_DURATION_MS, no floor wait).
+    doReconcile(winner, /* skipFloor */ true);
+  }, [doReconcile]);
 
   // Capture initial values in refs so the effect runs exactly once on mount
   // while still having access to the initial configuration.
@@ -148,27 +211,25 @@ export function useSpectatorSimulation({
   // changing the component `key` prop. This avoids mid-simulation state resets
   // while still supporting the repeated `spectator:show` use-case via remount.
   const competitorIdsRef = useRef(competitorIds);
-  const initialWinnerRef = useRef(initialWinnerId);
 
   // Start simulation tick — runs once on mount; values captured via refs above.
   useEffect(() => {
+    // Record mount time for MIN_FLOOR_MS enforcement.
+    mountTimeRef.current = Date.now();
     // Initialise RNG here (Date.now() is impure, cannot be called during render).
-    rngRef.current = mulberry32(Date.now());
+    rngRef.current = mulberry32(mountTimeRef.current);
 
-    if (initialWinnerRef.current) {
-      // Winner already known → lock and reconcile immediately.
-      lockedRef.current = true;
-      doReconcile(initialWinnerRef.current);
-      return;
-    }
+    // NOTE: initialWinnerId (if any) is stored in pendingWinnerRef and will be
+    // used at the end of the simulation instead of a random pick.  The full
+    // sequence always runs so spectators see the complete visualization.
 
     const ids = competitorIdsRef.current;
 
     // Guard: if no competitors, nothing to simulate.
     if (!ids.length) return;
 
-    const startTime = Date.now();
-    // rngRef.current is set two lines above (line 150); non-null assertion is safe here.
+    const startTime = mountTimeRef.current;
+    // rngRef.current is set a few lines above; non-null assertion is safe here.
     const rng = rngRef.current!;
 
     tickRef.current = setInterval(() => {
@@ -189,18 +250,26 @@ export function useSpectatorSimulation({
       });
 
       if (elapsed >= SIM_DURATION_MS) {
-        // Simulation time expired — pick a pseudo-random winner.
+        // Simulation time expired — sequence is now complete.
         if (tickRef.current) {
           clearInterval(tickRef.current);
           tickRef.current = null;
         }
+
+        // Mark sequence as complete and enable the Skip button.
+        sequenceCompleteRef.current = true;
+        setState((prev) => ({ ...prev, sequenceComplete: true }));
+
         // Skip if an authoritative source already locked in a winner.
         if (lockedRef.current) return;
-        const idx = Math.floor(rng() * ids.length);
-        const simulatedWinner = ids[idx] ?? ids[0];
         lockedRef.current = true;
-        setState((prev) => ({ ...prev, authoritativeWinnerId: simulatedWinner }));
-        doReconcile(simulatedWinner);
+
+        // Use the pending authoritative winner if one arrived during simulation;
+        // otherwise fall back to a pseudo-random pick.
+        const idx = Math.floor(rng() * ids.length);
+        const winner = pendingWinnerRef.current ?? (ids[idx] ?? ids[0]);
+        setState((prev) => ({ ...prev, authoritativeWinnerId: winner }));
+        doReconcile(winner); // floor applies (skipFloor = false)
       }
     }, TICK_MS);
 
@@ -219,6 +288,6 @@ export function useSpectatorSimulation({
     [],
   );
 
-  return { state, setAuthoritativeWinner };
+  return { state, setAuthoritativeWinner, skip };
 }
 

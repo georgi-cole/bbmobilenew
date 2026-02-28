@@ -85,6 +85,11 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
+  // Combine compile-time flag with runtime cfg override.
+  // game.cfg?.enableSpectatorReact defaults to true when omitted.
+  const spectatorReactEnabled =
+    FEATURE_SPECTATOR_REACT && game.cfg?.enableSpectatorReact !== false
+
   // ── Tile position lookup for CeremonyOverlay ──────────────────────────────
   // Queries a `data-player-id` attribute on the houseguest grid's <li> items so
   // we can get a bounding rect without needing to pass refs through render.
@@ -229,19 +234,19 @@ export default function GameScreen() {
   // a race where a rapid re-render could activate the overlay a second time.
   // advance() is NOT dispatched here; SpectatorView.onDone drives it instead.
   useEffect(() => {
-    if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT && settings.gameUX.spectatorMode) {
+    if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && spectatorReactEnabled && settings.gameUX.spectatorMode) {
       spectatorF3AdvancedRef.current = true
       const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
       setSpectatorF3CompetitorIds(finalists)
       setSpectatorF3Active(true)
       // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
     }
-  // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
-  // stable from useAppDispatch and `advance` is a constant action creator, so
-  // including them would not change behavior. `spectatorF3AdvancedRef` is a
-  // ref (not reactive); if its usage changes, update this dep list.
+  // `spectatorF3AdvancedRef` is a ref (not reactive) used for deduplication.
+  // `dispatch` and `advance` are stable. `spectatorReactEnabled` and
+  // `settings.gameUX.spectatorMode` are included so that if either flag flips
+  // while already at final3_comp3 the effect can re-evaluate and activate.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isF3Part3SpectatorPhase])
+  }, [isF3Part3SpectatorPhase, spectatorReactEnabled, settings.gameUX.spectatorMode])
 
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)
@@ -276,7 +281,7 @@ export default function GameScreen() {
   }, [settings.gameUX.spectatorMode])
 
   useEffect(() => {
-    if (!FEATURE_SPECTATOR_REACT) return
+    if (!spectatorReactEnabled) return
     function handleSpectatorShow(e: Event) {
       if (!spectatorModeRef.current) return
       const detail = (e as CustomEvent<{
@@ -1370,7 +1375,7 @@ export default function GameScreen() {
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
       {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
       {/* without waiting for advance() (which fires only after onDone).         */}
-      {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
+      {spectatorF3Active && spectatorReactEnabled && (
         <SpectatorView
           key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
@@ -1383,7 +1388,7 @@ export default function GameScreen() {
       {/* ── SpectatorView — legacy spectator:show event ───────────────────── */}
       {/* key forces a full remount when the competitor list or minigame changes,
           because useSpectatorSimulation initialises once per mount (see progressEngine). */}
-      {spectatorLegacyPayload && FEATURE_SPECTATOR_REACT && (
+      {spectatorLegacyPayload && spectatorReactEnabled && (
         <SpectatorView
           key={`${spectatorLegacyPayload.competitorIds.join('-')}-${spectatorLegacyPayload.minigameId ?? ''}`}
           competitorIds={spectatorLegacyPayload.competitorIds}

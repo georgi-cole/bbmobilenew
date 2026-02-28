@@ -363,6 +363,14 @@ export interface GameState {
      * Default false – ties are broken deterministically via seeded RNG.
      */
     americasVoteEnabled?: boolean;
+    /**
+     * Runtime feature flag for the React SpectatorView overlay.
+     * When false, the SpectatorView is not rendered even if FEATURE_SPECTATOR_REACT
+     * compile-time flag is true.  Defaults to true (enabled) when omitted.
+     * Set to false to disable spectator mode for a specific season or week
+     * without redeploying.
+     */
+    enableSpectatorReact?: boolean;
   };
   /**
    * Archived season records. Each completed season is inserted at the front

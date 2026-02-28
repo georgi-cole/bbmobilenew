@@ -133,7 +133,7 @@ export default function SpectatorView({
 
   // ── Simulation hook ───────────────────────────────────────────────────────
 
-  const { state: simState, setAuthoritativeWinner } = useSpectatorSimulation({
+  const { state: simState, setAuthoritativeWinner, skip } = useSpectatorSimulation({
     competitorIds,
     initialWinnerId: initialWinner ?? undefined,
     onReconciled: useCallback((winnerId: string) => {
@@ -192,31 +192,19 @@ export default function SpectatorView({
   }, [setAuthoritativeWinner]); // setAuthoritativeWinner is stable
 
   // ── Keyboard support — Space / Enter to skip to results ──────────────────
-  // Only active during the simulating phase to prevent double-reconcile if the
-  // user presses Space after results are already showing.
+  // Only enabled after sequenceComplete; delegates to skip() which respects
+  // the sequenceComplete gate and bypasses the MIN_FLOOR_MS wait.
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (simState.phase !== 'simulating') return;
       if (e.code !== 'Space' && e.code !== 'Enter') return;
+      if (!simState.sequenceComplete) return;
       e.preventDefault();
-      // Resolve to winner in priority order; always validate against competitorIds.
-      const ids = competitorIdsRef.current;
-      const authWin = simState.authoritativeWinnerId;
-      const globalWin =
-        typeof window !== 'undefined' &&
-        window.game?.__authoritativeWinner &&
-        ids.includes(window.game.__authoritativeWinner)
-          ? window.game.__authoritativeWinner
-          : null;
-      const winner = (authWin && ids.includes(authWin) ? authWin : null) ?? globalWin ?? ids[0];
-      if (winner) {
-        setAuthoritativeWinner(winner);
-      }
+      skip();
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [simState.phase, simState.authoritativeWinnerId, setAuthoritativeWinner]);
+  }, [simState.sequenceComplete, skip]);
 
   // ── Avatar + name helpers ─────────────────────────────────────────────────
 
@@ -383,12 +371,23 @@ export default function SpectatorView({
           />
         )}
 
-        {/* Skip hint */}
-        {simState.phase === 'simulating' && (
-          <p className="spectator-overlay__skip-hint" aria-hidden="true">
-            Press Space / Enter to skip to results
-          </p>
-        )}
+        {/* Skip button — enabled only after sequenceComplete */}
+        <div className="spectator-overlay__skip-row">
+          <button
+            className="spectator-overlay__skip-btn"
+            onClick={skip}
+            disabled={!simState.sequenceComplete}
+            aria-label="Skip to results"
+            type="button"
+          >
+            Skip to Results
+          </button>
+          {!simState.sequenceComplete && (
+            <span className="spectator-overlay__skip-hint" aria-live="polite">
+              Available after the sequence completes…
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

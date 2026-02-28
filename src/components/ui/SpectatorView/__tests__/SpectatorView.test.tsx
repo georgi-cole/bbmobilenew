@@ -95,72 +95,102 @@ describe('SpectatorView', () => {
     vi.useRealTimers();
   });
 
-  it('reconciles to the Redux authoritative winner (hohId already set on mount)', () => {
+  it('reconciles to the Redux authoritative winner after the 15 s floor elapses', () => {
     vi.useFakeTimers();
-    // hohId is already set — SpectatorView should jump straight to revealed
+    // hohId is set — the winner is known at mount, but onDone must not fire
+    // until the 15 s MIN_FLOOR_MS has elapsed (or Skip is pressed).
     const store = makeStore({ hohId: 'p1' });
     const onDone = vi.fn();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 
-    // Fast-forward through reconciliation delay (RECONCILE_DURATION_MS = 1200)
+    // Advancing only 8 s (sim + reconcile) must NOT call onDone — floor not reached.
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(8000);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+
+    // Advancing past the 15 s floor fires onDone.
+    act(() => {
+      vi.advanceTimersByTime(8000); // total ~16 s
     });
 
     expect(onDone).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
-  it('reconciles when "minigame:end" event fires after mount', () => {
+  it('reconciles when "minigame:end" event fires, honouring the 15 s floor', () => {
     vi.useFakeTimers();
     const store = makeStore();
     const onDone = vi.fn();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 
-    // Simulate authoritative result arriving via CustomEvent
+    // Simulate authoritative result arriving via CustomEvent during the sim.
     act(() => {
       window.dispatchEvent(
         new CustomEvent('minigame:end', { detail: { winnerId: 'p2' } }),
       );
     });
 
-    // Advance past reconciliation delay
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-
-    expect(onDone).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
-  });
-
-  it('calls onDone after the simulation timer expires (no authoritative result)', () => {
-    vi.useFakeTimers();
-    const store = makeStore();
-    const onDone = vi.fn();
-    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
-
-    // Advance past full simulation duration (6000 ms) + reconcile delay (1200 ms)
+    // Advancing only a few seconds must NOT call onDone — floor not reached.
     act(() => {
       vi.advanceTimersByTime(8000);
     });
+    expect(onDone).not.toHaveBeenCalled();
 
+    // Advancing past the 15 s floor fires onDone.
+    act(() => {
+      vi.advanceTimersByTime(8000); // total ~16 s
+    });
     expect(onDone).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
-  it('Space key accelerates reveal', () => {
+  it('calls onDone after the simulation timer and 15 s floor both expire', () => {
     vi.useFakeTimers();
     const store = makeStore();
     const onDone = vi.fn();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 
+    // Sequence ends at 6 s, floor ends at 15 s — onDone must not fire before then.
+    act(() => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+
+    // Advance past 15 s total.
+    act(() => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('Space key has no effect before sequenceComplete and fires onDone immediately after sequenceComplete', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Space before sequence completes (< 6 s) must be a no-op.
     act(() => {
       fireEvent.keyDown(window, { code: 'Space' });
     });
-
-    // Advance past reconciliation delay
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+
+    // Advance to after sequenceComplete (>= 6 s elapsed).
+    act(() => {
+      vi.advanceTimersByTime(5500); // total ~6.5 s, sequence done
+    });
+
+    // Now Space should trigger the reveal bypass, completing quickly.
+    act(() => {
+      fireEvent.keyDown(window, { code: 'Space' });
+    });
+    act(() => {
+      vi.advanceTimersByTime(2000); // reconcile delay (RECONCILE_DURATION_MS)
     });
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -224,9 +254,9 @@ describe('SpectatorView', () => {
 
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 
-    // Fast-forward through reconciliation
+    // Fast-forward past the 15 s MIN_FLOOR_MS + RECONCILE_DURATION_MS.
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(17000);
     });
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -235,6 +265,114 @@ describe('SpectatorView', () => {
     // And it remains null after onDone
     expect(store.getState().game.spectatorActive).toBeNull();
 
+    vi.useRealTimers();
+  });
+
+  it('Skip button is disabled before sequenceComplete and enabled after', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'] });
+
+    const skipBtn = screen.getByRole('button', { name: /skip to results/i });
+
+    // Before sequence completes, button is disabled.
+    expect(skipBtn).toBeDisabled();
+
+    // Advance past SIM_DURATION_MS (6 s) so sequenceComplete becomes true.
+    act(() => {
+      vi.advanceTimersByTime(7000);
+    });
+
+    expect(skipBtn).not.toBeDisabled();
+    vi.useRealTimers();
+  });
+
+  it('Skip button immediately fires onDone after sequenceComplete (bypasses floor)', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Advance past sequenceComplete (6 s).
+    act(() => {
+      vi.advanceTimersByTime(7000);
+    });
+
+    const skipBtn = screen.getByRole('button', { name: /skip to results/i });
+    expect(skipBtn).not.toBeDisabled();
+
+    // Click Skip — should trigger reveal without waiting for the 15 s floor.
+    act(() => {
+      skipBtn.click();
+    });
+
+    // Advance only the RECONCILE_DURATION_MS (1200 ms) — well under the floor.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('repeated skip() calls do not push reveal out (onDone fires exactly once)', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Advance past sequenceComplete.
+    act(() => {
+      vi.advanceTimersByTime(7000);
+    });
+
+    const skipBtn = screen.getByRole('button', { name: /skip to results/i });
+
+    // Click Skip three times in quick succession.
+    act(() => {
+      skipBtn.click();
+      skipBtn.click();
+      skipBtn.click();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // onDone must be called exactly once regardless of multiple clicks.
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('setAuthoritativeWinner is a no-op once locked (does not desync winner state)', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Wait for sequence to complete and reconcile with p1 as winner.
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('minigame:end', { detail: { winnerId: 'p1' } }),
+      );
+    });
+    act(() => {
+      vi.advanceTimersByTime(16000); // past sequence + floor
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    // Attempt to inject a different winner after lock — must not call onDone again.
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('minigame:end', { detail: { winnerId: 'p2' } }),
+      );
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 });
