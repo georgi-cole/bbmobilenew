@@ -34,17 +34,12 @@ vi.mock('../../src/components/ui/TvZone', () => ({
 
 // Capture the onDone callback from SpectatorView so tests can invoke it
 // programmatically without relying on internal animation timers.
-let capturedSpectatorOnDone: (() => void) | null = null;
-
 vi.mock('../../src/components/ui/SpectatorView', () => ({
-  default: ({ onDone }: { onDone?: () => void }) => {
-    capturedSpectatorOnDone = onDone ?? null;
-    return (
-      <div data-testid="spectator-overlay">
-        <button onClick={onDone}>Spectator Done</button>
-      </div>
-    );
-  },
+  default: ({ onDone }: { onDone?: () => void }) => (
+    <div data-testid="spectator-overlay">
+      <button onClick={onDone}>Spectator Done</button>
+    </div>
+  ),
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -122,7 +117,6 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
 
 describe('spectator advance() deferral', () => {
   afterEach(() => {
-    capturedSpectatorOnDone = null;
     vi.restoreAllMocks();
   });
 
@@ -145,6 +139,8 @@ describe('spectator advance() deferral', () => {
     renderWithStore(store);
 
     expect(store.getState().game.phase).toBe('final3_comp3');
+    // tvFeed must still be empty — no game-engine events emitted before onDone.
+    expect(store.getState().game.tvFeed).toHaveLength(0);
 
     // Simulate the spectator overlay completing its playback.
     await act(async () => {
@@ -153,6 +149,8 @@ describe('spectator advance() deferral', () => {
 
     // After onDone, advance() should have been dispatched and the phase moved on.
     expect(store.getState().game.phase).not.toBe('final3_comp3');
+    // advance() emits at least one TV event when it processes final3_comp3.
+    expect(store.getState().game.tvFeed.length).toBeGreaterThan(0);
   });
 
   it('does not show SpectatorView when human player IS a finalist', async () => {

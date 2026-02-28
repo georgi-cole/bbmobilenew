@@ -8,6 +8,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
+  selectF3Part3PredictedWinnerId,
   commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
@@ -78,6 +79,7 @@ export default function GameScreen() {
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
+  const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
@@ -1254,11 +1256,14 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
+      {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
+      {/* without waiting for advance() (which fires only after onDone).         */}
       {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
         <SpectatorView
           key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
           variant="holdwall"
+          initialWinnerId={f3Part3PredictedWinnerId ?? undefined}
           onDone={handleSpectatorF3Done}
         />
       )}
