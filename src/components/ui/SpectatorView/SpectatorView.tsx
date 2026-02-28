@@ -15,7 +15,8 @@
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { openSpectator, closeSpectator } from '../../../store/gameSlice';
 import { resolveAvatar } from '../../../utils/avatar';
 import { useSpectatorSimulation } from './progressEngine';
 import HoldWallVariant from './HoldWallVariant';
@@ -79,6 +80,7 @@ export default function SpectatorView({
   roundLabel = 'Final 3 · Part 3',
   initialWinnerId: propInitialWinnerId,
 }: SpectatorViewProps) {
+  const dispatch = useAppDispatch();
   const players = useAppSelector((s) => s.game.players);
   const hohId   = useAppSelector((s) => s.game.hohId);
 
@@ -88,6 +90,26 @@ export default function SpectatorView({
   useEffect(() => {
     onDoneRef.current = onDone;
   }, [onDone]);
+
+  // ── Open / close spectator in Redux store ─────────────────────────────────
+  // openSpectator blocks advance() while the overlay is mounted; closeSpectator
+  // unblocks it.  closedRef tracks whether closeSpectator was already dispatched
+  // via onReconciled so the cleanup does not issue a redundant second dispatch.
+  // The parent (GameScreen) uses a `key` prop tied to competitorIds/minigameId,
+  // so prop changes trigger a full remount — these values are stable per mount.
+
+  const closedRef = useRef(false);
+
+  useEffect(() => {
+    closedRef.current = false;
+    dispatch(openSpectator({ competitorIds, minigameId, variant, startedAt: Date.now() }));
+    return () => {
+      if (!closedRef.current) {
+        dispatch(closeSpectator());
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once — openSpectator records the mount-time snapshot
 
   // ── Resolve authoritative winner from multiple sources ────────────────────
 
@@ -118,8 +140,10 @@ export default function SpectatorView({
       if (import.meta.env.DEV) {
         console.log('[SpectatorView] Authoritative winner revealed:', winnerId);
       }
+      closedRef.current = true;
+      dispatch(closeSpectator());
       onDoneRef.current?.();
-    }, []),
+    }, [dispatch]),
   });
 
   // Capture competitorIds in a ref so event handlers always see the current

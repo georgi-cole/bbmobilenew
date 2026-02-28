@@ -134,6 +134,24 @@ export interface TvEvent {
   source?: ActivitySource;
 }
 
+// ─── Spectator overlay ────────────────────────────────────────────────────────
+
+/**
+ * Metadata stored in GameState while the SpectatorView overlay is active.
+ * Set by openSpectator; cleared by closeSpectator. While truthy, advance()
+ * returns early so the overlay drives phase progression.
+ */
+export interface SpectatorActiveState {
+  /** Optional minigame identifier for debugging / analytics. */
+  minigameId?: string;
+  /** Player IDs visible in the overlay. */
+  competitorIds: string[];
+  /** Visual variant rendered by SpectatorView. */
+  variant?: 'holdwall' | 'trivia' | 'maze';
+  /** Unix timestamp (ms) recorded when the overlay was opened. */
+  startedAt: number;
+}
+
 // ─── Battle Back / Jury Return twist ─────────────────────────────────────────
 
 /**
@@ -352,6 +370,12 @@ export interface GameState {
    * localStorage by default via archivePersistence.
    */
   seasonArchives?: SeasonArchive[];
+  /**
+   * Set while the SpectatorView overlay is mounted and playing.
+   * advance() returns early while this is truthy, preventing any phase
+   * transition from racing past the overlay. Cleared by closeSpectator.
+   */
+  spectatorActive?: SpectatorActiveState | null;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

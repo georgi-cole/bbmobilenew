@@ -1,6 +1,6 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
-import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState } from '../types';
+import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState, SpectatorActiveState } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
@@ -111,6 +111,7 @@ const initialState: GameState = {
   ],
   isLive: false,
   seasonArchives: loadSeasonArchives(DEFAULT_ARCHIVE_KEY) ?? [],
+  spectatorActive: null,
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -931,6 +932,24 @@ const gameSlice = createSlice({
       state.twistActive = false;
     },
 
+    // ─── Spectator overlay ────────────────────────────────────────────────────
+
+    /**
+     * Open the SpectatorView overlay.  Sets spectatorActive with metadata so
+     * advance() blocks until closeSpectator is dispatched.
+     */
+    openSpectator(state, action: PayloadAction<SpectatorActiveState>) {
+      state.spectatorActive = action.payload;
+    },
+
+    /**
+     * Close the SpectatorView overlay.  Clears spectatorActive so advance()
+     * can proceed again.
+     */
+    closeSpectator(state) {
+      state.spectatorActive = null;
+    },
+
     // ─── Debug-only actions ───────────────────────────────────────────────────
     /** Force a specific player to be HOH (debug only). */
     forceHoH(state, action: PayloadAction<string>) {
@@ -1093,6 +1112,7 @@ const gameSlice = createSlice({
         ],
         isLive: false,
         seasonArchives,
+        spectatorActive: null,
       };
     },
     /** Generate a new random RNG seed (debug only). */
@@ -1115,7 +1135,8 @@ const gameSlice = createSlice({
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
-        state.battleBack?.active
+        state.battleBack?.active ||
+        state.spectatorActive
       ) {
         return;
       }
@@ -1815,6 +1836,8 @@ export const {
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,
+  openSpectator,
+  closeSpectator,
   forceHoH,
   forceNominees,
   forcePovWinner,
