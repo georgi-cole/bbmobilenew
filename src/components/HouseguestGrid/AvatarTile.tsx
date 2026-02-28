@@ -150,23 +150,14 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           </div>
         )}
 
-        {/* Evictee mark — single diagonal brush-stroke slash */}
+        {/* Evictee mark — paint brushstroke PNG overlay */}
         {isEvicted && (
-          <svg
-            className={styles.cross}
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
+          <img
+            src="/evictionmark/evictionmark.png"
+            alt=""
             aria-hidden="true"
-          >
-            <path
-              d="M 12,82 C 30,68 58,42 88,18"
-              stroke="rgba(220, 38, 38, 0.88)"
-              strokeWidth="7.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
+            className={styles.cross}
+          />
         )}
       </motion.div>
 

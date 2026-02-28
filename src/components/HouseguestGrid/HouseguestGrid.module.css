@@ -135,21 +135,14 @@
   height: 100%;
   pointer-events: none;
   display: block;
-  transform-origin: center;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  object-fit: contain;
   z-index: 2;
+  animation: crossFadeIn 0.35s ease-out forwards;
 }
 
-.cross path {
-  /* stroke-dasharray covers the full curved path length in the 100×100 viewBox
-     (diagonal ≈ 99 units; 105 ensures full coverage for the single stroke) */
-  stroke-dasharray: 105;
-  stroke-dashoffset: 105;
-  animation: drawCrossLine 0.45s ease-out 0.1s forwards;
-}
-
-@keyframes drawCrossLine {
-  to { stroke-dashoffset: 0; }
+@keyframes crossFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ── Status badge stack ─────────────────────────────────────────────────────── */
