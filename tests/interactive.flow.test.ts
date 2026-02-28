@@ -10,6 +10,7 @@ import gameReducer, {
   setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
+  finalizePendingEviction,
 } from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
@@ -190,10 +191,14 @@ describe('Live vote + eviction tally', () => {
       votes: { 'p4': 'p1', 'p5': 'p1', 'p0': 'p2' },
       players,
     });
-    store.dispatch(advance()); // live_vote → eviction_results; then tally
+    store.dispatch(advance()); // live_vote → eviction_results; tally → pendingEviction
     const state = store.getState().game;
     expect(state.phase).toBe('eviction_results');
-    const p1 = state.players.find(p => p.id === 'p1');
+    // Eviction is deferred — pendingEviction is set, status still nominated
+    expect(state.pendingEviction?.evicteeId).toBe('p1');
+    // Commit the eviction (simulating overlay onDone)
+    store.dispatch(finalizePendingEviction('p1'));
+    const p1 = store.getState().game.players.find(p => p.id === 'p1');
     expect(p1?.status).toMatch(/evicted|jury/);
   });
 
@@ -237,10 +242,14 @@ describe('Live vote + eviction tally', () => {
     const state = store.getState().game;
     expect(state.awaitingTieBreak).toBe(false);
     expect(state.phase).toBe('week_end');
-    const p1 = state.players.find(p => p.id === 'p1');
-    expect(p1?.status).toMatch(/evicted|jury/);
+    // Eviction is deferred — pendingEviction is set
+    expect(state.pendingEviction?.evicteeId).toBe('p1');
     // voteResults is cleared after tie-break (already shown before; no re-show)
     expect(state.voteResults).toBeNull();
+    // Commit the eviction (simulating overlay onDone)
+    store.dispatch(finalizePendingEviction('p1'));
+    const p1 = store.getState().game.players.find(p => p.id === 'p1');
+    expect(p1?.status).toMatch(/evicted|jury/);
   });
 });
 

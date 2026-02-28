@@ -189,13 +189,13 @@ describe('Ceremony fix: AI HOH tiebreak choreography', () => {
 
   it('shows AI thinking overlay when onTiebreakerRequired fires with non-human HOH', async () => {
     // AI HOH (p1) — human is p0.
-    // Vote results show a tie, evictionSplashId set (AI already picked).
+    // Vote results show a tie, pendingEviction set (AI already picked).
     const store = makeStore({
       phase: 'eviction_results',
       hohId: 'p1',             // AI is HOH
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 }, // tie
-      evictionSplashId: 'p3',        // AI chose p3
+      pendingEviction: { evicteeId: 'p3', evictionMessage: 'HOH breaks the tie, evicting Player 3. 🗳️' }, // AI chose p3
       awaitingTieBreak: false,
     });
     renderWithStore(store);
@@ -222,7 +222,7 @@ describe('Ceremony fix: AI HOH tiebreak choreography', () => {
       hohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 },
-      evictionSplashId: 'p3',
+      pendingEviction: { evicteeId: 'p3', evictionMessage: 'HOH breaks the tie, evicting Player 3. 🗳️' },
       awaitingTieBreak: false,
     });
     renderWithStore(store);

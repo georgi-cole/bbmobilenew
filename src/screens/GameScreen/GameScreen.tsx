@@ -8,6 +8,7 @@ import {
   updateGamePRs,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
+  finalizePendingEviction,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
   commitNominees,
@@ -17,7 +18,6 @@ import {
   submitHumanVote,
   submitTieBreak,
   dismissVoteResults,
-  dismissEvictionSplash,
   aiReplacementRendered,
   advance,
   completeBattleBack,
@@ -343,8 +343,7 @@ export default function GameScreen() {
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
       layoutId: `avatar-tile-${p.id}`,
-      isEvicting: (showEvictionSplash && evictionSplashPlayer?.id === p.id)
-        || (showFinal4LocalSplash && final4Evictee?.id === p.id),
+      isEvicting: showEvictionSplash && pendingEvictionPlayer?.id === p.id,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -625,7 +624,6 @@ export default function GameScreen() {
   const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
   const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
   const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
-  const [final4Evictee, setFinal4Evictee] = useState<Player | null>(null)
   // Holds the nominee IDs captured when the overlay opens so we can identify
   // the evicted player after advance() transitions to final3.
   const final4NomineesRef = useRef<string[]>([])
@@ -639,7 +637,6 @@ export default function GameScreen() {
       setFinal4Stage('idle')
       setFinal4PleaLines([])
       setFinal4AnnounceLines([])
-      setFinal4Evictee(null)
       final4NomineesRef.current = []
     }, 0)
     return () => window.clearTimeout(id)
@@ -709,17 +706,15 @@ export default function GameScreen() {
     }
   }, [humanIsPovHolder, dispatch])
 
-  // Detect eviction: phase just became final3 while still in pleas/decision stage.
-  // Build eviction announcement lines and move to the announcement stage.
+  // Detect eviction: pendingEviction was set while in pleas/decision stage.
+  // With the deferred-commit approach, the phase stays at final4_eviction until
+  // finalizePendingEviction runs (after the overlay). Build eviction announcement
+  // lines from pendingEviction and move to the announcement stage.
   useEffect(() => {
-    if (game.phase !== 'final3') return
+    if (!game.pendingEviction) return
+    if (game.phase !== 'final4_eviction') return
     if (final4Stage !== 'pleas' && final4Stage !== 'decision') return
-    if (final4NomineesRef.current.length === 0) return
-    const evicted = game.players.find(
-      (p) =>
-        final4NomineesRef.current.includes(p.id) &&
-        (p.status === 'evicted' || p.status === 'jury'),
-    )
+    const evicted = game.players.find((p) => p.id === game.pendingEviction?.evicteeId)
     if (!evicted) {
       setFinal4Stage('done')
       return
@@ -738,27 +733,24 @@ export default function GameScreen() {
         text: `${evicted.name}, by a vote of 1 to 0, you have been evicted from the Big Brother house. Please take a moment to say your goodbyes. 👋`,
       },
     ])
-    setFinal4Evictee(evicted)
     setFinal4Stage('announcement')
     final4NomineesRef.current = []
-  }, [game.phase, final4Stage, game.players, game.povWinnerId])
+  }, [game.pendingEviction, game.phase, final4Stage, game.players, game.povWinnerId])
 
   const handleFinal4AnnounceComplete = useCallback(() => {
     setFinal4Stage('splash')
   }, [])
 
-  const handleFinal4SplashDone = useCallback(() => {
-    setFinal4Stage('done')
-    setFinal4Evictee(null)
-  }, [])
-
   const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
   const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision'
-  const showFinal4AnnounceChat = game.phase === 'final3' && final4Stage === 'announcement'
-  const showFinal4LocalSplash =
-    game.phase === 'final3' && final4Stage === 'splash' && final4Evictee !== null
+  // Announcement: show during final4_eviction (pending commit) OR after final3 transition.
+  const showFinal4AnnounceChat =
+    (game.phase === 'final4_eviction' || game.phase === 'final3') && final4Stage === 'announcement'
+  // Splash is driven by showEvictionSplash (pendingEviction + final4Stage === 'splash')
+  // defined in the Eviction Splash section below.
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
 
   // ── Human live eviction vote ──────────────────────────────────────────────
   // Shown when the human player is an eligible voter during live_vote.
@@ -799,25 +791,25 @@ export default function GameScreen() {
   // tie-break modal will appear once voteResults has been cleared.
   const handleVoteResultsDone = useCallback(() => {
     dispatch(dismissVoteResults())
-    // If no eviction splash is queued AND no tie-break is pending, advance the phase now.
-    // (If evictionSplashId is set, EvictionSplash's onDone will advance instead.)
+    // If no eviction is pending AND no tie-break is pending, advance the phase now.
+    // (If pendingEviction is set, the overlay's onDone will commit and advance instead.)
     // (If awaitingTieBreak is true, the tie-break modal will take over after this.)
-    if (!game.evictionSplashId && !game.awaitingTieBreak) {
+    if (!game.pendingEviction && !game.awaitingTieBreak) {
       dispatch(advance())
     }
-  }, [dispatch, game.evictionSplashId, game.awaitingTieBreak])
+  }, [dispatch, game.pendingEviction, game.awaitingTieBreak])
 
   // ── AI HOH tiebreak choreography ─────────────────────────────────────────
   // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
   //   • Human HOH: dismiss the modal → showTieBreakModal appears (existing path).
-  //   • AI HOH:    the AI already picked (evictionSplashId is set). Show a short
+  //   • AI HOH:    pendingEviction is set (AI already picked). Show a short
   //                "HOH is deciding…" overlay for 3 s, then dismiss to let the
-  //                eviction splash play.  No additional dispatch needed.
+  //                eviction cinematic play.  No additional dispatch needed.
   const [aiTiebreakerPending, setAiTiebreakerPending] = useState(false)
 
   // For AI tiebreak: pass evictee=null to the modal so it surfaces the tie banner
   // and calls onTiebreakerRequired, giving us the hook to run choreography.
-  // Condition: vote tallies have equal max counts AND AI already picked (evictionSplashId set)
+  // Condition: vote tallies have equal max counts AND AI already picked (pendingEviction set)
   // AND the human is NOT the HOH.
   const voteResultsEvictee = useMemo(() => {
     if (!game.voteResults) return null
@@ -825,7 +817,7 @@ export default function GameScreen() {
     // If we have an explicit eviction decision, use that as the source of truth
     // — UNLESS this is an AI tiebreak where we want the modal to show the tie
     // banner first and call onTiebreakerRequired.
-    if (game.evictionSplashId) {
+    if (game.pendingEviction) {
       if (!humanIsHoH) {
         // Check whether the tallies are actually tied (AI tiebreak case).
         let maxVotes = -1
@@ -839,7 +831,7 @@ export default function GameScreen() {
           return null
         }
       }
-      return game.players.find((p) => p.id === game.evictionSplashId) ?? null
+      return game.players.find((p) => p.id === game.pendingEviction?.evicteeId) ?? null
     }
 
     let maxVotes = -1
@@ -857,7 +849,7 @@ export default function GameScreen() {
     if (evicteeIds.length !== 1) return null
 
     return game.players.find((p) => p.id === evicteeIds[0]) ?? null
-  }, [game.voteResults, game.evictionSplashId, game.players, humanIsHoH])
+  }, [game.voteResults, game.pendingEviction, game.players, humanIsHoH])
 
   const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
     console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
@@ -880,23 +872,39 @@ export default function GameScreen() {
     return () => window.clearTimeout(id)
   }, [aiTiebreakerPending, handleVoteResultsDone])
 
-  // ── Eviction Splash ───────────────────────────────────────────────────────
-  const evictionSplashPlayer = game.evictionSplashId
-    ? game.players.find((p) => p.id === game.evictionSplashId) ?? null
+  // ── Eviction cinematic (pendingEviction-driven) ───────────────────────────
+  // Normal evictions: triggered by pendingEviction being set in advance().
+  // Final-4 evictions: also driven by pendingEviction (set by finalizeFinal4Eviction
+  // or the AI path in advance()), but only shown after the announcement ChatOverlay.
+  const pendingEvictionPlayer = game.pendingEviction
+    ? game.players.find((p) => p.id === game.pendingEviction?.evicteeId) ?? null
     : null
-  const showEvictionSplash = !showVoteResults && evictionSplashPlayer !== null
-  // After the eviction splash completes, attempt Battle Back activation.
-  // If the twist activates the overlay will appear; otherwise advance normally.
+  // For normal evictions (not Final-4), show whenever pendingEviction is set.
+  // For Final-4, show only during the 'splash' stage (after the announcement).
+  const showEvictionSplash =
+    !showVoteResults &&
+    !!game.pendingEviction &&
+    (game.phase !== 'final4_eviction' || final4Stage === 'splash')
+
+  // After the eviction cinematic completes, commit the pending eviction then
+  // attempt Battle Back activation (normal evictions only) or advance the Final-4
+  // local state machine.
   const handleEvictionSplashDone = useCallback(() => {
-    dispatch(dismissEvictionSplash())
-    const activated = dispatch(tryActivateBattleBack()) as unknown as boolean
-    if (!activated) {
-      dispatch(advance())
+    const evicteeId = game.pendingEviction?.evicteeId
+    if (!evicteeId) return
+    dispatch(finalizePendingEviction(evicteeId))
+    if (game.phase === 'final4_eviction') {
+      // Final-4: advance the local stage machine; no battle back check needed.
+      setFinal4Stage('done')
+    } else {
+      const activated = dispatch(tryActivateBattleBack()) as unknown as boolean
+      if (!activated) {
+        dispatch(advance())
+      }
     }
-  }, [dispatch])
+  }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
 
 
-  // ── Battle Back / Jury Return twist ──────────────────────────────────────
   const battleBack = game.battleBack
   const showBattleBack = battleBack?.active === true
   const battleBackCandidates = showBattleBack
@@ -943,7 +951,6 @@ export default function GameScreen() {
     showFinal4Chat ||
     showFinal4Modal ||
     showFinal4AnnounceChat ||
-    showFinal4LocalSplash ||
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
@@ -1116,18 +1123,6 @@ export default function GameScreen() {
           ariaLabel="Final 4 eviction announcement"
         />
       )}
-
-      {/* ── Final 4 local eviction splash ────────────────────────────────── */}
-      <AnimatePresence>
-        {showFinal4LocalSplash && final4Evictee && (
-          <SpotlightEvictionOverlay
-            key={final4Evictee.id}
-            evictee={final4Evictee}
-            onDone={handleFinal4SplashDone}
-            layoutId={`avatar-tile-${final4Evictee.id}`}
-          />
-        )}
-      </AnimatePresence>
 
       {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
       {showFinal3Modal && (
@@ -1335,14 +1330,14 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* ── Eviction Splash (match-cut shared-layout) ────────────────────── */}
+      {/* ── Eviction cinematic (pendingEviction-driven, shared layout match-cut) ── */}
       <AnimatePresence>
-        {showEvictionSplash && evictionSplashPlayer && (
+        {showEvictionSplash && pendingEvictionPlayer && (
           <SpotlightEvictionOverlay
-            key={evictionSplashPlayer.id}
-            evictee={evictionSplashPlayer}
+            key={pendingEvictionPlayer.id}
+            evictee={pendingEvictionPlayer}
             onDone={handleEvictionSplashDone}
-            layoutId={`avatar-tile-${evictionSplashPlayer.id}`}
+            layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
           />
         )}
       </AnimatePresence>

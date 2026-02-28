@@ -319,8 +319,16 @@ export interface GameState {
   /**
    * When set, the EvictionSplash animation is shown for this player ID
    * before the game advances. Cleared by `dismissEvictionSplash`.
+   * @deprecated Use `pendingEviction` for new eviction paths.
    */
   evictionSplashId?: string | null;
+  /**
+   * When set, an eviction is pending cinematic reveal.  The evictee's status
+   * has NOT yet been mutated; `finalizePendingEviction` must be dispatched
+   * (by the overlay's `onDone` callback) to commit the eviction.
+   * Cleared by `finalizePendingEviction`.
+   */
+  pendingEviction?: { evicteeId: string; evictionMessage: string } | null;
   /**
    * Social module state subtree. Managed by the social module; optional so
    * that tests and legacy code that don't set it up continue to work.

@@ -208,10 +208,10 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
     vi.restoreAllMocks();
   });
 
-  it('evictionSplashId present keeps overlay visible; dismissEvictionSplash clears it after DONE_AT', async () => {
-    const evictedPlayer = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'evicted' as const, isUser: false };
+  it('pendingEviction present keeps overlay visible; finalizePendingEviction clears it after DONE_AT', async () => {
+    const evictedPlayer = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active' as const, isUser: false };
     const store = makeStore({
-      evictionSplashId: 'p2',
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Alice, you have been evicted. 🚪' },
       players: [
         { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active' as const, isUser: true },
         { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'active' as const, isUser: false },
@@ -222,17 +222,15 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
       ],
     });
 
-    // evictionSplashId is set in store → overlay should be visible
-    expect(store.getState().game.evictionSplashId).toBe('p2');
+    // pendingEviction is set in store → overlay should be visible
+    expect(store.getState().game.pendingEviction?.evicteeId).toBe('p2');
 
-    // Advance past DONE_AT — overlay calls onDone → dispatches dismissEvictionSplash
+    // Advance past DONE_AT — overlay calls onDone → dispatches finalizePendingEviction
     await act(async () => { vi.advanceTimersByTime(DONE_AT + 100); });
 
-    // After onDone fires, GameScreen dispatches dismissEvictionSplash which clears evictionSplashId
-    // (In this headless test, the overlay component itself fires onDone which the caller handles.)
-    // The store still has evictionSplashId until the component's onDone is called in GameScreen context.
+    // After onDone fires, GameScreen dispatches finalizePendingEviction which clears pendingEviction.
     // Here we test the overlay in isolation — just verify onDone timing is correct.
-    // evictionSplashId clearing is handled by GameScreen via handleEvictionSplashDone.
-    expect(store.getState().game.evictionSplashId).toBe('p2'); // unchanged — no GameScreen mounted
+    // pendingEviction clearing is handled by GameScreen via handleEvictionSplashDone.
+    expect(store.getState().game.pendingEviction?.evicteeId).toBe('p2'); // unchanged — no GameScreen mounted
   });
 });

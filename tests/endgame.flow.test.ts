@@ -21,6 +21,7 @@ import gameReducer, {
   advance,
   finalizeFinal3Eviction,
   finalizeFinal4Eviction,
+  finalizePendingEviction,
   applyF3MinigameWinner,
   selectNominee1,
   finalizeNominations,
@@ -339,6 +340,9 @@ describe('endgame simulation — Final 5 through to jury', () => {
         } else {
           store.dispatch(advance());
         }
+      } else if (state.pendingEviction) {
+        // Simulate the overlay completing instantly — commit the pending eviction.
+        store.dispatch(finalizePendingEviction(state.pendingEviction.evicteeId));
       } else {
         store.dispatch(advance());
       }
@@ -457,8 +461,16 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     const povHolder = midState.players.find((p) => p.id === midState.povWinnerId);
     expect(povHolder?.isUser).toBeFalsy();
 
-    // advance() again: AI POV holder casts sole vote
+    // advance() again: AI POV holder casts sole vote — sets pendingEviction
     store.dispatch(advance());
+
+    // pendingEviction must be set (deferred commit) — phase still final4_eviction
+    const pendingState = store.getState().game;
+    expect(pendingState.pendingEviction).not.toBeNull();
+    expect(pendingState.phase).toBe('final4_eviction');
+
+    // Commit the eviction (simulating overlay onDone)
+    store.dispatch(finalizePendingEviction(pendingState.pendingEviction!.evicteeId));
 
     const endState = store.getState().game;
     expect(endState.phase).toBe('final3');
@@ -490,8 +502,17 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     const { nomineeIds } = store.getState().game;
     expect(nomineeIds).toHaveLength(2);
 
-    // Human POV holder chooses to evict the first nominee
+    // Human POV holder chooses to evict the first nominee — sets pendingEviction
     store.dispatch(finalizeFinal4Eviction(nomineeIds[0]));
+
+    const pendingState = store.getState().game;
+    // pendingEviction set; phase still final4_eviction until overlay completes
+    expect(pendingState.pendingEviction).not.toBeNull();
+    expect(pendingState.pendingEviction?.evicteeId).toBe(nomineeIds[0]);
+    expect(pendingState.phase).toBe('final4_eviction');
+
+    // Commit the eviction (simulating overlay onDone)
+    store.dispatch(finalizePendingEviction(nomineeIds[0]));
 
     const state = store.getState().game;
     expect(state.phase).toBe('final3');
