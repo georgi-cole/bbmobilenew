@@ -5,6 +5,7 @@
 
 import type { SocialState } from '../social/types';
 import type { ActivityChannel, ActivitySource } from '../services/activityService';
+import type { SeasonArchive } from '../store/seasonArchive';
 
 export type PlayerStatus =
   | 'active'
@@ -345,6 +346,11 @@ export interface GameState {
      */
     americasVoteEnabled?: boolean;
   };
+  /**
+   * Archived season records. Each entry is appended when a season ends.
+   * Capped at 50 entries. Persisted to localStorage by default via archivePersistence.
+   */
+  seasonArchives?: SeasonArchive[];
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

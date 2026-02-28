@@ -7,6 +7,8 @@ import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
 import { loadSettings } from './settingsSlice';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
+import type { SeasonArchive } from './seasonArchive';
+import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -108,6 +110,7 @@ const initialState: GameState = {
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
+  seasonArchives: [],
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -1022,12 +1025,41 @@ const gameSlice = createSlice({
       state.evictionSplashId = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
+    /**
+     * Archive the completed season.  Prepends the archive entry and caps the
+     * list at 50 entries to bound memory usage.  Also persists to localStorage
+     * via the archivePersistence adapter.
+     */
+    archiveSeason(state, action: PayloadAction<SeasonArchive>) {
+      if (!state.seasonArchives) state.seasonArchives = [];
+      state.seasonArchives.unshift(action.payload);
+      if (state.seasonArchives.length > 50) {
+        state.seasonArchives = state.seasonArchives.slice(0, 50);
+      }
+      saveSeasonArchives(DEFAULT_ARCHIVE_KEY, state.seasonArchives);
+    },
+    /**
+     * Replace the entire player list.  Used by the start-new-season flow to
+     * inject a normalized roster (no stale evicted/jury/grayscale flags).
+     */
+    replacePlayers(state, action: PayloadAction<Player[]>) {
+      state.players = action.payload;
+    },
     /** Reset game state with a fresh random roster (debug only). */
-    resetGame() {
+    resetGame(state) {
       // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
       // This seed drives in-game RNG (HOH/POV/vote outcomes); it is independent
       // of the Math.random() seed used in pickHouseguests() for roster selection.
       const seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
+      // Preserve season archives across resets so history is not lost.
+      const seasonArchives = state.seasonArchives ?? [];
+      // Build a fresh normalized player roster — no stale eviction/jury/grayscale flags.
+      const freshPlayers: Player[] = buildInitialPlayers().map((p) => ({
+        ...p,
+        status: 'active' as const,
+        finalRank: undefined,
+        isWinner: undefined,
+      }));
       return {
         season: 1,
         week: 1,
@@ -1052,7 +1084,7 @@ const gameSlice = createSlice({
         f3Part2WinnerId: null,
         voteResults: null,
         evictionSplashId: null,
-        players: buildInitialPlayers(),
+        players: freshPlayers,
         tvFeed: [
           {
             id: 'e0',
@@ -1062,6 +1094,7 @@ const gameSlice = createSlice({
           },
         ],
         isLive: false,
+        seasonArchives,
       };
     },
     /** Generate a new random RNG seed (debug only). */
@@ -1789,6 +1822,8 @@ export const {
   forcePovWinner,
   forcePhase,
   clearBlockingFlags,
+  archiveSeason,
+  replacePlayers,
   resetGame,
   rerollSeed,
 } = gameSlice.actions;
