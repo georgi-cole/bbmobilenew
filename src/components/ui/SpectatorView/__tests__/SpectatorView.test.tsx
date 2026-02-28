@@ -8,13 +8,15 @@
  *  4. Keyboard shortcut (Space) accelerates to reveal when winner is unknown.
  *  5. onDone is called after the reveal animation completes.
  *  6. Component renders without crashing when competitorIds is empty.
+ *  7. advance() is blocked while SpectatorView is mounted (spectatorActive set).
+ *  8. advance() is unblocked (spectatorActive cleared) before onDone fires.
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../../../store/gameSlice';
+import gameReducer, { advance } from '../../../../store/gameSlice';
 import SpectatorView from '../SpectatorView';
 import type { GameState, Player } from '../../../../types';
 
@@ -45,6 +47,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
     povWinnerId: null,
     f3Part1WinnerId: 'p1',
     f3Part2WinnerId: 'p2',
+    spectatorActive: null,
     ...overrides,
   };
   return configureStore({ reducer: { game: gameReducer }, preloadedState: { game: base } });
@@ -185,6 +188,53 @@ describe('SpectatorView', () => {
     const store = makeStore();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], variant: 'maze' });
     expect(screen.getByRole('dialog')).toBeDefined();
+    vi.useRealTimers();
+  });
+
+  it('sets spectatorActive in Redux on mount — advance() is blocked while overlay is open', () => {
+    vi.useFakeTimers();
+    const store = makeStore({ phase: 'final3_comp3' });
+
+    // spectatorActive is null before mount
+    expect(store.getState().game.spectatorActive).toBeNull();
+
+    renderSpectator(store, { competitorIds: ['p1', 'p2'] });
+
+    // spectatorActive is now set — advance() should be a no-op
+    expect(store.getState().game.spectatorActive).not.toBeNull();
+    expect(store.getState().game.spectatorActive?.competitorIds).toEqual(['p1', 'p2']);
+
+    const phaseBefore = store.getState().game.phase;
+    store.dispatch(advance());
+    // Phase must NOT have changed — advance() was blocked
+    expect(store.getState().game.phase).toBe(phaseBefore);
+
+    vi.useRealTimers();
+  });
+
+  it('clears spectatorActive (unblocks advance()) before onDone fires', () => {
+    vi.useFakeTimers();
+    const store = makeStore({ hohId: 'p1', phase: 'final3_comp3' });
+
+    let spectatorActiveAtOnDone: unknown = 'not-called';
+    const onDone = vi.fn(() => {
+      // Capture store state at the moment onDone is invoked
+      spectatorActiveAtOnDone = store.getState().game.spectatorActive;
+    });
+
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Fast-forward through reconciliation
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+    // spectatorActive must be null by the time onDone was called
+    expect(spectatorActiveAtOnDone).toBeNull();
+    // And it remains null after onDone
+    expect(store.getState().game.spectatorActive).toBeNull();
+
     vi.useRealTimers();
   });
 });
