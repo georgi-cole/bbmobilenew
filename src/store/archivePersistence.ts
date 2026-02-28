@@ -8,6 +8,7 @@ import type { SeasonArchive } from './seasonArchive';
  * always returns undefined — making it easy to replace with a server-backed
  * persistence layer without touching call-sites.
  */
+// eslint-disable-next-line prefer-const
 export let enabled = true;
 
 export const DEFAULT_ARCHIVE_KEY = 'bbmobilenew:seasonArchives';
