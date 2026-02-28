@@ -134,16 +134,11 @@ export interface TvEvent {
   source?: ActivitySource;
 }
 
-// ─── Battle Back / Jury Return twist ─────────────────────────────────────────
+// ─── Spectator overlay ────────────────────────────────────────────────────────
 
 /**
- * State for the one-time-per-season "Jury Return / Battle Back" twist.
- * Stored in GameState.battleBack; undefined when the twist has never been
- * attempted (first-time lazy initialisation).
- */
-/**
  * Metadata stored in GameState while the SpectatorView overlay is active.
- * Set by openSpectator; cleared by closeSpectator. While non-null, advance()
+ * Set by openSpectator; cleared by closeSpectator. While truthy, advance()
  * returns early so the overlay drives phase progression.
  */
 export interface SpectatorActiveState {
@@ -157,6 +152,13 @@ export interface SpectatorActiveState {
   startedAt: number;
 }
 
+// ─── Battle Back / Jury Return twist ─────────────────────────────────────────
+
+/**
+ * State for the one-time-per-season "Jury Return / Battle Back" twist.
+ * Stored in GameState.battleBack; undefined when the twist has never been
+ * attempted (first-time lazy initialisation).
+ */
 export interface BattleBackState {
   /** True once the twist has fired (or been decided) this season — prevents repeats. */
   used: boolean;

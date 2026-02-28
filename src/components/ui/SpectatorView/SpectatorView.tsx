@@ -93,15 +93,20 @@ export default function SpectatorView({
 
   // ── Open / close spectator in Redux store ─────────────────────────────────
   // openSpectator blocks advance() while the overlay is mounted; closeSpectator
-  // unblocks it.  The cleanup dispatches closeSpectator for graceful unmounts
-  // (e.g. the component is removed without the simulation finishing).
+  // unblocks it.  closedRef tracks whether closeSpectator was already dispatched
+  // via onReconciled so the cleanup does not issue a redundant second dispatch.
   // The parent (GameScreen) uses a `key` prop tied to competitorIds/minigameId,
   // so prop changes trigger a full remount — these values are stable per mount.
 
+  const closedRef = useRef(false);
+
   useEffect(() => {
+    closedRef.current = false;
     dispatch(openSpectator({ competitorIds, minigameId, variant, startedAt: Date.now() }));
     return () => {
-      dispatch(closeSpectator());
+      if (!closedRef.current) {
+        dispatch(closeSpectator());
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once — openSpectator records the mount-time snapshot
@@ -135,6 +140,7 @@ export default function SpectatorView({
       if (import.meta.env.DEV) {
         console.log('[SpectatorView] Authoritative winner revealed:', winnerId);
       }
+      closedRef.current = true;
       dispatch(closeSpectator());
       onDoneRef.current?.();
     }, [dispatch]),

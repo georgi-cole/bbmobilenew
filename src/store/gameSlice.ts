@@ -1112,6 +1112,7 @@ const gameSlice = createSlice({
         ],
         isLive: false,
         seasonArchives,
+        spectatorActive: null,
       };
     },
     /** Generate a new random RNG seed (debug only). */
