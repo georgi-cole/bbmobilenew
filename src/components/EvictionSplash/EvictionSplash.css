@@ -1,5 +1,8 @@
 /* ─── EvictionSplash ─────────────────────────────────────────────────────────
- * Cinematic full-screen eviction animation: colour → B&W.
+ * Cinematic full-screen eviction animation.
+ * Two render paths:
+ *   • Legacy (no layoutId) — colour → B&W CSS transition
+ *   • Match-cut (layoutId)  — Framer Motion shared layout hero animation
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .eviction-splash {
@@ -11,9 +14,13 @@
   align-items: center;
   justify-content: flex-end;
   cursor: pointer;
-  animation: evictFadeIn 0.5s ease;
   background: #000;
   overflow: hidden;
+}
+
+/* ── Legacy path only ───────────────────────────────────────────────────── */
+.eviction-splash:not(.eviction-splash--matchcut) {
+  animation: evictFadeIn 0.5s ease;
 }
 
 /* Fade-out when the sequence ends */
@@ -31,16 +38,16 @@
   to   { opacity: 0; }
 }
 
-/* Dark vignette overlay to punch up the cinematic feel */
+/* Dark vignette overlay */
 .eviction-splash__overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(0,0,0,0.75) 100%);
+  background: radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(0,0,0,0.8) 100%);
   z-index: 1;
   pointer-events: none;
 }
 
-/* ── Photo (fills full screen background) ────────────────────────────────── */
+/* ── Legacy: Photo (fills full screen background) ────────────────────────── */
 .eviction-splash__photo-wrap {
   position: absolute;
   inset: 0;
@@ -51,16 +58,31 @@
   transition: filter 1.4s ease;
 }
 
-/* Colour → B&W transition */
 .eviction-splash__photo-wrap--bw {
   filter: grayscale(1) brightness(0.75);
 }
 
+/* ── Match-cut path: portrait (shared layout target) ─────────────────────── */
+.eviction-splash--matchcut .eviction-splash__portrait {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  /* background keeps the frame filled while the avatar image loads */
+  background: linear-gradient(180deg, #252a32, #1c1f24);
+}
+
+/* Photo inside both legacy and match-cut portrait */
 .eviction-splash__photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center top;
+  display: block;
+}
+
+/* Legacy slow zoom */
+.eviction-splash:not(.eviction-splash--matchcut) .eviction-splash__photo {
   animation: evictPhotoZoom 3.5s ease-out forwards;
 }
 
@@ -69,12 +91,46 @@
   to   { transform: scale(1.08); }
 }
 
+/* Scanlines / film-grain overlay (match-cut path) */
+.eviction-splash__scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.06) 3px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 3;
+  mix-blend-mode: multiply;
+}
+
 .eviction-splash__fallback {
   font-size: 10rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
-/* ── Text content (layered above photo) ─────────────────────────────────── */
+/* ── Broadcast lower-third ───────────────────────────────────────────────── */
+.eviction-splash__lower-third {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9010;
+  padding: 1.4rem 1.5rem 2rem;
+  background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 70%, transparent 100%);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ── Legacy: Text content ────────────────────────────────────────────────── */
 .eviction-splash__content {
   position: relative;
   z-index: 2;
@@ -90,18 +146,19 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Shared text styles ──────────────────────────────────────────────────── */
 .eviction-splash__label {
   margin: 0 0 0.3rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.22em;
-  color: rgba(255, 80, 80, 0.9);
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  color: rgba(255, 80, 80, 0.95);
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .eviction-splash__name {
-  margin: 0 0 0.6rem;
-  font-size: 2.4rem;
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
   font-weight: 900;
   color: #fff;
   letter-spacing: -0.01em;
@@ -109,16 +166,44 @@
 }
 
 .eviction-splash__goodbye {
-  margin: 0 0 1.2rem;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.72);
   font-style: italic;
 }
 
 .eviction-splash__skip {
+  position: fixed;
+  bottom: env(safe-area-inset-bottom, 1.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9020;
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.38);
   letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+/* ── Stamp ───────────────────────────────────────────────────────────────── */
+.eviction-splash__stamp {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  z-index: 9015;
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: transparent;
+  -webkit-text-stroke: 3px rgba(220, 38, 38, 0.85);
+  text-stroke: 3px rgba(220, 38, 38, 0.85);
+  border: 4px solid rgba(220, 38, 38, 0.85);
+  border-radius: 6px;
+  padding: 0.3em 0.6em;
+  pointer-events: none;
+  /* subtle inner shadow for depth */
+  box-shadow: inset 0 0 16px rgba(220, 38, 38, 0.2), 0 0 24px rgba(220, 38, 38, 0.18);
+  white-space: nowrap;
 }
 
 /* ── Reduce motion ──────────────────────────────────────────────────────── */

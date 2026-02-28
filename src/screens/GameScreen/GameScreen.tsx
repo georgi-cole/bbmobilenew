@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -8,6 +9,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
+  selectF3Part3PredictedWinnerId,
   commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
@@ -47,6 +49,7 @@ import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopu
 import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import { resolveAvatar } from '../../utils/avatar'
+import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import type { Player } from '../../types'
 import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay'
 import { selectSettings } from '../../store/settingsSlice'
@@ -78,6 +81,7 @@ export default function GameScreen() {
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
+  const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
@@ -208,9 +212,9 @@ export default function GameScreen() {
 
   // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
   // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
-  // battle as a spectator. We immediately dispatch advance() to let the AI
-  // compute the authoritative winner (sets game.hohId), and show SpectatorView
-  // which subscribes to game.hohId from Redux and reconciles to that winner.
+  // battle as a spectator. SpectatorView mounts and plays through the cinematic
+  // sequence; advance() is dispatched only after onDone fires so the game engine
+  // computes the winner (sets game.hohId) after the spectacle completes.
   const [spectatorF3Active, setSpectatorF3Active] = useState(false)
   const [spectatorF3CompetitorIds, setSpectatorF3CompetitorIds] = useState<string[]>([])
   const spectatorF3AdvancedRef = useRef(false)
@@ -221,16 +225,16 @@ export default function GameScreen() {
     humanPlayer.id !== game.f3Part1WinnerId &&
     humanPlayer.id !== game.f3Part2WinnerId
 
-  // Enter spectator mode on phase arrival; pre-advance to compute the winner.
-  // The ref is checked FIRST to prevent a race where a rapid re-render could
-  // dispatch advance() a second time before the ref is set.
+  // Enter spectator mode on phase arrival. The ref is checked FIRST to prevent
+  // a race where a rapid re-render could activate the overlay a second time.
+  // advance() is NOT dispatched here; SpectatorView.onDone drives it instead.
   useEffect(() => {
     if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT && settings.gameUX.spectatorMode) {
       spectatorF3AdvancedRef.current = true
       const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
       setSpectatorF3CompetitorIds(finalists)
       setSpectatorF3Active(true)
-      dispatch(advance())
+      // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
     }
   // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
   // stable from useAppDispatch and `advance` is a constant action creator, so
@@ -242,7 +246,8 @@ export default function GameScreen() {
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)
     spectatorF3AdvancedRef.current = false
-  }, [])
+    dispatch(advance())
+  }, [dispatch])
 
   // ── Legacy 'spectator:show' event listener ─────────────────────────────────
   // The legacySpectatorAdapter dispatches this event when window.Spectator.show()
@@ -337,6 +342,9 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
+      layoutId: `avatar-tile-${p.id}`,
+      isEvicting: (showEvictionSplash && evictionSplashPlayer?.id === p.id)
+        || (showFinal4LocalSplash && final4Evictee?.id === p.id),
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -605,73 +613,150 @@ export default function GameScreen() {
     setAiReplacementConsumedKey(aiReplacementKey)
   }, [aiReplacementKey])
 
-  // ── Final 4 human POV holder vote ────────────────────────────────────────
-  // Shown when phase is final4_eviction, the human player is the POV holder,
-  // and awaitingPovDecision is set (meaning plea messages have been emitted).
-  // The ChatOverlay plays first; only after it completes does the decision
-  // modal appear (final4ChatDone guards the modal).
-  const [final4ChatDone, setFinal4ChatDone] = useState(false)
+  // ── Final 4 cinematic flow ───────────────────────────────────────────────────
+  // Stage machine drives the full Final 4 eviction sequence:
+  //   idle         → not yet started (or reset after leaving final4/final3)
+  //   pleas        → plea ChatOverlay (all players; blocks FAB)
+  //   decision     → TvDecisionModal (human POV only; blocks FAB)
+  //   announcement → eviction announcement ChatOverlay (blocks FAB)
+  //   splash       → EvictionSplash animation (blocks FAB)
+  //   done         → complete; FAB visible so user can advance to final3 comps
+  type Final4Stage = 'idle' | 'pleas' | 'decision' | 'announcement' | 'splash' | 'done'
+  const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
+  const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
+  const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
+  const [final4Evictee, setFinal4Evictee] = useState<Player | null>(null)
+  // Holds the nominee IDs captured when the overlay opens so we can identify
+  // the evicted player after advance() transitions to final3.
+  const final4NomineesRef = useRef<string[]>([])
 
-  // Reset the final4 chat completion flag when leaving the final4_eviction phase
-  // so that re-entering the phase (e.g., via debug tools) replays the chat.
-  // Uses window.setTimeout to keep the setState async (avoids set-state-in-effect lint error).
+  // Reset all Final 4 state when the game leaves the final4/final3 region
+  // (e.g. game reset, debug jump to a different phase).
   useEffect(() => {
-    if (game.phase === 'final4_eviction' || !final4ChatDone) return
-    const id = window.setTimeout(() => setFinal4ChatDone(false), 0)
+    if (game.phase === 'final4_eviction' || game.phase === 'final3') return
+    if (final4Stage === 'idle') return
+    const id = window.setTimeout(() => {
+      setFinal4Stage('idle')
+      setFinal4PleaLines([])
+      setFinal4AnnounceLines([])
+      setFinal4Evictee(null)
+      final4NomineesRef.current = []
+    }, 0)
     return () => window.clearTimeout(id)
-  }, [game.phase, final4ChatDone])
-  // Build ChatOverlay lines from tvFeed plea events emitted by advance().
-  // tvFeed is newest-first; we reverse to get chronological order and filter
-  // to the plea-related lines for this phase.
-  const final4ChatLines = useMemo((): ChatLine[] => {
-    if (game.phase !== 'final4_eviction' || !humanIsPovHolder) return []
+  }, [game.phase, final4Stage])
+
+  // Enter final4_eviction → build enriched plea lines and start the overlay.
+  // For human POV: also dispatch advance() now so plea events are emitted to
+  // tvFeed and awaitingPovDecision is set before the decision modal appears.
+  useEffect(() => {
+    if (game.phase !== 'final4_eviction' || final4Stage !== 'idle') return
+    const povHolder = alivePlayers.find((p) => p.id === game.povWinnerId)
     const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
-    // Look in tvFeed for plea lines emitted this phase (type 'game', recent).
-    // tvFeed is stored newest-first; take up to 10 recent entries then reverse.
-    const recentEvents = [...game.tvFeed].slice(0, 10).reverse()
-    const pleaLines: ChatLine[] = []
-    recentEvents.forEach((ev) => {
-      if (!ev.text) return
-      const isPleasIntro = /asks nominees for their pleas/i.test(ev.text)
-      const nomineeMatch = nominees.find((n) => ev.text.startsWith(`${n.name}:`))
-      if (isPleasIntro || nomineeMatch) {
-        const rawText = nomineeMatch
-          ? ev.text.replace(new RegExp(`^${nomineeMatch.name}:\\s*"?`), '').replace(/"$/, '').trim()
-          : ev.text
-        if (!rawText) return
-        pleaLines.push({
-          id: ev.id,
-          role: nomineeMatch ? 'nominee' : 'host',
-          player: nomineeMatch,
-          text: rawText,
-        })
-      }
-    })
-    // If tvFeed didn't contain plea lines yet, synthesize polite fallbacks.
-    if (pleaLines.length === 0) {
-      nominees.forEach((n) => {
-        pleaLines.push({
-          id: `fallback-${n.id}`,
+    if (!povHolder || nominees.length === 0) return
+    final4NomineesRef.current = nominees.map((n) => n.id)
+    const lines: ChatLine[] = [
+      {
+        id: 'f4-intro',
+        role: 'host',
+        text: `${povHolder.name} holds the sole vote to evict. Nominees, it's time to make your pleas. 🎤`,
+      },
+      ...nominees.flatMap((nominee, idx): ChatLine[] => [
+        {
+          id: `f4-prompt-${nominee.id}`,
+          role: 'pov',
+          player: povHolder,
+          text: `${nominee.name}, the floor is yours. Make your case.`,
+        },
+        {
+          id: `f4-plea-${nominee.id}`,
           role: 'nominee',
-          player: n,
-          text: `Please keep me — I have so much more to give this game.`,
-        })
-      })
+          player: nominee,
+          text: pickPhrase(NOMINEE_PLEA_TEMPLATES, game.seed, idx),
+        },
+        {
+          id: `f4-thanks-${nominee.id}`,
+          role: 'pov',
+          player: povHolder,
+          text:
+            idx < nominees.length - 1
+              ? `Thank you, ${nominee.name}.`
+              : `Thank you both. I'll take a moment to think. 🤔`,
+        },
+      ]),
+      {
+        id: 'f4-thinking',
+        role: 'pov-thinking',
+        player: povHolder,
+        text: '• • •',
+      },
+    ]
+    setFinal4PleaLines(lines)
+    setFinal4Stage('pleas')
+    if (humanIsPovHolder) {
+      dispatch(advance())
     }
-    return pleaLines
-  }, [game.phase, game.tvFeed, game.nomineeIds, alivePlayers, humanIsPovHolder])
+  }, [game.phase, final4Stage, alivePlayers, game.povWinnerId, game.nomineeIds, game.seed, humanIsPovHolder, dispatch])
 
-  const showFinal4Chat =
-    game.phase === 'final4_eviction' &&
-    !!humanIsPovHolder &&
-    Boolean(game.awaitingPovDecision) &&
-    !final4ChatDone
+  // Plea overlay complete:
+  //   human POV → show decision modal
+  //   AI POV    → dispatch advance() (AI evicts; phase transitions to final3)
+  const handleFinal4PleaComplete = useCallback(() => {
+    if (humanIsPovHolder) {
+      setFinal4Stage('decision')
+    } else {
+      dispatch(advance())
+      // Stage transitions to 'announcement' via effect below once phase === 'final3'
+    }
+  }, [humanIsPovHolder, dispatch])
 
-  const showFinal4Modal =
-    game.phase === 'final4_eviction' &&
-    !!humanIsPovHolder &&
-    Boolean(game.awaitingPovDecision) &&
-    final4ChatDone
+  // Detect eviction: phase just became final3 while still in pleas/decision stage.
+  // Build eviction announcement lines and move to the announcement stage.
+  useEffect(() => {
+    if (game.phase !== 'final3') return
+    if (final4Stage !== 'pleas' && final4Stage !== 'decision') return
+    if (final4NomineesRef.current.length === 0) return
+    const evicted = game.players.find(
+      (p) =>
+        final4NomineesRef.current.includes(p.id) &&
+        (p.status === 'evicted' || p.status === 'jury'),
+    )
+    if (!evicted) {
+      setFinal4Stage('done')
+      return
+    }
+    const povHolder = game.players.find((p) => p.id === game.povWinnerId)
+    setFinal4AnnounceLines([
+      {
+        id: 'f4-evict-decision',
+        role: 'pov',
+        player: povHolder,
+        text: `I vote to evict… ${evicted.name}. 🗳️`,
+      },
+      {
+        id: 'f4-evict-bb',
+        role: 'host',
+        text: `${evicted.name}, by a vote of 1 to 0, you have been evicted from the Big Brother house. Please take a moment to say your goodbyes. 👋`,
+      },
+    ])
+    setFinal4Evictee(evicted)
+    setFinal4Stage('announcement')
+    final4NomineesRef.current = []
+  }, [game.phase, final4Stage, game.players, game.povWinnerId])
+
+  const handleFinal4AnnounceComplete = useCallback(() => {
+    setFinal4Stage('splash')
+  }, [])
+
+  const handleFinal4SplashDone = useCallback(() => {
+    setFinal4Stage('done')
+    setFinal4Evictee(null)
+  }, [])
+
+  const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
+  const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision'
+  const showFinal4AnnounceChat = game.phase === 'final3' && final4Stage === 'announcement'
+  const showFinal4LocalSplash =
+    game.phase === 'final3' && final4Stage === 'splash' && final4Evictee !== null
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
@@ -857,6 +942,8 @@ export default function GameScreen() {
     showPovSaveModal ||
     showFinal4Chat ||
     showFinal4Modal ||
+    showFinal4AnnounceChat ||
+    showFinal4LocalSplash ||
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
@@ -872,6 +959,7 @@ export default function GameScreen() {
     spectatorLegacyActive
 
   return (
+    <LayoutGroup id="game-layout">
     <div className="game-screen game-screen-shell">
       <TvZone />
 
@@ -995,13 +1083,13 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Final 4 plea chat overlay (human POV holder sees pleas first) ── */}
+      {/* ── Final 4 plea chat overlay (all players) ─────────────────────── */}
       {showFinal4Chat && (
         <ChatOverlay
-          lines={final4ChatLines}
+          lines={final4PleaLines}
           skippable
-          header={{ title: 'Final 4', subtitle: 'Hear the nominees out before casting your vote.' }}
-          onComplete={() => setFinal4ChatDone(true)}
+          header={{ title: 'Final 4 🏡', subtitle: 'Hear from the nominees before the vote.' }}
+          onComplete={handleFinal4PleaComplete}
           ariaLabel="Final 4 plea chat"
         />
       )}
@@ -1017,6 +1105,29 @@ export default function GameScreen() {
           stingerMessage="VOTE RECORDED"
         />
       )}
+
+      {/* ── Final 4 eviction announcement overlay ────────────────────────── */}
+      {showFinal4AnnounceChat && (
+        <ChatOverlay
+          lines={final4AnnounceLines}
+          skippable
+          header={{ title: 'Final 4 🚪', subtitle: 'The decision has been made.' }}
+          onComplete={handleFinal4AnnounceComplete}
+          ariaLabel="Final 4 eviction announcement"
+        />
+      )}
+
+      {/* ── Final 4 local eviction splash ────────────────────────────────── */}
+      <AnimatePresence>
+        {showFinal4LocalSplash && final4Evictee && (
+          <EvictionSplash
+            key={final4Evictee.id}
+            evictee={final4Evictee}
+            onDone={handleFinal4SplashDone}
+            layoutId={`avatar-tile-${final4Evictee.id}`}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
       {showFinal3Modal && (
@@ -1224,13 +1335,17 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* ── Eviction Splash (colour → B&W cinematic) ────────────────────── */}
-      {showEvictionSplash && evictionSplashPlayer && (
-        <EvictionSplash
-          evictee={evictionSplashPlayer}
-          onDone={handleEvictionSplashDone}
-        />
-      )}
+      {/* ── Eviction Splash (match-cut shared-layout) ────────────────────── */}
+      <AnimatePresence>
+        {showEvictionSplash && evictionSplashPlayer && (
+          <EvictionSplash
+            key={evictionSplashPlayer.id}
+            evictee={evictionSplashPlayer}
+            onDone={handleEvictionSplashDone}
+            layoutId={`avatar-tile-${evictionSplashPlayer.id}`}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
       {showBattleBack && battleBackCandidates.length > 0 && (
@@ -1253,11 +1368,14 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
+      {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
+      {/* without waiting for advance() (which fires only after onDone).         */}
       {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
         <SpectatorView
           key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
           variant="holdwall"
+          initialWinnerId={f3Part3PredictedWinnerId ?? undefined}
           onDone={handleSpectatorF3Done}
         />
       )}
@@ -1298,5 +1416,6 @@ export default function GameScreen() {
         footerSelector=".nav-bar"
       />
     </div>
+    </LayoutGroup>
   )
 }

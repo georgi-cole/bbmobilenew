@@ -64,21 +64,32 @@ function ChatAvatar({ player }: { player: Player }) {
   const avatar = player.avatar ?? '';
   const [candidates] = useState(() => resolveAvatarCandidates(player));
   const [candidateIdx, setCandidateIdx] = useState(0);
+  const [allFailed, setAllFailed] = useState(false);
+
+  // Try image candidates first (includes PNG paths and Dicebear fallback).
+  // Only fall back to emoji / initial once all candidates are exhausted.
+  if (!allFailed) {
+    const src = candidates[candidateIdx];
+    if (src) {
+      return (
+        <img
+          className="chat-overlay__avatar-img"
+          src={src}
+          alt={player.name}
+          onError={() => {
+            if (candidateIdx === candidates.length - 1) {
+              setAllFailed(true);
+            } else {
+              setCandidateIdx((i) => i + 1);
+            }
+          }}
+        />
+      );
+    }
+  }
 
   if (isEmoji(avatar)) {
     return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
-  }
-
-  const src = candidates[candidateIdx];
-  if (src) {
-    return (
-      <img
-        className="chat-overlay__avatar-img"
-        src={src}
-        alt={player.name}
-        onError={() => setCandidateIdx((i) => Math.min(i + 1, candidates.length - 1))}
-      />
-    );
   }
   return (
     <span className="chat-overlay__avatar-initial">

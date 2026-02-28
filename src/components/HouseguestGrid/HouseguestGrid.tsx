@@ -25,6 +25,16 @@ export type Houseguest = {
    * is the only badge visible during the sequence.
    */
   showPermanentBadge?: boolean
+  /**
+   * Framer Motion layoutId for the shared layout match-cut animation.
+   * When set, the avatar tile participates in the hero animation with EvictionSplash.
+   */
+  layoutId?: string
+  /**
+   * When true, the tile hides itself (opacity 0) while the eviction overlay is
+   * active, so the shared-layout portrait is the only visible instance.
+   */
+  isEvicting?: boolean
 }
 
 type Props = {
@@ -108,6 +118,8 @@ export default function HouseguestGrid({
               statuses={hg.statuses}
               finalRank={hg.finalRank}
               showPermanentBadge={hg.showPermanentBadge}
+              layoutId={hg.layoutId}
+              isEvicting={hg.isEvicting}
             />
           </li>
         ))}
