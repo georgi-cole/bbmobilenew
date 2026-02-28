@@ -98,7 +98,8 @@ class _SoundManager {
     await src.init();
 
     const vol = opts?.volume ?? entry.volume ?? 1;
-    src.setVolume(Math.min(vol, cat.volume));
+    const effectiveVolume = Math.max(0, Math.min(1, vol * cat.volume));
+    src.setVolume(effectiveVolume);
     src.play();
   }
 
