@@ -29,9 +29,9 @@ interface Props {
  */
 
 // ── Timing constants (ms) ─────────────────────────────────────────────────
-const EXPAND_MS  = 300;
-const HOLD_MS    = 500;
-const REVERSE_MS = 300;
+const EXPAND_MS  = 600;
+const HOLD_MS    = 900;
+const REVERSE_MS = 350;
 // Legacy fallback timing
 const LEGACY_DURATION    = 3200;
 const LEGACY_FADE_OUT_MS = 600;

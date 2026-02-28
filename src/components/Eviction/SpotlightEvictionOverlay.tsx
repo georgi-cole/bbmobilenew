@@ -5,12 +5,22 @@ import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './SpotlightEvictionOverlay.css';
 
 // ── Timing constants (ms, relative to component mount) ────────────────────
+//
+// Beat:   0 ms         grid dims + spotlight locks
+//        250 ms        LIVE bug fades in
+//        300 ms        tile expansion begins (600 ms, smooth ease-out)
+//        600 ms        desaturate + vignette settle
+//        700 ms        lower-third slides in (400 ms after expand start)
+//       1000 ms        expansion done → suspense hold begins
+//       1800 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
+//       2200 ms        match-cut shrink complete
+//
 const LIVE_BUG_AT     = 250;   // LIVE bug fades in
 const EXPAND_START    = 300;   // shared-layout expansion begins
-const DESAT_AT        = 600;   // desaturation + vignette settle (300 ms after expand)
-const LOWER_THIRD_AT  = 700;   // lower-third slides in (400 ms after expand)
+const DESAT_AT        = 600;   // desaturation + vignette settle
+const LOWER_THIRD_AT  = 700;   // lower-third slides in
 const HOLD_START      = 1000;  // expansion done; suspense hold begins
-const DONE_AT         = 2000;  // onDone fires; AnimatePresence triggers reverse
+const DONE_AT         = 1800;  // onDone fires; AnimatePresence triggers reverse (400 ms)
 
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
@@ -18,8 +28,8 @@ const REDUCED_DONE_AT = 600;
 // Cinematic filter applied to the portrait during the holding phase
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
 
-// Spring config shared by the portrait layout transition
-const PORTRAIT_SPRING = { type: 'spring' as const, stiffness: 180, damping: 26 };
+// Portrait layout transition: camera-push ease-out over 600 ms
+const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] };
 
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
 
@@ -39,13 +49,13 @@ interface Props {
  * SpotlightEvictionOverlay — cinematic eviction choreography.
  *
  * Beat sequence:
- *  0–300 ms   spotlight   grid dims, radial spotlight mask animates
- *  250 ms                 LIVE bug appears
- *  300–1000 ms expanding  shared-layout tile expands fullscreen (match-cut)
- *  600 ms                 image desaturates + vignette settles
- *  700 ms                 "EVICTED" lower-third + stamp slide in
- *  1000–2000 ms holding   suspense pause
- *  2000 ms    done        onDone() fires; AnimatePresence reverse plays (300 ms)
+ *  0–300 ms     spotlight   grid dims, radial spotlight mask animates
+ *  250 ms                   LIVE bug appears
+ *  300–900 ms   expanding   shared-layout tile expands fullscreen (600 ms, ease-out)
+ *  600 ms                   image desaturates + vignette settles
+ *  700 ms                   "EVICTED" lower-third + stamp slide in
+ *  1000–1800 ms holding     suspense pause
+ *  1800 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
  *
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
@@ -75,23 +85,28 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
+    const t0 = Date.now();
+    const dbg = import.meta.env.DEV
+      ? (label: string) => console.debug(`[SEO] +${Date.now() - t0}ms  ${label}`)
+      : () => {};
 
     if (prefersReducedMotion) {
       // Simplified: skip transitions, jump straight to holding state then done
       setPhase('holding');
       setShowLowerThird(true);
       setDesaturated(true);
-      timers.push(setTimeout(() => { setPhase('done'); fire(); }, REDUCED_DONE_AT));
+      timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done (reduced-motion)'); }, REDUCED_DONE_AT));
       return () => timers.forEach(clearTimeout);
     }
 
     // Full cinematic sequence
-    timers.push(setTimeout(() => setShowLiveBug(true), LIVE_BUG_AT));
-    timers.push(setTimeout(() => setPhase('expanding'), EXPAND_START));
-    timers.push(setTimeout(() => setDesaturated(true), DESAT_AT));
-    timers.push(setTimeout(() => setShowLowerThird(true), LOWER_THIRD_AT));
-    timers.push(setTimeout(() => setPhase('holding'), HOLD_START));
-    timers.push(setTimeout(() => { setPhase('done'); fire(); }, DONE_AT));
+    dbg('mount – spotlight phase');
+    timers.push(setTimeout(() => { setShowLiveBug(true); dbg('LIVE bug'); }, LIVE_BUG_AT));
+    timers.push(setTimeout(() => { setPhase('expanding'); dbg('expanding'); }, EXPAND_START));
+    timers.push(setTimeout(() => { setDesaturated(true); dbg('desaturate + vignette'); }, DESAT_AT));
+    timers.push(setTimeout(() => { setShowLowerThird(true); dbg('lower-third'); }, LOWER_THIRD_AT));
+    timers.push(setTimeout(() => { setPhase('holding'); dbg('holding'); }, HOLD_START));
+    timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done'); }, DONE_AT));
 
     return () => timers.forEach(clearTimeout);
   // fire is stable (guarded by firedRef); prefersReducedMotion is read once on mount
@@ -160,8 +175,9 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
 
       {/* Shared-layout portrait (match-cut hero) */}
       <motion.div
-        className="seo__portrait"
+        className={`seo__portrait${phase === 'expanding' || phase === 'holding' || phase === 'done' ? ' seo__portrait--expanded' : ''}`}
         layoutId={layoutId}
+        style={{ borderRadius: phase === 'spotlight' ? 'var(--tile-radius, 12px)' : 0 }}
         transition={prefersReducedMotion ? { duration: 0 } : PORTRAIT_SPRING}
       >
         {showFallback ? (
@@ -176,10 +192,12 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
             onError={handleImgError}
             animate={
               desaturated
-                ? { scale: 1.04, filter: CINEMATIC_FILTER }
-                : { scale: 1, filter: 'saturate(1) contrast(1) brightness(1)' }
+                ? { scale: 1.04, filter: CINEMATIC_FILTER, y: 0 }
+                : phase === 'expanding'
+                  ? { scale: 1.02, filter: 'saturate(0.9) contrast(1) brightness(0.95) blur(1.5px)', y: -6 }
+                  : { scale: 1, filter: 'saturate(1) contrast(1) brightness(1)', y: 0 }
             }
-            transition={noMotion ?? { duration: 0.4, ease: 'easeOut' }}
+            transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
           />
         )}
 
