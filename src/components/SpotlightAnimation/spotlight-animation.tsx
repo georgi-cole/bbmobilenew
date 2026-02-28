@@ -117,7 +117,7 @@ export default function SpotlightAnimation({
       window.visualViewport?.removeEventListener('scroll', remeasure);
       ro?.disconnect();
     };
-  }, [hasMeasure, hasRefs, remeasure]);
+  }, [hasMeasure, hasRefs, remeasure, tileRefs]);
 
   return <CeremonyOverlay {...rest} tiles={tiles} onDone={onDone} />;
 }
