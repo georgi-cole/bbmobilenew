@@ -7,20 +7,20 @@ import './SpotlightEvictionOverlay.css';
 // ── Timing constants (ms, relative to component mount) ────────────────────
 //
 // Beat:   0 ms         grid dims + spotlight locks
-//        250 ms        LIVE bug fades in
-//        300 ms        tile expansion begins (600 ms, smooth ease-out)
-//        600 ms        desaturate + vignette settle
-//        700 ms        lower-third slides in (400 ms after expand start)
-//       1000 ms        expansion done → suspense hold begins
-//       1800 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
-//       2200 ms        match-cut shrink complete
+//        750 ms        LIVE bug fades in
+//        900 ms        tile expansion begins (600 ms, smooth ease-out)
+//       1800 ms        desaturate + vignette settle
+//       2100 ms        lower-third slides in
+//       3000 ms        expansion done → suspense hold begins
+//       5400 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
+//       5800 ms        match-cut shrink complete
 //
-const LIVE_BUG_AT     = 250;   // LIVE bug fades in
-const EXPAND_START    = 300;   // shared-layout expansion begins
-const DESAT_AT        = 600;   // desaturation + vignette settle
-const LOWER_THIRD_AT  = 700;   // lower-third slides in
-const HOLD_START      = 1000;  // expansion done; suspense hold begins
-const DONE_AT         = 1800;  // onDone fires; AnimatePresence triggers reverse (400 ms)
+const LIVE_BUG_AT     = 750;   // LIVE bug fades in
+const EXPAND_START    = 900;   // shared-layout expansion begins
+const DESAT_AT        = 1800;  // desaturation + vignette settle
+const LOWER_THIRD_AT  = 2100;  // lower-third slides in
+const HOLD_START      = 3000;  // expansion done; suspense hold begins
+const DONE_AT         = 5400;  // onDone fires; AnimatePresence triggers reverse (400 ms)
 
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
@@ -49,13 +49,13 @@ interface Props {
  * SpotlightEvictionOverlay — cinematic eviction choreography.
  *
  * Beat sequence:
- *  0–300 ms     spotlight   grid dims, radial spotlight mask animates
- *  250 ms                   LIVE bug appears
- *  300–900 ms   expanding   shared-layout tile expands fullscreen (600 ms, ease-out)
- *  600 ms                   image desaturates + vignette settles
- *  700 ms                   "EVICTED" lower-third + stamp slide in
- *  1000–1800 ms holding     suspense pause
- *  1800 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
+ *  0–900 ms     spotlight   grid dims, radial spotlight mask animates
+ *  750 ms                   LIVE bug appears
+ *  900–1500 ms  expanding   shared-layout tile expands fullscreen (600 ms, ease-out)
+ *  1800 ms                  image desaturates + vignette settles
+ *  2100 ms                  "EVICTED" lower-third + stamp slide in
+ *  3000–5400 ms holding     suspense pause
+ *  5400 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
  *
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
