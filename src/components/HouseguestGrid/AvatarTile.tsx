@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
@@ -29,9 +30,20 @@ type Props = {
    * Defaults to true.
    */
   showPermanentBadge?: boolean
+  /**
+   * Framer Motion layoutId for the avatar wrap — enables the match-cut shared
+   * layout animation between the grid tile and EvictionSplash fullscreen portrait.
+   */
+  layoutId?: string
+  /**
+   * When true the tile's avatarWrap is hidden (opacity 0) so the shared-layout
+   * overlay portrait is the only visible instance during the eviction animation.
+   * The tile fades back in after a short delay matching the reverse animation.
+   */
+  isEvicting?: boolean
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -92,7 +104,19 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           : undefined
       }
     >
-      <div className={styles.avatarWrap}>
+      <motion.div
+        className={styles.avatarWrap}
+        layoutId={layoutId}
+        animate={
+          // Only apply opacity animation when layoutId is present (shared-layout path).
+          // isEvicting is only ever set to true for tiles participating in the match-cut
+          // animation which always have a layoutId, so this coupling is intentional.
+          layoutId ? { opacity: isEvicting ? 0 : 1 } : undefined
+        }
+        transition={layoutId ? {
+          opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
+        } : undefined}
+      >
         <div className={styles.nameOverlay} aria-hidden="true">
           {name}
         </div>
@@ -126,35 +150,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           </div>
         )}
 
-        {/* Evictee X overlay — subtle thin-stroke red cross with low opacity */}
+        {/* Evictee mark — paint brushstroke PNG overlay */}
         {isEvicted && (
-          <svg
-            className={styles.cross}
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
+          <img
+            src="/evictionmark/evictionmark.png"
+            alt=""
             aria-hidden="true"
-          >
-            <line
-              x1="15"
-              y1="15"
-              x2="85"
-              y2="85"
-              stroke="rgba(220, 38, 38, 0.65)"
-              strokeWidth="5"
-              strokeLinecap="round"
-            />
-            <line
-              x1="85"
-              y1="15"
-              x2="15"
-              y2="85"
-              stroke="rgba(220, 38, 38, 0.65)"
-              strokeWidth="5"
-              strokeLinecap="round"
-            />
-          </svg>
+            className={styles.cross}
+          />
         )}
-      </div>
+      </motion.div>
 
       <div className={styles.nameRow} aria-hidden="true" />
     </div>

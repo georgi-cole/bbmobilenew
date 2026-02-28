@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -341,6 +342,9 @@ export default function GameScreen() {
       isEvicted,
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
+      layoutId: `avatar-tile-${p.id}`,
+      isEvicting: (showEvictionSplash && evictionSplashPlayer?.id === p.id)
+        || (showFinal4LocalSplash && final4Evictee?.id === p.id),
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -955,6 +959,7 @@ export default function GameScreen() {
     spectatorLegacyActive
 
   return (
+    <LayoutGroup id="game-layout">
     <div className="game-screen game-screen-shell">
       <TvZone />
 
@@ -1113,9 +1118,16 @@ export default function GameScreen() {
       )}
 
       {/* ── Final 4 local eviction splash ────────────────────────────────── */}
-      {showFinal4LocalSplash && final4Evictee && (
-        <EvictionSplash evictee={final4Evictee} onDone={handleFinal4SplashDone} />
-      )}
+      <AnimatePresence>
+        {showFinal4LocalSplash && final4Evictee && (
+          <EvictionSplash
+            key={final4Evictee.id}
+            evictee={final4Evictee}
+            onDone={handleFinal4SplashDone}
+            layoutId={`avatar-tile-${final4Evictee.id}`}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
       {showFinal3Modal && (
@@ -1323,13 +1335,17 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* ── Eviction Splash (colour → B&W cinematic) ────────────────────── */}
-      {showEvictionSplash && evictionSplashPlayer && (
-        <EvictionSplash
-          evictee={evictionSplashPlayer}
-          onDone={handleEvictionSplashDone}
-        />
-      )}
+      {/* ── Eviction Splash (match-cut shared-layout) ────────────────────── */}
+      <AnimatePresence>
+        {showEvictionSplash && evictionSplashPlayer && (
+          <EvictionSplash
+            key={evictionSplashPlayer.id}
+            evictee={evictionSplashPlayer}
+            onDone={handleEvictionSplashDone}
+            layoutId={`avatar-tile-${evictionSplashPlayer.id}`}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
       {showBattleBack && battleBackCandidates.length > 0 && (
@@ -1400,5 +1416,6 @@ export default function GameScreen() {
         footerSelector=".nav-bar"
       />
     </div>
+    </LayoutGroup>
   )
 }
