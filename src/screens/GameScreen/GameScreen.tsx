@@ -308,7 +308,7 @@ export default function GameScreen() {
     }
     window.addEventListener('spectator:show', handleSpectatorShow)
     return () => window.removeEventListener('spectator:show', handleSpectatorShow)
-  }, []) // registered once; players accessed via ref above
+  }, [spectatorReactEnabled]) // re-registers if the feature flag is toggled; players accessed via ref above
 
   const handleSpectatorLegacyDone = useCallback(() => {
     setSpectatorLegacyPayload(null)
