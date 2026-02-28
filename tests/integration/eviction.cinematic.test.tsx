@@ -2,11 +2,9 @@
 //
 // Validates:
 //   1. SpotlightEvictionOverlay remains mounted for at least DONE_AT ms before onDone fires.
-//   2. tvFeed does not gain a new eviction event while the overlay is visible;
-//      the event already in the feed (from the store action that set evictionSplashId)
-//      is present before onDone, but dismissEvictionSplash (which advances the feed)
-//      only fires after the overlay's onDone callback.
-//   3. GameScreen uses SpotlightEvictionOverlay for the Final-4 splash path, not EvictionSplash.
+//   2. GameScreen renders the overlay while pendingEviction is set, then commits the eviction
+//      (clears pendingEviction, updates evictee status, appends tvFeed event) after DONE_AT ms.
+//   3. advance() is blocked while pendingEviction is set (overlay is blocking).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
@@ -20,6 +18,7 @@ import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import type { GameState, Player } from '../../src/types';
 import SpotlightEvictionOverlay from '../../src/components/Eviction/SpotlightEvictionOverlay';
+import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -201,6 +200,11 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
 describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, width: 60, height: 80,
+      top: 0, left: 0, bottom: 80, right: 60,
+      toJSON: () => ({}),
+    } as DOMRect);
   });
 
   afterEach(() => {
@@ -208,31 +212,55 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
     vi.restoreAllMocks();
   });
 
-  it('evictionSplashId present keeps overlay visible; dismissEvictionSplash clears it after DONE_AT', async () => {
-    const evictedPlayer = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'evicted' as const, isUser: false };
+  it('renders overlay while pendingEviction is set and commits eviction after DONE_AT ms', async () => {
+    const players: Player[] = [
+      { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active', isUser: true },
+      { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p2', name: 'Alice', avatar: '🧑', status: 'nominated', isUser: false },
+      { id: 'p3', name: 'Player 3', avatar: '🧑', status: 'nominated', isUser: false },
+      { id: 'p4', name: 'Player 4', avatar: '🧑', status: 'active', isUser: false },
+      { id: 'p5', name: 'Player 5', avatar: '🧑', status: 'active', isUser: false },
+    ];
     const store = makeStore({
-      evictionSplashId: 'p2',
-      players: [
-        { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active' as const, isUser: true },
-        { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'active' as const, isUser: false },
-        evictedPlayer,
-        { id: 'p3', name: 'Player 3', avatar: '🧑', status: 'active' as const, isUser: false },
-        { id: 'p4', name: 'Player 4', avatar: '🧑', status: 'active' as const, isUser: false },
-        { id: 'p5', name: 'Player 5', avatar: '🧑', status: 'active' as const, isUser: false },
-      ],
+      // Simulate the state after advance() ran from eviction_results:
+      // pendingEviction is set, phase is week_end (since eviction_results → week_end).
+      phase: 'week_end',
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3'],
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Alice, you have been evicted. 🚪' },
+      players,
     });
 
-    // evictionSplashId is set in store → overlay should be visible
-    expect(store.getState().game.evictionSplashId).toBe('p2');
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await act(async () => {});
 
-    // Advance past DONE_AT — overlay calls onDone → dispatches dismissEvictionSplash
+    // advance() must be blocked while pendingEviction is set.
+    expect(store.getState().game.pendingEviction).not.toBeNull();
+
+    // The SpotlightEvictionOverlay dialog must be visible for the evictee.
+    expect(screen.getByRole('dialog', { name: /Alice has been evicted/i })).toBeTruthy();
+
+    // Alice's status must still be 'nominated' — the commit is deferred.
+    const aliceBefore = store.getState().game.players.find((p) => p.id === 'p2');
+    expect(aliceBefore?.status).toBe('nominated');
+
+    // Advance past DONE_AT — overlay's onDone fires → finalizePendingEviction dispatched.
     await act(async () => { vi.advanceTimersByTime(DONE_AT + 100); });
 
-    // After onDone fires, GameScreen dispatches dismissEvictionSplash which clears evictionSplashId
-    // (In this headless test, the overlay component itself fires onDone which the caller handles.)
-    // The store still has evictionSplashId until the component's onDone is called in GameScreen context.
-    // Here we test the overlay in isolation — just verify onDone timing is correct.
-    // evictionSplashId clearing is handled by GameScreen via handleEvictionSplashDone.
-    expect(store.getState().game.evictionSplashId).toBe('p2'); // unchanged — no GameScreen mounted
+    // pendingEviction must be cleared after finalizePendingEviction.
+    expect(store.getState().game.pendingEviction).toBeNull();
+
+    // Alice's status must now reflect the eviction.
+    const aliceAfter = store.getState().game.players.find((p) => p.id === 'p2');
+    expect(aliceAfter?.status).toMatch(/evicted|jury/);
+
+    // tvFeed must contain the eviction message.
+    expect(store.getState().game.tvFeed.some((e) => e.text.includes('Alice'))).toBe(true);
   });
 });

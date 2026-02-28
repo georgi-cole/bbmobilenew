@@ -29,7 +29,7 @@ const REDUCED_DONE_AT = 600;
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
 
 // Portrait layout transition: camera-push ease-out over 600 ms
-const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] };
+const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] };
 
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
 

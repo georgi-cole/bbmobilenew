@@ -105,6 +105,7 @@ const initialState: GameState = {
   f3Part2WinnerId: null,
   voteResults: null,
   evictionSplashId: null,
+  pendingEviction: null,
   players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
@@ -760,28 +761,26 @@ const gameSlice = createSlice({
       const hohPlayer = state.players.find((p) => p.id === state.hohId);
       if (!evictee) return;
 
-      evictee.status = evictedStatus(state);
-      state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeId);
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
-      // Trigger the eviction splash sequence
-      state.evictionSplashId = nomineeId;
       state.votes = {};
       // voteResults was already shown before the tie-break prompt; clear it now.
       state.voteResults = null;
-      pushEvent(
-        state,
-        `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
-        'game',
-      );
+      // Defer the eviction commit until the cinematic overlay completes.
+      state.pendingEviction = {
+        evicteeId: nomineeId,
+        evictionMessage: `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
+      };
+      // Push the week-end banner now: submitTieBreak jumps directly to week_end,
+      // bypassing the advance() case 'week_end' branch that normally emits it.
       pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
       state.phase = 'week_end';
     },
 
     /**
      * Dismiss the vote results popup after the player has viewed it.
-     * Clears `voteResults`; the EvictionSplash sequence is driven separately
-     * by `evictionSplashId` and GameScreen logic.
+     * Clears `voteResults`; the eviction cinematic is driven separately
+     * by `pendingEviction` and GameScreen logic.
      */
     dismissVoteResults(state) {
       state.voteResults = null;
@@ -794,6 +793,37 @@ const gameSlice = createSlice({
     dismissEvictionSplash(state) {
       state.evictionSplashId = null;
     },
+
+    /**
+     * Commit the deferred eviction after the cinematic overlay completes.
+     *
+     * Sets the evictee's status to 'evicted' or 'jury', removes them from
+     * nomineeIds, pushes the eviction event, and clears pendingEviction.
+     * For Final-4 evictions (phase === 'final4_eviction') also transitions
+     * the phase to 'final3' and pushes the "Final 3!" event.
+     */
+    finalizePendingEviction(state, action: PayloadAction<string>) {
+      const evicteeId = action.payload;
+      if (!state.pendingEviction || state.pendingEviction.evicteeId !== evicteeId) return;
+
+      const evictee = state.players.find((p) => p.id === evicteeId);
+      if (!evictee) return;
+
+      const msg = state.pendingEviction.evictionMessage;
+      const isFinal4 = state.phase === 'final4_eviction';
+
+      evictee.status = evictedStatus(state);
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
+      state.pendingEviction = null;
+
+      pushEvent(state, msg, 'game');
+
+      if (isFinal4) {
+        state.phase = 'final3';
+        pushEvent(state, `Final 3! Three houseguests remain. 🏆`, 'game');
+      }
+    },
+
 
     /**
      * Called by the UI when it starts rendering the step-1 "HOH must name a
@@ -817,16 +847,13 @@ const gameSlice = createSlice({
       const povHolder = state.players.find((p) => p.id === state.povWinnerId);
       if (!evictee || !povHolder) return;
 
-      evictee.status = evictedStatus(state);
-      state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
+      // Defer the eviction commit until the cinematic overlay completes.
+      // finalizePendingEviction will set evictee.status and transition to final3.
       state.awaitingPovDecision = false;
-      pushEvent(
-        state,
-        `${povHolder.name} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
-        'game',
-      );
-      state.phase = 'final3';
-      pushEvent(state, `Final 3! Three houseguests remain. 🏆`, 'game');
+      state.pendingEviction = {
+        evicteeId,
+        evictionMessage: `${povHolder.name} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+      };
     },
 
     /**
@@ -1042,6 +1069,7 @@ const gameSlice = createSlice({
       state.votes = {};
       state.voteResults = null;
       state.evictionSplashId = null;
+      state.pendingEviction = null;
       pushEvent(state, `[DEBUG] Blocking flags cleared — Continue button restored. 🔧`, 'game');
     },
     /**
@@ -1101,6 +1129,7 @@ const gameSlice = createSlice({
         f3Part2WinnerId: null,
         voteResults: null,
         evictionSplashId: null,
+        pendingEviction: null,
         players: freshPlayers,
         tvFeed: [
           {
@@ -1135,6 +1164,7 @@ const gameSlice = createSlice({
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
+        state.pendingEviction != null ||
         state.battleBack?.active ||
         state.spectatorActive
       ) {
@@ -1193,16 +1223,13 @@ const gameSlice = createSlice({
 
         if (nominees.length > 0) {
           const evictee = seededPick(rng, nominees);
-          evictee.status = evictedStatus(state);
-          state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
-          pushEvent(
-            state,
-            `${povHolder?.name ?? 'The POV holder'} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
-            'game',
-          );
+          // Defer the eviction commit — overlay (finalizePendingEviction) will
+          // set evictee.status and transition to final3 after the cinematic plays.
+          state.pendingEviction = {
+            evicteeId: evictee.id,
+            evictionMessage: `${povHolder?.name ?? 'The POV holder'} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+          };
         }
-        state.phase = 'final3';
-        pushEvent(state, `Final 3! Three houseguests remain. 🏆`, 'game');
         return;
       }
 
@@ -1741,20 +1768,16 @@ const gameSlice = createSlice({
           const topNominees = state.nomineeIds.filter((id) => (voteCounts[id] ?? 0) === maxVotes);
 
           if (topNominees.length === 1) {
-            // Clear winner — evict them
+            // Clear winner — defer the commit until the cinematic overlay completes
             const evicted = state.players.find((p) => p.id === topNominees[0]);
             if (evicted) {
-              evicted.status = evictedStatus(state);
-              state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
-              // Store vote results for popup reveal, then trigger eviction splash
+              // Store vote results for popup reveal, then queue the pending eviction
               state.voteResults = { ...voteCounts };
-              state.evictionSplashId = evicted.id;
               state.votes = {};
-              pushEvent(
-                state,
-                `${evicted.name}, you have been evicted from the Big Brother house. 🚪`,
-                'game',
-              );
+              state.pendingEviction = {
+                evicteeId: evicted.id,
+                evictionMessage: `${evicted.name}, you have been evicted from the Big Brother house. 🚪`,
+              };
             }
           } else {
             // Tie — HOH breaks the tie
@@ -1773,22 +1796,18 @@ const gameSlice = createSlice({
                 'game',
               );
             } else {
-              // AI HOH: deterministically pick among tied nominees
+              // AI HOH: deterministically pick among tied nominees — defer commit
               const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
               const evicteeId = topNominees[Math.floor(aiRng() * topNominees.length)];
               const evicted = state.players.find((p) => p.id === evicteeId);
               if (evicted) {
-                evicted.status = evictedStatus(state);
-                state.nomineeIds = state.nomineeIds.filter((id) => id !== evicted.id);
-                // Store vote results for popup reveal, then trigger eviction splash
+                // Store vote results for popup reveal, then queue the pending eviction
                 state.voteResults = { ...voteCounts };
-                state.evictionSplashId = evicted.id;
                 state.votes = {};
-                pushEvent(
-                  state,
-                  `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evicted.name}. ${evicted.name} has been evicted from the Big Brother house. 🗳️`,
-                  'game',
-                );
+                state.pendingEviction = {
+                  evicteeId: evicted.id,
+                  evictionMessage: `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evicted.name}. ${evicted.name} has been evicted from the Big Brother house. 🗳️`,
+                };
               }
             }
           }
@@ -1829,6 +1848,7 @@ export const {
   submitTieBreak,
   dismissVoteResults,
   dismissEvictionSplash,
+  finalizePendingEviction,
   aiReplacementRendered,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
