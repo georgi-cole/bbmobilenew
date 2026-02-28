@@ -605,11 +605,11 @@ export default function GameScreen() {
     setAiReplacementConsumedKey(aiReplacementKey)
   }, [aiReplacementKey])
 
-  // ── Final 4 human POV holder vote ────────────────────────────────────────
-  // Shown when phase is final4_eviction, the human player is the POV holder,
-  // and awaitingPovDecision is set (meaning plea messages have been emitted).
-  // The ChatOverlay plays first; only after it completes does the decision
-  // modal appear (final4ChatDone guards the modal).
+  // ── Final 4 cinematic plea overlay + human POV holder vote ──────────────
+  // The ChatOverlay is shown to all players as soon as the phase is
+  // final4_eviction (non-blocking cinematic; Continue remains available).
+  // After the overlay is dismissed (final4ChatDone), the blocking decision
+  // modal appears for the human POV holder (guarded by awaitingPovDecision).
   const [final4ChatDone, setFinal4ChatDone] = useState(false)
 
   // Reset the final4 chat completion flag when leaving the final4_eviction phase
@@ -624,7 +624,7 @@ export default function GameScreen() {
   // tvFeed is newest-first; we reverse to get chronological order and filter
   // to the plea-related lines for this phase.
   const final4ChatLines = useMemo((): ChatLine[] => {
-    if (game.phase !== 'final4_eviction' || !humanIsPovHolder) return []
+    if (game.phase !== 'final4_eviction') return []
     const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
     // Look in tvFeed for plea lines emitted this phase (type 'game', recent).
     // tvFeed is stored newest-first; take up to 10 recent entries then reverse.
@@ -659,12 +659,10 @@ export default function GameScreen() {
       })
     }
     return pleaLines
-  }, [game.phase, game.tvFeed, game.nomineeIds, alivePlayers, humanIsPovHolder])
+  }, [game.phase, game.tvFeed, game.nomineeIds, alivePlayers])
 
   const showFinal4Chat =
     game.phase === 'final4_eviction' &&
-    !!humanIsPovHolder &&
-    Boolean(game.awaitingPovDecision) &&
     !final4ChatDone
 
   const showFinal4Modal =
@@ -855,7 +853,6 @@ export default function GameScreen() {
     showSaveCeremony ||
     showPovDecisionModal ||
     showPovSaveModal ||
-    showFinal4Chat ||
     showFinal4Modal ||
     showLiveVoteModal ||
     showTieBreakModal ||
