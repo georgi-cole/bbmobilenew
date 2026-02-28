@@ -1,0 +1,208 @@
+/* ─── SpotlightEvictionOverlay ───────────────────────────────────────────────
+ * Cinematic eviction choreography.
+ * Beat sequence:
+ *   spotlight  (0–300 ms)   : grid dims, radial spotlight locks on tile
+ *   expanding  (300–1000 ms): shared-layout hero tile expands to fullscreen
+ *   holding    (1000–2000 ms): lower-third + vignette + desaturate, suspense
+ *   done                    : onDone fires → AnimatePresence exits (reverse)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.seo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+/* ── Dim overlay ─────────────────────────────────────────────────────────── */
+.seo__dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── Spotlight radial cut-out (before expansion) ─────────────────────────── */
+.seo__spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 120px 160px at 50% 40%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.75) 70%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── LIVE bug (top-left) ─────────────────────────────────────────────────── */
+.seo__live-bug {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 1rem));
+  left: 1rem;
+  z-index: 9020;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: rgba(220, 38, 38, 0.9);
+  padding: 0.25em 0.55em;
+  border-radius: 3px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* ── Shared-layout portrait (match-cut hero tile) ────────────────────────── */
+.seo__portrait {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1e2229, #13161a);
+}
+
+/* Photo fills portrait */
+.seo__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+/* Fallback text (emoji / initial) */
+.seo__fallback {
+  font-size: 10rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Vignette overlay inside portrait */
+.seo__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    transparent 28%,
+    rgba(0, 0, 0, 0.72) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Scanlines / film-grain overlay */
+.seo__scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.055) 3px,
+    rgba(0, 0, 0, 0.055) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+
+/* ── EVICTED lower-third ─────────────────────────────────────────────────── */
+.seo__lower-third {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9010;
+  padding: 1.4rem 1.5rem 2rem;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.94) 0%,
+    rgba(0, 0, 0, 0.6) 70%,
+    transparent 100%
+  );
+  text-align: center;
+  pointer-events: none;
+}
+
+.seo__label {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  color: rgba(255, 80, 80, 0.95);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.seo__name {
+  margin: 0;
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.8);
+}
+
+/* ── EVICTED stamp ───────────────────────────────────────────────────────── */
+.seo__stamp {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  z-index: 9015;
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: transparent;
+  -webkit-text-stroke: 3px rgba(220, 38, 38, 0.9);
+  text-stroke: 3px rgba(220, 38, 38, 0.9);
+  border: 4px solid rgba(220, 38, 38, 0.9);
+  border-radius: 6px;
+  padding: 0.3em 0.6em;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 16px rgba(220, 38, 38, 0.22),
+    0 0 24px rgba(220, 38, 38, 0.18);
+  white-space: nowrap;
+}
+
+/* ── Dev-only Skip button ────────────────────────────────────────────────── */
+.seo__skip-btn {
+  position: fixed;
+  bottom: max(1.4rem, env(safe-area-inset-bottom, 1.4rem));
+  right: 1rem;
+  z-index: 9025;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 0.35em 0.7em;
+  cursor: pointer;
+}
+
+.seo__skip-btn:hover {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .seo__dim,
+  .seo__spotlight,
+  .seo__live-bug,
+  .seo__vignette,
+  .seo__lower-third,
+  .seo__stamp {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -37,6 +37,7 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import EvictionSplash from '../../components/EvictionSplash/EvictionSplash'
+import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
@@ -1338,7 +1339,7 @@ export default function GameScreen() {
       {/* ── Eviction Splash (match-cut shared-layout) ────────────────────── */}
       <AnimatePresence>
         {showEvictionSplash && evictionSplashPlayer && (
-          <EvictionSplash
+          <SpotlightEvictionOverlay
             key={evictionSplashPlayer.id}
             evictee={evictionSplashPlayer}
             onDone={handleEvictionSplashDone}
