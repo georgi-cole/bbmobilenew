@@ -8,6 +8,7 @@ import socialReducer from '../social/socialSlice';
 import { socialMiddleware } from '../social/socialMiddleware';
 import { soundMiddleware } from './soundMiddleware';
 import uiReducer from './uiSlice';
+import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 
 export const store = configureStore({
   reducer: {
@@ -31,6 +32,8 @@ export const store = configureStore({
 let prevSettings = store.getState().settings;
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile;
+// Persist season archives to localStorage whenever they change
+let prevSeasonArchives = store.getState().game.seasonArchives;
 store.subscribe(() => {
   const current = store.getState();
   if (current.settings !== prevSettings) {
@@ -40,6 +43,10 @@ store.subscribe(() => {
   if (current.userProfile !== prevUserProfile) {
     prevUserProfile = current.userProfile;
     saveUserProfile(current.userProfile);
+  }
+  if (current.game.seasonArchives !== prevSeasonArchives) {
+    prevSeasonArchives = current.game.seasonArchives;
+    saveSeasonArchives(DEFAULT_ARCHIVE_KEY, current.game.seasonArchives ?? []);
   }
 });
 
