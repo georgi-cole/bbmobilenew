@@ -745,10 +745,11 @@ export default function GameScreen() {
     setFinal4Evictee(null)
   }, [])
 
-  const showFinal4Chat = final4Stage === 'pleas'
-  const showFinal4Modal = final4Stage === 'decision'
-  const showFinal4AnnounceChat = final4Stage === 'announcement'
-  const showFinal4LocalSplash = final4Stage === 'splash' && final4Evictee !== null
+  const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
+  const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision'
+  const showFinal4AnnounceChat = game.phase === 'final3' && final4Stage === 'announcement'
+  const showFinal4LocalSplash =
+    game.phase === 'final3' && final4Stage === 'splash' && final4Evictee !== null
 
   const final4Options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
