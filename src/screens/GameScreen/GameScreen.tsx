@@ -8,6 +8,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
+  selectF3Part3PredictedWinnerId,
   commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
@@ -79,6 +80,7 @@ export default function GameScreen() {
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
+  const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
@@ -209,9 +211,9 @@ export default function GameScreen() {
 
   // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
   // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
-  // battle as a spectator. We immediately dispatch advance() to let the AI
-  // compute the authoritative winner (sets game.hohId), and show SpectatorView
-  // which subscribes to game.hohId from Redux and reconciles to that winner.
+  // battle as a spectator. SpectatorView mounts and plays through the cinematic
+  // sequence; advance() is dispatched only after onDone fires so the game engine
+  // computes the winner (sets game.hohId) after the spectacle completes.
   const [spectatorF3Active, setSpectatorF3Active] = useState(false)
   const [spectatorF3CompetitorIds, setSpectatorF3CompetitorIds] = useState<string[]>([])
   const spectatorF3AdvancedRef = useRef(false)
@@ -222,16 +224,16 @@ export default function GameScreen() {
     humanPlayer.id !== game.f3Part1WinnerId &&
     humanPlayer.id !== game.f3Part2WinnerId
 
-  // Enter spectator mode on phase arrival; pre-advance to compute the winner.
-  // The ref is checked FIRST to prevent a race where a rapid re-render could
-  // dispatch advance() a second time before the ref is set.
+  // Enter spectator mode on phase arrival. The ref is checked FIRST to prevent
+  // a race where a rapid re-render could activate the overlay a second time.
+  // advance() is NOT dispatched here; SpectatorView.onDone drives it instead.
   useEffect(() => {
     if (isF3Part3SpectatorPhase && !spectatorF3AdvancedRef.current && FEATURE_SPECTATOR_REACT && settings.gameUX.spectatorMode) {
       spectatorF3AdvancedRef.current = true
       const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
       setSpectatorF3CompetitorIds(finalists)
       setSpectatorF3Active(true)
-      dispatch(advance())
+      // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
     }
   // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
   // stable from useAppDispatch and `advance` is a constant action creator, so
@@ -243,7 +245,8 @@ export default function GameScreen() {
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)
     spectatorF3AdvancedRef.current = false
-  }, [])
+    dispatch(advance())
+  }, [dispatch])
 
   // ── Legacy 'spectator:show' event listener ─────────────────────────────────
   // The legacySpectatorAdapter dispatches this event when window.Spectator.show()
@@ -1349,11 +1352,14 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
+      {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
+      {/* without waiting for advance() (which fires only after onDone).         */}
       {spectatorF3Active && FEATURE_SPECTATOR_REACT && (
         <SpectatorView
           key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
           variant="holdwall"
+          initialWinnerId={f3Part3PredictedWinnerId ?? undefined}
           onDone={handleSpectatorF3Done}
         />
       )}

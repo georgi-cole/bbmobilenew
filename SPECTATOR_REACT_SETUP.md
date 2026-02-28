@@ -124,10 +124,10 @@ GameScreen automatically shows `SpectatorView` when:
 
 In this scenario the human has lost both Part 1 and Part 2 competitions and is watching the two AI finalists compete. When the spectator overlay is triggered:
 
-1. `advance()` is dispatched immediately to compute the authoritative AI winner (`game.hohId` is set).
-2. `SpectatorView` mounts with the finalist player IDs and reads `game.hohId` from Redux.
-3. The reconciliation animation plays, revealing the winner.
-4. `onDone` fires → the overlay is dismissed and the game continues from the already-advanced state.
+1. `GameScreen` computes the deterministic winner via `selectF3Part3PredictedWinnerId` (same mulberry32 RNG that `advance()` would use, but read-only — no store mutation).
+2. `SpectatorView` mounts with the finalist player IDs **and** `initialWinnerId` set to the predicted winner; **`advance()` is NOT dispatched yet**.
+3. The cinematic simulation plays out using the predicted winner for the reveal animation, so the displayed winner is consistent with the eventual store result.
+4. `onDone` fires → `advance()` is dispatched, the game engine commits the authoritative winner (`game.hohId` is set), and the overlay is dismissed.
 
 ---
 
