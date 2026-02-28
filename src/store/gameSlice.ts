@@ -1161,7 +1161,7 @@ const gameSlice = createSlice({
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
-        state.pendingEviction ||
+        state.pendingEviction != null ||
         state.battleBack?.active ||
         state.spectatorActive
       ) {

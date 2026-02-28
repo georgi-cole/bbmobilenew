@@ -892,8 +892,10 @@ export default function GameScreen() {
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
+    // Capture the phase before dispatch since finalizePendingEviction may change it.
+    const isFinal4 = game.phase === 'final4_eviction'
     dispatch(finalizePendingEviction(evicteeId))
-    if (game.phase === 'final4_eviction') {
+    if (isFinal4) {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
     } else {
