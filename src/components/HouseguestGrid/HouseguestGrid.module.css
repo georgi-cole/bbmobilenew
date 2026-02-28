@@ -142,15 +142,10 @@
 
 .cross path {
   /* stroke-dasharray covers the full curved path length in the 100×100 viewBox
-     (estimated ~95–100 units; 110 ensures full coverage) */
-  stroke-dasharray: 110;
-  stroke-dashoffset: 110;
-  animation: drawCrossLine 0.5s ease-out 0.1s forwards;
-}
-
-.cross path:nth-child(2) {
-  /* stagger second stroke so the X draws sequentially */
-  animation-delay: 0.6s;
+     (diagonal ≈ 99 units; 105 ensures full coverage for the single stroke) */
+  stroke-dasharray: 105;
+  stroke-dashoffset: 105;
+  animation: drawCrossLine 0.45s ease-out 0.1s forwards;
 }
 
 @keyframes drawCrossLine {

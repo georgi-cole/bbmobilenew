@@ -340,6 +340,8 @@ export default function GameScreen() {
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
       layoutId: `avatar-tile-${p.id}`,
+      isEvicting: (showEvictionSplash && evictionSplashPlayer?.id === p.id)
+        || (showFinal4LocalSplash && final4Evictee?.id === p.id),
       onClick: () => handleAvatarSelect(p),
     }
   }

@@ -36,6 +36,11 @@ const REVERSE_MS = 300;
 const LEGACY_DURATION    = 3200;
 const LEGACY_FADE_OUT_MS = 600;
 
+// Cinematic desaturation applied to the portrait image during the hold phase.
+// Drains colour gradually instead of snapping to full B&W — keeps the broadcast
+// look (subtle grain/vignette from scanlines finishes the effect).
+const CINEMATIC_FILTER = 'saturate(0.2) contrast(1.08) brightness(0.88)';
+
 // Spring transition shared by the portrait motion.div
 const PORTRAIT_SPRING = { type: 'spring' as const, stiffness: 220, damping: 28 };
 
@@ -154,7 +159,11 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
             src={avatarSrc}
             alt={evictee.name}
             onError={handleImgError}
-            animate={phase === 'holding' ? { scale: 1.04 } : { scale: 1 }}
+            animate={
+              phase === 'holding'
+                ? { scale: 1.04, filter: CINEMATIC_FILTER }
+                : { scale: 1, filter: 'saturate(1) contrast(1) brightness(1)' }
+            }
             transition={{ duration: 0.4, ease: 'easeOut' }}
           />
         )}
