@@ -153,31 +153,44 @@ class _SoundManager {
   // ── User-gesture unlock ───────────────────────────────────────────────────
 
   /**
-   * Register a one-time document listener to unlock the AudioContext on the
-   * first user interaction (required by modern browser autoplay policies).
+   * Unlock the Web Audio API.
+   *
+   * - Performs the resume *immediately* (effective when called from within a
+   *   user-gesture handler, e.g. from AudioGate).
+   * - Also arms one-time document listeners so the unlock fires on the next
+   *   gesture when called in advance of any interaction.
+   *
+   * Uses a dynamic import for Howler so the ESM bundle's AudioContext is
+   * reached correctly (Howler does not attach itself to `window` in ESM mode).
    */
   unlockOnUserGesture(): void {
     if (this._unlocked || typeof document === 'undefined') return;
 
-    const unlock = () => {
+    const doResume = () => {
       if (this._unlocked) return;
       this._unlocked = true;
-      // Resume AudioContext if Howler is active
-      if (
-        typeof window !== 'undefined' &&
-        'Howler' in window &&
-        (window as unknown as { Howler: { ctx?: AudioContext } }).Howler?.ctx?.state === 'suspended'
-      ) {
-        void (window as unknown as { Howler: { ctx: AudioContext } }).Howler.ctx.resume();
-      }
-      document.removeEventListener('click', unlock, true);
-      document.removeEventListener('keydown', unlock, true);
-      document.removeEventListener('touchstart', unlock, true);
+      document.removeEventListener('click', doResume, true);
+      document.removeEventListener('keydown', doResume, true);
+      document.removeEventListener('touchstart', doResume, true);
+      // Resume AudioContext via dynamic import (works with ESM Howler bundles)
+      void import('howler')
+        .then((m: unknown) => {
+          const ctx = (m as { Howler?: { ctx?: AudioContext } }).Howler?.ctx;
+          if (ctx && ctx.state === 'suspended') return ctx.resume();
+          return undefined;
+        })
+        .catch(() => {
+          // Howler unavailable; no AudioContext to resume — safe to ignore.
+        });
     };
 
-    document.addEventListener('click', unlock, true);
-    document.addEventListener('keydown', unlock, true);
-    document.addEventListener('touchstart', unlock, true);
+    // Register document listeners first (ensures they exist for the pre-arm use case)
+    document.addEventListener('click', doResume, true);
+    document.addEventListener('keydown', doResume, true);
+    document.addEventListener('touchstart', doResume, true);
+
+    // Attempt the resume immediately (effective when called from within a user gesture handler)
+    doResume();
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

@@ -65,8 +65,24 @@ export class AudioSource {
     this._preload = opts.preload ?? false;
   }
 
-  /** Initialise the underlying backend. Call before the first play(). */
+  private _initPromise: Promise<void> | null = null;
+
+  /**
+   * Initialise the underlying backend. Idempotent — safe to call multiple
+   * times; concurrent calls are coalesced onto the same promise.
+   */
   async init(): Promise<void> {
+    // Coalesce concurrent async calls
+    if (this._initPromise) return this._initPromise;
+    // Already initialised (synchronous fast-path)
+    if (this._howl !== null || this._audio !== null) return;
+    this._initPromise = this._doInit().finally(() => {
+      this._initPromise = null;
+    });
+    return this._initPromise;
+  }
+
+  private async _doInit(): Promise<void> {
     const Howl = await loadHowl();
     if (Howl) {
       this._howl = new Howl({

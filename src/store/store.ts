@@ -6,6 +6,7 @@ import settingsReducer, { loadSettings, saveSettings } from './settingsSlice';
 import userProfileReducer, { loadUserProfile, saveUserProfile } from './userProfileSlice';
 import socialReducer from '../social/socialSlice';
 import { socialMiddleware } from '../social/socialMiddleware';
+import { soundMiddleware } from './soundMiddleware';
 import uiReducer from './uiSlice';
 
 export const store = configureStore({
@@ -22,7 +23,8 @@ export const store = configureStore({
     settings: loadSettings(),
     userProfile: loadUserProfile(),
   },
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware),
 });
 
 // Persist settings to localStorage whenever they change
