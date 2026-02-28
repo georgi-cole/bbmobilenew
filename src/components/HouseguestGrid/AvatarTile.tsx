@@ -153,7 +153,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         {/* Evictee mark — paint brushstroke PNG overlay */}
         {isEvicted && (
           <img
-            src="/evictionmark/evictionmark.png"
+            src={`${import.meta.env.BASE_URL ?? ''}evictionmark/evictionmark.png`}
             alt=""
             aria-hidden="true"
             className={styles.cross}
