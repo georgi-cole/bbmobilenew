@@ -4,14 +4,16 @@
  *
  * Listens for:
  *   - game/advance             → plays sounds based on the new phase
- *   - game/evictPlayer         → player:evicted
- *   - game/completeMinigame    → ui:confirm (result)
+ *   - game/completeMinigame    → minigame:results
  *   - game/applyMinigameWinner → ui:confirm
  *   - game/skipMinigame        → ui:error
  *   - game/setPhase / game/forcePhase
  *                              → tv:event when entering eviction_results
- *   - game/castVote            → ui:navigate
+ *   - game/submitHumanVote     → ui:navigate (eviction vote)
  *   - game/submitPovSaveTarget → ui:confirm
+ *   - game/activateBattleBack  → tv:battleback
+ *   - finale/castVote          → ui:jury_vote
+ *   - finale/finalizeFinale    → tv:winner_reveal
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
@@ -66,8 +68,15 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── Minigame complete / winner applied ────────────────────────────────────
-  if (type === 'game/completeMinigame' || type === 'game/applyMinigameWinner') {
+  // ── Minigame complete ─────────────────────────────────────────────────────
+  if (type === 'game/completeMinigame') {
+    const result = next(action);
+    void SoundManager.play('minigame:results');
+    return result;
+  }
+
+  // ── Minigame winner applied ───────────────────────────────────────────────
+  if (type === 'game/applyMinigameWinner') {
     const result = next(action);
     void SoundManager.play('ui:confirm');
     return result;
@@ -80,8 +89,8 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── Vote cast ─────────────────────────────────────────────────────────────
-  if (type === 'game/castVote') {
+  // ── Vote cast (eviction vote by human player) ─────────────────────────────
+  if (type === 'game/submitHumanVote') {
     const result = next(action);
     void SoundManager.play('ui:navigate');
     return result;
@@ -91,6 +100,27 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'game/submitPovSaveTarget') {
     const result = next(action);
     void SoundManager.play('ui:confirm');
+    return result;
+  }
+
+  // ── Battle Back twist activated ───────────────────────────────────────────
+  if (type === 'game/activateBattleBack') {
+    const result = next(action);
+    void SoundManager.play('tv:battleback');
+    return result;
+  }
+
+  // ── Finale: jury member casts their vote ──────────────────────────────────
+  if (type === 'finale/castVote') {
+    const result = next(action);
+    void SoundManager.play('ui:jury_vote');
+    return result;
+  }
+
+  // ── Finale: winner declared ───────────────────────────────────────────────
+  if (type === 'finale/finalizeFinale') {
+    const result = next(action);
+    void SoundManager.play('tv:winner_reveal');
     return result;
   }
 
