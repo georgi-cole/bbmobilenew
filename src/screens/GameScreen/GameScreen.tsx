@@ -241,12 +241,12 @@ export default function GameScreen() {
       setSpectatorF3Active(true)
       // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
     }
-  // Intentionally depend only on `isF3Part3SpectatorPhase`. `dispatch` is
-  // stable from useAppDispatch and `advance` is a constant action creator, so
-  // including them would not change behavior. `spectatorF3AdvancedRef` is a
-  // ref (not reactive); if its usage changes, update this dep list.
+  // `spectatorF3AdvancedRef` is a ref (not reactive) used for deduplication.
+  // `dispatch` and `advance` are stable. `spectatorReactEnabled` and
+  // `settings.gameUX.spectatorMode` are included so that if either flag flips
+  // while already at final3_comp3 the effect can re-evaluate and activate.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isF3Part3SpectatorPhase])
+  }, [isF3Part3SpectatorPhase, spectatorReactEnabled, settings.gameUX.spectatorMode])
 
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)

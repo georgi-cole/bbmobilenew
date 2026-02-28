@@ -314,4 +314,65 @@ describe('SpectatorView', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
+
+  it('repeated skip() calls do not push reveal out (onDone fires exactly once)', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Advance past sequenceComplete.
+    act(() => {
+      vi.advanceTimersByTime(7000);
+    });
+
+    const skipBtn = screen.getByRole('button', { name: /skip to results/i });
+
+    // Click Skip three times in quick succession.
+    act(() => {
+      skipBtn.click();
+      skipBtn.click();
+      skipBtn.click();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // onDone must be called exactly once regardless of multiple clicks.
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('setAuthoritativeWinner is a no-op once locked (does not desync winner state)', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Wait for sequence to complete and reconcile with p1 as winner.
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('minigame:end', { detail: { winnerId: 'p1' } }),
+      );
+    });
+    act(() => {
+      vi.advanceTimersByTime(16000); // past sequence + floor
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    // Attempt to inject a different winner after lock — must not call onDone again.
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('minigame:end', { detail: { winnerId: 'p2' } }),
+      );
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });

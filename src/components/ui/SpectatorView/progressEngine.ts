@@ -94,6 +94,8 @@ export function useSpectatorSimulation({
   const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether a winner has been locked in; prevents double-reconcile calls.
   const lockedRef = useRef(false);
+  // Guards against repeated skip() calls pushing the reveal timeout indefinitely.
+  const skipInitiatedRef = useRef(false);
   // Authoritative winner that arrived before the sequence ended (stored so the
   // sim can continue playing and pick up the winner when it finishes).
   const pendingWinnerRef = useRef<string | null>(initialWinnerId ?? null);
@@ -158,12 +160,16 @@ export function useSpectatorSimulation({
 
   const setAuthoritativeWinner = useCallback(
     (winnerId: string) => {
-      // Always store as the pending winner so the sim uses it when it ends.
+      // No-op once a winner has been locked — prevents desyncing UI state
+      // (e.g. competitors[].isWinner already reflects the locked winner).
+      if (lockedRef.current) return;
+
+      // Store as the pending winner so the sim uses it when it ends.
       pendingWinnerRef.current = winnerId;
       setState((prev) => ({ ...prev, authoritativeWinnerId: winnerId }));
 
-      // If the sequence has already completed and we're not yet locked, reconcile now.
-      if (sequenceCompleteRef.current && !lockedRef.current) {
+      // If the sequence has already completed, reconcile now.
+      if (sequenceCompleteRef.current) {
         lockedRef.current = true;
         if (tickRef.current) {
           clearInterval(tickRef.current);
@@ -179,11 +185,14 @@ export function useSpectatorSimulation({
   /**
    * Skip to the immediate reveal (bypasses the MIN_FLOOR_MS wait).
    * Only has an effect after sequenceComplete is true.
-   * Safe to call even after the normal reconcile has been scheduled with the
-   * floor delay — it cancels the pending timer and re-schedules immediately.
+   * Subsequent calls after the first skip are ignored — prevents button spam
+   * or repeated Space/Enter from pushing the reveal timeout indefinitely.
    */
   const skip = useCallback(() => {
     if (!sequenceCompleteRef.current) return; // sequence not done — cannot skip yet
+    // Ignore subsequent skip() calls once a skip-based reconcile has started.
+    if (skipInitiatedRef.current) return;
+    skipInitiatedRef.current = true;
     const winner = pendingWinnerRef.current ?? competitorIdsRef.current[0];
     if (!winner) return;
     // Lock reconcile so no other path can start a parallel reconcile.
