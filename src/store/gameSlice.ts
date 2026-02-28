@@ -771,6 +771,9 @@ const gameSlice = createSlice({
         evicteeId: nomineeId,
         evictionMessage: `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
       };
+      // Push the week-end banner now: submitTieBreak jumps directly to week_end,
+      // bypassing the advance() case 'week_end' branch that normally emits it.
+      pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
       state.phase = 'week_end';
     },
 

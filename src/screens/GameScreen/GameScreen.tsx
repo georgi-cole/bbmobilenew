@@ -624,9 +624,6 @@ export default function GameScreen() {
   const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
   const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
   const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
-  // Holds the nominee IDs captured when the overlay opens so we can identify
-  // the evicted player after advance() transitions to final3.
-  const final4NomineesRef = useRef<string[]>([])
 
   // Reset all Final 4 state when the game leaves the final4/final3 region
   // (e.g. game reset, debug jump to a different phase).
@@ -637,7 +634,6 @@ export default function GameScreen() {
       setFinal4Stage('idle')
       setFinal4PleaLines([])
       setFinal4AnnounceLines([])
-      final4NomineesRef.current = []
     }, 0)
     return () => window.clearTimeout(id)
   }, [game.phase, final4Stage])
@@ -650,7 +646,6 @@ export default function GameScreen() {
     const povHolder = alivePlayers.find((p) => p.id === game.povWinnerId)
     const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
     if (!povHolder || nominees.length === 0) return
-    final4NomineesRef.current = nominees.map((n) => n.id)
     const lines: ChatLine[] = [
       {
         id: 'f4-intro',
@@ -734,7 +729,6 @@ export default function GameScreen() {
       },
     ])
     setFinal4Stage('announcement')
-    final4NomineesRef.current = []
   }, [game.pendingEviction, game.phase, final4Stage, game.players, game.povWinnerId])
 
   const handleFinal4AnnounceComplete = useCallback(() => {
