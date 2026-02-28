@@ -198,6 +198,34 @@
   30%            { transform: translateY(-5px); opacity: 1; }
 }
 
+/* ── POV holder lines (prompts + thanks) ────────────────────────────────────── */
+.chat-overlay__line--pov .chat-overlay__bubble {
+  background: #1e1a30;
+  border-left: 2px solid #f59e0b;
+}
+
+.chat-overlay__line--pov .chat-overlay__speaker {
+  color: #f59e0b;
+}
+
+/* ── POV thinking line — animated pulsing dots ──────────────────────────────── */
+.chat-overlay__line--pov-thinking .chat-overlay__bubble {
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+}
+
+.chat-overlay__line--pov-thinking .chat-overlay__text {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.3em;
+  animation: thinkingPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
+}
+
 /* ── Footer bar ─────────────────────────────────────────────────────────────── */
 .chat-overlay__footer {
   padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
