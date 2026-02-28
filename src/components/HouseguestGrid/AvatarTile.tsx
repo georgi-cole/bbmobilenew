@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
@@ -29,9 +30,14 @@ type Props = {
    * Defaults to true.
    */
   showPermanentBadge?: boolean
+  /**
+   * Framer Motion layoutId for the avatar wrap — enables the match-cut shared
+   * layout animation between the grid tile and EvictionSplash fullscreen portrait.
+   */
+  layoutId?: string
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true, layoutId }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -92,7 +98,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           : undefined
       }
     >
-      <div className={styles.avatarWrap}>
+      <motion.div className={styles.avatarWrap} layoutId={layoutId}>
         <div className={styles.nameOverlay} aria-hidden="true">
           {name}
         </div>
@@ -126,7 +132,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           </div>
         )}
 
-        {/* Evictee X overlay — subtle thin-stroke red cross with low opacity */}
+        {/* Evictee mark — hand-drawn style red X */}
         {isEvicted && (
           <svg
             className={styles.cross}
@@ -134,27 +140,27 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            <line
-              x1="15"
-              y1="15"
-              x2="85"
-              y2="85"
-              stroke="rgba(220, 38, 38, 0.65)"
-              strokeWidth="5"
+            {/* Hand-drawn diagonal stroke 1 (top-left to bottom-right) */}
+            <path
+              d="M18,17 C32,30 52,48 68,66 C74,73 80,79 83,84"
+              stroke="rgba(220, 38, 38, 0.75)"
+              strokeWidth="5.5"
               strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
             />
-            <line
-              x1="85"
-              y1="15"
-              x2="15"
-              y2="85"
-              stroke="rgba(220, 38, 38, 0.65)"
-              strokeWidth="5"
+            {/* Hand-drawn diagonal stroke 2 (top-right to bottom-left) */}
+            <path
+              d="M83,17 C70,30 50,48 34,66 C27,73 20,79 17,84"
+              stroke="rgba(220, 38, 38, 0.75)"
+              strokeWidth="5.5"
               strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
             />
           </svg>
         )}
-      </div>
+      </motion.div>
 
       <div className={styles.nameRow} aria-hidden="true" />
     </div>

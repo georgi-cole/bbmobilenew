@@ -117,8 +117,14 @@
 
 .evicted .avatar,
 .evicted .avatarPlaceholder {
-  filter: grayscale(100%) brightness(0.7) opacity(0.8);
+  filter: grayscale(100%) brightness(0.65) opacity(0.7);
   transition: filter 0.6s ease;
+}
+
+.evicted {
+  opacity: 0.6;
+  transform: scale(0.96);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .cross {
@@ -134,25 +140,21 @@
   z-index: 2;
 }
 
-.cross line {
-  /* stroke-dasharray ≈ diagonal line length in the 100×100 viewBox:
-     √((85-15)² + (85-15)²) = √9800 ≈ 98.99 → rounded up to 100 for full coverage */
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: drawCrossLine 0.45s ease-out 0.1s forwards;
+.cross path {
+  /* stroke-dasharray covers the full curved path length in the 100×100 viewBox
+     (estimated ~95–100 units; 110 ensures full coverage) */
+  stroke-dasharray: 110;
+  stroke-dashoffset: 110;
+  animation: drawCrossLine 0.5s ease-out 0.1s forwards;
 }
 
-.cross line:nth-child(2) {
-  /* stagger second line so the X draws sequentially (starts after first finishes at 0.55s) */
-  animation-delay: 0.55s;
+.cross path:nth-child(2) {
+  /* stagger second stroke so the X draws sequentially */
+  animation-delay: 0.6s;
 }
 
 @keyframes drawCrossLine {
   to { stroke-dashoffset: 0; }
-}
-
-.evicted {
-  opacity: 0.98;
 }
 
 /* ── Status badge stack ─────────────────────────────────────────────────────── */
