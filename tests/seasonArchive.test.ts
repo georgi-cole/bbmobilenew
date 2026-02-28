@@ -10,7 +10,7 @@
  *  6. archivePersistence helpers are safe to call (no-throw guard).
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   archiveSeason,
@@ -160,6 +160,14 @@ describe('resetGame with archives', () => {
 });
 
 describe('archivePersistence', () => {
+  beforeEach(() => {
+    localStorage.removeItem(DEFAULT_ARCHIVE_KEY);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(DEFAULT_ARCHIVE_KEY);
+  });
+
   it('saveSeasonArchives and loadSeasonArchives round-trip via localStorage', () => {
     const archives: SeasonArchive[] = [makeArchive(1), makeArchive(2)];
     saveSeasonArchives(DEFAULT_ARCHIVE_KEY, archives);

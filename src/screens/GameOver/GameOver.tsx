@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame, archiveSeason } from '../../store/gameSlice';
@@ -9,7 +10,9 @@ export default function GameOver() {
   const navigate = useNavigate();
   const players = useAppSelector((s) => s.game.players);
   const season = useAppSelector((s) => s.game.season);
-  const existingArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
+  // Use a ref so the guard is synchronously readable and prevents double-archiving
+  // even if the button is clicked multiple times before React re-renders.
+  const archivedRef = useRef(false);
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1);
   const runnerUp = players.find((p) => p.finalRank === 2);
@@ -31,10 +34,8 @@ export default function GameOver() {
   }
 
   function startNewSeason() {
-    // Archive the completed season before resetting so history is preserved.
-    // Skip if this season was already archived (guard against double-clicks).
-    const alreadyArchived = existingArchives.some((a) => a.seasonIndex === season);
-    if (!alreadyArchived) {
+    if (!archivedRef.current) {
+      archivedRef.current = true;
       dispatch(archiveSeason(buildArchive()));
     }
     dispatch(resetGame());

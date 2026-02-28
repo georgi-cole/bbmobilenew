@@ -8,7 +8,7 @@ import { loadUserProfile } from './userProfileSlice';
 import { loadSettings } from './settingsSlice';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
-import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
+import { loadSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -110,7 +110,7 @@ const initialState: GameState = {
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
-  seasonArchives: [],
+  seasonArchives: loadSeasonArchives(DEFAULT_ARCHIVE_KEY) ?? [],
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -1027,8 +1027,7 @@ const gameSlice = createSlice({
     },
     /**
      * Archive the completed season.  Prepends the archive entry and caps the
-     * list at 50 entries to bound memory usage.  Also persists to localStorage
-     * via the archivePersistence adapter.
+     * list at 50 entries to bound memory usage.
      */
     archiveSeason(state, action: PayloadAction<SeasonArchive>) {
       if (!state.seasonArchives) state.seasonArchives = [];
@@ -1036,7 +1035,6 @@ const gameSlice = createSlice({
       if (state.seasonArchives.length > 50) {
         state.seasonArchives = state.seasonArchives.slice(0, 50);
       }
-      saveSeasonArchives(DEFAULT_ARCHIVE_KEY, state.seasonArchives);
     },
     /**
      * Replace the entire player list.  Used by the start-new-season flow to

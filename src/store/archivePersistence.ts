@@ -8,7 +8,7 @@ import type { SeasonArchive } from './seasonArchive';
  * always returns undefined — making it easy to replace with a server-backed
  * persistence layer without touching call-sites.
  */
-export const enabled = true;
+export let enabled = true;
 
 export const DEFAULT_ARCHIVE_KEY = 'bbmobilenew:seasonArchives';
 
