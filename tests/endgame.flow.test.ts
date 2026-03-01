@@ -20,6 +20,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   finalizeFinal3Eviction,
+  finalizeFinal3Decision,
   finalizeFinal4Eviction,
   finalizePendingEviction,
   applyF3MinigameWinner,
@@ -287,6 +288,14 @@ describe('endgame simulation — Final 5 through to jury', () => {
         state.nomineeIds.length > 0
       ) {
         store.dispatch(finalizeFinal3Eviction(state.nomineeIds[0]));
+      } else if (
+        state.awaitingFinal3Plea &&
+        state.phase === 'final3_decision' &&
+        state.hohId &&
+        state.nomineeIds.length > 0
+      ) {
+        // Simulate Final-3 ceremony completing — dispatch finalizeFinal3Decision.
+        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.hohId, evicteeId: state.nomineeIds[0] }));
       } else if (state.awaitingNominations && !state.pendingNominee1Id) {
         // Step 1: pick a valid nominee 1 (first non-HOH alive player)
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
@@ -663,6 +672,14 @@ describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
         state.nomineeIds.length > 0
       ) {
         store.dispatch(finalizeFinal3Eviction(state.nomineeIds[0]));
+      } else if (
+        state.phase === 'final3_decision' &&
+        state.awaitingFinal3Plea &&
+        state.hohId &&
+        state.nomineeIds.length > 0
+      ) {
+        // Simulate Final-3 ceremony completing.
+        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.hohId, evicteeId: state.nomineeIds[0] }));
       } else {
         store.dispatch(advance());
       }

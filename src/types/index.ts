@@ -148,6 +148,17 @@ export interface SpectatorActiveState {
   competitorIds: string[];
   /** Visual variant rendered by SpectatorView. */
   variant?: 'holdwall' | 'trivia' | 'maze';
+  /**
+   * Pre-computed authoritative winner ID — must be resolved before opening the
+   * spectator so the reveal always matches the announced winner.
+   */
+  expectedWinnerId?: string;
+  /**
+   * Render placement: 'fullscreen' uses a portal to document.body; 'embed'
+   * renders the spectator inline within the current DOM node (minigame panel).
+   * Default: 'fullscreen'.
+   */
+  placement?: 'fullscreen' | 'embed';
   /** Unix timestamp (ms) recorded when the overlay was opened. */
   startedAt: number;
 }
@@ -259,6 +270,12 @@ export interface GameState {
    * The Continue button is hidden and a TvDecisionModal is shown instead.
    */
   awaitingFinal3Eviction?: boolean;
+  /**
+   * When true, the Final 3 ceremony is in progress (coronation animation, plea
+   * overlay, HOH decision, and eviction animation). Set after Part 3 spectator
+   * completes. Blocks advance() until finalizeFinal3Decision clears it.
+   */
+  awaitingFinal3Plea?: boolean;
   /**
    * Tracks intermediate AI replacement steps after a veto is used on a nominated player.
    * 0 (or undefined) = not in progress.

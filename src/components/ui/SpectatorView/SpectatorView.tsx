@@ -11,6 +11,10 @@
  *   onDone          — called once the reveal animation completes
  *   showImmediately — skip the entry animation (default false)
  *   roundLabel      — e.g. "Final 3 · Part 3" shown in the HUD
+ *   expectedWinnerId — pre-computed authoritative winner ID; the reveal always
+ *                      matches this player (pass before opening the spectator).
+ *   placement       — 'fullscreen' renders via portal to document.body (default);
+ *                     'embed' renders inline in the current DOM node.
  */
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
@@ -37,6 +41,17 @@ export interface SpectatorViewProps {
   roundLabel?: string;
   /** Pre-known authoritative winner (e.g. from legacy adapter's winnerId). */
   initialWinnerId?: string;
+  /**
+   * Pre-computed authoritative winner ID resolved before the spectator opens.
+   * Takes priority over initialWinnerId.  The reveal always matches this player.
+   */
+  expectedWinnerId?: string;
+  /**
+   * Render placement.  'fullscreen' (default) renders the overlay via portal
+   * to document.body.  'embed' renders the overlay inline in the current DOM
+   * node, suitable for the minigame panel in Final-3 parts.
+   */
+  placement?: 'fullscreen' | 'embed';
 }
 
 // ── Window type augmentation ──────────────────────────────────────────────────
@@ -79,6 +94,8 @@ export default function SpectatorView({
   showImmediately = false,
   roundLabel = 'Final 3 · Part 3',
   initialWinnerId: propInitialWinnerId,
+  expectedWinnerId: propExpectedWinnerId,
+  placement = 'fullscreen',
 }: SpectatorViewProps) {
   const dispatch = useAppDispatch();
   const players = useAppSelector((s) => s.game.players);
@@ -102,9 +119,22 @@ export default function SpectatorView({
 
   useEffect(() => {
     closedRef.current = false;
-    dispatch(openSpectator({ competitorIds, minigameId, variant, startedAt: Date.now() }));
+    if (import.meta.env.DEV) {
+      console.log('[SpectatorView] mount — openSpectator', { competitorIds, minigameId, variant, placement });
+    }
+    dispatch(openSpectator({
+      competitorIds,
+      minigameId,
+      variant,
+      expectedWinnerId: propExpectedWinnerId ?? propInitialWinnerId ?? undefined,
+      placement,
+      startedAt: Date.now(),
+    }));
     return () => {
       if (!closedRef.current) {
+        if (import.meta.env.DEV) {
+          console.log('[SpectatorView] unmount — closeSpectator (cleanup)');
+        }
         dispatch(closeSpectator());
       }
     };
@@ -127,9 +157,15 @@ export default function SpectatorView({
   // hohId from Redux store — may be set before or after mount
   const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
 
-  const initialWinner = windowAuthWinner ?? reduxWinner
-    ?? (propInitialWinnerId && competitorIds.includes(propInitialWinnerId) ? propInitialWinnerId : null)
-    ?? null;
+  // expectedWinnerId takes priority; falls back to initialWinnerId then other sources.
+  const resolvedExpectedWinner =
+    propExpectedWinnerId && competitorIds.includes(propExpectedWinnerId)
+      ? propExpectedWinnerId
+      : propInitialWinnerId && competitorIds.includes(propInitialWinnerId)
+      ? propInitialWinnerId
+      : null;
+
+  const initialWinner = windowAuthWinner ?? reduxWinner ?? resolvedExpectedWinner ?? null;
 
   // ── Simulation hook ───────────────────────────────────────────────────────
 
@@ -138,7 +174,7 @@ export default function SpectatorView({
     initialWinnerId: initialWinner ?? undefined,
     onReconciled: useCallback((winnerId: string) => {
       if (import.meta.env.DEV) {
-        console.log('[SpectatorView] Authoritative winner revealed:', winnerId);
+        console.log('[SpectatorView] reveal complete — closeSpectator, onDone', { winnerId });
       }
       closedRef.current = true;
       dispatch(closeSpectator());
@@ -192,19 +228,23 @@ export default function SpectatorView({
   }, [setAuthoritativeWinner]); // setAuthoritativeWinner is stable
 
   // ── Keyboard support — Space / Enter to skip to results ──────────────────
-  // Only enabled after sequenceComplete; delegates to skip() which respects
-  // the sequenceComplete gate and bypasses the MIN_FLOOR_MS wait.
+  // Available immediately; delegates to skip() which is now always active.
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[SpectatorView] runPhase start', { variant, placement });
+    }
     function handleKey(e: KeyboardEvent) {
       if (e.code !== 'Space' && e.code !== 'Enter') return;
-      if (!simState.sequenceComplete) return;
       e.preventDefault();
+      if (import.meta.env.DEV) {
+        console.log('[SpectatorView] skip via keyboard', e.code);
+      }
       skip();
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [simState.sequenceComplete, skip]);
+  }, [variant, placement, skip]);
 
   // ── Avatar + name helpers ─────────────────────────────────────────────────
 
@@ -371,26 +411,30 @@ export default function SpectatorView({
           />
         )}
 
-        {/* Skip button — enabled only after sequenceComplete */}
+        {/* Skip button — always enabled (skip is available immediately) */}
         <div className="spectator-overlay__skip-row">
           <button
             className="spectator-overlay__skip-btn"
-            onClick={skip}
-            disabled={!simState.sequenceComplete}
+            onClick={() => {
+              if (import.meta.env.DEV) {
+                console.log('[SpectatorView] skip via button click');
+              }
+              skip();
+            }}
             aria-label="Skip to results"
             type="button"
           >
             Skip to Results
           </button>
-          {!simState.sequenceComplete && (
-            <span className="spectator-overlay__skip-hint" aria-live="polite">
-              Available after the sequence completes…
-            </span>
-          )}
         </div>
       </div>
     </div>
   );
+
+  // For embed placement, render inline (no portal).
+  if (placement === 'embed') {
+    return overlay;
+  }
 
   return createPortal(overlay, document.body);
 }

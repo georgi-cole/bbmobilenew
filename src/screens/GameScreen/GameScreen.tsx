@@ -49,6 +49,7 @@ import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/feature
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
 import type { SpectatorVariant } from '../../components/ui/SpectatorView'
+import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import type { Player } from '../../types'
@@ -979,6 +980,11 @@ export default function GameScreen() {
   const showWinnerCeremony = pendingWinnerCeremony !== null
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
+  // Final-3 ceremony: shown when awaitingFinal3Plea is set (AI HOH won Part 3 via spectator).
+  const showFinal3Ceremony =
+    game.awaitingFinal3Plea === true &&
+    game.phase === 'final3_decision' &&
+    !!game.hohId
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
@@ -994,6 +1000,7 @@ export default function GameScreen() {
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
+    showFinal3Ceremony ||
     showVoteResults ||
     showEvictionSplash ||
     showBattleBack ||
@@ -1175,6 +1182,9 @@ export default function GameScreen() {
           stingerMessage="VOTE RECORDED"
         />
       )}
+
+      {/* ── Final 3 Ceremony (AI HOH: coronation → pleas → eviction) ────── */}
+      {showFinal3Ceremony && <Final3Ceremony />}
 
       {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}
       {showMinigameHost && pendingChallenge && (
@@ -1403,26 +1413,27 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── SpectatorView — Final 3 Part 2 (human won Part 1, sits out Part 2) ── */}
-      {/* initialWinnerId pre-computes the AI pick so the reveal matches advance(). */}
+      {/* expectedWinnerId pre-computes the AI pick so the reveal matches advance(). */}
       {spectatorF3Part2Active && spectatorReactEnabled && (
         <SpectatorView
           key={spectatorF3Part2CompetitorIds.join('-') + '-p2'}
           competitorIds={spectatorF3Part2CompetitorIds}
           variant="holdwall"
-          initialWinnerId={f3Part2PredictedWinnerId ?? undefined}
+          expectedWinnerId={f3Part2PredictedWinnerId ?? undefined}
+          roundLabel="Final 3 · Part 2"
           onDone={handleSpectatorF3Part2Done}
         />
       )}
 
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
-      {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
-      {/* without waiting for advance() (which fires only after onDone).         */}
+      {/* Pass expectedWinnerId so the overlay always reveals the correct winner. */}
       {spectatorF3Active && spectatorReactEnabled && (
         <SpectatorView
           key={spectatorF3CompetitorIds.join('-')}
           competitorIds={spectatorF3CompetitorIds}
           variant="holdwall"
-          initialWinnerId={f3Part3PredictedWinnerId ?? undefined}
+          expectedWinnerId={f3Part3PredictedWinnerId ?? undefined}
+          roundLabel="Final 3 · Part 3"
           onDone={handleSpectatorF3Done}
         />
       )}
