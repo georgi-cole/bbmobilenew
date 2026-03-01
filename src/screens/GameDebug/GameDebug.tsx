@@ -12,13 +12,11 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../../store/hooks';
-import { startMinigame } from '../../store/gameSlice';
+import { mulberry32 } from '../../store/rng';
 import { getAllGames } from '../../minigames/registry';
 import type { GameRegistryEntry, GameCategory, ScoringAdapterName } from '../../minigames/registry';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
-import type { MinigameResult } from '../../types/index';
 import './GameDebug.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,11 +63,60 @@ interface EditState {
   scoringParams: Record<string, number>;
 }
 
+/** Result produced by the in-screen debug simulation (not from game state). */
+interface DebugSimResult {
+  seedUsed: number;
+  scores: Record<string, number>;
+  winnerId: string;
+  /** Human-readable note explaining how scores were derived. */
+  note: string;
+}
+
+/**
+ * Self-contained debug simulation: generates deterministic scores for each
+ * participant using mulberry32 RNG without touching game state.
+ *
+ * Respects `lowerBetter` scoring adapter (lowest score wins).
+ * For `authoritative` games a note is shown explaining that the actual winner
+ * can only be determined by the game UI itself.
+ */
+function runDebugSimulation(
+  game: GameRegistryEntry,
+  participants: string[],
+  seed: number,
+): DebugSimResult {
+  const isLowerBetter = game.scoringAdapter === 'lowerBetter';
+  const isAuthoritative = game.scoringAdapter === 'authoritative';
+  const rng = mulberry32(seed >>> 0);
+  const scores: Record<string, number> = {};
+
+  for (const id of participants) {
+    const raw = rng();
+    if (isLowerBetter) {
+      // Simulate a time-based score in ms; lower is better.
+      const maxMs = game.timeLimitMs > 0 ? game.timeLimitMs : DEFAULT_TIME_LIMIT_SECONDS * 1000;
+      scores[id] = Math.round(raw * maxMs);
+    } else {
+      // Generic 0–100 normalised score.
+      scores[id] = Math.round(raw * 100);
+    }
+  }
+
+  const winnerId = participants.reduce((best, id) =>
+    isLowerBetter ? (scores[id] < scores[best] ? id : best) : (scores[id] > scores[best] ? id : best),
+  );
+
+  const note = isAuthoritative
+    ? `⚠️ authoritative adapter — winner is determined by the game UI, not by score comparison. These are RNG-placeholder scores only.`
+    : `ℹ️ Scores are seed-based RNG simulations (mulberry32, seed ${seed}), not output from "${game.title}" game logic. Use UI run for real results.`;
+
+  return { seedUsed: seed, scores, winnerId, note };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GameDebug() {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
 
   // ── Game list & filters ──────────────────────────────────────────────────
   const baseGames = useMemo(() => getAllGames(), []);
@@ -117,7 +164,7 @@ export default function GameDebug() {
   // ── Run state ─────────────────────────────────────────────────────────────
   const [runKey, setRunKey] = useState(0); // increment to remount wrapper
   const [isRunning, setIsRunning] = useState(false);
-  const [headlessResult, setHeadlessResult] = useState<MinigameResult | null>(null);
+  const [headlessResult, setHeadlessResult] = useState<DebugSimResult | null>(null);
   const [uiResult, setUiResult] = useState<{ result: LegacyRawResult; quit: boolean } | null>(null);
   const [runStatus, setRunStatus] = useState<string>('Ready');
 
@@ -156,11 +203,10 @@ export default function GameDebug() {
   const effectiveParticipants = useMemo(() => {
     const count = Math.max(1, Math.min(8, participantCount));
     return Array.from({ length: count }, (_, i) => {
-      if (participantMode === 'user' && i === 0) return 'user';
-      // Use stable, deterministic IDs for participants rather than display names.
-      return `ai-${i + 1}`;
+      if (participantMode === 'user' && i === 0 && !headless) return 'user';
+      return participantNames[i] ?? `AI-${i + 1}`;
     });
-  }, [participantCount, participantMode]);
+  }, [participantCount, participantMode, participantNames, headless]);
 
   // ── Run actions ───────────────────────────────────────────────────────────
   const handleRunHeadless = useCallback(() => {
@@ -168,25 +214,17 @@ export default function GameDebug() {
     setHeadlessResult(null);
     setUiResult(null);
     setIsRunning(true);
-    setRunStatus('Running headless…');
+    setRunStatus('Running headless simulation…');
 
-    const result = dispatch(
-      startMinigame({
-        key: selectedGame.key,
-        participants: effectiveParticipants,
-        seed,
-        options: { timeLimit: selectedGame.timeLimitMs > 0 ? selectedGame.timeLimitMs / 1000 : DEFAULT_TIME_LIMIT_SECONDS },
-      }),
-    ) as MinigameResult | undefined;
-
-    if (result) {
-      setHeadlessResult(result);
-      setRunStatus(`Headless run complete. Winner: ${result.winnerId}`);
-    } else {
-      setRunStatus('Headless run: no result returned (human participant in store?).');
-    }
+    // Use a self-contained debug simulation that doesn't touch game state.
+    // This is intentionally NOT the actual game logic — it generates
+    // deterministic scores via mulberry32 RNG so maintainers can verify seed
+    // behaviour and scoring-adapter winner selection without a UI run.
+    const result = runDebugSimulation(selectedGame, effectiveParticipants, seed);
+    setHeadlessResult(result);
+    setRunStatus(`Debug simulation complete. Winner: ${result.winnerId}`);
     setIsRunning(false);
-  }, [dispatch, selectedGame, effectiveParticipants, seed]);
+  }, [selectedGame, effectiveParticipants, seed]);
 
   const handleRunUI = useCallback(() => {
     if (!selectedGame) return;
@@ -553,7 +591,10 @@ export default function GameDebug() {
                 {/* Headless result */}
                 {headlessResult && (
                   <div className="gd-result">
-                    <p className="gd-result__heading">Headless run result</p>
+                    <p className="gd-result__heading">Debug simulation result</p>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                      {headlessResult.note}
+                    </p>
                     <dl className="gd-result__grid">
                       <dt>seedUsed</dt>
                       <dd>{headlessResult.seedUsed}</dd>
