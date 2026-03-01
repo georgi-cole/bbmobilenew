@@ -1,0 +1,130 @@
+/* PermissionPrompts — modal chip styles */
+
+/* Overlay container: positioned over the splash, centred */
+.perm-prompts {
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* above intro-splash (9999) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  /* No background — the splash is still visible behind */
+}
+
+/* Individual chip / card */
+.perm-prompt__card {
+  background: rgba(10, 14, 30, 0.92);
+  border: 1px solid rgba(123, 92, 255, 0.35);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(123, 92, 255, 0.12) inset;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 28px 24px 20px;
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: perm-card-rise 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes perm-card-rise {
+  from { opacity: 0; transform: translateY(24px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* Icon */
+.perm-prompt__icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* Title */
+.perm-prompt__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+/* Description */
+.perm-prompt__desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Action buttons row */
+.perm-prompt__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  width: 100%;
+  justify-content: center;
+}
+
+.perm-prompt__btn {
+  flex: 1;
+  max-width: 140px;
+  padding: 10px 18px;
+  border-radius: 14px 5px 14px 5px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.perm-prompt__btn:hover,
+.perm-prompt__btn:focus-visible {
+  transform: translateY(-3px);
+  outline: 2px solid rgba(123, 92, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.perm-prompt__btn--allow {
+  background: linear-gradient(135deg, rgba(123, 92, 255, 0.9), rgba(111, 183, 255, 0.9));
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(83, 52, 180, 0.35);
+}
+
+.perm-prompt__btn--deny {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Remember checkbox row */
+.perm-prompt__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.perm-prompt__remember-input {
+  width: 16px;
+  height: 16px;
+  accent-color: rgb(123, 92, 255);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.perm-prompt__remember-label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  user-select: none;
+}

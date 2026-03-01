@@ -5,12 +5,17 @@
  * and all houseguest avatar images using the same paths the game UI will
  * later request, then navigates to /game.
  *
+ * IMPORTANT — background-first ordering:
+ *   The gameplay background is requested first (awaited before avatars) so
+ *   the game UI never renders naked buttons over an empty background.
+ *   Only after the background resolves do we kick off the avatar preloads.
+ *
  * Error/timeout cases are treated as done so the overlay never stalls.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { preloadImages } from '../../utils/preload';
+import { preloadImage, preloadImages } from '../../utils/preload';
 import { resolveAvatar } from '../../utils/avatar';
 import { getAll } from '../../data/houseguests';
 import './AssetPreloaderOverlay.css';
@@ -18,13 +23,11 @@ import './AssetPreloaderOverlay.css';
 /** Path for the gameplay background image. */
 const GAMEPLAY_BG = '/assets/bb-gameplay-bg.svg';
 
-/** Collect all URLs to preload: gameplay bg + every houseguest avatar. */
-function getPreloadUrls(): string[] {
-  const urls: string[] = [GAMEPLAY_BG];
-  for (const hg of getAll()) {
-    urls.push(resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }));
-  }
-  return urls;
+/** Collect avatar URLs (without the background — that's preloaded first). */
+function getAvatarUrls(): string[] {
+  return getAll().map((hg) =>
+    resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }),
+  );
 }
 
 export default function AssetPreloaderOverlay() {
@@ -33,18 +36,36 @@ export default function AssetPreloaderOverlay() {
   const doneFiredRef = useRef(false);
 
   useEffect(() => {
-    const urls = getPreloadUrls();
+    let cancelled = false;
 
-    preloadImages(
-      urls,
-      (loaded, total) => {
-        setProgress(total > 0 ? Math.round((loaded / total) * 100) : 100);
-      },
-    ).then(() => {
+    async function run() {
+      // Step 1 — background first: await it before loading anything else so
+      // the game UI will never show buttons over an empty background.
+      await preloadImage(GAMEPLAY_BG);
+      if (cancelled) return;
+
+      // Progress after background loaded (counts as 1 of total = 1 + avatars).
+      const avatarUrls = getAvatarUrls();
+      const total = 1 + avatarUrls.length;
+      let loaded = 1; // background already done
+      setProgress(total > 0 ? Math.round((loaded / total) * 100) : 100);
+
+      // Step 2 — avatars: preload concurrently now that background is ready.
+      await preloadImages(avatarUrls, (avatarLoaded) => {
+        loaded = 1 + avatarLoaded;
+        setProgress(Math.round((loaded / total) * 100));
+      });
+
+      if (cancelled) return;
       if (doneFiredRef.current) return;
       doneFiredRef.current = true;
       navigate('/game');
-    });
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (
