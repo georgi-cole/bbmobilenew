@@ -157,9 +157,10 @@ export default function GameDebug() {
     const count = Math.max(1, Math.min(8, participantCount));
     return Array.from({ length: count }, (_, i) => {
       if (participantMode === 'user' && i === 0) return 'user';
-      return participantNames[i] ?? `AI-${i + 1}`;
+      // Use stable, deterministic IDs for participants rather than display names.
+      return `ai-${i + 1}`;
     });
-  }, [participantCount, participantMode, participantNames]);
+  }, [participantCount, participantMode]);
 
   // ── Run actions ───────────────────────────────────────────────────────────
   const handleRunHeadless = useCallback(() => {
