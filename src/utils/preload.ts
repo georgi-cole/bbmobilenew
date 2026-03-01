@@ -29,6 +29,18 @@ function preloadOne(url: string, timeoutMs: number): Promise<void> {
 }
 
 /**
+ * Preloads a single image URL (public alias for preloadOne).
+ * Useful for background-first ordering: await preloadImage(bgUrl) before
+ * calling preloadImages for the remaining assets.
+ */
+export function preloadImage(
+  url: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<void> {
+  return preloadOne(url, timeoutMs);
+}
+
+/**
  * Preloads an array of image URLs concurrently.
  *
  * @param urls        - List of image URLs to preload.
