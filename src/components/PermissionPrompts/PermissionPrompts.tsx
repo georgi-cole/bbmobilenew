@@ -47,7 +47,7 @@ function warmSound(): void {
     const ctx = new AudioContext();
     // Immediately suspend and close — we just want to initialise the context
     // after an explicit user gesture so the browser unlocks audio later.
-    void ctx.resume().then(() => ctx.close());
+    void ctx.resume().finally(() => ctx.close());
   } catch {
     // AudioContext unavailable — ignore
   }
