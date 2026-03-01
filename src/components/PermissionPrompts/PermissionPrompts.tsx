@@ -73,10 +73,11 @@ function SinglePrompt({
   onDeny,
 }: SinglePromptProps) {
   const rememberCheckId = `perm-remember-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const titleId = rememberCheckId.replace('remember', 'title');
   return (
-    <div className="perm-prompt__card" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="perm-prompt__card" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <div className="perm-prompt__icon" aria-hidden="true">{icon}</div>
-      <h2 className="perm-prompt__title">{title}</h2>
+      <h2 id={titleId} className="perm-prompt__title">{title}</h2>
       <p className="perm-prompt__desc">{description}</p>
       <div className="perm-prompt__actions">
         <button
