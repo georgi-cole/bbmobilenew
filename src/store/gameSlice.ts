@@ -1914,15 +1914,18 @@ export const selectF3Part3PredictedWinnerId = (state: RootState): string | null 
  * `advance()` is dispatched (which happens only after playback completes).
  *
  * Returns null when the prediction is not applicable (wrong phase, missing
- * Part-1 winner, fewer than two Part-2 competitors, or a human is competing
- * in Part 2 — the minigame path takes over in that case).
+ * Part-1 winner, no Part-2 competitors, or a human is competing in Part 2 —
+ * the minigame path takes over in that case). Mirrors the `advance()` guard
+ * exactly: only `losers.length === 0` is treated as non-applicable so that a
+ * single-competitor edge case (corrupted state) still yields a deterministic
+ * result consistent with what `advance()` would pick.
  */
 export const selectF3Part2PredictedWinnerId = (state: RootState): string | null => {
   const { phase, seed, f3Part1WinnerId, players } = state.game;
   if (phase !== 'final3_comp2' || !f3Part1WinnerId) return null;
   const alive = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
   const losers = alive.filter((p) => p.id !== f3Part1WinnerId);
-  if (losers.length < 2) return null;
+  if (losers.length === 0) return null;
   // Bail out for the human-participant path (minigame handles that case).
   if (losers.some((p) => p.isUser)) return null;
   const seedRng = mulberry32(seed);
