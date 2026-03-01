@@ -225,6 +225,14 @@ export default function SpectatorView({
     }, [dispatch]),
   });
 
+  // Fast-path: skip the simulation immediately when animations are disabled.
+  useEffect(() => {
+    if (document.body.classList.contains('no-animations')) {
+      skip();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount
+
   // Capture competitorIds in a ref so event handlers always see the current
   // list without needing to re-register on every render.
   const competitorIdsRef = useRef(competitorIds);

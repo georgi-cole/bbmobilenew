@@ -127,9 +127,8 @@ export function useSpectatorSimulation({
       })),
     }));
 
-    // Reveal delay is always RECONCILE_DURATION_MS — no minimum floor timer.
-    // Skip is available immediately so there is no floor to bypass.
-    const revealDelay = RECONCILE_DURATION_MS;
+    // Reveal delay is 0 when animations are disabled; otherwise RECONCILE_DURATION_MS.
+    const revealDelay = document.body.classList.contains('no-animations') ? 0 : RECONCILE_DURATION_MS;
 
     // Clear any existing reveal timeout before scheduling a new one so
     // multiple rapid calls to doReconcile don't fire onReconciled twice.

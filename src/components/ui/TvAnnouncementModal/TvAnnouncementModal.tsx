@@ -102,6 +102,17 @@ export default function TvAnnouncementModal({
 }: TvAnnouncementModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Fast-path: auto-close immediately when animations are disabled.
+  // Only depends on `open` — onClose is intentionally omitted to prevent
+  // re-firing if the parent recreates the callback while the modal is open.
+  useEffect(() => {
+    if (!open) return;
+    if (document.body.classList.contains('no-animations')) {
+      onClose();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]); // intentionally omits onClose — calling it always closes the modal
+
   // ESC to close
   useEffect(() => {
     if (!open) return;
