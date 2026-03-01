@@ -42,6 +42,33 @@
   to   { background-position: 25% 20%, 75% 80%; }
 }
 
+/* ── Flying emoji floaters ───────────────────────────────────────────────────*/
+
+.spectator-overlay__floaters {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.sv-floater {
+  position: absolute;
+  bottom: -3rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  opacity: 0;
+  animation: sv-float-up linear infinite;
+  user-select: none;
+}
+
+@keyframes sv-float-up {
+  0%   { transform: translateY(0)       rotate(0deg)  scale(0.8); opacity: 0; }
+  8%   { opacity: 0.55; }
+  85%  { opacity: 0.35; }
+  100% { transform: translateY(-105vh)  rotate(25deg) scale(1.1); opacity: 0; }
+}
+
 /* Backdrop tint shift on reveal */
 .spectator-overlay[data-phase="revealed"] .spectator-overlay__backdrop {
   background:

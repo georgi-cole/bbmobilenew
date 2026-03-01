@@ -17,11 +17,11 @@
  *                     'embed' renders inline in the current DOM node.
  */
 
-import { useEffect, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { openSpectator, closeSpectator } from '../../../store/gameSlice';
-import { resolveAvatar } from '../../../utils/avatar';
+import { resolveAvatar, getDicebear } from '../../../utils/avatar';
 import { useSpectatorSimulation } from './progressEngine';
 import HoldWallVariant from './HoldWallVariant';
 import TriviaVariant from './TriviaVariant';
@@ -78,11 +78,54 @@ const VARIANT_ICONS: Record<SpectatorVariant, string> = {
   maze:     '🌀',
 };
 
-const VARIANT_SIM_STATUS: Record<SpectatorVariant, string> = {
-  holdwall: 'Simulating endurance…',
-  trivia:   'Calculating scores…',
-  maze:     'Generating maze paths…',
+// ── Live narration lines shown during the simulation phase ────────────────────
+
+const NARRATION_LINES: Record<SpectatorVariant, string[]> = {
+  holdwall: [
+    'Competitors holding on for dear life! 💪',
+    'Every second counts in this endurance battle! ⏱️',
+    'The physical toll is starting to show… 😤',
+    'Who will be the last one standing? 🧱',
+    'Can they hold on just a little longer? 🤞',
+    'This is what Big Brother is all about! 🔥',
+    'The crowd is going wild! 🎉',
+    'Pure determination on display right now! ⚡',
+  ],
+  trivia: [
+    'The questions keep coming — do they know their BB history? 📚',
+    'A wrong answer could cost everything! 😬',
+    'Buzzing in with total confidence! ⚡',
+    'Every correct answer brings them closer to glory! ✨',
+    'The competition is heating up fast! 🔥',
+    'One slip-up could flip the whole game! 😰',
+    'They are laser-focused right now! 🎯',
+    'Knowledge is power in the Big Brother house! 🏠',
+  ],
+  maze: [
+    'Navigating through the twists and turns! 🌀',
+    'One wrong turn could cost them the game! ⚠️',
+    'Racing through the labyrinth at full speed! 🏃',
+    'The path to victory is winding… 🗺️',
+    'Who will find the exit first? 🚪',
+    'The maze is getting trickier by the second! 😰',
+    'They can almost see the finish line! 🏁',
+    'Every step matters in this critical moment! 👣',
+  ],
 };
+
+// ── Floating emoji elements for backdrop ambiance ─────────────────────────────
+
+const FLOATER_EMOJIS = ['🏆', '⭐', '🔥', '✨', '🎯', '💫', '🌟', '👑', '🎉', '❤️‍🔥'];
+const FLOATER_CONFIG = [
+  { left: '8%',  delay: '0s',    dur: '5.2s' },
+  { left: '18%', delay: '1.4s',  dur: '4.8s' },
+  { left: '30%', delay: '0.6s',  dur: '6.1s' },
+  { left: '45%', delay: '2.2s',  dur: '5.5s' },
+  { left: '58%', delay: '0.9s',  dur: '4.6s' },
+  { left: '70%', delay: '1.8s',  dur: '5.9s' },
+  { left: '82%', delay: '3.1s',  dur: '5.3s' },
+  { left: '92%', delay: '0.3s',  dur: '6.4s' },
+];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -260,11 +303,22 @@ export default function SpectatorView({
     (id: string) => {
       const player = players.find((p) => p.id === id);
       if (player) return resolveAvatar(player);
-      // Dicebear fallback — version pinned for stable avatar appearance.
-      return `https://api.dicebear.com/7.0/pixel-art/svg?seed=${encodeURIComponent(id)}`;
+      return getDicebear(id);
     },
     [players],
   );
+
+  // ── Rotating live narration during simulation ─────────────────────────────
+
+  const [narrationIdx, setNarrationIdx] = useState(0);
+  useEffect(() => {
+    if (simState.phase !== 'simulating') return;
+    const lines = NARRATION_LINES[variant];
+    const id = setInterval(() => {
+      setNarrationIdx((i) => (i + 1) % lines.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [simState.phase, variant]);
 
   // ── Determine status label ────────────────────────────────────────────────
 
@@ -274,23 +328,23 @@ export default function SpectatorView({
 
   const statusLabel =
     simState.phase === 'revealed'
-      ? `${winnerName} wins!`
+      ? `${winnerName} wins! 🏆`
       : simState.phase === 'reconciling'
       ? 'Revealing winner…'
-      : VARIANT_SIM_STATUS[variant];
+      : NARRATION_LINES[variant][narrationIdx % NARRATION_LINES[variant].length];
 
   // ── HUD timer text ────────────────────────────────────────────────────────
 
   const hudTimerText = simState.phase === 'simulating'
     ? simState.simPct >= 90
       ? 'Reveal soon…'
-      : `Sim ${simState.simPct}%`
+      : `${simState.simPct}%`
     : simState.phase === 'reconciling'
     ? 'Revealing…'
     : '';
 
   const hudPillLabel = simState.phase === 'simulating'
-    ? 'Simulating'
+    ? 'Playing'
     : simState.phase === 'reconciling'
     ? 'Reveal'
     : 'Result';
@@ -308,6 +362,25 @@ export default function SpectatorView({
     >
       {/* Animated backdrop */}
       <div className="spectator-overlay__backdrop" aria-hidden="true" />
+
+      {/* Flying emoji floaters — ambient background effect during simulation */}
+      {simState.phase === 'simulating' && (
+        <div className="spectator-overlay__floaters" aria-hidden="true">
+          {FLOATER_CONFIG.map((cfg, i) => (
+            <span
+              key={i}
+              className="sv-floater"
+              style={{
+                left: cfg.left,
+                animationDelay: cfg.delay,
+                animationDuration: cfg.dur,
+              }}
+            >
+              {FLOATER_EMOJIS[i % FLOATER_EMOJIS.length]}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Broadcast HUD bar */}
       <div className="spectator-hud" aria-hidden="true">
@@ -362,7 +435,10 @@ export default function SpectatorView({
                 alt={getPlayerName(c.id)}
                 className="spectator-overlay__chip-avatar"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  const img = e.currentTarget as HTMLImageElement;
+                  const name = getPlayerName(c.id);
+                  const fb = getDicebear(name);
+                  if (img.src !== fb) { img.src = fb; } else { img.style.display = 'none'; }
                 }}
               />
               <span className="spectator-overlay__chip-name">
