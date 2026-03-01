@@ -164,7 +164,7 @@
   left: 50%;
   transform: translate(-50%, -50%) rotate(-12deg);
   z-index: 9015;
-  font-size: clamp(1.4rem, 7vw, 2.4rem);
+  font-size: clamp(1rem, 5vw, 1.8rem);
   font-weight: 900;
   letter-spacing: 0.08em;
   color: transparent;
