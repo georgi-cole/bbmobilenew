@@ -47,7 +47,7 @@ export default function HoldWallVariant({
               {/* Climber avatar */}
               <div
                 className="sv-holdwall__climber"
-                style={{ bottom: `calc(${c.score}% - 24px)` }}
+                style={{ bottom: `max(4px, calc(${c.score}% - 24px))` }}
                 aria-hidden="true"
               >
                 <img
@@ -55,7 +55,9 @@ export default function HoldWallVariant({
                   alt=""
                   className="sv-holdwall__avatar"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    const img = e.currentTarget as HTMLImageElement;
+                    const fb = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(c.id)}`;
+                    if (img.src !== fb) { img.src = fb; } else { img.style.display = 'none'; }
                   }}
                 />
                 {c.isWinner && (

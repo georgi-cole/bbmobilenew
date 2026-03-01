@@ -101,7 +101,9 @@ export default function MazeVariant({
                 alt=""
                 className="sv-maze__avatar"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  const img = e.currentTarget as HTMLImageElement;
+                  const fb = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(c.id)}`;
+                  if (img.src !== fb) { img.src = fb; } else { img.style.display = 'none'; }
                 }}
               />
               <div className="sv-maze__path">

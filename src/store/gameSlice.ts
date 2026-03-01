@@ -99,6 +99,7 @@ const initialState: GameState = {
   awaitingTieBreak: false,
   tiedNomineeIds: null,
   awaitingFinal3Eviction: false,
+  awaitingFinal3Plea: false,
   aiReplacementStep: 0,
   aiReplacementWaiting: false,
   f3Part1WinnerId: null,
@@ -964,8 +965,19 @@ const gameSlice = createSlice({
     /**
      * Open the SpectatorView overlay.  Sets spectatorActive with metadata so
      * advance() blocks until closeSpectator is dispatched.
+     * No-op if spectatorActive is already set (deduplication guard).
      */
     openSpectator(state, action: PayloadAction<SpectatorActiveState>) {
+      if (state.spectatorActive) {
+        // Already open — prevent duplicate overlays and race conditions.
+        if (import.meta.env.DEV) {
+          console.log('[gameSlice] openSpectator: no-op (already active)', state.spectatorActive);
+        }
+        return;
+      }
+      if (import.meta.env.DEV) {
+        console.log('[gameSlice] openSpectator', action.payload);
+      }
       state.spectatorActive = action.payload;
     },
 
@@ -974,7 +986,68 @@ const gameSlice = createSlice({
      * can proceed again.
      */
     closeSpectator(state) {
+      if (import.meta.env.DEV) {
+        console.log('[gameSlice] closeSpectator');
+      }
       state.spectatorActive = null;
+    },
+
+    /**
+     * Set or clear the awaitingFinal3Plea flag.
+     * When true, the Final-3 ceremony overlay is shown (coronation → pleas →
+     * HOH decision → eviction).  advance() blocks while this is true.
+     */
+    setAwaitingFinal3Plea(state, action: PayloadAction<boolean>) {
+      state.awaitingFinal3Plea = action.payload;
+      if (import.meta.env.DEV) {
+        console.log('[gameSlice] awaitingFinal3Plea set to', action.payload);
+      }
+    },
+
+    /**
+     * Finalize the Final-3 ceremony: evict the chosen player, crown the Final
+     * HOH, clear awaitingFinal3Plea, and advance to week_end.
+     * Called by Final3Ceremony when the ceremony completes.
+     */
+    finalizeFinal3Decision(
+      state,
+      action: PayloadAction<{ hohWinnerId: string; evicteeId: string }>,
+    ) {
+      const { hohWinnerId, evicteeId } = action.payload;
+
+      // Validate evictee is a current nominee.
+      if (!state.nomineeIds.includes(evicteeId)) return;
+
+      const hoh = state.players.find((p) => p.id === hohWinnerId);
+      const evictee = state.players.find((p) => p.id === evicteeId);
+      if (!evictee) return;
+
+      // Crown HOH (may already be set from advance(); idempotent).
+      if (hoh && state.hohId !== hohWinnerId) {
+        state.hohId = hohWinnerId;
+        state.players.forEach((p) => {
+          if (p.status === 'hoh') p.status = 'active';
+        });
+        hoh.status = 'hoh';
+      }
+
+      // Evict the chosen player.
+      evictee.status = evictedStatus(state);
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
+
+      pushEvent(
+        state,
+        `${hoh?.name ?? hohWinnerId} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+        'game',
+      );
+      pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+
+      state.awaitingFinal3Plea = false;
+      state.phase = 'week_end';
+
+      if (import.meta.env.DEV) {
+        console.log('[gameSlice] finalizeFinal3Decision: evicted', evicteeId, 'hoh', hohWinnerId);
+      }
     },
 
     // ─── Debug-only actions ───────────────────────────────────────────────────
@@ -1066,6 +1139,7 @@ const gameSlice = createSlice({
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
       state.awaitingFinal3Eviction = false;
+      state.awaitingFinal3Plea = false;
       state.votes = {};
       state.voteResults = null;
       state.evictionSplashId = null;
@@ -1125,6 +1199,7 @@ const gameSlice = createSlice({
         awaitingTieBreak: false,
         tiedNomineeIds: null,
         awaitingFinal3Eviction: false,
+        awaitingFinal3Plea: false,
         f3Part1WinnerId: null,
         f3Part2WinnerId: null,
         voteResults: null,
@@ -1164,6 +1239,7 @@ const gameSlice = createSlice({
         state.awaitingHumanVote ||
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
+        state.awaitingFinal3Plea ||
         state.pendingEviction != null ||
         state.battleBack?.active ||
         state.spectatorActive
@@ -1420,24 +1496,14 @@ const gameSlice = createSlice({
             'game',
           );
         } else {
-          // AI Final HOH: deterministically pick evictee using an independent RNG tick.
-          // We use seed + 1 to derive a second independent RNG call from this same advance()
-          // step, since `rng` has already been consumed for the Part 3 competition winner.
-          const aiRng = mulberry32(state.seed + 1);
-          const evictee = seededPick(aiRng, nominees);
-          const evicteePlayer = state.players.find((p) => p.id === evictee.id);
-          if (evicteePlayer) {
-            evicteePlayer.status = evictedStatus(state);
-            state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
+          // AI Final HOH: trigger the Final-3 ceremony overlay so the user sees
+          // the coronation, plea, and eviction cinematic before the game ends.
+          // finalizeFinal3Decision (dispatched by Final3Ceremony on completion)
+          // performs the actual eviction and clears this flag.
+          state.awaitingFinal3Plea = true;
+          if (import.meta.env.DEV) {
+            console.log('[gameSlice] advance() final3_comp3: AI HOH crowned, awaitingFinal3Plea set', { hohId: finalHoh.id });
           }
-          pushEvent(
-            state,
-            `${finalHoh.name} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
-            'game',
-          );
-          pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
-          state.phase = 'week_end';
-          return;
         }
 
         state.phase = 'final3_decision';
@@ -1858,6 +1924,8 @@ export const {
   dismissBattleBack,
   openSpectator,
   closeSpectator,
+  setAwaitingFinal3Plea,
+  finalizeFinal3Decision,
   forceHoH,
   forceNominees,
   forcePovWinner,

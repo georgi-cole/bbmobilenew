@@ -2,15 +2,14 @@
  * progressEngine — simulation + authoritative reconciliation for SpectatorView.
  *
  * Provides a React hook that:
- *   1. Runs a bounded speculative progress simulation for each competitor.
- *      The full SIM_DURATION_MS sequence always plays — even when the winner
- *      is known at mount — so spectators see the complete visualization.
+ *   1. Runs a 10 s (SIM_DURATION_MS) visualization for each competitor.
+ *      The full run phase always plays — even when the winner is known at
+ *      mount — so spectators see the complete visualization.
  *   2. Reconciles smoothly to the authoritative winner when it arrives
  *      (via Redux store, 'minigame:end' CustomEvent, or window.game.__authoritativeWinner).
- *   3. Enforces a MIN_FLOOR_MS (15 s) minimum overlay duration: onReconciled
- *      will not fire until at least MIN_FLOOR_MS has elapsed since mount
- *      unless the user explicitly calls skip() after sequenceComplete.
- *   4. Fires `onReconciled` once the reveal animation completes.
+ *   3. Fires `onReconciled` after `RECONCILE_DURATION_MS` (1.2 s) once the
+ *      winner is locked in (either naturally or via skip()).
+ *   4. `skip()` is available immediately — no `sequenceComplete` gate.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -68,14 +67,8 @@ function clamp(v: number, lo: number, hi: number) {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 const TICK_MS = 80;
-const SIM_DURATION_MS = 6000;
+const SIM_DURATION_MS = 10000;
 const RECONCILE_DURATION_MS = 1200;
-/**
- * Minimum time the SpectatorView overlay must stay visible (ms).
- * Even if the sequence finishes before this, the close callback is deferred
- * until the floor has elapsed — unless the user presses Skip.
- */
-const MIN_FLOOR_MS = 15000;
 
 export function useSpectatorSimulation({
   competitorIds,
@@ -84,7 +77,7 @@ export function useSpectatorSimulation({
 }: UseSpectatorSimulationOptions): {
   state: SpectatorSimulationState;
   setAuthoritativeWinner: (winnerId: string) => void;
-  /** Call once sequenceComplete to finish immediately (bypasses the 15 s floor). */
+  /** Skip to reveal immediately (available from the first render). */
   skip: () => void;
 } {
   // rngRef is initialised inside the mount effect because Date.now() is an
@@ -101,7 +94,7 @@ export function useSpectatorSimulation({
   const pendingWinnerRef = useRef<string | null>(initialWinnerId ?? null);
   // Mirrors state.sequenceComplete for use inside callbacks without a re-render dep.
   const sequenceCompleteRef = useRef(false);
-  // Unix timestamp recorded when the mount effect runs (used for MIN_FLOOR_MS).
+  // Unix timestamp recorded when the mount effect runs (used for sim timing).
   const mountTimeRef = useRef<number>(0);
 
   const [state, setState] = useState<SpectatorSimulationState>(() => ({
@@ -122,7 +115,7 @@ export function useSpectatorSimulation({
   }, [onReconciled]);
 
   // `setState` is stable from useState — empty deps intentional.
-  const doReconcile = useCallback((winnerId: string, skipFloor = false) => {
+  const doReconcile = useCallback((winnerId: string) => {
     setState((prev) => ({
       ...prev,
       phase: 'reconciling',
@@ -134,10 +127,9 @@ export function useSpectatorSimulation({
       })),
     }));
 
-    // Enforce minimum overlay duration unless the user explicitly skipped.
-    const elapsed = mountTimeRef.current ? Date.now() - mountTimeRef.current : 0;
-    const floorRemaining = skipFloor ? 0 : Math.max(0, MIN_FLOOR_MS - elapsed);
-    const revealDelay = Math.max(RECONCILE_DURATION_MS, floorRemaining);
+    // Reveal delay is always RECONCILE_DURATION_MS — no minimum floor timer.
+    // Skip is available immediately so there is no floor to bypass.
+    const revealDelay = RECONCILE_DURATION_MS;
 
     // Clear any existing reveal timeout before scheduling a new one so
     // multiple rapid calls to doReconcile don't fire onReconciled twice.
@@ -183,23 +175,31 @@ export function useSpectatorSimulation({
   );
 
   /**
-   * Skip to the immediate reveal (bypasses the MIN_FLOOR_MS wait).
-   * Only has an effect after sequenceComplete is true.
-   * Subsequent calls after the first skip are ignored — prevents button spam
-   * or repeated Space/Enter from pushing the reveal timeout indefinitely.
+   * Skip to the immediate reveal.
+   * Available immediately — does not require the simulation sequence to have
+   * completed first.  If the sim is still running it is cancelled and the
+   * reveal is scheduled after RECONCILE_DURATION_MS (1.2 s).
+   * Subsequent calls after the first skip are ignored to prevent the reveal
+   * timeout from being pushed out indefinitely.
    */
   const skip = useCallback(() => {
-    if (!sequenceCompleteRef.current) return; // sequence not done — cannot skip yet
     // Ignore subsequent skip() calls once a skip-based reconcile has started.
     if (skipInitiatedRef.current) return;
     skipInitiatedRef.current = true;
+
+    // Cancel the ongoing simulation tick if it is still running.
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    sequenceCompleteRef.current = true;
+    setState((prev) => ({ ...prev, sequenceComplete: true }));
+
     const winner = pendingWinnerRef.current ?? competitorIdsRef.current[0];
     if (!winner) return;
     // Lock reconcile so no other path can start a parallel reconcile.
     lockedRef.current = true;
-    // doReconcile clears any pending reconcileRef internally, then schedules
-    // the reveal with skipFloor = true (RECONCILE_DURATION_MS, no floor wait).
-    doReconcile(winner, /* skipFloor */ true);
+    doReconcile(winner);
   }, [doReconcile]);
 
   // Capture initial values in refs so the effect runs exactly once on mount
@@ -269,7 +269,7 @@ export function useSpectatorSimulation({
         const idx = Math.floor(rng() * ids.length);
         const winner = pendingWinnerRef.current ?? (ids[idx] ?? ids[0]);
         setState((prev) => ({ ...prev, authoritativeWinnerId: winner }));
-        doReconcile(winner); // floor applies (skipFloor = false)
+        doReconcile(winner); // revealDelay = RECONCILE_DURATION_MS
       }
     }, TICK_MS);
 
