@@ -11,6 +11,7 @@ import {
   finalizePendingEviction,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
+  selectF3Part2PredictedWinnerId,
   commitNominees,
   submitPovDecision,
   submitPovSaveTarget,
@@ -82,6 +83,7 @@ export default function GameScreen() {
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
+  const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
 
   const humanPlayer = game.players.find((p) => p.isUser)
 
@@ -251,6 +253,43 @@ export default function GameScreen() {
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)
     spectatorF3AdvancedRef.current = false
+    dispatch(advance())
+  }, [dispatch])
+
+  // ── Final 3 Part 2 Spectator Mode ─────────────────────────────────────────
+  // When the human WON Part 1 they sit out Part 2 (the two Part-1 losers
+  // compete). SpectatorView plays through the cinematic; advance() is deferred
+  // to onDone so the engine picks the Part-2 winner after the overlay finishes.
+  const [spectatorF3Part2Active, setSpectatorF3Part2Active] = useState(false)
+  const [spectatorF3Part2CompetitorIds, setSpectatorF3Part2CompetitorIds] = useState<string[]>([])
+  const spectatorF3Part2AdvancedRef = useRef(false)
+
+  const isF3Part2SpectatorPhase =
+    game.phase === 'final3_comp2' &&
+    !!humanPlayer &&
+    humanPlayer.id === game.f3Part1WinnerId
+
+  useEffect(() => {
+    if (isF3Part2SpectatorPhase && !spectatorF3Part2AdvancedRef.current && spectatorReactEnabled && settings.gameUX.spectatorMode) {
+      spectatorF3Part2AdvancedRef.current = true
+      const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
+      const losers = alive.filter((p) => p.id !== game.f3Part1WinnerId).map((p) => p.id)
+      setSpectatorF3Part2CompetitorIds(losers)
+      setSpectatorF3Part2Active(true)
+    }
+  // `spectatorF3Part2AdvancedRef` is a ref used for deduplication — not reactive.
+  // `game.players` and `game.f3Part1WinnerId` are guaranteed stable at the moment
+  // `isF3Part2SpectatorPhase` becomes true (they're the values that caused it to
+  // flip). The dedup ref ensures the body only runs once per phase entry, so
+  // there is no staleness risk. `spectatorReactEnabled` and
+  // `settings.gameUX.spectatorMode` are included so re-evaluation happens if
+  // either flag is toggled while the phase is already active.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isF3Part2SpectatorPhase, spectatorReactEnabled, settings.gameUX.spectatorMode])
+
+  const handleSpectatorF3Part2Done = useCallback(() => {
+    setSpectatorF3Part2Active(false)
+    spectatorF3Part2AdvancedRef.current = false
     dispatch(advance())
   }, [dispatch])
 
@@ -1362,6 +1401,18 @@ export default function GameScreen() {
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
+
+      {/* ── SpectatorView — Final 3 Part 2 (human won Part 1, sits out Part 2) ── */}
+      {/* initialWinnerId pre-computes the AI pick so the reveal matches advance(). */}
+      {spectatorF3Part2Active && spectatorReactEnabled && (
+        <SpectatorView
+          key={spectatorF3Part2CompetitorIds.join('-') + '-p2'}
+          competitorIds={spectatorF3Part2CompetitorIds}
+          variant="holdwall"
+          initialWinnerId={f3Part2PredictedWinnerId ?? undefined}
+          onDone={handleSpectatorF3Part2Done}
+        />
+      )}
 
       {/* ── SpectatorView — Final 3 Part 3 (human is spectator) ─────────── */}
       {/* Pass initialWinnerId so the overlay can reveal the correct winner      */}
