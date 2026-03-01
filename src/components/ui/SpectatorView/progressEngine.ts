@@ -69,16 +69,6 @@ function clamp(v: number, lo: number, hi: number) {
 const TICK_MS = 80;
 const SIM_DURATION_MS = 10000;
 const RECONCILE_DURATION_MS = 1200;
-/**
- * Minimum time the SpectatorView overlay must stay visible (ms).
- * Even if the sequence finishes before this, the close callback is deferred
- * until the floor has elapsed — unless the user presses Skip.
- * @deprecated The MIN_FLOOR_MS guard has been removed; revealDelay is always
- * RECONCILE_DURATION_MS (1.2 s) regardless of elapsed time.  Skip is available
- * immediately.  This constant is kept for reference only.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _MIN_FLOOR_MS_UNUSED = 15000;
 
 export function useSpectatorSimulation({
   competitorIds,
