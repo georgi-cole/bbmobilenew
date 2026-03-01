@@ -8,17 +8,19 @@ import './SpotlightEvictionOverlay.css';
 //
 // Beat:   0 ms         grid dims + spotlight locks
 //        750 ms        LIVE bug fades in
-//        900 ms        tile expansion begins (3000 ms, slow ease-out)
-//       3900 ms        expansion done → EVICTED badge + desaturate/vignette begin
-//       4400 ms        onDone fires → AnimatePresence exits (reverse, 3000 ms)
-//       7400 ms        match-cut shrink complete
+//        900 ms        tile expansion begins (600 ms, smooth ease-out)
+//       1800 ms        desaturate + vignette settle
+//       2100 ms        lower-third slides in
+//       3000 ms        expansion done → suspense hold begins
+//       5400 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
+//       5800 ms        match-cut shrink complete
 //
 const LIVE_BUG_AT     = 750;   // LIVE bug fades in
 const EXPAND_START    = 900;   // shared-layout expansion begins
-const DESAT_AT        = 3900;  // desaturation + vignette (with badge, at expansion end)
-const LOWER_THIRD_AT  = 3900;  // EVICTED badge slides in (at expansion end)
-const HOLD_START      = 3900;  // expansion done; suspense hold begins
-const DONE_AT         = 4400;  // onDone fires; AnimatePresence triggers reverse (3000 ms)
+const DESAT_AT        = 1800;  // desaturation + vignette settle
+const LOWER_THIRD_AT  = 2100;  // lower-third slides in
+const HOLD_START      = 3000;  // expansion done; suspense hold begins
+const DONE_AT         = 5400;  // onDone fires; AnimatePresence triggers reverse (400 ms)
 
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
@@ -26,9 +28,8 @@ const REDUCED_DONE_AT = 600;
 // Cinematic filter applied to the portrait during the holding phase
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
 
-// Portrait layout transition: camera-push ease-out over 3000 ms (slow cinematic).
-// Used for both the enter (expand) and exit (shrink) layout animations via layoutId.
-const PORTRAIT_SPRING = { duration: 3.0, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] };
+// Portrait layout transition: camera-push ease-out over 600 ms
+const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] };
 
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
 
@@ -50,10 +51,11 @@ interface Props {
  * Beat sequence:
  *  0–900 ms     spotlight   grid dims, radial spotlight mask animates
  *  750 ms                   LIVE bug appears
- *  900–3900 ms  expanding   shared-layout tile expands fullscreen (3000 ms, slow ease-out)
- *  3900 ms                  image desaturates + vignette settles, "EVICTED" stamp slides in
- *  3900–4400 ms holding     suspense pause (500 ms)
- *  4400 ms      done        onDone() fires; AnimatePresence reverse plays (3000 ms)
+ *  900–1500 ms  expanding   shared-layout tile expands fullscreen (600 ms, ease-out)
+ *  1800 ms                  image desaturates + vignette settles
+ *  2100 ms                  "EVICTED" lower-third + stamp slide in
+ *  3000–5400 ms holding     suspense pause
+ *  5400 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
  *
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
@@ -221,6 +223,7 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
             exit={{ y: '110%', opacity: 0 }}
             transition={noMotion ?? { duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
           >
+            <p className="seo__label">EVICTED</p>
             <h1 className="seo__name">{evictee.name}</h1>
           </motion.div>
         )}
@@ -231,11 +234,11 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
         {showLowerThird && (
           <motion.div
             className="seo__stamp"
-            initial={{ scale: 1.6, opacity: 0, rotate: -14 }}
+            initial={{ scale: 2.4, opacity: 0, rotate: -14 }}
             animate={{ scale: 1, opacity: 1, rotate: -12 }}
             exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
             transition={
-              noMotion ?? { duration: 1.2, ease: 'easeOut', delay: 0.06 }
+              noMotion ?? { type: 'spring', stiffness: 340, damping: 22, delay: 0.06 }
             }
             aria-hidden="true"
           >
