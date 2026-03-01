@@ -8,7 +8,8 @@
  *   2. Reconciles smoothly to the authoritative winner when it arrives
  *      (via Redux store, 'minigame:end' CustomEvent, or window.game.__authoritativeWinner).
  *   3. Fires `onReconciled` after `RECONCILE_DURATION_MS` (1.2 s) once the
- *      winner is locked in (either naturally or via skip()).
+ *      winner is locked in (either naturally or via skip()), or immediately (0 ms)
+ *      when the `body.no-animations` class is present.
  *   4. `skip()` is available immediately — no `sequenceComplete` gate.
  */
 
@@ -127,7 +128,9 @@ export function useSpectatorSimulation({
       })),
     }));
 
-    // Reveal delay is 0 when animations are disabled; otherwise RECONCILE_DURATION_MS.
+    // Reveal delay is normally RECONCILE_DURATION_MS (1.2 s) for the visual transition.
+    // When animations are disabled (body.no-animations) the delay is 0 so the flow
+    // advances synchronously — onReconciled fires in the same microtask.
     const revealDelay = document.body.classList.contains('no-animations') ? 0 : RECONCILE_DURATION_MS;
 
     // Clear any existing reveal timeout before scheduling a new one so

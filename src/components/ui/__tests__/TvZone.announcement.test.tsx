@@ -25,6 +25,7 @@ import { MemoryRouter } from 'react-router-dom';
 import gameReducer, { addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
+import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
 import type { TvEvent } from '../../../types';
 
 // ── Store helpers ─────────────────────────────────────────────────────────────
@@ -567,5 +568,36 @@ describe('TvZone — phase-based announcement triggers', () => {
       store.dispatch(addTvEvent(makeEvent({ id: 'ev-extra', text: 'Houseguests deliberate.' })));
     });
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+});
+
+// ── TvAnnouncementModal — no-animations fast-path ─────────────────────────────
+
+describe('TvAnnouncementModal — no-animations fast-path', () => {
+  afterEach(() => {
+    document.body.classList.remove('no-animations');
+    vi.restoreAllMocks();
+  });
+
+  it('calls onClose immediately when opened with body.no-animations set', () => {
+    document.body.classList.add('no-animations');
+    const onClose = vi.fn();
+
+    act(() => {
+      render(<TvAnnouncementModal announcementKey="week_start" open={true} onClose={onClose} />);
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT call onClose when body.no-animations is absent', () => {
+    const onClose = vi.fn();
+
+    act(() => {
+      render(<TvAnnouncementModal announcementKey="week_start" open={true} onClose={onClose} />);
+    });
+
+    // Only the ESC/backdrop close paths fire onClose — not the fast-path.
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

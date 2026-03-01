@@ -8,9 +8,7 @@
  */
 
 import { useAppSelector } from '../store/hooks';
-import { selectSettings } from '../store/settingsSlice';
-
-const STORAGE_KEY = 'bbmobilenew_settings_v1';
+import { selectSettings, STORAGE_KEY } from '../store/settingsSlice';
 
 /**
  * Synchronously checks whether the user has animations enabled.
