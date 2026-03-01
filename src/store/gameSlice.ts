@@ -1906,6 +1906,31 @@ export const selectF3Part3PredictedWinnerId = (state: RootState): string | null 
   return seededPick(rng, finalists).id;
 };
 
+/**
+ * Deterministically predicts the Final 3 Part 2 winner without mutating state.
+ *
+ * Mirrors the RNG logic in the `final3_comp2` branch of `advance()` so
+ * SpectatorView can receive an authoritative `initialWinnerId` before
+ * `advance()` is dispatched (which happens only after playback completes).
+ *
+ * Returns null when the prediction is not applicable (wrong phase, missing
+ * Part-1 winner, fewer than two Part-2 competitors, or a human is competing
+ * in Part 2 — the minigame path takes over in that case).
+ */
+export const selectF3Part2PredictedWinnerId = (state: RootState): string | null => {
+  const { phase, seed, f3Part1WinnerId, players } = state.game;
+  if (phase !== 'final3_comp2' || !f3Part1WinnerId) return null;
+  const alive = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  const losers = alive.filter((p) => p.id !== f3Part1WinnerId);
+  if (losers.length < 2) return null;
+  // Bail out for the human-participant path (minigame handles that case).
+  if (losers.some((p) => p.isUser)) return null;
+  const seedRng = mulberry32(seed);
+  const newSeed = (seedRng() * 0x100000000) >>> 0;
+  const rng = mulberry32(newSeed);
+  return seededPick(rng, losers).id;
+};
+
 // ─── Debug thunks ─────────────────────────────────────────────────────────────
 /** Dispatch advance() repeatedly until the phase reaches 'eviction_results' (debug only). */
 export const fastForwardToEviction =
