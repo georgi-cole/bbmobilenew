@@ -88,7 +88,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 // ── SpotlightEvictionOverlay unit tests ───────────────────────────────────
 
 // Timing constants mirrored from the component for assertion purposes.
-const DONE_AT = 5400;
+const DONE_AT = 4400;
 
 describe('SpotlightEvictionOverlay – cinematic timing', () => {
   beforeEach(() => {
