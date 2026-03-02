@@ -128,3 +128,21 @@ button, a {
   white-space: nowrap;
   border: 0;
 }
+
+/* ── No-animations mode ───────────────────────────────────────────────────── */
+/* Toggled by AppShell when the user disables animations in Settings.          */
+/* Suppresses all CSS animations and transitions globally.                     */
+body.no-animations *,
+body.no-animations *::before,
+body.no-animations *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Hide overlay backdrops and dimmers so they don't block game progression.    */
+body.no-animations .tv-ann-modal__backdrop,
+body.no-animations .overlay-backdrop,
+body.no-animations .backdrop,
+body.no-animations .modal-backdrop {
+  display: none !important;
+}
