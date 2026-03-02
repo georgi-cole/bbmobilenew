@@ -26,6 +26,8 @@ interface Props {
   candidates: Player[];
   seed: number;
   awardAmount?: number;
+  /** Override the elimination interval (ms). Default: 3500. Useful for QA slow-mode. */
+  eliminationIntervalMs?: number;
   onComplete: (winnerId: string) => void;
 }
 
@@ -48,6 +50,7 @@ export default function PublicFavoriteOverlay({
   candidates,
   seed,
   awardAmount = 25000,
+  eliminationIntervalMs = ELIM_INTERVAL_MS,
   onComplete,
 }: Props) {
   const [step, setStep] = useState<Step>('announcement');
@@ -59,7 +62,7 @@ export default function PublicFavoriteOverlay({
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
-    eliminationIntervalMs: ELIM_INTERVAL_MS,
+    eliminationIntervalMs,
     tickIntervalMs: 400,
   });
 

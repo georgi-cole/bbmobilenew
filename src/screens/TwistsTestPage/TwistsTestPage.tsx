@@ -7,6 +7,7 @@
  *  - Manually trigger the BattleBackOverlay with mock juror candidates.
  *  - Manually trigger the PublicFavoriteOverlay with mock candidates.
  *  - Adjust seed for different deterministic outcomes.
+ *  - Use "slow mode" (long elimination interval) to inspect the voting step.
  *  - View overlay results inline.
  */
 import { useState } from 'react';
@@ -33,11 +34,18 @@ const MOCK_ALL_PLAYERS: Player[] = [
 
 type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite';
 
+/** Slow mode uses a long interval so QA can inspect the voting step. */
+const SLOW_ELIM_MS = 60_000;
+const FAST_ELIM_MS = 3_500;
+
 export default function TwistsTestPage() {
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
+  const [slowMode, setSlowMode] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
   const [lastResult, setLastResult] = useState<string | null>(null);
+
+  const elimIntervalMs = slowMode ? SLOW_ELIM_MS : FAST_ELIM_MS;
 
   function handleBattleBackComplete(winnerId: string) {
     setLastResult(`BattleBack winner: ${MOCK_JURORS.find((p) => p.id === winnerId)?.name ?? winnerId}`);
@@ -75,6 +83,14 @@ export default function TwistsTestPage() {
             onChange={(e) => setAwardAmount(Number(e.target.value))}
             style={{ marginLeft: '0.5rem', width: '100px', background: '#1e1b4b', color: '#fff', border: '1px solid #4f46e5', borderRadius: '0.25rem', padding: '0.2rem 0.4rem' }}
           />
+        </label>
+        <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={slowMode}
+            onChange={(e) => setSlowMode(e.target.checked)}
+          />
+          Slow mode (60s elimination) — inspect the voting step
         </label>
       </div>
 
@@ -114,6 +130,7 @@ export default function TwistsTestPage() {
         <BattleBackOverlay
           candidates={MOCK_JURORS}
           seed={seed}
+          eliminationIntervalMs={elimIntervalMs}
           onComplete={handleBattleBackComplete}
         />
       )}
@@ -122,6 +139,7 @@ export default function TwistsTestPage() {
           candidates={MOCK_ALL_PLAYERS}
           seed={seed}
           awardAmount={awardAmount}
+          eliminationIntervalMs={elimIntervalMs}
           onComplete={handleFavoriteComplete}
         />
       )}

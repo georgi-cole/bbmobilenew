@@ -24,6 +24,8 @@ import './BattleBackOverlay.css';
 interface Props {
   candidates: Player[];
   seed: number;
+  /** Override the elimination interval (ms). Default: 3500. Useful for QA slow-mode. */
+  eliminationIntervalMs?: number;
   onComplete: (winnerId: string) => void;
 }
 
@@ -39,7 +41,7 @@ const RING_STROKE = 4;
 /** Repeated twice in the DOM so the CSS marquee loops seamlessly. */
 const TICKER_MSG = 'The public is voting to save a juror… One will return to the Big Brother house! ✦  ';
 
-export default function BattleBackOverlay({ candidates, seed, onComplete }: Props) {
+export default function BattleBackOverlay({ candidates, seed, eliminationIntervalMs = ELIM_INTERVAL_MS, onComplete }: Props) {
   const [step, setStep] = useState<Step>('announcement');
   const firedRef = useRef(false);
 
@@ -50,7 +52,7 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
     seed,
-    eliminationIntervalMs: ELIM_INTERVAL_MS,
+    eliminationIntervalMs,
     tickIntervalMs: 400,
   });
 
