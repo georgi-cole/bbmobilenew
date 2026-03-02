@@ -21,8 +21,6 @@ import {
 import {
   finalizeGame,
   startFavoritePlayerPhase,
-  resolveFavoritePlayerWinner,
-  awardFavoritePrize,
 } from '../../store/gameSlice';
 import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
@@ -30,7 +28,6 @@ import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import PublicFavoriteOverlay from '../PublicFavoriteOverlay/PublicFavoriteOverlay';
 import './FinalFaceoff.css';
 
 export default function FinalFaceoff() {
@@ -40,9 +37,6 @@ export default function FinalFaceoff() {
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
-
-  // Derive Public's Favorite visibility from Redux state (avoids setState-in-effect).
-  const showFavorite = game.favoritePlayer?.active === true;
 
   const jurorListRef = useRef<HTMLDivElement>(null);
   // Keep a ref so the winner-persist effect can read players without adding
@@ -105,8 +99,9 @@ export default function FinalFaceoff() {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
       );
-      // If Public's Favorite is enabled and twists are on, dispatch to show overlay.
-      // `showFavorite` is derived from game.favoritePlayer.active (set by the dispatch).
+      // If Public's Favorite is enabled, set up the twist and dismiss FinalFaceoff
+      // so the game screen becomes visible and shows the TV filler announcement.
+      // GameScreen will then handle the voting overlay and navigate to /game-over.
       const favEnabled =
         settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
       if (favEnabled && playersRef.current.length > 0) {
@@ -117,7 +112,8 @@ export default function FinalFaceoff() {
             awardAmount: settings.sim.favoritePlayerAwardAmount,
           }),
         );
-        // showFavorite is now true (game.favoritePlayer.active was set)
+        // Dismiss FinalFaceoff so the game screen shows with the TV announcement.
+        dispatch(dismissFinale());
       } else {
         navigate('/game-over');
       }
@@ -132,16 +128,6 @@ export default function FinalFaceoff() {
     settings.sim.enableTwists,
     settings.sim.favoritePlayerAwardAmount,
   ]);
-
-  // ── Handle Public's Favorite completion ────────────────────────────────
-  const handleFavoriteComplete = useCallback(
-    (winnerId: string) => {
-      dispatch(resolveFavoritePlayerWinner(winnerId));
-      dispatch(awardFavoritePrize());
-      navigate('/game-over');
-    },
-    [dispatch, navigate],
-  );
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
   useEffect(() => {
@@ -294,16 +280,6 @@ export default function FinalFaceoff() {
         onSkipAll={handleSkipAll}
         onDismiss={handleDismiss}
       />
-
-      {/* Public's Favorite overlay — shown after winner reveal, before game-over */}
-      {showFavorite && (
-        <PublicFavoriteOverlay
-          candidates={game.players}
-          seed={game.seed}
-          awardAmount={settings.sim.favoritePlayerAwardAmount}
-          onComplete={handleFavoriteComplete}
-        />
-      )}
     </div>
   );
 }

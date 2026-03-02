@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -23,6 +24,10 @@ import {
   advance,
   completeBattleBack,
   tryActivateBattleBack,
+  openBattleBackCompetition,
+  resolveFavoritePlayerWinner,
+  awardFavoritePrize,
+  openFavoritePlayerVoting,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -54,6 +59,7 @@ import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import type { Player } from '../../types'
 import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay'
+import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
 import './GameScreen.css'
 
@@ -77,6 +83,7 @@ import './GameScreen.css'
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const settings = useAppSelector(selectSettings)
@@ -947,15 +954,47 @@ export default function GameScreen() {
 
 
   const battleBack = game.battleBack
-  const showBattleBack = battleBack?.active === true
-  const battleBackCandidates = showBattleBack
+  // Only show the full-screen overlay once competitionActive is true.
+  // When battleBack.active && !competitionActive, the TV filler shows the
+  // twist announcement; the overlay opens ~5 s later via the effect below.
+  const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
+  const battleBackCandidates = battleBack?.active
     ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id))
     : []
+
+  // Auto-open the competition overlay after the TV announcement has had time
+  // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
+  useEffect(() => {
+    if (!battleBack?.active || battleBack.competitionActive) return;
+    const id = setTimeout(() => dispatch(openBattleBackCompetition()), 5000);
+    return () => clearTimeout(id);
+  }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
   const handleBattleBackComplete = useCallback((winnerId: string) => {
     dispatch(completeBattleBack(winnerId))
     dispatch(advance())
   }, [dispatch])
+
+  // ── Public's Favorite Player twist ───────────────────────────────────────
+  // Shown after the jury finale: FinalFaceoff dismisses itself and this
+  // component handles the TV announcement (via TvZone) → voting overlay.
+  const favoritePlayer = game.favoritePlayer;
+  const showFavoriteVoting =
+    favoritePlayer?.active === true && favoritePlayer.votingStarted === true;
+
+  // Auto-open the voting overlay after the TV announcement has had time
+  // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
+  useEffect(() => {
+    if (!favoritePlayer?.active || favoritePlayer.votingStarted) return;
+    const id = setTimeout(() => dispatch(openFavoritePlayerVoting()), 5000);
+    return () => clearTimeout(id);
+  }, [dispatch, favoritePlayer?.active, favoritePlayer?.votingStarted]);
+
+  const handleFavoriteComplete = useCallback((winnerId: string) => {
+    dispatch(resolveFavoritePlayerWinner(winnerId));
+    dispatch(awardFavoritePrize());
+    navigate('/game-over');
+  }, [dispatch, navigate]);
   // Shown when a HOH or POV competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
   const pendingMinigame = game.pendingMinigame
@@ -1004,6 +1043,7 @@ export default function GameScreen() {
     showVoteResults ||
     showEvictionSplash ||
     showBattleBack ||
+    showFavoriteVoting ||
     showMinigameHost ||
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
@@ -1398,6 +1438,16 @@ export default function GameScreen() {
           candidates={battleBackCandidates}
           seed={game.seed}
           onComplete={handleBattleBackComplete}
+        />
+      )}
+
+      {/* ── Public's Favorite Player voting overlay ───────────────────────── */}
+      {showFavoriteVoting && favoritePlayer && (
+        <PublicFavoriteOverlay
+          candidates={game.players}
+          seed={game.seed}
+          awardAmount={favoritePlayer.awardAmount}
+          onComplete={handleFavoriteComplete}
         />
       )}
 

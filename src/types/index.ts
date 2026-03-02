@@ -173,17 +173,22 @@ export interface SpectatorActiveState {
 export interface BattleBackState {
   /** True once the twist has fired (or been decided) this season — prevents repeats. */
   used: boolean;
-  /** True while the full-screen Battle Back overlay is open. Blocks advance(). */
+  /**
+   * True while the twist is active (blocks advance()).
+   * Set to true when the twist triggers; cleared by completeBattleBack/dismissBattleBack.
+   */
   active: boolean;
+  /**
+   * True once the competition overlay should be shown.
+   * The twist first shows an announcement on the TV filler; only when this is
+   * true is the full-screen competition overlay rendered.
+   */
+  competitionActive: boolean;
   /** Week number when the twist was decided (week the eviction happened). Null before decided. */
   weekDecided: number | null;
   /** IDs of jurors eligible to compete in the Battle Back. */
   candidates: string[];
-  /** IDs eliminated during the live voting round (in elimination order). */
-  eliminated: string[];
-  /** Simulated public vote tallies keyed by candidate ID (whole integers). */
-  votes: Record<string, number>;
-  /** ID of the winning juror who returns to the house; null while voting is in progress. */
+  /** ID of the winning juror who returns to the house; null before the competition resolves. */
   winnerId: string | null;
 }
 
@@ -194,8 +199,14 @@ export interface BattleBackState {
  * finale winner announcement. Feature-gated via settings.sim.enableFavoritePlayer.
  */
 export interface FavoritePlayerState {
-  /** True while the voting overlay is active; blocks navigation to game-over. */
+  /** True while the twist is active (blocks navigation to game-over). */
   active: boolean;
+  /**
+   * True once the full-screen voting overlay should be shown.
+   * When `active && !votingStarted`, the TV filler shows the announcement.
+   * When `votingStarted = true`, GameScreen renders the voting overlay.
+   */
+  votingStarted: boolean;
   /** IDs of all candidates eligible for the vote (all season players by default). */
   candidates: string[];
   /** IDs eliminated from voting so far, in elimination order. */

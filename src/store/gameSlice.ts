@@ -887,7 +887,11 @@ const gameSlice = createSlice({
 
     /**
      * Activate the Battle Back twist after an eligible eviction.
-     * Sets `battleBack.active` (shows full-screen overlay) and records candidates.
+     * Sets `battleBack.active = true` (blocks advance()) and pushes a TV event
+     * with `major: 'twist'` so the TV filler shows an announcement.
+     * The full-screen competition overlay is NOT shown yet — it only opens after
+     * `openBattleBackCompetition` is dispatched (triggered by GameScreen once the
+     * TV announcement has been seen, ~5 s after activation).
      * Called by the `tryActivateBattleBack` thunk when the probability roll passes.
      */
     activateBattleBack(
@@ -897,19 +901,34 @@ const gameSlice = createSlice({
       const bb: BattleBackState = {
         used: false,
         active: true,
+        competitionActive: false,
         weekDecided: action.payload.week,
         candidates: action.payload.candidates,
-        eliminated: [],
-        votes: {},
         winnerId: null,
       };
       state.battleBack = bb;
       state.twistActive = true;
-      pushEvent(
-        state,
-        `🔥 TWIST: The Jury Return / Battle Back is underway! A juror will have a chance to return! 🏆`,
-        'twist',
-      );
+      // Push event WITH major: 'twist' so TvZone shows the TvAnnouncementOverlay.
+      const ts = Date.now();
+      const event = {
+        id: `${state.phase}-w${state.week}-${ts}-bb`,
+        text: `🔥 TWIST: The Jury Return / Battle Back is here! Jurors will compete for a chance to return! 🏆`,
+        type: 'twist' as const,
+        timestamp: ts,
+        major: 'twist',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    /**
+     * Open the full-screen Battle Back competition overlay.
+     * Called by GameScreen ~5 s after `activateBattleBack`, once the TV
+     * filler announcement has had time to be seen.
+     */
+    openBattleBackCompetition(state) {
+      if (state.battleBack && state.battleBack.active) {
+        state.battleBack.competitionActive = true;
+      }
     },
 
     /**
@@ -973,6 +992,7 @@ const gameSlice = createSlice({
     ) {
       state.favoritePlayer = {
         active: true,
+        votingStarted: false,
         candidates: action.payload.candidates,
         eliminated: [],
         votes: {},
@@ -980,6 +1000,17 @@ const gameSlice = createSlice({
         awardAmount: action.payload.awardAmount,
       };
       state.twistActive = true;
+      // Push a TV event WITH major: 'twist' so the TV filler shows the announcement
+      // while the voting overlay waits for openFavoritePlayerVoting.
+      const ts = Date.now();
+      const event = {
+        id: `${state.phase}-w${state.week}-${ts}-fp`,
+        text: `⭐ AMERICA DECIDES: Vote for your Public's Favorite Player! 🏆`,
+        type: 'twist' as const,
+        timestamp: ts,
+        major: 'twist',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
       // Append a start event to game history
       if (!state.history) state.history = [];
       state.history.push({
@@ -988,6 +1019,17 @@ const gameSlice = createSlice({
         data: { candidates: action.payload.candidates, awardAmount: action.payload.awardAmount },
         timestamp: Date.now(),
       });
+    },
+
+    /**
+     * Open the full-screen Public's Favorite voting overlay.
+     * Called by GameScreen ~5 s after `startFavoritePlayerPhase`, once the TV
+     * filler announcement has had time to be seen.
+     */
+    openFavoritePlayerVoting(state) {
+      if (state.favoritePlayer && state.favoritePlayer.active) {
+        state.favoritePlayer.votingStarted = true;
+      }
     },
 
     /**
@@ -2003,7 +2045,9 @@ export const {
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,
+  openBattleBackCompetition,
   startFavoritePlayerPhase,
+  openFavoritePlayerVoting,
   eliminateFavoriteCandidate,
   resolveFavoritePlayerWinner,
   awardFavoritePrize,

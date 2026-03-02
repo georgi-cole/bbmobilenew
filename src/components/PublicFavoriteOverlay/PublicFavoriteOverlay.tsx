@@ -1,13 +1,15 @@
 /**
  * PublicFavoriteOverlay — full-screen "Public's Favorite Player" voting overlay.
  *
- * UX flow (4 steps):
- *  1. announcement — purple full-screen splash; tap to continue.
- *  2. info         — explanation card; tap to start voting.
- *  3. voting       — live vote simulation: portrait list with vote bars,
- *                    scrolling ticker, countdown strip. Lowest candidate
- *                    eliminated every 3.5 s.
- *  4. winner       — winner reveal with gold glow; tap to close.
+ * UX flow (2 steps):
+ *  1. voting  — live vote simulation: portrait list with vote bars, scrolling
+ *               ticker, countdown strip. Lowest candidate eliminated every 3.5 s.
+ *  2. winner  — winner reveal with gold glow; tap to close.
+ *
+ * Note: The announcement and info slides have moved to the TvZone TV filler
+ * (triggered by the 'twist' major event pushed in `startFavoritePlayerPhase`).
+ * This overlay opens ~5 s after that announcement via GameScreen's auto-open
+ * effect, so the user has already seen the announcement before arriving here.
  *
  * Props:
  *  candidates   — Player objects eligible for the vote.
@@ -31,7 +33,7 @@ interface Props {
   onComplete: (winnerId: string) => void;
 }
 
-type Step = 'announcement' | 'info' | 'voting' | 'winner';
+type Step = 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
 const COUNTDOWN_START = Math.floor(ELIM_INTERVAL_MS / 1000);
@@ -53,7 +55,7 @@ export default function PublicFavoriteOverlay({
   eliminationIntervalMs = ELIM_INTERVAL_MS,
   onComplete,
 }: Props) {
-  const [step, setStep] = useState<Step>('announcement');
+  const [step, setStep] = useState<Step>('voting');
   const firedRef = useRef(false);
 
   // Stable ID list avoids hook dep churn during a single session.
@@ -82,7 +84,7 @@ export default function PublicFavoriteOverlay({
   }, [step, isComplete, eliminated.length]);
 
   // Derive winner step from isComplete.
-  const displayStep = isComplete && step === 'voting' ? 'winner' : step;
+  const displayStep: Step = isComplete && step === 'voting' ? 'winner' : step;
 
   const handleClose = useCallback(() => {
     if (firedRef.current || !winnerId) return;
@@ -109,47 +111,7 @@ export default function PublicFavoriteOverlay({
     >
       <div className="pf-overlay__dim" />
 
-      {/* ── Step 1: Announcement ─────────────────────────────────────────── */}
-      {displayStep === 'announcement' && (
-        <div
-          className="pf-overlay__card pf-overlay__card--announcement"
-          onClick={() => setStep('info')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('info')}
-        >
-          <p className="pf-overlay__eyebrow">America Decides</p>
-          <h2 className="pf-overlay__headline">Public's<br />Favorite<br />Player</h2>
-          <p className="pf-overlay__sub">
-            The audience has been watching all season.
-          </p>
-          <p className="pf-overlay__tap-hint">Tap to continue →</p>
-        </div>
-      )}
-
-      {/* ── Step 2: Info ─────────────────────────────────────────────────── */}
-      {displayStep === 'info' && (
-        <div
-          className="pf-overlay__card pf-overlay__card--info"
-          onClick={() => setStep('voting')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('voting')}
-        >
-          <p className="pf-overlay__eyebrow">How it works</p>
-          <h2 className="pf-overlay__headline" style={{ fontSize: '1.4rem' }}>
-            America Votes
-          </h2>
-          <p className="pf-overlay__sub">
-            All houseguests are eligible — including evicted players.<br />
-            The lowest vote-getter is eliminated every few seconds until<br />
-            one player wins {formatCurrency(awardAmount)} from America!
-          </p>
-          <p className="pf-overlay__tap-hint">Tap to watch the vote →</p>
-        </div>
-      )}
-
-      {/* ── Step 3: Voting ───────────────────────────────────────────────── */}
+      {/* ── Step 1: Voting ───────────────────────────────────────────────── */}
       {displayStep === 'voting' && (
         <div className="pf-overlay__voting">
           <p className="pf-overlay__voting-title">🗳️ Live Public Vote</p>
@@ -211,7 +173,7 @@ export default function PublicFavoriteOverlay({
         </div>
       )}
 
-      {/* ── Step 4: Winner ───────────────────────────────────────────────── */}
+      {/* ── Step 2: Winner ───────────────────────────────────────────────── */}
       {displayStep === 'winner' && (
         <div
           className="pf-overlay__card pf-overlay__card--winner"

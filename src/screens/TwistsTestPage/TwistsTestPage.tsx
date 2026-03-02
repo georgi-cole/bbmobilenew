@@ -5,9 +5,10 @@
  *
  * This page lets QA testers and developers:
  *  - Manually trigger the BattleBackOverlay with mock juror candidates.
+ *    The BattleBack now shows a best-of-3 competition (seeded RNG), not voting.
  *  - Manually trigger the PublicFavoriteOverlay with mock candidates.
- *  - Adjust seed for different deterministic outcomes.
- *  - Use "slow mode" (long elimination interval) to inspect the voting step.
+ *  - Adjust seed for different deterministic competition outcomes.
+ *  - Use "slow mode" (long round-reveal interval) to inspect each round.
  *  - View overlay results inline.
  */
 import { useState } from 'react';
@@ -34,9 +35,9 @@ const MOCK_ALL_PLAYERS: Player[] = [
 
 type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite';
 
-/** Slow mode uses a long interval so QA can inspect the voting step. */
-const SLOW_ELIM_MS = 60_000;
-const FAST_ELIM_MS = 3_500;
+/** Slow mode uses a long interval so QA can inspect each round. */
+const SLOW_PROGRESS_MS = 60_000;
+const FAST_PROGRESS_MS = 3_500;
 
 export default function TwistsTestPage() {
   const [seed, setSeed] = useState(42);
@@ -45,7 +46,7 @@ export default function TwistsTestPage() {
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
   const [lastResult, setLastResult] = useState<string | null>(null);
 
-  const elimIntervalMs = slowMode ? SLOW_ELIM_MS : FAST_ELIM_MS;
+  const progressIntervalMs = slowMode ? SLOW_PROGRESS_MS : FAST_PROGRESS_MS;
 
   function handleBattleBackComplete(winnerId: string) {
     setLastResult(`BattleBack winner: ${MOCK_JURORS.find((p) => p.id === winnerId)?.name ?? winnerId}`);
@@ -61,7 +62,7 @@ export default function TwistsTestPage() {
     <div style={{ padding: '1.5rem', maxWidth: '500px', margin: '0 auto', color: '#fff' }}>
       <h1 style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>🔬 Twists Test Page</h1>
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-        Manual QA page for BattleBack and Public's Favorite overlays.
+        Manual QA page for BattleBack (competition) and Public's Favorite overlays.
       </p>
 
       {/* Controls */}
@@ -90,7 +91,7 @@ export default function TwistsTestPage() {
             checked={slowMode}
             onChange={(e) => setSlowMode(e.target.checked)}
           />
-          Slow mode (60s elimination) — inspect the voting step
+          Slow mode (60s between rounds) — inspect each competition round
         </label>
       </div>
 
@@ -101,14 +102,14 @@ export default function TwistsTestPage() {
           onClick={() => { setLastResult(null); setActiveOverlay('battleBack'); }}
           style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
         >
-          🔥 Test BattleBack Overlay
+          🏆 Test BattleBack Competition
         </button>
         <button
           type="button"
           onClick={() => { setLastResult(null); setActiveOverlay('publicFavorite'); }}
           style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
         >
-          ⭐ Test Public's Favorite Overlay
+          ⭐ Test Public's Favorite
         </button>
       </div>
 
@@ -130,7 +131,7 @@ export default function TwistsTestPage() {
         <BattleBackOverlay
           candidates={MOCK_JURORS}
           seed={seed}
-          eliminationIntervalMs={elimIntervalMs}
+          progressIntervalMs={progressIntervalMs}
           onComplete={handleBattleBackComplete}
         />
       )}
@@ -139,7 +140,7 @@ export default function TwistsTestPage() {
           candidates={MOCK_ALL_PLAYERS}
           seed={seed}
           awardAmount={awardAmount}
-          eliminationIntervalMs={elimIntervalMs}
+          eliminationIntervalMs={progressIntervalMs}
           onComplete={handleFavoriteComplete}
         />
       )}

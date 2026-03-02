@@ -19,6 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   startFavoritePlayerPhase,
+  openFavoritePlayerVoting,
   eliminateFavoriteCandidate,
   resolveFavoritePlayerWinner,
   awardFavoritePrize,
@@ -94,12 +95,13 @@ function makeStore(
 // ── startFavoritePlayerPhase ─────────────────────────────────────────────────
 
 describe('startFavoritePlayerPhase', () => {
-  it('sets active=true with correct candidates and awardAmount', () => {
+  it('sets active=true, votingStarted=false, with correct candidates and awardAmount', () => {
     const store = makeStore();
     store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1', 'p2'], awardAmount: 25000 }));
     const fp = store.getState().game.favoritePlayer;
     expect(fp).toBeDefined();
     expect(fp!.active).toBe(true);
+    expect(fp!.votingStarted).toBe(false);
     expect(fp!.candidates).toEqual(['p0', 'p1', 'p2']);
     expect(fp!.awardAmount).toBe(25000);
     expect(fp!.eliminated).toEqual([]);
@@ -122,6 +124,31 @@ describe('startFavoritePlayerPhase', () => {
     const store = makeStore();
     store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
     expect(store.getState().game.twistActive).toBe(true);
+  });
+
+  it('pushes a TV event with major:twist for the TV filler announcement', () => {
+    const store = makeStore();
+    store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
+    const events = store.getState().game.tvFeed;
+    const ev = events.find((e) => e.type === 'twist');
+    expect(ev).toBeDefined();
+    expect((ev as any)?.major).toBe('twist');
+  });
+});
+
+describe('openFavoritePlayerVoting', () => {
+  it('sets votingStarted=true when favoritePlayer is active', () => {
+    const store = makeStore();
+    store.dispatch(startFavoritePlayerPhase({ candidates: ['p0'], awardAmount: 25000 }));
+    expect(store.getState().game.favoritePlayer!.votingStarted).toBe(false);
+    store.dispatch(openFavoritePlayerVoting());
+    expect(store.getState().game.favoritePlayer!.votingStarted).toBe(true);
+  });
+
+  it('is a no-op when favoritePlayer is not active', () => {
+    const store = makeStore();
+    store.dispatch(openFavoritePlayerVoting());
+    expect(store.getState().game.favoritePlayer?.votingStarted).toBeUndefined();
   });
 });
 
