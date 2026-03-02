@@ -979,15 +979,15 @@ const gameSlice = createSlice({
         winnerId: null,
         awardAmount: action.payload.awardAmount,
       };
-      // Record in game history
-      const historyEvent = {
-        type: 'favoritePlayer' as const,
+      state.twistActive = true;
+      // Append a start event to game history
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:start',
         week: state.week,
         data: { candidates: action.payload.candidates, awardAmount: action.payload.awardAmount },
         timestamp: Date.now(),
-      };
-      if (!state.history) state.history = [];
-      state.history.push(historyEvent);
+      });
     },
 
     /**
@@ -1012,13 +1012,15 @@ const gameSlice = createSlice({
       if (!fp || !fp.active) return;
       fp.winnerId = action.payload;
       fp.active = false;
-      // Append result to game history
-      const historyEntry = state.history?.find(
-        (e) => e.type === 'favoritePlayer' && e.week === state.week,
-      );
-      if (historyEntry) {
-        historyEntry.data = { ...historyEntry.data, winnerId: action.payload };
-      }
+      state.twistActive = false;
+      // Append a winner event to game history (append-only — do not mutate existing entry)
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:winner',
+        week: state.week,
+        data: { winnerId: action.payload, awardAmount: fp.awardAmount },
+        timestamp: Date.now(),
+      });
     },
 
     /**
@@ -1029,13 +1031,14 @@ const gameSlice = createSlice({
     awardFavoritePrize(state) {
       const fp = state.favoritePlayer;
       if (!fp || !fp.winnerId) return;
-      // Record award in history (balance update is left to future integration)
-      const historyEntry = state.history?.find(
-        (e) => e.type === 'favoritePlayer' && e.week === state.week,
-      );
-      if (historyEntry) {
-        historyEntry.data = { ...historyEntry.data, awarded: true };
-      }
+      // Append an award event to game history (balance update is left to future integration)
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:award',
+        week: state.week,
+        data: { winnerId: fp.winnerId, awardAmount: fp.awardAmount },
+        timestamp: Date.now(),
+      });
     },
 
     // ─── Spectator overlay ────────────────────────────────────────────────────

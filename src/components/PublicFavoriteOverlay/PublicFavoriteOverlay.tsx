@@ -176,7 +176,12 @@ export default function PublicFavoriteOverlay({
                   <div
                     className={`pf-overlay__candidate-avatar${isElim ? ' pf-overlay__candidate-avatar--eliminated' : ''}`}
                   >
-                    {resolveAvatar(candidate.avatar)}
+                    <img
+                      src={resolveAvatar(candidate)}
+                      alt={candidate.name}
+                      className="pf-overlay__avatar-img"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
                   </div>
                   <div className="pf-overlay__candidate-info">
                     <p className="pf-overlay__candidate-name">{candidate.name}</p>
@@ -214,7 +219,14 @@ export default function PublicFavoriteOverlay({
         >
           <p className="pf-overlay__eyebrow">America's Favorite Player</p>
           <div className="pf-overlay__winner-avatar" aria-hidden="true">
-            {winnerPlayer ? resolveAvatar(winnerPlayer.avatar) : '🏆'}
+            {winnerPlayer ? (
+              <img
+                src={resolveAvatar(winnerPlayer)}
+                alt={winnerPlayer.name}
+                className="pf-overlay__avatar-img pf-overlay__avatar-img--winner"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : '🏆'}
           </div>
           <h2 className="pf-overlay__headline">
             {winnerPlayer?.name ?? 'Unknown'}

@@ -106,16 +106,22 @@ describe('startFavoritePlayerPhase', () => {
     expect(fp!.winnerId).toBeNull();
   });
 
-  it('appends a favoritePlayer event to game.history', () => {
+  it('appends a favoritePlayer:start event to game.history', () => {
     const store = makeStore();
     store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 10000 }));
     const history = store.getState().game.history;
     expect(history).toBeDefined();
     expect(history!.length).toBeGreaterThanOrEqual(1);
-    const entry = history!.find((e) => e.type === 'favoritePlayer');
+    const entry = history!.find((e) => e.type === 'favoritePlayer:start');
     expect(entry).toBeDefined();
     expect(entry!.week).toBe(10);
     expect(entry!.data.awardAmount).toBe(10000);
+  });
+
+  it('sets twistActive=true', () => {
+    const store = makeStore();
+    store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
+    expect(store.getState().game.twistActive).toBe(true);
   });
 });
 
@@ -159,6 +165,23 @@ describe('resolveFavoritePlayerWinner', () => {
     expect(fp!.active).toBe(false);
   });
 
+  it('clears twistActive when resolved', () => {
+    const store = makeStore();
+    store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
+    store.dispatch(resolveFavoritePlayerWinner('p0'));
+    expect(store.getState().game.twistActive).toBe(false);
+  });
+
+  it('appends a favoritePlayer:winner event to game.history', () => {
+    const store = makeStore();
+    store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
+    store.dispatch(resolveFavoritePlayerWinner('p0'));
+    const history = store.getState().game.history;
+    const entry = history?.find((e) => e.type === 'favoritePlayer:winner');
+    expect(entry).toBeDefined();
+    expect(entry!.data.winnerId).toBe('p0');
+  });
+
   it('is a no-op when favoritePlayer is not active', () => {
     const store = makeStore();
     store.dispatch(resolveFavoritePlayerWinner('p0'));
@@ -169,14 +192,15 @@ describe('resolveFavoritePlayerWinner', () => {
 // ── awardFavoritePrize ────────────────────────────────────────────────────────
 
 describe('awardFavoritePrize', () => {
-  it('marks awarded=true in game history', () => {
+  it('appends a favoritePlayer:award event to game history', () => {
     const store = makeStore();
     store.dispatch(startFavoritePlayerPhase({ candidates: ['p0', 'p1'], awardAmount: 25000 }));
     store.dispatch(resolveFavoritePlayerWinner('p0'));
     store.dispatch(awardFavoritePrize());
     const history = store.getState().game.history;
-    const entry = history?.find((e) => e.type === 'favoritePlayer');
-    expect(entry?.data.awarded).toBe(true);
+    const entry = history?.find((e) => e.type === 'favoritePlayer:award');
+    expect(entry).toBeDefined();
+    expect(entry!.data.winnerId).toBe('p0');
   });
 
   it('is a no-op when there is no winner', () => {
@@ -185,8 +209,8 @@ describe('awardFavoritePrize', () => {
     // Do not resolve winner
     store.dispatch(awardFavoritePrize());
     const history = store.getState().game.history;
-    const entry = history?.find((e) => e.type === 'favoritePlayer');
-    expect(entry?.data.awarded).toBeUndefined();
+    const entry = history?.find((e) => e.type === 'favoritePlayer:award');
+    expect(entry).toBeUndefined();
   });
 });
 
@@ -269,8 +293,8 @@ describe('createVoteSimulator', () => {
     expect(last.winnerId).not.toBeNull();
   });
 
-  it('attachRealtimeAdapter is callable and replaces simulation', () => {
-    const sim = createVoteSimulator({ candidates: ['a', 'b'], seed: 42 });
+  it('attachRealtimeAdapter is callable and replaces simulation — elimination still fires', () => {
+    const sim = createVoteSimulator({ candidates: ['a', 'b', 'c'], seed: 42, eliminationIntervalMs: 500 });
     let dataCallback: ((votes: Record<string, number>) => void) | null = null;
     const adapter = {
       start: vi.fn(),
@@ -283,13 +307,38 @@ describe('createVoteSimulator', () => {
     sim.start();
 
     // Adapter start should be called
-    expect(adapter.start).toHaveBeenCalledWith(['a', 'b']);
+    expect(adapter.start).toHaveBeenCalledWith(['a', 'b', 'c']);
 
-    // Simulate incoming data from adapter
-    dataCallback?.({ a: 60, b: 40 });
+    // Simulate incoming data from adapter — votes drive percentages
+    dataCallback?.({ a: 60, b: 30, c: 10 });
+
+    // Advance past the elimination interval so the simulator eliminates the lowest
+    vi.advanceTimersByTime(600);
+
+    const last = snaps[snaps.length - 1];
+    // Elimination should have fired (adapter mode still runs elimination logic)
+    expect(last.eliminated.length).toBeGreaterThanOrEqual(1);
 
     sim.stop();
     expect(adapter.stop).toHaveBeenCalled();
+  });
+
+  it('start() is idempotent — duplicate calls do not create extra intervals', () => {
+    const sim = createVoteSimulator({ candidates: ['a', 'b'], seed: 42, eliminationIntervalMs: 1000 });
+    const snaps: ReturnType<typeof sim.getSnapshot>[] = [];
+    sim.subscribe((s) => snaps.push(s));
+
+    // Call start() three times
+    sim.start();
+    sim.start();
+    sim.start();
+
+    vi.advanceTimersByTime(1100);
+    sim.stop();
+
+    // With idempotent start, only one elimination fires in the interval, not three
+    const last = snaps[snaps.length - 1];
+    expect(last.eliminated.length).toBeLessThanOrEqual(1);
   });
 
   it('produces deterministic results with the same seed', () => {

@@ -129,6 +129,8 @@ export function createVoteSimulator({
   let driftTimer: ReturnType<typeof setInterval> | null = null;
   let elimTimer: ReturnType<typeof setInterval> | null = null;
   let realtimeAdapter: RealtimeAdapter | null = null;
+  /** Guard against duplicate start() calls creating extra intervals/handlers. */
+  let started = false;
 
   function buildSnapshot(): VoteSnapshot {
     const votes: Record<string, number> = {};
@@ -165,14 +167,23 @@ export function createVoteSimulator({
   }
 
   function start() {
+    if (started) return; // idempotent — ignore duplicate start() calls
+    started = true;
+
     if (realtimeAdapter) {
-      // Real backend drives updates
+      // Real backend drives vote totals; simulator still runs elimination/winner logic
+      // so that eliminated, winnerId, and isComplete stay in sync for consumers.
       realtimeAdapter.onData((incomingVotes) => {
-        // Merge incoming votes; real adapter manages its own elimination logic
         active.forEach((id, i) => { pcts[i] = incomingVotes[id] ?? pcts[i]; });
         notify();
       });
       realtimeAdapter.start(candidates);
+      // Elimination timer runs on adapter-driven percentages
+      elimTimer = setInterval(() => {
+        if (winnerId) return;
+        eliminateLowest();
+      }, eliminationIntervalMs);
+      notify();
       return;
     }
     // Built-in simulation
@@ -192,6 +203,7 @@ export function createVoteSimulator({
     if (driftTimer !== null) { clearInterval(driftTimer); driftTimer = null; }
     if (elimTimer !== null) { clearInterval(elimTimer); elimTimer = null; }
     if (realtimeAdapter) { realtimeAdapter.stop(); }
+    started = false;
   }
 
   function subscribe(listener: VoteSnapshotListener): () => void {

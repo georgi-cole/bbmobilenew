@@ -129,6 +129,19 @@
   font-size: 1.35rem;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+}
+
+.pf-overlay__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.pf-overlay__avatar-img--winner {
+  width: 4.5rem;
+  height: 4.5rem;
 }
 
 .pf-overlay__candidate-avatar--eliminated::after {
@@ -250,8 +263,11 @@
 }
 
 .pf-overlay__winner-avatar {
-  font-size: 3.5rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
   margin: 0.5rem 0;
+  overflow: hidden;
   filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.8));
 }
 

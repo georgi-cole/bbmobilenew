@@ -45,6 +45,11 @@ export default function FinalFaceoff() {
   const showFavorite = game.favoritePlayer?.active === true;
 
   const jurorListRef = useRef<HTMLDivElement>(null);
+  // Keep a ref so the winner-persist effect can read players without adding
+  // game.players to its deps array (which would cause a re-run after
+  // finalizeGame mutates player statuses).
+  const playersRef = useRef(game.players);
+  useEffect(() => { playersRef.current = game.players; }, [game.players]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -104,8 +109,8 @@ export default function FinalFaceoff() {
       // `showFavorite` is derived from game.favoritePlayer.active (set by the dispatch).
       const favEnabled =
         settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
-      if (favEnabled && game.players.length > 0) {
-        const allCandidates = game.players.map((p) => p.id);
+      if (favEnabled && playersRef.current.length > 0) {
+        const allCandidates = playersRef.current.map((p) => p.id);
         dispatch(
           startFavoritePlayerPhase({
             candidates: allCandidates,
@@ -126,7 +131,6 @@ export default function FinalFaceoff() {
     settings.sim.enableFavoritePlayer,
     settings.sim.enableTwists,
     settings.sim.favoritePlayerAwardAmount,
-    game.players,
   ]);
 
   // ── Handle Public's Favorite completion ────────────────────────────────
