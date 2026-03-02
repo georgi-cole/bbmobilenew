@@ -105,7 +105,9 @@ export default function TvAnnouncementModal({
   // Keep a ref to onClose so the fast-path always calls the latest callback
   // without the effect re-running on every render.
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Fast-path: auto-close immediately when animations are disabled.
   useEffect(() => {
