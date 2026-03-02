@@ -77,7 +77,12 @@ export default function BattleBackOverlay({
 
   function startCompetition() {
     setRevealedRounds(0);
-    setStep('competition');
+    // If there are no rounds (single-candidate edge case), skip straight to winner.
+    if (result.rounds.length === 0) {
+      setStep('winner');
+    } else {
+      setStep('competition');
+    }
   }
 
   const handleClose = () => {

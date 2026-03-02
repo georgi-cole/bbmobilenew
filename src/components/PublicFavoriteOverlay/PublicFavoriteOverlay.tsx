@@ -36,7 +36,6 @@ interface Props {
 type Step = 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
-const COUNTDOWN_START = Math.floor(ELIM_INTERVAL_MS / 1000);
 const TICKER_MSG =
   "America is voting for their Favorite Player… One houseguest wins the grand prize! ✦  ";
 
@@ -69,10 +68,13 @@ export default function PublicFavoriteOverlay({
   });
 
   // Countdown strip: resets after each elimination.
-  const [countdown, setCountdown] = useState(COUNTDOWN_START);
+  // Use Math.floor(eliminationIntervalMs / 1000) so the displayed countdown
+  // always matches the actual elimination timing even in slow/fast mode.
+  const countdownStart = Math.floor(eliminationIntervalMs / 1000);
+  const [countdown, setCountdown] = useState(countdownStart);
   useEffect(() => {
     if (step !== 'voting' || isComplete) return;
-    const resetId = setTimeout(() => setCountdown(COUNTDOWN_START), 0);
+    const resetId = setTimeout(() => setCountdown(countdownStart), 0);
     const id = setInterval(
       () => setCountdown((prev) => Math.max(0, prev - 1)),
       1000,
@@ -81,7 +83,7 @@ export default function PublicFavoriteOverlay({
       clearTimeout(resetId);
       clearInterval(id);
     };
-  }, [step, isComplete, eliminated.length]);
+  }, [step, isComplete, eliminated.length, countdownStart]);
 
   // Derive winner step from isComplete.
   const displayStep: Step = isComplete && step === 'voting' ? 'winner' : step;

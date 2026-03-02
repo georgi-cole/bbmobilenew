@@ -4,7 +4,7 @@
  * Mounted by AppShell when game.phase === 'jury'.
  * Coordinates juror reveals, human-vote UI, tally display, and winner banner.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { Player } from '../../types';

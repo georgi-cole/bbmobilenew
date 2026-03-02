@@ -1043,7 +1043,10 @@ export default function GameScreen() {
     showVoteResults ||
     showEvictionSplash ||
     showBattleBack ||
+    // Also block while the twist is pending TV announcement (active but overlay not yet open).
+    (game.battleBack?.active === true && game.battleBack?.competitionActive !== true) ||
     showFavoriteVoting ||
+    (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
     showMinigameHost ||
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
@@ -1444,7 +1447,7 @@ export default function GameScreen() {
       {/* ── Public's Favorite Player voting overlay ───────────────────────── */}
       {showFavoriteVoting && favoritePlayer && (
         <PublicFavoriteOverlay
-          candidates={game.players}
+          candidates={game.players.filter((p) => (favoritePlayer.candidates ?? []).includes(p.id))}
           seed={game.seed}
           awardAmount={favoritePlayer.awardAmount}
           onComplete={handleFavoriteComplete}

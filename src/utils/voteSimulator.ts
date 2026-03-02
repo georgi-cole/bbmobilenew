@@ -174,7 +174,10 @@ export function createVoteSimulator({
       // Real backend drives vote totals; simulator still runs elimination/winner logic
       // so that eliminated, winnerId, and isComplete stay in sync for consumers.
       realtimeAdapter.onData((incomingVotes) => {
-        active.forEach((id, i) => { pcts[i] = incomingVotes[id] ?? pcts[i]; });
+        // Normalize adapter-provided values so internal pcts remain percentages
+        // (sum ≈ 100) regardless of whether the adapter sends raw counts or percentages.
+        const raw = active.map((id, i) => incomingVotes[id] ?? pcts[i]);
+        pcts = toIntPercentages(raw);
         notify();
       });
       realtimeAdapter.start(candidates);
