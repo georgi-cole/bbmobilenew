@@ -960,6 +960,84 @@ const gameSlice = createSlice({
       state.twistActive = false;
     },
 
+    // ─── Public's Favorite Player twist actions ───────────────────────────────
+
+    /**
+     * Begin the Public's Favorite Player voting phase.
+     * Shows full-screen voting overlay after the finale winner reveal.
+     * Feature-gated via settings.sim.enableFavoritePlayer.
+     */
+    startFavoritePlayerPhase(
+      state,
+      action: PayloadAction<{ candidates: string[]; awardAmount: number }>,
+    ) {
+      state.favoritePlayer = {
+        active: true,
+        candidates: action.payload.candidates,
+        eliminated: [],
+        votes: {},
+        winnerId: null,
+        awardAmount: action.payload.awardAmount,
+      };
+      // Record in game history
+      const historyEvent = {
+        type: 'favoritePlayer' as const,
+        week: state.week,
+        data: { candidates: action.payload.candidates, awardAmount: action.payload.awardAmount },
+        timestamp: Date.now(),
+      };
+      if (!state.history) state.history = [];
+      state.history.push(historyEvent);
+    },
+
+    /**
+     * Eliminate a candidate from the Public's Favorite voting.
+     * Called each time the lowest-voted candidate is removed.
+     */
+    eliminateFavoriteCandidate(state, action: PayloadAction<string>) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.active) return;
+      const elimId = action.payload;
+      if (!fp.eliminated.includes(elimId)) {
+        fp.eliminated.push(elimId);
+      }
+    },
+
+    /**
+     * Resolve the Public's Favorite Player vote with a winner.
+     * Closes the overlay and records the winner in state and history.
+     */
+    resolveFavoritePlayerWinner(state, action: PayloadAction<string>) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.active) return;
+      fp.winnerId = action.payload;
+      fp.active = false;
+      // Append result to game history
+      const historyEntry = state.history?.find(
+        (e) => e.type === 'favoritePlayer' && e.week === state.week,
+      );
+      if (historyEntry) {
+        historyEntry.data = { ...historyEntry.data, winnerId: action.payload };
+      }
+    },
+
+    /**
+     * Award hook for the Public's Favorite Player prize.
+     * Currently a no-op that records intent in history.
+     * Future integrations can attach to this action to update player balances.
+     */
+    awardFavoritePrize(state) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.winnerId) return;
+      // Record award in history (balance update is left to future integration)
+      const historyEntry = state.history?.find(
+        (e) => e.type === 'favoritePlayer' && e.week === state.week,
+      );
+      if (historyEntry) {
+        historyEntry.data = { ...historyEntry.data, awarded: true };
+      }
+    },
+
     // ─── Spectator overlay ────────────────────────────────────────────────────
 
     /**
@@ -1922,6 +2000,10 @@ export const {
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,
+  startFavoritePlayerPhase,
+  eliminateFavoriteCandidate,
+  resolveFavoritePlayerWinner,
+  awardFavoritePrize,
   openSpectator,
   closeSpectator,
   setAwaitingFinal3Plea,

@@ -24,6 +24,7 @@ import GameOver             from './screens/GameOver/GameOver';
 import Rules                from './screens/Rules/Rules';
 import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
+import TwistsTestPage       from './screens/TwistsTestPage/TwistsTestPage';
 
 export const router = createHashRouter([
   {
@@ -43,6 +44,7 @@ export const router = createHashRouter([
       { path: 'game-over',        element: <GameOver />     },
       { path: 'rules',            element: <Rules />        },
       { path: 'settings',         element: <Settings />     },
+      { path: 'twists-test',      element: <TwistsTestPage /> },
       { path: '*',                element: <NotFound />     },
     ],
   },

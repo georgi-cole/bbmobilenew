@@ -33,6 +33,10 @@ export interface SettingsState {
     allowSelfEvict: boolean;
     /** Probability (0–100) that the Battle Back twist activates after an eligible eviction. */
     battleBackChance: number;
+    /** When true, show the "Public's Favorite Player" vote after the finale winner reveal. */
+    enableFavoritePlayer: boolean;
+    /** Cash prize (USD) awarded to the Public's Favorite Player winner. */
+    favoritePlayerAwardAmount: number;
   };
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -67,6 +71,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     enableTwists: false,
     allowSelfEvict: false,
     battleBackChance: 30,
+    enableFavoritePlayer: false,
+    favoritePlayerAwardAmount: 25000,
   },
   visual: {
     enableZoom: false,

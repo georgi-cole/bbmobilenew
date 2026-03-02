@@ -4,7 +4,7 @@
  * Mounted by AppShell when game.phase === 'jury'.
  * Coordinates juror reveals, human-vote UI, tally display, and winner banner.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { Player } from '../../types';
@@ -18,12 +18,19 @@ import {
   selectFinale,
   selectRevealedJurors,
 } from '../../store/finaleSlice';
-import { finalizeGame } from '../../store/gameSlice';
+import {
+  finalizeGame,
+  startFavoritePlayerPhase,
+  resolveFavoritePlayerWinner,
+  awardFavoritePrize,
+} from '../../store/gameSlice';
+import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import PublicFavoriteOverlay from '../PublicFavoriteOverlay/PublicFavoriteOverlay';
 import './FinalFaceoff.css';
 
 export default function FinalFaceoff() {
@@ -32,6 +39,10 @@ export default function FinalFaceoff() {
   const game = useAppSelector((s) => s.game);
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
+  const settings = useAppSelector(selectSettings);
+
+  // Derive Public's Favorite visibility from Redux state (avoids setState-in-effect).
+  const showFavorite = game.favoritePlayer?.active === true;
 
   const jurorListRef = useRef<HTMLDivElement>(null);
 
@@ -89,9 +100,44 @@ export default function FinalFaceoff() {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
       );
-      navigate('/game-over');
+      // If Public's Favorite is enabled and twists are on, dispatch to show overlay.
+      // `showFavorite` is derived from game.favoritePlayer.active (set by the dispatch).
+      const favEnabled =
+        settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
+      if (favEnabled && game.players.length > 0) {
+        const allCandidates = game.players.map((p) => p.id);
+        dispatch(
+          startFavoritePlayerPhase({
+            candidates: allCandidates,
+            awardAmount: settings.sim.favoritePlayerAwardAmount,
+          }),
+        );
+        // showFavorite is now true (game.favoritePlayer.active was set)
+      } else {
+        navigate('/game-over');
+      }
     }
-  }, [dispatch, navigate, finale.isComplete, finale.winnerId, finale.runnerUpId]);
+  }, [
+    dispatch,
+    navigate,
+    finale.isComplete,
+    finale.winnerId,
+    finale.runnerUpId,
+    settings.sim.enableFavoritePlayer,
+    settings.sim.enableTwists,
+    settings.sim.favoritePlayerAwardAmount,
+    game.players,
+  ]);
+
+  // ── Handle Public's Favorite completion ────────────────────────────────
+  const handleFavoriteComplete = useCallback(
+    (winnerId: string) => {
+      dispatch(resolveFavoritePlayerWinner(winnerId));
+      dispatch(awardFavoritePrize());
+      navigate('/game-over');
+    },
+    [dispatch, navigate],
+  );
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
   useEffect(() => {
@@ -244,6 +290,16 @@ export default function FinalFaceoff() {
         onSkipAll={handleSkipAll}
         onDismiss={handleDismiss}
       />
+
+      {/* Public's Favorite overlay — shown after winner reveal, before game-over */}
+      {showFavorite && (
+        <PublicFavoriteOverlay
+          candidates={game.players}
+          seed={game.seed}
+          awardAmount={settings.sim.favoritePlayerAwardAmount}
+          onComplete={handleFavoriteComplete}
+        />
+      )}
     </div>
   );
 }
