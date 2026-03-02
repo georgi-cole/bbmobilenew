@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 
-const STORAGE_KEY = 'bbmobilenew_settings_v1';
+export const STORAGE_KEY = 'bbmobilenew_settings_v1';
 
 export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean';
 

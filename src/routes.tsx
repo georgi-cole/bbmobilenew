@@ -25,6 +25,7 @@ import Rules                from './screens/Rules/Rules';
 import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
 import { lazy, Suspense }   from 'react';
+import GameDebug            from './screens/GameDebug/GameDebug';
 
 // Dev-only manual QA page — lazy-loaded so production bundles are unaffected.
 // Vite dead-code-eliminates the dynamic import when DEV is false at build time.
@@ -53,6 +54,7 @@ export const router = createHashRouter([
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),
+      { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },
     ],
   },

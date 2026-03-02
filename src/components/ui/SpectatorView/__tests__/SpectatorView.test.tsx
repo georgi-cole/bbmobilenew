@@ -10,6 +10,7 @@
  *  6. Component renders without crashing when competitorIds is empty.
  *  7. advance() is blocked while SpectatorView is mounted (spectatorActive set).
  *  8. advance() is unblocked (spectatorActive cleared) before onDone fires.
+ *  9. no-animations fast-path: onDone fires without waiting for 10 s sim + 1.2 s reveal.
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -371,6 +372,27 @@ describe('SpectatorView', () => {
     // spectatorActive should still reflect the pre-existing state (startedAt unchanged).
     expect(store.getState().game.spectatorActive?.startedAt).toBe(existingActive.startedAt);
 
+    vi.useRealTimers();
+  });
+
+  it('no-animations: onDone fires without advancing SIM_DURATION_MS or RECONCILE_DURATION_MS', () => {
+    vi.useFakeTimers();
+    // Set the body class before rendering so SpectatorView sees it on mount.
+    document.body.classList.add('no-animations');
+
+    const store = makeStore({ hohId: 'p1' });
+    const onDone = vi.fn();
+    renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
+
+    // Advance only a tiny amount — onDone should fire without waiting for 10 s sim
+    // or 1.2 s reconcile delay.
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    document.body.classList.remove('no-animations');
     vi.useRealTimers();
   });
 });
