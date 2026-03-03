@@ -31,7 +31,7 @@ export default function App() {
     <Provider store={store}>
       <AudioGate />
       <RouterProvider router={router} />
-      <div id="intro-hub-container" />
+      <div id="intro-hub" />
     </Provider>
   );
 }
