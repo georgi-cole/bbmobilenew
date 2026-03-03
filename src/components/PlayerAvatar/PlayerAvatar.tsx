@@ -53,12 +53,13 @@ export default function PlayerAvatar({
     const prev = prevStatusRef.current;
     prevStatusRef.current = player.status;
     if ((prev === 'jury' || prev === 'evicted') && player.status === 'active') {
-      setRevived(true);
       void SoundManager.play('ui:confirm');
-      const id = setTimeout(() => setRevived(false), 900);
-      // Also reset revived if status changes again before the timer fires
+      // Defer setState to avoid synchronous setState inside effect body.
+      const startId = setTimeout(() => setRevived(true), 0);
+      const endId = setTimeout(() => setRevived(false), 900);
+      // Reset revived if status changes again before the timer fires
       // (e.g. jury → active → evicted within 900 ms) to prevent the class sticking.
-      return () => { clearTimeout(id); setRevived(false); };
+      return () => { clearTimeout(startId); clearTimeout(endId); setRevived(false); };
     }
   }, [player.status]);
 

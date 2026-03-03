@@ -959,9 +959,10 @@ export default function GameScreen() {
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
   const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
-  const battleBackCandidates = battleBack?.active
-    ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id))
-    : []
+  const battleBackCandidates = useMemo(
+    () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id)) : []),
+    [battleBack?.active, battleBack?.candidates, game.players],
+  )
 
   // Pre-compute the deterministic Battle Back winner and spectator variant so
   // the SpectatorView reveal always matches the store write.
