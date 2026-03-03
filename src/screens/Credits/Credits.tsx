@@ -171,7 +171,11 @@ export default function Credits(): JSX.Element {
         creditsCtx.shadowBlur = 6;
         creditsCtx.fillText(ln.text, width / 2, yy);
         creditsCtx.shadowBlur = 0;
-        yy += Math.ceil((creditsCtx.measureText(ln.text || ' ').actualBoundingBoxAscent + creditsCtx.measureText(ln.text || ' ').actualBoundingBoxDescent) || parseInt(ln.font, 10) * 1.15) + lineGap;
+        const metrics = creditsCtx.measureText(ln.text || ' ');
+        const lineHeight =
+          Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) ||
+          Math.ceil(parseInt(ln.font, 10) * 1.15);
+        yy += lineHeight + lineGap;
       }
     }
 
