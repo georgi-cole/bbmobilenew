@@ -40,8 +40,12 @@ declare global {
     toggleIntroHubSfx?: () => void;
   }
 }
-window._introhubMusicOn = false;
-window._introhubSfxOn = true;
+window._introhubMusicOn = store.getState().settings.audio.musicOn;
+window._introhubSfxOn = store.getState().settings.audio.sfxOn;
+// Apply persisted SFX state to all non-music categories on startup
+(['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
+  SoundManager.setCategoryEnabled(cat, !!window._introhubSfxOn)
+);
 window.toggleIntroHubMusic = function () {
   window._introhubMusicOn = !window._introhubMusicOn;
   if (window._introhubMusicOn) {
@@ -52,8 +56,10 @@ window.toggleIntroHubMusic = function () {
 };
 window.toggleIntroHubSfx = function () {
   window._introhubSfxOn = !window._introhubSfxOn;
-  // Toggle non-music sound categories (ui acts as the sfx proxy)
-  SoundManager.setCategoryEnabled('ui', !!window._introhubSfxOn);
+  // Toggle all non-music sound categories
+  (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
+    SoundManager.setCategoryEnabled(cat, !!window._introhubSfxOn)
+  );
 };
 
 createRoot(document.getElementById('root')!).render(

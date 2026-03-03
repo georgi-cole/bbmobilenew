@@ -129,14 +129,13 @@
 
   /**
    * Open the Settings panel.
-   * Uses window.game.settings.open() if available,
-   * otherwise navigates to the settings route via the hash router.
+   * Uses the hash router as the primary action (always reliable).
+   * Also calls window.game.settings.open() if present for any additional setup.
    */
   function openSettings() {
+    global.location.hash = '#/settings';
     if (g.settings && typeof g.settings.open === 'function') {
       g.settings.open();
-    } else {
-      global.location.hash = '#/settings';
     }
   }
 
@@ -148,15 +147,7 @@
     if (typeof global.toggleIntroHubMusic === 'function') {
       global.toggleIntroHubMusic();
     }
-    var on = !!global._introhubMusicOn;
-    var el = chipElements['music'];
-    if (el) {
-      if (!on) {
-        el.classList.add('hub-chip--inactive');
-      } else {
-        el.classList.remove('hub-chip--inactive');
-      }
-    }
+    toggleChipVisual('music', !!global._introhubMusicOn);
   }
 
   /**
@@ -167,15 +158,7 @@
     if (typeof global.toggleIntroHubSfx === 'function') {
       global.toggleIntroHubSfx();
     }
-    var on = global._introhubSfxOn !== false;
-    var el = chipElements['sounds'];
-    if (el) {
-      if (!on) {
-        el.classList.add('hub-chip--inactive');
-      } else {
-        el.classList.remove('hub-chip--inactive');
-      }
-    }
+    toggleChipVisual('sounds', global._introhubSfxOn !== false);
   }
 
   /**
@@ -241,6 +224,21 @@
     const backdrop = document.getElementById('hub-placeholder-backdrop');
     if (panel) panel.remove();
     if (backdrop) backdrop.remove();
+  }
+
+  /**
+   * Toggle the inactive visual state of a chip.
+   * @param {string} id     - Chip id (e.g. 'music', 'sounds')
+   * @param {boolean} active - true = active (no overlay), false = inactive (dimmed + slash)
+   */
+  function toggleChipVisual(id, active) {
+    var el = chipElements[id];
+    if (!el) return;
+    if (active) {
+      el.classList.remove('hub-chip--inactive');
+    } else {
+      el.classList.add('hub-chip--inactive');
+    }
   }
 
   /**
@@ -313,6 +311,7 @@
     setNotification: setNotification,
     refreshNotifications: refreshNotifications,
     init: init,
+    toggleChipVisual: toggleChipVisual,
   };
 
   // Expose houseguests panel hook (can be overridden before this module loads)
