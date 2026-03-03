@@ -107,17 +107,36 @@
   appearance: none;
 }
 
-/* Primary (Play) — more glassy gradient (roughly 12% transparent) */
+/* Primary (Play) — stronger purple gradient with shimmer support */
 .home-hub__btn--primary {
-  /* rgba gradient colors at alpha ~0.88 (≈12% transparent) */
+  /* Deep purple gradient at alpha ~0.92 for more vibrancy */
   background: linear-gradient(135deg,
-    rgba(123,92,255,0.88) 0%,
+    rgba(110,60,255,0.92) 0%,
+    rgba(160,100,255,0.92) 50%,
     rgba(111,183,255,0.88) 100%);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 28px 70px rgba(83,52,180,0.30);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 28px 70px rgba(83,52,180,0.42);
   padding: 14px 40px; /* slightly wider padding for prominence */
   min-width: 220px;
+}
+
+/* Shimmer animation for Play button after splash */
+@keyframes hub-btn-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.home-hub__btn--primary.shimmer {
+  background: linear-gradient(135deg,
+    rgba(110,60,255,0.92) 0%,
+    rgba(160,100,255,0.92) 30%,
+    rgba(210,180,255,0.96) 50%,
+    rgba(160,100,255,0.92) 70%,
+    rgba(110,60,255,0.92) 100%);
+  background-size: 200% auto;
+  animation: hub-btn-shimmer 2.4s linear infinite;
+  box-shadow: 0 28px 80px rgba(110,60,255,0.52);
 }
 
 /* Secondary buttons — ~7-8% more transparent than before */

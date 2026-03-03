@@ -31,9 +31,10 @@
     { id: 'feedback',    label: 'Feedback',    icon: '💬', position: 'top-right-3' },
     // Bottom-left corner (stacked bottom → top)
     { id: 'news',        label: 'News',        icon: '📰', position: 'bottom-left' },
-    { id: 'achievements',label: 'Achievements',icon: '🏆', position: 'bottom-left-2' },
-    // Bottom-right corner
+    { id: 'achievements',label: 'Achievements',icon: '🎖️', position: 'bottom-left-2' },
+    // Bottom-right corner (stacked bottom → top: store, social)
     { id: 'store',       label: 'Store',       icon: '🛒', position: 'bottom-right' },
+    { id: 'social',      label: 'Social',      icon: '🔗', position: 'bottom-right-2' },
   ];
 
   let chipElements = {}; // { id: Element }
@@ -79,10 +80,10 @@
         openHouseguests();
         break;
       case 'music':
-        openPlaceholder('Music', '🎵');
+        toggleMusic();
         break;
       case 'sounds':
-        openPlaceholder('Sounds', '🔊');
+        toggleSounds();
         break;
       case 'settings':
         openSettings();
@@ -91,7 +92,7 @@
         openPlaceholder('News', '📰');
         break;
       case 'achievements':
-        openPlaceholder('Achievements', '🏆');
+        openPlaceholder('Achievements', '🎖️');
         break;
       case 'store':
         openPlaceholder('Store', '🛒');
@@ -101,6 +102,9 @@
         break;
       case 'feedback':
         openPlaceholder('Feedback', '💬');
+        break;
+      case 'social':
+        openPlaceholder('Social', '🔗');
         break;
       default:
         console.warn('[introHub] Unknown chip id:', id);
@@ -125,13 +129,52 @@
 
   /**
    * Open the Settings panel.
-   * Uses window.game.settings.open() if available, otherwise placeholder.
+   * Uses window.game.settings.open() if available,
+   * otherwise navigates to the settings route via the hash router.
    */
   function openSettings() {
     if (g.settings && typeof g.settings.open === 'function') {
       g.settings.open();
     } else {
-      openPlaceholder('Settings', '⚙️');
+      global.location.hash = '#/settings';
+    }
+  }
+
+  /**
+   * Toggle music on/off via window.toggleIntroHubMusic helper.
+   * Updates chip inactive visual to reflect state.
+   */
+  function toggleMusic() {
+    if (typeof global.toggleIntroHubMusic === 'function') {
+      global.toggleIntroHubMusic();
+    }
+    var on = !!global._introhubMusicOn;
+    var el = chipElements['music'];
+    if (el) {
+      if (!on) {
+        el.classList.add('hub-chip--inactive');
+      } else {
+        el.classList.remove('hub-chip--inactive');
+      }
+    }
+  }
+
+  /**
+   * Toggle SFX on/off via window.toggleIntroHubSfx helper.
+   * Updates chip inactive visual to reflect state.
+   */
+  function toggleSounds() {
+    if (typeof global.toggleIntroHubSfx === 'function') {
+      global.toggleIntroHubSfx();
+    }
+    var on = global._introhubSfxOn !== false;
+    var el = chipElements['sounds'];
+    if (el) {
+      if (!on) {
+        el.classList.add('hub-chip--inactive');
+      } else {
+        el.classList.remove('hub-chip--inactive');
+      }
     }
   }
 
