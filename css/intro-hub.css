@@ -1,0 +1,177 @@
+/* Intro Hub UI Styles
+ * Rounded chip navigation for the intro screen
+ * Chips are positioned in four corners: top-left, top-right, bottom-left, bottom-right
+ */
+
+/* ===== Hub Container ===== */
+#intro-hub {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9000;
+}
+
+/* ===== Chip Base Styles ===== */
+.hub-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  transition: background 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+
+.hub-chip:hover {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transform: scale(1.05);
+}
+
+.hub-chip:active {
+  transform: scale(0.96);
+}
+
+.hub-chip:focus-visible {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
+/* ===== Chip Icon ===== */
+.hub-chip__icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ===== Chip Label ===== */
+.hub-chip__label {
+  line-height: 1;
+}
+
+/* ===== Notification Badge Dot ===== */
+.hub-chip__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff3b5c;
+  border: 2px solid rgba(15, 20, 35, 0.85);
+  display: none;
+  box-shadow: 0 0 6px rgba(255, 59, 92, 0.6);
+}
+
+.hub-chip--has-notification .hub-chip__badge {
+  display: block;
+}
+
+/* ===== Position Helpers ===== */
+.hub-chip--top-left {
+  top: 16px;
+  left: 16px;
+}
+
+.hub-chip--top-right {
+  top: 16px;
+  right: 16px;
+}
+
+.hub-chip--bottom-left {
+  bottom: 32px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right {
+  bottom: 32px;
+  right: 16px;
+}
+
+/* Secondary chips stacked below primary in each corner */
+.hub-chip--top-left-2 {
+  top: 64px;
+  left: 16px;
+}
+
+.hub-chip--top-right-2 {
+  top: 64px;
+  right: 16px;
+}
+
+.hub-chip--bottom-left-2 {
+  bottom: 80px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right-2 {
+  bottom: 80px;
+  right: 16px;
+}
+
+/* Third row if needed */
+.hub-chip--top-left-3 {
+  top: 112px;
+  left: 16px;
+}
+
+.hub-chip--top-right-3 {
+  top: 112px;
+  right: 16px;
+}
+
+.hub-chip--bottom-left-3 {
+  bottom: 128px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right-3 {
+  bottom: 128px;
+  right: 16px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 360px) {
+  .hub-chip {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .hub-chip__icon {
+    font-size: 16px;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .hub-chip--bottom-left,
+  .hub-chip--bottom-right {
+    bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+
+  .hub-chip--bottom-left-2,
+  .hub-chip--bottom-right-2 {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .hub-chip--bottom-left-3,
+  .hub-chip--bottom-right-3 {
+    bottom: calc(128px + env(safe-area-inset-bottom));
+  }
+}

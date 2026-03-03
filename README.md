@@ -315,3 +315,130 @@ window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
 An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`).
 
 > **After merging**, please attach a screenshot of the updated TV area (full-bleed announcement visible) to this PR for visual verification.
+
+---
+
+## Intro Hub UI
+
+The **Intro Hub** is a lightweight, framework-agnostic overlay of rounded navigation chips
+that can be added to any page in the app. It is implemented as plain CSS + vanilla JS files
+and does **not** require changes to the Vite/React build pipeline.
+
+### Added files
+
+| File | Description |
+|---|---|
+| `css/intro-hub.css` | Chip styles (rounded pill, badge dot, corner positions) |
+| `js/ui/introHub.js` | Hub module — auto-inits `#intro-hub`, exposes runtime API |
+| `tests/test_intro_hub.html` | Standalone test page (open directly in a browser) |
+| `css/houseguests-modal.css` | Modal styles — copied from `georgi-cole/bbmobile` |
+| `js/data/houseguests.js` | Houseguest data source — copied from `georgi-cole/bbmobile` |
+| `js/data/houseguests.js.backup` | Original backup — copied from `georgi-cole/bbmobile` |
+| `js/ui/houseguestsModal.js` | Houseguests list/detail modal — copied from `georgi-cole/bbmobile` |
+| `js/houseguest-profile.js` | Full-screen profile modal — copied from `georgi-cole/bbmobile` |
+| `js/ui/houseguestSheet.js` | Bottom sheet profile — copied from `georgi-cole/bbmobile` |
+| `src/ui/houseguestsList.js` | Guest card handlers — copied from `georgi-cole/bbmobile` |
+| `screenshots/intro-hub-1.png` | Placeholder screenshot (replace with real screenshot) |
+| `screenshots/intro-hub-2.png` | Placeholder screenshot (replace with real screenshot) |
+
+### How to test locally
+
+Open `tests/test_intro_hub.html` directly in a browser (no build step required):
+
+```
+open tests/test_intro_hub.html
+# or
+python3 -m http.server 8080   # then visit http://localhost:8080/tests/test_intro_hub.html
+```
+
+Chips appear in the four corners. Use the on-screen buttons to test notification dots and
+the Houseguests panel.
+
+### How to wire into the React app
+
+Because the app uses Vite + React, the recommended approach is to mount the hub container
+inside a component and load the static scripts as side-effects.
+
+1. **Add the container** to a component that wraps your intro/lobby screen:
+
+```tsx
+// In your component (e.g. IntroScreen.tsx or App.tsx)
+<div id="intro-hub" />
+```
+
+2. **Import the CSS** (e.g. in `src/index.css` or the component):
+
+```css
+@import '../../css/intro-hub.css';
+@import '../../css/houseguests-modal.css';
+```
+
+3. **Load the JS modules** as side-effects in the component's `useEffect`:
+
+```tsx
+import { useEffect } from 'react';
+
+useEffect(() => {
+  // Load houseguest data first, then the modal, then the hub
+  const scripts = [
+    '/js/data/houseguests.js',
+    '/js/ui/houseguestsModal.js',
+    '/js/ui/introHub.js',
+  ];
+  scripts.forEach(src => {
+    if (!document.querySelector(`script[src="${src}"]`)) {
+      const s = document.createElement('script');
+      s.src = src;
+      document.body.appendChild(s);
+    }
+  });
+}, []);
+```
+
+   Or copy the modules into `src/` and import them as ES modules — they use
+   `(function(global){ ... })(window)` UMD wrappers that work in either context.
+
+4. **Pre-configure notifications** before the hub loads:
+
+```ts
+window.game = window.game || {};
+window.game.hubNotifications = { news: true };
+```
+
+### Runtime notification API
+
+```js
+// Show a notification dot on the 'news' chip
+window.game.hub.setNotification('news', true);
+
+// Clear the dot
+window.game.hub.setNotification('news', false);
+
+// Re-read window.game.hubNotifications and apply all dots at once
+window.game.hub.refreshNotifications();
+```
+
+### Houseguests chip integration
+
+The Houseguests chip calls (in priority order):
+
+1. `window.game.houseguests.openPanel()` — override this to plug in your own panel
+2. `window.HouseguestsModal.open('list')` — used automatically when `houseguestsModal.js` is loaded
+3. A built-in placeholder panel — shown if neither of the above is available
+
+### Source files in georgi-cole/bbmobile (commit `9c3afb1`)
+
+- [css/houseguests-modal.css](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/css/houseguests-modal.css)
+- [js/data/houseguests.js](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/js/data/houseguests.js)
+- [js/data/houseguests.js.backup](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/js/data/houseguests.js.backup)
+- [js/ui/houseguestsModal.js](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/js/ui/houseguestsModal.js)
+- [js/houseguest-profile.js](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/js/houseguest-profile.js)
+- [js/ui/houseguestSheet.js](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/js/ui/houseguestSheet.js)
+- [src/ui/houseguestsList.js](https://github.com/georgi-cole/bbmobile/blob/9c3afb150140e5bc74a82994d962f843ffd13052/src/ui/houseguestsList.js)
+
+> **Note:** `js/ui/houseguestsList.js` does not exist in bbmobile; only `src/ui/houseguestsList.js`
+> was found and has been copied to that same path (`src/ui/houseguestsList.js`) in this repo.
+>
+> **Note:** `js/ui/houseguestSheet.js` uses ES6 `import` syntax and requires a module bundler
+> (e.g. Vite/webpack) to run. It is copied verbatim for completeness but **cannot** be loaded
+> as a plain `<script>` tag — integrate it through the existing Vite build instead.
