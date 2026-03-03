@@ -324,6 +324,12 @@ The **Intro Hub** is a lightweight, framework-agnostic overlay of rounded naviga
 that can be added to any page in the app. It is implemented as plain CSS + vanilla JS files
 and does **not** require changes to the Vite/React build pipeline.
 
+### Preview
+
+![Intro Hub UI](https://github.com/user-attachments/assets/7696ee07-0268-4102-8a63-349a79c418c4)
+
+*Chips in all four corners with notification dots on News (bottom-left) and Store (bottom-right).*
+
 ### Added files
 
 | File | Description |
