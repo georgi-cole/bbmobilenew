@@ -206,6 +206,9 @@ const INTENT_SPECS: Record<Exclude<IntentId, 'safety'>, IntentSpec> = {
       'want to quit', 'want to leave', 'thinking about leaving', 'want to go home',
       'want out', 'ready to quit', 'need to leave', 'want to walk away',
       'should i leave', 'should i quit', 'thinking of quitting', 'ready to leave',
+      'want to leave the house', 'want to get out', 'want out of the house',
+      'need to get out', 'want to quit this', 'want to quit the show',
+      'want to leave the show',
     ],
     patterns: [
       /\b(quit|walk out|walk away|forfeit)\b.{0,20}\b(game|house|show|this)\b/i,

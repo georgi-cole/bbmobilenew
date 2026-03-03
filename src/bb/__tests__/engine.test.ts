@@ -187,6 +187,36 @@ describe('detectIntent', () => {
   it('phrase priority: "I miss my parents" -> grief_family (not generic loneliness)', () => {
     expect(detectIntent('I miss my parents')).toBe('grief_family');
   });
+
+  // ── New quit phrases ──────────────────────────────────────────────────────
+
+  it('new phrase: "I want to leave the house" -> quit', () => {
+    expect(detectIntent('I want to leave the house')).toBe('quit');
+  });
+
+  it('new phrase: "I want to get out" -> quit', () => {
+    expect(detectIntent('I want to get out')).toBe('quit');
+  });
+
+  it('new phrase: "I want out of the house" -> quit', () => {
+    expect(detectIntent('I want out of the house')).toBe('quit');
+  });
+
+  it('new phrase: "I need to get out" -> quit', () => {
+    expect(detectIntent('I need to get out')).toBe('quit');
+  });
+
+  it('new phrase: "I want to quit this" -> quit', () => {
+    expect(detectIntent('I want to quit this')).toBe('quit');
+  });
+
+  it('new phrase: "I want to quit the show" -> quit', () => {
+    expect(detectIntent('I want to quit the show')).toBe('quit');
+  });
+
+  it('new phrase: "I want to leave the show" -> quit', () => {
+    expect(detectIntent('I want to leave the show')).toBe('quit');
+  });
 });
 
 // ─── bigBrotherReply ──────────────────────────────────────────────────────────

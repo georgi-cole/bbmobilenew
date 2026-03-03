@@ -864,6 +864,25 @@ const gameSlice = createSlice({
 
 
     /**
+     * Player voluntarily self-evicts from the Diary Room.
+     * Sets the player's status to 'evicted', removes them from nomineeIds,
+     * and pushes a TV event. The caller should navigate to /game-over after
+     * dispatching this action.
+     */
+    selfEvict(state, action: PayloadAction<string>) {
+      const playerId = action.payload;
+      const player = state.players.find((p) => p.id === playerId);
+      if (!player) return;
+      player.status = evictedStatus(state);
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId);
+      pushEvent(
+        state,
+        `${player.name} has chosen to self-evict from the Big Brother house. 🚪`,
+        'game',
+      );
+    },
+
+    /**
      * Called by the UI when it starts rendering the step-1 "HOH must name a
      * replacement nominee" announcement during the AI replacement ceremony.
      * Clears the aiReplacementWaiting flag so advance() can proceed to step 2.
@@ -2081,6 +2100,7 @@ export const {
   dismissVoteResults,
   dismissEvictionSplash,
   finalizePendingEviction,
+  selfEvict,
   aiReplacementRendered,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,

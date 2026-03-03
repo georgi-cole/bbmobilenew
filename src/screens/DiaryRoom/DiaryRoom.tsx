@@ -13,8 +13,10 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent } from '../../store/gameSlice';
+import { addTvEvent, selfEvict } from '../../store/gameSlice';
 import { generateBigBrotherReply } from '../../services/bigBrother';
+import { detectIntent } from '../../bb/engine';
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import DiaryWeekView from '../../components/DiaryWeekView';
 import DiaryWeekEditor from '../../components/DiaryWeekEditor';
 import { FEATURE_DIARY_WEEK, exportDiaryWeekJson } from '../../services/diaryWeek';
@@ -206,6 +208,13 @@ export default function DiaryRoom() {
   const [loading, setLoading] = useState(false);
   const [bbTyping, setBbTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
+  const [awaitingQuitConfirmation, setAwaitingQuitConfirmation] = useState(false);
+  const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
+
+  /** Returns true if the given text is a simple affirmative reply. */
+  function isAffirmative(text: string): boolean {
+    return /^\s*(yes|yeah|yep|yup|sure|certainly|absolutely|ok|okay|yea|affirmative)\s*[.!]?\s*$/i.test(text);
+  }
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
@@ -294,6 +303,62 @@ export default function DiaryRoom() {
       return updated;
     });
 
+    // ── Quit-intent interception ────────────────────────────────────────────
+    if (awaitingQuitConfirmation) {
+      if (isAffirmative(text)) {
+        const ackMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'bb',
+          text: "Understood. Take a moment if you need it.",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => {
+          const withSeen = prev.map((m) =>
+            m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
+          );
+          const withAck = [...withSeen, ackMsg];
+          saveChat(playerId, withAck);
+          return withAck;
+        });
+        setAwaitingQuitConfirmation(false);
+        setShowSelfEvictConfirm(true);
+        setLoading(false);
+        return;
+      } else {
+        setAwaitingQuitConfirmation(false);
+        // Fall through to normal LLM flow
+      }
+    } else {
+      // Check for quit intent in first submission
+      let intent: string | null = null;
+      try {
+        intent = detectIntent(text);
+      } catch (err) {
+        console.error('detectIntent error:', err);
+        // detectIntent is synchronous and shouldn't throw; fall through to LLM
+      }
+      if (intent === 'quit') {
+        const bbAsk: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'bb',
+          text: "Do you really want to leave the Big Brother house?",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => {
+          const withSeen = prev.map((m) =>
+            m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
+          );
+          const withAsk = [...withSeen, bbAsk];
+          saveChat(playerId, withAsk);
+          return withAsk;
+        });
+        setAwaitingQuitConfirmation(true);
+        setLoading(false);
+        return;
+      }
+    }
+    // ── End quit-intent interception ────────────────────────────────────────
+
     try {
       const resp = await generateBigBrotherReply({
         diaryText: text,
@@ -347,6 +412,21 @@ export default function DiaryRoom() {
 
   return (
     <div className="diary-room">
+      {/* Self-evict confirmation modal */}
+      <ConfirmExitModal
+        open={showSelfEvictConfirm}
+        title="Self-Evict?"
+        description="Do you want to self-evict from the Big Brother house? This cannot be undone."
+        confirmLabel="Yes, Leave"
+        cancelLabel="No, Stay"
+        onConfirm={() => {
+          setShowSelfEvictConfirm(false);
+          dispatch(selfEvict(playerId));
+          navigate('/game-over');
+        }}
+        onCancel={() => setShowSelfEvictConfirm(false)}
+      />
+
       {/* Header */}
       <div className="diary-room__header">
         <button
