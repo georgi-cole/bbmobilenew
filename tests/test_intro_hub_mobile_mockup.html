@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390px, initial-scale=1.0" />
+  <title>Intro Hub – Mobile Game Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Outer frame: desktop centering ───────────────────────────────────── */
+    body {
+      background: #111;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ── Phone shell ──────────────────────────────────────────────────────── */
+    .phone {
+      width: 390px;
+      height: 844px;
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 10px #1c1c1e,
+        0 0 0 12px #3a3a3c,
+        0 40px 100px rgba(0,0,0,0.9);
+      background: #0f1419;
+    }
+
+    /* Notch */
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 30px;
+      background: #1c1c1e;
+      border-radius: 0 0 20px 20px;
+      z-index: 100;
+    }
+
+    /* ── Game screen shell ────────────────────────────────────────────────── */
+    .game-screen {
+      width: 100%;
+      height: 100%;
+      background: #0d1117;
+      background-image: url('/assets/bb-gameplay-bg.svg');
+      background-size: cover;
+      background-position: center top;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Status bar ───────────────────────────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    /* ── TV Zone ──────────────────────────────────────────────────────────── */
+    .tv-zone {
+      margin: 6px 12px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: rgba(10, 12, 22, 0.88);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+      flex-shrink: 0;
+    }
+
+    .tv-zone__head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: rgba(0,0,0,0.4);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .phase-pill {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .info-pill {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.85);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .live-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+      margin-left: auto;
+    }
+
+    .tv-zone__body {
+      padding: 12px 14px 14px;
+    }
+
+    .tv-event-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .tv-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+    }
+
+    /* Nominee row */
+    .nominee-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .nominee-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 8px;
+      padding: 5px 10px;
+    }
+
+    .nominee-chip img {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .nominee-chip span {
+      font-size: 11px;
+      font-weight: 700;
+      color: #fca5a5;
+    }
+
+    /* ── Section label ────────────────────────────────────────────────────── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: rgba(255,255,255,0.4);
+      padding: 6px 12px 4px;
+      flex-shrink: 0;
+    }
+
+    /* ── Houseguest grid ──────────────────────────────────────────────────── */
+    .hg-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      padding: 0 12px;
+      overflow: hidden;
+    }
+
+    .hg-tile {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background: linear-gradient(180deg, #252a32, #1c1f24);
+      border: 1.5px solid rgba(255,255,255,0.06);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .hg-tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hg-tile__name {
+      position: absolute;
+      bottom: 4px;
+      right: 5px;
+      left: 5px;
+      font-size: 9px;
+      color: #fff;
+      text-align: right;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .badge-hoh {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 10px;
+      line-height: 1;
+      background: rgba(245,158,11,0.28);
+      border: 1px solid rgba(245,158,11,0.45);
+      border-radius: 5px;
+      padding: 2px 3px;
+    }
+
+    .badge-nom {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 10px;
+      line-height: 1;
+      background: rgba(239,68,68,0.28);
+      border: 1px solid rgba(239,68,68,0.45);
+      border-radius: 5px;
+      padding: 2px 3px;
+    }
+
+    .badge-you {
+      position: absolute;
+      top: 5px;
+      right: 6px;
+      background: #4b6cff;
+      color: #fff;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 5px;
+      font-size: 9px;
+      z-index: 3;
+    }
+
+    /* ── Advance button ───────────────────────────────────────────────────── */
+    .advance-btn {
+      margin: 10px 12px;
+      padding: 13px 0;
+      width: calc(100% - 24px);
+      border: none;
+      border-radius: 12px;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Bottom nav ───────────────────────────────────────────────────────── */
+    .bottom-nav {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: rgba(10,12,22,0.9);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 8px 0 20px;
+      flex-shrink: 0;
+    }
+
+    .bottom-nav__item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 9px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    .bottom-nav__item--active {
+      color: #7c6ff7;
+    }
+
+    .bottom-nav__icon { font-size: 18px; }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       INTRO HUB CHIP OVERLAY (inline — mirrors css/intro-hub.css)
+       ══════════════════════════════════════════════════════════════════════ */
+
+    #intro-hub {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .hub-chip {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      /* Asymmetric corners matching HomeHub buttons */
+      border-radius: 14px 4px 14px 4px;
+      background: rgba(6, 12, 28, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      pointer-events: auto;
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.56);
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .hub-chip__icon { font-size: 20px; line-height: 1; pointer-events: none; }
+
+    .hub-chip__badge {
+      position: absolute;
+      top: 4px; right: 4px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff3b5c;
+      border: 2px solid rgba(12,16,28,0.85);
+      display: none;
+      box-shadow: 0 0 6px rgba(255,59,92,0.65);
+    }
+
+    .hub-chip--has-notification .hub-chip__badge { display: block; }
+
+    /* Corner positions — offset for phone notch/status bar (44px chip + 8px gap = 52px stride) */
+    .hub-chip--top-left    { top: 40px; left: 14px; }
+    .hub-chip--top-left-2  { top: 92px; left: 14px; }
+    .hub-chip--top-left-3  { top: 144px; left: 14px; }
+
+    .hub-chip--top-right   { top: 40px; right: 14px; }
+    .hub-chip--top-right-2 { top: 92px; right: 14px; }
+    .hub-chip--top-right-3 { top: 144px; right: 14px; }
+
+    .hub-chip--bottom-left   { bottom: 76px; left: 14px; }
+    .hub-chip--bottom-left-2 { bottom: 128px; left: 14px; }
+
+    .hub-chip--bottom-right  { bottom: 76px; right: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- ── Game screen ──────────────────────────────────────────────────── -->
+  <div class="game-screen">
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>● ●●  WiFi 🔋</span>
+    </div>
+
+    <!-- TV Zone -->
+    <div class="tv-zone">
+      <div class="tv-zone__head">
+        <span class="phase-pill">Week 4 · Veto</span>
+        <span class="info-pill">HOH: Rae</span>
+        <span class="info-pill">Noms: Finn &amp; Ivy</span>
+        <span class="live-badge">LIVE</span>
+      </div>
+      <div class="tv-zone__body">
+        <div class="tv-event-text">⚡ Veto Competition Results</div>
+        <div class="tv-sub">Kai won the Power of Veto! Will she use it?</div>
+        <div class="nominee-row">
+          <div class="nominee-chip">
+            <img src="/public/avatars/Finn.png" onerror="this.style.display='none'" alt="Finn" />
+            <span>Finn</span>
+          </div>
+          <div class="nominee-chip">
+            <img src="/public/avatars/Ivy.png" onerror="this.style.display='none'" alt="Ivy" />
+            <span>Ivy</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Houseguests section -->
+    <div class="section-label">Houseguests — 12 remaining</div>
+    <div class="hg-grid">
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Rae.png" alt="Rae" />
+        <span class="badge-hoh">👑</span>
+        <div class="hg-tile__name">Rae</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Kai.png" alt="Kai" />
+        <span style="position:absolute;top:4px;left:4px;font-size:10px;background:rgba(139,92,246,.28);border:1px solid rgba(139,92,246,.45);border-radius:5px;padding:2px 3px">⭐</span>
+        <div class="hg-tile__name">Kai</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Finn.png" alt="Finn" />
+        <span class="badge-nom">🎯</span>
+        <div class="hg-tile__name">Finn</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Ivy.png" alt="Ivy" />
+        <span class="badge-nom">🎯</span>
+        <div class="hg-tile__name">Ivy</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Mimi.png" alt="Mimi" />
+        <div class="hg-tile__name">Mimi</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Nova.png" alt="Nova" />
+        <div class="hg-tile__name">Nova</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Zed.png" alt="Zed" />
+        <div class="hg-tile__name">Zed</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Ash.png" alt="Ash" />
+        <div class="hg-tile__name">Ash</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Lux.png" alt="Lux" />
+        <div class="hg-tile__name">Lux</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Remy.png" alt="Remy" />
+        <div class="hg-tile__name">Remy</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/You.png" alt="You" />
+        <span class="badge-you">YOU</span>
+        <div class="hg-tile__name">You</div>
+      </div>
+
+      <div class="hg-tile">
+        <img src="/public/avatars/Quinn.png" alt="Quinn" />
+        <div class="hg-tile__name">Quinn</div>
+      </div>
+
+    </div>
+
+    <!-- Advance button -->
+    <button class="advance-btn">▶  Advance to Veto Ceremony</button>
+
+    <!-- Bottom nav -->
+    <div class="bottom-nav">
+      <div class="bottom-nav__item bottom-nav__item--active">
+        <span class="bottom-nav__icon">🏠</span>
+        <span>Game</span>
+      </div>
+      <div class="bottom-nav__item">
+        <span class="bottom-nav__icon">📋</span>
+        <span>Log</span>
+      </div>
+      <div class="bottom-nav__item">
+        <span class="bottom-nav__icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </div>
+
+  </div><!-- /.game-screen -->
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       INTRO HUB OVERLAY
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div id="intro-hub">
+
+    <!-- Top-left: Houseguests, Music, Sounds -->
+    <button class="hub-chip hub-chip--top-left" aria-label="Houseguests">
+      <span class="hub-chip__icon">👥</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+    <button class="hub-chip hub-chip--top-left-2" aria-label="Music">
+      <span class="hub-chip__icon">🎵</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+    <button class="hub-chip hub-chip--top-left-3" aria-label="Sounds">
+      <span class="hub-chip__icon">🔊</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+
+    <!-- Top-right: Settings, Share, Feedback -->
+    <button class="hub-chip hub-chip--top-right" aria-label="Settings">
+      <span class="hub-chip__icon">⚙️</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+    <button class="hub-chip hub-chip--top-right-2" aria-label="Share">
+      <span class="hub-chip__icon">↗️</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+    <button class="hub-chip hub-chip--top-right-3" aria-label="Feedback">
+      <span class="hub-chip__icon">💬</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+
+    <!-- Bottom-left: News (with dot), Achievements -->
+    <button class="hub-chip hub-chip--bottom-left hub-chip--has-notification" aria-label="News">
+      <span class="hub-chip__icon">📰</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+    <button class="hub-chip hub-chip--bottom-left-2" aria-label="Achievements">
+      <span class="hub-chip__icon">🏆</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+
+    <!-- Bottom-right: Store (with dot) -->
+    <button class="hub-chip hub-chip--bottom-right hub-chip--has-notification" aria-label="Store">
+      <span class="hub-chip__icon">🛒</span>
+      <span class="hub-chip__badge"></span>
+    </button>
+
+  </div><!-- /#intro-hub -->
+
+</div><!-- /.phone -->
+
+</body>
+</html>

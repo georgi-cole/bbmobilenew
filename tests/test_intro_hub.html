@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Intro Hub – Test Page</title>
+  <style>
+    /* Reset & page background */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(135deg, #0f1419 0%, #1a2540 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-center {
+      text-align: center;
+      padding: 24px;
+    }
+    .page-center h1 { font-size: 28px; margin-bottom: 8px; }
+    .page-center p  { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 24px; }
+    .demo-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    .demo-controls button {
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 150ms ease;
+    }
+    .demo-controls button:hover { background: rgba(255,255,255,0.2); }
+  </style>
+  <!-- Intro Hub CSS -->
+  <link rel="stylesheet" href="../css/intro-hub.css" />
+  <!-- Houseguests Modal CSS (optional; loads if present) -->
+  <link rel="stylesheet" href="../css/houseguests-modal.css" />
+</head>
+<body>
+
+  <!-- Intro Hub container (must have id="intro-hub") -->
+  <div id="intro-hub"></div>
+
+  <!-- Page content (demo controls) -->
+  <div class="page-center">
+    <h1>🏠 Intro Hub – Test</h1>
+    <p>Chips are rendered in the corners. Use the buttons below to test notifications and the Houseguests panel.</p>
+    <div class="demo-controls">
+      <button onclick="window.game.hub.setNotification('news', true)">
+        🔴 Set 'news' notification
+      </button>
+      <button onclick="window.game.hub.setNotification('news', false)">
+        ✅ Clear 'news' notification
+      </button>
+      <button onclick="window.game.hub.setNotification('achievements', true)">
+        🔴 Set 'achievements' notification
+      </button>
+      <button onclick="window.game.hub.refreshNotifications()">
+        🔄 Refresh all notifications
+      </button>
+      <button onclick="window.game.houseguests.openPanel()">
+        👥 Open Houseguests panel (stub)
+      </button>
+    </div>
+  </div>
+
+  <!-- Houseguests data + modal scripts (loaded before introHub so they are available) -->
+  <script src="../js/data/houseguests.js"></script>
+  <script src="../js/ui/houseguestsModal.js"></script>
+  <!--
+    NOTE: js/ui/houseguestSheet.js uses ES6 import syntax and cannot be loaded as
+    a plain script tag. Include it via the Vite build pipeline when integrating
+    into the React app (see README for instructions).
+  -->
+
+  <script>
+    // ── Demo setup ────────────────────────────────────────────────────────────
+
+    // Pre-configure sample notifications before introHub loads
+    window.game = window.game || {};
+    window.game.hubNotifications = {
+      news: true,      // News chip shows a dot on load
+      store: true,     // Store chip shows a dot on load
+    };
+
+    // Stub houseguests.openPanel so the Houseguests chip works in this test page.
+    // When the real HouseguestsModal is loaded above, we delegate to it.
+    // If it's not loaded, we fall back to an alert.
+    window.game.houseguests = window.game.houseguests || {};
+    window.game.houseguests.openPanel = function () {
+      if (window.HouseguestsModal && typeof window.HouseguestsModal.open === 'function') {
+        window.HouseguestsModal.open('list');
+      } else {
+        alert('Houseguests panel stub: HouseguestsModal module not loaded.\nLoad js/ui/houseguestsModal.js to see the real panel.');
+      }
+    };
+  </script>
+
+  <!-- Intro Hub JS (auto-initializes #intro-hub) -->
+  <script src="../js/ui/introHub.js"></script>
+
+</body>
+</html>
