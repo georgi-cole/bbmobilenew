@@ -79,7 +79,7 @@ export default function NavBar() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={false} /* 'to' is never '/' in this branch; TypeScript confirmed no overlap */
               className={({ isActive }) =>
                 `nav-bar__item${isActive ? ' nav-bar__item--active' : ''}`
               }

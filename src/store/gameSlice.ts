@@ -5,7 +5,7 @@ import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
-import { loadSettings } from './settingsSlice';
+import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
@@ -37,7 +37,7 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
   avatar: hg.sex === 'Female' ? '👩' : '🧑',
 }));
 
-const GAME_ROSTER_SIZE = 12;
+const GAME_ROSTER_SIZE = DEFAULT_ROSTER_SIZE;
 
 /**
  * Build the human player from the stored profile.
@@ -72,10 +72,7 @@ function pickHouseguests(rosterSize = GAME_ROSTER_SIZE): Player[] {
 }
 
 function buildInitialPlayers(): Player[] {
-  const raw = loadSettings().gameUX.castSize;
-  const rosterSize = Number.isFinite(raw)
-    ? Math.min(16, Math.max(4, Math.floor(raw)))
-    : GAME_ROSTER_SIZE;
+  const rosterSize = getConfiguredCastSize();
   return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
 }
 
@@ -862,6 +859,52 @@ const gameSlice = createSlice({
       }
     },
 
+
+    /**
+     * Player voluntarily self-evicts from the Diary Room.
+     * Always sets the player's status to 'evicted' (never jury, regardless of jury
+     * threshold — self-eviction is not a normal eviction path).
+     * Clears any authoritative fields that reference the self-evicting player and
+     * resets all human-decision blocking flags so the store is in a clean state
+     * if the user navigates back (e.g., via the browser history).
+     * The caller should navigate to /self-evicted after dispatching this action.
+     */
+    selfEvict(state, action: PayloadAction<string>) {
+      const playerId = action.payload;
+      const player = state.players.find((p) => p.id === playerId);
+      if (!player) return;
+
+      // Always 'evicted', never 'jury', for self-evictions.
+      player.status = 'evicted';
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId);
+
+      // Clear fields that directly reference this player to avoid dangling IDs.
+      if (state.hohId === playerId) state.hohId = null;
+      if (state.povWinnerId === playerId) state.povWinnerId = null;
+      if (state.povSavedId === playerId) state.povSavedId = null;
+      if (state.pendingNominee1Id === playerId) state.pendingNominee1Id = null;
+      if (state.pendingEviction?.evicteeId === playerId) state.pendingEviction = null;
+
+      // Clear human-decision blocking flags so advance() can run cleanly.
+      state.replacementNeeded = false;
+      state.awaitingNominations = false;
+      state.awaitingPovDecision = false;
+      state.awaitingPovSaveTarget = false;
+      state.awaitingHumanVote = false;
+      state.awaitingTieBreak = false;
+      state.tiedNomineeIds = null;
+      state.awaitingFinal3Eviction = false;
+      state.awaitingFinal3Plea = false;
+      state.evictionSplashId = null;
+      state.votes = {};
+      state.voteResults = null;
+
+      pushEvent(
+        state,
+        `${player.name} has chosen to self-evict from the Big Brother house. 🚪`,
+        'game',
+      );
+    },
 
     /**
      * Called by the UI when it starts rendering the step-1 "HOH must name a
@@ -2081,6 +2124,7 @@ export const {
   dismissVoteResults,
   dismissEvictionSplash,
   finalizePendingEviction,
+  selfEvict,
   aiReplacementRendered,
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,

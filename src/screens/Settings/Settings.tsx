@@ -8,6 +8,8 @@ import {
   setGameUX,
   setSim,
   setVisual,
+  importSettings,
+  loadSettings,
   type ThemePreset,
   type SettingsState,
 } from '../../store/settingsSlice';
@@ -60,7 +62,10 @@ export default function Settings() {
   const settingsOnMount = useRef<SettingsState>(settings);
 
   // A game is "in progress" if it has advanced past the initial fresh state.
-  const gameInProgress = game.week > 1 || game.phase !== 'week_start';
+  const gameInProgress =
+    game.phase !== 'week_start' ||
+    game.week !== 1 ||
+    (Array.isArray(game.tvFeed) && game.tvFeed.length > 1);
 
   const handleBack = () => {
     if (gameInProgress && hasRestartRequiredChanges(settingsOnMount.current, settings)) {
@@ -440,8 +445,10 @@ export default function Settings() {
             <div className="settings-restart-modal__actions">
               <button
                 className="settings-restart-modal__btn settings-restart-modal__btn--primary"
-                onClick={() => {
+              onClick={() => {
+                  dispatch(importSettings(loadSettings()));
                   dispatch(resetGame());
+                  setShowRestartModal(false);
                   navigate('/game');
                 }}
               >

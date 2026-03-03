@@ -187,6 +187,76 @@ describe('detectIntent', () => {
   it('phrase priority: "I miss my parents" -> grief_family (not generic loneliness)', () => {
     expect(detectIntent('I miss my parents')).toBe('grief_family');
   });
+
+  // ── New quit phrases ──────────────────────────────────────────────────────
+
+  it('new phrase: "I want to leave the house" -> quit', () => {
+    expect(detectIntent('I want to leave the house')).toBe('quit');
+  });
+
+  it('new phrase: "I want to get out" -> quit', () => {
+    expect(detectIntent('I want to get out')).toBe('quit');
+  });
+
+  it('new phrase: "I want out of the house" -> quit', () => {
+    expect(detectIntent('I want out of the house')).toBe('quit');
+  });
+
+  it('new phrase: "I need to get out" -> quit', () => {
+    expect(detectIntent('I need to get out')).toBe('quit');
+  });
+
+  it('new phrase: "I want to quit this" -> quit', () => {
+    expect(detectIntent('I want to quit this')).toBe('quit');
+  });
+
+  it('new phrase: "I want to quit the show" -> quit', () => {
+    expect(detectIntent('I want to quit the show')).toBe('quit');
+  });
+
+  it('new phrase: "I want to leave the show" -> quit', () => {
+    expect(detectIntent('I want to leave the show')).toBe('quit');
+  });
+
+  // ── New regex patterns (flexible natural language) ────────────────────────
+
+  it('regex: "I wanna leave" -> quit', () => {
+    expect(detectIntent('I wanna leave')).toBe('quit');
+  });
+
+  it('proximity: "I\'ve had enough, I want to quit" -> quit (proximity detection)', () => {
+    expect(detectIntent("I've had enough, I want to quit")).toBe('quit');
+  });
+
+  it('regex: "I\'m sick of this" -> quit', () => {
+    expect(detectIntent("I'm sick of this")).toBe('quit');
+  });
+
+  it('regex: "I\'m fed up" -> quit', () => {
+    expect(detectIntent("I'm fed up")).toBe('quit');
+  });
+
+  it('regex: "I\'m done with this" -> quit', () => {
+    expect(detectIntent("I'm done with this")).toBe('quit');
+  });
+
+  it('regex: "I can\'t take this anymore" -> quit', () => {
+    expect(detectIntent("I can't take this anymore")).toBe('quit');
+  });
+
+  // ── Proximity detection (Phase 3 — natural language combos) ──────────────
+
+  it('proximity: "I\'ve had it, I wanna leave" -> quit', () => {
+    expect(detectIntent("I've had it, I wanna leave")).toBe('quit');
+  });
+
+  it('proximity: "I\'m tired of everything, I\'m leaving" -> quit', () => {
+    expect(detectIntent("I'm tired of everything, I'm leaving")).toBe('quit');
+  });
+
+  it('proximity: "Fed up with the house, time to quit" -> quit', () => {
+    expect(detectIntent('Fed up with the house, time to quit')).toBe('quit');
+  });
 });
 
 // ─── bigBrotherReply ──────────────────────────────────────────────────────────
