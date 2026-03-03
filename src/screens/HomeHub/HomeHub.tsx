@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
+import useLoadIntroHub from '../../hooks/useLoadIntroHub';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
@@ -26,7 +27,6 @@ import './HomeHub.css';
 const HUB_BUTTONS = [
   { to: '/game',         label: '▶  Play',          variant: 'primary'   },
   { to: '/rules',        label: '📋 Rules',         variant: 'secondary' },
-  { to: '/settings',     label: '⚙️ Settings',      variant: 'secondary' },
   { to: '/profile',      label: '👤 Profile',        variant: 'secondary' },
   { to: '/leaderboard',  label: '🏆 Leaderboard',    variant: 'secondary' },
   { to: '/credits',      label: '🎬 Credits',        variant: 'ghost'     },
@@ -40,7 +40,11 @@ export default function HomeHub() {
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
   const [preloading, setPreloading] = useState(false);
+  const [shimmer, setShimmer] = useState(false);
   const bgPreloadedRef = useRef(false);
+
+  // Load the intro hub overlay assets only while HomeHub is mounted.
+  useLoadIntroHub();
 
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
@@ -49,6 +53,11 @@ export default function HomeHub() {
     bgPreloadedRef.current = true;
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
+
+  // Start Play button shimmer once splash finishes.
+  useEffect(() => {
+    if (splashDone) setShimmer(true);
+  }, [splashDone]);
 
   const handlePlay = () => {
     // Play gesture — use this as the user gesture to unlock audio via the
@@ -99,7 +108,7 @@ export default function HomeHub() {
               {HUB_BUTTONS.map(({ to, label, variant }) => (
                 <button
                   key={to}
-                  className={`home-hub__btn home-hub__btn--${variant}`}
+                  className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && shimmer ? ' shimmer' : ''}`}
                   onClick={to === '/game' ? handlePlay : () => navigate(to)}
                   type="button"
                 >
@@ -110,6 +119,8 @@ export default function HomeHub() {
           )}
         </div>
       </div>
+      {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}
+      <div id="intro-hub" />
     </>
   );
 }
