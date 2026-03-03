@@ -28,16 +28,18 @@ export default function useLoadIntroHub() {
       }
     }
 
-    // NOTE: these are root-relative paths matching the files added by the Intro Hub PR.
-    // If your app is served from a different base path, adjust them accordingly.
-    ensureCss('/css/intro-hub.css');
-    ensureCss('/css/houseguests-modal.css');
+    // Determine the correct base path for assets as configured in Vite.
+    const basePath = import.meta.env.BASE_URL || '/';
+
+    // Load CSS for the intro hub and houseguests modal
+    ensureCss(`${basePath}css/intro-hub.css`);
+    ensureCss(`${basePath}css/houseguests-modal.css`);
 
     // Load data and UI scripts in order
     const scripts = [
-      '/js/data/houseguests.js',
-      '/js/ui/houseguestsModal.js',
-      '/js/ui/introHub.js'
+      `${basePath}js/data/houseguests.js`,
+      `${basePath}js/ui/houseguestsModal.js`,
+      `${basePath}js/ui/introHub.js`
     ];
 
     scripts.forEach(src => ensureScript(src));
