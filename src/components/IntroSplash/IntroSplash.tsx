@@ -1,11 +1,13 @@
 /**
  * IntroSplash — lightweight SVG-based intro splash shown on cold load.
  *
- * Displays a short animated SVG logo splash, then calls onDone so the
+ * Displays a short animated SVG logo splash, then calls onDone/onFinish so the
  * parent can unmount this component and reveal the main UI.
  *
- * The splash auto-dismisses after `durationMs` (default 1 800 ms) once the
- * logo has settled (loaded or errored) and `readyToExit` is true.
+ * All waits are bounded:
+ *   - maxLogoWaitMs caps how long we wait for the logo image (default 2 000 ms).
+ *   - minVisibleMs / durationMs is the minimum total visible time (default 1 800 ms).
+ * The splash auto-dismisses once both timers fire AND readyToExit is true.
  * It can also be dismissed instantly by clicking/tapping anywhere.
  */
 
@@ -13,19 +15,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import './IntroSplash.css';
 
 export interface IntroSplashProps {
-  /** Called when the splash should be dismissed (animation done or user tap). */
-  onDone: () => void;
-  /** Total visible duration in ms before auto-dismiss (default 1 800). */
+  /** Called when the splash finishes (animation done or user tap). */
+  onFinish?: () => void;
+  /** Alias for onFinish (kept for backward compatibility). */
+  onDone?: () => void;
+  /** Minimum visible duration in ms before auto-dismiss (default 1 800). */
+  minVisibleMs?: number;
+  /** Alias for minVisibleMs (kept for backward compatibility). */
   durationMs?: number;
+  /** Maximum ms to wait for the logo image before showing the fallback (default 2 000). */
+  maxLogoWaitMs?: number;
+  /** Duration of the fade-out animation in ms (default 350). */
+  fadeOutMs?: number;
   /**
-   * External gate: when false the timer will still run but onDone is deferred
+   * External gate: when false the timer will still run but onDone/onFinish is deferred
    * until this becomes true (e.g. permission prompts resolved). Defaults to true.
    */
   readyToExit?: boolean;
 }
 
-// Encode the filename that contains a space so browsers always resolve the path.
-const LOGO_SRC = `/assets/${encodeURIComponent('kolequant transp.png')}`;
+// Logo lives at public/assets/kolequant.png (file renamed — no URL encoding needed).
+const LOGO_SRC = '/assets/kolequant.png';
 
 /** Inline SVG fallback shown when the logo image fails to load. */
 function FallbackLogo() {
@@ -43,33 +53,68 @@ function FallbackLogo() {
 }
 
 export default function IntroSplash({
+  onFinish,
   onDone,
+  minVisibleMs,
   durationMs = 1_800,
+  maxLogoWaitMs = 2_000,
+  fadeOutMs = 350,
   readyToExit = true,
 }: IntroSplashProps) {
+  // Resolve callback — prefer onFinish, fall back to onDone.
+  const callback = onFinish ?? onDone;
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const doneCalledRef = useRef(false);
   const timerDoneRef = useRef(false);
   const [logoSettled, setLogoSettled] = useState(false);
   const [logoError, setLogoError] = useState(false);
+
+  // Effective minimum visible time (minVisibleMs takes precedence over durationMs).
+  const visibleMs = minVisibleMs ?? durationMs;
+
+  // Apply the exit animation class directly on the DOM element (avoids calling
+  // setState from within an effect, which triggers cascading renders).
+  const startExit = useCallback(() => {
+    if (doneCalledRef.current) return;
+    doneCalledRef.current = true;
+    containerRef.current?.classList.add('intro-splash--exit');
+    // Wait for fade-out before calling the callback so the parent unmounts cleanly.
+    window.setTimeout(() => callback?.(), fadeOutMs);
+  }, [callback, fadeOutMs]);
 
   const tryFinish = useCallback(() => {
     if (doneCalledRef.current) return;
     if (!timerDoneRef.current) return;
     if (!logoSettled) return;
     if (!readyToExit) return;
-    doneCalledRef.current = true;
-    onDone();
-  }, [onDone, logoSettled, readyToExit]);
+    startExit();
+  }, [logoSettled, readyToExit, startExit]);
 
-  // Auto-dismiss timer — sets timerDone then attempts to finish.
+  // Minimum-visible timer — sets timerDone then attempts to finish.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       timerDoneRef.current = true;
       // Also treat logo as settled after timeout to avoid stalling.
       setLogoSettled(true);
-    }, durationMs);
+    }, visibleMs);
     return () => window.clearTimeout(timer);
-  }, [durationMs]);
+  }, [visibleMs]);
+
+  // Bounded logo-wait: if the image hasn't loaded within maxLogoWaitMs, show fallback.
+  // The timer is cancelled via the ref if the logo loads or errors first.
+  const logoWaitTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  useEffect(() => {
+    logoWaitTimerRef.current = window.setTimeout(() => {
+      setLogoError(true);
+      setLogoSettled(true);
+    }, maxLogoWaitMs);
+    return () => {
+      if (logoWaitTimerRef.current !== null) {
+        window.clearTimeout(logoWaitTimerRef.current);
+      }
+    };
+  }, [maxLogoWaitMs]);
 
   // Attempt finish whenever any gate changes.
   useEffect(() => {
@@ -77,14 +122,22 @@ export default function IntroSplash({
   }, [tryFinish]);
 
   const handleLogoLoad = useCallback(() => {
-    // Logo loaded — mark as settled. The timer still controls when the splash
-    // exits (durationMs minimum), so we do NOT set timerDoneRef here.
+    // Logo loaded — clear the logo-wait timer so it cannot overwrite with error state.
+    if (logoWaitTimerRef.current !== null) {
+      window.clearTimeout(logoWaitTimerRef.current);
+      logoWaitTimerRef.current = null;
+    }
+    // Mark settled. The minimum-visible timer still controls when the splash
+    // exits (visibleMs minimum), so we do NOT set timerDoneRef here.
     setLogoSettled(true);
   }, []);
 
   const handleLogoError = useCallback(() => {
-    // Logo failed — switch to fallback SVG and mark settled. The timer still
-    // controls splash duration so we do NOT set timerDoneRef here.
+    // Logo failed — clear the logo-wait timer and switch to fallback SVG.
+    if (logoWaitTimerRef.current !== null) {
+      window.clearTimeout(logoWaitTimerRef.current);
+      logoWaitTimerRef.current = null;
+    }
     setLogoError(true);
     setLogoSettled(true);
   }, []);
@@ -96,6 +149,7 @@ export default function IntroSplash({
 
   return (
     <div
+      ref={containerRef}
       className="intro-splash"
       role="presentation"
       aria-hidden="true"

@@ -51,6 +51,18 @@ export default function HomeHub() {
   }, [bgUrl]);
 
   const handlePlay = () => {
+    // Play gesture — use this as the user gesture to attempt audio resume.
+    // If the user previously remembered sound as enabled, try to resume/unlock
+    // the AudioContext now. No extra "tap to enable sound" UI is ever shown.
+    const soundPref = localStorage.getItem('bb:enableSound');
+    if (soundPref === 'granted') {
+      try {
+        const ctx = new AudioContext();
+        void ctx.resume().finally(() => ctx.close());
+      } catch {
+        // AudioContext unavailable — ignore
+      }
+    }
     setPreloading(true);
   };
 
@@ -66,9 +78,13 @@ export default function HomeHub() {
       )}
 
       {/* Permission prompts shown on top of the splash (z-index > splash).
-          Once both decisions are made, permsReady gates the splash exit. */}
+          Sound prompt intentionally disabled here — sound is enabled instead
+          as part of the Play gesture to avoid a "tap to enable sound" UI on
+          the intro screen. Location prompt still shown if not previously
+          remembered. Once location decision is made, permsReady gates the
+          splash exit. */}
       {showSplash && (
-        <PermissionPrompts onComplete={() => setPermsReady(true)} />
+        <PermissionPrompts onComplete={() => setPermsReady(true)} showSoundPrompt={false} />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed */}

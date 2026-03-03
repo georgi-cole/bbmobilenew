@@ -31,7 +31,7 @@ function preloadOne(url: string, timeoutMs: number): Promise<void> {
 /**
  * Preloads a single image URL (public alias for preloadOne).
  * Useful for background-first ordering: await preloadImage(bgUrl) before
- * calling preloadImages for the remaining assets.
+ * calling preloadImages/preloadAll for the remaining assets.
  */
 export function preloadImage(
   url: string,
@@ -71,3 +71,9 @@ export async function preloadImages(
     ),
   );
 }
+
+/**
+ * Alias for preloadImages — callers can await preloadImage(bgUrl) first
+ * (background-first ordering) then call preloadAll for remaining assets.
+ */
+export const preloadAll = preloadImages;

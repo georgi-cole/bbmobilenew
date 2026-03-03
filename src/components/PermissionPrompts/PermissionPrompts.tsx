@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import './PermissionPrompts.css';
 
-export type PermissionValue = 'granted' | 'denied';
+export type PermissionValue = 'granted' | 'denied' | 'skipped';
 
 export interface PermissionChoices {
   location: PermissionValue;
@@ -21,8 +21,15 @@ export interface PermissionChoices {
 }
 
 export interface PermissionPromptsProps {
-  /** Called once both permissions have been resolved. */
+  /** Called once all permissions have been resolved. */
   onComplete: (choices: PermissionChoices) => void;
+  /**
+   * Whether to show the sound permission prompt.
+   * Set to false on HomeHub so the sound prompt never appears there;
+   * sound is handled instead as part of the Play gesture.
+   * Defaults to true.
+   */
+  showSoundPrompt?: boolean;
 }
 
 const LS_LOCATION = 'bb:allowLocation';
@@ -111,13 +118,14 @@ function SinglePrompt({
 
 type Step = 'location' | 'sound' | 'done';
 
-export default function PermissionPrompts({ onComplete }: PermissionPromptsProps) {
+export default function PermissionPrompts({ onComplete, showSoundPrompt = true }: PermissionPromptsProps) {
   const [step, setStep] = useState<Step>(() => {
     const locStored = localStorage.getItem(LS_LOCATION) as PermissionValue | null;
     const sndStored = localStorage.getItem(LS_SOUND) as PermissionValue | null;
     if (!locStored) return 'location';
-    if (!sndStored) return 'sound';
-    return 'done';
+    // Skip sound step if showSoundPrompt is false or sound already stored.
+    if (!showSoundPrompt || sndStored) return 'done';
+    return 'sound';
   });
 
   const [choices, setChoices] = useState<Partial<PermissionChoices>>(() => {
@@ -132,10 +140,13 @@ export default function PermissionPrompts({ onComplete }: PermissionPromptsProps
   const [rememberLocation, setRememberLocation] = useState(false);
   const [rememberSound, setRememberSound] = useState(false);
 
-  // If both already resolved from localStorage, fire onComplete immediately.
+  // If both already resolved from localStorage (or sound is skipped), fire onComplete immediately.
   useEffect(() => {
-    if (step === 'done' && choices.location && choices.sound) {
-      onComplete({ location: choices.location, sound: choices.sound });
+    if (step === 'done' && choices.location) {
+      onComplete({
+        location: choices.location,
+        sound: choices.sound ?? 'skipped',
+      });
     }
   // Only run on mount (step/choices are initialised synchronously above).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,9 +158,15 @@ export default function PermissionPrompts({ onComplete }: PermissionPromptsProps
       if (value === 'granted') warmLocation();
       const next = { ...choices, location: value };
       setChoices(next);
-      setStep('sound');
+      if (!showSoundPrompt) {
+        // Sound prompt disabled — resolve immediately with sound skipped.
+        setStep('done');
+        onComplete({ location: value, sound: 'skipped' });
+      } else {
+        setStep('sound');
+      }
     },
-    [choices, rememberLocation],
+    [choices, rememberLocation, showSoundPrompt, onComplete],
   );
 
   const decideSound = useCallback(
