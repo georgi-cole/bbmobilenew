@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import { getRelationshipTone } from './relationshipOutline';
+import { SoundManager } from '../../services/sound/SoundManager';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -44,6 +45,20 @@ export default function PlayerAvatar({
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [revived, setRevived] = useState(false);
+  const prevStatusRef = useRef(player.status);
+
+  // Detect jury → active transition and trigger revive animation.
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = player.status;
+    if ((prev === 'jury' || prev === 'evicted') && player.status === 'active') {
+      setRevived(true);
+      void SoundManager.play('ui:confirm');
+      const id = setTimeout(() => setRevived(false), 900);
+      return () => clearTimeout(id);
+    }
+  }, [player.status]);
 
   const avatarSrc = candidates[candidateIdx] ?? '';
 
@@ -66,6 +81,7 @@ export default function PlayerAvatar({
     `pa--${size}`,
     selected ? 'pa--selected' : '',
     isEvicted ? 'pa--evicted' : '',
+    revived ? 'pa--revived' : '',
     tone !== 'none' ? `pa--rel-${tone}` : '',
   ]
     .filter(Boolean)

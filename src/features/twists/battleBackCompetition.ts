@@ -7,7 +7,7 @@
  * so the same seed always produces the same result).  The first candidate to
  * win 2 rounds is the overall winner.
  *
- * Used by BattleBackOverlay for the competition spectator display and by
+ * Used by GameScreen (via SpectatorView) for the competition spectator display and by
  * unit tests to verify determinism.
  */
 
