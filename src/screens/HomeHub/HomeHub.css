@@ -121,10 +121,11 @@
   min-width: 220px;
 }
 
-/* Shimmer animation for Play button after splash */
+/* Shimmer animation for Play button after splash — sweeps once then pauses */
 @keyframes hub-btn-shimmer {
   0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  30%  { background-position: 200% center; }
+  100% { background-position: 200% center; } /* hold off-screen = pause */
 }
 
 .home-hub__btn--primary.shimmer {
@@ -135,7 +136,7 @@
     rgba(160,100,255,0.92) 70%,
     rgba(110,60,255,0.92) 100%);
   background-size: 200% auto;
-  animation: hub-btn-shimmer 2.4s linear infinite;
+  animation: hub-btn-shimmer 3.5s linear infinite;
   box-shadow: 0 28px 80px rgba(110,60,255,0.52);
 }
 

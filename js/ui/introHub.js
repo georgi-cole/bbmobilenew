@@ -75,6 +75,7 @@
    * @param {string} id - Chip identifier
    */
   function handleChipClick(id) {
+    console.debug('[introHub] chip tapped:', id);
     switch (id) {
       case 'houseguests':
         openHouseguests();
@@ -158,7 +159,7 @@
     if (typeof global.toggleIntroHubSfx === 'function') {
       global.toggleIntroHubSfx();
     }
-    toggleChipVisual('sounds', global._introhubSfxOn !== false);
+    toggleChipVisual('sounds', !!global._introhubSfxOn);
   }
 
   /**
@@ -292,6 +293,10 @@
 
     // Apply any pre-configured notifications
     refreshNotifications();
+
+    // Apply persisted audio visual state so chips reflect current on/off status
+    toggleChipVisual('music', !!global._introhubMusicOn);
+    toggleChipVisual('sounds', !!global._introhubSfxOn);
 
     console.info('[introHub] Initialized with', CHIPS.length, 'chips');
   }
