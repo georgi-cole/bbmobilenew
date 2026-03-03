@@ -40,7 +40,6 @@ export default function HomeHub() {
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
   const [preloading, setPreloading] = useState(false);
-  const [shimmer, setShimmer] = useState(false);
   const bgPreloadedRef = useRef(false);
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
@@ -53,11 +52,6 @@ export default function HomeHub() {
     bgPreloadedRef.current = true;
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
-
-  // Start Play button shimmer once splash finishes.
-  useEffect(() => {
-    if (splashDone) setShimmer(true);
-  }, [splashDone]);
 
   const handlePlay = () => {
     // Play gesture — use this as the user gesture to unlock audio via the
@@ -108,7 +102,7 @@ export default function HomeHub() {
               {HUB_BUTTONS.map(({ to, label, variant }) => (
                 <button
                   key={to}
-                  className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && shimmer ? ' shimmer' : ''}`}
+                  className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && splashDone ? ' shimmer' : ''}`}
                   onClick={to === '/game' ? handlePlay : () => navigate(to)}
                   type="button"
                 >
