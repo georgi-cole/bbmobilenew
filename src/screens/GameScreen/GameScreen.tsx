@@ -58,7 +58,8 @@ import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import type { Player } from '../../types'
-import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay'
+import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
+import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
 import './GameScreen.css'
@@ -958,9 +959,24 @@ export default function GameScreen() {
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
   const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
-  const battleBackCandidates = battleBack?.active
-    ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id))
-    : []
+  const battleBackCandidates = useMemo(
+    () => (battleBack?.active ? game.players.filter((p) => (battleBack?.candidates ?? []).includes(p.id)) : []),
+    [battleBack?.active, battleBack?.candidates, game.players],
+  )
+
+  // Pre-compute the deterministic Battle Back winner and spectator variant so
+  // the SpectatorView reveal always matches the store write.
+  const battleBackWinnerId = useMemo(() => {
+    if (!showBattleBack || battleBackCandidates.length === 0) return undefined;
+    const candidateIds = battleBackCandidates.map((p) => p.id);
+    return simulateBattleBackCompetition(candidateIds, game.seed).winnerId;
+  }, [showBattleBack, battleBackCandidates, game.seed]);
+
+  const battleBackVariant = useMemo((): SpectatorVariant => {
+    const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
+    const rng = mulberry32(((game.seed ^ 0xdeadbeef) >>> 0));
+    return variants[Math.floor(rng() * variants.length)];
+  }, [game.seed]);
 
   // Auto-open the competition overlay after the TV announcement has had time
   // to display (~5 s, matching the 4.5 s auto-dismiss + a small buffer).
@@ -970,10 +986,12 @@ export default function GameScreen() {
     return () => clearTimeout(id);
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
-  const handleBattleBackComplete = useCallback((winnerId: string) => {
-    dispatch(completeBattleBack(winnerId))
+  const handleBattleBackComplete = useCallback(() => {
+    if (battleBackWinnerId) {
+      dispatch(completeBattleBack(battleBackWinnerId))
+    }
     dispatch(advance())
-  }, [dispatch])
+  }, [dispatch, battleBackWinnerId])
 
   // ── Public's Favorite Player twist ───────────────────────────────────────
   // Shown after the jury finale: FinalFaceoff dismisses itself and this
@@ -1436,11 +1454,15 @@ export default function GameScreen() {
       </AnimatePresence>
 
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && (
-        <BattleBackOverlay
-          candidates={battleBackCandidates}
-          seed={game.seed}
-          onComplete={handleBattleBackComplete}
+      {showBattleBack && battleBackCandidates.length > 0 && battleBackWinnerId && (
+        <SpectatorView
+          key={battleBackCandidates.map((p) => p.id).join('-') + '-bb'}
+          competitorIds={battleBackCandidates.map((p) => p.id)}
+          variant={battleBackVariant}
+          expectedWinnerId={battleBackWinnerId}
+          roundLabel="Battle Back"
+          placement="fullscreen"
+          onDone={handleBattleBackComplete}
         />
       )}
 

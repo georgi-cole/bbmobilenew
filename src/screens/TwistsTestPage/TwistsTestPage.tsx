@@ -4,16 +4,18 @@
  * Access via route: /twists-test (dev builds only)
  *
  * This page lets QA testers and developers:
- *  - Manually trigger the BattleBackOverlay with mock juror candidates.
- *    The BattleBack now shows a best-of-3 competition (seeded RNG), not voting.
+ *  - Manually trigger the Battle Back competition via SpectatorView with mock juror candidates.
+ *    The BattleBack shows a best-of-3 competition (seeded RNG), not voting.
  *  - Manually trigger the PublicFavoriteOverlay with mock candidates.
  *  - Adjust seed for different deterministic competition outcomes.
- *  - Use "slow mode" (long round-reveal interval) to inspect each round.
  *  - View overlay results inline.
  */
-import { useState } from 'react';
-import BattleBackOverlay from '../../components/BattleBackOverlay/BattleBackOverlay';
+import { useState, useMemo } from 'react';
+import SpectatorView from '../../components/ui/SpectatorView';
+import type { SpectatorVariant } from '../../components/ui/SpectatorView';
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay';
+import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition';
+import { mulberry32 } from '../../store/rng';
 import type { Player } from '../../types';
 
 // Mock players for testing
@@ -35,21 +37,30 @@ const MOCK_ALL_PLAYERS: Player[] = [
 
 type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite';
 
-/** Slow mode uses a long interval so QA can inspect each round. */
-const SLOW_PROGRESS_MS = 60_000;
-const FAST_PROGRESS_MS = 3_500;
-
 export default function TwistsTestPage() {
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
-  const [slowMode, setSlowMode] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
   const [lastResult, setLastResult] = useState<string | null>(null);
+  // Seed frozen at the moment the overlay is opened so that changing the
+  // seed input while SpectatorView is mounted cannot desync the displayed
+  // winner from what useSpectatorSimulation captured on mount.
+  const [openSeed, setOpenSeed] = useState(42);
 
-  const progressIntervalMs = slowMode ? SLOW_PROGRESS_MS : FAST_PROGRESS_MS;
+  const bbWinnerId = useMemo(
+    () => simulateBattleBackCompetition(MOCK_JURORS.map((p) => p.id), openSeed).winnerId,
+    [openSeed],
+  );
 
-  function handleBattleBackComplete(winnerId: string) {
-    setLastResult(`BattleBack winner: ${MOCK_JURORS.find((p) => p.id === winnerId)?.name ?? winnerId}`);
+  const bbVariant = useMemo((): SpectatorVariant => {
+    const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
+    const rng = mulberry32(((openSeed ^ 0xdeadbeef) >>> 0));
+    return variants[Math.floor(rng() * variants.length)];
+  }, [openSeed]);
+
+  function handleBattleBackDone() {
+    const winner = MOCK_JURORS.find((p) => p.id === bbWinnerId);
+    setLastResult(`BattleBack winner: ${winner?.name ?? bbWinnerId ?? 'unknown'}`);
     setActiveOverlay('none');
   }
 
@@ -85,21 +96,13 @@ export default function TwistsTestPage() {
             style={{ marginLeft: '0.5rem', width: '100px', background: '#1e1b4b', color: '#fff', border: '1px solid #4f46e5', borderRadius: '0.25rem', padding: '0.2rem 0.4rem' }}
           />
         </label>
-        <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={slowMode}
-            onChange={(e) => setSlowMode(e.target.checked)}
-          />
-          Slow mode (60s between rounds) — inspect each competition round
-        </label>
       </div>
 
       {/* Trigger buttons */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <button
           type="button"
-          onClick={() => { setLastResult(null); setActiveOverlay('battleBack'); }}
+          onClick={() => { setOpenSeed(seed); setLastResult(null); setActiveOverlay('battleBack'); }}
           style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
         >
           🏆 Test BattleBack Competition
@@ -128,11 +131,14 @@ export default function TwistsTestPage() {
 
       {/* Overlays */}
       {activeOverlay === 'battleBack' && (
-        <BattleBackOverlay
-          candidates={MOCK_JURORS}
-          seed={seed}
-          progressIntervalMs={progressIntervalMs}
-          onComplete={handleBattleBackComplete}
+        <SpectatorView
+          key={MOCK_JURORS.map((p) => p.id).join('-') + '-bb-test-' + openSeed}
+          competitorIds={MOCK_JURORS.map((p) => p.id)}
+          variant={bbVariant}
+          expectedWinnerId={bbWinnerId}
+          roundLabel="Battle Back"
+          placement="fullscreen"
+          onDone={handleBattleBackDone}
         />
       )}
       {activeOverlay === 'publicFavorite' && (
@@ -140,7 +146,7 @@ export default function TwistsTestPage() {
           candidates={MOCK_ALL_PLAYERS}
           seed={seed}
           awardAmount={awardAmount}
-          eliminationIntervalMs={progressIntervalMs}
+          eliminationIntervalMs={3500}
           onComplete={handleFavoriteComplete}
         />
       )}

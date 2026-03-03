@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import { getRelationshipTone } from './relationshipOutline';
+import { SoundManager } from '../../services/sound/SoundManager';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
@@ -44,6 +45,23 @@ export default function PlayerAvatar({
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [revived, setRevived] = useState(false);
+  const prevStatusRef = useRef(player.status);
+
+  // Detect jury → active transition and trigger revive animation.
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = player.status;
+    if ((prev === 'jury' || prev === 'evicted') && player.status === 'active') {
+      void SoundManager.play('ui:confirm');
+      // Defer setState to avoid synchronous setState inside effect body.
+      const startId = setTimeout(() => setRevived(true), 0);
+      const endId = setTimeout(() => setRevived(false), 900);
+      // Reset revived if status changes again before the timer fires
+      // (e.g. jury → active → evicted within 900 ms) to prevent the class sticking.
+      return () => { clearTimeout(startId); clearTimeout(endId); setRevived(false); };
+    }
+  }, [player.status]);
 
   const avatarSrc = candidates[candidateIdx] ?? '';
 
@@ -66,6 +84,7 @@ export default function PlayerAvatar({
     `pa--${size}`,
     selected ? 'pa--selected' : '',
     isEvicted ? 'pa--evicted' : '',
+    revived ? 'pa--revived' : '',
     tone !== 'none' ? `pa--rel-${tone}` : '',
   ]
     .filter(Boolean)
