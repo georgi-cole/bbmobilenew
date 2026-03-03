@@ -42,17 +42,21 @@ export default function TwistsTestPage() {
   const [awardAmount, setAwardAmount] = useState(25000);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>('none');
   const [lastResult, setLastResult] = useState<string | null>(null);
+  // Seed frozen at the moment the overlay is opened so that changing the
+  // seed input while SpectatorView is mounted cannot desync the displayed
+  // winner from what useSpectatorSimulation captured on mount.
+  const [openSeed, setOpenSeed] = useState(42);
 
-  const bbWinnerId = useMemo(() => {
-    if (activeOverlay !== 'battleBack') return undefined;
-    return simulateBattleBackCompetition(MOCK_JURORS.map((p) => p.id), seed).winnerId;
-  }, [activeOverlay, seed]);
+  const bbWinnerId = useMemo(
+    () => simulateBattleBackCompetition(MOCK_JURORS.map((p) => p.id), openSeed).winnerId,
+    [openSeed],
+  );
 
   const bbVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
-    const rng = mulberry32(((seed ^ 0xdeadbeef) >>> 0));
+    const rng = mulberry32(((openSeed ^ 0xdeadbeef) >>> 0));
     return variants[Math.floor(rng() * variants.length)];
-  }, [seed]);
+  }, [openSeed]);
 
   function handleBattleBackDone() {
     const winner = MOCK_JURORS.find((p) => p.id === bbWinnerId);
@@ -98,7 +102,7 @@ export default function TwistsTestPage() {
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <button
           type="button"
-          onClick={() => { setLastResult(null); setActiveOverlay('battleBack'); }}
+          onClick={() => { setOpenSeed(seed); setLastResult(null); setActiveOverlay('battleBack'); }}
           style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #f97316, #ea580c)', color: '#fff', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontWeight: 700 }}
         >
           🏆 Test BattleBack Competition
@@ -126,9 +130,9 @@ export default function TwistsTestPage() {
       </div>
 
       {/* Overlays */}
-      {activeOverlay === 'battleBack' && bbWinnerId && (
+      {activeOverlay === 'battleBack' && (
         <SpectatorView
-          key={MOCK_JURORS.map((p) => p.id).join('-') + '-bb-test'}
+          key={MOCK_JURORS.map((p) => p.id).join('-') + '-bb-test-' + openSeed}
           competitorIds={MOCK_JURORS.map((p) => p.id)}
           variant={bbVariant}
           expectedWinnerId={bbWinnerId}

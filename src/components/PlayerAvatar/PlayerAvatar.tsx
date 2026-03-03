@@ -56,7 +56,9 @@ export default function PlayerAvatar({
       setRevived(true);
       void SoundManager.play('ui:confirm');
       const id = setTimeout(() => setRevived(false), 900);
-      return () => clearTimeout(id);
+      // Also reset revived if status changes again before the timer fires
+      // (e.g. jury → active → evicted within 900 ms) to prevent the class sticking.
+      return () => { clearTimeout(id); setRevived(false); };
     }
   }, [player.status]);
 
