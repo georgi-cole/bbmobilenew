@@ -677,6 +677,9 @@ export default function GameScreen() {
   const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
   const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
   const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
+  const [final4DecisionDelayStarted, setFinal4DecisionDelayStarted] = useState(false)
+  const [final4DecisionReady, setFinal4DecisionReady] = useState(false)
+  const final4DecisionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
 
   // Reset all Final 4 state when the game leaves the final4/final3 region
   // (e.g. game reset, debug jump to a different phase).
@@ -788,8 +791,50 @@ export default function GameScreen() {
     setFinal4Stage('splash')
   }, [])
 
+  // Orchestrate 3-second delay before the Final-4 decision modal appears for
+  // the human POV holder after the plea ChatOverlay completes. Clears and resets
+  // when the phase or stage conditions are no longer met.
+  useEffect(() => {
+    const conditionsMet =
+      game.phase === 'final4_eviction' &&
+      Boolean(humanIsPovHolder) &&
+      Boolean(game.awaitingPovDecision) &&
+      final4Stage === 'decision'
+
+    if (!conditionsMet) {
+      if (final4DecisionTimerRef.current !== null) {
+        window.clearTimeout(final4DecisionTimerRef.current)
+        final4DecisionTimerRef.current = null
+      }
+      setFinal4DecisionDelayStarted(false)
+      setFinal4DecisionReady(false)
+      return
+    }
+
+    if (final4DecisionTimerRef.current !== null) return
+
+    setFinal4DecisionDelayStarted(true)
+    final4DecisionTimerRef.current = window.setTimeout(() => {
+      setFinal4DecisionReady(true)
+    }, 3000)
+  }, [game.phase, humanIsPovHolder, game.awaitingPovDecision, final4Stage])
+
+  // If the FAB center button is pressed while the 3-second delay is running,
+  // cancel the timer and open the decision modal immediately.
+  useEffect(() => {
+    const handlePlayPressed = () => {
+      if (final4DecisionTimerRef.current !== null) {
+        window.clearTimeout(final4DecisionTimerRef.current)
+        final4DecisionTimerRef.current = null
+        setFinal4DecisionReady(true)
+      }
+    }
+    window.addEventListener('ui:playPressed', handlePlayPressed)
+    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
+  }, [])
+
   const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
-  const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision'
+  const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision' && final4DecisionReady
   // Announcement: show during final4_eviction (pending commit) OR after final3 transition.
   const showFinal4AnnounceChat =
     (game.phase === 'final4_eviction' || game.phase === 'final3') && final4Stage === 'announcement'
