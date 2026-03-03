@@ -24,7 +24,10 @@ export default function Leaderboard() {
     timesNominated: p.stats?.timesNominated ?? 0,
     battleBackWins: p.stats?.battleBackWins ?? 0,
     wonFinalHoh: p.stats?.wonFinalHoh ?? false,
-    madeJury: p.status === 'jury' || p.finalRank != null,
+    // Only players with status 'jury' are actual jury members.
+    // The winner (finalRank=1) and runner-up (finalRank=2) are NOT jury members
+    // and should not receive the madeJury bonus.
+    madeJury: p.status === 'jury',
   }));
 
   const seasonEntries = computeSeasonLeaderboard(liveSummaries, DEFAULT_WEIGHTS);

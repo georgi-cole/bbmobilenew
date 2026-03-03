@@ -10,14 +10,23 @@ This document describes the scoring formula used by the bbmobilenew leaderboard,
 |---|---|---|
 | HOH competition win | +10 per win | `applyHohWinner()` in `gameSlice.ts` |
 | POV competition win | +8 per win | `applyPovWinner()` in `gameSlice.ts` |
-| Made jury | +5 | `buildArchive()` in `GameOver.tsx` |
+| Made jury | +5 | `buildArchive()` in `GameOver.tsx` — `status === 'jury'` (winner/runner-up excluded) |
 | Battle Back win (returned to house) | +8 per win | `completeBattleBack()` in `gameSlice.ts` |
-| Survived double eviction week | +7 | `buildArchive()` (set via `survivedDoubleEviction` flag) |
-| Survived triple eviction week | +10 | `buildArchive()` (set via `survivedTripleEviction` flag) |
+| Survived double eviction week | +7 | `survivedDoubleEviction` flag on `PlayerSeasonSummary` — **not yet auto-detected**; requires game logic to tag double-eviction weeks (see note below) |
+| Survived triple eviction week | +10 | `survivedTripleEviction` flag on `PlayerSeasonSummary` — **not yet auto-detected** (see note below) |
 | Won Public's Favorite Player | +25 | `buildArchive()` — reads `favoritePlayer.winnerId` |
 | Won the game (Season Winner) | +100 | `buildArchive()` — `finalPlacement === 1` |
 | Runner-up | +50 | `buildArchive()` — `finalPlacement === 2` |
 | Won Final HOH (Part 3 of Final 3) | +15 | `applyF3MinigameWinner()` / `advance()` final3_comp3 path |
+
+> **Note — double/triple eviction detection**: The `survivedDoubleEviction` and
+> `survivedTripleEviction` fields are defined on `PlayerSeasonSummary` and the scoring
+> weights are in place, but the game engine does not yet automatically detect multi-eviction
+> weeks.  To award these points, a future change should: (1) tag each eviction week with an
+> eviction count in `SeasonArchive.doubleEvictionWeeks` / `tripleEvictionWeeks`, and (2) set
+> the corresponding boolean flags in `buildSummaries()` by checking whether the player was
+> alive at the end of such a week.  Until then, both fields default to `false` and produce 0
+> points.
 
 ### Special Rule — Won Both Public's Favorite AND the Game
 
@@ -49,10 +58,10 @@ All compute functions are **pure** (no side effects, no Redux dependency) and ac
 | `hohWins` | `number` | HOH competition wins this season |
 | `povWins` | `number` | POV competition wins this season |
 | `timesNominated` | `number` | Times nominated for eviction |
-| `madeJury` | `boolean` | Reached jury house |
+| `madeJury` | `boolean` | Reached jury house (status `'jury'`; excludes winner and runner-up) |
 | `battleBackWins` | `number` | Battle Back competition wins |
-| `survivedDoubleEviction` | `boolean` | Survived a double-eviction week |
-| `survivedTripleEviction` | `boolean` | Survived a triple-eviction week |
+| `survivedDoubleEviction` | `boolean` | Survived a double-eviction week — must be set manually until auto-detection is implemented |
+| `survivedTripleEviction` | `boolean` | Survived a triple-eviction week — must be set manually until auto-detection is implemented |
 | `wonPublicFavorite` | `boolean` | Won America's Favorite Player vote |
 | `wonFinalHoh` | `boolean` | Won the Final HOH (Part 3 of Final 3) |
 | `weeksAlive` | `number` | Weeks survived in the house |
@@ -66,7 +75,7 @@ Stats are incremented **exactly once**, at the authoritative mutation site:
 
 - **`hohWins`** — `applyHohWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` hoh_results).
 - **`povWins`** — `applyPovWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` pov_results).
-- **`timesNominated`** — `finalizeNominations`, `commitNominees` (human paths) and the `nomination_results` case of `advance()` (AI path).  `incrementTimesNominated()` is the shared helper.
+- **`timesNominated`** — `finalizeNominations`, `commitNominees` (human paths) and the `nomination_results` case of `advance()` (AI path).  Replacement nominee paths also call `incrementTimesNominated()`: `setReplacementNominee` (human HOH), `submitPovSaveTarget` AI branch, and `aiReplacementStep === 2` in `advance()`.  All paths use the shared `incrementTimesNominated()` helper.
 - **`battleBackWins`** — `completeBattleBack()` reducer.
 - **`wonFinalHoh`** — `markFinalHohWinner()` helper, called from `advance()` `final3_comp3` and `applyF3MinigameWinner()` `final3_comp3_minigame`.
 

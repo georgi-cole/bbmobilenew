@@ -590,6 +590,7 @@ const gameSlice = createSlice({
 
       state.nomineeIds.push(id);
       player.status = 'nominated';
+      incrementTimesNominated(state, id);
       state.replacementNeeded = false;
       state.povSavedId = null;
       pushEvent(
@@ -756,6 +757,7 @@ const gameSlice = createSlice({
           state.nomineeIds.push(replacement.id);
           const rp = state.players.find((pl) => pl.id === replacement.id);
           if (rp) rp.status = 'nominated';
+          incrementTimesNominated(state, replacement.id);
           // Keep povSavedId set so the UI can detect "veto was used" and show
           // the AI replacement animation. Cleared at week_start.
           pushEvent(
@@ -1750,6 +1752,7 @@ const gameSlice = createSlice({
           state.nomineeIds.push(replacement.id);
           const rp = state.players.find((pl) => pl.id === replacement.id);
           if (rp) rp.status = 'nominated';
+          incrementTimesNominated(state, replacement.id);
           pushEvent(
             state,
             `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
