@@ -17,7 +17,7 @@ export default function KolequantSplash({ duration = 1200, onFinish }: Props) {
   }, [duration, onFinish]);
 
   return (
-    <div className="kq-splash" aria-hidden>
+    <div className="kq-splash" aria-hidden="true">
       <div className="kq-splash__center">
         <img src={LOGO_SRC} alt="Kolequant" className="kq-splash__logo" draggable={false} decoding="async" />
         <div className="kq-splash__copyright">© 2006</div>
