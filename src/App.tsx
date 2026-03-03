@@ -14,6 +14,7 @@ import { store } from './store/store';
 import { router } from './routes';
 import { SoundManager } from './services/sound/SoundManager';
 import AudioGate from './components/AudioGate/AudioGate';
+import useLoadIntroHub from './hooks/useLoadIntroHub';
 
 if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
@@ -24,10 +25,13 @@ export default function App() {
     void SoundManager.init();
   }, []);
 
+  useLoadIntroHub();
+
   return (
     <Provider store={store}>
       <AudioGate />
       <RouterProvider router={router} />
+      <div id="intro-hub-container" />
     </Provider>
   );
 }
