@@ -48,19 +48,22 @@ export default function useBackgroundTheme(
         ? `${base}${resolved.url}`
         : resolved.url;
 
-      // Preload the background image before setting state so consumers get
-      // background-first behaviour (image is in cache when the URL is used).
+      // Apply the background immediately so consumers don't wait on image preload.
+      setState({ url: normalized, key: resolved.key, reason: resolved.reason });
+      console.info('[useBackgroundTheme] background applied:', resolved.key, normalized, `(${resolved.reason})`);
+
+      if (attachToRoot) {
+        document.documentElement.style.setProperty(
+          '--intro-bg-image',
+          `url("${normalized}")`,
+        );
+      }
+
+      // Preload the background image in parallel so it's in cache when used,
+      // but do not gate state updates on this completing.
       preloadImage(normalized).then(() => {
         if (cancelled) return;
-        setState({ url: normalized, key: resolved.key, reason: resolved.reason });
-        console.info('[useBackgroundTheme] background applied:', resolved.key, normalized, `(${resolved.reason})`);
-
-        if (attachToRoot) {
-          document.documentElement.style.setProperty(
-            '--intro-bg-image',
-            `url("${normalized}")`,
-          );
-        }
+        // Optional: could add debug logging here if desired.
       });
     });
 
