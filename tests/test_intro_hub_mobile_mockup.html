@@ -304,7 +304,7 @@
     .bottom-nav__icon { font-size: 18px; }
 
     /* ══════════════════════════════════════════════════════════════════════
-       INTRO HUB CHIP OVERLAY (inline — same rules as css/intro-hub.css)
+       INTRO HUB CHIP OVERLAY (inline — mirrors css/intro-hub.css)
        ══════════════════════════════════════════════════════════════════════ */
 
     #intro-hub {
@@ -319,29 +319,29 @@
       position: absolute;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 8px 13px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.13);
-      border: 1px solid rgba(255, 255, 255, 0.24);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      /* Asymmetric corners matching HomeHub buttons */
+      border-radius: 14px 4px 14px 4px;
+      background: rgba(6, 12, 28, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       color: #ffffff;
-      font-size: 12px;
-      font-weight: 700;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       pointer-events: auto;
-      white-space: nowrap;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.56);
       cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
     }
 
-    .hub-chip__icon { font-size: 15px; line-height: 1; }
-    .hub-chip__label { line-height: 1; }
+    .hub-chip__icon { font-size: 20px; line-height: 1; pointer-events: none; }
 
     .hub-chip__badge {
       position: absolute;
-      top: 3px; right: 3px;
+      top: 4px; right: 4px;
       width: 8px; height: 8px;
       border-radius: 50%;
       background: #ff3b5c;
@@ -352,17 +352,17 @@
 
     .hub-chip--has-notification .hub-chip__badge { display: block; }
 
-    /* Corner positions — offset for phone notch/status bar */
+    /* Corner positions — offset for phone notch/status bar (44px chip + 8px gap = 52px stride) */
     .hub-chip--top-left    { top: 40px; left: 14px; }
-    .hub-chip--top-left-2  { top: 83px; left: 14px; }
-    .hub-chip--top-left-3  { top: 126px; left: 14px; }
+    .hub-chip--top-left-2  { top: 92px; left: 14px; }
+    .hub-chip--top-left-3  { top: 144px; left: 14px; }
 
     .hub-chip--top-right   { top: 40px; right: 14px; }
-    .hub-chip--top-right-2 { top: 83px; right: 14px; }
-    .hub-chip--top-right-3 { top: 126px; right: 14px; }
+    .hub-chip--top-right-2 { top: 92px; right: 14px; }
+    .hub-chip--top-right-3 { top: 144px; right: 14px; }
 
     .hub-chip--bottom-left   { bottom: 76px; left: 14px; }
-    .hub-chip--bottom-left-2 { bottom: 120px; left: 14px; }
+    .hub-chip--bottom-left-2 { bottom: 128px; left: 14px; }
 
     .hub-chip--bottom-right  { bottom: 76px; right: 14px; }
   </style>
@@ -502,55 +502,46 @@
   <div id="intro-hub">
 
     <!-- Top-left: Houseguests, Music, Sounds -->
-    <button class="hub-chip hub-chip--top-left">
+    <button class="hub-chip hub-chip--top-left" aria-label="Houseguests">
       <span class="hub-chip__icon">👥</span>
-      <span class="hub-chip__label">Houseguests</span>
       <span class="hub-chip__badge"></span>
     </button>
-    <button class="hub-chip hub-chip--top-left-2">
+    <button class="hub-chip hub-chip--top-left-2" aria-label="Music">
       <span class="hub-chip__icon">🎵</span>
-      <span class="hub-chip__label">Music</span>
       <span class="hub-chip__badge"></span>
     </button>
-    <button class="hub-chip hub-chip--top-left-3">
+    <button class="hub-chip hub-chip--top-left-3" aria-label="Sounds">
       <span class="hub-chip__icon">🔊</span>
-      <span class="hub-chip__label">Sounds</span>
       <span class="hub-chip__badge"></span>
     </button>
 
     <!-- Top-right: Settings, Share, Feedback -->
-    <button class="hub-chip hub-chip--top-right">
+    <button class="hub-chip hub-chip--top-right" aria-label="Settings">
       <span class="hub-chip__icon">⚙️</span>
-      <span class="hub-chip__label">Settings</span>
       <span class="hub-chip__badge"></span>
     </button>
-    <button class="hub-chip hub-chip--top-right-2">
+    <button class="hub-chip hub-chip--top-right-2" aria-label="Share">
       <span class="hub-chip__icon">↗️</span>
-      <span class="hub-chip__label">Share</span>
       <span class="hub-chip__badge"></span>
     </button>
-    <button class="hub-chip hub-chip--top-right-3">
+    <button class="hub-chip hub-chip--top-right-3" aria-label="Feedback">
       <span class="hub-chip__icon">💬</span>
-      <span class="hub-chip__label">Feedback</span>
       <span class="hub-chip__badge"></span>
     </button>
 
     <!-- Bottom-left: News (with dot), Achievements -->
-    <button class="hub-chip hub-chip--bottom-left hub-chip--has-notification">
+    <button class="hub-chip hub-chip--bottom-left hub-chip--has-notification" aria-label="News">
       <span class="hub-chip__icon">📰</span>
-      <span class="hub-chip__label">News</span>
       <span class="hub-chip__badge"></span>
     </button>
-    <button class="hub-chip hub-chip--bottom-left-2">
+    <button class="hub-chip hub-chip--bottom-left-2" aria-label="Achievements">
       <span class="hub-chip__icon">🏆</span>
-      <span class="hub-chip__label">Achievements</span>
       <span class="hub-chip__badge"></span>
     </button>
 
     <!-- Bottom-right: Store (with dot) -->
-    <button class="hub-chip hub-chip--bottom-right hub-chip--has-notification">
+    <button class="hub-chip hub-chip--bottom-right hub-chip--has-notification" aria-label="Store">
       <span class="hub-chip__icon">🛒</span>
-      <span class="hub-chip__label">Store</span>
       <span class="hub-chip__badge"></span>
     </button>
 

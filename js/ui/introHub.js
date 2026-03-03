@@ -55,16 +55,11 @@
     icon.setAttribute('aria-hidden', 'true');
     icon.textContent = def.icon;
 
-    const label = document.createElement('span');
-    label.className = 'hub-chip__label';
-    label.textContent = def.label;
-
     const badge = document.createElement('span');
     badge.className = 'hub-chip__badge';
     badge.setAttribute('aria-label', 'New notification');
 
     btn.appendChild(icon);
-    btn.appendChild(label);
     btn.appendChild(badge);
 
     btn.addEventListener('click', function () {
