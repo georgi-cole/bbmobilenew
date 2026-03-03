@@ -4,6 +4,7 @@ import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import IntroSplash from '../../components/IntroSplash/IntroSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
+import { SoundManager } from '../../services/sound/SoundManager';
 import { preloadImage } from '../../utils/preload';
 import './HomeHub.css';
 
@@ -50,17 +51,12 @@ export default function HomeHub() {
   }, [bgUrl]);
 
   const handlePlay = () => {
-    // Play gesture — use this as the user gesture to attempt audio resume.
-    // If the user previously remembered sound as enabled, try to resume/unlock
-    // the AudioContext now. No extra "tap to enable sound" UI is ever shown.
+    // Play gesture — use this as the user gesture to unlock audio via the
+    // shared SoundManager (Howler's internal AudioContext) if the user
+    // previously remembered sound as enabled.
     const soundPref = localStorage.getItem('bb:enableSound');
     if (soundPref === 'granted') {
-      try {
-        const ctx = new AudioContext();
-        void ctx.resume().finally(() => ctx.close());
-      } catch {
-        // AudioContext unavailable — ignore
-      }
+      SoundManager.unlockOnUserGesture();
     }
     setPreloading(true);
   };

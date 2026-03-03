@@ -1,14 +1,15 @@
 /**
- * IntroSplash — lightweight SVG-based intro splash shown on cold load.
+ * IntroSplash — logo-only intro splash shown on cold load.
  *
- * Displays a short animated SVG logo splash, then calls onDone/onFinish so the
- * parent can unmount this component and reveal the main UI.
+ * Displays the KoleQuant logo, then calls onDone/onFinish so the parent can
+ * unmount this component and reveal the main UI.
  *
  * All waits are bounded:
  *   - maxLogoWaitMs caps how long we wait for the logo image (default 2 000 ms).
  *   - minVisibleMs / durationMs is the minimum total visible time (default 1 800 ms).
- * The splash auto-dismisses once both timers fire AND readyToExit is true.
- * It can also be dismissed instantly by clicking/tapping anywhere.
+ * The splash auto-dismisses after the logo has settled and the minimum visible
+ * timer has completed. After the minimum visible time has elapsed, it can also
+ * be dismissed by clicking/tapping anywhere.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -57,6 +58,10 @@ export default function IntroSplash({
 }: IntroSplashProps) {
   // Resolve callback — prefer onFinish, fall back to onDone.
   const callback = onFinish ?? onDone;
+
+  if (import.meta.env.DEV && !callback) {
+    console.warn('[IntroSplash] Neither onFinish nor onDone was provided — the splash will never dismiss.');
+  }
 
   const containerRef = useRef<HTMLDivElement>(null);
   const doneCalledRef = useRef(false);
@@ -144,11 +149,11 @@ export default function IntroSplash({
     <div
       ref={containerRef}
       className="intro-splash"
-      role="presentation"
-      aria-hidden="true"
+      role="button"
+      aria-label="Skip intro"
+      tabIndex={0}
       onClick={handleTap}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTap(); }}
-      tabIndex={-1}
     >
       {/* Logo: image with inline SVG fallback on error */}
       {logoError ? (

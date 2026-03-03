@@ -145,7 +145,7 @@ export default function PermissionPrompts({ onComplete, showSoundPrompt = true }
     if (step === 'done' && choices.location) {
       onComplete?.({
         location: choices.location,
-        sound: choices.sound ?? 'skipped',
+        sound: showSoundPrompt ? (choices.sound ?? 'skipped') : 'skipped',
       });
     }
   // Only run on mount (step/choices are initialised synchronously above).
