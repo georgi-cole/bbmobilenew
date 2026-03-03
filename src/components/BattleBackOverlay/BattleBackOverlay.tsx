@@ -1,137 +1,129 @@
 /**
- * BattleBackOverlay — full-screen "Jury Return / Battle Back" twist overlay.
+ * BattleBackOverlay — full-screen "Jury Return / Battle Back" competition overlay.
  *
- * UX flow (4 steps):
- *  1. announcement — orange full-screen splash; tap to continue.
- *  2. info         — explanation card; tap to start voting.
- *  3. voting       — TV-broadcast Memory Wall: portrait grid with SVG ring
- *                    gauges, scrolling ticker, and countdown strip. Lowest
- *                    candidate eliminated every 3.5 s.
- *  4. winner       — winner reveal with colour animation; tap to close.
+ * UX flow (3 steps):
+ *  1. info         — explanation card; tap to start the competition.
+ *  2. competition  — spectator view: 3 minigame rounds reveal one at a time.
+ *                    Winner determined by seeded RNG (deterministic).
+ *  3. winner       — winner reveal with re-entry message; tap to close.
+ *
+ * Note: The step-1 announcement ("JURY RETURN!" full-screen splash) has been
+ * moved to the TvZone TV filler, triggered by the 'twist' major event
+ * pushed in `activateBattleBack`. This overlay opens ~5 s after that announcement.
  *
  * Props:
- *  candidates  — Player objects eligible to compete (all current jurors).
- *  seed        — Seeded RNG value for reproducible simulation.
- *  onComplete  — Called with the winning player ID when the overlay closes.
+ *  candidates         — Player objects eligible to compete (all current jurors).
+ *  seed               — Seeded RNG value for reproducible, deterministic outcomes.
+ *  progressIntervalMs — Time between round reveals (ms). Default: 3500.
+ *  onComplete         — Called with the winning player ID when the overlay closes.
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
-import { useBattleBackVoting } from '../../hooks/useBattleBackVoting';
+import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition';
 import { resolveAvatar } from '../../utils/avatar';
 import './BattleBackOverlay.css';
 
 interface Props {
   candidates: Player[];
   seed: number;
+  /** Override the round-reveal interval (ms). Default: 3500. Useful for QA slow-mode. */
+  progressIntervalMs?: number;
   onComplete: (winnerId: string) => void;
 }
 
-type Step = 'announcement' | 'info' | 'voting' | 'winner';
+type Step = 'info' | 'competition' | 'winner';
 
-const ELIM_INTERVAL_MS = 3500;
-const COUNTDOWN_START = Math.floor(ELIM_INTERVAL_MS / 1000);
-/** Centre and radius of the SVG danger-zone ring (px inside a 76×76 viewBox). */
-const RING_CX = 38;
-const RING_CY = 38;
-const RING_R = 34;
-const RING_STROKE = 4;
-/** Repeated twice in the DOM so the CSS marquee loops seamlessly. */
-const TICKER_MSG = 'The public is voting to save a juror… One will return to the Big Brother house! ✦  ';
+const PROGRESS_INTERVAL_MS = 3500;
+const TICKER_MSG = 'Jurors compete in a best-of-3 challenge — one will return to the house! ✦  ';
 
-export default function BattleBackOverlay({ candidates, seed, onComplete }: Props) {
-  const [step, setStep] = useState<Step>('announcement');
+export default function BattleBackOverlay({
+  candidates,
+  seed,
+  progressIntervalMs = PROGRESS_INTERVAL_MS,
+  onComplete,
+}: Props) {
+  const [step, setStep] = useState<Step>('info');
+  const [revealedRounds, setRevealedRounds] = useState(0);
   const firedRef = useRef(false);
 
-  // Memoize the ID list so the hook's dep array sees a stable reference across
-  // re-renders (candidates list doesn't change during a single Battle Back session).
-  const candidateIds = useMemo(() => candidates.map((c) => c.id), [candidates]);
+  // Compute competition result once (deterministic — same seed always same result).
+  const result = useMemo(
+    () => simulateBattleBackCompetition(candidates.map((c) => c.id), seed),
+    [candidates, seed],
+  );
 
-  const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
-    candidates: candidateIds,
-    seed,
-    eliminationIntervalMs: ELIM_INTERVAL_MS,
-    tickIntervalMs: 400,
-  });
-
-  // Countdown strip: counts down from COUNTDOWN_START to 0.
-  // Adding `eliminated.length` to deps re-starts the effect (and resets the
-  // countdown) each time a candidate is eliminated.  The reset is scheduled
-  // via setTimeout so setState is called from a callback, not the effect body.
-  const [countdown, setCountdown] = useState(COUNTDOWN_START);
+  // Reveal rounds one at a time during the competition step.
   useEffect(() => {
-    if (step !== 'voting' || isComplete) return;
-    const resetId = setTimeout(() => setCountdown(COUNTDOWN_START), 0);
-    const id = setInterval(
-      () => setCountdown((prev) => Math.max(0, prev - 1)),
-      1000,
+    if (step !== 'competition') return;
+    if (revealedRounds >= result.rounds.length) return;
+    const id = setTimeout(
+      () => setRevealedRounds((prev) => prev + 1),
+      progressIntervalMs,
     );
-    return () => {
-      clearTimeout(resetId);
-      clearInterval(id);
-    };
-  }, [step, isComplete, eliminated.length]);
+    return () => clearTimeout(id);
+  }, [step, revealedRounds, result.rounds.length, progressIntervalMs]);
 
-  // Derive winner step from isComplete to avoid a setState-in-effect.
-  const displayStep = (isComplete && step === 'voting') ? 'winner' : step;
+  // Advance to winner step once all rounds have been revealed.
+  useEffect(() => {
+    if (step !== 'competition') return;
+    if (revealedRounds < result.rounds.length) return;
+    if (result.rounds.length === 0) return;
+    const id = setTimeout(() => setStep('winner'), Math.round(progressIntervalMs * 0.6));
+    return () => clearTimeout(id);
+  }, [step, revealedRounds, result.rounds.length, progressIntervalMs]);
 
-  const handleClose = useCallback(() => {
-    if (firedRef.current || !winnerId) return;
+  const winner = candidates.find((c) => c.id === result.winnerId);
+
+  function startCompetition() {
+    setRevealedRounds(0);
+    // If there are no rounds (single-candidate edge case), skip straight to winner.
+    if (result.rounds.length === 0) {
+      setStep('winner');
+    } else {
+      setStep('competition');
+    }
+  }
+
+  const handleClose = () => {
+    if (firedRef.current || !result.winnerId) return;
     firedRef.current = true;
-    onComplete(winnerId);
-  }, [winnerId, onComplete]);
+    onComplete(result.winnerId);
+  };
 
   return (
     <div
       className="bb-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Battle Back twist overlay"
+      aria-label="Battle Back competition overlay"
     >
       <div className="bb-overlay__dim" />
 
-      {/* ── Step 1: Announcement ─────────────────────────────────────────── */}
-      {displayStep === 'announcement' && (
-        <div
-          className="bb-overlay__card bb-overlay__card--announcement"
-          onClick={() => setStep('info')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('info')}
-          aria-label="Battle Back announcement — tap to continue"
-        >
-          <div className="bb-overlay__emoji" aria-hidden="true">🔥</div>
-          <p className="bb-overlay__label">TWIST</p>
-          <h1 className="bb-overlay__title">JURY RETURN!</h1>
-          <h2 className="bb-overlay__subtitle">Battle Back</h2>
-          <p className="bb-overlay__tap-hint">tap to continue</p>
-        </div>
-      )}
-
-      {/* ── Step 2: Info ─────────────────────────────────────────────────── */}
-      {displayStep === 'info' && (
+      {/* ── Step 1: Info ─────────────────────────────────────────────────── */}
+      {step === 'info' && (
         <div
           className="bb-overlay__card bb-overlay__card--info"
-          onClick={() => setStep('voting')}
+          onClick={startCompetition}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setStep('voting')}
-          aria-label="Battle Back info — tap to start voting"
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && startCompetition()}
+          aria-label="Battle Back competition info — tap to watch"
         >
           <div className="bb-overlay__emoji" aria-hidden="true">🏆</div>
-          <h2 className="bb-overlay__title bb-overlay__title--md">How It Works</h2>
+          <h2 className="bb-overlay__title bb-overlay__title--md">Battle Back</h2>
           <ul className="bb-overlay__info-list" role="list">
-            <li>The public votes for their favourite juror to return.</li>
-            <li>One by one the jurors with the lowest viewer support are eliminated.</li>
-            <li>The last juror standing wins and re-enters the house!</li>
+            <li>The evicted jurors compete in a best-of-3 challenge.</li>
+            <li>Three minigame rounds decide who has what it takes to return.</li>
+            <li>The competition winner re-enters the Big Brother house!</li>
           </ul>
-          <p className="bb-overlay__tap-hint">tap to watch the vote live</p>
+          <p className="bb-overlay__tap-hint">tap to watch the competition</p>
         </div>
       )}
 
-      {/* ── Step 3: Memory Wall — Live Voting ────────────────────────────── */}
-      {displayStep === 'voting' && (
-        <div className="bb-wall" role="region" aria-label="Live Battle Back voting">
+      {/* ── Step 2: Competition Spectator ────────────────────────────────── */}
+      {step === 'competition' && (
+        <div className="bb-wall" role="region" aria-label="Live Battle Back competition">
 
           {/* Broadcast header */}
           <header className="bb-wall__header">
@@ -150,83 +142,81 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
             <span className="bb-wall__ticker">{TICKER_MSG}{TICKER_MSG}</span>
           </div>
 
-          {/* Memory wall grid */}
-          <ul className="bb-wall__grid" role="list">
-            {(() => {
-              // Compute danger zone: the lowest-voted active candidates get a
-              // red ring. Show 2 in danger when > 2 active remain; only 1 when
-              // exactly 2 remain (the higher-voted one will be the winner).
-              const active = candidates.filter(p => !eliminated.includes(p.id));
-              let dangerCount: number;
-              if (active.length > 2) {
-                dangerCount = 2;
-              } else if (active.length === 2) {
-                dangerCount = 1;
-              } else {
-                dangerCount = 0;
-              }
-              const dangerIds = new Set(
-                [...active]
-                  .sort((a, b) => (votes[a.id] ?? 0) - (votes[b.id] ?? 0))
-                  .slice(0, dangerCount)
-                  .map(p => p.id)
+          {/* Round scorecards */}
+          <div className="bb-comp__rounds" aria-label="Competition rounds">
+            {result.rounds.map((round, i) => {
+              const revealed = i < revealedRounds;
+              const roundWinner = revealed
+                ? candidates.find((c) => c.id === round.winnerId)
+                : null;
+              return (
+                <div
+                  key={i}
+                  className={`bb-comp__round${revealed ? ' bb-comp__round--revealed' : ''}`}
+                >
+                  <span className="bb-comp__round-num">Round {i + 1}</span>
+                  <span className="bb-comp__round-game">
+                    {round.icon} {round.name}
+                  </span>
+                  <span className="bb-comp__round-winner">
+                    {revealed ? (roundWinner?.name ?? '?') : '…'}
+                  </span>
+                </div>
               );
-              return candidates.map((player) => {
-                const isEliminated = eliminated.includes(player.id);
-                const isDanger = dangerIds.has(player.id);
-                const pct = isEliminated ? 0 : (votes[player.id] ?? 0);
-                return (
-                  <li
-                    key={player.id}
-                    className={`bb-wall__tile${isEliminated ? ' bb-wall__tile--eliminated' : ''}${isDanger ? ' bb-wall__tile--danger' : ''}`}
-                    aria-label={`${player.name}: ${isEliminated ? 'gone' : `${pct}%`}`}
-                  >
-                    <div className="bb-wall__ring-wrap">
-                      <svg className="bb-wall__ring-svg" viewBox="0 0 76 76" aria-hidden="true">
-                        {/* Danger-zone ring: full circle, light red, pulsing */}
-                        {isDanger && (
-                          <circle
-                            className="bb-wall__danger-ring"
-                            cx={RING_CX} cy={RING_CY} r={RING_R}
-                            fill="none"
-                            stroke="#f87171"
-                            strokeWidth={RING_STROKE}
-                          />
-                        )}
-                      </svg>
-                      <img
-                        src={resolveAvatar(player)}
-                        alt={player.name}
-                        className="bb-wall__avatar"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                      {isEliminated && (
-                        <div className="bb-wall__elim-stamp" aria-hidden="true">GONE</div>
-                      )}
-                    </div>
-                    <span className="bb-wall__tile-name">{player.name}</span>
-                    {!isEliminated && <span className={`bb-wall__tile-pct${isDanger ? ' bb-wall__tile-pct--danger' : ''}`}>{pct}%</span>}
-                  </li>
-                );
-              });
-            })()}
+            })}
+          </div>
+
+          {/* Competitor grid with star tallies */}
+          <ul className="bb-wall__grid" role="list">
+            {candidates.map((player) => {
+              const wins =
+                result.rounds
+                  .slice(0, revealedRounds)
+                  .filter((r) => r.winnerId === player.id).length;
+              return (
+                <li
+                  key={player.id}
+                  className="bb-wall__tile"
+                  aria-label={`${player.name}: ${wins} win${wins !== 1 ? 's' : ''}`}
+                >
+                  <div className="bb-wall__ring-wrap">
+                    <img
+                      src={resolveAvatar(player)}
+                      alt={player.name}
+                      className="bb-wall__avatar"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <span className="bb-wall__tile-name">{player.name}</span>
+                  <span className="bb-comp__wins" aria-hidden="true">
+                    {wins > 0
+                      ? Array.from({ length: wins }, (_, k) => (
+                          <span key={k} className="bb-comp__win-dot">★</span>
+                        ))
+                      : <span className="bb-comp__win-empty">–</span>}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
 
-          {/* Countdown footer */}
+          {/* Status footer */}
           <div className="bb-wall__footer" aria-live="polite">
             <span className="bb-wall__footer-text">
-              {isComplete
-                ? '🏆 Winner found!'
-                : countdown === 0
-                  ? '⚡ ELIMINATING…'
-                  : `⚡ NEXT ELIMINATION IN ${countdown}…`}
+              {revealedRounds === 0
+                ? '⚡ COMPETITION BEGINS…'
+                : revealedRounds < result.rounds.length
+                  ? `⚡ ROUND ${revealedRounds} COMPLETE — NEXT UP…`
+                  : '🏆 ALL ROUNDS COMPLETE!'}
             </span>
           </div>
         </div>
       )}
 
-      {/* ── Step 4: Winner ───────────────────────────────────────────────── */}
-      {displayStep === 'winner' && winnerId && (
+      {/* ── Step 3: Winner ───────────────────────────────────────────────── */}
+      {step === 'winner' && result.winnerId && (
         <div
           className="bb-overlay__card bb-overlay__card--winner"
           onClick={handleClose}
@@ -235,35 +225,28 @@ export default function BattleBackOverlay({ candidates, seed, onComplete }: Prop
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClose()}
           aria-label="Battle Back winner — tap to continue"
         >
-          {(() => {
-            const winner = candidates.find((c) => c.id === winnerId);
-            if (!winner) {
-              // Defensive: winner not found in candidates — should not occur in normal flow.
-              console.warn('[BattleBackOverlay] Winner ID not found in candidates:', winnerId);
-            }
-            return (
-              <>
-                <div className="bb-overlay__winner-avatar" aria-hidden="true">
-                  <img
-                    src={resolveAvatar(winner ?? { id: winnerId, name: '', avatar: '' })}
-                    alt={winner?.name ?? ''}
-                    className="bb-overlay__winner-img"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-                <p className="bb-overlay__label">BATTLE BACK WINNER</p>
-                <h1 className="bb-overlay__title">{winner?.name ?? 'A Juror'}</h1>
-                <p className="bb-overlay__winner-msg">
-                  🏠 Returns to the Big Brother house!
-                </p>
-                <p className="bb-overlay__tap-hint">tap to continue</p>
-              </>
-            );
-          })()}
+          <div className="bb-overlay__winner-avatar" aria-hidden="true">
+            <img
+              src={resolveAvatar(winner ?? { id: result.winnerId, name: '', avatar: '' })}
+              alt={winner?.name ?? ''}
+              className="bb-overlay__winner-img"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+          <p className="bb-overlay__label">BATTLE BACK WINNER</p>
+          <h1 className="bb-overlay__title">{winner?.name ?? 'A Juror'}</h1>
+          <p className="bb-overlay__winner-msg">🏠 Returns to the Big Brother house!</p>
+          {result.rounds.length > 0 && (
+            <p className="bb-overlay__winner-record">
+              {result.roundWins[result.winnerId]} / {result.rounds.length} rounds won
+            </p>
+          )}
+          <p className="bb-overlay__tap-hint">tap to continue</p>
         </div>
       )}
     </div>
   );
 }
+

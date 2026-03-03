@@ -464,3 +464,85 @@
     transition: none !important;
   }
 }
+
+/* ── Competition scorecard (best-of-3 rounds) ────────────────────────────── */
+.bb-comp__rounds {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 1rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+.bb-comp__round {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.4s ease;
+}
+
+.bb-comp__round--revealed {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.bb-comp__round-num {
+  flex-shrink: 0;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  min-width: 3.2rem;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.bb-comp__round-game {
+  flex: 1;
+}
+
+.bb-comp__round-winner {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #fbbf24;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.bb-comp__round:not(.bb-comp__round--revealed) .bb-comp__round-winner {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Star win-tally under competitor avatars ─────────────────────────────── */
+.bb-comp__wins {
+  display: flex;
+  gap: 0.15rem;
+  justify-content: center;
+  min-height: 1rem;
+}
+
+.bb-comp__win-dot {
+  font-size: 0.72rem;
+  color: #fbbf24;
+  animation: bbStarPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bbStarPop {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1);   }
+}
+
+.bb-comp__win-empty {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Winner record line ──────────────────────────────────────────────────── */
+.bb-overlay__winner-record {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+

@@ -173,18 +173,68 @@ export interface SpectatorActiveState {
 export interface BattleBackState {
   /** True once the twist has fired (or been decided) this season — prevents repeats. */
   used: boolean;
-  /** True while the full-screen Battle Back overlay is open. Blocks advance(). */
+  /**
+   * True while the twist is active (blocks advance()).
+   * Set to true when the twist triggers; cleared by completeBattleBack/dismissBattleBack.
+   */
   active: boolean;
+  /**
+   * True once the competition overlay should be shown.
+   * The twist first shows an announcement on the TV filler; only when this is
+   * true is the full-screen competition overlay rendered.
+   */
+  competitionActive: boolean;
   /** Week number when the twist was decided (week the eviction happened). Null before decided. */
   weekDecided: number | null;
   /** IDs of jurors eligible to compete in the Battle Back. */
   candidates: string[];
-  /** IDs eliminated during the live voting round (in elimination order). */
-  eliminated: string[];
-  /** Simulated public vote tallies keyed by candidate ID (whole integers). */
-  votes: Record<string, number>;
-  /** ID of the winning juror who returns to the house; null while voting is in progress. */
+  /** ID of the winning juror who returns to the house; null before the competition resolves. */
   winnerId: string | null;
+}
+
+// ─── Public's Favorite voting twist ──────────────────────────────────────────
+
+/**
+ * State for the optional "Public's Favorite Player" vote shown after the
+ * finale winner announcement. Feature-gated via settings.sim.enableFavoritePlayer.
+ */
+export interface FavoritePlayerState {
+  /** True while the twist is active (blocks navigation to game-over). */
+  active: boolean;
+  /**
+   * True once the full-screen voting overlay should be shown.
+   * When `active && !votingStarted`, the TV filler shows the announcement.
+   * When `votingStarted = true`, GameScreen renders the voting overlay.
+   */
+  votingStarted: boolean;
+  /** IDs of all candidates eligible for the vote (all season players by default). */
+  candidates: string[];
+  /** IDs eliminated from voting so far, in elimination order. */
+  eliminated: string[];
+  /** Simulated public vote percentages keyed by candidate ID (integers, sum ≈ 100). */
+  votes: Record<string, number>;
+  /** ID of the winner once voting completes; null while in progress. */
+  winnerId: string | null;
+  /** Cash award amount for the winner (dollars). */
+  awardAmount: number;
+}
+
+// ─── Game history (immutable event log) ──────────────────────────────────────
+
+/**
+ * A single entry in the game-level history log.
+ * Twist decisions and major events are appended here for persistence and
+ * post-season display.
+ */
+export interface GameHistoryEvent {
+  /** Discriminant type for easy filtering. */
+  type: 'battleBack' | 'favoritePlayer' | string;
+  /** Week number when this event occurred. */
+  week: number;
+  /** Arbitrary per-type payload. */
+  data: Record<string, unknown>;
+  /** Unix timestamp (ms) when the event was recorded. */
+  timestamp: number;
 }
 
 export interface GameState {
@@ -327,6 +377,17 @@ export interface GameState {
    * Undefined until the twist is first attempted.
    */
   battleBack?: BattleBackState;
+  /**
+   * Public's Favorite Player voting state.
+   * Undefined until `startFavoritePlayerPhase` is dispatched.
+   * Feature-gated via settings.sim.enableFavoritePlayer.
+   */
+  favoritePlayer?: FavoritePlayerState;
+  /**
+   * Immutable history log of major game events (twists, special votes, etc.).
+   * Append-only; used for post-season display and debugging.
+   */
+  history?: GameHistoryEvent[];
   /**
    * When set, the VoteResultsPopup is shown with the vote tally before
    * advancing. Maps nominee ID → number of votes received.

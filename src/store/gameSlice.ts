@@ -887,7 +887,11 @@ const gameSlice = createSlice({
 
     /**
      * Activate the Battle Back twist after an eligible eviction.
-     * Sets `battleBack.active` (shows full-screen overlay) and records candidates.
+     * Sets `battleBack.active = true` (blocks advance()) and pushes a TV event
+     * with `major: 'twist'` so the TV filler shows an announcement.
+     * The full-screen competition overlay is NOT shown yet — it only opens after
+     * `openBattleBackCompetition` is dispatched (triggered by GameScreen once the
+     * TV announcement has been seen, ~5 s after activation).
      * Called by the `tryActivateBattleBack` thunk when the probability roll passes.
      */
     activateBattleBack(
@@ -897,19 +901,34 @@ const gameSlice = createSlice({
       const bb: BattleBackState = {
         used: false,
         active: true,
+        competitionActive: false,
         weekDecided: action.payload.week,
         candidates: action.payload.candidates,
-        eliminated: [],
-        votes: {},
         winnerId: null,
       };
       state.battleBack = bb;
       state.twistActive = true;
-      pushEvent(
-        state,
-        `🔥 TWIST: The Jury Return / Battle Back is underway! A juror will have a chance to return! 🏆`,
-        'twist',
-      );
+      // Push event WITH major: 'twist' so TvZone shows the TvAnnouncementOverlay.
+      const ts = Date.now();
+      const event = {
+        id: `${state.phase}-w${state.week}-${ts}-bb`,
+        text: `🔥 TWIST: The Jury Return / Battle Back is here! Jurors will compete for a chance to return! 🏆`,
+        type: 'twist' as const,
+        timestamp: ts,
+        major: 'twist',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    /**
+     * Open the full-screen Battle Back competition overlay.
+     * Called by GameScreen ~5 s after `activateBattleBack`, once the TV
+     * filler announcement has had time to be seen.
+     */
+    openBattleBackCompetition(state) {
+      if (state.battleBack && state.battleBack.active) {
+        state.battleBack.competitionActive = true;
+      }
     },
 
     /**
@@ -958,6 +977,110 @@ const gameSlice = createSlice({
         state.battleBack.used = true;
       }
       state.twistActive = false;
+    },
+
+    // ─── Public's Favorite Player twist actions ───────────────────────────────
+
+    /**
+     * Begin the Public's Favorite Player voting phase.
+     * Shows full-screen voting overlay after the finale winner reveal.
+     * Feature-gated via settings.sim.enableFavoritePlayer.
+     */
+    startFavoritePlayerPhase(
+      state,
+      action: PayloadAction<{ candidates: string[]; awardAmount: number }>,
+    ) {
+      state.favoritePlayer = {
+        active: true,
+        votingStarted: false,
+        candidates: action.payload.candidates,
+        eliminated: [],
+        votes: {},
+        winnerId: null,
+        awardAmount: action.payload.awardAmount,
+      };
+      state.twistActive = true;
+      // Push a TV event WITH major: 'twist' so the TV filler shows the announcement
+      // while the voting overlay waits for openFavoritePlayerVoting.
+      const ts = Date.now();
+      const event = {
+        id: `${state.phase}-w${state.week}-${ts}-fp`,
+        text: `⭐ AMERICA DECIDES: Vote for your Public's Favorite Player! 🏆`,
+        type: 'twist' as const,
+        timestamp: ts,
+        major: 'twist',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+      // Append a start event to game history
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:start',
+        week: state.week,
+        data: { candidates: action.payload.candidates, awardAmount: action.payload.awardAmount },
+        timestamp: Date.now(),
+      });
+    },
+
+    /**
+     * Open the full-screen Public's Favorite voting overlay.
+     * Called by GameScreen ~5 s after `startFavoritePlayerPhase`, once the TV
+     * filler announcement has had time to be seen.
+     */
+    openFavoritePlayerVoting(state) {
+      if (state.favoritePlayer && state.favoritePlayer.active) {
+        state.favoritePlayer.votingStarted = true;
+      }
+    },
+
+    /**
+     * Eliminate a candidate from the Public's Favorite voting.
+     * Called each time the lowest-voted candidate is removed.
+     */
+    eliminateFavoriteCandidate(state, action: PayloadAction<string>) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.active) return;
+      const elimId = action.payload;
+      if (!fp.eliminated.includes(elimId)) {
+        fp.eliminated.push(elimId);
+      }
+    },
+
+    /**
+     * Resolve the Public's Favorite Player vote with a winner.
+     * Closes the overlay and records the winner in state and history.
+     */
+    resolveFavoritePlayerWinner(state, action: PayloadAction<string>) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.active) return;
+      fp.winnerId = action.payload;
+      fp.active = false;
+      state.twistActive = false;
+      // Append a winner event to game history (append-only — do not mutate existing entry)
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:winner',
+        week: state.week,
+        data: { winnerId: action.payload, awardAmount: fp.awardAmount },
+        timestamp: Date.now(),
+      });
+    },
+
+    /**
+     * Award hook for the Public's Favorite Player prize.
+     * Currently a no-op that records intent in history.
+     * Future integrations can attach to this action to update player balances.
+     */
+    awardFavoritePrize(state) {
+      const fp = state.favoritePlayer;
+      if (!fp || !fp.winnerId) return;
+      // Append an award event to game history (balance update is left to future integration)
+      if (!state.history) state.history = [];
+      state.history.push({
+        type: 'favoritePlayer:award',
+        week: state.week,
+        data: { winnerId: fp.winnerId, awardAmount: fp.awardAmount },
+        timestamp: Date.now(),
+      });
     },
 
     // ─── Spectator overlay ────────────────────────────────────────────────────
@@ -1242,6 +1365,7 @@ const gameSlice = createSlice({
         state.awaitingFinal3Plea ||
         state.pendingEviction != null ||
         state.battleBack?.active ||
+        state.favoritePlayer?.active ||
         state.spectatorActive
       ) {
         return;
@@ -1922,6 +2046,12 @@ export const {
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,
+  openBattleBackCompetition,
+  startFavoritePlayerPhase,
+  openFavoritePlayerVoting,
+  eliminateFavoriteCandidate,
+  resolveFavoritePlayerWinner,
+  awardFavoritePrize,
   openSpectator,
   closeSpectator,
   setAwaitingFinal3Plea,

@@ -18,9 +18,11 @@ import gameReducer, {
   completeBattleBack,
   dismissBattleBack,
   tryActivateBattleBack,
+  openBattleBackCompetition,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
-import type { GameState, Player } from '../src/types';
+import type { GameState, Player, TvEvent } from '../src/types';
+import { simulateBattleBackCompetition } from '../src/features/twists/battleBackCompetition';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,24 +87,42 @@ function makeStore(
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('activateBattleBack', () => {
-  it('sets active=true and stores candidates', () => {
+  it('sets active=true, competitionActive=false, and stores candidates', () => {
     const store = makeStore();
     store.dispatch(activateBattleBack({ candidates: ['p1', 'p2', 'p3'], week: 4 }));
     const bb = store.getState().game.battleBack;
     expect(bb).toBeDefined();
     expect(bb!.active).toBe(true);
+    expect(bb!.competitionActive).toBe(false);
     expect(bb!.used).toBe(false);
     expect(bb!.candidates).toEqual(['p1', 'p2', 'p3']);
     expect(bb!.weekDecided).toBe(4);
-    expect(bb!.eliminated).toEqual([]);
     expect(bb!.winnerId).toBeNull();
   });
 
-  it('pushes a twist TV event', () => {
+  it('pushes a twist TV event with major:twist', () => {
     const store = makeStore();
     store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
     const events = store.getState().game.tvFeed;
-    expect(events.some((e) => e.type === 'twist' && /Battle Back/i.test(e.text))).toBe(true);
+    const battleBackEvent = events.find((e) => e.type === 'twist' && /Battle Back/i.test(e.text));
+    expect(battleBackEvent).toBeDefined();
+    expect((battleBackEvent as TvEvent)?.major).toBe('twist');
+  });
+});
+
+describe('openBattleBackCompetition', () => {
+  it('sets competitionActive=true when battleBack is active', () => {
+    const store = makeStore();
+    store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
+    expect(store.getState().game.battleBack!.competitionActive).toBe(false);
+    store.dispatch(openBattleBackCompetition());
+    expect(store.getState().game.battleBack!.competitionActive).toBe(true);
+  });
+
+  it('is a no-op when battleBack is not active', () => {
+    const store = makeStore();
+    store.dispatch(openBattleBackCompetition());
+    expect(store.getState().game.battleBack?.competitionActive).toBeUndefined();
   });
 });
 
@@ -304,5 +324,53 @@ describe('tryActivateBattleBack thunk', () => {
     );
     const activated = store.dispatch(tryActivateBattleBack() as Parameters<typeof store.dispatch>[0]);
     expect(activated).toBe(false);
+  });
+});
+
+// ── battleBackCompetition ────────────────────────────────────────────────────
+
+describe('simulateBattleBackCompetition', () => {
+  it('returns a winner from the candidate list', () => {
+    const candidates = ['p1', 'p2', 'p3', 'p4'];
+    const result = simulateBattleBackCompetition(candidates, 42);
+    expect(candidates).toContain(result.winnerId);
+  });
+
+  it('is deterministic — same seed always same winner', () => {
+    const candidates = ['p1', 'p2', 'p3'];
+    const r1 = simulateBattleBackCompetition(candidates, 99);
+    const r2 = simulateBattleBackCompetition(candidates, 99);
+    expect(r1.winnerId).toBe(r2.winnerId);
+    expect(r1.rounds).toEqual(r2.rounds);
+  });
+
+  it('differs with different seeds', () => {
+    const candidates = ['p1', 'p2', 'p3', 'p4', 'p5'];
+    const winners = new Set(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((s) => simulateBattleBackCompetition(candidates, s).winnerId),
+    );
+    // Different seeds should produce at least 2 different winners across 8 runs.
+    expect(winners.size).toBeGreaterThan(1);
+  });
+
+  it('returns at most 3 rounds', () => {
+    const candidates = ['p1', 'p2', 'p3'];
+    const result = simulateBattleBackCompetition(candidates, 7);
+    expect(result.rounds.length).toBeLessThanOrEqual(3);
+  });
+
+  it('winner has the most round wins', () => {
+    const candidates = ['p1', 'p2', 'p3'];
+    const result = simulateBattleBackCompetition(candidates, 12);
+    const winnerWins = result.roundWins[result.winnerId];
+    Object.values(result.roundWins).forEach((w) => {
+      expect(winnerWins).toBeGreaterThanOrEqual(w);
+    });
+  });
+
+  it('handles a single candidate (no rounds played)', () => {
+    const result = simulateBattleBackCompetition(['p1'], 42);
+    expect(result.winnerId).toBe('p1');
+    expect(result.rounds).toHaveLength(0);
   });
 });

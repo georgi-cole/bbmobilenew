@@ -18,7 +18,11 @@ import {
   selectFinale,
   selectRevealedJurors,
 } from '../../store/finaleSlice';
-import { finalizeGame } from '../../store/gameSlice';
+import {
+  finalizeGame,
+  startFavoritePlayerPhase,
+} from '../../store/gameSlice';
+import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
@@ -32,8 +36,14 @@ export default function FinalFaceoff() {
   const game = useAppSelector((s) => s.game);
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
+  const settings = useAppSelector(selectSettings);
 
   const jurorListRef = useRef<HTMLDivElement>(null);
+  // Keep a ref so the winner-persist effect can read players without adding
+  // game.players to its deps array (which would cause a re-run after
+  // finalizeGame mutates player statuses).
+  const playersRef = useRef(game.players);
+  useEffect(() => { playersRef.current = game.players; }, [game.players]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -89,9 +99,35 @@ export default function FinalFaceoff() {
       dispatch(
         finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
       );
-      navigate('/game-over');
+      // If Public's Favorite is enabled, set up the twist and dismiss FinalFaceoff
+      // so the game screen becomes visible and shows the TV filler announcement.
+      // GameScreen will then handle the voting overlay and navigate to /game-over.
+      const favEnabled =
+        settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
+      if (favEnabled && playersRef.current.length > 0) {
+        const allCandidates = playersRef.current.map((p) => p.id);
+        dispatch(
+          startFavoritePlayerPhase({
+            candidates: allCandidates,
+            awardAmount: settings.sim.favoritePlayerAwardAmount,
+          }),
+        );
+        // Dismiss FinalFaceoff so the game screen shows with the TV announcement.
+        dispatch(dismissFinale());
+      } else {
+        navigate('/game-over');
+      }
     }
-  }, [dispatch, navigate, finale.isComplete, finale.winnerId, finale.runnerUpId]);
+  }, [
+    dispatch,
+    navigate,
+    finale.isComplete,
+    finale.winnerId,
+    finale.runnerUpId,
+    settings.sim.enableFavoritePlayer,
+    settings.sim.enableTwists,
+    settings.sim.favoritePlayerAwardAmount,
+  ]);
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
   useEffect(() => {
