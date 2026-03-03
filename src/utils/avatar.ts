@@ -72,7 +72,7 @@ function capitalize(s: string): string {
  * Resolution order:
  *  1. player.avatar if already a full URL or absolute path
  *  2. Stable houseguest id candidates (matched by player.id then player.name):
- *       avatars/{hgId}.png, avatars/{HgId}.png, avatars/{hgId}.jpg, avatars/{HgId}.jpg
+ *       avatars/{HgId}.png, avatars/{hgId}.png, avatars/{HgId}.jpg, avatars/{hgId}.jpg
  *  3. Name-based candidates: avatars/CapitalizedName.png, avatars/lowercasename.png,
  *       avatars/{id}.png, avatars/{id}.jpg, avatars/CapitalizedName.jpg, avatars/lowercasename.jpg
  *  4. Dicebear SVG fallback
@@ -97,10 +97,10 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     const hgId = hg.id; // lowercase stable slug, e.g. 'finn'
     const hgIdCap = capitalize(hgId); // e.g. 'Finn'
     candidates.push(
-      joinAvatarPath(`${hgId}.png`),
       joinAvatarPath(`${hgIdCap}.png`),
-      joinAvatarPath(`${hgId}.jpg`),
+      joinAvatarPath(`${hgId}.png`),
       joinAvatarPath(`${hgIdCap}.jpg`),
+      joinAvatarPath(`${hgId}.jpg`),
     );
   }
 
