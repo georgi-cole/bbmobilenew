@@ -92,8 +92,9 @@ export default function HomeHub() {
           {/* Hero / icon area (no branding text — logo is shown in the splash) */}
           <div className="home-hub__hero" aria-hidden="true" />
 
-          {/* Button stack: only rendered once background is ready */}
-          {bgLoaded && (
+          {/* Button stack: only rendered once background is ready AND splash has dismissed,
+              to prevent accidental clicks through the pointer-events: none splash overlay. */}
+          {splashDone && bgLoaded && (
             <nav className="home-hub__buttons" aria-label="Main menu">
               {HUB_BUTTONS.map(({ to, label, variant }) => (
                 <button
