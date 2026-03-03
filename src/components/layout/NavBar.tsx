@@ -24,10 +24,12 @@ export default function NavBar() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  // Heuristic: treat the game as "active/in-progress" when the game phase
-  // is not the initial 'week_start'. Adjust to use a dedicated selector
-  // if/when one exists in the store.
-  const isGameActive = useAppSelector((s) => s.game.phase !== 'week_start');
+  // Heuristic: treat the game as "active/in-progress" when either we're past
+  // week 1 or the phase is not the initial 'week_start'. This mirrors the
+  // gameInProgress logic used elsewhere (e.g. in Settings).
+  const isGameActive = useAppSelector(
+    (s) => s.game.week > 1 || s.game.phase !== 'week_start',
+  );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -60,7 +62,7 @@ export default function NavBar() {
             return (
               <button
                 key={to}
-                className={`nav-bar__item${pathname === '/' ? ' nav-bar__item--active' : ''}`}
+                className="nav-bar__item"
                 onClick={handleHomeClick}
                 aria-label={label}
                 type="button"
