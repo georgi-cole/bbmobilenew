@@ -865,16 +865,43 @@ const gameSlice = createSlice({
 
     /**
      * Player voluntarily self-evicts from the Diary Room.
-     * Sets the player's status to 'evicted', removes them from nomineeIds,
-     * and pushes a TV event. The caller should navigate to /game-over after
-     * dispatching this action.
+     * Always sets the player's status to 'evicted' (never jury, regardless of jury
+     * threshold — self-eviction is not a normal eviction path).
+     * Clears any authoritative fields that reference the self-evicting player and
+     * resets all human-decision blocking flags so the store is in a clean state
+     * if the user navigates back (e.g., via the browser history).
+     * The caller should navigate to /self-evicted after dispatching this action.
      */
     selfEvict(state, action: PayloadAction<string>) {
       const playerId = action.payload;
       const player = state.players.find((p) => p.id === playerId);
       if (!player) return;
-      player.status = evictedStatus(state);
+
+      // Always 'evicted', never 'jury', for self-evictions.
+      player.status = 'evicted';
       state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId);
+
+      // Clear fields that directly reference this player to avoid dangling IDs.
+      if (state.hohId === playerId) state.hohId = null;
+      if (state.povWinnerId === playerId) state.povWinnerId = null;
+      if (state.povSavedId === playerId) state.povSavedId = null;
+      if (state.pendingNominee1Id === playerId) state.pendingNominee1Id = null;
+      if (state.pendingEviction?.evicteeId === playerId) state.pendingEviction = null;
+
+      // Clear human-decision blocking flags so advance() can run cleanly.
+      state.replacementNeeded = false;
+      state.awaitingNominations = false;
+      state.awaitingPovDecision = false;
+      state.awaitingPovSaveTarget = false;
+      state.awaitingHumanVote = false;
+      state.awaitingTieBreak = false;
+      state.tiedNomineeIds = null;
+      state.awaitingFinal3Eviction = false;
+      state.awaitingFinal3Plea = false;
+      state.evictionSplashId = null;
+      state.votes = {};
+      state.voteResults = null;
+
       pushEvent(
         state,
         `${player.name} has chosen to self-evict from the Big Brother house. 🚪`,

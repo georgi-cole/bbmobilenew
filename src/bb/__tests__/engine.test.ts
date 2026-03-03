@@ -217,6 +217,46 @@ describe('detectIntent', () => {
   it('new phrase: "I want to leave the show" -> quit', () => {
     expect(detectIntent('I want to leave the show')).toBe('quit');
   });
+
+  // ── New regex patterns (flexible natural language) ────────────────────────
+
+  it('regex: "I wanna leave" -> quit', () => {
+    expect(detectIntent('I wanna leave')).toBe('quit');
+  });
+
+  it('proximity: "I\'ve had enough, I want to quit" -> quit (proximity detection)', () => {
+    expect(detectIntent("I've had enough, I want to quit")).toBe('quit');
+  });
+
+  it('regex: "I\'m sick of this" -> quit', () => {
+    expect(detectIntent("I'm sick of this")).toBe('quit');
+  });
+
+  it('regex: "I\'m fed up" -> quit', () => {
+    expect(detectIntent("I'm fed up")).toBe('quit');
+  });
+
+  it('regex: "I\'m done with this" -> quit', () => {
+    expect(detectIntent("I'm done with this")).toBe('quit');
+  });
+
+  it('regex: "I can\'t take this anymore" -> quit', () => {
+    expect(detectIntent("I can't take this anymore")).toBe('quit');
+  });
+
+  // ── Proximity detection (Phase 3 — natural language combos) ──────────────
+
+  it('proximity: "I\'ve had it, I wanna leave" -> quit', () => {
+    expect(detectIntent("I've had it, I wanna leave")).toBe('quit');
+  });
+
+  it('proximity: "I\'m tired of everything, I\'m leaving" -> quit', () => {
+    expect(detectIntent("I'm tired of everything, I'm leaving")).toBe('quit');
+  });
+
+  it('proximity: "Fed up with the house, time to quit" -> quit', () => {
+    expect(detectIntent('Fed up with the house, time to quit')).toBe('quit');
+  });
 });
 
 // ─── bigBrotherReply ──────────────────────────────────────────────────────────

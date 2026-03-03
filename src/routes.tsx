@@ -21,6 +21,7 @@ import Credits              from './screens/Credits/Credits';
 import Week                 from './screens/Week/Week';
 import CreatePlayer         from './screens/CreatePlayer/CreatePlayer';
 import GameOver             from './screens/GameOver/GameOver';
+import SelfEvicted          from './screens/SelfEvicted/SelfEvicted';
 import Rules                from './screens/Rules/Rules';
 import Settings             from './screens/Settings/Settings';
 import NotFound             from './screens/NotFound/NotFound';
@@ -49,6 +50,7 @@ export const router = createHashRouter([
       { path: 'week',             element: <Week />         },
       { path: 'create-player',    element: <CreatePlayer /> },
       { path: 'game-over',        element: <GameOver />     },
+      { path: 'self-evicted',     element: <SelfEvicted />  },
       { path: 'rules',            element: <Rules />        },
       { path: 'settings',         element: <Settings />     },
       ...(import.meta.env.DEV && TwistsTestPage != null

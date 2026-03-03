@@ -422,7 +422,7 @@ export default function DiaryRoom() {
         onConfirm={() => {
           setShowSelfEvictConfirm(false);
           dispatch(selfEvict(playerId));
-          navigate('/game-over');
+          navigate('/self-evicted');
         }}
         onCancel={() => setShowSelfEvictConfirm(false)}
       />
