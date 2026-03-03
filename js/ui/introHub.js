@@ -129,14 +129,13 @@
 
   /**
    * Open the Settings panel.
-   * Uses window.game.settings.open() if available,
-   * otherwise navigates to the settings route via the hash router.
+   * Uses the hash router as the primary action (always reliable).
+   * Also calls window.game.settings.open() if present for any additional setup.
    */
   function openSettings() {
+    global.location.hash = '#/settings';
     if (g.settings && typeof g.settings.open === 'function') {
       g.settings.open();
-    } else {
-      global.location.hash = '#/settings';
     }
   }
 
@@ -244,6 +243,21 @@
   }
 
   /**
+   * Toggle the inactive visual state of a chip.
+   * @param {string} id     - Chip id (e.g. 'music', 'sounds')
+   * @param {boolean} active - true = active (no overlay), false = inactive (dimmed + slash)
+   */
+  function toggleChipVisual(id, active) {
+    var el = chipElements[id];
+    if (!el) return;
+    if (active) {
+      el.classList.remove('hub-chip--inactive');
+    } else {
+      el.classList.add('hub-chip--inactive');
+    }
+  }
+
+  /**
    * Set or clear a notification dot on a chip.
    * @param {string} id    - Chip id (e.g. 'news')
    * @param {boolean} show - true to show dot, false to hide
@@ -313,6 +327,7 @@
     setNotification: setNotification,
     refreshNotifications: refreshNotifications,
     init: init,
+    toggleChipVisual: toggleChipVisual,
   };
 
   // Expose houseguests panel hook (can be overridden before this module loads)

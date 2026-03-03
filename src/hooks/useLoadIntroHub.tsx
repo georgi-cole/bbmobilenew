@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 
 interface GameWindow {
-  game?: { hubNotifications?: Record<string, boolean> };
+  game?: {
+    hubNotifications?: Record<string, boolean>;
+    hub?: { init?: (container: HTMLElement) => void };
+  };
 }
 
 export default function useLoadIntroHub() {
@@ -42,14 +45,18 @@ export default function useLoadIntroHub() {
       }
     }
 
-    // Helper to inject a script tag (ordered, sync) if missing, with onerror fallback
-    function ensureScript(src: string) {
+    // Helper to inject a script tag (ordered, sync) if missing, with onerror fallback.
+    // An optional onLoaded callback fires once the script executes successfully.
+    function ensureScript(src: string, onLoaded?: () => void) {
       const existing = Array.from(document.querySelectorAll('script'));
       if (!existing.some(el => el.getAttribute('src') === src)) {
         const s = document.createElement('script');
         s.src = src;
         s.async = false; // preserve execution order
-        s.onload = () => console.debug('[IntroHub] Script loaded:', src);
+        s.onload = () => {
+          console.debug('[IntroHub] Script loaded:', src);
+          if (onLoaded) onLoaded();
+        };
         s.onerror = () => {
           console.warn('[IntroHub] Script failed to load:', src);
           // Attempt fallback path
@@ -61,7 +68,10 @@ export default function useLoadIntroHub() {
               const sAlt = document.createElement('script');
               sAlt.src = altSrc;
               sAlt.async = false;
-              sAlt.onload = () => console.debug('[IntroHub] Script loaded (alt):', altSrc);
+              sAlt.onload = () => {
+                console.debug('[IntroHub] Script loaded (alt):', altSrc);
+                if (onLoaded) onLoaded();
+              };
               sAlt.onerror = () => console.error('[IntroHub] Script failed to load (alt):', altSrc);
               document.body.appendChild(sAlt);
             }
@@ -75,19 +85,27 @@ export default function useLoadIntroHub() {
     ensureCss(`${basePath}css/intro-hub.css`);
     ensureCss(`${basePath}css/houseguests-modal.css`);
 
-    // Load data and UI scripts in order
-    const scripts = [
-      `${basePath}js/data/houseguests.js`,
-      `${basePath}js/ui/houseguestsModal.js`,
-      `${basePath}js/ui/introHub.js`
-    ];
+    // Helper to (re-)initialize hub chips into the #intro-hub container.
+    function initHubNow() {
+      const container = document.getElementById('intro-hub');
+      const gw = window as Window & GameWindow;
+      if (container && gw.game?.hub?.init) {
+        gw.game.hub.init(container);
+      }
+    }
 
-    scripts.forEach(src => ensureScript(src));
+    // Load data and UI scripts in order.
+    // For introHub.js, pass initHubNow so chips are rendered as soon as it loads.
+    ensureScript(`${basePath}js/data/houseguests.js`);
+    ensureScript(`${basePath}js/ui/houseguestsModal.js`);
+    ensureScript(`${basePath}js/ui/introHub.js`, initHubNow);
 
-    // Optional: set a small flag you can toggle to show badges in the hub for testing
-    const w = window as Window & GameWindow;
-    w.game = w.game || {};
-    w.game.hubNotifications = w.game.hubNotifications || { news: true };
+    // If introHub.js was already loaded from a previous mount, g.hub.init exists —
+    // call it directly so chips are re-rendered into the freshly mounted #intro-hub.
+    const gw = window as Window & GameWindow;
+    gw.game = gw.game || {};
+    gw.game.hubNotifications = gw.game.hubNotifications || { news: true };
+    initHubNow();
 
     // No cleanup (we intentionally leave scripts/styles in place for app lifecycle)
   }, []);

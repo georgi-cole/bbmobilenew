@@ -40,8 +40,8 @@ declare global {
     toggleIntroHubSfx?: () => void;
   }
 }
-window._introhubMusicOn = false;
-window._introhubSfxOn = true;
+window._introhubMusicOn = store.getState().settings.audio.musicOn;
+window._introhubSfxOn = store.getState().settings.audio.sfxOn;
 window.toggleIntroHubMusic = function () {
   window._introhubMusicOn = !window._introhubMusicOn;
   if (window._introhubMusicOn) {
