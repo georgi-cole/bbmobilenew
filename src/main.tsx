@@ -42,17 +42,34 @@ declare global {
 }
 const MUSIC_STORAGE_KEY = 'introhub_music_on';
 const SFX_STORAGE_KEY   = 'introhub_sfx_on';
-const _storedMusic = localStorage.getItem(MUSIC_STORAGE_KEY);
-const _storedSfx   = localStorage.getItem(SFX_STORAGE_KEY);
-window._introhubMusicOn = _storedMusic !== null ? _storedMusic === 'true' : store.getState().settings.audio.musicOn;
-window._introhubSfxOn   = _storedSfx   !== null ? _storedSfx   === 'true' : store.getState().settings.audio.sfxOn;
+
+function safeGetBooleanFromStorage(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const defaultMusicOn = store.getState().settings.audio.musicOn;
+const defaultSfxOn   = store.getState().settings.audio.sfxOn;
+
+window._introhubMusicOn = safeGetBooleanFromStorage(MUSIC_STORAGE_KEY, defaultMusicOn);
+window._introhubSfxOn   = safeGetBooleanFromStorage(SFX_STORAGE_KEY, defaultSfxOn);
 // Apply persisted SFX state to all non-music categories on startup
 (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
   SoundManager.setCategoryEnabled(cat, !!window._introhubSfxOn)
 );
 window.toggleIntroHubMusic = function () {
   window._introhubMusicOn = !window._introhubMusicOn;
-  localStorage.setItem(MUSIC_STORAGE_KEY, String(window._introhubMusicOn));
+  try {
+    localStorage.setItem(MUSIC_STORAGE_KEY, String(window._introhubMusicOn));
+  } catch (err) {
+    console.warn('[introHub] Failed to persist music toggle state:', err);
+  }
   console.debug('[introHub] toggleIntroHubMusic ->', window._introhubMusicOn);
   if (window._introhubMusicOn) {
     void SoundManager.playMusic('music:intro_hub_loop');
@@ -62,7 +79,11 @@ window.toggleIntroHubMusic = function () {
 };
 window.toggleIntroHubSfx = function () {
   window._introhubSfxOn = !window._introhubSfxOn;
-  localStorage.setItem(SFX_STORAGE_KEY, String(window._introhubSfxOn));
+  try {
+    localStorage.setItem(SFX_STORAGE_KEY, String(window._introhubSfxOn));
+  } catch (err) {
+    console.warn('[introHub] Failed to persist SFX toggle state:', err);
+  }
   console.debug('[introHub] toggleIntroHubSfx ->', window._introhubSfxOn);
   // Toggle all non-music sound categories
   (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
