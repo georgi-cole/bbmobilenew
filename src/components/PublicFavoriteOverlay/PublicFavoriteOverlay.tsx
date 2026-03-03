@@ -54,7 +54,7 @@ export default function PublicFavoriteOverlay({
   eliminationIntervalMs = ELIM_INTERVAL_MS,
   onComplete,
 }: Props) {
-  const [step, setStep] = useState<Step>('voting');
+  const [step] = useState<Step>('voting');
   const firedRef = useRef(false);
 
   // Stable ID list avoids hook dep churn during a single session.

@@ -25,7 +25,7 @@ import gameReducer, {
   awardFavoritePrize,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
-import type { GameState, Player } from '../src/types';
+import type { GameState, Player, TvEvent } from '../src/types';
 import { createVoteSimulator } from '../src/utils/voteSimulator';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ describe('startFavoritePlayerPhase', () => {
     const events = store.getState().game.tvFeed;
     const ev = events.find((e) => e.type === 'twist');
     expect(ev).toBeDefined();
-    expect((ev as any)?.major).toBe('twist');
+    expect((ev as TvEvent)?.major).toBe('twist');
   });
 });
 
