@@ -287,6 +287,43 @@ export default function Settings() {
               </div>
             )}
 
+            {settings.sim.enableTwists && (
+              <>
+                <div className="settings-row">
+                  <label className="settings-row__label">Public's Favorite (America's Vote)</label>
+                  <input
+                    type="checkbox"
+                    className="settings-toggle"
+                    checked={settings.sim.enableFavoritePlayer}
+                    onChange={(e) => dispatch(setSim({ enableFavoritePlayer: e.target.checked }))}
+                    aria-label="Toggle Public's Favorite Player vote"
+                  />
+                </div>
+
+                {settings.sim.enableFavoritePlayer && (
+                  <div className="settings-row settings-row--col">
+                    <label className="settings-row__label">
+                      Award Amount — ${settings.sim.favoritePlayerAwardAmount ?? 25000}
+                    </label>
+                    <input
+                      type="number"
+                      className="settings-number"
+                      min={0}
+                      step={1000}
+                      value={settings.sim.favoritePlayerAwardAmount ?? 25000}
+                      onChange={(e) =>
+                        dispatch(setSim({ favoritePlayerAwardAmount: Number(e.target.value || 0) }))
+                      }
+                      aria-label="Public's Favorite award amount"
+                    />
+                    <p className="settings-helper-text">
+                      Cash prize awarded to the Public's Favorite Player (requires Twists on).
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
             <div className="settings-row">
               <label className="settings-row__label">Spectator Mode</label>
               <input
