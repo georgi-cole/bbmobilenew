@@ -88,7 +88,10 @@ export default function FloatingActionBar() {
         type="button"
         aria-label="Advance to next phase"
         disabled={isWaiting}
-        onClick={() => dispatch(advance())}
+        onClick={() => {
+          dispatch(advance())
+          try { window.dispatchEvent(new CustomEvent('ui:playPressed')) } catch { }
+        }}
       >
         ▶
       </button>
