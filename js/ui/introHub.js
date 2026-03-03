@@ -147,15 +147,7 @@
     if (typeof global.toggleIntroHubMusic === 'function') {
       global.toggleIntroHubMusic();
     }
-    var on = !!global._introhubMusicOn;
-    var el = chipElements['music'];
-    if (el) {
-      if (!on) {
-        el.classList.add('hub-chip--inactive');
-      } else {
-        el.classList.remove('hub-chip--inactive');
-      }
-    }
+    toggleChipVisual('music', !!global._introhubMusicOn);
   }
 
   /**
@@ -166,15 +158,7 @@
     if (typeof global.toggleIntroHubSfx === 'function') {
       global.toggleIntroHubSfx();
     }
-    var on = global._introhubSfxOn !== false;
-    var el = chipElements['sounds'];
-    if (el) {
-      if (!on) {
-        el.classList.add('hub-chip--inactive');
-      } else {
-        el.classList.remove('hub-chip--inactive');
-      }
-    }
+    toggleChipVisual('sounds', global._introhubSfxOn !== false);
   }
 
   /**

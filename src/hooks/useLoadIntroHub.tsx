@@ -46,7 +46,7 @@ export default function useLoadIntroHub() {
     }
 
     // Helper to inject a script tag (ordered, sync) if missing, with onerror fallback.
-    // An optional onLoaded callback fires once the script executes successfully.
+    // If this helper loads the script successfully, an optional onLoaded callback is invoked.
     function ensureScript(src: string, onLoaded?: () => void) {
       const existing = Array.from(document.querySelectorAll('script'));
       if (!existing.some(el => el.getAttribute('src') === src)) {
