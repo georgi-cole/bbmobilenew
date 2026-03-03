@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
-import IntroSplash from '../../components/IntroSplash/IntroSplash';
+import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
 import { SoundManager } from '../../services/sound/SoundManager';
@@ -15,8 +15,8 @@ import './HomeHub.css';
  * To add a new hub button: add an entry to HUB_BUTTONS.
  *
  * Load ordering:
- *   1. IntroSplash shown — logo only, no dialogs, hub preloads in background.
- *   2. Splash fades out once logo has loaded and minVisibleMs has elapsed.
+ *   1. KolequantSplash shown — logo only, no dialogs, hub preloads in background.
+ *   2. Splash fades out after ~1.2s animation completes automatically.
  *   3. IMPORTANT — background loaded first: hub background is preloaded during
  *      the splash so buttons never appear over an empty background.
  *   4. After splash exits, PermissionPrompts appear over the hub (location only;
@@ -35,7 +35,7 @@ const HUB_BUTTONS = [
 export default function HomeHub() {
   const navigate = useNavigate();
   const { url: bgUrl } = useBackgroundTheme();
-  const [showSplash, setShowSplash] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -64,14 +64,14 @@ export default function HomeHub() {
   return (
     <>
       {/* Cold-load intro splash — logo only, hub preloads in background.
-          Exits automatically once logo has loaded and the minimum timer fires. */}
-      {showSplash && (
-        <IntroSplash onDone={() => setShowSplash(false)} />
+          Exits automatically after the animation completes (~1.2s). */}
+      {!splashDone && (
+        <KolequantSplash onFinish={() => setSplashDone(true)} />
       )}
 
       {/* Permission prompts shown after splash exits, over the hub.
           Sound prompt disabled — sound is unlocked via the Play gesture. */}
-      {!showSplash && (
+      {splashDone && (
         <PermissionPrompts showSoundPrompt={false} />
       )}
 
