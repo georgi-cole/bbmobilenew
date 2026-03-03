@@ -40,14 +40,20 @@ declare global {
     toggleIntroHubSfx?: () => void;
   }
 }
-window._introhubMusicOn = store.getState().settings.audio.musicOn;
-window._introhubSfxOn = store.getState().settings.audio.sfxOn;
+const MUSIC_STORAGE_KEY = 'introhub_music_on';
+const SFX_STORAGE_KEY   = 'introhub_sfx_on';
+const _storedMusic = localStorage.getItem(MUSIC_STORAGE_KEY);
+const _storedSfx   = localStorage.getItem(SFX_STORAGE_KEY);
+window._introhubMusicOn = _storedMusic !== null ? _storedMusic === 'true' : store.getState().settings.audio.musicOn;
+window._introhubSfxOn   = _storedSfx   !== null ? _storedSfx   === 'true' : store.getState().settings.audio.sfxOn;
 // Apply persisted SFX state to all non-music categories on startup
 (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
   SoundManager.setCategoryEnabled(cat, !!window._introhubSfxOn)
 );
 window.toggleIntroHubMusic = function () {
   window._introhubMusicOn = !window._introhubMusicOn;
+  localStorage.setItem(MUSIC_STORAGE_KEY, String(window._introhubMusicOn));
+  console.debug('[introHub] toggleIntroHubMusic ->', window._introhubMusicOn);
   if (window._introhubMusicOn) {
     void SoundManager.playMusic('music:intro_hub_loop');
   } else {
@@ -56,6 +62,8 @@ window.toggleIntroHubMusic = function () {
 };
 window.toggleIntroHubSfx = function () {
   window._introhubSfxOn = !window._introhubSfxOn;
+  localStorage.setItem(SFX_STORAGE_KEY, String(window._introhubSfxOn));
+  console.debug('[introHub] toggleIntroHubSfx ->', window._introhubSfxOn);
   // Toggle all non-music sound categories
   (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat =>
     SoundManager.setCategoryEnabled(cat, !!window._introhubSfxOn)
