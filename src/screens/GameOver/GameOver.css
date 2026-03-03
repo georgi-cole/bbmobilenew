@@ -177,3 +177,98 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--color-text-muted);
 }
+
+/* ── Rotating scoreboard carousel ─────────────────────────────────────────── */
+
+.gameover-carousel {
+  position: relative;
+  min-height: 130px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.gameover-carousel__slide {
+  display: none;
+  animation: carousel-fade-in 0.4s ease;
+}
+
+.gameover-carousel__slide--active {
+  display: block;
+}
+
+@keyframes carousel-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gameover-carousel__heading {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-gold-secondary);
+}
+
+.gameover-carousel__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.gameover-carousel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s;
+}
+
+.gameover-carousel__dot--active {
+  background: var(--color-gold-secondary);
+}
+
+/* ── Scoreboard list ─────────────────────────────────────────────────────── */
+
+.gameover-scoreboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gameover-scoreboard__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.gameover-scoreboard__rank {
+  min-width: 26px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.gameover-scoreboard__name {
+  flex: 1;
+  font-weight: 600;
+  text-align: left;
+}
+
+.gameover-scoreboard__score {
+  font-weight: 700;
+  color: var(--color-gold-secondary);
+  font-size: 0.78rem;
+}
+

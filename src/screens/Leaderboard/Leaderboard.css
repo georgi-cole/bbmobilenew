@@ -1,4 +1,28 @@
 /* Leaderboard */
+.leaderboard-screen__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.leaderboard-screen__tab {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.leaderboard-screen__tab--active {
+  background: var(--color-accent);
+  color: var(--color-text);
+  border-color: transparent;
+}
+
 .leaderboard-screen__list {
   list-style: none;
   margin: 0;
@@ -7,22 +31,33 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .leaderboard-screen__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   background: var(--color-card);
   border-radius: 12px;
-  padding: 10px 14px;
   border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
 }
 
 .leaderboard-screen__row--you {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 10px rgba(99,102,241,0.25);
+  border-color: var(--color-gold-secondary);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-gold-secondary) 20%, transparent);
+}
+
+.leaderboard-screen__row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 10px 14px;
+  text-align: left;
+  font-family: inherit;
 }
 
 .leaderboard-screen__rank {
@@ -30,11 +65,6 @@
   font-weight: 700;
   color: var(--color-text-muted);
   min-width: 28px;
-}
-
-.leaderboard-screen__avatar {
-  font-size: 1.5rem;
-  line-height: 1;
 }
 
 .leaderboard-screen__name {
@@ -47,4 +77,32 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--color-accent);
+}
+
+.leaderboard-screen__score--you {
+  color: var(--color-gold-secondary);
+}
+
+.leaderboard-screen__chevron {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+
+.leaderboard-screen__breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.leaderboard-screen__empty {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 20px 0;
 }
