@@ -11,21 +11,31 @@
  * - requestAnimationFrame loop; cleanup on unmount.
  * - Respects prefers-reduced-motion: disables beam sweep and flicker and shows credits normally.
  * - Skip button and ESC key call `onDone()` which navigates back to '/'.
+ *
+ * Developer Testing:
+ * - Run `npm run dev` then open http://localhost:5173/#/credits
+ * - Or run `npm run build && npm run preview` then open http://localhost:4173/#/credits
+ * - Check the browser console for:
+ *     [CreditsScene] mounted  — confirms the component mounted correctly
+ *     [CreditsScene] canvas init error — indicates a runtime canvas failure
+ * - If the canvas fails, a friendly fallback message is shown instead.
+ * - See src/screens/Credits/README.md for full local testing guide.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import creditsData from '../../data/credits';
 import './Credits.css';
 
 type CreditEntry = { role: string; name: string };
 
-export default function Credits(): JSX.Element {
+export default function Credits() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null); // credits offscreen canvas
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1);
+  const [errored, setErrored] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Reduced motion preference
@@ -43,16 +53,23 @@ export default function Credits(): JSX.Element {
   }
 
   useEffect(() => {
+    console.info('[CreditsScene] mounted', { url: window.location.href, env: import.meta.env.MODE });
+
     const canvas = canvasRef.current!;
     const container = containerRef.current!;
     if (!canvas || !container) return;
 
-    const ctx = canvas.getContext('2d', { alpha: false })!;
+    let cleanupFn: (() => void) | undefined;
+    try {
+    const ctxOrNull = canvas.getContext('2d', { alpha: false });
+    if (!ctxOrNull) throw new Error('Failed to acquire 2d canvas context');
+    const ctx: CanvasRenderingContext2D = ctxOrNull;
     // Offscreen canvas: render credits text once
     const creditsCanvas = document.createElement('canvas');
     offscreenRef.current = creditsCanvas;
-    const creditsCtx = creditsCanvas.getContext('2d', { alpha: true })!;
-
+    const creditsCtxOrNull = creditsCanvas.getContext('2d', { alpha: true });
+    if (!creditsCtxOrNull) throw new Error('Failed to acquire offscreen 2d canvas context');
+    const creditsCtx: CanvasRenderingContext2D = creditsCtxOrNull;
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let width = Math.max(320, Math.floor(container.clientWidth));
     let height = Math.max(480, Math.floor(container.clientHeight));
@@ -85,7 +102,6 @@ export default function Credits(): JSX.Element {
     function genBuildings() {
       buildings.length = 0;
       // horizontal layout across width
-      const cols = Math.max(6, Math.floor(width / 90));
       let x = 0;
       while (x < width) {
         const w = Math.max(40, Math.floor(30 + Math.random() * 120));
@@ -114,7 +130,6 @@ export default function Credits(): JSX.Element {
     let creditsBlockHeight = 0;
     function preRenderCredits() {
       const padding = 40;
-      const colWidth = width - padding * 2;
       const lines: string[] = [];
       // Build lines from creditsData (simple formatting)
       creditsData.forEach((c: CreditEntry) => {
@@ -124,7 +139,6 @@ export default function Credits(): JSX.Element {
       });
 
       // Typographic settings
-      const titleFont = `${Math.floor(Math.max(18, width * 0.04))}px sans-serif`;
       const roleFont = `${Math.floor(Math.max(14, width * 0.035))}px sans-serif`;
       const nameFont = `${Math.floor(Math.max(16, width * 0.04))}px sans-serif`;
       const lineGap = Math.floor(Math.max(8, width * 0.015));
@@ -171,7 +185,7 @@ export default function Credits(): JSX.Element {
         creditsCtx.shadowBlur = 6;
         creditsCtx.fillText(ln.text, width / 2, yy);
         creditsCtx.shadowBlur = 0;
-        yy += Math.ceil((creditsCtx.measureText(ln.text || ' ').actualBoundingBoxAscent + creditsCtx.measureText(ln.text || ' ').actualBoundingBoxDescent) || parseInt(ln.font, 10) * 1.15) + lineGap);
+        yy += Math.ceil((creditsCtx.measureText(ln.text || ' ').actualBoundingBoxAscent + creditsCtx.measureText(ln.text || ' ').actualBoundingBoxDescent) || parseInt(ln.font, 10) * 1.15) + lineGap;
       }
     }
 
@@ -260,7 +274,7 @@ export default function Credits(): JSX.Element {
       // compute beam angle
       const sweepAngle = beamSweep * beamSweepRange;
       const beamAngle = beamAngleCenter + sweepAngle;
-      const beamHalfWidth = Math.max(width * 0.14, width * 0.09) * (1 + 0.06 * Math.sin(now / 700)); // pulses
+      // pulses variable available for future variable-width beam rendering
 
       // scroll update
       scrollY -= ((scrollSpeed * speedMultiplier) * (dt / 1000));
@@ -379,14 +393,33 @@ export default function Credits(): JSX.Element {
     canvas.addEventListener('click', handleToggleSpeed);
 
     // Cleanup on unmount
-    return () => {
+    cleanupFn = () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('keydown', onKey);
       canvas.removeEventListener('click', handleToggleSpeed);
     };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error('[CreditsScene] canvas init error', { message, stack, url: window.location.href });
+      setErrored(message);
+    }
+    return () => cleanupFn?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speedMultiplier, prefersReduced, navigate]);
+
+  if (errored !== null) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#000', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, gap: 16, padding: 24, textAlign: 'center' }}>
+        <p style={{ fontSize: 18, margin: 0 }}>Credits unavailable</p>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0 }}>A rendering error occurred. Check the console for details.</p>
+        <button onClick={onDone} style={{ marginTop: 8, padding: '10px 20px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, cursor: 'pointer', fontSize: 15 }}>
+          Return to Home
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="credits-container" ref={containerRef}>
