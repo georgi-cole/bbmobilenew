@@ -200,17 +200,47 @@ interface IntentSpec {
   weight: number;
 }
 
+/**
+ * Tokens indicating a clear desire to leave/exit — used in proximity-based
+ * quit detection (Phase 3 of detectIntent).
+ */
+const QUIT_DEPARTURE_TOKENS = new Set(['leave', 'leaving', 'quit', 'quitting', 'exit', 'exiting']);
+
+/**
+ * Frustration/exhaustion bigrams that, when found near a departure token,
+ * signal quit intent in natural-language phrasings like "I've had it, I wanna leave".
+ * Uses the bigram form (space-joined token pair) to avoid single-word false positives.
+ */
+const QUIT_FRUSTRATION_BIGRAMS = new Set([
+  'had it', 'had enough', 'fed up', 'sick of', 'tired of',
+  'burned out', 'burnt out', 'done with', 'over it', 'over this',
+  "can't take", "can't handle", "can't do",
+]);
+
 const INTENT_SPECS: Record<Exclude<IntentId, 'safety'>, IntentSpec> = {
   quit: {
     phrases: [
       'want to quit', 'want to leave', 'thinking about leaving', 'want to go home',
       'want out', 'ready to quit', 'need to leave', 'want to walk away',
       'should i leave', 'should i quit', 'thinking of quitting', 'ready to leave',
+      'want to leave the house', 'want to get out', 'want out of the house',
+      'need to get out', 'want to quit this', 'want to quit the show',
+      'want to leave the show',
+      // Idiomatic frustration phrases (negation-safe via Phase 1 negation window check)
+      'fed up',
     ],
     patterns: [
       /\b(quit|walk out|walk away|forfeit)\b.{0,20}\b(game|house|show|this)\b/i,
       /\b(can'?t (do|handle|take) this anymore|done with this|over it)\b/i,
       /\b(give up|leave the house|leave this game)\b/i,
+      // Natural-language variations: "wanna leave", "gonna quit", "going to get out"
+      /\b(wanna|gonna|gotta|going\s+to|want\s+to|need\s+to)\s+(leave|go\s+home|get\s+out|walk\s+out|quit)\b/i,
+      // Disgust/frustration with explicit context: "sick of this", "tired of the game"
+      /\b(sick|tired)\s+of\s+(this|it|all|everything|the\s+(?:house|show|game))\b/i,
+      // "done with this / done here"
+      /\b(done\s+(?:with\s+(?:this|it|everything)|here))\b/i,
+      // "can't take this / can't handle it anymore"
+      /\b(can'?t\s+(?:take|handle|do|deal\s+with)\s+(?:this|it)(?:\s+anymore)?)\b/i,
     ],
     sentimentBias: -0.5,
     weight: 1.4,
@@ -424,6 +454,39 @@ export function detectIntent(text: string): IntentId {
 
     if (intentScore > 0) {
       scores[intentKey] = intentScore;
+    }
+  }
+
+  // Phase 3 (quit only): proximity-based semantic detection.
+  // Catches natural phrasings like "I've had it, I wanna leave" where neither
+  // sub-phrase alone matches a hardcoded phrase or pattern. Fires when the text
+  // contains both a frustration bigram and a departure token, neither negated.
+  {
+    const textBigrams = bigrams(tokens);
+    let frustrationSignal = false;
+    let departureSignal = false;
+
+    for (let i = 0; i < textBigrams.length; i++) {
+      // Check neither token of the bigram is in a negation window
+      const secondTokenIdx = i + 1;
+      if (
+        !mask[i] &&
+        (secondTokenIdx >= tokens.length || !mask[secondTokenIdx]) &&
+        QUIT_FRUSTRATION_BIGRAMS.has(textBigrams[i])
+      ) {
+        frustrationSignal = true;
+        break;
+      }
+    }
+    for (let i = 0; i < tokens.length; i++) {
+      if (!mask[i] && QUIT_DEPARTURE_TOKENS.has(tokens[i])) {
+        departureSignal = true;
+        break;
+      }
+    }
+
+    if (frustrationSignal && departureSignal) {
+      scores['quit'] = (scores['quit'] ?? 0) + INTENT_SPECS.quit.weight;
     }
   }
 
