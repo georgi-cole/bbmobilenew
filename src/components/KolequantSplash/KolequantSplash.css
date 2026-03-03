@@ -13,19 +13,35 @@
   width: min(44vmin, 220px);
   max-width: 280px;
   opacity: 0;
-  transform: scale(0.96);
+  transform: scale(0.96) translateY(8px);
+  animation: kq-logo-in var(--kq-splash-duration, 1.2s) ease forwards;
+}
+/* Copyright pinned to the bottom of the splash overlay, fades with the logo */
+.kq-splash__copyright {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  opacity: 0;
   animation: kq-fade var(--kq-splash-duration, 1.2s) ease forwards;
 }
-.kq-splash__copyright {
-  margin-top: 12px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 0.85rem;
+/* Logo: slides up while fading in, then fades out */
+@keyframes kq-logo-in {
+  0%   { opacity: 0; transform: scale(0.96) translateY(8px); }
+  22%  { opacity: 1; transform: scale(1)    translateY(0);   }
+  78%  { opacity: 1; transform: scale(1)    translateY(0);   }
+  100% { opacity: 0; transform: scale(0.98) translateY(-4px); }
 }
+/* Copyright: simple fade in / hold / fade out matching the logo timing */
 @keyframes kq-fade {
-  0%   { opacity: 0; transform: scale(0.96); }
-  20%  { opacity: 1; transform: scale(1); }
-  80%  { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.98); }
+  0%   { opacity: 0; }
+  22%  { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 @media (max-width: 420px) {
   .kq-splash__logo { width: 56vmin; }
