@@ -148,6 +148,30 @@ function evictedStatus(state: GameState): 'evicted' | 'jury' {
 }
 
 /**
+ * Increment timesNominated for a player by ID.
+ * Initializes stats if not already present.
+ */
+function incrementTimesNominated(state: GameState, playerId: string) {
+  const p = state.players.find((pl) => pl.id === playerId);
+  if (p) {
+    if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+    p.stats.timesNominated += 1;
+  }
+}
+
+/**
+ * Mark a player as the Final HOH winner (Part 3 of Final 3).
+ * Sets the wonFinalHoh flag on their stats so it can be archived.
+ */
+function markFinalHohWinner(state: GameState, winnerId: string) {
+  const p = state.players.find((pl) => pl.id === winnerId);
+  if (p) {
+    if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+    p.stats.wonFinalHoh = true;
+  }
+}
+
+/**
  * Apply an HOH winner to state.  Used by both advance() and completeMinigame().
  */
 function applyHohWinner(state: GameState, winnerId: string) {
@@ -157,6 +181,10 @@ function applyHohWinner(state: GameState, winnerId: string) {
     else if (p.status === 'hoh') p.status = 'active';
   });
   const winner = state.players.find((p) => p.id === winnerId);
+  if (winner) {
+    if (!winner.stats) winner.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+    winner.stats.hohWins += 1;
+  }
   pushEvent(state, `${winner?.name ?? winnerId} has won Head of Household! 👑`, 'game');
 }
 
@@ -171,6 +199,8 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
     if (p.status === 'hoh') p.status = 'hoh+pov';
     else if (p.status === 'nominated') p.status = 'nominated+pov';
     else p.status = 'pov';
+    if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+    p.stats.povWins += 1;
   }
   pushEvent(state, `${p?.name ?? winnerId} has won the Power of Veto! 🎭`, 'game');
 
@@ -461,6 +491,7 @@ const gameSlice = createSlice({
         // Crown the Final HOH (mirrors the deterministic path in advance() for final3_comp3).
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         state.hohId = winnerId;
+        markFinalHohWinner(state, winnerId);
         state.players.forEach((p) => {
           if (p.status === 'hoh') p.status = 'active';
         });
@@ -608,6 +639,8 @@ const gameSlice = createSlice({
       state.nomineeIds = [id1, id2];
       p1.status = 'nominated';
       p2.status = 'nominated';
+      incrementTimesNominated(state, id1);
+      incrementTimesNominated(state, id2);
       state.awaitingNominations = false;
       state.pendingNominee1Id = null;
       pushEvent(
@@ -639,6 +672,8 @@ const gameSlice = createSlice({
       state.nomineeIds = [ids[0], ids[1]];
       p1.status = 'nominated';
       p2.status = 'nominated';
+      incrementTimesNominated(state, ids[0]);
+      incrementTimesNominated(state, ids[1]);
       state.awaitingNominations = false;
       state.pendingNominee1Id = null;
       pushEvent(
@@ -954,6 +989,8 @@ const gameSlice = createSlice({
       }
 
       winner.status = 'active';
+      if (!winner.stats) winner.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
+      winner.stats.battleBackWins = (winner.stats.battleBackWins ?? 0) + 1;
       pushEvent(
         state,
         `🔥 ${winner.name} has survived the Battle Back and RETURNS to the Big Brother house! 🏠✨`,
@@ -1588,6 +1625,7 @@ const gameSlice = createSlice({
 
         // Crown the Final HOH
         state.hohId = finalHoh.id;
+        markFinalHohWinner(state, finalHoh.id);
         state.players.forEach((p) => {
           if (p.status === 'hoh') p.status = 'active';
         });
@@ -1815,6 +1853,7 @@ const gameSlice = createSlice({
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id);
             if (p) p.status = 'nominated';
+            incrementTimesNominated(state, n.id);
           });
           const names = nominees.map((n) => n.name).join(' and ');
           pushEvent(state, `${names} have been nominated for eviction. 🎯`, 'game');

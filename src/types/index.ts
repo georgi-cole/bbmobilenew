@@ -28,6 +28,10 @@ export interface Player {
     hohWins: number;
     povWins: number;
     timesNominated: number;
+    /** Number of times this player won a Battle Back competition and returned to the house. */
+    battleBackWins?: number;
+    /** True when this player won the Final HOH (Part 3 of the Final 3 competition). */
+    wonFinalHoh?: boolean;
     /** Personal-record tap count for TapRace competitions. */
     tapRacePR?: number;
     /** Per-game personal-record scores keyed by game key (raw rounded score reported by the game). */
