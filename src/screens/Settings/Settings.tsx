@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -9,7 +9,9 @@ import {
   setSim,
   setVisual,
   type ThemePreset,
+  type SettingsState,
 } from '../../store/settingsSlice';
+import { resetGame } from '../../store/gameSlice';
 import './Settings.css';
 
 type Tab = 'audio' | 'display' | 'gameux' | 'about';
@@ -28,12 +30,45 @@ const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
   { id: 'ocean',    label: 'Ocean',    swatch: '#0ea5e9' },
 ];
 
+/** Settings that require a new season to take effect. */
+function hasRestartRequiredChanges(
+  before: SettingsState,
+  after: SettingsState,
+): boolean {
+  return (
+    before.gameUX.castSize     !== after.gameUX.castSize     ||
+    before.gameUX.spectatorMode !== after.gameUX.spectatorMode ||
+    before.gameUX.compactRoster !== after.gameUX.compactRoster ||
+    before.gameUX.animations   !== after.gameUX.animations   ||
+    before.gameUX.useHaptics   !== after.gameUX.useHaptics   ||
+    before.sim.enableTwists    !== after.sim.enableTwists
+  );
+}
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>('audio');
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
+  const game = useAppSelector((s) => s.game);
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
+  const [showRestartModal, setShowRestartModal] = useState(false);
+
+  // Snapshot settings on mount so we can detect restart-required changes on back.
+  // useRef's initial value is only evaluated once — on the first render — so this
+  // captures the settings state exactly at mount time and is never re-evaluated.
+  const settingsOnMount = useRef<SettingsState>(settings);
+
+  // A game is "in progress" if it has advanced past the initial fresh state.
+  const gameInProgress = game.week > 1 || game.phase !== 'week_start';
+
+  const handleBack = () => {
+    if (gameInProgress && hasRestartRequiredChanges(settingsOnMount.current, settings)) {
+      setShowRestartModal(true);
+    } else {
+      navigate(-1);
+    }
+  };
 
   // Keep the viewport meta tag in sync with the enableZoom setting.
   const enableZoom = settings.visual?.enableZoom ?? false;
@@ -51,7 +86,7 @@ export default function Settings() {
       <header className="settings-screen__header">
         <button
           className="settings-screen__back"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           aria-label="Go back"
         >
           ←
@@ -389,6 +424,39 @@ export default function Settings() {
           </section>
         )}
       </div>
+
+      {/* ── Restart-required settings modal ─────────────────────────────── */}
+      {showRestartModal && (
+        <div className="settings-restart-modal__backdrop" role="presentation">
+          <div
+            className="settings-restart-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="restart-modal-title"
+          >
+            <p id="restart-modal-title" className="settings-restart-modal__msg">
+              New settings detected. Start a new season to apply them now?
+            </p>
+            <div className="settings-restart-modal__actions">
+              <button
+                className="settings-restart-modal__btn settings-restart-modal__btn--primary"
+                onClick={() => {
+                  dispatch(resetGame());
+                  navigate('/game');
+                }}
+              >
+                Restart
+              </button>
+              <button
+                className="settings-restart-modal__btn settings-restart-modal__btn--secondary"
+                onClick={() => navigate(-1)}
+              >
+                Stay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
