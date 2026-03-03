@@ -108,7 +108,7 @@ export default function Credits() {
       while (x < width) {
         const w = Math.max(40, Math.floor(30 + Math.random() * 120));
         const h = Math.floor((height * 0.15) + Math.random() * (height * 0.4));
-        const b = { x, w, h, windows: [] as any[] };
+        const b = { x, w, h, windows: [] as { x: number; y: number; w: number; h: number; on: boolean }[] };
         // windows grid inside building
         const winCols = Math.max(1, Math.floor(w / 14));
         const winRows = Math.max(1, Math.floor(h / 16));
@@ -192,7 +192,6 @@ export default function Credits() {
     }
 
     // background draw (sky + skyline)
-    let ticks = 0;
     function drawBackground(ctx: CanvasRenderingContext2D) {
       // sky gradient
       const g = ctx.createLinearGradient(0, 0, 0, height);
@@ -245,11 +244,11 @@ export default function Credits() {
 
     // Beam / credits animation state
     let scrollY = -10; // initial offset for credits
-    let scrollSpeed = 30; // px/sec
-    let beamAngleCenter = -Math.PI / 2.2; // roughly up-left from top-right
+    const scrollSpeed = 30; // px/sec
+    const beamAngleCenter = -Math.PI / 2.2; // roughly up-left from top-right
     let beamSweep = 0; // sweep offset
     const beamSweepRange = Math.PI * 0.2;
-    let beamSweepDirection = 1;
+    const beamSweepDirection = 1;
     const origin = { x: width * 0.86, y: height * 0.12 }; // normalized origin in px
 
     // call once to initialize
@@ -262,7 +261,6 @@ export default function Credits() {
       try {
       const dt = Math.min(40, now - last); // cap dt
       last = now;
-      ticks++;
 
       // update flicker / sweep only if not reduced motion
       if (!prefersReduced) {
