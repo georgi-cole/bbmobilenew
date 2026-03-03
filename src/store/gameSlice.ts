@@ -5,7 +5,7 @@ import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadUserProfile } from './userProfileSlice';
-import { loadSettings } from './settingsSlice';
+import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
@@ -37,7 +37,7 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
   avatar: hg.sex === 'Female' ? '👩' : '🧑',
 }));
 
-const GAME_ROSTER_SIZE = 12;
+const GAME_ROSTER_SIZE = DEFAULT_ROSTER_SIZE;
 
 /**
  * Build the human player from the stored profile.
@@ -72,10 +72,7 @@ function pickHouseguests(rosterSize = GAME_ROSTER_SIZE): Player[] {
 }
 
 function buildInitialPlayers(): Player[] {
-  const raw = loadSettings().gameUX.castSize;
-  const rosterSize = Number.isFinite(raw)
-    ? Math.min(16, Math.max(4, Math.floor(raw)))
-    : GAME_ROSTER_SIZE;
+  const rosterSize = getConfiguredCastSize();
   return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
 }
 
