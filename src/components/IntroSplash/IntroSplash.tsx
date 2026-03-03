@@ -27,15 +27,10 @@ export interface IntroSplashProps {
   maxLogoWaitMs?: number;
   /** Duration of the fade-out animation in ms (default 350). */
   fadeOutMs?: number;
-  /**
-   * External gate: when false the timer will still run but onDone/onFinish is deferred
-   * until this becomes true (e.g. permission prompts resolved). Defaults to true.
-   */
-  readyToExit?: boolean;
 }
 
-// Logo lives at public/assets/kolequant.png (file renamed — no URL encoding needed).
-const LOGO_SRC = '/assets/kolequant.png';
+// Logo lives at public/assets/kolequant.png — use BASE_URL so it works with any Vite base path.
+const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
 
 /** Inline SVG fallback shown when the logo image fails to load. */
 function FallbackLogo() {
@@ -59,7 +54,6 @@ export default function IntroSplash({
   durationMs = 1_800,
   maxLogoWaitMs = 2_000,
   fadeOutMs = 350,
-  readyToExit = true,
 }: IntroSplashProps) {
   // Resolve callback — prefer onFinish, fall back to onDone.
   const callback = onFinish ?? onDone;
@@ -87,9 +81,8 @@ export default function IntroSplash({
     if (doneCalledRef.current) return;
     if (!timerDoneRef.current) return;
     if (!logoSettled) return;
-    if (!readyToExit) return;
     startExit();
-  }, [logoSettled, readyToExit, startExit]);
+  }, [logoSettled, startExit]);
 
   // Minimum-visible timer — sets timerDone then attempts to finish.
   useEffect(() => {
@@ -157,37 +150,6 @@ export default function IntroSplash({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTap(); }}
       tabIndex={-1}
     >
-      {/* SVG ring + pulse decoration */}
-      <svg
-        className="intro-splash__ring"
-        viewBox="0 0 200 200"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="ring-grad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(123,92,255,0.35)" />
-            <stop offset="100%" stopColor="rgba(111,183,255,0)" />
-          </radialGradient>
-        </defs>
-        <circle
-          cx="100"
-          cy="100"
-          r="90"
-          fill="none"
-          stroke="url(#ring-grad)"
-          strokeWidth="3"
-          className="intro-splash__ring-circle"
-        />
-        <circle
-          cx="100"
-          cy="100"
-          r="72"
-          fill="rgba(123,92,255,0.08)"
-          className="intro-splash__ring-pulse"
-        />
-      </svg>
-
       {/* Logo: image with inline SVG fallback on error */}
       {logoError ? (
         <FallbackLogo />

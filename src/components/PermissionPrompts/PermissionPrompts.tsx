@@ -22,7 +22,7 @@ export interface PermissionChoices {
 
 export interface PermissionPromptsProps {
   /** Called once all permissions have been resolved. */
-  onComplete: (choices: PermissionChoices) => void;
+  onComplete?: (choices: PermissionChoices) => void;
   /**
    * Whether to show the sound permission prompt.
    * Set to false on HomeHub so the sound prompt never appears there;
@@ -143,7 +143,7 @@ export default function PermissionPrompts({ onComplete, showSoundPrompt = true }
   // If both already resolved from localStorage (or sound is skipped), fire onComplete immediately.
   useEffect(() => {
     if (step === 'done' && choices.location) {
-      onComplete({
+      onComplete?.({
         location: choices.location,
         sound: choices.sound ?? 'skipped',
       });
@@ -161,7 +161,7 @@ export default function PermissionPrompts({ onComplete, showSoundPrompt = true }
       if (!showSoundPrompt) {
         // Sound prompt disabled — resolve immediately with sound skipped.
         setStep('done');
-        onComplete({ location: value, sound: 'skipped' });
+        onComplete?.({ location: value, sound: 'skipped' });
       } else {
         setStep('sound');
       }
@@ -176,7 +176,7 @@ export default function PermissionPrompts({ onComplete, showSoundPrompt = true }
       const next = { ...choices, sound: value } as PermissionChoices;
       setChoices(next);
       setStep('done');
-      onComplete(next);
+      onComplete?.(next);
     },
     [choices, rememberSound, onComplete],
   );

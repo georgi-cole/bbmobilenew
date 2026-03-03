@@ -1,19 +1,17 @@
-/* IntroSplash — full-screen SVG-based intro overlay */
+/* IntroSplash — full-screen logo-only intro overlay */
 
 .intro-splash {
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  background: radial-gradient(ellipse at center, #0d0a1f 0%, #06080f 100%);
+  background: #000;
   cursor: pointer;
 
   /* Fade in, then hold */
-  animation: intro-splash-fadein 500ms ease both;
+  animation: intro-splash-fadein 400ms ease both;
 }
 
 /* Fade-out class applied by parent before unmounting */
@@ -32,56 +30,26 @@
   to   { opacity: 0; }
 }
 
-/* SVG decoration ring */
-.intro-splash__ring {
-  position: absolute;
-  width: min(320px, 80vw);
-  height: min(320px, 80vw);
-  pointer-events: none;
-}
-
-.intro-splash__ring-circle {
-  transform-origin: 100px 100px;
-  animation: intro-ring-spin 8s linear infinite;
-  stroke-dasharray: 24 8;
-}
-
-@keyframes intro-ring-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.intro-splash__ring-pulse {
-  transform-origin: 100px 100px;
-  animation: intro-ring-pulse 2s ease-in-out infinite;
-}
-
-@keyframes intro-ring-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50%       { opacity: 0.9; transform: scale(1.08); }
-}
+/* SVG decoration ring — removed */
 
 /* Logo image */
 .intro-splash__logo {
-  width: min(160px, 42vw);
+  width: min(220px, 55vw);
   height: auto;
-  border-radius: 50%;
   object-fit: contain;
-  position: relative;
-  z-index: 1;
-  animation: intro-logo-pop 600ms 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   user-select: none;
+  animation: intro-logo-fadein 600ms ease both;
 }
 
 /* Inline SVG fallback logo */
 .intro-splash__logo--fallback {
-  width: min(160px, 42vw);
-  height: min(160px, 42vw);
+  width: min(220px, 55vw);
+  height: min(220px, 55vw);
 }
 
-@keyframes intro-logo-pop {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
+@keyframes intro-logo-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Title text — hidden per design (branding removed from splash) */

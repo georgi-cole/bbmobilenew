@@ -14,13 +14,13 @@ import './HomeHub.css';
  * To add a new hub button: add an entry to HUB_BUTTONS.
  *
  * Load ordering:
- *   1. IntroSplash shown; PermissionPrompts appear on top of the splash.
- *   2. Splash waits for logo load AND permissions resolved before dismissing.
- *   3. IMPORTANT — background loaded first: once permissions are done the hub
- *      background is preloaded before revealing buttons, so buttons never
- *      appear over an empty background.
- *   4. When Play is pressed AssetPreloaderOverlay runs (bg-first ordering
- *      enforced inside that component) then navigates to /game.
+ *   1. IntroSplash shown — logo only, no dialogs, hub preloads in background.
+ *   2. Splash fades out once logo has loaded and minVisibleMs has elapsed.
+ *   3. IMPORTANT — background loaded first: hub background is preloaded during
+ *      the splash so buttons never appear over an empty background.
+ *   4. After splash exits, PermissionPrompts appear over the hub (location only;
+ *      sound is unlocked via the Play gesture instead).
+ *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
   { to: '/game',         label: '▶  Play',          variant: 'primary'   },
@@ -35,7 +35,6 @@ export default function HomeHub() {
   const navigate = useNavigate();
   const { url: bgUrl } = useBackgroundTheme();
   const [showSplash, setShowSplash] = useState(true);
-  const [permsReady, setPermsReady] = useState(false);
   // Track whether the hub background has loaded so buttons are never shown
   // on an empty background (background-first ordering).
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -68,23 +67,16 @@ export default function HomeHub() {
 
   return (
     <>
-      {/* Cold-load intro splash — shown once on first mount.
-          Deferred until logo loads AND permission prompts are resolved. */}
+      {/* Cold-load intro splash — logo only, hub preloads in background.
+          Exits automatically once logo has loaded and the minimum timer fires. */}
       {showSplash && (
-        <IntroSplash
-          onDone={() => setShowSplash(false)}
-          readyToExit={permsReady}
-        />
+        <IntroSplash onDone={() => setShowSplash(false)} />
       )}
 
-      {/* Permission prompts shown on top of the splash (z-index > splash).
-          Sound prompt intentionally disabled here — sound is enabled instead
-          as part of the Play gesture to avoid a "tap to enable sound" UI on
-          the intro screen. Location prompt still shown if not previously
-          remembered. Once location decision is made, permsReady gates the
-          splash exit. */}
-      {showSplash && (
-        <PermissionPrompts onComplete={() => setPermsReady(true)} showSoundPrompt={false} />
+      {/* Permission prompts shown after splash exits, over the hub.
+          Sound prompt disabled — sound is unlocked via the Play gesture. */}
+      {!showSplash && (
+        <PermissionPrompts showSoundPrompt={false} />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed */}
