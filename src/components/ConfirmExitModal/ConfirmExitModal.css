@@ -1,0 +1,54 @@
+.confirm-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 12, 0.6);
+  z-index: 8000; /* above app shell UI but below topmost overlays if needed */
+  padding: 20px;
+}
+
+.confirm-modal__card {
+  background: linear-gradient(180deg, #071025, #0b1626);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 18px;
+  width: min(560px, 94%);
+  border-radius: 12px;
+  box-shadow: 0 32px 88px rgba(0,0,0,0.6);
+}
+
+.confirm-modal__title {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.confirm-modal__desc {
+  margin: 0 0 16px 0;
+  color: rgba(255,255,255,0.86);
+}
+
+.confirm-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirm-modal__btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.confirm-modal__btn--primary {
+  background: linear-gradient(135deg,#7b5cff,#6fb7ff);
+  color: white;
+}
+
+.confirm-modal__btn--ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.06);
+}
