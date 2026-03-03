@@ -51,13 +51,10 @@ export default function HomeHub() {
   }, [bgUrl]);
 
   const handlePlay = () => {
-    // Play gesture — use this as the user gesture to unlock audio via the
-    // shared SoundManager (Howler's internal AudioContext) if the user
-    // previously remembered sound as enabled.
-    const soundPref = localStorage.getItem('bb:enableSound');
-    if (soundPref === 'granted') {
-      SoundManager.unlockOnUserGesture();
-    }
+    // Play gesture — always unlock the Web Audio API here so that AudioGate
+    // is not needed on the Intro/Home route.  This satisfies browser autoplay
+    // policy: the first user gesture on the home screen unlocks audio context.
+    SoundManager.unlockOnUserGesture();
     setPreloading(true);
   };
 
