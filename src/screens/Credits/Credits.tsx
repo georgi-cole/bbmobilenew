@@ -54,7 +54,9 @@ export default function Credits() {
 
   useEffect(() => {
     console.info('[CreditsScene] mounted', { url: window.location.href, env: import.meta.env.MODE });
+  }, []);
 
+  useEffect(() => {
     const canvas = canvasRef.current!;
     const container = containerRef.current!;
     if (!canvas || !container) return;
@@ -257,6 +259,7 @@ export default function Credits() {
 
     let last = performance.now();
     function frame(now: number) {
+      try {
       const dt = Math.min(40, now - last); // cap dt
       last = now;
       ticks++;
@@ -274,7 +277,6 @@ export default function Credits() {
       // compute beam angle
       const sweepAngle = beamSweep * beamSweepRange;
       const beamAngle = beamAngleCenter + sweepAngle;
-      // pulses variable available for future variable-width beam rendering
 
       // scroll update
       scrollY -= ((scrollSpeed * speedMultiplier) * (dt / 1000));
@@ -365,6 +367,13 @@ export default function Credits() {
       }
 
       rafRef.current = requestAnimationFrame(frame);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        console.error('[CreditsScene] render frame error', { message, stack });
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        setErrored(message);
+      }
     }
 
     // Events
