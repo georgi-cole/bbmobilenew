@@ -80,6 +80,7 @@
       tabBar.setAttribute('role', 'tablist');
 
       const basicTab = document.createElement('button');
+      basicTab.id = 'basic-tab';
       basicTab.className = 'hg-profile-tab active';
       basicTab.setAttribute('role', 'tab');
       basicTab.setAttribute('aria-selected', 'true');
@@ -88,6 +89,7 @@
       basicTab.onclick = () => switchTab('basic');
 
       const gameTab = document.createElement('button');
+      gameTab.id = 'game-tab';
       gameTab.className = 'hg-profile-tab';
       gameTab.setAttribute('role', 'tab');
       gameTab.setAttribute('aria-selected', 'false');
@@ -277,7 +279,7 @@
     // 3. Try querying intro hub DOM
     if (!enhancedData) {
       try {
-        const introHubElement = document.querySelector('#introHub .houseguest[data-player-id="' + player.id + '"]');
+        const introHubElement = document.querySelector('#intro-hub .houseguest[data-player-id="' + player.id + '"]');
         if (introHubElement) {
           enhancedData = {
             bio: introHubElement.dataset.bio || introHubElement.getAttribute('data-bio'),

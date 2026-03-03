@@ -375,8 +375,8 @@ inside a component and load the static scripts as side-effects.
 2. **Import the CSS** (e.g. in `src/index.css` or the component):
 
 ```css
-@import '../../css/intro-hub.css';
-@import '../../css/houseguests-modal.css';
+@import '../css/intro-hub.css';
+@import '../css/houseguests-modal.css';
 ```
 
 3. **Load the JS modules** as side-effects in the component's `useEffect`:

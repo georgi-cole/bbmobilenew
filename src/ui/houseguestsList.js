@@ -30,6 +30,7 @@
 
     cards.forEach(card => {
       attachHandlers(card);
+      initializedCards.add(card);
     });
 
     initialized = true;

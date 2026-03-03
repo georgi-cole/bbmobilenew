@@ -167,6 +167,23 @@
 }
 
 /* Safe area insets for notched devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .hub-chip--top-left,
+  .hub-chip--top-right {
+    top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .hub-chip--top-left-2,
+  .hub-chip--top-right-2 {
+    top: calc(60px + env(safe-area-inset-top));
+  }
+
+  .hub-chip--top-left-3,
+  .hub-chip--top-right-3 {
+    top: calc(104px + env(safe-area-inset-top));
+  }
+}
+
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .hub-chip--bottom-left,
   .hub-chip--bottom-right {

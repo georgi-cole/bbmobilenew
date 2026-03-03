@@ -11,14 +11,17 @@
   width: 100vw;
   height: 100vh;
   z-index: 10100; /* Above intro screen, below critical system modals */
-  display: none;
+  display: flex;
   opacity: 0;
-  transition: opacity 300ms ease-in-out;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 300ms ease-in-out, visibility 300ms ease-in-out;
 }
 
 .houseguests-modal--visible {
-  display: flex !important;
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* ===== Backdrop ===== */

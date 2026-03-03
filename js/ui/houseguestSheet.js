@@ -5,7 +5,34 @@
 // - Real-time ally/enemy updates via event bus
 // - Graceful fallback for missing data
 
-import { getProfileByKey } from '../utils/houseguestLookup.js';
+/**
+ * Local implementation of getProfileByKey.
+ * Resolves a houseguest profile from window.game.houseguests
+ * using id, slug, or name (case-insensitive).
+ * This replaces the original ../utils/houseguestLookup.js import.
+ */
+function getProfileByKey(key) {
+  if (key === null || key === undefined) return null;
+  if (typeof window === 'undefined') return null;
+
+  const game = window.game;
+  if (!game || !Array.isArray(game.houseguests)) return null;
+
+  const keyStr = String(key).toLowerCase();
+
+  const match = game.houseguests.find((profile) => {
+    if (!profile) return false;
+    if (profile.id === key) return true;
+    if (profile.id !== null && profile.id !== undefined) {
+      if (String(profile.id) === String(key)) return true;
+    }
+    if (profile.slug && String(profile.slug).toLowerCase() === keyStr) return true;
+    if (profile.name && String(profile.name).toLowerCase() === keyStr) return true;
+    return false;
+  });
+
+  return match || null;
+}
 
 export const HouseguestSheet = (() => {
   let openProfileId = null;

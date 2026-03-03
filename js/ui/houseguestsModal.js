@@ -9,6 +9,7 @@
   let modalContainer = null;
   let currentView = null; // 'list' or 'detail'
   let selectedHouseguest = null;
+  let closeTimeout = null; // Track pending close timeout to prevent race condition
 
   /**
    * Build the modal container structure
@@ -350,6 +351,12 @@
    * @param {object} houseguest - If view is 'detail', the houseguest to show (optional)
    */
   function openModal(view = 'list', houseguest = null) {
+    // Cancel any pending close timeout to avoid removing a freshly-opened modal
+    if (closeTimeout) {
+      clearTimeout(closeTimeout);
+      closeTimeout = null;
+    }
+
     if (!modalContainer) {
       modalContainer = buildModal();
       document.body.appendChild(modalContainer);
@@ -389,14 +396,19 @@
     document.body.style.overflow = '';
     document.removeEventListener('keydown', handleEscKey);
 
-    // Clean up after animation
-    setTimeout(() => {
-      if (modalContainer && modalContainer.parentNode) {
-        modalContainer.parentNode.removeChild(modalContainer);
+    // Capture the container at close-time; only remove it if it's still the same instance
+    const containerToRemove = modalContainer;
+    closeTimeout = setTimeout(() => {
+      closeTimeout = null;
+      if (containerToRemove && containerToRemove.parentNode) {
+        containerToRemove.parentNode.removeChild(containerToRemove);
       }
-      modalContainer = null;
-      currentView = null;
-      selectedHouseguest = null;
+      // Only clear module state if we're removing the current container
+      if (modalContainer === containerToRemove) {
+        modalContainer = null;
+        currentView = null;
+        selectedHouseguest = null;
+      }
     }, 300);
 
     console.info('[houseguestsModal] Closed');

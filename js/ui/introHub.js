@@ -1,8 +1,8 @@
 // MODULE: introHub.js
 // Intro Hub UI — rounded chip navigation overlay
 //
-// Chips: Houseguests (top-left), Music, Sounds, Settings (top-right),
-//        News, Achievements (bottom-left), Store, Share, Feedback (bottom-right)
+// Chips: Houseguests, Music, Sounds (top-left), Settings, Share, Feedback (top-right),
+//        News, Achievements (bottom-left), Store (bottom-right)
 //
 // Notification dots are driven by window.game.hubNotifications (object keyed by chip id).
 // Runtime API: window.game.hub.setNotification(id, bool) / window.game.hub.refreshNotifications()
@@ -206,6 +206,10 @@
    * @param {boolean} show - true to show dot, false to hide
    */
   function setNotification(id, show) {
+    // Always persist to hubNotifications map regardless of whether chip is rendered yet
+    if (!g.hubNotifications) g.hubNotifications = {};
+    g.hubNotifications[id] = !!show;
+
     const el = chipElements[id];
     if (!el) return;
     if (show) {
@@ -213,9 +217,6 @@
     } else {
       el.classList.remove('hub-chip--has-notification');
     }
-    // Persist to hubNotifications map
-    if (!g.hubNotifications) g.hubNotifications = {};
-    g.hubNotifications[id] = !!show;
   }
 
   /**
@@ -238,6 +239,8 @@
    * @param {HTMLElement} container - The #intro-hub element
    */
   function init(container) {
+    // Clear existing chips to make init idempotent
+    container.innerHTML = '';
     chipElements = {};
 
     CHIPS.forEach(function (def) {
