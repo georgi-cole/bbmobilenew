@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 interface GameWindow {
-  game?: { hubNotifications?: { news?: boolean } };
+  game?: { hubNotifications?: Record<string, boolean> };
 }
 
 export default function useLoadIntroHub() {
