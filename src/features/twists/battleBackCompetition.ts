@@ -22,6 +22,7 @@ const MINIGAME_POOL: Array<{ name: string; icon: string }> = [
   { name: 'Memory Match',   icon: '🃏' },
   { name: 'Balance Beam',   icon: '⚖️' },
   { name: 'Knock-Out',      icon: '🥊' },
+  { name: "Don't go over", icon: '🎯' },
 ];
 
 // ── Public types ──────────────────────────────────────────────────────────────

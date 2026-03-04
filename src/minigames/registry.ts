@@ -739,6 +739,27 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'arcade',
     retired: false,
   },
+
+  dontGoOver: {
+    key: 'dontGoOver',
+    title: "Don't go over",
+    description: 'Tournament-style numeric-guessing competition. Closest without going over wins; elimination duel rounds follow.',
+    instructions: [
+      'Each round has a numeric answer. Submit one numeric guess.',
+      'Closest to the answer without going over wins the round.',
+      'Mass round eliminates one player, then leaders pick duels until one champion remains.',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    modulePath: 'cwgo',
+    legacy: false,
+    weight: 1,
+    category: 'trivia',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
