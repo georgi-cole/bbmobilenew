@@ -50,8 +50,6 @@ export interface CwgoState {
   duelPair: [string, string] | null;
   /** ID of the winner of the latest duel. */
   duelWinnerId: string | null;
-  /** Whether the leader (first aliveId) is a human player. */
-  leaderIsHuman: boolean;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -68,7 +66,6 @@ const initialState: CwgoState = {
   round: 0,
   duelPair: null,
   duelWinnerId: null,
-  leaderIsHuman: false,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,7 +89,11 @@ function fillAIGuesses(
   let aiSeed = (seed ^ (round * 0x5851f42d)) >>> 0;
   for (const id of aliveIds) {
     if (!humanIds.has(id) && updated[id] === undefined) {
-      updated[id] = generateAIGuess(answer, 0.5, aiSeed);
+      // Derive a per-player skill from the seeded RNG so AI performance varies.
+      const aiSkill = mulberry32(aiSeed)();
+      // Advance seed before generating the guess so skill and guess use independent RNG sequences.
+      aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
+      updated[id] = generateAIGuess(answer, aiSkill, aiSeed);
       // Advance seed for next AI player
       aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
     }
@@ -113,10 +114,9 @@ const cwgoSlice = createSlice({
         participantIds: string[];
         prizeType: CwgoPrizeType;
         seed: number;
-        leaderIsHuman?: boolean;
       }>,
     ) {
-      const { participantIds, prizeType, seed, leaderIsHuman = false } = action.payload;
+      const { participantIds, prizeType, seed } = action.payload;
       state.status = 'mass_input';
       state.prizeType = prizeType;
       state.seed = seed;
@@ -127,7 +127,6 @@ const cwgoSlice = createSlice({
       state.lastEliminated = [];
       state.duelPair = null;
       state.duelWinnerId = null;
-      state.leaderIsHuman = leaderIsHuman;
       state.questionIdx = pickQuestionIdx(seed, 0);
     },
 
@@ -213,6 +212,8 @@ const cwgoSlice = createSlice({
         state.questionIdx = pickQuestionIdx(state.seed, state.round);
         state.status = 'duel_input';
       } else {
+        // Advance question so the pick screen doesn't show the previous question
+        state.questionIdx = pickQuestionIdx(state.seed, state.round);
         state.status = 'choose_duel';
       }
     },
@@ -271,6 +272,8 @@ const cwgoSlice = createSlice({
       if (state.aliveIds.length <= 1) {
         state.status = 'complete';
       } else {
+        // Advance question so the pick screen doesn't show the previous duel's question
+        state.questionIdx = pickQuestionIdx(state.seed, state.round);
         state.status = 'choose_duel';
       }
     },

@@ -78,7 +78,6 @@ export default function ClosestWithoutGoingOverComp({
         participantIds,
         prizeType,
         seed,
-        leaderIsHuman: !!humanId && participantIds.includes(humanId),
       }),
     );
     return () => {
@@ -147,18 +146,17 @@ export default function ClosestWithoutGoingOverComp({
     const others = cwgo.aliveIds.filter((id: string) => id !== leader);
     if (others.length < 2) return;
 
-    // Deterministic duel pick: sort by compSkill (weakest first) then seeded random
+    // Deterministic seeded Fisher-Yates shuffle — avoids compSkill (not in Player type)
+    // and avoids putting RNG calls inside the sort comparator (which is non-deterministic).
     const rng = mulberry32((cwgo.seed ^ (cwgo.round * 0xf1ea5eed)) >>> 0);
-    const sorted = [...others].sort((a: string, b: string) => {
-      const skillA = (players.find((p) => p.id === a) as any)?.compSkill ?? 0.5;
-      const skillB = (players.find((p) => p.id === b) as any)?.compSkill ?? 0.5;
-      // Tiebreak with RNG
-      if (skillA !== skillB) return skillA - skillB;
-      return rng() < 0.5 ? -1 : 1;
-    });
+    const shuffled = [...others];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
 
-    // Leader sends the two weakest rivals to duel
-    dispatch(chooseDuelPair([sorted[0], sorted[1]]));
+    // Leader sends the first two from the shuffled list to duel
+    dispatch(chooseDuelPair([shuffled[0], shuffled[1]]));
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -304,7 +302,8 @@ export default function ClosestWithoutGoingOverComp({
           <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: 16 }}>
             Remaining players: {cwgo.aliveIds.map((id: string) => playerName(id)).join(', ')}
           </p>
-          {cwgo.leaderIsHuman ? (
+          {/* Derive leaderIsHuman from the current leader rather than a persisted flag */}
+          {humanId === cwgo.aliveIds[0] ? (
             <LeaderDuelPicker
               aliveIds={cwgo.aliveIds}
               playerName={playerName}

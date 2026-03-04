@@ -36,6 +36,11 @@ const TwistsTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/TwistsTestPage/TwistsTestPage'))
   : null;
 
+// Dev-only CWGO competition test page.
+const CwgoTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/CwgoTestPage/CwgoTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -57,6 +62,9 @@ export const router = createHashRouter([
       { path: 'settings',         element: <Settings />     },
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && CwgoTestPage != null
+        ? [{ path: 'cwgo-test', element: <Suspense fallback={null}><CwgoTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },

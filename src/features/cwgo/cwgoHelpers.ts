@@ -27,9 +27,11 @@ export interface CwgoResult {
  * Generate a deterministic AI guess for a CWGO round.
  *
  * Strategy:
- *  - aiSkill ∈ [0, 1]. Higher skill → guess closer to answer (from below).
- *  - Guess is always ≤ answer to model smart play; with low skill the AI may
- *    overshoot and go over.
+ *  - aiSkill ∈ [0, 1] (values outside this range are clamped). Higher skill
+ *    → guess biased closer to the answer from below.
+ *  - At low skill the distribution is wide and can easily exceed the answer;
+ *    at high skill the guess is tighter but can still go over due to the
+ *    random component — going over is always possible regardless of skill.
  *  - Uses mulberry32 seeded RNG so results are reproducible.
  *
  * @param answer  The true answer for the question.
