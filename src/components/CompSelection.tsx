@@ -14,11 +14,12 @@ import {
   ALL_CATEGORIES,
   CATEGORY_LABELS,
   type CompGame,
+  type CompSelectionMode,
   type CompSelectionPayload,
   type CompSelectionProps,
 } from './compSelectionUtils';
 
-export type { CompGame, CompSelectionPayload, CompSelectionProps } from './compSelectionUtils';
+export type { CompGame, CompSelectionMode, CompSelectionPayload, CompSelectionProps } from './compSelectionUtils';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,12 @@ export default function CompSelection({
   const [games, setGames] = useState<CompGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [mode, setMode] = useState<CompSelectionMode>(
+    initialPayload?.mode ?? 'random-games',
+  );
+  const [selectedGameId, setSelectedGameId] = useState<string>(
+    initialPayload?.selectedGameId ?? '',
+  );
   const [enabledIds, setEnabledIds] = useState<Set<string>>(
     new Set(initialPayload?.enabledIds ?? []),
   );
@@ -112,9 +119,12 @@ export default function CompSelection({
 
   const handleSave = useCallback(async () => {
     const payload: CompSelectionPayload = {
+      mode,
       enabledIds: Array.from(enabledIds),
       weeklyLimit,
       filterCategory,
+      ...(mode === 'single-game' && { selectedGameId }),
+      ...(mode === 'user-selection' && { selectedGameIds: Array.from(enabledIds) }),
     };
     const result = validateCompSelection(payload, games);
     if (!result.valid) {
@@ -133,7 +143,7 @@ export default function CompSelection({
     } finally {
       setSaving(false);
     }
-  }, [enabledIds, weeklyLimit, filterCategory, games, onSave]);
+  }, [mode, selectedGameId, enabledIds, weeklyLimit, filterCategory, games, onSave]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -165,6 +175,60 @@ export default function CompSelection({
       <p className="comp-selection__subtitle">
         Choose which competitions can appear during the season.
       </p>
+
+      {/* ── Selection mode ───────────────────────────────────────────── */}
+      <div className="comp-selection__mode">
+        <label className="comp-selection__mode-label">
+          Selection Mode
+          <select
+            className="comp-selection__mode-select"
+            value={mode}
+            onChange={(e) => {
+              setMode(e.target.value as CompSelectionMode);
+              setValidationErrors([]);
+              setSaveSuccess(false);
+            }}
+            aria-label="Selection mode"
+          >
+            <option value="random-games">Random (any game)</option>
+            <option value="single-game">Single game</option>
+            <option value="user-selection">User selection pool</option>
+            <option value="arcade-only">Arcade only</option>
+            <option value="trivia-only">Trivia only</option>
+            <option value="endurance-only">Endurance only</option>
+            <option value="logic-only">Logic only</option>
+            <option value="retired">Retired games</option>
+            <option value="misc">Misc</option>
+            <option value="unique">Unique (no repeats)</option>
+          </select>
+        </label>
+      </div>
+
+      {/* ── Single-game key input ────────────────────────────────────── */}
+      {mode === 'single-game' && (
+        <div className="comp-selection__single-game">
+          <label className="comp-selection__single-label">
+            Game key (registry key)
+            <select
+              className="comp-selection__single-select"
+              value={selectedGameId}
+              onChange={(e) => {
+                setSelectedGameId(e.target.value);
+                setValidationErrors([]);
+                setSaveSuccess(false);
+              }}
+              aria-label="Single game key"
+            >
+              <option value="">— pick a game —</option>
+              {games.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.id})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {/* ── Category filter ──────────────────────────────────────────── */}
       <div className="comp-selection__filters" role="group" aria-label="Filter by category">

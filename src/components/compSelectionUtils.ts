@@ -9,6 +9,32 @@
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Selection strategy for the challenge scheduler.
+ *
+ * - `random-games`    – default; picks any non-retired game (existing behaviour).
+ * - `single-game`     – always use the game at `selectedGameId`.
+ * - `user-selection`  – pick deterministically from the `selectedGameIds` pool.
+ * - `arcade-only`     – restrict to the `arcade` registry category.
+ * - `trivia-only`     – restrict to the `trivia` registry category.
+ * - `endurance-only`  – restrict to the `endurance` registry category.
+ * - `logic-only`      – restrict to the `logic` registry category.
+ * - `retired`         – pick from retired games only.
+ * - `misc`            – games not matching any of the main categories (fallback).
+ * - `unique`          – exclude recently-used games; falls back to random when pool is exhausted.
+ */
+export type CompSelectionMode =
+  | 'random-games'
+  | 'single-game'
+  | 'user-selection'
+  | 'arcade-only'
+  | 'trivia-only'
+  | 'endurance-only'
+  | 'logic-only'
+  | 'retired'
+  | 'misc'
+  | 'unique';
+
 /** A competition entry returned by fetchGames(). */
 export interface CompGame {
   /** Stable machine-readable identifier (e.g. "tap-race", "trivia-blitz"). */
@@ -25,6 +51,8 @@ export interface CompGame {
 
 /** Shape of the save payload sent to onSave(). */
 export interface CompSelectionPayload {
+  /** Selection strategy for the challenge scheduler. Defaults to `'random-games'`. */
+  mode?: CompSelectionMode;
   /** IDs of games the user has toggled ON. */
   enabledIds: string[];
   /**
@@ -34,6 +62,16 @@ export interface CompSelectionPayload {
   weeklyLimit: number | null;
   /** Active filter category, or null for "all". */
   filterCategory: CompGame['category'] | null;
+  /**
+   * Registry key of the single game to always use.
+   * Only consulted when `mode === 'single-game'`.
+   */
+  selectedGameId?: string;
+  /**
+   * Registry keys of games in the user-curated pool.
+   * Only consulted when `mode === 'user-selection'`.
+   */
+  selectedGameIds?: string[];
 }
 
 /** Props accepted by the CompSelection component. */
