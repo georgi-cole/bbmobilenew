@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from './store';
+import type { CompSelectionPayload } from '../components/compSelectionUtils';
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1';
 
@@ -25,6 +26,8 @@ export interface SettingsState {
     animations: boolean;
     spectatorMode: boolean;
     castSize: number;
+    /** Comp Selection configuration: which games are eligible, optional weekly draw limit, and category filter. */
+    compSelection: CompSelectionPayload;
   };
   sim: {
     enableJuryHouse: boolean;
@@ -64,6 +67,11 @@ export const DEFAULT_SETTINGS: SettingsState = {
     animations: true,
     spectatorMode: false,
     castSize: 12,
+    compSelection: {
+      enabledIds: [],
+      weeklyLimit: null,
+      filterCategory: null,
+    },
   },
   sim: {
     enableJuryHouse: false,
