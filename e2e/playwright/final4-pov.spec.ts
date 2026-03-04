@@ -63,10 +63,10 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
-    // Set up nominees (indices 1 & 3) and a non-human (AI) POV winner (index 2)
-    // POV holder (index 2) must NOT overlap with nominees (indices 1 and 3)
-    await forceNominees(page, 1, 3);
-    await forcePov(page, 2); // index 2 = second alive player (AI)
+    // Set up nominees (indices 2 & 3 — both AI players; human is always at index 1)
+    // POV holder (index 4) must NOT overlap with nominees (indices 2 and 3)
+    await forceNominees(page, 2, 3);
+    await forcePov(page, 4); // index 4 = fourth alive player (AI)
 
     // Force the phase to final4_eviction
     const forceF4Btn = page.getByRole('button', { name: 'Force Final 4' });
