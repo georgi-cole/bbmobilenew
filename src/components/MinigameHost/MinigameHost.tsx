@@ -174,7 +174,7 @@ export default function MinigameHost({
           {game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver' ? (
             <ClosestWithoutGoingOverComp
               participantIds={(participants ?? []).map((p) => p.id)}
-              prizeType={(gameOptions?.prizeType as CwgoPrizeType) ?? 'HOH'}
+              prizeType={gameOptions?.prizeType as CwgoPrizeType}
               seed={typeof gameOptions?.seed === 'number' ? gameOptions.seed : 0}
               onComplete={handleReactComplete}
             />
