@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -14,7 +14,42 @@ import {
 } from '../../store/settingsSlice';
 import { resetGame } from '../../store/gameSlice';
 import { getRestartRelevantSnapshot, type RestartRelevantSettings } from '../../store/settingsHelpers';
+import CompSelection from '../../components/CompSelection';
+import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
+import { getAllGames, type GameCategory } from '../../minigames/registry';
 import './Settings.css';
+
+/** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
+function registryCategoryToCompCategory(
+  category: GameCategory,
+): CompGame['category'] {
+  switch (category) {
+    case 'arcade':    return 'physical';
+    case 'endurance': return 'endurance';
+    case 'logic':     return 'mental';
+    case 'trivia':    return 'mental';
+  }
+}
+
+const REGISTRY_CATEGORY_ICONS: Record<GameCategory, string> = {
+  arcade:    '🕹️',
+  endurance: '⏱️',
+  logic:     '🧩',
+  trivia:    '❓',
+};
+
+/** Builds the CompGame list from the in-repo minigame registry. */
+function buildCompGamesFromRegistry(): CompGame[] {
+  return getAllGames()
+    .filter((g) => !g.retired)
+    .map((g) => ({
+      id:       g.key,
+      name:     g.title,
+      icon:     REGISTRY_CATEGORY_ICONS[g.category],
+      category: registryCategoryToCompCategory(g.category),
+      enabled:  true,
+    }));
+}
 
 type Tab = 'audio' | 'display' | 'gameux' | 'about';
 
@@ -41,6 +76,20 @@ export default function Settings() {
   const game = useAppSelector((s) => s.game);
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
   const [showRestartModal, setShowRestartModal] = useState(false);
+
+  // Stable fetchGames callback for CompSelection — builds list from registry once.
+  const fetchGames = useCallback(
+    () => Promise.resolve(buildCompGamesFromRegistry()),
+    [],
+  );
+
+  // Persist comp selection changes immediately via setGameUX.
+  const handleCompSelectionSave = useCallback(
+    (payload: CompSelectionPayload) => {
+      dispatch(setGameUX({ compSelection: payload }));
+    },
+    [dispatch],
+  );
 
   // Snapshot persisted settings on mount so we can deep-compare on Back.
   // useRef's initial value is only evaluated once — on the first render.
@@ -407,6 +456,14 @@ export default function Settings() {
                 Choose between 4 and 16 houseguests. Grid will show placeholders to preserve layout.
               </p>
             </div>
+
+            {/* ── Comp Selection ─────────────────────────────────────────── */}
+            <p className="settings-section__heading">Comp Selection</p>
+            <CompSelection
+              fetchGames={fetchGames}
+              onSave={handleCompSelectionSave}
+              initialPayload={settings.gameUX.compSelection}
+            />
           </section>
         )}
 

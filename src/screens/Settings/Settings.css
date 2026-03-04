@@ -310,7 +310,221 @@ body.high-contrast {
   --color-line:       rgba(255, 255, 255, 0.3);
 }
 
-/* ── Restart-required settings modal ──────────────────────────────────────── */
+/* ── Comp Selection panel ───────────────────────────────────────────────── */
+
+.comp-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comp-selection--loading,
+.comp-selection--error {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  padding: 0.5rem 0;
+}
+
+.comp-selection__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.comp-selection__subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.comp-selection__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.comp-selection__filter-btn {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.comp-selection__filter-btn--active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.comp-selection__bulk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.comp-selection__bulk-btn {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.comp-selection__bulk-btn:hover {
+  background: var(--color-card-2);
+}
+
+.comp-selection__count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.comp-selection__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.comp-selection__item {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+}
+
+.comp-selection__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.comp-selection__checkbox {
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.comp-selection__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.comp-selection__name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.comp-selection__category {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.comp-selection__empty {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.comp-selection__weekly-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+}
+
+.comp-selection__weekly-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.comp-selection__weekly-input {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.comp-selection__helper-text {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.comp-selection__errors {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #ef4444;
+}
+
+.comp-selection__save-error {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.comp-selection__save-success {
+  color: #22c55e;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.comp-selection__save-btn {
+  background: var(--color-accent);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.7rem 1.25rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  align-self: flex-start;
+}
+.comp-selection__save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.comp-selection__save-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
 
 .settings-restart-modal__backdrop {
   position: fixed;
