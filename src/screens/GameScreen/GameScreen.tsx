@@ -57,6 +57,7 @@ import type { SpectatorVariant } from '../../components/ui/SpectatorView'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
+import { detectDebugMode } from '../../utils/debugMode'
 import type { Player } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
 import { mulberry32 } from '../../store/rng'
@@ -510,6 +511,7 @@ export default function GameScreen() {
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
   const isDev = import.meta.env.DEV
+  const isDebugMode = detectDebugMode()
   const handleDevPlayNomAnim = useCallback(() => {
     const eligible = alivePlayers.filter((p) => !p.isUser)
     const devNominees = eligible.slice(0, 2).map((p) => p.id)
@@ -677,7 +679,6 @@ export default function GameScreen() {
   const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
   const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
   const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
-  const [, setFinal4DecisionDelayStarted] = useState(false)
   const [final4DecisionReady, setFinal4DecisionReady] = useState(false)
   const final4DecisionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
 
@@ -697,7 +698,9 @@ export default function GameScreen() {
   // Enter final4_eviction → build enriched plea lines and start the overlay.
   // For human POV: also dispatch advance() now so plea events are emitted to
   // tvFeed and awaitingPovDecision is set before the decision modal appears.
+  // In debug mode the plea cinematic is skipped; advance() is called by the FAB.
   useEffect(() => {
+    if (isDebugMode) return
     if (game.phase !== 'final4_eviction' || final4Stage !== 'idle') return
     const povHolder = alivePlayers.find((p) => p.id === game.povWinnerId)
     const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
@@ -743,7 +746,7 @@ export default function GameScreen() {
     if (humanIsPovHolder) {
       dispatch(advance())
     }
-  }, [game.phase, final4Stage, alivePlayers, game.povWinnerId, game.nomineeIds, game.seed, humanIsPovHolder, dispatch])
+  }, [isDebugMode, game.phase, final4Stage, alivePlayers, game.povWinnerId, game.nomineeIds, game.seed, humanIsPovHolder, dispatch])
 
   // Plea overlay complete:
   //   human POV → show decision modal
@@ -756,6 +759,17 @@ export default function GameScreen() {
       // Stage transitions to 'announcement' via effect below once phase === 'final3'
     }
   }, [humanIsPovHolder, dispatch])
+
+  // Debug mode: auto-commit pendingEviction when in final4_eviction phase and
+  // final4Stage is still 'idle' (plea cinematic was skipped). This replaces the
+  // eviction-splash flow and transitions the game directly to final3.
+  useEffect(() => {
+    if (!isDebugMode) return
+    if (game.phase !== 'final4_eviction') return
+    if (final4Stage !== 'idle') return
+    if (!game.pendingEviction?.evicteeId) return
+    dispatch(finalizePendingEviction(game.pendingEviction.evicteeId))
+  }, [isDebugMode, game.phase, game.pendingEviction?.evicteeId, final4Stage, dispatch])
 
   // Detect eviction: pendingEviction was set while in pleas/decision stage.
   // With the deferred-commit approach, the phase stays at final4_eviction until
@@ -806,14 +820,12 @@ export default function GameScreen() {
         window.clearTimeout(final4DecisionTimerRef.current)
         final4DecisionTimerRef.current = null
       }
-      setFinal4DecisionDelayStarted(false)
       setFinal4DecisionReady(false)
       return
     }
 
     if (final4DecisionTimerRef.current !== null) return
 
-    setFinal4DecisionDelayStarted(true)
     final4DecisionTimerRef.current = window.setTimeout(() => {
       setFinal4DecisionReady(true)
     }, 3000)
@@ -834,7 +846,11 @@ export default function GameScreen() {
   }, [])
 
   const showFinal4Chat = game.phase === 'final4_eviction' && final4Stage === 'pleas'
-  const showFinal4Modal = game.phase === 'final4_eviction' && final4Stage === 'decision' && final4DecisionReady
+  const showFinal4Modal =
+    game.phase === 'final4_eviction' &&
+    Boolean(game.awaitingPovDecision) &&
+    Boolean(humanIsPovHolder) &&
+    ((final4Stage === 'decision' && final4DecisionReady) || (isDebugMode && final4Stage === 'idle'))
   // Announcement: show during final4_eviction (pending commit) OR after final3 transition.
   const showFinal4AnnounceChat =
     (game.phase === 'final4_eviction' || game.phase === 'final3') && final4Stage === 'announcement'
@@ -1494,6 +1510,7 @@ export default function GameScreen() {
             evictee={pendingEvictionPlayer}
             onDone={handleEvictionSplashDone}
             layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
+            devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
           />
         )}
       </AnimatePresence>

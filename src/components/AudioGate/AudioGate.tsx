@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { detectDebugMode } from '../../utils/debugMode';
 import styles from './AudioGate.module.css';
 
 export interface AudioGateProps {
@@ -22,7 +23,7 @@ export interface AudioGateProps {
 }
 
 export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => detectDebugMode());
 
   const handleUnlock = useCallback(() => {
     if (unlocked) return;
@@ -30,6 +31,14 @@ export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
     SoundManager.unlockOnUserGesture();
     onUnlock?.();
   }, [unlocked, onUnlock]);
+
+  useEffect(() => {
+    if (unlocked) {
+      SoundManager.unlockOnUserGesture();
+      onUnlock?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (unlocked) return;

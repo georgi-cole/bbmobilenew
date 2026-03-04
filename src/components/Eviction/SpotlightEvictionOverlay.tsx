@@ -43,6 +43,8 @@ interface Props {
   layoutId: string;
   /** Called once the choreography completes (before the reverse animation). */
   onDone: () => void;
+  /** When true, renders the Skip button regardless of DEV mode (e.g. CI). */
+  devSkip?: boolean;
 }
 
 /**
@@ -60,7 +62,7 @@ interface Props {
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
  */
-export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: Props) {
+export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, devSkip }: Props) {
   const [candidates] = useState(() => resolveAvatarCandidates(evictee));
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
@@ -126,7 +128,7 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone }: 
     ? evictee.avatar
     : evictee.name.charAt(0).toUpperCase();
 
-  const isDev = import.meta.env.DEV;
+  const isDev = import.meta.env.DEV || devSkip;
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
   return (
