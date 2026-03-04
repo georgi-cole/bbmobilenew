@@ -28,6 +28,7 @@ import { resolveCompetitionOutcome } from '../features/cwgo/thunks';
 import { CWGO_QUESTIONS } from '../features/cwgo/cwgoQuestions';
 import { mulberry32 } from '../store/rng';
 import type { CwgoPrizeType, CwgoState } from '../features/cwgo/cwgoCompetitionSlice';
+import type { CwgoResult } from '../features/cwgo/cwgoHelpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ export default function ClosestWithoutGoingOverComp({
   const [inputError, setInputError] = useState('');
 
   // Derive helper data
-  const humanPlayer = players.find((p: any) => p.isUser);
+  const humanPlayer = players.find((p) => p.isUser);
   const humanId: string | null = humanPlayer?.id ?? null;
 
   // Start competition on mount
@@ -92,7 +93,7 @@ export default function ClosestWithoutGoingOverComp({
 
   const question = CWGO_QUESTIONS[cwgo.questionIdx];
   const playerName = (id: string) =>
-    players.find((p: any) => p.id === id)?.name ?? id;
+    players.find((p) => p.id === id)?.name ?? id;
 
   // ── Mass Input ──────────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ export default function ClosestWithoutGoingOverComp({
             Results — Answer: <strong>{question?.answer.toLocaleString()}</strong>
           </p>
           <AnimatePresence>
-            {cwgo.revealResults.map((r: any, i: number) => (
+            {cwgo.revealResults.map((r: CwgoResult, i: number) => (
               <motion.div
                 key={r.playerId}
                 layout
@@ -377,7 +378,7 @@ export default function ClosestWithoutGoingOverComp({
             Duel Results — Answer: <strong>{question?.answer.toLocaleString()}</strong>
           </p>
           <AnimatePresence>
-            {cwgo.revealResults.map((r: any, i: number) => (
+            {cwgo.revealResults.map((r: CwgoResult, i: number) => (
               <motion.div
                 key={r.playerId}
                 layout

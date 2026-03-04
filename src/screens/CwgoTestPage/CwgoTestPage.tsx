@@ -26,7 +26,7 @@ const MOCK_PLAYERS: Player[] = [
 
 export default function CwgoTestPage() {
   const gamePlayers = useAppSelector(
-    (s: RootState) => (s as any).game?.players as Player[] | undefined,
+    (s: RootState) => s.game.players as Player[] | undefined,
   );
 
   const activePlayers = (gamePlayers ?? MOCK_PLAYERS).filter(
