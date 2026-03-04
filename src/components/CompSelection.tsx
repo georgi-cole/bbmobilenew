@@ -1,18 +1,15 @@
 /**
- * CompSelection — draft UI component for the Comp Selection game-settings feature.
+ * CompSelection — UI component for the Comp Selection game-settings feature.
  *
- * WIP / exploratory: this component is intentionally self-contained and uses
- * dependency injection for fetchGames() and onSave() so it can be exercised
- * locally without any server changes.
+ * Renders a Selection Mode dropdown and, when mode is `single-game`, a
+ * single-game picker populated from fetchGames().  All pool/list UI has been
+ * removed; games are selected exclusively via the dropdowns.
  *
  * See specs/COMP_SELECTION.md for the full design spec.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  validateCompSelection,
-  ALL_CATEGORIES,
-  CATEGORY_LABELS,
   type CompGame,
   type CompSelectionMode,
   type CompSelectionPayload,
@@ -48,26 +45,11 @@ export default function CompSelection({
   const [selectedGameId, setSelectedGameId] = useState<string>(
     initialPayload?.selectedGameId ?? '',
   );
-  const [enabledIds, setEnabledIds] = useState<Set<string>>(
-    new Set(initialPayload?.enabledIds ?? []),
-  );
-  const [weeklyLimit, setWeeklyLimit] = useState<number | null>(
-    initialPayload?.weeklyLimit ?? null,
-  );
-  const [filterCategory, setFilterCategory] = useState<CompGame['category'] | null>(
-    initialPayload?.filterCategory ?? null,
-  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Stable boolean flag: true when an initial selection was provided by the
-  // caller.  Using Boolean() avoids array-identity re-runs when the caller
-  // passes `initialPayload={{ enabledIds: [...] }}` inline.
-  const hasInitialIds = Boolean(initialPayload?.enabledIds);
-
-  // Load games on mount
+  // Load games on mount (needed to populate the single-game dropdown)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -76,10 +58,6 @@ export default function CompSelection({
       .then((data) => {
         if (cancelled) return;
         setGames(data);
-        // If no initial selection, default to whatever the server marks enabled.
-        if (!hasInitialIds) {
-          setEnabledIds(new Set(data.filter((g) => g.enabled).map((g) => g.id)));
-        }
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -91,47 +69,13 @@ export default function CompSelection({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [fetchGames, hasInitialIds]);
+  }, [fetchGames]);
 
-  const toggleGame = useCallback((id: string) => {
-    setEnabledIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-    setValidationErrors([]);
-    setSaveSuccess(false);
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    setEnabledIds(new Set(games.map((g) => g.id)));
-    setValidationErrors([]);
-  }, [games]);
-
-  const handleSelectNone = useCallback(() => {
-    setEnabledIds(new Set());
-    setValidationErrors([]);
-  }, []);
-
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     const payload: CompSelectionPayload = {
       mode,
-      enabledIds: Array.from(enabledIds),
-      weeklyLimit,
-      filterCategory,
       ...(mode === 'single-game' && { selectedGameId }),
-      ...(mode === 'user-selection' && { selectedGameIds: Array.from(enabledIds) }),
     };
-    const result = validateCompSelection(payload, games);
-    if (!result.valid) {
-      setValidationErrors(result.errors);
-      return;
-    }
-    setValidationErrors([]);
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -143,13 +87,7 @@ export default function CompSelection({
     } finally {
       setSaving(false);
     }
-  }, [mode, selectedGameId, enabledIds, weeklyLimit, filterCategory, games, onSave]);
-
-  // ── Derived ────────────────────────────────────────────────────────────────
-
-  const visibleGames = filterCategory
-    ? games.filter((g) => g.category === filterCategory)
-    : games;
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -185,7 +123,6 @@ export default function CompSelection({
             value={mode}
             onChange={(e) => {
               setMode(e.target.value as CompSelectionMode);
-              setValidationErrors([]);
               setSaveSuccess(false);
             }}
             aria-label="Selection mode"
@@ -214,7 +151,6 @@ export default function CompSelection({
               value={selectedGameId}
               onChange={(e) => {
                 setSelectedGameId(e.target.value);
-                setValidationErrors([]);
                 setSaveSuccess(false);
               }}
               aria-label="Single game key"
@@ -228,115 +164,6 @@ export default function CompSelection({
             </select>
           </label>
         </div>
-      )}
-
-      {/* ── Category filter ──────────────────────────────────────────── */}
-      <div className="comp-selection__filters" role="group" aria-label="Filter by category">
-        <button
-          className={`comp-selection__filter-btn${filterCategory === null ? ' comp-selection__filter-btn--active' : ''}`}
-          onClick={() => setFilterCategory(null)}
-          aria-pressed={filterCategory === null}
-        >
-          All
-        </button>
-        {ALL_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            className={`comp-selection__filter-btn${filterCategory === cat ? ' comp-selection__filter-btn--active' : ''}`}
-            onClick={() => setFilterCategory(cat)}
-            aria-pressed={filterCategory === cat}
-          >
-            {CATEGORY_LABELS[cat]}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Bulk actions ─────────────────────────────────────────────── */}
-      <div className="comp-selection__bulk">
-        <button
-          className="comp-selection__bulk-btn"
-          onClick={handleSelectAll}
-          aria-label="Enable all competitions"
-        >
-          Select all
-        </button>
-        <button
-          className="comp-selection__bulk-btn"
-          onClick={handleSelectNone}
-          aria-label="Disable all competitions"
-        >
-          Select none
-        </button>
-        <span className="comp-selection__count" aria-live="polite">
-          {enabledIds.size} / {games.length} enabled
-        </span>
-      </div>
-
-      {/* ── Game list ─────────────────────────────────────────────────── */}
-      <ul className="comp-selection__list" role="list">
-        {visibleGames.map((game) => (
-          <li key={game.id} className="comp-selection__item">
-            <label className="comp-selection__label">
-              <input
-                type="checkbox"
-                className="comp-selection__checkbox"
-                checked={enabledIds.has(game.id)}
-                onChange={() => toggleGame(game.id)}
-                aria-label={`Toggle ${game.name}`}
-              />
-              <span className="comp-selection__icon" aria-hidden="true">{game.icon}</span>
-              <span className="comp-selection__name">{game.name}</span>
-              <span className="comp-selection__category">{CATEGORY_LABELS[game.category]}</span>
-            </label>
-          </li>
-        ))}
-        {visibleGames.length === 0 && (
-          <li className="comp-selection__empty">No competitions in this category.</li>
-        )}
-      </ul>
-
-      {/* ── Weekly limit ─────────────────────────────────────────────── */}
-      <div className="comp-selection__weekly-limit">
-        <label className="comp-selection__weekly-label">
-          Weekly Comp Limit
-          <input
-            type="number"
-            className="comp-selection__weekly-input"
-            min={1}
-            max={games.length || 1}
-            value={weeklyLimit ?? ''}
-            placeholder="No limit"
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === '') {
-                setWeeklyLimit(null);
-                setValidationErrors([]);
-                return;
-              }
-              const parsed = parseInt(raw, 10);
-              if (Number.isNaN(parsed)) {
-                // Ignore invalid numeric input; keep previous value.
-                return;
-              }
-              setWeeklyLimit(parsed);
-              setValidationErrors([]);
-            }}
-            aria-label="Maximum competitions per week (leave blank for no limit)"
-          />
-        </label>
-        <p className="comp-selection__helper-text">
-          Leave blank to allow all enabled comps; set a number to randomly draw
-          that many each week.
-        </p>
-      </div>
-
-      {/* ── Validation errors ─────────────────────────────────────────── */}
-      {validationErrors.length > 0 && (
-        <ul className="comp-selection__errors" role="alert">
-          {validationErrors.map((err) => (
-            <li key={err}>⚠️ {err}</li>
-          ))}
-        </ul>
       )}
 
       {/* ── Save feedback ─────────────────────────────────────────────── */}

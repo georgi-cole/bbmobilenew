@@ -53,15 +53,6 @@ export interface CompGame {
 export interface CompSelectionPayload {
   /** Selection strategy for the challenge scheduler. Defaults to `'random-games'`. */
   mode?: CompSelectionMode;
-  /** IDs of games the user has toggled ON. */
-  enabledIds: string[];
-  /**
-   * Optional maximum number of comps to pick each week.
-   * null = no limit (use all enabled).
-   */
-  weeklyLimit: number | null;
-  /** Active filter category, or null for "all". */
-  filterCategory: CompGame['category'] | null;
   /**
    * Registry key of the single game to always use.
    * Only consulted when `mode === 'single-game'`.
@@ -72,6 +63,16 @@ export interface CompSelectionPayload {
    * Only consulted when `mode === 'user-selection'`.
    */
   selectedGameIds?: string[];
+  /** IDs of games the user has toggled ON. @deprecated No longer used by the settings UI. */
+  enabledIds?: string[];
+  /**
+   * Optional maximum number of comps to pick each week.
+   * null = no limit (use all enabled).
+   * @deprecated No longer used by the settings UI.
+   */
+  weeklyLimit?: number | null;
+  /** Active filter category, or null for "all". @deprecated No longer used by the settings UI. */
+  filterCategory?: CompGame['category'] | null;
 }
 
 /** Props accepted by the CompSelection component. */

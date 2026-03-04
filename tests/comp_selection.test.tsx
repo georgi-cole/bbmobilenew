@@ -1,19 +1,15 @@
 /**
- * Comp Selection — test skeleton (Vitest).
+ * Comp Selection — tests (Vitest).
  *
  * Covers:
- *  1. validateCompSelection — pure validation logic (no DOM required).
- *  2. CompSelection React component — render, toggle, bulk actions, save flow.
- *
- * WIP: stubs are intentionally thin. Extend once the component is wired to
- * the real API endpoints.
+ *  1. CompSelection React component — loading state, single-game dropdown
+ *     populated from fetchGames, save flow (mode + selectedGameId).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CompSelection from '../src/components/CompSelection';
 import {
-  validateCompSelection,
   type CompGame,
   type CompSelectionPayload,
 } from '../src/components/compSelectionUtils';
@@ -31,107 +27,6 @@ function fetchGamesMock(): Promise<CompGame[]> {
   return Promise.resolve(MOCK_GAMES);
 }
 
-// ── validateCompSelection ─────────────────────────────────────────────────────
-
-describe('validateCompSelection', () => {
-  it('is valid when at least one game is enabled with no weeklyLimit', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race'],
-      weeklyLimit:    null,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
-
-  it('is invalid when enabledIds is empty', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     [],
-      weeklyLimit:    null,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.toLowerCase().includes('at least one'))).toBe(true);
-  });
-
-  it('is invalid when enabledIds contains an unknown game ID', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race', 'ghost-game'],
-      weeklyLimit:    null,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('ghost-game'))).toBe(true);
-  });
-
-  it('is invalid when weeklyLimit exceeds the number of enabled IDs', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race'],
-      weeklyLimit:    5,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('Weekly limit cannot exceed'))).toBe(true);
-  });
-
-  it('is invalid when weeklyLimit is zero', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race', 'trivia-blitz'],
-      weeklyLimit:    0,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-  });
-
-  it('is valid when weeklyLimit equals the number of enabled IDs', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race', 'trivia-blitz'],
-      weeklyLimit:    2,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(true);
-  });
-
-  it('is invalid when enabledIds contains duplicate IDs', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race', 'tap-race'],
-      weeklyLimit:    null,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
-  });
-
-  it('is invalid when enabledIds contains an empty-string ID', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race', ''],
-      weeklyLimit:    null,
-      filterCategory: null,
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
-  });
-
-  it('is invalid when filterCategory is not a known category', () => {
-    const payload: CompSelectionPayload = {
-      enabledIds:     ['tap-race'],
-      weeklyLimit:    null,
-      filterCategory: 'unknown-category' as CompGame['category'],
-    };
-    const result = validateCompSelection(payload, MOCK_GAMES);
-    expect(result.valid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
-  });
-});
-
 // ── CompSelection component ───────────────────────────────────────────────────
 
 describe('CompSelection component', () => {
@@ -141,19 +36,27 @@ describe('CompSelection component', () => {
     onSave = vi.fn().mockResolvedValue(undefined);
   });
 
-  it('renders the list of competitions after loading', async () => {
+  it('shows loading state then populates the single-game dropdown', async () => {
     render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
 
-    // Loading state first
+    // Loading state renders first
     expect(screen.getByText(/loading/i)).toBeTruthy();
 
-    // Then game names appear
-    await waitFor(() => {
-      expect(screen.getByText('Tap Race')).toBeTruthy();
-      expect(screen.getByText('Trivia Blitz')).toBeTruthy();
-      expect(screen.getByText('Maze Run')).toBeTruthy();
-      expect(screen.getByText('Memory Match')).toBeTruthy();
+    // Switch to single-game mode — wait for loading to finish first
+    await waitFor(() => screen.getByLabelText('Selection mode'));
+
+    fireEvent.change(screen.getByLabelText('Selection mode'), {
+      target: { value: 'single-game' },
     });
+
+    // Single-game dropdown should be visible and populated from fetchGames
+    const gameSelect = await waitFor(() => screen.getByLabelText('Single game key'));
+    expect(gameSelect).toBeTruthy();
+
+    // All mock games should appear as options
+    for (const game of MOCK_GAMES) {
+      expect(screen.getByText(`${game.name} (${game.id})`)).toBeTruthy();
+    }
   });
 
   it('shows an error message when fetchGames rejects', async () => {
@@ -165,77 +68,52 @@ describe('CompSelection component', () => {
     });
   });
 
-  it('toggles a game on/off when its checkbox is clicked', async () => {
+  it('calls onSave with { mode, selectedGameId } when mode is single-game', async () => {
     render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Maze Run'));
 
-    const mazeCheckbox = screen.getByLabelText('Toggle Maze Run') as HTMLInputElement;
-    // Maze Run starts disabled (enabled: false in fixture → not in initial set)
-    expect(mazeCheckbox.checked).toBe(false);
+    // Wait for loading to finish
+    await waitFor(() => screen.getByLabelText('Selection mode'));
 
-    fireEvent.click(mazeCheckbox);
-    expect(mazeCheckbox.checked).toBe(true);
-
-    fireEvent.click(mazeCheckbox);
-    expect(mazeCheckbox.checked).toBe(false);
-  });
-
-  it('"Select all" enables all games', async () => {
-    render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Tap Race'));
-
-    fireEvent.click(screen.getByLabelText('Enable all competitions'));
-
-    for (const game of MOCK_GAMES) {
-      const cb = screen.getByLabelText(`Toggle ${game.name}`) as HTMLInputElement;
-      expect(cb.checked).toBe(true);
-    }
-  });
-
-  it('"Select none" disables all games', async () => {
-    render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Tap Race'));
-
-    fireEvent.click(screen.getByLabelText('Disable all competitions'));
-
-    for (const game of MOCK_GAMES) {
-      const cb = screen.getByLabelText(`Toggle ${game.name}`) as HTMLInputElement;
-      expect(cb.checked).toBe(false);
-    }
-  });
-
-  it('shows validation error and does not call onSave when no games are enabled', async () => {
-    render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Tap Race'));
-
-    fireEvent.click(screen.getByLabelText('Disable all competitions'));
-    fireEvent.click(screen.getByText('Save Selection'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeTruthy();
-      expect(screen.getByText(/at least one/i)).toBeTruthy();
+    // Switch to single-game mode
+    fireEvent.change(screen.getByLabelText('Selection mode'), {
+      target: { value: 'single-game' },
     });
-    expect(onSave).not.toHaveBeenCalled();
-  });
 
-  it('calls onSave with the correct payload when valid', async () => {
-    render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Tap Race'));
+    // Pick a game
+    const gameSelect = await waitFor(() => screen.getByLabelText('Single game key'));
+    fireEvent.change(gameSelect, { target: { value: 'tap-race' } });
 
-    // Default selection: games with enabled:true (tap-race, trivia-blitz)
+    // Save
     fireEvent.click(screen.getByText('Save Selection'));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
     const [payload] = onSave.mock.calls[0] as [CompSelectionPayload];
-    expect(payload.enabledIds).toEqual(expect.arrayContaining(['tap-race', 'trivia-blitz']));
-    expect(payload.weeklyLimit).toBeNull();
+    expect(payload.mode).toBe('single-game');
+    expect(payload.selectedGameId).toBe('tap-race');
+  });
+
+  it('calls onSave with only { mode } when mode is not single-game', async () => {
+    render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
+
+    await waitFor(() => screen.getByLabelText('Selection mode'));
+
+    // Default mode is random-games — just click Save
+    fireEvent.click(screen.getByText('Save Selection'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+    const [payload] = onSave.mock.calls[0] as [CompSelectionPayload];
+    expect(payload.mode).toBe('random-games');
+    expect(payload.selectedGameId).toBeUndefined();
   });
 
   it('shows "Saved!" confirmation after a successful save', async () => {
     render(<CompSelection fetchGames={fetchGamesMock} onSave={onSave} />);
-    await waitFor(() => screen.getByText('Tap Race'));
+
+    await waitFor(() => screen.getByLabelText('Selection mode'));
 
     fireEvent.click(screen.getByText('Save Selection'));
 
@@ -244,3 +122,4 @@ describe('CompSelection component', () => {
     });
   });
 });
+
