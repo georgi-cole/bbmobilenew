@@ -1,4 +1,4 @@
-import { loadSettings } from './settingsSlice';
+import { loadSettings, type SettingsState } from './settingsSlice';
 
 /** Default cast / roster size used when no valid persisted value exists. */
 export const DEFAULT_ROSTER_SIZE = 12;
@@ -11,4 +11,12 @@ export function getConfiguredCastSize(): number {
   const raw = loadSettings().gameUX.castSize;
   if (!Number.isFinite(raw)) return DEFAULT_ROSTER_SIZE;
   return Math.min(16, Math.max(4, Math.floor(raw)));
+}
+
+/**
+ * Return a snapshot of the current persisted settings for restart-detection.
+ * Call once on Settings mount; compare via JSON.stringify on Back to detect changes.
+ */
+export function getRestartRelevantSnapshot(): SettingsState {
+  return loadSettings();
 }
