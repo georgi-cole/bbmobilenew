@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "comp_selection",
+  "title": "CompSelectionPayload",
+  "description": "Server-side validation schema for the Comp Selection game-settings payload (POST /api/settings/comp-selection).",
+  "type": "object",
+  "required": ["enabledIds"],
+  "additionalProperties": false,
+  "properties": {
+    "enabledIds": {
+      "type": "array",
+      "description": "IDs of the competition games that the player has enabled.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "weeklyLimit": {
+      "description": "Maximum number of comps to draw each week. null or absent means no limit.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "filterCategory": {
+      "description": "Active category filter stored with the selection, or null for 'all'.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["physical", "mental", "endurance", "social", "mixed"]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
