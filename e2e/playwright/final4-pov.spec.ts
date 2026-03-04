@@ -85,8 +85,10 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 });
     await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 });
 
-    // Game must have advanced to Final 3
-    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 10000 });
+    // Game must have advanced to Final 3 — check the phase pill which reliably
+    // shows "FINAL 3" without the TVLog duplicate-suppression that hides the
+    // "Final 3!" TV-feed entry when it is also the main viewport's latest event.
+    await expect(page.locator('.status-pill--phase')).toContainText(/final 3/i, { timeout: 10000 });
   });
 
   /**
@@ -145,7 +147,8 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
 
     // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
     await expect(tvFeed).toContainText(/has chosen to evict/i, { timeout: 10000 });
-    await expect(tvFeed).toContainText(/Final 3/i, { timeout: 10000 });
+    // Game must have advanced to Final 3 — check the phase pill (reliable; not subject to TVLog suppression)
+    await expect(page.locator('.status-pill--phase')).toContainText(/final 3/i, { timeout: 10000 });
   });
 
   /**
