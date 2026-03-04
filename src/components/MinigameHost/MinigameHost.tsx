@@ -117,12 +117,13 @@ export default function MinigameHost({
   }, []);
 
   // ── React minigame complete (e.g. CWGO) — skip host results screen ───────
-  const handleReactComplete = useCallback(
-    (rawValue: number, partial: boolean = false) => {
-      onDone(rawValue, partial);
-    },
-    [onDone],
-  );
+  // CWGO dispatches resolveCompetitionOutcome() before calling onComplete, so
+  // the competition result is already stored in Redux. We call onDone(1) as a
+  // sentinel to signal completion to the parent — the actual winner is
+  // determined by the Redux state, not this value.
+  const handleReactComplete = useCallback(() => {
+    onDone(1, false);
+  }, [onDone]);
 
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
