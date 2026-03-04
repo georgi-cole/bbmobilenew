@@ -90,7 +90,7 @@ export default function FloatingActionBar() {
         disabled={isWaiting}
         onClick={() => {
           dispatch(advance())
-          try { window.dispatchEvent(new CustomEvent('ui:playPressed')) } catch (e) { void e; }
+          try { window.dispatchEvent(new CustomEvent('ui:playPressed')) } catch { /* ignore */ }
         }}
       >
         ▶
