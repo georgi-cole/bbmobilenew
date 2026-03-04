@@ -677,7 +677,7 @@ export default function GameScreen() {
   const [final4Stage, setFinal4Stage] = useState<Final4Stage>('idle')
   const [final4PleaLines, setFinal4PleaLines] = useState<ChatLine[]>([])
   const [final4AnnounceLines, setFinal4AnnounceLines] = useState<ChatLine[]>([])
-  const [final4DecisionDelayStarted, setFinal4DecisionDelayStarted] = useState(false)
+  const [, setFinal4DecisionDelayStarted] = useState(false)
   const [final4DecisionReady, setFinal4DecisionReady] = useState(false)
   const final4DecisionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
 
