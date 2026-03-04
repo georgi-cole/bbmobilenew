@@ -1,17 +1,22 @@
 // MODULE: src/components/MinigameHost/MinigameHost.tsx
-// Full-screen host for legacy minigames.
+// Full-screen host for minigames (legacy and React-implemented).
 //
 // Flow:
 //   1. Rules modal  (unless skipRules is true)
 //   2. 3-second "Get Ready" countdown
-//   3. Legacy minigame (via LegacyMinigameWrapper)
+//   3. Minigame — either a React component (e.g. ClosestWithoutGoingOverComp)
+//      or a legacy bundle via LegacyMinigameWrapper
 //   4. Results screen  → calls onDone(rawValue)
+//      Note: React-implemented games (implementation === 'react') show their own
+//      results screen and call onDone directly when complete, skipping step 4.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { GameRegistryEntry } from '../../minigames/registry';
 import MinigameRules from '../MinigameRules/MinigameRules';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
+import ClosestWithoutGoingOverComp from '../ClosestWithoutGoingOverComp';
+import type { CwgoPrizeType } from '../../features/cwgo/cwgoCompetitionSlice';
 import './MinigameHost.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -97,19 +102,28 @@ export default function MinigameHost({
     return () => clearTimeout(t);
   }, [phase, countdown, skipCountdown]);
 
-  // ── Game complete ────────────────────────────────────────────────────────
+  // ── Game complete (legacy) ───────────────────────────────────────────────
   const handleComplete = useCallback((result: LegacyRawResult) => {
     setFinalValue(result.value);
     setWasPartial(false);
     setPhase('results');
   }, []);
 
-  // ── Quit / partial ───────────────────────────────────────────────────────
+  // ── Quit / partial (legacy) ──────────────────────────────────────────────
   const handleQuit = useCallback((partial: LegacyRawResult) => {
     setFinalValue(partial.value);
     setWasPartial(true);
     setPhase('results');
   }, []);
+
+  // ── React minigame complete (e.g. CWGO) — skip host results screen ───────
+  // CWGO dispatches resolveCompetitionOutcome() before calling onComplete, so
+  // the competition result is already stored in Redux. We call onDone(1) as a
+  // sentinel to signal completion to the parent — the actual winner is
+  // determined by the Redux state, not this value.
+  const handleReactComplete = useCallback(() => {
+    onDone(1, false);
+  }, [onDone]);
 
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -161,12 +175,21 @@ export default function MinigameHost({
 
       {phase === 'playing' && (
         <div className="minigame-host-playing">
-          <LegacyMinigameWrapper
-            game={game}
-            options={gameOptions}
-            onComplete={handleComplete}
-            onQuit={handleQuit}
-          />
+          {game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver' ? (
+            <ClosestWithoutGoingOverComp
+              participantIds={(participants ?? []).map((p) => p.id)}
+              prizeType={gameOptions?.prizeType as CwgoPrizeType}
+              seed={typeof gameOptions?.seed === 'number' ? gameOptions.seed : 0}
+              onComplete={handleReactComplete}
+            />
+          ) : (
+            <LegacyMinigameWrapper
+              game={game}
+              options={gameOptions}
+              onComplete={handleComplete}
+              onQuit={handleQuit}
+            />
+          )}
         </div>
       )}
 

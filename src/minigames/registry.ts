@@ -35,8 +35,18 @@ export interface GameRegistryEntry {
   authoritative: boolean;
   scoringAdapter: ScoringAdapterName;
   scoringParams?: Record<string, number>;
-  /** Path relative to src/minigames/legacy/, used for dynamic import. */
-  modulePath: string;
+  /**
+   * 'react' for games implemented as React components; 'legacy' (default) for games
+   * loaded via LegacyMinigameWrapper from a JS bundle.
+   */
+  implementation?: 'react' | 'legacy';
+  /**
+   * When implementation === 'react', identifies which React component to render.
+   * MinigameHost uses this key to select the correct component.
+   */
+  reactComponentKey?: string;
+  /** Path relative to src/minigames/legacy/, used for dynamic import. Only required when implementation !== 'react'. */
+  modulePath?: string;
   /** True for all games ported from bbmobile. */
   legacy: boolean;
   /**
@@ -754,10 +764,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     timeLimitMs: 0,
     authoritative: true,
     scoringAdapter: 'authoritative',
-    // Placeholder until a dedicated CWGO legacy adapter exists; estimation-game.js
-    // is a compatible legacy bundle that LegacyMinigameWrapper can load at runtime.
-    modulePath: 'estimation-game.js',
-    legacy: true,
+    implementation: 'react',
+    reactComponentKey: 'ClosestWithoutGoingOver',
+    legacy: false,
     weight: 1,
     category: 'trivia',
     retired: false,
