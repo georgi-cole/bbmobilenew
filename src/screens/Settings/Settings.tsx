@@ -11,10 +11,9 @@ import {
   importSettings,
   loadSettings,
   type ThemePreset,
-  type SettingsState,
 } from '../../store/settingsSlice';
 import { resetGame } from '../../store/gameSlice';
-import { getRestartRelevantSnapshot } from '../../store/settingsHelpers';
+import { getRestartRelevantSnapshot, type RestartRelevantSettings } from '../../store/settingsHelpers';
 import './Settings.css';
 
 type Tab = 'audio' | 'display' | 'gameux' | 'about';
@@ -45,7 +44,7 @@ export default function Settings() {
 
   // Snapshot persisted settings on mount so we can deep-compare on Back.
   // useRef's initial value is only evaluated once — on the first render.
-  const settingsOnMount = useRef<SettingsState>(getRestartRelevantSnapshot());
+  const settingsOnMount = useRef<RestartRelevantSettings>(getRestartRelevantSnapshot());
 
   // A game is "in progress" if it has advanced past the initial fresh state.
   const gameInProgress =
