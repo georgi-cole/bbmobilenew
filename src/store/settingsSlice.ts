@@ -68,6 +68,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     spectatorMode: false,
     castSize: 12,
     compSelection: {
+      mode: 'random-games' as const,
       enabledIds: [],
       weeklyLimit: null,
       filterCategory: null,

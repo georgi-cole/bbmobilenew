@@ -8,7 +8,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
-import { pickRandomGame, getGame } from '../minigames/registry';
+import { pickRandomGame, getGame, getAllGames, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
@@ -180,10 +180,108 @@ export const startChallenge =
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
       game = found;
     } else {
-      game = pickRandomGame(gameSeed, {
-        category: opts.category,
-        excludeKeys: opts.excludeKeys,
-      });
+      // Consult the saved Comp Selection setting (if present).
+      const compSel = state.settings?.gameUX?.compSelection;
+      const mode = compSel?.mode ?? 'random-games';
+
+      switch (mode) {
+        case 'single-game': {
+          const key = compSel?.selectedGameId;
+          const found = key ? getGame(key) : undefined;
+          if (found) {
+            game = found;
+          } else {
+            // Unknown or missing key — fall back to random selection.
+            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          }
+          break;
+        }
+
+        case 'user-selection': {
+          const keys = compSel?.selectedGameIds ?? [];
+          const pool = keys
+            .map((k) => getGame(k))
+            .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);
+          if (pool.length > 0) {
+            // Weighted deterministic pick from the user-curated pool.
+            const weighted: GameRegistryEntry[] = [];
+            for (const entry of pool) {
+              for (let i = 0; i < entry.weight; i++) weighted.push(entry);
+            }
+            const rng = mulberry32(gameSeed >>> 0);
+            game = weighted[Math.floor(rng() * weighted.length)];
+          } else {
+            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          }
+          break;
+        }
+
+        case 'arcade-only':
+          game = pickRandomGame(gameSeed, { category: 'arcade', excludeKeys: opts.excludeKeys });
+          break;
+
+        case 'trivia-only':
+          game = pickRandomGame(gameSeed, { category: 'trivia', excludeKeys: opts.excludeKeys });
+          break;
+
+        case 'endurance-only':
+          game = pickRandomGame(gameSeed, { category: 'endurance', excludeKeys: opts.excludeKeys });
+          break;
+
+        case 'logic-only':
+          game = pickRandomGame(gameSeed, { category: 'logic', excludeKeys: opts.excludeKeys });
+          break;
+
+        case 'retired': {
+          const retiredPool = getPoolByFilter({ retired: true });
+          if (retiredPool.length > 0) {
+            const rng = mulberry32(gameSeed >>> 0);
+            game = retiredPool[Math.floor(rng() * retiredPool.length)];
+          } else {
+            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          }
+          break;
+        }
+
+        case 'misc': {
+          // "Misc" — intended for games with no category or multiple categories.
+          // The registry currently assigns a single GameCategory to every entry
+          // (there is no 'none' or 'misc' category), so this mode falls back to
+          // fully-random selection.  Future registry expansions that add uncategorised
+          // entries should filter them here with getPoolByFilter.
+          game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          break;
+        }
+
+        case 'unique': {
+          // Exclude recently-used games; fall back to normal selection when pool is empty.
+          const recentKeys = new Set(
+            (state.challenge?.history ?? []).map((r) => r.gameKey),
+          );
+          const exclude = [...recentKeys, ...(opts.excludeKeys ?? [])];
+          const uniquePool = getPoolByFilter({ retired: false, category: opts.category, excludeKeys: exclude });
+          if (uniquePool.length > 0) {
+            const weighted: GameRegistryEntry[] = [];
+            for (const entry of uniquePool) {
+              for (let i = 0; i < entry.weight; i++) weighted.push(entry);
+            }
+            const rng = mulberry32(gameSeed >>> 0);
+            game = weighted[Math.floor(rng() * weighted.length)];
+          } else {
+            // Pool exhausted — fall back to unconstrained random.
+            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          }
+          break;
+        }
+
+        case 'random-games':
+        default:
+          game = pickRandomGame(gameSeed, {
+            category: opts.category,
+            excludeKeys: opts.excludeKeys,
+          });
+          break;
+      }
     }
 
     // Derive a per-challenge seed from the base seed + game key hash.
