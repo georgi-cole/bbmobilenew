@@ -54,7 +54,7 @@ export default function Settings() {
     (Array.isArray(game.tvFeed) && game.tvFeed.length > 1);
 
   const handleBack = () => {
-    const current = loadSettings();
+    const current = getRestartRelevantSnapshot();
     if (gameInProgress && JSON.stringify(settingsOnMount.current) !== JSON.stringify(current)) {
       setShowRestartModal(true);
     } else {
