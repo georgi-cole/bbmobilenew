@@ -2,14 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "comp_selection",
   "title": "CompSelectionPayload",
-  "description": "Server-side validation schema for the Comp Selection game-settings payload (POST /api/settings/comp-selection).",
+  "description": "Server-side validation schema for the Comp Selection game-settings payload (POST /api/settings/comp-selection). NOTE: This schema enforces structural constraints only (non-empty array, unique items, enum values, integer bounds). Cross-field constraints — 'known IDs only' (requires validating against the current game catalogue) and 'weeklyLimit <= enabledIds.length' — cannot be expressed in draft-07 JSON Schema and must be enforced in application logic.",
   "type": "object",
   "required": ["enabledIds"],
   "additionalProperties": false,
   "properties": {
     "enabledIds": {
       "type": "array",
-      "description": "IDs of the competition games that the player has enabled.",
+      "description": "IDs of the competition games that the player has enabled. Must be non-empty and contain unique, non-empty strings. Whether each ID is a known game must be validated in application logic against the current game catalogue.",
       "items": {
         "type": "string",
         "minLength": 1
@@ -18,7 +18,7 @@
       "uniqueItems": true
     },
     "weeklyLimit": {
-      "description": "Maximum number of comps to draw each week. null or absent means no limit.",
+      "description": "Maximum number of comps to draw each week. null or absent means no limit. Must also satisfy weeklyLimit <= enabledIds.length, which is enforced in application logic (not this schema).",
       "oneOf": [
         {
           "type": "integer",

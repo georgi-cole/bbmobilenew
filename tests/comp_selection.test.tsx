@@ -11,11 +11,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import CompSelection, {
+import CompSelection from '../src/components/CompSelection';
+import {
   validateCompSelection,
   type CompGame,
   type CompSelectionPayload,
-} from '../src/components/CompSelection';
+} from '../src/components/compSelectionUtils';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,39 @@ describe('validateCompSelection', () => {
     };
     const result = validateCompSelection(payload, MOCK_GAMES);
     expect(result.valid).toBe(true);
+  });
+
+  it('is invalid when enabledIds contains duplicate IDs', () => {
+    const payload: CompSelectionPayload = {
+      enabledIds:     ['tap-race', 'tap-race'],
+      weeklyLimit:    null,
+      filterCategory: null,
+    };
+    const result = validateCompSelection(payload, MOCK_GAMES);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('is invalid when enabledIds contains an empty-string ID', () => {
+    const payload: CompSelectionPayload = {
+      enabledIds:     ['tap-race', ''],
+      weeklyLimit:    null,
+      filterCategory: null,
+    };
+    const result = validateCompSelection(payload, MOCK_GAMES);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('is invalid when filterCategory is not a known category', () => {
+    const payload: CompSelectionPayload = {
+      enabledIds:     ['tap-race'],
+      weeklyLimit:    null,
+      filterCategory: 'unknown-category' as CompGame['category'],
+    };
+    const result = validateCompSelection(payload, MOCK_GAMES);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
   });
 });
 

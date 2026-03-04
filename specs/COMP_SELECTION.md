@@ -65,8 +65,11 @@ server to validate the `POST /api/settings/comp-selection` request body.
 | **Weekly limit bounds** | `weeklyLimit === null \|\| (weeklyLimit >= 1 && weeklyLimit <= enabledIds.length)` |
 | **Category enum** | `filterCategory` must be one of `physical`, `mental`, `endurance`, `social`, `mixed`, or `null` |
 
-Validation is implemented client-side in `src/components/CompSelection.tsx`
-(`validateCompSelection`) and mirrors the JSON schema constraints for the server.
+Validation is implemented client-side in `src/components/compSelectionUtils.ts`
+(`validateCompSelection`). For constraints that are expressible in draft-07 JSON
+Schema, the client-side rules mirror the server schema; other rules (e.g. **Known
+IDs only** and `weeklyLimit <= enabledIds.length`) are enforced in application
+logic outside the JSON Schema.
 
 ---
 

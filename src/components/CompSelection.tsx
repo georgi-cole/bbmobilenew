@@ -9,104 +9,16 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  validateCompSelection,
+  ALL_CATEGORIES,
+  CATEGORY_LABELS,
+  type CompGame,
+  type CompSelectionPayload,
+  type CompSelectionProps,
+} from './compSelectionUtils';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-/** A competition entry returned by fetchGames(). */
-export interface CompGame {
-  /** Stable machine-readable identifier (e.g. "tap-race", "trivia-blitz"). */
-  id: string;
-  /** Human-readable display name. */
-  name: string;
-  /** Emoji icon for visual identification. */
-  icon: string;
-  /** Broad category used for filtering (e.g. "physical", "mental", "endurance"). */
-  category: 'physical' | 'mental' | 'endurance' | 'social' | 'mixed';
-  /** Whether this game is currently enabled in the simulation. */
-  enabled: boolean;
-}
-
-/** Shape of the save payload sent to onSave(). */
-export interface CompSelectionPayload {
-  /** IDs of games the user has toggled ON. */
-  enabledIds: string[];
-  /**
-   * Optional maximum number of comps to pick each week.
-   * null = no limit (use all enabled).
-   */
-  weeklyLimit: number | null;
-  /** Active filter category, or null for "all". */
-  filterCategory: CompGame['category'] | null;
-}
-
-/** Props accepted by the CompSelection component. */
-export interface CompSelectionProps {
-  /**
-   * Async function that resolves to the list of available comp games.
-   * Injected so callers can mock or provide real API data.
-   */
-  fetchGames: () => Promise<CompGame[]>;
-  /**
-   * Called when the user saves their selection.
-   * The component does not perform any persistence itself.
-   */
-  onSave: (payload: CompSelectionPayload) => Promise<void> | void;
-  /** Optional initial payload to pre-populate the form. */
-  initialPayload?: Partial<CompSelectionPayload>;
-}
-
-// ── Validation ────────────────────────────────────────────────────────────────
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-
-/**
- * Client-side validation for a CompSelectionPayload.
- * Mirrors the constraints in src/api/schema/comp_selection.json.
- */
-export function validateCompSelection(
-  payload: CompSelectionPayload,
-  allGames: CompGame[],
-): ValidationResult {
-  const errors: string[] = [];
-
-  if (payload.enabledIds.length === 0) {
-    errors.push('At least one competition must be enabled.');
-  }
-
-  const knownIds = new Set(allGames.map((g) => g.id));
-  const unknownIds = payload.enabledIds.filter((id) => !knownIds.has(id));
-  if (unknownIds.length > 0) {
-    errors.push(`Unknown game ID(s): ${unknownIds.join(', ')}.`);
-  }
-
-  if (payload.weeklyLimit !== null) {
-    if (!Number.isInteger(payload.weeklyLimit) || payload.weeklyLimit < 1) {
-      errors.push('Weekly limit must be a positive integer or null (no limit).');
-    }
-    if (payload.weeklyLimit > payload.enabledIds.length) {
-      errors.push(
-        'Weekly limit cannot exceed the number of enabled competitions.',
-      );
-    }
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<CompGame['category'], string> = {
-  physical:  '💪 Physical',
-  mental:    '🧠 Mental',
-  endurance: '⏱️ Endurance',
-  social:    '🤝 Social',
-  mixed:     '🎲 Mixed',
-};
-
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as Array<CompGame['category']>;
+export type { CompGame, CompSelectionPayload, CompSelectionProps } from './compSelectionUtils';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -143,6 +55,11 @@ export default function CompSelection({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  // Stable boolean flag: true when an initial selection was provided by the
+  // caller.  Using Boolean() avoids array-identity re-runs when the caller
+  // passes `initialPayload={{ enabledIds: [...] }}` inline.
+  const hasInitialIds = Boolean(initialPayload?.enabledIds);
+
   // Load games on mount
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +70,7 @@ export default function CompSelection({
         if (cancelled) return;
         setGames(data);
         // If no initial selection, default to whatever the server marks enabled.
-        if (!initialPayload?.enabledIds) {
+        if (!hasInitialIds) {
           setEnabledIds(new Set(data.filter((g) => g.enabled).map((g) => g.id)));
         }
       })
@@ -167,7 +84,7 @@ export default function CompSelection({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [fetchGames, initialPayload?.enabledIds]);
+  }, [fetchGames, hasInitialIds]);
 
   const toggleGame = useCallback((id: string) => {
     setEnabledIds((prev) => {
@@ -195,7 +112,7 @@ export default function CompSelection({
 
   const handleSave = useCallback(async () => {
     const payload: CompSelectionPayload = {
-      enabledIds:     Array.from(enabledIds),
+      enabledIds: Array.from(enabledIds),
       weeklyLimit,
       filterCategory,
     };
@@ -326,8 +243,18 @@ export default function CompSelection({
             value={weeklyLimit ?? ''}
             placeholder="No limit"
             onChange={(e) => {
-              const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-              setWeeklyLimit(val);
+              const raw = e.target.value;
+              if (raw === '') {
+                setWeeklyLimit(null);
+                setValidationErrors([]);
+                return;
+              }
+              const parsed = parseInt(raw, 10);
+              if (Number.isNaN(parsed)) {
+                // Ignore invalid numeric input; keep previous value.
+                return;
+              }
+              setWeeklyLimit(parsed);
               setValidationErrors([]);
             }}
             aria-label="Maximum competitions per week (leave blank for no limit)"
@@ -368,3 +295,4 @@ export default function CompSelection({
     </div>
   );
 }
+
