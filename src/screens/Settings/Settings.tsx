@@ -16,12 +16,12 @@ import { resetGame } from '../../store/gameSlice';
 import { getRestartRelevantSnapshot, type RestartRelevantSettings } from '../../store/settingsHelpers';
 import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
-import { getAllGames } from '../../minigames/registry';
+import { getAllGames, type GameCategory } from '../../minigames/registry';
 import './Settings.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
 function registryCategoryToCompCategory(
-  category: 'arcade' | 'endurance' | 'logic' | 'trivia',
+  category: GameCategory,
 ): CompGame['category'] {
   switch (category) {
     case 'arcade':    return 'physical';
@@ -31,7 +31,7 @@ function registryCategoryToCompCategory(
   }
 }
 
-const REGISTRY_CATEGORY_ICONS: Record<'arcade' | 'endurance' | 'logic' | 'trivia', string> = {
+const REGISTRY_CATEGORY_ICONS: Record<GameCategory, string> = {
   arcade:    '🕹️',
   endurance: '⏱️',
   logic:     '🧩',

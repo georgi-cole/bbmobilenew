@@ -95,10 +95,17 @@ export function loadSettings(): SettingsState {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
     // Deep-merge to preserve new defaults when schema is extended
+    const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...parsed.gameUX };
+    // compSelection is a nested object — deep-merge so partial stored values
+    // (e.g. from an older schema version) inherit any newly-added defaults.
+    mergedGameUX.compSelection = {
+      ...DEFAULT_SETTINGS.gameUX.compSelection,
+      ...(parsed.gameUX?.compSelection ?? {}),
+    };
     return {
       audio:   { ...DEFAULT_SETTINGS.audio,   ...parsed.audio },
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
-      gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...parsed.gameUX },
+      gameUX:  mergedGameUX,
       sim:     { ...DEFAULT_SETTINGS.sim,     ...parsed.sim },
       visual:  { ...DEFAULT_SETTINGS.visual,  ...parsed.visual },
     };
@@ -150,10 +157,17 @@ const settingsSlice = createSlice({
     importSettings(_state, action: PayloadAction<SettingsState>) {
       // Deep-merge with DEFAULT_SETTINGS so importing older saved state that
       // lacks newer sections (e.g. visual) never leaves them undefined.
+      const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...action.payload.gameUX };
+      // compSelection is a nested object — deep-merge so partial imported values
+      // inherit any newly-added defaults.
+      mergedGameUX.compSelection = {
+        ...DEFAULT_SETTINGS.gameUX.compSelection,
+        ...(action.payload.gameUX?.compSelection ?? {}),
+      };
       return {
         audio:   { ...DEFAULT_SETTINGS.audio,   ...action.payload.audio },
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
-        gameUX:  { ...DEFAULT_SETTINGS.gameUX,  ...action.payload.gameUX },
+        gameUX:  mergedGameUX,
         sim:     { ...DEFAULT_SETTINGS.sim,     ...action.payload.sim },
         visual:  { ...DEFAULT_SETTINGS.visual,  ...action.payload.visual },
       };
