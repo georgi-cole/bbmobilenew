@@ -137,15 +137,6 @@
       module: 'trivia-pulse.js',
       type: 'trivia',
       supportsDebugMode: true
-    },
-    {
-      id: 'dontGoOver',
-      key: 'dontGoOver',
-      name: "Don't go over",
-      description: 'Closest Without Going Over tournament-style minigame',
-      module: 'estimation-game.js',
-      type: 'trivia',
-      supportsDebugMode: true
     }
   ];
 

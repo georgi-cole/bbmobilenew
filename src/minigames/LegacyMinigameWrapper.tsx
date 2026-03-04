@@ -107,7 +107,17 @@ export default function LegacyMinigameWrapper({ game, options = {}, onComplete, 
     // Capture the container element so the cleanup function can safely clear it.
     const container = containerRef.current;
 
-    loadLegacyModule(game.modulePath, game.key)
+    const modulePath = game.modulePath;
+    if (!modulePath) {
+      setError(
+        `[LegacyMinigameWrapper] No modulePath defined for game '${game.key}'. ` +
+          `React-implemented games (implementation === 'react') should not use LegacyMinigameWrapper.`,
+      );
+      setLoading(false);
+      return;
+    }
+
+    loadLegacyModule(modulePath, game.key)
       .then((mod) => {
         if (cancelled || !containerRef.current) return;
         setLoading(false);
