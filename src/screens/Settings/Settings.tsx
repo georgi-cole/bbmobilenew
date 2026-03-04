@@ -11,9 +11,9 @@ import {
   importSettings,
   loadSettings,
   type ThemePreset,
-  type SettingsState,
 } from '../../store/settingsSlice';
 import { resetGame } from '../../store/gameSlice';
+import { getRestartRelevantSnapshot, type RestartRelevantSettings } from '../../store/settingsHelpers';
 import './Settings.css';
 
 type Tab = 'audio' | 'display' | 'gameux' | 'about';
@@ -32,20 +32,6 @@ const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
   { id: 'ocean',    label: 'Ocean',    swatch: '#0ea5e9' },
 ];
 
-/** Settings that require a new season to take effect. */
-function hasRestartRequiredChanges(
-  before: SettingsState,
-  after: SettingsState,
-): boolean {
-  return (
-    before.gameUX.castSize     !== after.gameUX.castSize     ||
-    before.gameUX.spectatorMode !== after.gameUX.spectatorMode ||
-    before.gameUX.compactRoster !== after.gameUX.compactRoster ||
-    before.gameUX.animations   !== after.gameUX.animations   ||
-    before.gameUX.useHaptics   !== after.gameUX.useHaptics   ||
-    before.sim.enableTwists    !== after.sim.enableTwists
-  );
-}
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>('audio');
@@ -56,10 +42,9 @@ export default function Settings() {
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
   const [showRestartModal, setShowRestartModal] = useState(false);
 
-  // Snapshot settings on mount so we can detect restart-required changes on back.
-  // useRef's initial value is only evaluated once — on the first render — so this
-  // captures the settings state exactly at mount time and is never re-evaluated.
-  const settingsOnMount = useRef<SettingsState>(settings);
+  // Snapshot persisted settings on mount so we can deep-compare on Back.
+  // useRef's initial value is only evaluated once — on the first render.
+  const settingsOnMount = useRef<RestartRelevantSettings>(getRestartRelevantSnapshot());
 
   // A game is "in progress" if it has advanced past the initial fresh state.
   const gameInProgress =
@@ -68,11 +53,24 @@ export default function Settings() {
     (Array.isArray(game.tvFeed) && game.tvFeed.length > 1);
 
   const handleBack = () => {
-    if (gameInProgress && hasRestartRequiredChanges(settingsOnMount.current, settings)) {
+    const current = getRestartRelevantSnapshot();
+    if (gameInProgress && JSON.stringify(settingsOnMount.current) !== JSON.stringify(current)) {
       setShowRestartModal(true);
     } else {
       navigate(-1);
     }
+  };
+
+  const handleRestartSeason = () => {
+    dispatch(importSettings(loadSettings()));
+    dispatch(resetGame());
+    setShowRestartModal(false);
+    navigate('/game');
+  };
+
+  const handleStay = () => {
+    setShowRestartModal(false);
+    navigate(-1);
   };
 
   // Keep the viewport meta tag in sync with the enableZoom setting.
@@ -445,18 +443,13 @@ export default function Settings() {
             <div className="settings-restart-modal__actions">
               <button
                 className="settings-restart-modal__btn settings-restart-modal__btn--primary"
-              onClick={() => {
-                  dispatch(importSettings(loadSettings()));
-                  dispatch(resetGame());
-                  setShowRestartModal(false);
-                  navigate('/game');
-                }}
+                onClick={handleRestartSeason}
               >
                 Restart
               </button>
               <button
                 className="settings-restart-modal__btn settings-restart-modal__btn--secondary"
-                onClick={() => navigate(-1)}
+                onClick={handleStay}
               >
                 Stay
               </button>
