@@ -52,7 +52,7 @@ export default function DebugPanel() {
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => searchParams.get('debug') === '1');
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
   const [selectedHoH, setSelectedHoH] = useState('');
   const [nominee1, setNominee1] = useState('');
