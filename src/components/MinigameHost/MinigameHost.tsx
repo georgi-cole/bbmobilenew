@@ -117,9 +117,12 @@ export default function MinigameHost({
   }, []);
 
   // ── React minigame complete (e.g. CWGO) — skip host results screen ───────
-  const handleReactComplete = useCallback(() => {
-    onDone(1, false);
-  }, [onDone]);
+  const handleReactComplete = useCallback(
+    (rawValue: number, partial: boolean = false) => {
+      onDone(rawValue, partial);
+    },
+    [onDone],
+  );
 
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
