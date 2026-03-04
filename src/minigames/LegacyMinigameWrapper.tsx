@@ -52,28 +52,34 @@ async function loadLegacyModule(
 
   await loader();
 
-  // Legacy modules register themselves under window.MiniGames[gameKey]
-  // (primary convention in bbmobile) or window.MinigameModules[gameKey]
-  // (used by tetris, minesweeper, etc.).  Fall back to capitalised-stem heuristics.
+  // Legacy modules register themselves under window.MiniGames[<key>] or
+  // window.MinigameModules[<key>] or a direct global.  Because the registry key
+  // (gameKey, e.g. 'dontGoOver') may differ from the key the module chose when
+  // it registered (e.g. 'estimationGame'), we try several candidate keys derived
+  // from both the gameKey and the module filename.
   const winAny = window as unknown as Record<string, unknown>;
   const miniGames = winAny['MiniGames'] as Record<string, unknown> | undefined;
   const minigameModules = winAny['MinigameModules'] as Record<string, unknown> | undefined;
 
-  const mod =
-    (miniGames?.[gameKey] as { render: (...a: unknown[]) => void } | undefined) ??
-    (minigameModules?.[gameKey] as { render: (...a: unknown[]) => void } | undefined) ??
-    // legacy heuristic fallbacks
-    (() => {
-      const stem = modulePath
-        .replace(/\.js$/, '')
-        .replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
-      const capitalised = stem.charAt(0).toUpperCase() + stem.slice(1);
-      return (
-        (winAny[capitalised + 'Game'] as { render: (...a: unknown[]) => void } | undefined) ??
-        (winAny[capitalised] as { render: (...a: unknown[]) => void } | undefined) ??
-        (winAny['currentMinigame'] as { render: (...a: unknown[]) => void } | undefined)
-      );
-    })();
+  const moduleStem = modulePath.replace(/\.js$/, '');
+  const camelStem = moduleStem.replace(/-([a-zA-Z0-9])/g, (_, c: string) => c.toUpperCase());
+  const capitalised = camelStem.charAt(0).toUpperCase() + camelStem.slice(1);
+  const candidates = [gameKey, moduleStem, camelStem, capitalised];
+
+  type MaybeRender = { render: (...a: unknown[]) => void } | undefined;
+
+  const mod = (() => {
+    for (const candidate of candidates) {
+      const capCandidate = candidate.charAt(0).toUpperCase() + candidate.slice(1);
+      const found =
+        (miniGames?.[candidate] as MaybeRender) ??
+        (minigameModules?.[candidate] as MaybeRender) ??
+        (winAny[candidate + 'Game'] as MaybeRender) ??
+        (winAny[capCandidate] as MaybeRender);
+      if (found?.render) return found;
+    }
+    return winAny['currentMinigame'] as MaybeRender;
+  })();
 
   if (!mod?.render) {
     throw new Error(
