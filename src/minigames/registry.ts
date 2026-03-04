@@ -754,8 +754,10 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     timeLimitMs: 0,
     authoritative: true,
     scoringAdapter: 'authoritative',
-    modulePath: 'cwgo',
-    legacy: false,
+    // Placeholder until a dedicated CWGO legacy adapter exists; estimation-game.js
+    // is a compatible legacy bundle that LegacyMinigameWrapper can load at runtime.
+    modulePath: 'estimation-game.js',
+    legacy: true,
     weight: 1,
     category: 'trivia',
     retired: false,
