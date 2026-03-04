@@ -53,15 +53,6 @@ export interface CompGame {
 export interface CompSelectionPayload {
   /** Selection strategy for the challenge scheduler. Defaults to `'random-games'`. */
   mode?: CompSelectionMode;
-  /** IDs of games the user has toggled ON. */
-  enabledIds: string[];
-  /**
-   * Optional maximum number of comps to pick each week.
-   * null = no limit (use all enabled).
-   */
-  weeklyLimit: number | null;
-  /** Active filter category, or null for "all". */
-  filterCategory: CompGame['category'] | null;
   /**
    * Registry key of the single game to always use.
    * Only consulted when `mode === 'single-game'`.
@@ -72,6 +63,16 @@ export interface CompSelectionPayload {
    * Only consulted when `mode === 'user-selection'`.
    */
   selectedGameIds?: string[];
+  /** IDs of games the user has toggled ON. @deprecated No longer used by the settings UI. */
+  enabledIds?: string[];
+  /**
+   * Optional maximum number of comps to pick each week.
+   * null = no limit (use all enabled).
+   * @deprecated No longer used by the settings UI.
+   */
+  weeklyLimit?: number | null;
+  /** Active filter category, or null for "all". @deprecated No longer used by the settings UI. */
+  filterCategory?: CompGame['category'] | null;
 }
 
 /** Props accepted by the CompSelection component. */
@@ -125,19 +126,23 @@ export function validateCompSelection(
 ): ValidationResult {
   const errors: string[] = [];
 
-  if (payload.enabledIds.length === 0) {
+  const enabledIds = payload.enabledIds ?? [];
+  const weeklyLimit = payload.weeklyLimit ?? null;
+  const filterCategory = payload.filterCategory ?? null;
+
+  if (enabledIds.length === 0) {
     errors.push('At least one competition must be enabled.');
   }
 
   // Enforce non-empty string IDs (schema: minLength >= 1 for enabledIds items).
-  const emptyIds = payload.enabledIds.filter((id) => id === '');
+  const emptyIds = enabledIds.filter((id) => id === '');
   if (emptyIds.length > 0) {
     errors.push('Enabled competition IDs must be non-empty strings.');
   }
 
   // Enforce uniqueness of IDs (schema: uniqueItems: true for enabledIds).
   const seenIds = new Set<string>();
-  const duplicateIds = payload.enabledIds.filter((id) => {
+  const duplicateIds = enabledIds.filter((id) => {
     if (seenIds.has(id)) return true;
     seenIds.add(id);
     return false;
@@ -150,28 +155,28 @@ export function validateCompSelection(
   // Enforce known IDs (application logic — not representable in JSON Schema).
   // Skip empty-string IDs here to avoid double-reporting (already flagged above).
   const knownIds = new Set(allGames.map((g) => g.id));
-  const unknownIds = payload.enabledIds.filter((id) => id !== '' && !knownIds.has(id));
+  const unknownIds = enabledIds.filter((id) => id !== '' && !knownIds.has(id));
   if (unknownIds.length > 0) {
     errors.push(`Unknown game ID(s): ${unknownIds.join(', ')}.`);
   }
 
-  if (payload.weeklyLimit !== null) {
-    if (!Number.isInteger(payload.weeklyLimit) || payload.weeklyLimit < 1) {
+  if (weeklyLimit !== null) {
+    if (!Number.isInteger(weeklyLimit) || weeklyLimit < 1) {
       errors.push('Weekly limit must be a positive integer or null (no limit).');
     }
     // Application logic constraint: weeklyLimit <= enabledIds.length.
-    if (payload.weeklyLimit > payload.enabledIds.length) {
+    if (weeklyLimit > enabledIds.length) {
       errors.push('Weekly limit cannot exceed the number of enabled competitions.');
     }
   }
 
   // Enforce filterCategory enum (application logic — category list is dynamic).
   if (
-    payload.filterCategory !== null &&
-    !ALL_CATEGORIES.includes(payload.filterCategory as CompGame['category'])
+    filterCategory !== null &&
+    !ALL_CATEGORIES.includes(filterCategory as CompGame['category'])
   ) {
     errors.push(
-      `Invalid filterCategory "${String(payload.filterCategory)}". Expected one of: ${ALL_CATEGORIES.join(', ')} or null.`,
+      `Invalid filterCategory "${String(filterCategory)}". Expected one of: ${ALL_CATEGORIES.join(', ')} or null.`,
     );
   }
 
