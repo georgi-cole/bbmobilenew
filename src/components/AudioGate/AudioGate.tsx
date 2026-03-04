@@ -21,8 +21,17 @@ export interface AudioGateProps {
   promptText?: string;
 }
 
+function detectDebugMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
+  return (
+    window.location.search.includes('debug=1') ||
+    window.location.hash.includes('debug=1')
+  );
+}
+
 export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => detectDebugMode());
 
   const handleUnlock = useCallback(() => {
     if (unlocked) return;
@@ -30,6 +39,14 @@ export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
     SoundManager.unlockOnUserGesture();
     onUnlock?.();
   }, [unlocked, onUnlock]);
+
+  useEffect(() => {
+    if (unlocked) {
+      SoundManager.unlockOnUserGesture();
+      onUnlock?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (unlocked) return;
