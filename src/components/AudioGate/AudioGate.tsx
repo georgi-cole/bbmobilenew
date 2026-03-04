@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { detectDebugMode } from '../../utils/debugMode';
 import styles from './AudioGate.module.css';
 
 export interface AudioGateProps {
@@ -19,15 +20,6 @@ export interface AudioGateProps {
   onUnlock?: () => void;
   /** Custom prompt text. Defaults to "Tap anywhere to enable audio". */
   promptText?: string;
-}
-
-function detectDebugMode(): boolean {
-  if (typeof window === 'undefined') return false;
-  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
-  return (
-    window.location.search.includes('debug=1') ||
-    window.location.hash.includes('debug=1')
-  );
 }
 
 export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
