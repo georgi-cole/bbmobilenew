@@ -1312,7 +1312,11 @@ export default function GameScreen() {
       {showMinigameHost && pendingChallenge && (
         <MinigameHost
           game={pendingChallenge.game}
-          gameOptions={{ seed: pendingChallenge.seed }}
+          gameOptions={{
+            seed: pendingChallenge.seed,
+            // Derive prize type from game phase: pov_comp → POV, all others (hoh_comp, final3) → HOH.
+            prizeType: game.phase === 'pov_comp' ? 'POV' : 'HOH',
+          }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);
             const aiScore = pendingChallenge.aiScores[id] ?? 0;
