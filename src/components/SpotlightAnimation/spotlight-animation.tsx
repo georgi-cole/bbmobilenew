@@ -46,7 +46,25 @@ export default function SpotlightAnimation({
   onDone,
   ...rest
 }: SpotlightAnimationProps) {
-  const [tiles, setTiles] = useState<CeremonyTile[]>(initialTiles);
+  // Measure synchronously on first render so CeremonyOverlay receives valid
+  // rects immediately (avoids immediate-onDone fallback when rect: null is
+  // passed as initial value from GameScreen after the RAF fires).
+  const [tiles, setTiles] = useState<CeremonyTile[]>(() => {
+    const hasMeasureInit = measureA != null || measureB != null;
+    const hasRefsInit = (tileRefs?.length ?? 0) > 0;
+    if (!hasMeasureInit && !hasRefsInit) return initialTiles;
+    return initialTiles.map((tile, idx) => {
+      const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
+      const refEl = tileRefs?.[idx]?.current ?? null;
+      if (!measureFn && !refEl) return tile;
+      const rect = measureFn
+        ? measureFn()
+        : (refEl?.getBoundingClientRect() ?? null);
+      if (!rect) return tile;
+      console.debug('[spotlight] remeasure', { idx, rect });
+      return { ...tile, rect };
+    });
+  });
   const rafRef = useRef<number>(0);
   const activeRef = useRef(true);
 
@@ -67,6 +85,7 @@ export default function SpotlightAnimation({
             ? measureFn()
             : (refEl?.getBoundingClientRect() ?? null);
           if (!rect) return tile;
+          console.debug('[spotlight] remeasure', { idx, rect });
           return { ...tile, rect };
         }),
       );

@@ -215,7 +215,11 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     // Simulate minigame completion.
     await act(async () => { capturedMinigameOnDone!(100); });
 
-    // Zero DOMRect → no animation → phase transitions immediately.
+    // setPendingWinnerCeremony is deferred to next RAF; flush it now (RAF fires ~16ms).
+    await act(async () => { vi.advanceTimersByTime(16); });
+
+    // Zero DOMRect → SpotlightAnimation measures null → CeremonyOverlay fires
+    // onDone immediately → phase transitions.
     expect(store.getState().game.phase).toBe('hoh_results');
     expect(store.getState().game.hohId).not.toBeNull();
   });
@@ -237,6 +241,9 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
 
     // Trigger minigame done.
     await act(async () => { capturedMinigameOnDone!(100); });
+
+    // setPendingWinnerCeremony is deferred to next RAF; flush it now (RAF fires ~16ms).
+    await act(async () => { vi.advanceTimersByTime(16); });
 
     // Valid DOMRect → CeremonyOverlay is showing → phase NOT yet committed.
     expect(store.getState().game.phase).toBe('hoh_comp');
