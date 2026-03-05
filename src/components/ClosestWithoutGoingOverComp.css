@@ -819,3 +819,78 @@
   box-shadow: 0 -8px 12px 2px var(--color-bg, #0d1117);
   z-index: 1;
 }
+
+/* ── choose_duel: scrollable picker with sticky footer ─────────────────────── */
+
+/* Picker variant wraps the grid in a constrained scroll area.
+   60vh keeps the sticky footer always visible even on the smallest phones
+   (e.g. iPhone SE at 667px logical height) while allowing plenty of room
+   for a large candidate grid on taller devices. */
+.cwgo-choose--picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  width: 100%;
+  max-width: 400px;
+}
+
+.cwgo-choose__scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cwgo-choose__footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #0d1117);
+  padding: 0.75rem 0 0.5rem;
+  display: flex;
+  justify-content: center;
+  box-shadow: 0 -8px 12px 2px var(--color-bg, #0d1117);
+  z-index: 1;
+  width: 100%;
+}
+
+/* ── Scale selector for large-answer inputs ─────────────────────────────────── */
+
+.cwgo-mass-input__scale {
+  background: var(--color-card, #141b26);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 8px;
+  color: var(--color-text, rgba(255,255,255,0.92));
+  font-size: 0.82rem;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  max-width: 140px;
+}
+
+.cwgo-mass-input__scale:focus {
+  outline: none;
+  border-color: rgba(99,102,241,0.7);
+}
+
+/* ── Duel VS card: flex row so VS separator sits between the two sides ──────── */
+
+.cwgo-duel__vs-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.cwgo-duel__vs-sep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  flex-shrink: 0;
+  align-self: center;
+}

@@ -292,9 +292,36 @@ question orders and AI behaviour on each challenge invocation. `debug.forceSeed`
 bypasses the nonce and uses the derived `challengeSeed` directly for
 reproducibility.
 
+### Per-challenge question order (questionOrder)
+
+`cwgoCompetitionSlice` now generates a `questionOrder: number[]` at competition
+start — a deterministic Fisher-Yates shuffle of all question indices seeded from
+the per-challenge seed. Each round uses `questionOrder[round % questionOrder.length]`
+to pick the next question. This guarantees:
+
+- **Variation**: different seeds (i.e. different challenge invocations) produce
+  different question sequences, preventing players from memorising answers.
+- **No repetition** (within one competition): the first N rounds are guaranteed
+  to show N distinct questions before wrapping.
+- **Determinism**: the same seed always produces the same question order.
+
+### Outcome idempotency (outcomeResolved)
+
+`CwgoState` now has an `outcomeResolved: boolean` flag (default `false`).
+
+- `resolveCompetitionOutcome` checks this flag and returns immediately if `true`.
+- After successfully dispatching `applyMinigameWinner`, it dispatches
+  `markCwgoOutcomeResolved()` which sets `outcomeResolved = true`.
+- `startCwgoCompetition` resets `outcomeResolved` to `false` for the next run.
+- `applyMinigameWinner` in `gameSlice` also has an idempotency check: if
+  `hohId` (or `povWinnerId`) is already set it skips re-applying the winner.
+
+Together these two guards prevent a race condition where the "Claim Prize" button
+could be tapped twice (or rendered twice) before the phase transition takes effect.
+
 ### Leader tracking
 
-`cwgoCompetitionSlice` now persists `leaderId: string | null` in state.
+`cwgoCompetitionSlice` persists `leaderId: string | null` in state.
 - Set to the mass-round winner after `revealMassResults`.
 - Updated to the duel winner after `revealDuelResults`.
 - Reset to `null` on `startCwgoCompetition`.
@@ -318,6 +345,49 @@ Both the AI-leader path and the human-leader path now handle the edge case where
   `LeaderDuelPicker` only showed 1 candidate (the non-leader), making it impossible
   to select 2 players.
 
+### Scaled numeric input
+
+Some questions have very large answers (millions, billions). These questions have a
+`scale?: number` field in `CwgoQuestion`. When a question has `scale` set, the input
+UI shows a dropdown alongside the number field:
+
+| Option | Multiplier |
+|--------|-----------|
+| `—` | 1 (no scaling) |
+| `K (thousand)` | 1 000 |
+| `M (million)` | 1 000 000 |
+| `B (billion)` | 1 000 000 000 |
+| `T (trillion)` | 1 000 000 000 000 |
+
+The placeholder updates to remind the user decimals are accepted. The value is
+computed as `Math.round(parseFloat(input) * scale)` before dispatch.
+
+### Hidden question during choose_duel
+
+The question card is **not shown** during the `choose_duel` phase.  The current
+question belongs to the next duel, not the leader-pick screen, so revealing it
+early would give away information.  It is revealed once the duel starts
+(`duel_input` / `duel_reveal`).
+
+### Close button (MinigameHost)
+
+`MinigameHost` now renders an `✕` button in the top-right corner of the playing
+phase.  Clicking it calls `onDone(0, true)` — the same as quitting early.  For
+CWGO specifically this will abort the competition without awarding the prize.
+
+### choose_duel mobile scrollability
+
+`LeaderDuelPicker` now wraps its player grid in a `.cwgo-choose__scroll-body`
+container (`overflow-y: auto; max-height: 60vh`), and the "Send to Duel" button
+is placed in a `.cwgo-choose__footer` sticky container so it remains reachable on
+small screens regardless of how many candidates are listed.
+
+### VS separator alignment
+
+The VS separator in `DuelVsCard` and in the duel-reveal grid is now rendered
+**between** the two player sides (not appended after them), ensuring it stays
+visually centred in all viewports.
+
 ### Question bank
 
 The question bank in `cwgoQuestions.ts` has been expanded from 32 to 54 questions
@@ -325,9 +395,52 @@ with varied difficulty levels (1–5). Easy questions (difficulty 1) remain for
 accessibility; difficulty 3–5 questions add estimation and numeric trivia that
 require genuine reasoning.
 
+Large-answer questions include a `scale` hint for the UI:
+
+| ID | Answer | scale |
+|----|--------|-------|
+| q07 | 4 500 000 000 years | 1 000 000 000 |
+| q16 | 40 000 km | 1 000 |
+| q22 | 8 800 000 people | 1 000 000 |
+| q41 | 380 000 km | 1 000 |
+| q52 | 170 000 words | 1 000 |
+| q53 | 37 000 000 000 000 cells | 1 000 000 000 000 |
+| q54 | 150 000 000 km | 1 000 000 |
+
 ### Mobile scrollability
 
 Results lists (`.cwgo-results-wrap`) now have `max-height: 55vh` with
 `overflow-y: auto` and `-webkit-overflow-scrolling: touch`.
 The Continue button is placed inside a `.cwgo-footer` sticky container
 (`position: sticky; bottom: 0`) so it remains reachable even on small screens.
+
+---
+
+## Changelog
+
+### fix/cwgo-winner-sync-and-ui
+
+- **Outcome idempotency**: `resolveCompetitionOutcome` is now guarded by
+  `cwgo.outcomeResolved`; `applyMinigameWinner` is guarded by `hohId`/`povWinnerId`.
+  Prevents double-dispatch on rapid clicks or concurrent renders.
+- **questionOrder shuffle**: per-challenge Fisher-Yates shuffle of all question
+  indices replaces single-question XOR selection; question order varies per
+  invocation while remaining deterministic for the same seed.
+- **leaderId**: `cwgoCompetitionSlice.leaderId` persisted; UI and AI use it
+  everywhere instead of `aliveIds[0]`.
+- **Scaled input**: number input accepts decimals + multiplier dropdown for
+  large-answer questions (`scale` metadata on `CwgoQuestion`).
+- **choose_duel UX**: picker grid wrapped in scrollable container; "Send to Duel"
+  button moved to sticky footer.
+- **Hidden question in choose_duel**: question card hidden during leader-pick phase.
+- **MinigameHost close button**: `✕` button (top-right, playing phase) calls
+  `onDone(0, true)`.
+- **VS separator**: centred between duel sides in both `DuelVsCard` and
+  duel-reveal card.
+- **Two-player terminal**: `confirmMassElimination` skips `choose_duel` when
+  exactly 2 survive; human-leader deadlock prevented with "Start Duel" shortcut.
+- **Instrumentation**: `console.log` calls at `startCwgoCompetition`,
+  `resolveCompetitionOutcome`, `applyMinigameWinner`, and the champion banner
+  render aid debugging and monitoring.
+- **Tests**: new unit tests for `outcomeResolved`, `questionOrder`, and
+  `parseScaledGuess` in `tests/unit/`.

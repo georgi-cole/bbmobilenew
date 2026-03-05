@@ -440,6 +440,10 @@ const gameSlice = createSlice({
      * Apply a minigame winner determined by the challenge flow (MinigameHost).
      * Advances the phase (hoh_comp → hoh_results, pov_comp → pov_results) and
      * applies the appropriate winner effects without relying on pendingMinigame.
+     *
+     * This action is idempotent: if the winner for the current phase has already
+     * been applied (hohId or povWinnerId already set and phase has advanced), a
+     * second call is silently ignored.
      */
     applyMinigameWinner(state, action: PayloadAction<string>) {
       const winnerId = action.payload;
@@ -447,9 +451,21 @@ const gameSlice = createSlice({
         (p) => p.status !== 'evicted' && p.status !== 'jury',
       );
       if (state.phase === 'hoh_comp') {
+        // Idempotency: if hohId already set the winner was already applied.
+        if (state.hohId) {
+          console.log('[gameSlice] applyMinigameWinner: HOH already applied, skipping.');
+          return;
+        }
+        console.log('[gameSlice] applyMinigameWinner: applying HOH winner', winnerId);
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
       } else if (state.phase === 'pov_comp') {
+        // Idempotency: if povWinnerId already set the winner was already applied.
+        if (state.povWinnerId) {
+          console.log('[gameSlice] applyMinigameWinner: POV already applied, skipping.');
+          return;
+        }
+        console.log('[gameSlice] applyMinigameWinner: applying POV winner', winnerId);
         state.phase = applyPovWinner(state, winnerId, alive);
       }
     },

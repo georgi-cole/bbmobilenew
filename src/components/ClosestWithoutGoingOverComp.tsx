@@ -89,6 +89,9 @@ export default function ClosestWithoutGoingOverComp({
 
   const [humanGuess, setHumanGuess] = useState('');
   const [inputError, setInputError] = useState('');
+  // Scale selector index: 0=none, 1=thousand (1e3), 2=million (1e6), 3=billion (1e9), 4=trillion (1e12)
+  const NO_SCALE_INDEX = 0;
+  const [scaleIdx, setScaleIdx] = useState(NO_SCALE_INDEX);
 
   // Derive helper data
   const humanPlayer = players.find((p) => p.isUser);
@@ -108,6 +111,33 @@ export default function ClosestWithoutGoingOverComp({
 
   function playerName(id: string): string {
     return getPlayer(id)?.name ?? id;
+  }
+
+  // ── Scale helpers ──────────────────────────────────────────────────────────
+
+  const SCALES = [
+    { label: '—', value: 1 },
+    { label: 'K (thousand)', value: 1_000 },
+    { label: 'M (million)', value: 1_000_000 },
+    { label: 'B (billion)', value: 1_000_000_000 },
+    { label: 'T (trillion)', value: 1_000_000_000_000 },
+  ] as const;
+
+  /** Derive the input placeholder based on the active scale index. */
+  function inputPlaceholder(): string {
+    return scaleIdx === NO_SCALE_INDEX
+      ? 'Enter number…'
+      : `Decimals OK (×${SCALES[scaleIdx].label})`;
+  }
+
+  /**
+   * Parse the human-entered guess string, multiplying by the currently-selected
+   * scale factor. Accepts decimals (e.g. "4.5" × 1e9 = 4 500 000 000).
+   */
+  function parseScaledGuess(raw: string): number | null {
+    const n = parseFloat(raw);
+    if (isNaN(n)) return null;
+    return Math.round(n * SCALES[scaleIdx].value);
   }
 
   // Start competition on mount
@@ -141,8 +171,8 @@ export default function ClosestWithoutGoingOverComp({
       return;
     }
 
-    const val = Number(humanGuess);
-    if (!humanGuess || isNaN(val)) {
+    const val = parseScaledGuess(humanGuess);
+    if (val === null) {
       setInputError('Please enter a valid number.');
       return;
     }
@@ -150,6 +180,7 @@ export default function ClosestWithoutGoingOverComp({
     dispatch(setGuesses({ [humanId]: val }));
     dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
     setHumanGuess('');
+    setScaleIdx(0);
     dispatch(revealMassResults());
   }
 
@@ -160,8 +191,8 @@ export default function ClosestWithoutGoingOverComp({
     const isHumanInDuel = humanId && cwgo.duelPair.includes(humanId);
 
     if (isHumanInDuel) {
-      const val = Number(humanGuess);
-      if (!humanGuess || isNaN(val)) {
+      const val = parseScaledGuess(humanGuess);
+      if (val === null) {
         setInputError('Please enter a valid number.');
         return;
       }
@@ -172,6 +203,7 @@ export default function ClosestWithoutGoingOverComp({
     // Fill AI guesses for non-human duel participant
     dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
     setHumanGuess('');
+    setScaleIdx(0);
     dispatch(revealDuelResults());
   }
 
@@ -215,11 +247,15 @@ export default function ClosestWithoutGoingOverComp({
 
   const prizeLabel = prizeType === 'HOH' ? '🏆 Head of Household' : '🔑 Power of Veto';
 
+  // Hide the question card during choose_duel — the question belongs to the
+  // upcoming duel, not the leader-pick phase.
+  const showQuestion = cwgo.status !== 'choose_duel';
+
   return (
     <div className="cwgo">
       <h2 className="cwgo__title">Don&apos;t Go Over — {prizeLabel}</h2>
 
-      {question && (
+      {showQuestion && question && (
         <div className="cwgo__question">
           <p className="cwgo__question-label">Question</p>
           <p className="cwgo__question-text">{question.prompt}</p>
@@ -275,10 +311,22 @@ export default function ClosestWithoutGoingOverComp({
                     className="cwgo-mass-input__input"
                     value={humanGuess}
                     onChange={(e) => setHumanGuess(e.target.value)}
-                    placeholder="Enter number…"
+                    placeholder={inputPlaceholder()}
                     onKeyDown={(e) => e.key === 'Enter' && handleMassSubmit()}
                     autoFocus
                   />
+                  {question?.scale !== undefined && (
+                    <select
+                      className="cwgo-mass-input__scale"
+                      value={scaleIdx}
+                      onChange={(e) => setScaleIdx(Number(e.target.value))}
+                      aria-label="Scale multiplier"
+                    >
+                      {SCALES.map((s, i) => (
+                        <option key={i} value={i}>{s.label}</option>
+                      ))}
+                    </select>
+                  )}
                   <button className="cwgo-btn cwgo-btn--primary" onClick={handleMassSubmit}>
                     Submit
                   </button>
@@ -483,10 +531,22 @@ export default function ClosestWithoutGoingOverComp({
                     className="cwgo-mass-input__input"
                     value={humanGuess}
                     onChange={(e) => setHumanGuess(e.target.value)}
-                    placeholder="Enter number…"
+                    placeholder={inputPlaceholder()}
                     onKeyDown={(e) => e.key === 'Enter' && handleDuelSubmit()}
                     autoFocus
                   />
+                  {question?.scale !== undefined && (
+                    <select
+                      className="cwgo-mass-input__scale"
+                      value={scaleIdx}
+                      onChange={(e) => setScaleIdx(Number(e.target.value))}
+                      aria-label="Scale multiplier"
+                    >
+                      {SCALES.map((s, i) => (
+                        <option key={i} value={i}>{s.label}</option>
+                      ))}
+                    </select>
+                  )}
                   <button className="cwgo-btn cwgo-btn--primary" onClick={handleDuelSubmit}>
                     Submit
                   </button>
@@ -521,55 +581,57 @@ export default function ClosestWithoutGoingOverComp({
             </p>
             <div className="cwgo-duel__vs-card">
               {cwgo.revealResults.map((r: CwgoResult, i: number) => (
-                <motion.div
-                  key={r.playerId}
-                  className={`cwgo-duel__side${r.isWinner ? ' cwgo-duel__side--winner' : ' cwgo-duel__side--loser'}${r.wentOver ? ' cwgo-duel__side--over' : ''}`}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.2, duration: 0.4 }}
-                >
-                  <div className="cwgo-duel__avatar-ring" style={{ position: 'relative' }}>
-                    <img
-                      className="cwgo-duel__avatar-img"
-                      src={avatarSrc(r.playerId)}
-                      alt={playerName(r.playerId)}
-                      onError={(e) => handleAvatarError(e, playerName(r.playerId))}
-                    />
-                    {!r.isWinner && (
+                <>
+                  <motion.div
+                    key={r.playerId}
+                    className={`cwgo-duel__side${r.isWinner ? ' cwgo-duel__side--winner' : ' cwgo-duel__side--loser'}${r.wentOver ? ' cwgo-duel__side--over' : ''}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.2, duration: 0.4 }}
+                  >
+                    <div className="cwgo-duel__avatar-ring" style={{ position: 'relative' }}>
+                      <img
+                        className="cwgo-duel__avatar-img"
+                        src={avatarSrc(r.playerId)}
+                        alt={playerName(r.playerId)}
+                        onError={(e) => handleAvatarError(e, playerName(r.playerId))}
+                      />
+                      {!r.isWinner && (
+                        <motion.div
+                          className="cwgo-duel__elim-overlay"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: i * 0.2 + 0.55, duration: 0.3 }}
+                        >
+                          <span className="cwgo-duel__elim-text">Out</span>
+                        </motion.div>
+                      )}
+                    </div>
+                    {r.isWinner && (
                       <motion.div
-                        className="cwgo-duel__elim-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.2 + 0.55, duration: 0.3 }}
+                        className="cwgo-duel__winner-badge"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', delay: 0.6, stiffness: 300 }}
                       >
-                        <span className="cwgo-duel__elim-text">Out</span>
+                        🏅
                       </motion.div>
                     )}
-                  </div>
-                  {r.isWinner && (
-                    <motion.div
-                      className="cwgo-duel__winner-badge"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.6, stiffness: 300 }}
-                    >
-                      🏅
-                    </motion.div>
-                  )}
-                  <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
-                  <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
-                  <p className="cwgo-duel__diff">
-                    {r.wentOver
-                      ? `over by ${Math.abs(r.diff).toLocaleString()}`
-                      : `diff: ${r.diff.toLocaleString()}`}
-                  </p>
-                  {/* Insert VS separator between the two sides */}
+                    <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
+                    <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
+                    <p className="cwgo-duel__diff">
+                      {r.wentOver
+                        ? `over by ${Math.abs(r.diff).toLocaleString()}`
+                        : `diff: ${r.diff.toLocaleString()}`}
+                    </p>
+                  </motion.div>
+                  {/* VS separator between the two sides */}
                   {i === 0 && (
-                    <div className="cwgo-duel__vs-sep cwgo-duel__vs-sep--between">
+                    <div key="vs" className="cwgo-duel__vs-sep">
                       <span className="cwgo-duel__vs-label">VS</span>
                     </div>
                   )}
-                </motion.div>
+                </>
               ))}
             </div>
             <div className="cwgo-footer">
@@ -591,6 +653,9 @@ export default function ClosestWithoutGoingOverComp({
             initial={{ opacity: 0, scale: 0.88 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.45 }}
+            onAnimationStart={() => {
+              console.log('[cwgo] GameScreen banner render: champion =', cwgo.aliveIds[0], '| prizeType =', prizeType);
+            }}
           >
             <motion.div
               className="cwgo-complete__trophy"
@@ -681,21 +746,30 @@ function DuelVsCard({
 }) {
   return (
     <div className="cwgo-duel__vs-card">
-      {pair.map((id) => (
-        <div key={id} className="cwgo-duel__side">
-          <div className="cwgo-duel__avatar-ring">
-            <img
-              className="cwgo-duel__avatar-img"
-              src={avatarSrc(id)}
-              alt={playerName(id)}
-              onError={(e) => handleAvatarError(e, playerName(id))}
-            />
-          </div>
-          <p className="cwgo-duel__player-name">{playerName(id)}</p>
+      <div key={pair[0]} className="cwgo-duel__side">
+        <div className="cwgo-duel__avatar-ring">
+          <img
+            className="cwgo-duel__avatar-img"
+            src={avatarSrc(pair[0])}
+            alt={playerName(pair[0])}
+            onError={(e) => handleAvatarError(e, playerName(pair[0]))}
+          />
         </div>
-      ))}
+        <p className="cwgo-duel__player-name">{playerName(pair[0])}</p>
+      </div>
       <div className="cwgo-duel__vs-sep">
         <span className="cwgo-duel__vs-label">VS</span>
+      </div>
+      <div key={pair[1]} className="cwgo-duel__side">
+        <div className="cwgo-duel__avatar-ring">
+          <img
+            className="cwgo-duel__avatar-img"
+            src={avatarSrc(pair[1])}
+            alt={playerName(pair[1])}
+            onError={(e) => handleAvatarError(e, playerName(pair[1]))}
+          />
+        </div>
+        <p className="cwgo-duel__player-name">{playerName(pair[1])}</p>
       </div>
     </div>
   );
@@ -730,77 +804,83 @@ function LeaderDuelPicker({
   const candidates = aliveIds.filter((id) => id !== leader);
 
   return (
-    <div className="cwgo-choose">
+    <div className="cwgo-choose cwgo-choose--picker">
       <p className="cwgo-choose__instruction">Pick 2 players to send to a duel:</p>
 
-      <div className="cwgo-choose__grid">
-        {candidates.map((id) => (
-          <button
-            key={id}
-            type="button"
-            className={`cwgo-choose__card${selected.includes(id) ? ' cwgo-choose__card--selected' : ''}`}
-            onClick={() => toggle(id)}
-          >
-            <div className="cwgo-choose__card-avatar">
-              <img
-                className="cwgo-choose__card-img"
-                src={avatarSrc(id)}
-                alt={playerName(id)}
-                onError={(e) => handleAvatarError(e, playerName(id))}
-              />
-            </div>
-            <span className="cwgo-choose__card-name">{playerName(id)}</span>
-          </button>
-        ))}
+      {/* Scrollable body — safe for many players on mobile */}
+      <div className="cwgo-choose__scroll-body">
+        <div className="cwgo-choose__grid">
+          {candidates.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`cwgo-choose__card${selected.includes(id) ? ' cwgo-choose__card--selected' : ''}`}
+              onClick={() => toggle(id)}
+            >
+              <div className="cwgo-choose__card-avatar">
+                <img
+                  className="cwgo-choose__card-img"
+                  src={avatarSrc(id)}
+                  alt={playerName(id)}
+                  onError={(e) => handleAvatarError(e, playerName(id))}
+                />
+              </div>
+              <span className="cwgo-choose__card-name">{playerName(id)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Preview: show the 2 selected players as a VS mini-card */}
+        <AnimatePresence>
+          {selected.length === 2 && (
+            <motion.div
+              className="cwgo-choose__preview"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+            >
+              <div className="cwgo-choose__preview-side">
+                <div className="cwgo-choose__preview-avatar">
+                  <img
+                    className="cwgo-choose__preview-img"
+                    src={avatarSrc(selected[0])}
+                    alt={playerName(selected[0])}
+                    onError={(e) => handleAvatarError(e, playerName(selected[0]))}
+                  />
+                </div>
+                <span className="cwgo-choose__preview-name">{playerName(selected[0])}</span>
+              </div>
+              <span className="cwgo-choose__vs">⚔️ VS ⚔️</span>
+              <div className="cwgo-choose__preview-side">
+                <div className="cwgo-choose__preview-avatar">
+                  <img
+                    className="cwgo-choose__preview-img"
+                    src={avatarSrc(selected[1])}
+                    alt={playerName(selected[1])}
+                    onError={(e) => handleAvatarError(e, playerName(selected[1]))}
+                  />
+                </div>
+                <span className="cwgo-choose__preview-name">{playerName(selected[1])}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Preview: show the 2 selected players as a VS mini-card */}
-      <AnimatePresence>
-        {selected.length === 2 && (
-          <motion.div
-            className="cwgo-choose__preview"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92 }}
-          >
-            <div className="cwgo-choose__preview-side">
-              <div className="cwgo-choose__preview-avatar">
-                <img
-                  className="cwgo-choose__preview-img"
-                  src={avatarSrc(selected[0])}
-                  alt={playerName(selected[0])}
-                  onError={(e) => handleAvatarError(e, playerName(selected[0]))}
-                />
-              </div>
-              <span className="cwgo-choose__preview-name">{playerName(selected[0])}</span>
-            </div>
-            <span className="cwgo-choose__vs">⚔️ VS ⚔️</span>
-            <div className="cwgo-choose__preview-side">
-              <div className="cwgo-choose__preview-avatar">
-                <img
-                  className="cwgo-choose__preview-img"
-                  src={avatarSrc(selected[1])}
-                  alt={playerName(selected[1])}
-                  onError={(e) => handleAvatarError(e, playerName(selected[1]))}
-                />
-              </div>
-              <span className="cwgo-choose__preview-name">{playerName(selected[1])}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <button
-        type="button"
-        className="cwgo-btn cwgo-btn--gold cwgo-btn--lg"
-        disabled={selected.length < 2}
-        onClick={() => {
-          if (selected.length < 2) return;
-          onPick([selected[0], selected[1]]);
-        }}
-      >
-        Send to Duel ⚔️
-      </button>
+      {/* Sticky footer — always reachable on mobile */}
+      <div className="cwgo-choose__footer">
+        <button
+          type="button"
+          className="cwgo-btn cwgo-btn--gold cwgo-btn--lg"
+          disabled={selected.length < 2}
+          onClick={() => {
+            if (selected.length < 2) return;
+            onPick([selected[0], selected[1]]);
+          }}
+        >
+          Send to Duel ⚔️
+        </button>
+      </div>
     </div>
   );
 }
