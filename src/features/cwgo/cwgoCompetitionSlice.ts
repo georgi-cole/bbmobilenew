@@ -50,6 +50,8 @@ export interface CwgoState {
   duelPair: [string, string] | null;
   /** ID of the winner of the latest duel. */
   duelWinnerId: string | null;
+  /** ID of the current leader (winner of the last mass round or duel). */
+  leaderId: string | null;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ const initialState: CwgoState = {
   round: 0,
   duelPair: null,
   duelWinnerId: null,
+  leaderId: null,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,9 +120,14 @@ const cwgoSlice = createSlice({
       }>,
     ) {
       const { participantIds, prizeType, seed } = action.payload;
+      // Defensive: if seed is zero or missing, generate one from Date.now() to
+      // avoid every challenge with an unset seed producing the same question.
+      const safeSeed = seed && seed !== 0
+        ? seed
+        : ((mulberry32(Date.now() >>> 0)() * 0x100000000) >>> 0);
       state.status = 'mass_input';
       state.prizeType = prizeType;
-      state.seed = seed;
+      state.seed = safeSeed;
       state.aliveIds = [...participantIds];
       state.round = 0;
       state.guesses = {};
@@ -127,7 +135,8 @@ const cwgoSlice = createSlice({
       state.lastEliminated = [];
       state.duelPair = null;
       state.duelWinnerId = null;
-      state.questionIdx = pickQuestionIdx(seed, 0);
+      state.leaderId = null;
+      state.questionIdx = pickQuestionIdx(safeSeed, 0);
     },
 
     /**
@@ -176,6 +185,9 @@ const cwgoSlice = createSlice({
       }));
 
       state.revealResults = computeSortedResultsForReveal(entries, question.answer);
+      // Track the mass-round winner as the leader for the duel-pick phase.
+      const massWinnerId = computeWinnerClosestWithoutGoingOver(entries, question.answer);
+      if (massWinnerId) state.leaderId = massWinnerId;
       state.status = 'mass_reveal';
     },
 
@@ -246,8 +258,9 @@ const cwgoSlice = createSlice({
       }));
 
       state.revealResults = computeSortedResultsForReveal(entries, question.answer);
-      state.duelWinnerId =
-        computeWinnerClosestWithoutGoingOver(entries, question.answer);
+      const winnerId = computeWinnerClosestWithoutGoingOver(entries, question.answer);
+      state.duelWinnerId = winnerId;
+      if (winnerId) state.leaderId = winnerId;
       state.status = 'duel_reveal';
     },
 

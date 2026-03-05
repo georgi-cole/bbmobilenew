@@ -205,7 +205,8 @@ export default function GameScreen() {
     if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
       // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
       const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
-      dispatch(startChallenge(game.seed, participants))
+      const derivedPrizeType = game.phase === 'pov_comp' ? 'POV' : 'HOH';
+      dispatch(startChallenge(game.seed, participants, { prizeType: derivedPrizeType }))
     }
   }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony])
 
@@ -1314,8 +1315,10 @@ export default function GameScreen() {
           game={pendingChallenge.game}
           gameOptions={{
             seed: pendingChallenge.seed,
-            // Derive prize type from game phase: pov_comp → POV, all others (hoh_comp, final3) → HOH.
-            prizeType: game.phase === 'pov_comp' ? 'POV' : 'HOH',
+            // Use the prize type stored on the pending challenge (set at creation time
+            // from game.phase). This is stable even if game.phase changes later.
+            // Fall back to deriving from current game.phase for backward compatibility.
+            prizeType: pendingChallenge.prizeType ?? (game.phase === 'pov_comp' ? 'POV' : 'HOH'),
           }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);

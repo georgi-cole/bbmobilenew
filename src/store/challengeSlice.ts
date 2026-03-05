@@ -12,6 +12,7 @@ import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry'
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
+import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
 
 // ─── AI Score Simulation ──────────────────────────────────────────────────────
 
@@ -74,6 +75,8 @@ export interface ChallengeState {
   pending: PendingChallenge | null;
   /** Telemetry log of completed runs (for reproducibility). */
   history: ChallengeRun[];
+  /** Monotonically-increasing nonce used to differentiate per-invocation seeds. */
+  nextNonce: number;
   /** Debug overrides. */
   debug: {
     forceGameKey?: string;
@@ -92,11 +95,14 @@ export interface PendingChallenge {
   phase: 'rules' | 'countdown' | 'playing' | 'done';
   /** Pre-simulated deterministic scores for every non-human participant. */
   aiScores: Record<string, number>;
+  /** Prize type captured at challenge creation (HOH or POV). */
+  prizeType?: CwgoPrizeType | string;
 }
 
 const initialState: ChallengeState = {
   pending: null,
   history: [],
+  nextNonce: 1,
   debug: {},
 };
 
@@ -112,6 +118,10 @@ const challengeSlice = createSlice({
 
     setPendingPhase(state, action: PayloadAction<PendingChallenge['phase']>) {
       if (state.pending) state.pending.phase = action.payload;
+    },
+
+    incrementNonce(state) {
+      state.nextNonce = ((state.nextNonce + 1) >>> 0) || 1;
     },
 
     recordRun(state, action: PayloadAction<ChallengeRun>) {
@@ -132,6 +142,7 @@ const challengeSlice = createSlice({
 export const {
   setPendingChallenge,
   setPendingPhase,
+  incrementNonce,
   recordRun,
   setDebugOverrides,
   clearDebugOverrides,
@@ -158,12 +169,13 @@ export const selectChallengeDebug = (s: RootState) => s.challenge?.debug ?? {};
  * @param participants - Player IDs that will compete.
  * @param opts.category - Optional category filter.
  * @param opts.excludeKeys - Games to exclude from the pool.
+ * @param opts.prizeType - Prize type for CWGO competitions (HOH or POV).
  */
 export const startChallenge =
   (
     seed: number,
     participants: string[],
-    opts: { category?: GameCategory; excludeKeys?: string[]; forceGameKey?: string } = {},
+    opts: { category?: GameCategory; excludeKeys?: string[]; forceGameKey?: string; prizeType?: CwgoPrizeType | string } = {},
   ) =>
   (dispatch: AppDispatch, getState: () => RootState): GameRegistryEntry => {
     const state = getState();
@@ -287,10 +299,19 @@ export const startChallenge =
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, game.key);
 
+    // Derive a per-invocation seed so repeated challenges with the same base
+    // seed (same week) still get varied question order / AI behaviour.
+    // debug.forceSeed bypasses this for reproducibility.
+    const nextNonce = state.challenge?.nextNonce ?? 1;
+    const perChallengeSeed = forceSeed !== undefined
+      ? challengeSeed
+      : ((mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000) >>> 0);
+    dispatch(incrementNonce());
+
     // Pre-compute AI scores for all non-human participants.
     const humanId = getState().game?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
-    let aiSeed = challengeSeed;
+    let aiSeed = perChallengeSeed;
     for (const pid of participants) {
       if (pid !== humanId) {
         aiScores[pid] = simulateAIScore(game, aiSeed);
@@ -302,10 +323,11 @@ export const startChallenge =
     const pending: PendingChallenge = {
       id,
       game,
-      seed: challengeSeed,
+      seed: perChallengeSeed,
       participants,
       phase: 'rules',
       aiScores,
+      prizeType: opts.prizeType,
     };
 
     dispatch(setPendingChallenge(pending));

@@ -798,3 +798,24 @@
   justify-content: center;
   margin-top: 1rem;
 }
+
+/* ── Scrollable results wrapper + sticky footer ────────────────────────────── */
+
+.cwgo-results-wrap {
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+}
+
+.cwgo-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #0d1117);
+  padding: 0.75rem 0 0.5rem;
+  display: flex;
+  justify-content: center;
+  /* Slight gradient bleed so content doesn't hard-cut at the boundary */
+  box-shadow: 0 -8px 12px 2px var(--color-bg, #0d1117);
+  z-index: 1;
+}
