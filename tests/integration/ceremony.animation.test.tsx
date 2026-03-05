@@ -111,10 +111,18 @@ describe('ceremony animation: SpotlightAnimation uses authoritative winner rect'
   beforeEach(() => {
     capturedMinigameOnDone = null;
     vi.useFakeTimers();
+    // Stub requestAnimationFrame to use setTimeout(cb, 0) so RAF can be
+    // flushed deterministically with vi.advanceTimersByTime(0), independent
+    // of how jsdom/vitest implements RAF frame timing under fake timers.
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 0),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -139,6 +147,10 @@ describe('ceremony animation: SpotlightAnimation uses authoritative winner rect'
       return { x: 0, y: 0, width: 50, height: 50, top: 0, left: 0, bottom: 50, right: 50, toJSON: () => ({}) } as DOMRect;
     });
 
+    // Spy on console.debug to capture SpotlightAnimation's remeasure logs
+    // and assert the measured rect is the winner's (p0), not another player's.
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
     const store = makeStore();
     renderWithStore(store);
 
@@ -154,12 +166,25 @@ describe('ceremony animation: SpotlightAnimation uses authoritative winner rect'
     expect(store.getState().game.hohId).toBeNull();
 
     // Flush the deferred requestAnimationFrame so SpotlightAnimation mounts.
-    await act(async () => { vi.advanceTimersByTime(16); });
+    // (requestAnimationFrame is stubbed to setTimeout(cb, 0) in beforeEach.)
+    await act(async () => { vi.advanceTimersByTime(0); });
 
     // SpotlightAnimation should now be mounted.
     // It should show the ceremony overlay (valid rects → visible role="status").
     const statusEl = screen.getByRole('status');
     expect(statusEl.getAttribute('aria-label')).toContain('wins Head of Household');
+
+    // Assert SpotlightAnimation measured the winner's (p0) rect via measureA,
+    // not a stale or wrong-player rect.  The '[spotlight] remeasure' debug log
+    // is emitted by SpotlightAnimation's useLayoutEffect with the measured rect.
+    const remeasureCalls = debugSpy.mock.calls.filter(
+      (args) => args[0] === '[spotlight] remeasure',
+    );
+    expect(remeasureCalls.length).toBeGreaterThan(0);
+    const [, { idx, rect }] = remeasureCalls[0] as [string, { idx: number; rect: DOMRect }];
+    expect(idx).toBe(0);
+    expect(rect.left).toBe(rectsByPlayerId.p0.left);
+    expect(rect.left).not.toBe(rectsByPlayerId.p1.left);
 
     // Phase is NOT yet committed — store mutation still deferred until ceremony ends.
     expect(store.getState().game.phase).toBe('hoh_comp');
@@ -176,8 +201,9 @@ describe('ceremony animation: SpotlightAnimation uses authoritative winner rect'
 
   it('SpotlightAnimation fires onDone immediately when measureA returns null (headless/jsdom zero rect)', async () => {
     // getBoundingClientRect returns zero rect by default in jsdom.
-    // SpotlightAnimation lazy-init calls measureA → null → CeremonyOverlay fires
-    // onDone immediately → winner committed without visual animation.
+    // SpotlightAnimation useLayoutEffect calls measureA → null → tiles stay
+    // null → CeremonyOverlay fires onDone immediately → winner committed without
+    // visual animation.
     const store = makeStore();
     renderWithStore(store);
 
@@ -187,7 +213,8 @@ describe('ceremony animation: SpotlightAnimation uses authoritative winner rect'
     await act(async () => { capturedMinigameOnDone!(100); });
 
     // Flush RAF so SpotlightAnimation mounts.
-    await act(async () => { vi.advanceTimersByTime(16); });
+    // (requestAnimationFrame is stubbed to setTimeout(cb, 0) in beforeEach.)
+    await act(async () => { vi.advanceTimersByTime(0); });
 
     // Zero rects → onDone fires immediately → winner committed.
     expect(store.getState().game.phase).toBe('hoh_results');

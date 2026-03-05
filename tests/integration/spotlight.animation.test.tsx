@@ -193,10 +193,18 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
   beforeEach(() => {
     capturedMinigameOnDone = null;
     vi.useFakeTimers();
+    // Stub requestAnimationFrame to use setTimeout(cb, 0) so RAF can be
+    // flushed deterministically with vi.advanceTimersByTime(0), independent
+    // of how jsdom/vitest implements RAF frame timing under fake timers.
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 0),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -215,8 +223,9 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     // Simulate minigame completion.
     await act(async () => { capturedMinigameOnDone!(100); });
 
-    // setPendingWinnerCeremony is deferred to next RAF; flush it now (RAF fires ~16ms).
-    await act(async () => { vi.advanceTimersByTime(16); });
+    // setPendingWinnerCeremony is deferred to next RAF; flush it now.
+    // (requestAnimationFrame is stubbed to setTimeout(cb, 0) in beforeEach.)
+    await act(async () => { vi.advanceTimersByTime(0); });
 
     // Zero DOMRect → SpotlightAnimation measures null → CeremonyOverlay fires
     // onDone immediately → phase transitions.
@@ -242,8 +251,9 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     // Trigger minigame done.
     await act(async () => { capturedMinigameOnDone!(100); });
 
-    // setPendingWinnerCeremony is deferred to next RAF; flush it now (RAF fires ~16ms).
-    await act(async () => { vi.advanceTimersByTime(16); });
+    // setPendingWinnerCeremony is deferred to next RAF; flush it now.
+    // (requestAnimationFrame is stubbed to setTimeout(cb, 0) in beforeEach.)
+    await act(async () => { vi.advanceTimersByTime(0); });
 
     // Valid DOMRect → CeremonyOverlay is showing → phase NOT yet committed.
     expect(store.getState().game.phase).toBe('hoh_comp');
