@@ -72,7 +72,7 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     }));
 
     const { CWGO_QUESTIONS: questions } = await import('../../src/features/cwgo/cwgoQuestions');
-    const { questionIdx, questionOrder } = store.getState().cwgo;
+    const { questionIdx } = store.getState().cwgo;
     const answer = questions[questionIdx].answer;
 
     // alice+bob+carol go under (survive), dave+eve go over (eliminated) → 3 survive → choose_duel
