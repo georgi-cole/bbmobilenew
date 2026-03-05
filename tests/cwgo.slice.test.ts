@@ -15,7 +15,6 @@ import cwgoReducer, {
   autoFillAIGuesses,
   revealMassResults,
   confirmMassElimination,
-  chooseDuelPair,
   revealDuelResults,
   confirmDuelElimination,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
