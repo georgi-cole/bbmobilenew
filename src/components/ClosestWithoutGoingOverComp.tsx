@@ -179,9 +179,24 @@ export default function ClosestWithoutGoingOverComp({
 
   function handleAILeaderPickDuel() {
     if (cwgo.status !== 'choose_duel') return;
-    const leader = cwgo.aliveIds[0];
-    const others = cwgo.aliveIds.filter((id: string) => id !== leader);
-    if (others.length < 2) return;
+    const alive = cwgo.aliveIds;
+
+    // Two-player terminal case: skip the leader-pick phase entirely.
+    if (alive.length === 2) {
+      dispatch(chooseDuelPair([alive[0], alive[1]]));
+      return;
+    }
+
+    const leader = cwgo.leaderId ?? alive[0];
+    const others = alive.filter((id: string) => id !== leader);
+
+    // Defensive: if somehow we have fewer than 2 others (shouldn't happen for
+    // aliveIds.length > 2), pick any two alive players to avoid blocking the flow.
+    if (others.length < 2) {
+      const fallback = alive.slice(0, 2);
+      if (fallback.length === 2) dispatch(chooseDuelPair([fallback[0], fallback[1]]));
+      return;
+    }
 
     // Deterministic seeded Fisher-Yates shuffle — avoids compSkill (not in Player type)
     // and avoids putting RNG calls inside the sort comparator (which is non-deterministic).
@@ -295,54 +310,56 @@ export default function ClosestWithoutGoingOverComp({
             <p className="cwgo-reveal__heading">
               Results — Answer: <strong>{question?.answer.toLocaleString()}</strong>
             </p>
-            <div className="cwgo-reveal">
-              {cwgo.revealResults.map((r: CwgoResult, i: number) => {
-                const isLastElim = cwgo.lastEliminated.includes(r.playerId);
-                return (
-                  <motion.div
-                    key={r.playerId}
-                    variants={rowVariants}
-                    transition={{ delay: i * 0.09, duration: 0.35 }}
-                    className={`cwgo-result-row${r.isWinner ? ' cwgo-result-row--winner' : r.wentOver ? ' cwgo-result-row--over' : ''}`}
-                  >
-                    <div className="cwgo-result-row__avatar-wrap">
-                      <div className="cwgo-result-row__avatar-ring">
-                        <img
-                          className="cwgo-result-row__avatar-img"
-                          src={avatarSrc(r.playerId)}
-                          alt={playerName(r.playerId)}
-                          onError={(e) => handleAvatarError(e, playerName(r.playerId))}
-                        />
+            <div className="cwgo-results-wrap">
+              <div className="cwgo-reveal">
+                {cwgo.revealResults.map((r: CwgoResult, i: number) => {
+                  const isLastElim = cwgo.lastEliminated.includes(r.playerId);
+                  return (
+                    <motion.div
+                      key={r.playerId}
+                      variants={rowVariants}
+                      transition={{ delay: i * 0.09, duration: 0.35 }}
+                      className={`cwgo-result-row${r.isWinner ? ' cwgo-result-row--winner' : r.wentOver ? ' cwgo-result-row--over' : ''}`}
+                    >
+                      <div className="cwgo-result-row__avatar-wrap">
+                        <div className="cwgo-result-row__avatar-ring">
+                          <img
+                            className="cwgo-result-row__avatar-img"
+                            src={avatarSrc(r.playerId)}
+                            alt={playerName(r.playerId)}
+                            onError={(e) => handleAvatarError(e, playerName(r.playerId))}
+                          />
+                        </div>
+                        {r.isWinner && <span className="cwgo-result-row__rank">🏅</span>}
+                        {r.wentOver && <span className="cwgo-result-row__rank">❌</span>}
                       </div>
-                      {r.isWinner && <span className="cwgo-result-row__rank">🏅</span>}
-                      {r.wentOver && <span className="cwgo-result-row__rank">❌</span>}
-                    </div>
-                    <div className="cwgo-result-row__info">
-                      <div className="cwgo-result-row__name">{playerName(r.playerId)}</div>
-                    </div>
-                    <div className="cwgo-result-row__guess-wrap">
-                      <span className="cwgo-result-row__guess">{r.guess.toLocaleString()}</span>
-                      <span className="cwgo-result-row__diff">
-                        {r.wentOver
-                          ? `over by ${Math.abs(r.diff).toLocaleString()}`
-                          : `diff: ${r.diff.toLocaleString()}`}
-                      </span>
-                    </div>
-                    {isLastElim && (
-                      <motion.div
-                        className="cwgo-elim-stamp"
-                        initial={{ opacity: 0, scale: 1.4 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.09 + 0.5, duration: 0.25 }}
-                      >
-                        <span className="cwgo-elim-stamp__text">Eliminated</span>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                );
-              })}
+                      <div className="cwgo-result-row__info">
+                        <div className="cwgo-result-row__name">{playerName(r.playerId)}</div>
+                      </div>
+                      <div className="cwgo-result-row__guess-wrap">
+                        <span className="cwgo-result-row__guess">{r.guess.toLocaleString()}</span>
+                        <span className="cwgo-result-row__diff">
+                          {r.wentOver
+                            ? `over by ${Math.abs(r.diff).toLocaleString()}`
+                            : `diff: ${r.diff.toLocaleString()}`}
+                        </span>
+                      </div>
+                      {isLastElim && (
+                        <motion.div
+                          className="cwgo-elim-stamp"
+                          initial={{ opacity: 0, scale: 1.4 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.09 + 0.5, duration: 0.25 }}
+                        >
+                          <span className="cwgo-elim-stamp__text">Eliminated</span>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="cwgo-continue-row">
+            <div className="cwgo-footer">
               <button
                 className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
                 onClick={() => dispatch(confirmMassElimination())}
@@ -363,41 +380,71 @@ export default function ClosestWithoutGoingOverComp({
           >
             <div className="cwgo-choose">
               {/* Leader card */}
-              <div className="cwgo-choose__leader-row">
-                <div className="cwgo-avatar__ring cwgo-avatar__ring--leader cwgo-avatar__ring--md">
-                  <img
-                    className="cwgo-avatar__img"
-                    src={avatarSrc(cwgo.aliveIds[0])}
-                    alt={playerName(cwgo.aliveIds[0])}
-                    onError={(e) => handleAvatarError(e, playerName(cwgo.aliveIds[0]))}
-                  />
-                </div>
-                <div>
-                  <p className="cwgo-choose__leader-label">👑 Leader</p>
-                  <p className="cwgo-choose__leader-name">{playerName(cwgo.aliveIds[0])}</p>
-                </div>
-              </div>
+              {(() => {
+                const leaderId = cwgo.leaderId ?? cwgo.aliveIds[0];
+                const isHumanLeader = humanId === leaderId;
+                return (
+                  <>
+                    <div className="cwgo-choose__leader-row">
+                      <div className="cwgo-avatar__ring cwgo-avatar__ring--leader cwgo-avatar__ring--md">
+                        <img
+                          className="cwgo-avatar__img"
+                          src={avatarSrc(leaderId)}
+                          alt={playerName(leaderId)}
+                          onError={(e) => handleAvatarError(e, playerName(leaderId))}
+                        />
+                      </div>
+                      <div>
+                        <p className="cwgo-choose__leader-label">👑 Leader</p>
+                        <p className="cwgo-choose__leader-name">{playerName(leaderId)}</p>
+                      </div>
+                    </div>
 
-              {humanId === cwgo.aliveIds[0] ? (
-                <LeaderDuelPicker
-                  aliveIds={cwgo.aliveIds}
-                  playerName={playerName}
-                  avatarSrc={avatarSrc}
-                  onPick={(pair) => dispatch(chooseDuelPair(pair))}
-                />
-              ) : (
-                <>
-                  <p className="cwgo-choose__instruction">
-                    {playerName(cwgo.aliveIds[0])} is choosing two players to duel…
-                  </p>
-                  <button
-                    className="cwgo-btn cwgo-btn--primary"
-                    onClick={handleAILeaderPickDuel}
-                  >
-                    Pick Duel
-                  </button>
-                </>
-              )}
+                    {isHumanLeader ? (
+                      cwgo.aliveIds.length === 2 ? (
+                        <>
+                          <p className="cwgo-choose__instruction">
+                            Only two players remain. Start the deciding duel.
+                          </p>
+                          <button
+                            className="cwgo-btn cwgo-btn--primary"
+                            onClick={() =>
+                              dispatch(
+                                chooseDuelPair([
+                                  cwgo.aliveIds[0],
+                                  cwgo.aliveIds[1],
+                                ]),
+                              )
+                            }
+                          >
+                            Start Duel
+                          </button>
+                        </>
+                      ) : (
+                        <LeaderDuelPicker
+                          aliveIds={cwgo.aliveIds}
+                          leaderId={leaderId}
+                          playerName={playerName}
+                          avatarSrc={avatarSrc}
+                          onPick={(pair) => dispatch(chooseDuelPair(pair))}
+                        />
+                      )
+                    ) : (
+                      <>
+                        <p className="cwgo-choose__instruction">
+                          {playerName(leaderId)} is choosing two players to duel…
+                        </p>
+                        <button
+                          className="cwgo-btn cwgo-btn--primary"
+                          onClick={handleAILeaderPickDuel}
+                        >
+                          Pick Duel
+                        </button>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </motion.div>
         )}
@@ -525,7 +572,7 @@ export default function ClosestWithoutGoingOverComp({
                 </motion.div>
               ))}
             </div>
-            <div className="cwgo-continue-row">
+            <div className="cwgo-footer">
               <button
                 className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
                 onClick={() => dispatch(confirmDuelElimination())}
@@ -658,11 +705,13 @@ function DuelVsCard({
 
 function LeaderDuelPicker({
   aliveIds,
+  leaderId,
   playerName,
   avatarSrc,
   onPick,
 }: {
   aliveIds: string[];
+  leaderId?: string;
   playerName: (id: string) => string;
   avatarSrc: (id: string) => string;
   onPick: (pair: [string, string]) => void;
@@ -677,7 +726,7 @@ function LeaderDuelPicker({
     }
   };
 
-  const leader = aliveIds[0];
+  const leader = leaderId ?? aliveIds[0];
   const candidates = aliveIds.filter((id) => id !== leader);
 
   return (

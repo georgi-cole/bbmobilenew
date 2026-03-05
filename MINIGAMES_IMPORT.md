@@ -257,3 +257,77 @@ open http://localhost:5173?debug=1
 
 For long-running games (Tetris, Snake) open the game, play for a bit, then
 press ✕ to exit early and verify partial scores are applied.
+
+---
+
+## "Don't Go Over" (CWGO) — React Minigame Notes
+
+`key: dontGoOver` is a fully React-implemented minigame (`implementation: 'react'`,
+`reactComponentKey: 'ClosestWithoutGoingOver'`). It is wired through
+`MinigameHost → ClosestWithoutGoingOverComp` and uses the Redux
+`cwgoCompetitionSlice` for all state management.
+
+### prizeType propagation
+
+`prizeType` (`'HOH'` or `'POV'`) is now captured at challenge-creation time and
+stored on `PendingChallenge.prizeType` in `challengeSlice`. `GameScreen` passes
+`prizeType: game.phase === 'pov_comp' ? 'POV' : 'HOH'` to `startChallenge` opts,
+and `MinigameHost` reads `pendingChallenge.prizeType` (falling back to a
+live re-derivation from `game.phase` for backward compatibility). This ensures the
+correct label is shown even if `game.phase` transitions while the competition is
+in progress.
+
+### Per-invocation seed
+
+`challengeSlice` maintains a monotonic `nextNonce` counter (initialised to 1,
+incremented on every `startChallenge` call). When `debug.forceSeed` is absent,
+the per-challenge seed is mixed with the nonce:
+
+```ts
+perChallengeSeed = mulberry32((challengeSeed ^ nextNonce) >>> 0)() * 0x100000000 >>> 0
+```
+
+This means identical `game.seed` values across a single week produce different
+question orders and AI behaviour on each challenge invocation. `debug.forceSeed`
+bypasses the nonce and uses the derived `challengeSeed` directly for
+reproducibility.
+
+### Leader tracking
+
+`cwgoCompetitionSlice` now persists `leaderId: string | null` in state.
+- Set to the mass-round winner after `revealMassResults`.
+- Updated to the duel winner after `revealDuelResults`.
+- Reset to `null` on `startCwgoCompetition`.
+
+`ClosestWithoutGoingOverComp` reads `cwgo.leaderId ?? cwgo.aliveIds[0]` everywhere
+it previously used `cwgo.aliveIds[0]` as the leader. The AI auto-pick
+(`handleAILeaderPickDuel`) and `LeaderDuelPicker` both respect `leaderId`.
+
+### Two-player terminal fix
+
+Both the AI-leader path and the human-leader path now handle the edge case where
+`aliveIds.length === 2` (occurs when a duel reduces 3 → 2 and we re-enter
+`choose_duel`):
+
+- **AI-leader**: `handleAILeaderPickDuel` dispatches
+  `chooseDuelPair([alive[0], alive[1]])` immediately.
+- **Human-leader**: when `aliveIds.length === 2` and the human is the leader,
+  `LeaderDuelPicker` is bypassed and a simple "Start Duel" button is shown instead,
+  which dispatches `chooseDuelPair([aliveIds[0], aliveIds[1]])`. This prevents the
+  permanent-disabled-button deadlock that previously occurred because
+  `LeaderDuelPicker` only showed 1 candidate (the non-leader), making it impossible
+  to select 2 players.
+
+### Question bank
+
+The question bank in `cwgoQuestions.ts` has been expanded from 32 to 54 questions
+with varied difficulty levels (1–5). Easy questions (difficulty 1) remain for
+accessibility; difficulty 3–5 questions add estimation and numeric trivia that
+require genuine reasoning.
+
+### Mobile scrollability
+
+Results lists (`.cwgo-results-wrap`) now have `max-height: 55vh` with
+`overflow-y: auto` and `-webkit-overflow-scrolling: touch`.
+The Continue button is placed inside a `.cwgo-footer` sticky container
+(`position: sticky; bottom: 0`) so it remains reachable even on small screens.
