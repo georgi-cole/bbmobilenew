@@ -175,6 +175,15 @@ export default function MinigameHost({
 
       {phase === 'playing' && (
         <div className="minigame-host-playing">
+          {/* Top-right close button — exits the minigame with a zero score (partial). */}
+          <button
+            className="minigame-host-close-btn"
+            onClick={() => onDone(0, true)}
+            aria-label="Close minigame"
+            title="Exit minigame"
+          >
+            ✕
+          </button>
           {game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver' ? (
             <ClosestWithoutGoingOverComp
               participantIds={(participants ?? []).map((p) => p.id)}

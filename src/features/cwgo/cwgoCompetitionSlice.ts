@@ -17,6 +17,25 @@ import {
 } from './cwgoHelpers';
 import type { CwgoGuessEntry, CwgoResult } from './cwgoHelpers';
 
+// ─── Question-order helpers ───────────────────────────────────────────────────
+
+/**
+ * Generate a deterministic full-permutation shuffle of all question indices.
+ * Uses Fisher-Yates with a seeded RNG so the same seed always yields the same
+ * order, but different seeds yield different orders.
+ */
+function generateQuestionOrder(seed: number): number[] {
+  const order = Array.from({ length: CWGO_QUESTIONS.length }, (_, i) => i);
+  const rng = mulberry32((seed ^ 0x6c62272e) >>> 0);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const swapVal = order[i];
+    order[i] = order[j];
+    order[j] = swapVal;
+  }
+  return order;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type CwgoStatus =
@@ -38,6 +57,12 @@ export interface CwgoState {
   aliveIds: string[];
   /** Current question index into CWGO_QUESTIONS. */
   questionIdx: number;
+  /**
+   * Shuffled permutation of all question indices for this competition.
+   * Generated deterministically from the seed at competition start.
+   * Used so that question order varies per challenge invocation.
+   */
+  questionOrder: number[];
   /** Guesses submitted for the current round (keyed by playerId). */
   guesses: Record<string, number>;
   /** Sorted results for the current reveal phase. */
@@ -52,6 +77,11 @@ export interface CwgoState {
   duelWinnerId: string | null;
   /** ID of the current leader (winner of the last mass round or duel). */
   leaderId: string | null;
+  /**
+   * True once resolveCompetitionOutcome has successfully dispatched the winner.
+   * Guards against double-dispatch (idempotency).
+   */
+  outcomeResolved: boolean;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -62,6 +92,7 @@ const initialState: CwgoState = {
   seed: 0,
   aliveIds: [],
   questionIdx: 0,
+  questionOrder: [],
   guesses: {},
   revealResults: [],
   lastEliminated: [],
@@ -69,13 +100,21 @@ const initialState: CwgoState = {
   duelPair: null,
   duelWinnerId: null,
   leaderId: null,
+  outcomeResolved: false,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Pick a question index deterministically from the seed and round. */
-function pickQuestionIdx(seed: number, round: number): number {
-  const rng = mulberry32((seed ^ (round * 0x9e3779b9)) >>> 0);
+/**
+ * Pick a question index from the pre-generated questionOrder.
+ * Falls back to the XOR-based deterministic pick if questionOrder is empty.
+ */
+function pickQuestionFromOrder(questionOrder: number[], round: number): number {
+  if (questionOrder.length > 0) {
+    return questionOrder[round % questionOrder.length];
+  }
+  // Legacy fallback (should not happen with a properly initialised state)
+  const rng = mulberry32((round * 0x9e3779b9) >>> 0);
   return Math.floor(rng() * CWGO_QUESTIONS.length);
 }
 
@@ -125,18 +164,22 @@ const cwgoSlice = createSlice({
       const safeSeed = seed && seed !== 0
         ? seed
         : ((mulberry32(Date.now() >>> 0)() * 0x100000000) >>> 0);
+      const questionOrder = generateQuestionOrder(safeSeed);
       state.status = 'mass_input';
       state.prizeType = prizeType;
       state.seed = safeSeed;
       state.aliveIds = [...participantIds];
       state.round = 0;
+      state.questionOrder = questionOrder;
       state.guesses = {};
       state.revealResults = [];
       state.lastEliminated = [];
       state.duelPair = null;
       state.duelWinnerId = null;
       state.leaderId = null;
-      state.questionIdx = pickQuestionIdx(safeSeed, 0);
+      state.outcomeResolved = false;
+      state.questionIdx = pickQuestionFromOrder(questionOrder, 0);
+      console.log('[cwgo] startCwgoCompetition', { safeSeed, prizeType, participants: participantIds.length });
     },
 
     /**
@@ -221,11 +264,11 @@ const cwgoSlice = createSlice({
       } else if (surviving.length === 2) {
         // Go straight to duel
         state.duelPair = [surviving[0], surviving[1]];
-        state.questionIdx = pickQuestionIdx(state.seed, state.round);
+        state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
         state.status = 'duel_input';
       } else {
         // Advance question so the pick screen doesn't show the previous question
-        state.questionIdx = pickQuestionIdx(state.seed, state.round);
+        state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
         state.status = 'choose_duel';
       }
     },
@@ -237,7 +280,8 @@ const cwgoSlice = createSlice({
     chooseDuelPair(state, action: PayloadAction<[string, string]>) {
       if (state.status !== 'choose_duel') return;
       state.duelPair = action.payload;
-      state.questionIdx = pickQuestionIdx(state.seed, state.round);
+      state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
+      // Clear any previous guesses and move into duel input phase
       state.guesses = {};
       state.status = 'duel_input';
     },
@@ -286,7 +330,7 @@ const cwgoSlice = createSlice({
         state.status = 'complete';
       } else {
         // Advance question so the pick screen doesn't show the previous duel's question
-        state.questionIdx = pickQuestionIdx(state.seed, state.round);
+        state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
         state.status = 'choose_duel';
       }
     },
@@ -294,6 +338,14 @@ const cwgoSlice = createSlice({
     /** Reset to idle (e.g. when navigating away). */
     resetCwgo() {
       return initialState;
+    },
+
+    /**
+     * Mark the competition outcome as resolved so resolveCompetitionOutcome
+     * cannot fire a second time (idempotency guard).
+     */
+    markCwgoOutcomeResolved(state) {
+      state.outcomeResolved = true;
     },
   },
 });
@@ -308,6 +360,7 @@ export const {
   revealDuelResults,
   confirmDuelElimination,
   resetCwgo,
+  markCwgoOutcomeResolved,
 } = cwgoSlice.actions;
 
 export default cwgoSlice.reducer;

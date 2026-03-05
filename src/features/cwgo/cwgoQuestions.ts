@@ -8,6 +8,15 @@ export type CwgoQuestion = {
   min?: number;
   max?: number;
   difficulty: 1 | 2 | 3 | 4 | 5;
+  /**
+   * Optional input scaling hint for very large answers.
+   * When set, the UI lets users enter a decimal (e.g. "4.5") and selects a
+   * multiplier (thousand / million / billion / trillion) to produce the full
+   * numeric answer internally.
+   * The value is the "natural" scale for this question's answer
+   * (e.g. 1_000_000 means the answer is best expressed in millions).
+   */
+  scale?: number;
 };
 
 export const CWGO_QUESTIONS: CwgoQuestion[] = [
@@ -51,10 +60,10 @@ export const CWGO_QUESTIONS: CwgoQuestion[] = [
   { id: 'q40', prompt: 'What is the atomic number of carbon?', answer: 6, difficulty: 2 },
 
   // ── difficulty 3 (harder estimation) ──────────────────────────────────────
-  { id: 'q16', prompt: 'Approx how many km is the Earth\'s equatorial circumference (nearest 1000)?', answer: 40000, unit: 'km', difficulty: 3 },
+  { id: 'q16', prompt: 'Approx how many km is the Earth\'s equatorial circumference (nearest 1000)?', answer: 40000, unit: 'km', difficulty: 3, scale: 1_000 },
   { id: 'q25', prompt: 'How many elements are in the periodic table (as of 2025)?', answer: 118, difficulty: 3 },
   { id: 'q29', prompt: 'How many distinct points does a full compass rose have?', answer: 32, difficulty: 3 },
-  { id: 'q41', prompt: 'Approximately how far is the Moon from Earth in kilometers (nearest 10000)?', answer: 380000, unit: 'km', difficulty: 3 },
+  { id: 'q41', prompt: 'Approximately how far is the Moon from Earth in kilometers (nearest 10000)?', answer: 380000, unit: 'km', difficulty: 3, scale: 1_000 },
   { id: 'q42', prompt: 'How many bones are in the human hand (including wrist)?', answer: 27, unit: 'bones', difficulty: 3 },
   { id: 'q43', prompt: 'Approximately how many miles per hour does a commercial airplane cruise at?', answer: 575, unit: 'mph', difficulty: 3 },
   { id: 'q44', prompt: 'How many muscles are in the human body (approximate)?', answer: 600, unit: 'muscles', difficulty: 3 },
@@ -64,14 +73,14 @@ export const CWGO_QUESTIONS: CwgoQuestion[] = [
   { id: 'q48', prompt: 'Approximately how many bones are in the human spine?', answer: 33, unit: 'vertebrae', difficulty: 3 },
 
   // ── difficulty 4 (challenging estimation) ─────────────────────────────────
-  { id: 'q22', prompt: 'Approx how many people live in New York City (nearest 100k)?', answer: 8800000, unit: 'people', difficulty: 4 },
+  { id: 'q22', prompt: 'Approx how many people live in New York City (nearest 100k)?', answer: 8800000, unit: 'people', difficulty: 4, scale: 1_000_000 },
   { id: 'q49', prompt: 'Approximately how many miles is it from New York to Los Angeles?', answer: 2800, unit: 'miles', difficulty: 4 },
   { id: 'q50', prompt: 'How many calories are burned running a marathon (approximate)?', answer: 2600, unit: 'calories', difficulty: 4 },
   { id: 'q51', prompt: 'Approximately how deep is the Mariana Trench in meters (nearest 1000)?', answer: 11000, unit: 'meters', difficulty: 4 },
-  { id: 'q52', prompt: 'Approximately how many words are in the English language (nearest 100k)?', answer: 170000, unit: 'words', difficulty: 4 },
+  { id: 'q52', prompt: 'Approximately how many words are in the English language (nearest 100k)?', answer: 170000, unit: 'words', difficulty: 4, scale: 1_000 },
 
   // ── difficulty 5 (very hard / extreme numbers) ────────────────────────────
-  { id: 'q07', prompt: 'What is the approximate age of the Earth in years (round to nearest billion)?', answer: 4500000000, unit: 'years', difficulty: 5 },
-  { id: 'q53', prompt: 'Approximately how many cells are in the human body (nearest trillion)?', answer: 37000000000000, unit: 'cells', difficulty: 5 },
-  { id: 'q54', prompt: 'Approximately how far is it from Earth to the Sun in kilometers (nearest million)?', answer: 150000000, unit: 'km', difficulty: 5 },
+  { id: 'q07', prompt: 'What is the approximate age of the Earth in years (round to nearest billion)?', answer: 4500000000, unit: 'years', difficulty: 5, scale: 1_000_000_000 },
+  { id: 'q53', prompt: 'Approximately how many cells are in the human body (nearest trillion)?', answer: 37000000000000, unit: 'cells', difficulty: 5, scale: 1_000_000_000_000 },
+  { id: 'q54', prompt: 'Approximately how far is it from Earth to the Sun in kilometers (nearest million)?', answer: 150000000, unit: 'km', difficulty: 5, scale: 1_000_000 },
 ];
