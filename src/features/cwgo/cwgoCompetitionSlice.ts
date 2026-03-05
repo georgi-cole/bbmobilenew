@@ -281,6 +281,9 @@ const cwgoSlice = createSlice({
       if (state.status !== 'choose_duel') return;
       state.duelPair = action.payload;
       state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round);
+      // Clear any previous guesses and move into duel input phase
+      state.guesses = {};
+      state.status = 'duel_input';
     },
 
     /**
