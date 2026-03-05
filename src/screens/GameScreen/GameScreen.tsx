@@ -1360,32 +1360,39 @@ export default function GameScreen() {
             }
 
             // ── HOH / POV completion (ceremony overlay) ──────────────────────
-            // Show the CeremonyOverlay cutout before committing the winner to the store.
+            // Show the SpotlightAnimation overlay before committing the winner to
+            // the store.  We avoid capturing a DOMRect snapshot here (stale by the
+            // time the overlay renders); instead we pass rect: null and let
+            // SpotlightAnimation measure via measureA on mount after the RAF fires.
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
-            const sourceDomRect = getTileRect(finalWinnerId);
             const isHohComp = game.phase === 'hoh_comp';
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
-            if (!winnerPlayer || !sourceDomRect) {
-              // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+            if (!winnerPlayer) {
+              // Defensive fallback: winner player not found — commit immediately.
               dispatch(applyMinigameWinner(finalWinnerId));
               return;
             }
-            // Defer the store mutation until after the CeremonyOverlay completes.
+            // Set the deferred dispatch ref before the RAF so it is always
+            // available when handleWinnerCeremonyDone fires.
             console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
-            const tiles: CeremonyTile[] = [{
-              rect: sourceDomRect,
-              badge: winSymbol,
-              badgeStart: 'center',
-              badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
-            }];
             pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
-            setPendingWinnerCeremony({
-              tiles,
-              caption: `${winnerPlayer.name} wins ${winLabel}!`,
-              subtitle: winSymbol,
-              ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
-              measureA: () => getTileRect(finalWinnerId),
+            // Defer setState to the next animation frame so the DOM has settled
+            // (MinigameHost has unmounted and tile layout is finalized) before
+            // SpotlightAnimation measures the winner tile via measureA.
+            requestAnimationFrame(() => {
+              setPendingWinnerCeremony({
+                tiles: [{
+                  rect: null,
+                  badge: winSymbol,
+                  badgeStart: 'center',
+                  badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
+                }],
+                caption: `${winnerPlayer.name} wins ${winLabel}!`,
+                subtitle: winSymbol,
+                ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
+                measureA: () => getTileRect(finalWinnerId),
+              });
             });
           }}
         />

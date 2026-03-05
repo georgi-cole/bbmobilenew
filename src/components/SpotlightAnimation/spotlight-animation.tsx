@@ -21,7 +21,7 @@
  *   />
  */
 
-import { useState, useEffect, useRef, useCallback, type RefObject } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, type RefObject } from 'react';
 import CeremonyOverlay from '../CeremonyOverlay/CeremonyOverlay';
 import type { CeremonyOverlayProps, CeremonyTile } from '../CeremonyOverlay/CeremonyOverlay';
 
@@ -46,12 +46,17 @@ export default function SpotlightAnimation({
   onDone,
   ...rest
 }: SpotlightAnimationProps) {
-  const [tiles, setTiles] = useState<CeremonyTile[]>(initialTiles);
-  const rafRef = useRef<number>(0);
-  const activeRef = useRef(true);
-
   const hasMeasure = measureA != null || measureB != null;
   const hasRefs = (tileRefs?.length ?? 0) > 0;
+
+  const [tiles, setTiles] = useState<CeremonyTile[]>(initialTiles);
+  // When measure callbacks or refs are provided, hold off rendering
+  // CeremonyOverlay until useLayoutEffect has captured authoritative rects.
+  // useLayoutEffect fires synchronously after the DOM commit (before paint),
+  // so the browser never sees the un-measured state in production.
+  const [isMeasured, setIsMeasured] = useState(!(hasMeasure || hasRefs));
+  const rafRef = useRef<number>(0);
+  const activeRef = useRef(true);
 
   const remeasure = useCallback(() => {
     if (!activeRef.current) return;
@@ -67,11 +72,37 @@ export default function SpotlightAnimation({
             ? measureFn()
             : (refEl?.getBoundingClientRect() ?? null);
           if (!rect) return tile;
+          if (import.meta.env.DEV) console.debug('[spotlight] remeasure', { idx, rect });
           return { ...tile, rect };
         }),
       );
     });
   }, [measureA, measureB, tileRefs]);
+
+  // Perform an authoritative measurement synchronously after the DOM commit.
+  // useLayoutEffect fires before passive effects (useEffect), ensuring
+  // CeremonyOverlay's animation timers always see fresh rects on their first
+  // run.  We gate the CeremonyOverlay render (via isMeasured) so it is never
+  // mounted with null/stale rects — avoiding the immediate-onDone fallback.
+  useLayoutEffect(() => {
+    if (!hasMeasure && !hasRefs) return;
+    setTiles((prev) =>
+      prev.map((tile, idx) => {
+        const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
+        const refEl = tileRefs?.[idx]?.current ?? null;
+        if (!measureFn && !refEl) return tile;
+        const rect = measureFn
+          ? measureFn()
+          : (refEl?.getBoundingClientRect() ?? null);
+        if (!rect) return tile;
+        if (import.meta.env.DEV) console.debug('[spotlight] remeasure', { idx, rect });
+        return { ...tile, rect };
+      }),
+    );
+    setIsMeasured(true);
+    // Run once on mount to capture the authoritative layout position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     activeRef.current = true;
@@ -118,6 +149,12 @@ export default function SpotlightAnimation({
       ro?.disconnect();
     };
   }, [hasMeasure, hasRefs, remeasure, tileRefs]);
+
+  // Don't render CeremonyOverlay until initial measurement is complete so it
+  // never sees null/stale rects on its first render (which would trigger the
+  // immediate-onDone fallback).  useLayoutEffect is synchronous (before paint)
+  // so there is no visible flicker in production.
+  if (!isMeasured) return null;
 
   return <CeremonyOverlay {...rest} tiles={tiles} onDone={onDone} />;
 }
