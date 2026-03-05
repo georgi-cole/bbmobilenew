@@ -92,6 +92,8 @@ export default function ClosestWithoutGoingOverComp({
   // Scale selector index: 0=none, 1=thousand (1e3), 2=million (1e6), 3=billion (1e9), 4=trillion (1e12)
   const NO_SCALE_INDEX = 0;
   const [scaleIdx, setScaleIdx] = useState(NO_SCALE_INDEX);
+  // Sequential reveal stages for the duel: guesses → answer → outcome
+  const [duelRevealStage, setDuelRevealStage] = useState<'guesses' | 'answer' | 'outcome'>('guesses');
 
   // Derive helper data
   const humanPlayer = players.find((p) => p.isUser);
@@ -155,6 +157,75 @@ export default function ClosestWithoutGoingOverComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Duel reveal: advance through suspense stages automatically ────────────────
+  // guesses (t=0) → answer revealed (t+1.5s) → outcome shown (t+3.2s)
+  // Note: clearTimeout on an already-fired timer ID is a safe no-op in JS.
+  useEffect(() => {
+    if (cwgo?.status !== 'duel_reveal') return;
+    setDuelRevealStage('guesses');
+    const t1 = setTimeout(() => setDuelRevealStage('answer'), 1500);
+    const t2 = setTimeout(() => setDuelRevealStage('outcome'), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [cwgo?.status]);
+
+  // ── Auto-advance: AI leader in choose_duel ─────────────────────────────────
+  // Automatically pick the duel pair after a short delay so the user can
+  // observe without having to click a button.
+  useEffect(() => {
+    if (cwgo?.status !== 'choose_duel') return;
+    const alive = cwgo.aliveIds;
+    const leaderId = cwgo.leaderId ?? alive[0];
+    if (humanId === leaderId) return; // Human is leader — no auto-advance
+
+    const t = setTimeout(() => {
+      if (alive.length === 2) {
+        dispatch(chooseDuelPair([alive[0], alive[1]]));
+        return;
+      }
+      const others = alive.filter((id) => id !== leaderId);
+      if (others.length < 2) {
+        const fallback = alive.slice(0, 2);
+        if (fallback.length === 2) dispatch(chooseDuelPair([fallback[0], fallback[1]]));
+        return;
+      }
+      const rng = mulberry32((cwgo.seed ^ (cwgo.round * 0xf1ea5eed)) >>> 0);
+      const shuffled = [...others];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      dispatch(chooseDuelPair([shuffled[0], shuffled[1]]));
+    }, 1600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cwgo?.status]);
+
+  // ── Auto-advance: AI-only duel input ───────────────────────────────────────
+  // When neither duel participant is the human, fill AI guesses and reveal
+  // automatically so the user just watches.
+  useEffect(() => {
+    if (cwgo?.status !== 'duel_input' || !cwgo.duelPair) return;
+    if (humanId && cwgo.duelPair.includes(humanId)) return;
+    const t = setTimeout(() => {
+      dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
+      dispatch(revealDuelResults());
+    }, 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cwgo?.status, cwgo?.duelPair]);
+
+  // ── Auto-advance: mass_input when human is not competing ───────────────────
+  useEffect(() => {
+    if (cwgo?.status !== 'mass_input') return;
+    if (humanId && cwgo.aliveIds.includes(humanId)) return;
+    const t = setTimeout(() => {
+      dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
+      dispatch(revealMassResults());
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cwgo?.status]);
+
   if (!cwgo || cwgo.status === 'idle') {
     return <div className="cwgo-loading">Loading competition…</div>;
   }
@@ -205,42 +276,6 @@ export default function ClosestWithoutGoingOverComp({
     setHumanGuess('');
     setScaleIdx(0);
     dispatch(revealDuelResults());
-  }
-
-  // ── Choose Duel (Leader Picks) ──────────────────────────────────────────────
-
-  function handleAILeaderPickDuel() {
-    if (cwgo.status !== 'choose_duel') return;
-    const alive = cwgo.aliveIds;
-
-    // Two-player terminal case: skip the leader-pick phase entirely.
-    if (alive.length === 2) {
-      dispatch(chooseDuelPair([alive[0], alive[1]]));
-      return;
-    }
-
-    const leader = cwgo.leaderId ?? alive[0];
-    const others = alive.filter((id: string) => id !== leader);
-
-    // Defensive: if somehow we have fewer than 2 others (shouldn't happen for
-    // aliveIds.length > 2), pick any two alive players to avoid blocking the flow.
-    if (others.length < 2) {
-      const fallback = alive.slice(0, 2);
-      if (fallback.length === 2) dispatch(chooseDuelPair([fallback[0], fallback[1]]));
-      return;
-    }
-
-    // Deterministic seeded Fisher-Yates shuffle — avoids compSkill (not in Player type)
-    // and avoids putting RNG calls inside the sort comparator (which is non-deterministic).
-    const rng = mulberry32((cwgo.seed ^ (cwgo.round * 0xf1ea5eed)) >>> 0);
-    const shuffled = [...others];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    // Leader sends the first two from the shuffled list to duel
-    dispatch(chooseDuelPair([shuffled[0], shuffled[1]]));
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -334,15 +369,14 @@ export default function ClosestWithoutGoingOverComp({
                 {inputError && <p className="cwgo-error">{inputError}</p>}
               </div>
             ) : (
-              <button
-                className="cwgo-btn cwgo-btn--primary"
-                onClick={() => {
-                  dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
-                  dispatch(revealMassResults());
-                }}
-              >
-                Reveal Results
-              </button>
+              <div className="cwgo-mass-input__auto-status">
+                <p>Players are entering their guesses…</p>
+                <div className="cwgo-auto-dots" aria-label="AI players guessing">
+                  <span className="cwgo-auto-dots__dot" />
+                  <span className="cwgo-auto-dots__dot" />
+                  <span className="cwgo-auto-dots__dot" />
+                </div>
+              </div>
             )}
           </motion.div>
         )}
@@ -480,14 +514,13 @@ export default function ClosestWithoutGoingOverComp({
                     ) : (
                       <>
                         <p className="cwgo-choose__instruction">
-                          {playerName(leaderId)} is choosing two players to duel…
+                          {playerName(leaderId)} is choosing who duels…
                         </p>
-                        <button
-                          className="cwgo-btn cwgo-btn--primary"
-                          onClick={handleAILeaderPickDuel}
-                        >
-                          Pick Duel
-                        </button>
+                        <div className="cwgo-auto-dots" aria-label="Auto-selecting duel pair">
+                          <span className="cwgo-auto-dots__dot" />
+                          <span className="cwgo-auto-dots__dot" />
+                          <span className="cwgo-auto-dots__dot" />
+                        </div>
                       </>
                     )}
                   </>
@@ -554,20 +587,23 @@ export default function ClosestWithoutGoingOverComp({
                 {inputError && <p className="cwgo-error">{inputError}</p>}
               </div>
             ) : (
-              <button
-                className="cwgo-btn cwgo-btn--primary"
-                onClick={() => {
-                  dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
-                  dispatch(revealDuelResults());
-                }}
-              >
-                Watch the Duel
-              </button>
+              <div className="cwgo-duel__auto-start">
+                <p className="cwgo-duel__auto-label">⚔️ Duel starting…</p>
+                <div className="cwgo-auto-dots" aria-label="Duel starting">
+                  <span className="cwgo-auto-dots__dot" />
+                  <span className="cwgo-auto-dots__dot" />
+                  <span className="cwgo-auto-dots__dot" />
+                </div>
+              </div>
             )}
           </motion.div>
         )}
 
         {/* ── DUEL REVEAL ───────────────────────────────────────────────────── */}
+        {/* Three sequential stages (auto-timed):
+             guesses  → both players' numbers visible, no outcome context
+             answer   → correct answer revealed with pop animation
+             outcome  → winner/loser styling, "Out" stamp, Continue button */}
         {cwgo.status === 'duel_reveal' && cwgo.duelPair && cwgo.revealResults.length === 2 && (
           <motion.div
             key="duel-reveal"
@@ -576,72 +612,129 @@ export default function ClosestWithoutGoingOverComp({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <p className="cwgo-reveal__heading">
-              Answer: <strong>{question?.answer.toLocaleString()}</strong>
-            </p>
+            {/* Header: changes per stage */}
+            <AnimatePresence mode="wait">
+              {duelRevealStage === 'guesses' && (
+                <motion.p
+                  key="hdr-guesses"
+                  className="cwgo-reveal__heading cwgo-reveal__heading--suspense"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                >
+                  Guesses locked in 🔒
+                </motion.p>
+              )}
+              {duelRevealStage !== 'guesses' && (
+                <motion.p
+                  key="hdr-answer"
+                  className="cwgo-reveal__heading cwgo-reveal__heading--answer"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 18 }}
+                >
+                  Answer: <strong>{question?.answer.toLocaleString()}</strong>
+                </motion.p>
+              )}
+            </AnimatePresence>
+
             <div className="cwgo-duel__vs-card">
-              {cwgo.revealResults.map((r: CwgoResult, i: number) => (
-                <>
-                  <motion.div
-                    key={r.playerId}
-                    className={`cwgo-duel__side${r.isWinner ? ' cwgo-duel__side--winner' : ' cwgo-duel__side--loser'}${r.wentOver ? ' cwgo-duel__side--over' : ''}`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.2, duration: 0.4 }}
-                  >
-                    <div className="cwgo-duel__avatar-ring" style={{ position: 'relative' }}>
-                      <img
-                        className="cwgo-duel__avatar-img"
-                        src={avatarSrc(r.playerId)}
-                        alt={playerName(r.playerId)}
-                        onError={(e) => handleAvatarError(e, playerName(r.playerId))}
-                      />
-                      {!r.isWinner && (
+              {(() => {
+                // Whether the outcome (winner/loser styling) is visible.
+                // Hoisted outside map to avoid recomputing on every iteration.
+                const showOutcome = duelRevealStage === 'outcome';
+
+                return cwgo.revealResults.map((r: CwgoResult, i: number) => {
+                  // Build side CSS class once per side rather than inside JSX.
+                  const sideClass = [
+                    'cwgo-duel__side',
+                    showOutcome && r.isWinner  ? 'cwgo-duel__side--winner'  : '',
+                    showOutcome && !r.isWinner ? 'cwgo-duel__side--loser'   : '',
+                    showOutcome && r.wentOver  ? 'cwgo-duel__side--over'    : '',
+                    !showOutcome               ? 'cwgo-duel__side--pending' : '',
+                  ].filter(Boolean).join(' ');
+
+                  return (
+                  <>
+                    <motion.div
+                      key={r.playerId}
+                      className={sideClass}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.15, duration: 0.4 }}
+                    >
+                      <div className="cwgo-duel__avatar-ring" style={{ position: 'relative' }}>
+                        <img
+                          className="cwgo-duel__avatar-img"
+                          src={avatarSrc(r.playerId)}
+                          alt={playerName(r.playerId)}
+                          onError={(e) => handleAvatarError(e, playerName(r.playerId))}
+                        />
+                        {showOutcome && !r.isWinner && (
+                          <motion.div
+                            className="cwgo-duel__elim-overlay"
+                            initial={{ opacity: 0, scale: 1.2 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.35 }}
+                          >
+                            <span className="cwgo-duel__elim-text">Out</span>
+                          </motion.div>
+                        )}
+                      </div>
+                      {showOutcome && r.isWinner && (
                         <motion.div
-                          className="cwgo-duel__elim-overlay"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: i * 0.2 + 0.55, duration: 0.3 }}
+                          className="cwgo-duel__winner-badge"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: 'spring', stiffness: 320, damping: 12 }}
                         >
-                          <span className="cwgo-duel__elim-text">Out</span>
+                          🏅
                         </motion.div>
                       )}
-                    </div>
-                    {r.isWinner && (
-                      <motion.div
-                        className="cwgo-duel__winner-badge"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', delay: 0.6, stiffness: 300 }}
-                      >
-                        🏅
-                      </motion.div>
+                      <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
+                      <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
+                      {showOutcome && (
+                        <motion.p
+                          className="cwgo-duel__diff"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {r.wentOver
+                            ? `over by ${Math.abs(r.diff).toLocaleString()}`
+                            : `diff: ${r.diff.toLocaleString()}`}
+                        </motion.p>
+                      )}
+                    </motion.div>
+                    {i === 0 && (
+                      <div key="vs" className="cwgo-duel__vs-sep">
+                        <span className="cwgo-duel__vs-label">VS</span>
+                      </div>
                     )}
-                    <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
-                    <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
-                    <p className="cwgo-duel__diff">
-                      {r.wentOver
-                        ? `over by ${Math.abs(r.diff).toLocaleString()}`
-                        : `diff: ${r.diff.toLocaleString()}`}
-                    </p>
-                  </motion.div>
-                  {/* VS separator between the two sides */}
-                  {i === 0 && (
-                    <div key="vs" className="cwgo-duel__vs-sep">
-                      <span className="cwgo-duel__vs-label">VS</span>
-                    </div>
-                  )}
-                </>
-              ))}
+                  </>
+                  );
+                });
+              })()}
             </div>
-            <div className="cwgo-footer">
-              <button
-                className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
-                onClick={() => dispatch(confirmDuelElimination())}
-              >
-                Continue
-              </button>
-            </div>
+
+            {/* Continue button only appears once the outcome is revealed */}
+            <AnimatePresence>
+              {duelRevealStage === 'outcome' && (
+                <motion.div
+                  className="cwgo-footer"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <button
+                    className="cwgo-btn cwgo-btn--purple cwgo-btn--lg"
+                    onClick={() => dispatch(confirmDuelElimination())}
+                  >
+                    Continue
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 

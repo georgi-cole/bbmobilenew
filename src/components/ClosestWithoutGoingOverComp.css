@@ -894,3 +894,81 @@
   flex-shrink: 0;
   align-self: center;
 }
+
+/* ── Auto-advance animated dots ─────────────────────────────────────────────── */
+
+.cwgo-auto-dots {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0;
+}
+
+.cwgo-auto-dots__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  animation: cwgo-dot-pulse 1.3s ease-in-out infinite;
+}
+
+.cwgo-auto-dots__dot:nth-child(2) { animation-delay: 0.22s; }
+.cwgo-auto-dots__dot:nth-child(3) { animation-delay: 0.44s; }
+
+@keyframes cwgo-dot-pulse {
+  0%, 80%, 100% { transform: scale(0.72); opacity: 0.35; }
+  40%           { transform: scale(1.15); opacity: 1; }
+}
+
+/* ── Mass input: auto-status (no human) ─────────────────────────────────────── */
+
+.cwgo-mass-input__auto-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0.68;
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+.cwgo-mass-input__auto-status p {
+  margin: 0;
+}
+
+/* ── Duel input: auto-start indicator (human not in duel) ───────────────────── */
+
+.cwgo-duel__auto-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cwgo-duel__auto-label {
+  font-size: 0.9rem;
+  opacity: 0.62;
+  margin: 0;
+}
+
+/* ── Duel reveal: pending/neutral side (before outcome is shown) ─────────────── */
+
+.cwgo-duel__side--pending {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Duel reveal heading variants ───────────────────────────────────────────── */
+
+.cwgo-reveal__heading--suspense {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.cwgo-reveal__heading--answer {
+  color: var(--color-gold-primary, #fbbf24);
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
