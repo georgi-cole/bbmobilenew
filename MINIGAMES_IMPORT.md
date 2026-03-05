@@ -305,14 +305,22 @@ it previously used `cwgo.aliveIds[0]` as the leader. The AI auto-pick
 
 ### Two-player terminal fix
 
-`handleAILeaderPickDuel` now handles the edge case where `aliveIds.length === 2`
-(occurs when a duel reduces 3 → 2 and we re-enter `choose_duel`):
-it dispatches `chooseDuelPair([alive[0], alive[1]])` immediately instead of
-returning early and blocking flow.
+Both the AI-leader path and the human-leader path now handle the edge case where
+`aliveIds.length === 2` (occurs when a duel reduces 3 → 2 and we re-enter
+`choose_duel`):
+
+- **AI-leader**: `handleAILeaderPickDuel` dispatches
+  `chooseDuelPair([alive[0], alive[1]])` immediately.
+- **Human-leader**: when `aliveIds.length === 2` and the human is the leader,
+  `LeaderDuelPicker` is bypassed and a simple "Start Duel" button is shown instead,
+  which dispatches `chooseDuelPair([aliveIds[0], aliveIds[1]])`. This prevents the
+  permanent-disabled-button deadlock that previously occurred because
+  `LeaderDuelPicker` only showed 1 candidate (the non-leader), making it impossible
+  to select 2 players.
 
 ### Question bank
 
-The question bank in `cwgoQuestions.ts` has been expanded from 32 to 58 questions
+The question bank in `cwgoQuestions.ts` has been expanded from 32 to 54 questions
 with varied difficulty levels (1–5). Easy questions (difficulty 1) remain for
 accessibility; difficulty 3–5 questions add estimation and numeric trivia that
 require genuine reasoning.

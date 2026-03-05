@@ -53,7 +53,7 @@ export const CWGO_QUESTIONS: CwgoQuestion[] = [
   // ── difficulty 3 (harder estimation) ──────────────────────────────────────
   { id: 'q16', prompt: 'Approx how many km is the Earth\'s equatorial circumference (nearest 1000)?', answer: 40000, unit: 'km', difficulty: 3 },
   { id: 'q25', prompt: 'How many elements are in the periodic table (as of 2025)?', answer: 118, difficulty: 3 },
-  { id: 'q29', prompt: 'How many compass points are there in the 32-point compass?', answer: 32, difficulty: 3 },
+  { id: 'q29', prompt: 'How many distinct points does a full compass rose have?', answer: 32, difficulty: 3 },
   { id: 'q41', prompt: 'Approximately how far is the Moon from Earth in kilometers (nearest 10000)?', answer: 380000, unit: 'km', difficulty: 3 },
   { id: 'q42', prompt: 'How many bones are in the human hand (including wrist)?', answer: 27, unit: 'bones', difficulty: 3 },
   { id: 'q43', prompt: 'Approximately how many miles per hour does a commercial airplane cruise at?', answer: 575, unit: 'mph', difficulty: 3 },

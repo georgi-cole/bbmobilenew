@@ -401,13 +401,34 @@ export default function ClosestWithoutGoingOverComp({
                     </div>
 
                     {isHumanLeader ? (
-                      <LeaderDuelPicker
-                        aliveIds={cwgo.aliveIds}
-                        leaderId={leaderId}
-                        playerName={playerName}
-                        avatarSrc={avatarSrc}
-                        onPick={(pair) => dispatch(chooseDuelPair(pair))}
-                      />
+                      cwgo.aliveIds.length === 2 ? (
+                        <>
+                          <p className="cwgo-choose__instruction">
+                            Only two players remain. Start the deciding duel.
+                          </p>
+                          <button
+                            className="cwgo-btn cwgo-btn--primary"
+                            onClick={() =>
+                              dispatch(
+                                chooseDuelPair([
+                                  cwgo.aliveIds[0],
+                                  cwgo.aliveIds[1],
+                                ]),
+                              )
+                            }
+                          >
+                            Start Duel
+                          </button>
+                        </>
+                      ) : (
+                        <LeaderDuelPicker
+                          aliveIds={cwgo.aliveIds}
+                          leaderId={leaderId}
+                          playerName={playerName}
+                          avatarSrc={avatarSrc}
+                          onPick={(pair) => dispatch(chooseDuelPair(pair))}
+                        />
+                      )
                     ) : (
                       <>
                         <p className="cwgo-choose__instruction">

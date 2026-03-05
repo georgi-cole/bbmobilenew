@@ -19,6 +19,7 @@ import cwgoReducer, {
   revealDuelResults,
   confirmDuelElimination,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
+import { mulberry32 } from '../src/store/rng';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -227,8 +228,6 @@ describe('cwgoCompetitionSlice — defensive seed', () => {
 });
 
 // ── Per-invocation seed uniqueness (via challengeSlice nonce) ─────────────────
-
-import { mulberry32 } from '../src/store/rng';
 
 describe('challengeSlice — per-invocation seed uniqueness', () => {
   it('nonce increments so that repeated startCwgoCompetition calls yield unique seeds', () => {
