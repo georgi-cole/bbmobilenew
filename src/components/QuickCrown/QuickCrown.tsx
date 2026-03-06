@@ -20,7 +20,7 @@ import './QuickCrown.css';
 
 /**
  * Polls for a non-null, non-zero DOMRect by calling `getTileRect(winnerId)`
- * on each requestAnimationFrame, up to `maxFrames` attempts.
+ * on each requestAnimationFrame, up to `maxFrames` total attempts.
  * Resolves with the rect if found, or null after exhausting retries.
  */
 export function waitForTileRect(
@@ -31,12 +31,12 @@ export function waitForTileRect(
   return new Promise((resolve) => {
     let frames = 0;
     function attempt() {
+      frames++;
       const rect = getTileRect(winnerId);
       if (rect || frames >= maxFrames) {
         resolve(rect);
         return;
       }
-      frames++;
       requestAnimationFrame(attempt);
     }
     requestAnimationFrame(attempt);

@@ -159,18 +159,20 @@ describe('waitForTileRect', () => {
     const result = await promise;
 
     expect(result).toBe(mockRect);
+    // 3 calls: attempt 1 (null), attempt 2 (null), attempt 3 (mockRect → resolve)
     expect(getTileRect).toHaveBeenCalledTimes(3);
   });
 
-  it('resolves with null after maxFrames if rect is never available', async () => {
+  it('resolves with null after maxFrames total attempts if rect is never available', async () => {
     const getTileRect = vi.fn().mockReturnValue(null);
 
+    // maxFrames=3 → 3 total attempts, then resolve(null)
     const promise = waitForTileRect(getTileRect, 'p0', 3);
-    vi.runAllTimers(); // fires 4 frames total then terminates (frames >= maxFrames)
+    vi.runAllTimers();
     const result = await promise;
 
     expect(result).toBeNull();
-    expect(getTileRect).toHaveBeenCalledTimes(4);
+    expect(getTileRect).toHaveBeenCalledTimes(3);
   });
 });
 
