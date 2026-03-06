@@ -1,6 +1,23 @@
 // MODULE: minigames/tilted-ledge.js
 // Endurance #1 — The Tilted Ledge
 // Keep balance on a tilting ledge with telegraphed jerks
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// DEPRECATED
+// This legacy containerized module is deprecated and will be removed in a
+// future cleanup PR.
+//
+// The authoritative implementation is now the native React component:
+//   • Component : src/components/TiltedLedge/TiltedLedge.tsx
+//   • Screen    : src/screens/TiltedLedgeTestPage/TiltedLedgeScreen.tsx
+//
+// The minigame registry (src/minigames/registry.ts) already routes the
+// 'tiltedLedge' key to the React component via:
+//   implementation: 'react', reactComponentKey: 'TiltedLedge'
+//
+// Do NOT add new consumers of this module.  Migrate any remaining usages to
+// the React component above.
+// ─────────────────────────────────────────────────────────────────────────────
 
 (function(g){
   'use strict';
@@ -8,6 +25,12 @@
   const gameId = 'tilted-ledge';
   
   function render(container, onComplete, options = {}){
+    console.warn(
+      '[tilted-ledge.js] DEPRECATED: This legacy minigame module has been superseded by the native React component.\n' +
+      '  Component : src/components/TiltedLedge/TiltedLedge.tsx\n' +
+      '  Screen    : src/screens/TiltedLedgeTestPage/TiltedLedgeScreen.tsx\n' +
+      'Please migrate to the React component. This module will be removed in a future release.'
+    );
     const root = document.createElement('div');
     root.style.cssText = 'position:relative;display:grid;grid-template-rows:auto 1fr auto;height:100%;min-height:480px;background:linear-gradient(180deg,#0b1020,#0f1530);color:#e8f3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;';
     
