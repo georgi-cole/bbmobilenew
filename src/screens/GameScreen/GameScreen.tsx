@@ -1373,17 +1373,14 @@ export default function GameScreen() {
               dispatch(applyMinigameWinner(finalWinnerId));
               return;
             }
-            // Capture winner id into a stable local constant before the RAF so
-            // the closure never reads a mutable variable after the frame fires.
-            const winnerIdForCeremony = finalWinnerId;
             // Set the deferred dispatch ref before the RAF so it is always
             // available when handleWinnerCeremonyDone fires.
-            pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(winnerIdForCeremony));
+            console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+            pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
             // Defer setState to the next animation frame so the DOM has settled
             // (MinigameHost has unmounted and tile layout is finalized) before
             // SpotlightAnimation measures the winner tile via measureA.
             requestAnimationFrame(() => {
-              console.log('HOH_CROWN_ANIM_SCHEDULED', { winnerIdForCeremony });
               setPendingWinnerCeremony({
                 tiles: [{
                   rect: null,
@@ -1394,7 +1391,7 @@ export default function GameScreen() {
                 caption: `${winnerPlayer.name} wins ${winLabel}!`,
                 subtitle: winSymbol,
                 ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
-                measureA: () => getTileRect(winnerIdForCeremony),
+                measureA: () => getTileRect(finalWinnerId),
               });
             });
           }}
