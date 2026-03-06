@@ -63,6 +63,7 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
+import QuickCrown from '../../components/QuickCrown/QuickCrown'
 import './GameScreen.css'
 
 /**
@@ -141,6 +142,20 @@ export default function GameScreen() {
     setPendingWinnerCeremony(null)
   }, [])
 
+  // ── QuickCrown — dontGoOver winner reveal (lightweight, immediate) ──────
+  // For dontGoOver completions we skip the heavy SpotlightAnimation/
+  // CeremonyOverlay and instead apply the winner immediately, then show a
+  // lightweight QuickCrown badge pulsing over the winner's tile.
+  const [quickCrown, setQuickCrown] = useState<{
+    winnerId: string
+    badge: string
+    label: string
+  } | null>(null)
+
+  const handleQuickCrownDone = useCallback(() => {
+    setQuickCrown(null)
+  }, [])
+
   // ── Advance-picked HOH winner ceremony (outgoing HOH bypass) ──────────
   // When the human is the outgoing HOH, no MinigameHost challenge runs.
   // advance() picks the winner randomly → phase becomes hoh_results with
@@ -202,13 +217,13 @@ export default function GameScreen() {
     // they are ineligible to compete; advance() will pick a winner randomly.
     // Also skip when a CeremonyOverlay is pending (challenge result already
     // captured; avoid launching a second challenge while the old one is animating).
-    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
+    if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony && !quickCrown) {
       // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
       const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
       const derivedPrizeType = game.phase === 'pov_comp' ? 'POV' : 'HOH';
       dispatch(startChallenge(game.seed, participants, { prizeType: derivedPrizeType }))
     }
-  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony])
+  }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony, quickCrown])
 
   // ── Auto-start challenge for Final 3 minigame phases ─────────────────────
   // When advance() sets phase to final3_comp*_minigame (because a human is
@@ -1097,6 +1112,7 @@ export default function GameScreen() {
   // be advanced under those full-screen overlays.
   // Keep this in sync with the conditions that control human decision modals above.
   const showWinnerCeremony = pendingWinnerCeremony !== null
+  const showQuickCrown = quickCrown !== null
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
   // Final-3 ceremony: shown when awaitingFinal3Plea is set (AI HOH won Part 3 via spectator).
@@ -1129,6 +1145,7 @@ export default function GameScreen() {
     (game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true) ||
     showMinigameHost ||
     showWinnerCeremony ||
+    showQuickCrown ||
     showAdvanceHohCeremony ||
     showTapRace ||
     aiTiebreakerPending ||
@@ -1359,15 +1376,28 @@ export default function GameScreen() {
               return;
             }
 
+            const isHohComp = game.phase === 'hoh_comp';
+            const winSymbol = isHohComp ? '👑' : '🛡️';
+            const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
+
+            // ── dontGoOver: skip heavy ceremony, apply winner immediately ────
+            // For the "Don't Go Over" minigame, avoid the SpotlightAnimation /
+            // CeremonyOverlay to prevent race/measurement issues.  Apply the
+            // winner to the store immediately, then show the lightweight
+            // QuickCrown overlay instead.
+            if (pendingChallenge.game.key === 'dontGoOver') {
+              console.log('QUICK_CROWN_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+              dispatch(applyMinigameWinner(finalWinnerId));
+              setQuickCrown({ winnerId: finalWinnerId, badge: winSymbol, label: winLabel });
+              return;
+            }
+
             // ── HOH / POV completion (ceremony overlay) ──────────────────────
             // Show the SpotlightAnimation overlay before committing the winner to
             // the store.  We avoid capturing a DOMRect snapshot here (stale by the
             // time the overlay renders); instead we pass rect: null and let
             // SpotlightAnimation measure via measureA on mount after the RAF fires.
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
-            const isHohComp = game.phase === 'hoh_comp';
-            const winSymbol = isHohComp ? '👑' : '🛡️';
-            const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
             if (!winnerPlayer) {
               // Defensive fallback: winner player not found — commit immediately.
               dispatch(applyMinigameWinner(finalWinnerId));
@@ -1412,6 +1442,19 @@ export default function GameScreen() {
           onDone={handleWinnerCeremonyDone}
           ariaLabel={pendingWinnerCeremony.ariaLabel}
           measureA={pendingWinnerCeremony.measureA}
+        />
+      )}
+
+      {/* ── QuickCrown — dontGoOver winner reveal (lightweight, immediate) ─── */}
+      {/* Winner is already committed to the store; QuickCrown just animates   */}
+      {/* the HOH badge over the winner's tile for ~1200 ms.                    */}
+      {showQuickCrown && quickCrown && (
+        <QuickCrown
+          winnerId={quickCrown.winnerId}
+          badge={quickCrown.badge}
+          caption={`${game.players.find((p) => p.id === quickCrown.winnerId)?.name ?? quickCrown.winnerId} wins ${quickCrown.label}!`}
+          getTileRect={getTileRect}
+          onDone={handleQuickCrownDone}
         />
       )}
 
