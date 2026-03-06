@@ -810,7 +810,7 @@ function CwgoAvatar({
 }) {
   const [imgSrc, setImgSrc] = useState(src);
   return (
-    <div className="cwgo-avatar" data-player-id={id}>
+    <div className="cwgo-avatar">
       <div className={`cwgo-avatar__ring${ringClass ? ' ' + ringClass : ''}`}>
         <img
           key={id}
