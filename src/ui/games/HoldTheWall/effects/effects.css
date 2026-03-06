@@ -1,0 +1,280 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   HoldTheWall — Distraction Effect Overlays
+   ─────────────────────────────────────────────────────────────────────────────
+   All overlays sit above the game UI (z-index 100+) but do NOT intercept game
+   inputs — pointer-events: none is the default. Only the fake-call dismiss
+   button re-enables pointer events locally.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Overlay root ────────────────────────────────────────────────────────────── */
+
+.htw-effects-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── Rain ────────────────────────────────────────────────────────────────────── */
+
+.htw-effect-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.htw-rain-drop {
+  position: absolute;
+  top: -20px;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, rgba(130, 190, 255, 0), rgba(130, 190, 255, 0.65));
+  animation: htw-rain-fall linear infinite;
+}
+
+@keyframes htw-rain-fall {
+  0%   { transform: translateY(0) scaleX(1);    opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 0.8; }
+  100% { transform: translateY(120vh) scaleX(1); opacity: 0; }
+}
+
+/* ── Wind ────────────────────────────────────────────────────────────────────── */
+
+.htw-effect-wind {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.htw-wind-gust {
+  position: absolute;
+  left: -40%;
+  width: 40%;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(to right, transparent, rgba(200, 230, 255, 0.35), transparent);
+  animation: htw-wind-gust linear infinite;
+}
+
+@keyframes htw-wind-gust {
+  0%   { transform: translateX(0);    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateX(350%); opacity: 0; }
+}
+
+/* Wind: subtle lateral sway on alive participant avatars — applied via a
+   modifier class on the htw-root when wind effect is active. */
+.htw-effects--wind .htw-participant--alive {
+  animation: htw-wind-sway 1.6s ease-in-out infinite;
+}
+
+@keyframes htw-wind-sway {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-5px); }
+  75%  { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+/* ── Paint spill ─────────────────────────────────────────────────────────────── */
+
+.htw-effect-paint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.htw-paint-spill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(178, 34, 34, 0.88) 0%,
+    rgba(178, 34, 34, 0.55) 55%,
+    transparent 100%
+  );
+  animation: htw-paint-drop 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes htw-paint-drop {
+  0%   { top: -100%; opacity: 0; }
+  20%  { opacity: 1; }
+  100% { top: 0;     opacity: 0.7; }
+}
+
+.htw-paint-drips {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.htw-paint-drip {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  border-radius: 0 0 50% 50%;
+  background: rgba(178, 34, 34, 0.92);
+  animation: htw-drip-grow linear forwards;
+}
+
+@keyframes htw-drip-grow {
+  0%   { height: 0;    opacity: 1; }
+  100% { height: 100px; opacity: 0.75; }
+}
+
+/* ── Fake iPhone incoming call ───────────────────────────────────────────────── */
+
+.htw-effect-fake-call {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, 90vw);
+  background: linear-gradient(180deg, #1c1c1e 0%, #2c2c2e 100%);
+  border-radius: 20px;
+  padding: 20px 16px 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 110;
+  pointer-events: auto; /* allows dismiss button interaction */
+  animation: htw-call-slide-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes htw-call-slide-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.htw-fake-call-label {
+  font-size: 0.7rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.htw-fake-call-caller {
+  font-size: 1.35rem;
+  font-weight: 600;
+  text-align: center;
+  color: #fff;
+  margin: 0 0 2px;
+}
+
+.htw-fake-call-subtitle {
+  font-size: 0.82rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 18px;
+}
+
+.htw-fake-call-pulse {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  animation: htw-call-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes htw-call-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.35); }
+  50%       { box-shadow: 0 0 0 12px rgba(52, 199, 89, 0); }
+}
+
+.htw-fake-call-actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.htw-fake-call-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  transition: transform 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+
+.htw-fake-call-btn:active {
+  transform: scale(0.9);
+}
+
+.htw-fake-call-btn--decline {
+  background: #ff3b30;
+  box-shadow: 0 4px 14px rgba(255, 59, 48, 0.4);
+}
+
+.htw-fake-call-btn--accept {
+  background: #34c759;
+  box-shadow: 0 4px 14px rgba(52, 199, 89, 0.4);
+}
+
+/* ── Auto-drop feedback banner ───────────────────────────────────────────────── */
+
+.htw-auto-drop-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 59, 48, 0.92);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: htw-banner-in 0.3s ease forwards;
+  z-index: 120;
+  pointer-events: none;
+}
+
+@keyframes htw-banner-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── 2-second countdown indicator ───────────────────────────────────────────── */
+
+.htw-hold-countdown {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 59, 48, 0.85);
+  color: #fff;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 105;
+  animation: htw-countdown-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes htw-countdown-pulse {
+  0%   { opacity: 0.75; }
+  100% { opacity: 1; }
+}
