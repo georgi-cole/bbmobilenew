@@ -1367,14 +1367,14 @@ export default function GameScreen() {
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
 
-            // ── dontGoOver: skip SpotlightAnimation, use lightweight QuickCrown ──
+            // ── dontGoOver / holdTheWall: skip SpotlightAnimation, use lightweight QuickCrown ──
             let skipSpotlightForDontGoOver = false;
-            if (pendingChallenge.game.key === 'dontGoOver') {
-              // Don't start the heavy SpotlightAnimation for dontGoOver — it's brittle and
-              // causes race/measurement issues. Instead, ensure the winner is applied and
-              // show the lightweight QuickCrown. Do this asynchronously to avoid
+            if (pendingChallenge.game.key === 'dontGoOver' || pendingChallenge.game.key === 'holdTheWall') {
+              // Don't start the heavy SpotlightAnimation for dontGoOver or holdTheWall — it's
+              // brittle and causes race/measurement issues. Instead, ensure the winner is
+              // applied and show the lightweight QuickCrown. Do this asynchronously to avoid
               // interfering with MinigameHost teardown.
-              console.log('SKIP_SPOTLIGHT_FOR_DONTGOOVER', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' });
+              console.log('SKIP_SPOTLIGHT_FOR_MINIGAME', { winnerId: finalWinnerId, label: winLabel, gameKey: pendingChallenge.game.key, screen: 'GameScreen' });
 
               // If the winner isn't yet reflected in the game state, apply it now.
               const winnerAlreadyApplied =
@@ -1385,7 +1385,7 @@ export default function GameScreen() {
                 dispatch(applyMinigameWinner(finalWinnerId));
               }
 
-              // QuickCrown popup intentionally disabled for dontGoOver to avoid race/mislabel issues.
+              // QuickCrown popup intentionally disabled for these minigames to avoid race/mislabel issues.
 
               // Mark that we must skip the SpotlightAnimation below.
               skipSpotlightForDontGoOver = true;
@@ -1393,7 +1393,7 @@ export default function GameScreen() {
 
             if (skipSpotlightForDontGoOver) {
               // We've already applied the winner and shown a lightweight effect; do not
-              // create the heavy ceremony overlay for dontGoOver.
+              // create the heavy ceremony overlay for these minigames.
               return;
             }
 
@@ -1439,7 +1439,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* QuickCrown banner removed for dontGoOver to prevent misleading winner popup. */}
+      {/* QuickCrown banner removed for dontGoOver/holdTheWall to prevent misleading winner popup. */}
 
       {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
       {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
