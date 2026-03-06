@@ -148,9 +148,118 @@ If you need to temporarily revert to the legacy implementation:
 # Unit tests for the slice only
 npx vitest run tests/unit/hold-the-wall/holdTheWallSlice.test.ts
 
+# GameController hold-timeout tests (2-second rule + effect events)
+npx vitest run tests/unit/hold-the-wall/GameController.holdTimeout.test.ts
+
+# useHoldTheWallEffects hook tests
+npx vitest run tests/unit/ui/hold-the-wall/effects.hook.test.ts
+
 # MinigameHost routing smoke tests
 npx vitest run tests/minigameHost.holdWall.test.tsx
 
 # Full test suite
 npm test
 ```
+
+---
+
+## Distraction Effects
+
+Hold the Wall supports a set of optional production-triggered distraction effects. Effects are
+**opt-in per game session** — they are started/stopped by the `HoldTheWallGameController` and
+delivered to the client through its event bus.
+
+### Effect types
+
+| effectType  | Description |
+|---|---|
+| `vibrate`  | Triggers `navigator.vibrate` to simulate device shaking. Respects availability (no-op if unsupported). |
+| `rain`     | Animated raindrop particle overlay rendered on top of the game UI. |
+| `wind`     | Horizontal gust lines + subtle lateral sway applied to alive participant avatars. |
+| `paint`    | Paint-spill animation sliding down from the top of the screen with drip particles. |
+| `fakeCall` | Fake iPhone incoming-call modal overlay (visually distracting; non-blocking for game input). Caller name is configurable. |
+| `sound`    | Reserved for audio playback hooks (e.g. Howler). No visual representation. |
+
+### Event payloads
+
+```typescript
+// EFFECT_START
+{
+  gameId: string;      // the game session id
+  effectType: EffectType;
+  params: {
+    // vibrate
+    pattern?: number[];          // Vibration on/off pattern in ms. Default: [150,80,150,80,150]
+
+    // rain
+    intensity?: number;          // 0.5–2.0 multiplier for drop density. Default: 1
+
+    // fakeCall
+    caller?: string;             // Caller name shown in the overlay. Default: "Unknown"
+
+    // (other effects accept no params currently)
+    [key: string]: unknown;
+  };
+}
+
+// EFFECT_STOP
+{
+  gameId: string;
+  effectType: EffectType;
+}
+```
+
+### How production can trigger effects
+
+```typescript
+import { HoldTheWallGameController } from 'src/games/hold-the-wall/GameController';
+
+// Obtain (or create) the controller for the running game session.
+const ctrl = new HoldTheWallGameController(gameId);
+
+// Start rain effect with heavy intensity
+ctrl.emitEffectStart('rain', { intensity: 1.8 });
+
+// Start vibration with a custom pattern
+ctrl.emitEffectStart('vibrate', { pattern: [300, 100, 300] });
+
+// Show a fake incoming call from "Julie Chen"
+ctrl.emitEffectStart('fakeCall', { caller: 'Julie Chen' });
+
+// Stop effects
+ctrl.emitEffectStop('rain');
+ctrl.emitEffectStop('fakeCall');
+```
+
+In a Socket.IO environment, forward `emitEffectStart` / `emitEffectStop` calls over the
+game's realtime channel by listening to the controller's `EFFECT_START` / `EFFECT_STOP` events
+and publishing them to connected clients.
+
+### Client integration
+
+The client hook `useHoldTheWallEffects` (at
+`src/ui/games/HoldTheWall/hooks/useHoldTheWallEffects.ts`) automatically subscribes to the
+controller events and returns `{ activeEffects, isAutoDropped }`. The `EffectsOverlay` component
+(at `src/ui/games/HoldTheWall/effects/EffectsOverlay.tsx`) consumes `activeEffects` and renders
+the appropriate visual layers. Both are integrated into `HoldTheWallComp`.
+
+---
+
+## First-2-seconds auto-drop rule
+
+If the human player does not initiate a hold action (press the wall button) within the first
+**2 000 ms** of `ACTIVE_ROUND` start, the `HoldTheWallGameController` automatically emits
+`PLAYER_ELIMINATED` with `reason: 'no_initial_hold'`. The component listens for this event
+and dispatches `dropPlayer(humanId)` so the Redux store reflects the authoritative result.
+
+A visual banner (`htw-auto-drop-banner`) and inline notice (`htw-auto-drop-notice`) are shown
+to the eliminated player so they understand why they were dropped.
+
+The deadline can be overridden for testing:
+
+```typescript
+ctrl.startRound(humanId, 5000); // 5-second window instead of 2 seconds
+```
+
+`INITIAL_HOLD_DEADLINE_MS` (= `2000`) is exported from `GameController.ts` for reference in tests.
+

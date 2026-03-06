@@ -22,6 +22,9 @@ import { resolveHoldTheWallOutcome } from '../../features/holdTheWall/thunks';
 import type { HoldTheWallState, HoldTheWallPrizeType } from '../../features/holdTheWall/holdTheWallSlice';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { mulberry32 } from '../../store/rng';
+import { HoldTheWallGameController } from '../../games/hold-the-wall/GameController';
+import { useHoldTheWallEffects } from '../../ui/games/HoldTheWall/hooks/useHoldTheWallEffects';
+import EffectsOverlay from '../../ui/games/HoldTheWall/effects/EffectsOverlay';
 import './HoldTheWallComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -182,12 +185,25 @@ export default function HoldTheWallComp({
   const rngRef = useRef<(() => number) | null>(null);
   const prevDropCountRef = useRef(0);
 
+  // GameController for server-authoritative effects + 2-second hold rule
+  const controllerRef = useRef<HoldTheWallGameController | null>(null);
+
   // Derived helpers
   const humanPlayer = Object.values(playerMap).find((p) => p.isUser);
   const humanId: string | null = humanPlayer?.id ?? null;
 
+  // ── Effects hook — subscribes to controller events ────────────────────────
+  const { activeEffects, isAutoDropped } = useHoldTheWallEffects(
+    controllerRef.current,
+    humanId,
+  );
+
   // ── Initialise competition on mount ──────────────────────────────────────
   useEffect(() => {
+    // Create a stable GameController for this game session
+    const ctrl = new HoldTheWallGameController(`htw-${seed}`);
+    controllerRef.current = ctrl;
+
     dispatch(
       startHoldTheWall({
         participantIds,
@@ -197,12 +213,14 @@ export default function HoldTheWallComp({
       }),
     );
     return () => {
+      ctrl.destroy();
+      controllerRef.current = null;
       dispatch(resetHoldTheWall());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Schedule AI drops when game becomes active ────────────────────────────
+  // ── Schedule AI drops + start 2-second hold rule when game becomes active ──
   useEffect(() => {
     if (htw.status !== 'active') return;
 
@@ -215,8 +233,26 @@ export default function HoldTheWallComp({
       }, delayMs),
     );
 
+    // Start the 2-second initial-hold enforcement rule (server-authoritative)
+    let unsubElim: (() => void) | undefined;
+    if (controllerRef.current && humanId) {
+      const ctrl = controllerRef.current;
+      ctrl.startRound(humanId);
+
+      // When the controller fires PLAYER_ELIMINATED (no_initial_hold),
+      // dispatch the drop so the Redux store reflects the authoritative result.
+      unsubElim = ctrl.on('PLAYER_ELIMINATED', (payload) => {
+        if (payload.reason === 'no_initial_hold' && payload.playerId === humanId) {
+          humanDroppedRef.current = true;
+          dispatch(dropPlayer(humanId));
+        }
+      });
+    }
+
     return () => {
       timeouts.forEach((t) => window.clearTimeout(t));
+      unsubElim?.();
+      controllerRef.current?.endRound();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
@@ -319,6 +355,8 @@ export default function HoldTheWallComp({
       if (htw.status !== 'active' || humanDroppedRef.current) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       setIsHolding(true);
+      // Notify the controller — cancels the 2-second auto-drop timer
+      controllerRef.current?.onPlayerHoldStart();
     },
     [htw.status],
   );
@@ -347,9 +385,22 @@ export default function HoldTheWallComp({
   const humanDropped = humanId ? htw.droppedIds.includes(humanId) : false;
   const humanIsWinner = htw.winnerId === humanId;
 
+  // Wind modifier class — applied to root so CSS can target participant avatars
+  const windActive = 'wind' in activeEffects;
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="htw-root" data-testid="htw-root">
+    <div
+      className={['htw-root', windActive ? 'htw-effects--wind' : ''].filter(Boolean).join(' ')}
+      data-testid="htw-root"
+      style={{ position: 'relative' }}
+    >
+      {/* Distraction effects overlay (non-blocking visuals) */}
+      <EffectsOverlay
+        activeEffects={activeEffects}
+        onDismissFakeCall={() => controllerRef.current?.emitEffectStop('fakeCall')}
+      />
+
       {/* HUD */}
       <div className="htw-hud">
         <div className="htw-hud-stat">
@@ -432,6 +483,19 @@ export default function HoldTheWallComp({
       {htw.status === 'active' && humanDropped && (
         <div className="htw-spectating" data-testid="htw-spectating">
           <p>You dropped! Watching {remaining} player{remaining !== 1 ? 's' : ''} remaining…</p>
+          {/* Auto-drop feedback: shown when eliminated by the 2-second rule */}
+          {isAutoDropped && (
+            <p className="htw-auto-drop-notice" data-testid="htw-auto-drop-notice">
+              ⏱ Eliminated: you didn't press hold within 2 seconds of round start.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Auto-drop banner overlay (shown briefly when first eliminated) */}
+      {isAutoDropped && humanDropped && (
+        <div className="htw-auto-drop-banner" data-testid="htw-auto-drop-banner">
+          ⏱ Too slow — auto-eliminated!
         </div>
       )}
 
