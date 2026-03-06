@@ -10,6 +10,7 @@ import { soundMiddleware } from './soundMiddleware';
 import uiReducer from './uiSlice';
 import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
+import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +22,7 @@ export const store = configureStore({
     social: socialReducer,
     ui: uiReducer,
     cwgo: cwgoReducer,
+    holdTheWall: holdTheWallReducer,
   },
   preloadedState: {
     settings: loadSettings(),

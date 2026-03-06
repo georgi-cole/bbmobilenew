@@ -17,6 +17,8 @@ import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
 import ClosestWithoutGoingOverComp from '../ClosestWithoutGoingOverComp';
 import type { CwgoPrizeType } from '../../features/cwgo/cwgoCompetitionSlice';
+import HoldTheWallComp from '../HoldTheWallComp/HoldTheWallComp';
+import type { HoldTheWallPrizeType } from '../../features/holdTheWall/holdTheWallSlice';
 import './MinigameHost.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -184,21 +186,38 @@ export default function MinigameHost({
           >
             ✕
           </button>
-          {game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver' ? (
-            <ClosestWithoutGoingOverComp
-              participantIds={(participants ?? []).map((p) => p.id)}
-              prizeType={gameOptions?.prizeType as CwgoPrizeType}
-              seed={typeof gameOptions?.seed === 'number' ? gameOptions.seed : 0}
-              onComplete={handleReactComplete}
-            />
-          ) : (
-            <LegacyMinigameWrapper
-              game={game}
-              options={gameOptions}
-              onComplete={handleComplete}
-              onQuit={handleQuit}
-            />
-          )}
+          {(() => {
+            const participantIds = (participants ?? []).map((p) => p.id);
+            const seed = typeof gameOptions?.seed === 'number' ? gameOptions.seed : 0;
+            if (game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver') {
+              return (
+                <ClosestWithoutGoingOverComp
+                  participantIds={participantIds}
+                  prizeType={gameOptions?.prizeType as CwgoPrizeType}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'HoldTheWall') {
+              return (
+                <HoldTheWallComp
+                  participantIds={participantIds}
+                  prizeType={gameOptions?.prizeType as HoldTheWallPrizeType}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            return (
+              <LegacyMinigameWrapper
+                game={game}
+                options={gameOptions}
+                onComplete={handleComplete}
+                onQuit={handleQuit}
+              />
+            );
+          })()}
         </div>
       )}
 

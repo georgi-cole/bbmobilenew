@@ -1,0 +1,210 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   HoldTheWallComp — "Hold the Wall" endurance competition UI
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Root ──────────────────────────────────────────────────────────────────── */
+
+.htw-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1rem 2rem;
+  max-width: 540px;
+  margin: 0 auto;
+  font-family: var(--font-family, 'Montserrat', system-ui, sans-serif);
+  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  min-height: 400px;
+}
+
+/* ── HUD ────────────────────────────────────────────────────────────────────── */
+
+.htw-hud {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  background: var(--color-card, #141b26);
+  border-radius: 12px;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  width: 100%;
+  max-width: 320px;
+}
+
+.htw-hud-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.htw-hud-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.5;
+}
+
+.htw-hud-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #83bfff;
+}
+
+/* ── Participants ────────────────────────────────────────────────────────────── */
+
+.htw-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  max-width: 500px;
+}
+
+.htw-participant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.htw-participant--dropped {
+  opacity: 0.35;
+  transform: scale(0.9);
+}
+
+.htw-participant--winner .htw-participant-avatar {
+  border-color: #ffd700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+}
+
+.htw-participant-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-card-2, #1a2336);
+  object-fit: cover;
+}
+
+.htw-participant--alive .htw-participant-avatar {
+  border-color: #83bfff;
+}
+
+.htw-participant--human .htw-participant-avatar {
+  border-color: #ff6b9d;
+}
+
+.htw-participant-name {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  max-width: 60px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.htw-participant-dropped-badge,
+.htw-participant-winner-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 0.85rem;
+}
+
+/* ── Wall panel ──────────────────────────────────────────────────────────────── */
+
+.htw-wall {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #2a4a5a 0%, #3a5a6a 25%, #2a3a4a 50%, #3a5a6a 75%, #2a4a5a 100%);
+  border: 4px solid #3a5a6a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.htw-wall:active,
+.htw-wall--holding {
+  cursor: grabbing;
+  transform: scale(0.97);
+  border-color: #ff6b9d;
+  background: linear-gradient(135deg, #3a6a8a 0%, #4a7a9a 25%, #3a5a7a 50%, #4a7a9a 75%, #3a6a8a 100%);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.35);
+}
+
+.htw-wall-icon {
+  font-size: 3rem;
+  pointer-events: none;
+}
+
+.htw-wall-instruction {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.75);
+  pointer-events: none;
+}
+
+/* ── Spectating ──────────────────────────────────────────────────────────────── */
+
+.htw-spectating {
+  background: var(--color-card, #141b26);
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.75;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Complete screen ─────────────────────────────────────────────────────────── */
+
+.htw-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--color-card, #141b26);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  width: 100%;
+  max-width: 320px;
+}
+
+.htw-complete-trophy {
+  font-size: 3rem;
+}
+
+.htw-complete-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0;
+  color: #ffd700;
+}
+
+.htw-complete-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.65;
+  margin: 0;
+}
+
+.htw-complete-prize {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #83bfff;
+  margin: 0.25rem 0 0;
+}
