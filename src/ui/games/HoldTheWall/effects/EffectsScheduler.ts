@@ -153,6 +153,7 @@ export function buildEffectSchedule(
  * ```
  */
 export class EffectsScheduler {
+  private readonly controller: HoldTheWallGameController;
   private readonly seed: number;
   private readonly intensity: number;
   private readonly roundDurationMs: number;
@@ -175,11 +176,12 @@ export class EffectsScheduler {
    *                          120 000 ms.
    */
   constructor(
-    private readonly controller: HoldTheWallGameController,
+    controller: HoldTheWallGameController,
     seed?: number,
     intensity = 1,
     roundDurationMs = DEFAULT_ROUND_MS,
   ) {
+    this.controller = controller;
     this.seed = seed ?? Date.now();
     this.intensity = intensity;
     this.roundDurationMs = roundDurationMs;
