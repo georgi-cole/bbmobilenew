@@ -17,6 +17,8 @@ import { getAllGames } from '../../minigames/registry';
 import type { GameRegistryEntry, GameCategory, ScoringAdapterName } from '../../minigames/registry';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
+import MinigameHost from '../../components/MinigameHost/MinigameHost';
+import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
 import './GameDebug.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -207,6 +209,17 @@ export default function GameDebug() {
       return participantNames[i] ?? `AI-${i + 1}`;
     });
   }, [participantCount, participantMode, participantNames, headless]);
+
+  /** Build MinigameParticipant array for React-implemented games. */
+  const minigameParticipants = useMemo<MinigameParticipant[]>(() => {
+    return effectiveParticipants.map((id) => ({
+      id,
+      name: id,
+      isHuman: id === 'user',
+      precomputedScore: 0,
+      previousPR: null,
+    }));
+  }, [effectiveParticipants]);
 
   // ── Run actions ───────────────────────────────────────────────────────────
   const handleRunHeadless = useCallback(() => {
@@ -579,12 +592,26 @@ export default function GameDebug() {
                 {/* UI run */}
                 {!headless && isRunning && (
                   <div className="gd-game-container" key={runKey}>
-                    <LegacyMinigameWrapper
-                      game={selectedGame}
-                      options={{ seed, debug: true }}
-                      onComplete={handleComplete}
-                      onQuit={handleQuit}
-                    />
+                    {selectedGame.implementation === 'react' ? (
+                      <MinigameHost
+                        game={selectedGame}
+                        gameOptions={{ seed, prizeType: 'HOH' }}
+                        participants={minigameParticipants}
+                        onDone={() => {
+                          setIsRunning(false);
+                          setRunStatus('Game complete.');
+                        }}
+                        skipRules={false}
+                        skipCountdown={false}
+                      />
+                    ) : (
+                      <LegacyMinigameWrapper
+                        game={selectedGame}
+                        options={{ seed, debug: true }}
+                        onComplete={handleComplete}
+                        onQuit={handleQuit}
+                      />
+                    )}
                   </div>
                 )}
 
