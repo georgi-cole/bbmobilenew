@@ -46,6 +46,7 @@ import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictio
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
 import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
+import QuickCrown from '../../components/QuickCrown/QuickCrown'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
@@ -139,6 +140,18 @@ export default function GameScreen() {
     pendingWinnerDispatchRef.current?.()
     pendingWinnerDispatchRef.current = null
     setPendingWinnerCeremony(null)
+  }, [])
+
+  // ── QuickCrown — lightweight winner reveal (dontGoOver / already-applied guard) ──
+  // Shows a simple badge + label overlay instead of the heavy SpotlightAnimation.
+  const [quickCrown, setQuickCrown] = useState<{
+    winnerId: string
+    badge: string
+    label: string
+  } | null>(null)
+
+  const handleQuickCrownDone = useCallback(() => {
+    setQuickCrown(null)
   }, [])
 
   // ── Advance-picked HOH winner ceremony (outgoing HOH bypass) ──────────
@@ -1359,33 +1372,72 @@ export default function GameScreen() {
               return;
             }
 
-            // ── HOH / POV completion (ceremony overlay) ──────────────────────
-            // Show the CeremonyOverlay cutout before committing the winner to the store.
-            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
-            const sourceDomRect = getTileRect(finalWinnerId);
             const isHohComp = game.phase === 'hoh_comp';
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
-            if (!winnerPlayer || !sourceDomRect) {
-              // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+
+            // ── dontGoOver: skip heavy ceremony, apply winner immediately ────
+            // For the "Don't Go Over" minigame, avoid the SpotlightAnimation /
+            // CeremonyOverlay to prevent race/measurement issues.  Apply the
+            // winner to the store immediately, then show the lightweight
+            // QuickCrown overlay instead.
+            if (pendingChallenge.game.key === 'dontGoOver') {
+              console.log('QUICK_CROWN_STARTED (dontGoOver)', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+              // If the store already reflects this winner (avoid double-dispatch), skip apply.
+              const winnerAlreadyApplied =
+                (isHohComp && game.hohId === finalWinnerId) ||
+                (!isHohComp && game.povWinnerId === finalWinnerId);
+
+              if (!winnerAlreadyApplied) {
+                dispatch(applyMinigameWinner(finalWinnerId));
+              }
+
+              setQuickCrown({ winnerId: finalWinnerId, badge: winSymbol, label: winLabel });
+              return;
+            }
+
+            // ── HOH / POV completion (ceremony overlay) ──────────────────────
+            // Show the SpotlightAnimation overlay before committing the winner to
+            // the store.  We avoid capturing a DOMRect snapshot here (stale by the
+            // time the overlay renders); instead we pass rect: null and let
+            // SpotlightAnimation measure via measureA on mount after the RAF fires.
+            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
+            if (!winnerPlayer) {
+              // Defensive fallback: winner player not found — commit immediately.
               dispatch(applyMinigameWinner(finalWinnerId));
               return;
             }
-            // Defer the store mutation until after the CeremonyOverlay completes.
+
+            // If the winner is already applied in the game state, skip the heavy ceremony.
+            const winnerAlreadyApplied =
+              (isHohComp && game.hohId === finalWinnerId) ||
+              (!isHohComp && game.povWinnerId === finalWinnerId);
+
+            if (winnerAlreadyApplied) {
+              console.log('SKIP_HOH_CROWN_ANIM — winner already applied', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' });
+              setQuickCrown({ winnerId: finalWinnerId, badge: winSymbol, label: winLabel });
+              return;
+            }
+
+            // Existing ceremony code continues here
             console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
-            const tiles: CeremonyTile[] = [{
-              rect: sourceDomRect,
-              badge: winSymbol,
-              badgeStart: 'center',
-              badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
-            }];
             pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
-            setPendingWinnerCeremony({
-              tiles,
-              caption: `${winnerPlayer.name} wins ${winLabel}!`,
-              subtitle: winSymbol,
-              ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
-              measureA: () => getTileRect(finalWinnerId),
+            // Defer setState to the next animation frame so the DOM has settled
+            // (MinigameHost has unmounted and tile layout is finalised) before
+            // SpotlightAnimation measures the winner tile via measureA.
+            requestAnimationFrame(() => {
+              setPendingWinnerCeremony({
+                tiles: [{
+                  rect: null,
+                  badge: winSymbol,
+                  badgeStart: 'center',
+                  badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
+                }],
+                caption: `${winnerPlayer.name} wins ${winLabel}!`,
+                subtitle: winSymbol,
+                ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
+                measureA: () => getTileRect(finalWinnerId),
+              });
             });
           }}
         />
@@ -1405,6 +1457,15 @@ export default function GameScreen() {
           onDone={handleWinnerCeremonyDone}
           ariaLabel={pendingWinnerCeremony.ariaLabel}
           measureA={pendingWinnerCeremony.measureA}
+        />
+      )}
+
+      {/* ── QuickCrown — lightweight winner reveal (dontGoOver / already-applied) ── */}
+      {quickCrown && (
+        <QuickCrown
+          badge={quickCrown.badge}
+          label={quickCrown.label}
+          onDone={handleQuickCrownDone}
         />
       )}
 
