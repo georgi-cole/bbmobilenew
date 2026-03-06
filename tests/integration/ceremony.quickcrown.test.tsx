@@ -26,7 +26,7 @@ import settingsReducer from '../../src/store/settingsSlice';
 import cwgoReducer from '../../src/features/cwgo/cwgoCompetitionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
-import { waitForTileRect } from '../../src/components/QuickCrown/QuickCrown';
+import { waitForTileRect } from '../../src/components/QuickCrown/waitForTileRect';
 
 // ── Module-level captured callbacks ─────────────────────────────────────────
 let capturedMinigameOnDone: ((rawValue: number) => void) | null = null;
