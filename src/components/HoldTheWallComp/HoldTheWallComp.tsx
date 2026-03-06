@@ -90,6 +90,26 @@ const NARRATION = {
   ],
 };
 
+// ─── Timing & seed constants ──────────────────────────────────────────────────
+
+/** How long the winner screen stays visible before MinigameHost dismisses it. */
+const WINNER_SCREEN_DURATION_MS = 5000;
+
+/** Minimum ms between periodic "still holding" narration messages. */
+const MIN_NARRATION_INTERVAL_MS = 8000;
+
+/** Extra random ms added on top of MIN_NARRATION_INTERVAL_MS (0–this value). */
+const NARRATION_INTERVAL_RANGE_MS = 7000;
+
+/**
+ * XOR offsets applied to `seed` when creating RNG instances for different
+ * narration contexts. Each narration effect gets its own independent RNG stream
+ * so messages don't correlate across contexts.
+ */
+const NARRATION_SEED_OFFSET   = 0xdeadbeef; // start + holding messages
+const DROP_EVENT_SEED_OFFSET  = 0xc0ffee;   // player-drop narration fallback
+const COMPLETE_SEED_OFFSET    = 0xfacade;   // winner/loss narration
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function handleAvatarError(e: React.SyntheticEvent<HTMLImageElement>, name: string) {
@@ -227,7 +247,7 @@ export default function HoldTheWallComp({
   // ── Notify parent after a short delay so the winner screen is visible ─────
   useEffect(() => {
     if (htw.status !== 'complete') return;
-    const t = window.setTimeout(() => onComplete?.(), 5000);
+    const t = window.setTimeout(() => onComplete?.(), WINNER_SCREEN_DURATION_MS);
     return () => window.clearTimeout(t);
   }, [htw.status, onComplete]);
 
@@ -236,17 +256,17 @@ export default function HoldTheWallComp({
     if (htw.status !== 'active') return;
     // Initialise the seeded RNG on first activation (offset by 999 so it's
     // independent from the AI-drop schedule which starts at seed directly).
-    rngRef.current = mulberry32(seed ^ 0xdeadbeef);
+    rngRef.current = mulberry32(seed ^ NARRATION_SEED_OFFSET);
     setNarrativeMsg(pickLine(NARRATION.start, rngRef.current));
 
     // Schedule periodic "still holding" updates (8–15 s between messages)
     const intervals: ReturnType<typeof window.setTimeout>[] = [];
-    let nextDelay = 8000 + Math.floor((rngRef.current?.() ?? 0.5) * 7000);
+    let nextDelay = MIN_NARRATION_INTERVAL_MS + Math.floor((rngRef.current?.() ?? 0.5) * NARRATION_INTERVAL_RANGE_MS);
     function scheduleNext() {
       const rng = rngRef.current!;
       const t = window.setTimeout(() => {
         setNarrativeMsg(pickLine(NARRATION.holding, rng));
-        nextDelay = 8000 + Math.floor(rng() * 7000);
+        nextDelay = MIN_NARRATION_INTERVAL_MS + Math.floor(rng() * NARRATION_INTERVAL_RANGE_MS);
         scheduleNext();
       }, nextDelay);
       intervals.push(t);
@@ -265,7 +285,7 @@ export default function HoldTheWallComp({
     const newDropCount = htw.droppedIds.length;
     if (newDropCount <= prevDropCountRef.current) return;
 
-    const rng = rngRef.current ?? mulberry32(seed ^ 0xc0ffee);
+    const rng = rngRef.current ?? mulberry32(seed ^ DROP_EVENT_SEED_OFFSET);
     // Detect the newly dropped player (last entry in droppedIds)
     const droppedId = htw.droppedIds[newDropCount - 1];
     const droppedPlayer = droppedId ? playerMap[droppedId] : null;
@@ -284,7 +304,7 @@ export default function HoldTheWallComp({
   // ── Narration: game complete ───────────────────────────────────────────────
   useEffect(() => {
     if (htw.status !== 'complete') return;
-    const rng = rngRef.current ?? mulberry32(seed ^ 0xfacade);
+    const rng = rngRef.current ?? mulberry32(seed ^ COMPLETE_SEED_OFFSET);
     if (htw.winnerId === humanId) {
       setNarrativeMsg(pickLine(NARRATION.victory, rng));
     } else {
