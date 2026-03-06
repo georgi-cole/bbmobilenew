@@ -101,7 +101,8 @@ export function useHoldTheWallEffects(
     (payload: PlayerEliminatedPayload) => {
       if (
         payload.reason === 'no_initial_hold' &&
-        (humanPlayerId == null || payload.playerId === humanPlayerId)
+        humanPlayerId != null &&
+        payload.playerId === humanPlayerId
       ) {
         setIsAutoDropped(true);
       }

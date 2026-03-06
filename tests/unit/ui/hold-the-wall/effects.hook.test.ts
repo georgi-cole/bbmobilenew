@@ -198,35 +198,24 @@ describe('useHoldTheWallEffects — auto-drop', () => {
   });
 
   it('sets isAutoDropped true when PLAYER_ELIMINATED fires for the human with reason no_initial_hold', () => {
-    const ctrl = makeController();
-    const { result } = renderHook(() => useHoldTheWallEffects(ctrl, 'human'));
-
-    act(() => {
-      // Trigger directly via internal bus (simulating server eliminating the player)
-      ctrl['bus' as never]; // type-access workaround — use the public startRound path instead
-      // We test via the public API: startRound + fake timer expiry
-    });
-
-    // Use vitest fake timers for this sub-test
+    // Use vitest fake timers for this test
     vi.useFakeTimers();
-    const ctrl2 = makeController('game-auto');
-    const { result: result2 } = renderHook(() =>
-      useHoldTheWallEffects(ctrl2, 'human'),
+    const ctrl = makeController('game-auto');
+    const { result } = renderHook(() =>
+      useHoldTheWallEffects(ctrl, 'human'),
     );
 
     act(() => {
-      ctrl2.startRound('human');
+      ctrl.startRound('human');
     });
     act(() => {
       vi.advanceTimersByTime(2000);
     });
 
-    expect(result2.current.isAutoDropped).toBe(true);
-
-    ctrl2.destroy();
-    vi.useRealTimers();
+    expect(result.current.isAutoDropped).toBe(true);
 
     ctrl.destroy();
+    vi.useRealTimers();
   });
 
   it('isAutoDropped stays false when PLAYER_ELIMINATED fires for a different player', () => {
@@ -278,7 +267,7 @@ describe('useHoldTheWallEffects — null controller', () => {
   });
 
   it('returns empty state when controller is undefined', () => {
-    const { result } = renderHook(() => useHoldTheWallEffects(undefined, null));
+    const { result } = renderHook(() => useHoldTheWallEffects(undefined, undefined));
     expect(result.current.activeEffects).toEqual({});
     expect(result.current.isAutoDropped).toBe(false);
   });

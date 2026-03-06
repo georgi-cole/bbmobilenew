@@ -136,22 +136,23 @@ export default function EffectsOverlay({
   const hasPaint    = 'paint'    in activeEffects;
   const hasFakeCall = 'fakeCall' in activeEffects;
 
-  // No active visual effects → render nothing (keep DOM clean)
-  if (!hasRain && !hasWind && !hasPaint && !hasFakeCall) {
-    return null;
-  }
-
   const rainIntensity = typeof activeEffects.rain?.intensity === 'number'
     ? activeEffects.rain.intensity as number
     : 1;
 
-  const rainDrops  = useMemo(() => buildRainDrops(RAIN_DROP_COUNT, rainIntensity), [rainIntensity]); // eslint-disable-line react-hooks/rules-of-hooks
-  const windGusts  = useMemo(() => buildGusts(WIND_GUST_COUNT), []); // eslint-disable-line react-hooks/rules-of-hooks
-  const paintDrips = useMemo(() => buildDrips(PAINT_DRIP_COUNT), []); // eslint-disable-line react-hooks/rules-of-hooks
+  // All useMemo calls must be unconditional (Rules of Hooks)
+  const rainDrops  = useMemo(() => buildRainDrops(RAIN_DROP_COUNT, rainIntensity), [rainIntensity]);
+  const windGusts  = useMemo(() => buildGusts(WIND_GUST_COUNT), []);
+  const paintDrips = useMemo(() => buildDrips(PAINT_DRIP_COUNT), []);
 
   const callerName = typeof activeEffects.fakeCall?.caller === 'string'
     ? activeEffects.fakeCall.caller as string
     : 'Unknown';
+
+  // No active visual effects → render nothing (keep DOM clean)
+  if (!hasRain && !hasWind && !hasPaint && !hasFakeCall) {
+    return null;
+  }
 
   return (
     <div className="htw-effects-overlay" data-testid="htw-effects-overlay">
