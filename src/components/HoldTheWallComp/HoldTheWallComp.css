@@ -157,7 +157,36 @@
   pointer-events: none;
 }
 
-/* ── Spectating ──────────────────────────────────────────────────────────────── */
+/* ── Narration box ───────────────────────────────────────────────────────────── */
+
+.htw-narrative {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 480px;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, rgba(131, 191, 255, 0.12), rgba(131, 191, 255, 0.05));
+  border-left: 4px solid #83bfff;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.45;
+  min-height: 52px;
+}
+
+.htw-narrative-icon {
+  font-style: normal;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.htw-narrative-text {
+  flex: 1;
+}
+
+
 
 .htw-spectating {
   background: var(--color-card, #141b26);

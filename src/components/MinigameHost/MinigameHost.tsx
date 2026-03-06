@@ -203,6 +203,7 @@ export default function MinigameHost({
               return (
                 <HoldTheWallComp
                   participantIds={participantIds}
+                  participants={participants}
                   prizeType={gameOptions?.prizeType as HoldTheWallPrizeType}
                   seed={seed}
                   onComplete={handleReactComplete}

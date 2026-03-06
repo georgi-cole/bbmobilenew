@@ -29,6 +29,12 @@ if (viewportMeta) {
 // and read state throughout the session.
 SocialEngine.init(store)
 
+// Expose the Redux store globally for debugging and e2e tooling.
+declare global {
+  interface Window { __store: typeof store }
+}
+window.__store = store
+
 // Expose legacy-safe helpers for intro hub chip interactions.
 // These are called from js/ui/introHub.js and are safe to attach before the
 // SoundManager is fully initialised (calls are no-ops until init resolves).
