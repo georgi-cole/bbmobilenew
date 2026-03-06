@@ -24,7 +24,9 @@ import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { mulberry32 } from '../../store/rng';
 import { HoldTheWallGameController } from '../../games/hold-the-wall/GameController';
 import { useHoldTheWallEffects } from '../../ui/games/HoldTheWall/hooks/useHoldTheWallEffects';
+import { EffectsScheduler } from '../../ui/games/HoldTheWall/effects/EffectsScheduler';
 import EffectsOverlay from '../../ui/games/HoldTheWall/effects/EffectsOverlay';
+import Hourglass from '../../ui/games/HoldTheWall/Hourglass';
 import './HoldTheWallComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -177,6 +179,8 @@ export default function HoldTheWallComp({
   // Local UI state
   const [isHolding, setIsHolding] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  // Track round start for the complete screen "last player standing after Xs" message
+  const [roundStartKey, setRoundStartKey] = useState(0);
   const [narrativeMsg, setNarrativeMsg] = useState('Get ready to hold on for dear life…');
   const startTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -200,8 +204,9 @@ export default function HoldTheWallComp({
 
   // ── Initialise competition on mount ──────────────────────────────────────
   useEffect(() => {
-    // Create a stable GameController for this game session
-    const ctrl = new HoldTheWallGameController(`htw-${seed}`);
+    // Create a stable GameController for this game session (pass seed so
+    // scheduler options are accessible if needed externally).
+    const ctrl = new HoldTheWallGameController(`htw-${seed}`, { seed, intensity: 1 });
     controllerRef.current = ctrl;
 
     dispatch(
@@ -225,6 +230,8 @@ export default function HoldTheWallComp({
     if (htw.status !== 'active') return;
 
     startTimeRef.current = Date.now();
+    // Increment roundStartKey to restart the Hourglass animation on each new round
+    setRoundStartKey((k) => k + 1);
 
     // Schedule each AI's deterministic drop
     const timeouts = Object.entries(htw.aiDropSchedule).map(([id, delayMs]) =>
@@ -249,9 +256,19 @@ export default function HoldTheWallComp({
       });
     }
 
+    // Start auto-scheduling randomised distraction effects for this round.
+    // A new EffectsScheduler is created here using the controller that was
+    // created on mount — the controllerRef is stable for the component lifetime.
+    let effectsScheduler: EffectsScheduler | null = null;
+    if (controllerRef.current) {
+      effectsScheduler = new EffectsScheduler(controllerRef.current, seed, 1);
+      effectsScheduler.start();
+    }
+
     return () => {
       timeouts.forEach((t) => window.clearTimeout(t));
       unsubElim?.();
+      effectsScheduler?.destroy();
       controllerRef.current?.endRound();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,10 +421,11 @@ export default function HoldTheWallComp({
       {/* HUD */}
       <div className="htw-hud">
         <div className="htw-hud-stat">
-          <span className="htw-hud-label">Elapsed</span>
-          <span className="htw-hud-value" data-testid="htw-elapsed">
-            {formatElapsed(elapsedMs)}
-          </span>
+          <Hourglass
+            key={roundStartKey}
+            cycleDurationMs={7000}
+            running={htw.status === 'active'}
+          />
         </div>
         <div className="htw-hud-stat">
           <span className="htw-hud-label">Remaining</span>
@@ -459,10 +477,16 @@ export default function HoldTheWallComp({
         <span className="htw-narrative-text">{narrativeMsg}</span>
       </div>
 
-      {/* Wall panel — only shown while human is still active */}
+      {/* Wall panel — expands to fill remaining space; shown while human is active */}
       {htw.status === 'active' && !humanDropped && (
         <div
-          className={['htw-wall', isHolding ? 'htw-wall--holding' : ''].filter(Boolean).join(' ')}
+          className={[
+            'htw-wall',
+            'htw-wall--expanded',
+            isHolding ? 'htw-wall--holding' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           data-testid="htw-wall"
           role="button"
           aria-label="Hold the wall"

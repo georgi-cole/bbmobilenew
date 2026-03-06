@@ -59,6 +59,27 @@ type Listener<T> = (event: T) => void;
  *  within this window after ACTIVE_ROUND start are auto-eliminated. */
 export const INITIAL_HOLD_DEADLINE_MS = 2000;
 
+// ─── Scheduler options ────────────────────────────────────────────────────────
+
+/**
+ * Optional configuration for deterministic / intensity-scaled effect
+ * scheduling.  Passed to the constructor so tests can fix the seed.
+ */
+export interface SchedulerOptions {
+  /**
+   * Seed for the PRNG used when auto-scheduling effects.
+   * When provided the effect timeline is fully deterministic.
+   * Defaults to `Date.now()` (random each session).
+   */
+  seed?: number;
+  /**
+   * Multiplier applied to each effect's probability (0–∞).
+   * 1 = normal frequency, 0 = no auto-effects, 2 = double frequency.
+   * Defaults to 1.
+   */
+  intensity?: number;
+}
+
 // ─── Internal event bus ───────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,6 +133,12 @@ class EventBus<EventMap extends Record<string, any>> {
 export class HoldTheWallGameController {
   readonly gameId: string;
 
+  /** Optional seed for deterministic effect scheduling (set via constructor). */
+  readonly schedulerSeed: number | undefined;
+
+  /** Intensity multiplier for auto-scheduled effects (set via constructor). */
+  readonly schedulerIntensity: number;
+
   private bus = new EventBus<HoldTheWallEventMap>();
 
   /** Timer that fires if the human hasn't pressed hold by the deadline. */
@@ -123,8 +150,10 @@ export class HoldTheWallGameController {
   /** True while a round is in progress. */
   private roundActive = false;
 
-  constructor(gameId: string) {
+  constructor(gameId: string, schedulerOptions?: SchedulerOptions) {
     this.gameId = gameId;
+    this.schedulerSeed = schedulerOptions?.seed;
+    this.schedulerIntensity = schedulerOptions?.intensity ?? 1;
   }
 
   // ─── Subscription API ─────────────────────────────────────────────────────

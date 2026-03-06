@@ -8,13 +8,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1rem 2rem;
+  gap: 0.75rem;
+  padding: 0.75rem 0.75rem 0;
   max-width: 540px;
   margin: 0 auto;
   font-family: var(--font-family, 'Montserrat', system-ui, sans-serif);
   color: var(--color-text, rgba(255, 255, 255, 0.92));
-  min-height: 400px;
+  min-height: 100svh;
+  min-height: 100vh; /* fallback */
 }
 
 /* ── HUD ────────────────────────────────────────────────────────────────────── */
@@ -36,6 +37,11 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
+}
+
+/* Ensure the Hourglass inside the HUD stat stays centered */
+.htw-hud-stat .htw-hourglass {
+  margin: 0 auto;
 }
 
 .htw-hud-label {
@@ -135,6 +141,70 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
+/* ── Expanded brick wall ─────────────────────────────────────────────────────── */
+
+.htw-wall--expanded {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 180px;
+  flex: 1;
+  border-radius: 12px 12px 0 0;
+  border: none;
+  border-top: 4px solid rgba(0, 0, 0, 0.35);
+
+  /* Brick-red base colour */
+  background-color: #8b3a22;
+
+  /* Brick pattern:
+     Layer 1 — horizontal mortar lines every 32 px
+     Layer 2 — vertical mortar for even brick rows (0 %, 50 %)
+     Layer 3 — vertical mortar for odd brick rows (25 %, 75 %) offset by 32 px
+  */
+  background-image:
+    /* Horizontal mortar */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 28px,
+      rgba(0, 0, 0, 0.32) 28px,
+      rgba(0, 0, 0, 0.32) 32px
+    ),
+    /* Even-row vertical mortar */
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.22) 0px,
+      rgba(0, 0, 0, 0.22) 3px,
+      transparent 3px,
+      transparent calc(50% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(50% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px),
+      transparent calc(100% - 3px),
+      rgba(0, 0, 0, 0.22) calc(100% - 3px)
+    ),
+    /* Odd-row vertical mortar (offset 25 %, 75 %) */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent calc(25% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(25% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(25% + 1.5px),
+      transparent calc(25% + 1.5px),
+      transparent calc(75% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(75% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(75% + 1.5px),
+      transparent calc(75% + 1.5px)
+    );
+
+  /* Even-row & odd-row layers tile on a 64 px height; horizontal repeats 32 px */
+  background-size: 100% 32px, 100% 64px, 100% 64px;
+  /* Odd-row layer is offset by 32 px vertically */
+  background-position: 0 0, 0 0, 0 32px;
+
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+}
+
 .htw-wall:active,
 .htw-wall--holding {
   cursor: grabbing;
@@ -142,6 +212,38 @@
   border-color: #ff6b9d;
   background: linear-gradient(135deg, #3a6a8a 0%, #4a7a9a 25%, #3a5a7a 50%, #4a7a9a 75%, #3a6a8a 100%);
   box-shadow: 0 4px 20px rgba(255, 107, 157, 0.35);
+}
+
+/* Holding state for expanded brick wall — keep brick pattern, add glow */
+.htw-wall--expanded.htw-wall--holding,
+.htw-wall--expanded:active {
+  background-color: #a04428;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 28px,
+      rgba(0, 0, 0, 0.32) 28px, rgba(0, 0, 0, 0.32) 32px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.22) 0px, rgba(0, 0, 0, 0.22) 3px,
+      transparent 3px, transparent calc(50% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(50% - 1.5px), rgba(0, 0, 0, 0.22) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px), transparent calc(100% - 3px),
+      rgba(0, 0, 0, 0.22) calc(100% - 3px)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px, transparent calc(25% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(25% - 1.5px), rgba(0, 0, 0, 0.22) calc(25% + 1.5px),
+      transparent calc(25% + 1.5px), transparent calc(75% - 1.5px),
+      rgba(0, 0, 0, 0.22) calc(75% - 1.5px), rgba(0, 0, 0, 0.22) calc(75% + 1.5px),
+      transparent calc(75% + 1.5px)
+    );
+  background-size: 100% 32px, 100% 64px, 100% 64px;
+  background-position: 0 0, 0 0, 0 32px;
+  box-shadow: 0 -4px 32px rgba(255, 107, 157, 0.45), inset 0 0 0 3px rgba(255, 107, 157, 0.35);
+  transform: none;
 }
 
 .htw-wall-icon {

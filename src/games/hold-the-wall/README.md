@@ -22,11 +22,25 @@ src/
     holdTheWallSlice.ts   — Redux state machine (idle → active → complete)
     thunks.ts             — resolveHoldTheWallOutcome (prize awarding, idempotent)
   components/HoldTheWallComp/
-    HoldTheWallComp.tsx   — React UI component
-    HoldTheWallComp.css   — Styles
+    HoldTheWallComp.tsx   — React UI component (hourglass + expanded brick wall)
+    HoldTheWallComp.css   — Styles (brick background, expanded wall layout)
+  ui/games/HoldTheWall/
+    Hourglass.tsx         — CSS-animated hourglass timer component
+    Hourglass.css         — Sand-flow and flip animations
+    effects/
+      EffectsScheduler.ts — Deterministic randomised effect scheduler
+      EffectsOverlay.tsx  — Visual overlay for active distraction effects
+      effects.css         — Effect overlay styles
+    hooks/
+      useHoldTheWallEffects.ts — React hook consuming controller events
 tests/
   unit/hold-the-wall/
-    holdTheWallSlice.test.ts   — 21 unit tests for the slice
+    holdTheWallSlice.test.ts             — 21 unit tests for the slice
+    GameController.holdTimeout.test.ts   — 12 tests for 2-second rule + effects
+    GameController.effectsScheduler.test.ts — 11 tests for EffectsScheduler
+  unit/ui/hold-the-wall/
+    effects.hook.test.ts  — useHoldTheWallEffects hook tests
+    Hourglass.test.tsx    — Hourglass component tests
   minigameHost.holdWall.test.tsx — 2 routing smoke tests for MinigameHost
 src/games/hold-the-wall/
   README.md               — This file
@@ -151,6 +165,12 @@ npx vitest run tests/unit/hold-the-wall/holdTheWallSlice.test.ts
 # GameController hold-timeout tests (2-second rule + effect events)
 npx vitest run tests/unit/hold-the-wall/GameController.holdTimeout.test.ts
 
+# EffectsScheduler tests (deterministic scheduling, intensity, conflict avoidance)
+npx vitest run tests/unit/hold-the-wall/GameController.effectsScheduler.test.ts
+
+# Hourglass component tests
+npx vitest run tests/unit/ui/hold-the-wall/Hourglass.test.tsx
+
 # useHoldTheWallEffects hook tests
 npx vitest run tests/unit/ui/hold-the-wall/effects.hook.test.ts
 
@@ -165,9 +185,7 @@ npm test
 
 ## Distraction Effects
 
-Hold the Wall supports a set of optional production-triggered distraction effects. Effects are
-**opt-in per game session** — they are started/stopped by the `HoldTheWallGameController` and
-delivered to the client through its event bus.
+Hold the Wall supports a set of optional distraction effects. Effects can be triggered **manually** by production ops (via `emitEffectStart`/`emitEffectStop`) or **automatically** by the client-side `EffectsScheduler` during an active round.
 
 ### Effect types
 
@@ -209,7 +227,7 @@ delivered to the client through its event bus.
 }
 ```
 
-### How production can trigger effects
+### How production can trigger effects manually
 
 ```typescript
 import { HoldTheWallGameController } from 'src/games/hold-the-wall/GameController';
@@ -234,6 +252,40 @@ ctrl.emitEffectStop('fakeCall');
 In a Socket.IO environment, forward `emitEffectStart` / `emitEffectStop` calls over the
 game's realtime channel by listening to the controller's `EFFECT_START` / `EFFECT_STOP` events
 and publishing them to connected clients.
+
+### Automatic randomised effects (EffectsScheduler)
+
+When `HoldTheWallComp` enters the `active` state it creates an `EffectsScheduler` that
+automatically fires distraction effects at random points during the round.
+
+#### Scheduling config
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `seed` | `number` | `Date.now()` | PRNG seed.  Same seed → same effect timeline (deterministic for tests). |
+| `intensity` | `number` | `1` | Probability multiplier.  `0` = no auto-effects, `2` = double probability. |
+| `roundDurationMs` | `number` | `120 000` | Expected round length used to space effects across the window. |
+
+#### How to pass seed/intensity
+
+```typescript
+// Deterministic (e.g., for a test / replay):
+const ctrl = new HoldTheWallGameController('game-abc', { seed: 12345, intensity: 1 });
+
+// Or create the scheduler directly:
+import { EffectsScheduler } from 'src/ui/games/HoldTheWall/effects/EffectsScheduler';
+const scheduler = new EffectsScheduler(ctrl, /* seed */ 12345, /* intensity */ 1.5);
+scheduler.start();   // call when round becomes active
+scheduler.stop();    // call on cleanup
+scheduler.destroy(); // call to also unsubscribe from controller events
+```
+
+#### Conflict avoidance
+
+The scheduler subscribes to the controller's `EFFECT_START` / `EFFECT_STOP` events so it
+always knows which effects are currently active.  If an effect is already active when the
+scheduler's timer fires (because production triggered it manually), the scheduler silently
+skips scheduling that effect type.
 
 ### Client integration
 
@@ -262,4 +314,49 @@ ctrl.startRound(humanId, 5000); // 5-second window instead of 2 seconds
 ```
 
 `INITIAL_HOLD_DEADLINE_MS` (= `2000`) is exported from `GameController.ts` for reference in tests.
+
+---
+
+## Hourglass UI
+
+The numeric `elapsedMs` timer has been replaced with a CSS-animated `Hourglass` component
+(`src/ui/games/HoldTheWall/Hourglass.tsx`).
+
+### Behaviour
+
+- Sand drains from the top chamber to the bottom chamber over `cycleDurationMs` (default **7 s**).
+- When the top is empty the hourglass flips 180° and the cycle repeats — the animation loops
+  indefinitely while the round is active.
+- No precise elapsed time is shown; users can see progress within a cycle but cannot infer
+  the exact number of seconds played.
+
+### Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `cycleDurationMs` | `number` | `7000` | Duration (ms) of one sand-drain cycle. |
+| `running` | `boolean` | `true` | When `false` the CSS animation is paused. |
+| `roundKey` | `string \| number` | — | Change this value to force a React remount and restart the animation from the beginning. |
+
+### Animation restart on new round
+
+`HoldTheWallComp` passes a `roundKey` derived from a counter that increments each time
+`htw.status` transitions to `active`, ensuring the hourglass resets at the start of every
+new round.
+
+---
+
+## Wall UI
+
+The wall panel (`htw-wall--expanded`) now fills the remaining viewport height below the
+participant area:
+
+- Width: 100% of the container (up to 540 px).
+- Height: grows to fill remaining space (`flex: 1`), minimum 180 px.
+- Visual: **brick-wall pattern** implemented with three stacked CSS `repeating-linear-gradient`
+  layers on a terracotta base colour (`#8b3a22`).  The pattern tiles staggered mortar lines
+  to simulate alternating brick rows.
+- On mobile the wall takes up most of the screen, giving players a large tap target to hold.
+- The `EffectsOverlay` sits above the wall with `pointer-events: none` so visual effects
+  never block the hold interaction.
 

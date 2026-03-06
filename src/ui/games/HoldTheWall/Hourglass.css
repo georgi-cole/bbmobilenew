@@ -1,0 +1,146 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   HoldTheWall — Hourglass component
+   ─────────────────────────────────────────────────────────────────────────────
+   Pure CSS animated hourglass.  No numeric time is displayed — users can see
+   roughly where in the cycle we are but cannot infer exact milliseconds.
+
+   The animation is driven by the CSS custom property --htw-hg-dur which is
+   set from the `cycleDurationMs` prop (default 7 s).
+
+   Cycle behaviour (one full cycle = 2 × cycleDurationMs):
+     0 %–50 %  : sand drains from top chamber to bottom; no rotation
+     50 %      : hourglass flips 180°; sand positions reset
+     50 %–100 % : sand drains again (same visual flow after the flip)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Root wrapper ────────────────────────────────────────────────────────────── */
+
+.htw-hourglass {
+  --htw-hg-dur: 7s;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+/* ── Frame — rotates at the half-way point ───────────────────────────────────── */
+
+.htw-hg-frame {
+  width: 40px;
+  height: 60px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: htw-hg-flip calc(var(--htw-hg-dur) * 2) linear infinite;
+}
+
+@keyframes htw-hg-flip {
+  0%,  49.9% { transform: rotate(0deg); }
+  50%, 100%  { transform: rotate(180deg); }
+}
+
+/* ── Top chamber (wide at top, tapers to neck) ───────────────────────────────── */
+
+.htw-hg-top {
+  width: 40px;
+  height: 26px;
+  clip-path: polygon(0% 0%, 100% 0%, 58% 100%, 42% 100%);
+  background: rgba(200, 165, 100, 0.18);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* ── Neck ──────────────────────────────────────────────────────────────────── */
+
+.htw-hg-neck {
+  width: 7px;
+  height: 8px;
+  background: rgba(200, 165, 100, 0.25);
+  flex-shrink: 0;
+}
+
+/* ── Bottom chamber (tapers from neck, widens at base) ───────────────────────── */
+
+.htw-hg-bottom {
+  width: 40px;
+  height: 26px;
+  clip-path: polygon(42% 0%, 58% 0%, 100% 100%, 0% 100%);
+  background: rgba(200, 165, 100, 0.18);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* ── Sand fill shared styles ─────────────────────────────────────────────────── */
+
+.htw-hg-sand {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, #c87828, #f0c060);
+  border-radius: 0 0 1px 1px;
+}
+
+/* ── Top sand: starts full, drains to zero at 50 %, resets ─────────────────── */
+
+.htw-hg-sand--top {
+  animation: htw-hg-top-drain calc(var(--htw-hg-dur) * 2) linear infinite;
+}
+
+@keyframes htw-hg-top-drain {
+  0%      { height: 100%; }
+  49%     { height: 0%;   }
+  49.9%   { height: 0%;   }
+  50%     { height: 100%; }
+  99%     { height: 0%;   }
+  100%    { height: 0%;   }
+}
+
+/* ── Bottom sand: starts empty, fills to full at 50 %, resets ──────────────── */
+
+.htw-hg-sand--bottom {
+  animation: htw-hg-bot-fill calc(var(--htw-hg-dur) * 2) linear infinite;
+}
+
+@keyframes htw-hg-bot-fill {
+  0%      { height: 0%;   }
+  49%     { height: 100%; }
+  49.9%   { height: 100%; }
+  50%     { height: 0%;   }
+  99%     { height: 100%; }
+  100%    { height: 100%; }
+}
+
+/* ── Shimmer on the glass outline ─────────────────────────────────────────────── */
+
+.htw-hg-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Glass edges traced with border + clip-path on a pseudo-element */
+  clip-path: polygon(
+    0% 0%,    100% 0%,
+    58% 43%,  55% 46%,
+    55% 54%,  58% 57%,
+    100% 100%, 0% 100%,
+    42% 57%,  45% 54%,
+    45% 46%,  42% 43%
+  );
+  background: rgba(200, 165, 100, 0.25);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Paused state ─────────────────────────────────────────────────────────────── */
+
+.htw-hourglass--paused .htw-hg-frame,
+.htw-hourglass--paused .htw-hg-sand--top,
+.htw-hourglass--paused .htw-hg-sand--bottom {
+  animation-play-state: paused;
+}
