@@ -41,6 +41,11 @@ const CwgoTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/CwgoTestPage/CwgoTestPage'))
   : null;
 
+// Dev-only Hold the Wall test page.
+const HoldTheWallTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/HoldTheWallTestPage/HoldTheWallTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -65,6 +70,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && CwgoTestPage != null
         ? [{ path: 'cwgo-test', element: <Suspense fallback={null}><CwgoTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && HoldTheWallTestPage != null
+        ? [{ path: 'htw-test', element: <Suspense fallback={null}><HoldTheWallTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },
