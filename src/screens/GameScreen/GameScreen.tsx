@@ -135,15 +135,6 @@ export default function GameScreen() {
   } | null>(null)
   const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
 
-  // ── QuickCrown — lightweight winner highlight for dontGoOver ────────────
-  // Shown instead of the heavy SpotlightAnimation when the completed minigame
-  // is dontGoOver. Auto-dismissed after a short delay.
-  const [quickCrown, setQuickCrown] = useState<{
-    winnerId: string
-    badge: string
-    label: string
-  } | null>(null)
-
   const handleWinnerCeremonyDone = useCallback(() => {
     pendingWinnerDispatchRef.current?.()
     pendingWinnerDispatchRef.current = null
@@ -1394,13 +1385,7 @@ export default function GameScreen() {
                 dispatch(applyMinigameWinner(finalWinnerId));
               }
 
-              // Queue the lightweight quick crown after the current frame so we don't
-              // interfere with MinigameHost unmount/teardown.
-              requestAnimationFrame(() => {
-                setQuickCrown({ winnerId: finalWinnerId, badge: winSymbol, label: winLabel });
-                // Auto-dismiss the QuickCrown banner after 3 seconds.
-                setTimeout(() => setQuickCrown(null), 3000);
-              });
+              // QuickCrown popup intentionally disabled for dontGoOver to avoid race/mislabel issues.
 
               // Mark that we must skip the SpotlightAnimation below.
               skipSpotlightForDontGoOver = true;
@@ -1454,32 +1439,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── QuickCrown — lightweight winner banner for dontGoOver ─────────── */}
-      {quickCrown && (() => {
-        const qcPlayer = game.players.find((p) => p.id === quickCrown.winnerId);
-        if (!qcPlayer) return null;
-        return (
-          <div
-            role="status"
-            aria-live="assertive"
-            aria-label={`${qcPlayer.name} wins ${quickCrown.label}`}
-            style={{
-              position: 'fixed', inset: 0, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', zIndex: 9999, pointerEvents: 'none',
-            }}
-          >
-            <div style={{
-              background: 'rgba(0,0,0,0.75)', borderRadius: 12, padding: '16px 28px',
-              textAlign: 'center', color: '#fff',
-            }}>
-              <div style={{ fontSize: 40 }}>{quickCrown.badge}</div>
-              <div style={{ fontWeight: 700, fontSize: 18, marginTop: 6 }}>
-                {qcPlayer.name} wins {quickCrown.label}!
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* QuickCrown banner removed for dontGoOver to prevent misleading winner popup. */}
 
       {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
       {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
