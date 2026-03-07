@@ -295,4 +295,86 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).status).toBe('idle');
     expect(getState(store).playerScores).toEqual({});
   });
+
+  // ── playerRoundCursor tests ────────────────────────────────────────────────
+
+  it('playerRoundCursor starts at 0 for all participants after startFamousFigures', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+    expect(getState(store).playerRoundCursor[PLAYER_B]).toBe(0);
+  });
+
+  it('playerRoundCursor increments immediately on a correct guess', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+    const s0 = getState(store);
+    const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    // Cursor must be 1 immediately — before endRound or nextRound
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+  });
+
+  it('playerRoundCursor does NOT increment on a wrong guess', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'completely wrong xyzzy' }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+  });
+
+  it('playerRoundCursor reaches totalRounds after 3 correct guesses across rounds', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+
+    for (let round = 0; round < 3; round++) {
+      const s = getState(store);
+      const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s, PLAYER_A, s.currentRound)];
+      store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName }));
+      // After the last correct guess the round auto-closes (single participant),
+      // advance to next round if not yet complete.
+      if (round < 2) {
+        store.dispatch(nextRound());
+      }
+    }
+
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(3);
+  });
+
+  it('per-player figure queues are distinct for different player IDs at same seed', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 42 }));
+    const s = getState(store);
+    const queueA = s.playerFigureQueues[PLAYER_A];
+    const queueB = s.playerFigureQueues[PLAYER_B];
+    expect(queueA).toBeDefined();
+    expect(queueB).toBeDefined();
+    // The two queues should differ in at least one position
+    const allSame = queueA!.every((v, i) => v === queueB![i]);
+    expect(allSame).toBe(false);
+  });
+
+  it('per-player figure queues have length equal to totalRounds', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 5 }));
+    const s = getState(store);
+    expect(s.playerFigureQueues[PLAYER_A]).toHaveLength(s.totalRounds);
+    expect(s.playerFigureQueues[PLAYER_B]).toHaveLength(s.totalRounds);
+  });
+
+  it('playerRoundCursor tracks per-player independently (A done early, B still on round 0)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+
+    // PLAYER_A solves round 0; PLAYER_B does not
+    const s0 = getState(store);
+    const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
+
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+    // PLAYER_B hasn't answered yet — cursor stays 0
+    expect(getState(store).playerRoundCursor[PLAYER_B]).toBe(0);
+    // Round is still active since PLAYER_B hasn't solved
+    expect(getState(store).status).toBe('round_active');
+  });
 });

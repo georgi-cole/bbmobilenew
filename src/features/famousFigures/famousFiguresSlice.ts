@@ -301,8 +301,8 @@ const famousFiguresSlice = createSlice({
       for (const id of participantIds) {
         const playerRng = mulberry32(seed ^ fnv1a32(id));
         const playerOrder = shuffleIndices(playerRng, FAMOUS_FIGURES.length);
-        // Each player gets totalRounds (3) unique figures from their own shuffle.
-        playerFigureQueues[id] = playerOrder.slice(0, 3);
+        // Each player gets totalRounds unique figures from their own shuffle.
+        playerFigureQueues[id] = playerOrder.slice(0, state.totalRounds);
         playerRoundCursor[id] = 0;
         state.playerScores[id] = 0;
         state.playerRoundScores[id] = [];

@@ -388,7 +388,16 @@ export default function FamousFiguresComp({
     }
     // Clear feedback after a moment
     setTimeout(() => setInputState('idle'), 1500);
-  }, [humanId, ff, guessInput, dispatch]);
+  }, [
+    humanId,
+    ff.status,
+    ff.playerCorrect,
+    ff.playerGuesses,
+    ff.currentRound,
+    ff.playerFigureQueues,
+    guessInput,
+    dispatch,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -410,17 +419,15 @@ export default function FamousFiguresComp({
 
   // ── Derived ───────────────────────────────────────────────────────────────
   // Each player has their own figure for the current round.  The human player's
-  // figure (and the figure shown in the reveal card) is resolved via their
-  // personal queue; AI figures are resolved per-player in the AI-submission
-  // effects.
+  // figure is resolved via their personal queue; AI figures are resolved
+  // per-player in the AI-submission effects.
   const humanFigureIdx = humanId !== null
     ? getPlayerFigureIndex(ff, humanId, ff.currentRound)
     : ff.currentFigureIndex;
-  // During round_reveal, show the figure from the global reveal (currentFigureIndex).
-  const figure =
-    ff.status === 'round_reveal'
-      ? (FAMOUS_FIGURES[ff.currentFigureIndex] ?? null)
-      : (FAMOUS_FIGURES[humanFigureIdx] ?? null);
+  // Always show the human's own figure — on round_reveal this is the figure
+  // they were actually being tested on. When there is no local human player,
+  // fall back to the global currentFigureIndex.
+  const figure = FAMOUS_FIGURES[humanFigureIdx] ?? null;
   const humanCorrect = humanId ? ff.playerCorrect[humanId] : false;
   const hintsAllRevealed = ff.hintsRevealed >= 5;
   const canRequestHint =
@@ -438,10 +445,20 @@ export default function FamousFiguresComp({
     (ff.playerRoundCursor[humanId] ?? 0) >= ff.totalRounds &&
     ff.status !== 'complete';
 
+  // True when the global match has exhausted all rounds and is no longer active.
+  const matchRoundsExhausted =
+    ff.currentRound >= ff.totalRounds - 1 && ff.status !== 'round_active';
+
   // Number of participants who haven't yet finished all their personal rounds.
-  const remainingPlayersCount = participantIds.filter(
-    (id) => (ff.playerRoundCursor[id] ?? 0) < ff.totalRounds,
-  ).length;
+  // Once the global match rounds are exhausted, everyone is effectively done.
+  // AI players who answered all rounds incorrectly (cursor never reaches
+  // totalRounds) would otherwise always appear as "still playing", so we treat
+  // the match as empty once no more active rounds remain.
+  const remainingPlayersCount = matchRoundsExhausted
+    ? 0
+    : participantIds.filter(
+        (id) => (ff.playerRoundCursor[id] ?? 0) < ff.totalRounds,
+      ).length;
 
   const timerPct = (() => {
     const dur = PHASE_DURATIONS[ff.timerPhase] ?? 15000;
@@ -470,24 +487,35 @@ export default function FamousFiguresComp({
   // the global match hasn't ended yet (other players still playing).
   if (humanAllDone) {
     const humanTotal = humanId ? (ff.playerScores[humanId] ?? 0) : 0;
-    const humanRoundScores = humanId ? (ff.playerRoundScores[humanId] ?? []) : [];
+    // playerRoundScores is populated by doEndRound(), which runs after the
+    // global round ends (timer or all-solved). When the human finishes their
+    // last round early, the current round's score hasn't been written yet.
+    // We reconstruct it from the cumulative total minus the previously recorded
+    // round scores so the display is always complete and accurate.
+    const recordedScores = humanId ? (ff.playerRoundScores[humanId] ?? []) : [];
+    const recordedSum = recordedScores.reduce((s, v) => s + v, 0);
+    const pendingScore = humanTotal - recordedSum;
+    const allRoundScores =
+      recordedScores.length < ff.totalRounds
+        ? [...recordedScores, pendingScore]
+        : recordedScores;
     return (
-      <div className="ff-container ff-container--waiting" aria-live="polite">
+      <div className="ff-container ff-container--waiting">
         <div className="ff-header">
           <span className="ff-comp-badge">{prizeType}</span>
           <span className="ff-title">Famous Figures</span>
           <span className="ff-round-badge">Your Rounds Done!</span>
         </div>
 
-        <div className="ff-personal-results" role="status" aria-live="assertive">
+        <div className="ff-personal-results">
           <div className="ff-personal-results-title">Your Results</div>
           <div className="ff-personal-results-score">{humanTotal} pts</div>
           <div className="ff-personal-results-rounds">
-            [{humanRoundScores.join(', ')}]
+            [{allRoundScores.join(', ')}]
           </div>
         </div>
 
-        <div className="ff-waiting-banner" role="status" aria-live="polite">
+        <div className="ff-waiting-banner" aria-live="polite">
           ⏳ Waiting for other players…
           {remainingPlayersCount > 0 && (
             <span className="ff-waiting-banner-sub">
