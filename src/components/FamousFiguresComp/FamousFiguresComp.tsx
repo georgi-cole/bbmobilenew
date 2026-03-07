@@ -20,6 +20,7 @@ import {
   FAMOUS_FIGURES,
   setAiSubmissionsForRound,
   buildAiSubmissionsForRound,
+  getPlayerFigureIndex,
 } from '../../features/famousFigures/famousFiguresSlice';
 import type {
   FamousFiguresState,
@@ -206,6 +207,7 @@ export default function FamousFiguresComp({
   useEffect(() => {
     if (ff.status !== 'round_active') return;
     const phase = ff.timerPhase;
+    const capturedRound = ff.currentRound;
     const duration = PHASE_DURATIONS[phase] ?? 15000;
     if (duration === 0) return;
 
@@ -225,6 +227,8 @@ export default function FamousFiguresComp({
       const current = ffRef.current;
       if (current.status !== 'round_active') return;
       if (current.timerPhase !== phase) return;
+      // Stale-timer guard: discard callbacks that belong to a previous round.
+      if (current.currentRound !== capturedRound) return;
 
       if (phase === 'done' || phase === 'overtime') {
         dispatch(endRound());
@@ -254,7 +258,13 @@ export default function FamousFiguresComp({
     if (aiIds.length === 0) return;
 
     const rng = mulberry32(seed ^ (round * 0x9e3779b9));
-    const submissions = buildAiSubmissionsForRound(aiIds, ff.currentFigureIndex, ff.hintsRevealed, rng);
+    // Build per-AI submissions using each AI's own figure for this round.
+    const submissions: Record<string, boolean> = {};
+    for (const aiId of aiIds) {
+      const aiFigIdx = getPlayerFigureIndex(ff, aiId, round);
+      const aiResult = buildAiSubmissionsForRound([aiId], aiFigIdx, ff.hintsRevealed, rng);
+      submissions[aiId] = aiResult[aiId] ?? false;
+    }
     dispatch(setAiSubmissionsForRound({ round, submissions }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.status, ff.currentRound, ff.hintsRevealed]);
@@ -304,8 +314,13 @@ export default function FamousFiguresComp({
         // Bail out if the round ended before the AI's delay elapsed.
         const current = ffRef.current;
         if (current.status !== 'round_active') return;
+        if (current.currentRound !== round) return; // stale round guard
         if (current.playerCorrect[aiId]) return;
-        dispatch(submitPlayerGuess({ playerId: aiId, guess: figure.canonicalName, timestamp: Date.now() }));
+        // Use the AI's personal figure for this round.
+        const aiFigIdx = getPlayerFigureIndex(current, aiId, round);
+        const aiFigure = FAMOUS_FIGURES[aiFigIdx];
+        if (!aiFigure) return;
+        dispatch(submitPlayerGuess({ playerId: aiId, guess: aiFigure.canonicalName, timestamp: Date.now() }));
       }, delay);
       pendingAiTimeoutsRef.current.push(t);
     }
@@ -359,11 +374,13 @@ export default function FamousFiguresComp({
       return;
     }
 
-    const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
-    if (!figure) return;
+    // Use the human's personal figure for immediate local feedback.
+    const humanFigIdx = getPlayerFigureIndex(ff, humanId, ff.currentRound);
+    const localFigure = FAMOUS_FIGURES[humanFigIdx];
+    if (!localFigure) return;
 
     // Check correctness locally for immediate UI feedback
-    const correct = isAcceptedGuess(trimmed, figure);
+    const correct = isAcceptedGuess(trimmed, localFigure);
     dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed, timestamp: Date.now() }));
     setInputState(correct ? 'correct' : 'wrong');
     if (correct) {
@@ -371,7 +388,7 @@ export default function FamousFiguresComp({
     }
     // Clear feedback after a moment
     setTimeout(() => setInputState('idle'), 1500);
-  }, [humanId, ff.status, ff.playerCorrect, ff.playerGuesses, ff.currentFigureIndex, guessInput, dispatch]);
+  }, [humanId, ff, guessInput, dispatch]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -392,14 +409,39 @@ export default function FamousFiguresComp({
   }, [ff.status, ff.hintsRevealed, dispatch]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const figure = FAMOUS_FIGURES[ff.currentFigureIndex] ?? null;
+  // Each player has their own figure for the current round.  The human player's
+  // figure (and the figure shown in the reveal card) is resolved via their
+  // personal queue; AI figures are resolved per-player in the AI-submission
+  // effects.
+  const humanFigureIdx = humanId !== null
+    ? getPlayerFigureIndex(ff, humanId, ff.currentRound)
+    : ff.currentFigureIndex;
+  // During round_reveal, show the figure from the global reveal (currentFigureIndex).
+  const figure =
+    ff.status === 'round_reveal'
+      ? (FAMOUS_FIGURES[ff.currentFigureIndex] ?? null)
+      : (FAMOUS_FIGURES[humanFigureIdx] ?? null);
   const humanCorrect = humanId ? ff.playerCorrect[humanId] : false;
   const hintsAllRevealed = ff.hintsRevealed >= 5;
   const canRequestHint =
     ff.status === 'round_active' &&
+    !humanCorrect &&
     !hintsAllRevealed &&
     ff.timerPhase !== 'overtime' &&
     ff.timerPhase !== 'done';
+
+  // True when the local human player has solved all their personal rounds but
+  // the global match has not yet transitioned to 'complete' (the timer for the
+  // last round is still running for other players).
+  const humanAllDone =
+    humanId !== null &&
+    (ff.playerRoundCursor[humanId] ?? 0) >= ff.totalRounds &&
+    ff.status !== 'complete';
+
+  // Number of participants who haven't yet finished all their personal rounds.
+  const remainingPlayersCount = participantIds.filter(
+    (id) => (ff.playerRoundCursor[id] ?? 0) < ff.totalRounds,
+  ).length;
 
   const timerPct = (() => {
     const dur = PHASE_DURATIONS[ff.timerPhase] ?? 15000;
@@ -419,6 +461,42 @@ export default function FamousFiguresComp({
     return (
       <div className="ff-container ff-container--loading" aria-live="polite">
         <p>Loading Famous Figures…</p>
+      </div>
+    );
+  }
+
+  // ── Render: personal waiting screen ──────────────────────────────────────
+  // Shown when the local human player has solved all their personal rounds but
+  // the global match hasn't ended yet (other players still playing).
+  if (humanAllDone) {
+    const humanTotal = humanId ? (ff.playerScores[humanId] ?? 0) : 0;
+    const humanRoundScores = humanId ? (ff.playerRoundScores[humanId] ?? []) : [];
+    return (
+      <div className="ff-container ff-container--waiting" aria-live="polite">
+        <div className="ff-header">
+          <span className="ff-comp-badge">{prizeType}</span>
+          <span className="ff-title">Famous Figures</span>
+          <span className="ff-round-badge">Your Rounds Done!</span>
+        </div>
+
+        <div className="ff-personal-results" role="status" aria-live="assertive">
+          <div className="ff-personal-results-title">Your Results</div>
+          <div className="ff-personal-results-score">{humanTotal} pts</div>
+          <div className="ff-personal-results-rounds">
+            [{humanRoundScores.join(', ')}]
+          </div>
+        </div>
+
+        <div className="ff-waiting-banner" role="status" aria-live="polite">
+          ⏳ Waiting for other players…
+          {remainingPlayersCount > 0 && (
+            <span className="ff-waiting-banner-sub">
+              {remainingPlayersCount} player{remainingPlayersCount !== 1 ? 's' : ''} still playing
+            </span>
+          )}
+        </div>
+
+        {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
       </div>
     );
   }

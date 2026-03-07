@@ -8,6 +8,7 @@ import famousFiguresReducer, {
   nextRound,
   getPointsForHintsUsed,
   FAMOUS_FIGURES,
+  getPlayerFigureIndex,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';
 
@@ -44,7 +45,8 @@ describe('scoring across rounds', () => {
     store.dispatch(startFamousFigures({ participantIds: [PLAYER], competitionType: 'HOH', seed: 7 }));
 
     // Round 1: correct with 0 hints → 10 pts
-    const fig1 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
+    const s0 = getState(store);
+    const fig1 = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER, guess: fig1.canonicalName }));
     expect(getState(store).playerScores[PLAYER]).toBe(10);
     store.dispatch(endRound());
@@ -53,7 +55,8 @@ describe('scoring across rounds', () => {
     // Round 2: request 2 hints then correct → 7 pts
     store.dispatch(revealNextHint());
     store.dispatch(revealNextHint());
-    const fig2 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
+    const s1 = getState(store);
+    const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s1, PLAYER, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER, guess: fig2.canonicalName }));
     expect(getState(store).playerScores[PLAYER]).toBe(17); // 10 + 7
     store.dispatch(endRound());
@@ -78,22 +81,26 @@ describe('tiebreaker logic', () => {
     store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'HOH', seed: 3 }));
 
     // Round 1: both answer correctly with 0 hints → both get 10
-    const fig1 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
-    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig1.canonicalName }));
-    store.dispatch(submitPlayerGuess({ playerId: PB, guess: fig1.canonicalName }));
+    const s0 = getState(store);
+    const fig1A = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PA, s0.currentRound)];
+    const fig1B = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PB, s0.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig1A.canonicalName }));
+    store.dispatch(submitPlayerGuess({ playerId: PB, guess: fig1B.canonicalName }));
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
     // Round 2: only PA answers correctly with 0 hints → PA +10, PB +0
-    const fig2 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
-    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig2.canonicalName }));
+    const s1 = getState(store);
+    const fig2A = FAMOUS_FIGURES[getPlayerFigureIndex(s1, PA, s1.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig2A.canonicalName }));
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
     // Round 3: only PB answers correctly with 0 hints → PB +10
     // But: PA has 20 total, PB has 20 total — tiebreak by correct rounds
-    const fig3 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
-    store.dispatch(submitPlayerGuess({ playerId: PB, guess: fig3.canonicalName }));
+    const s2 = getState(store);
+    const fig3B = FAMOUS_FIGURES[getPlayerFigureIndex(s2, PB, s2.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: PB, guess: fig3B.canonicalName }));
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
@@ -112,8 +119,9 @@ describe('tiebreaker logic', () => {
     store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'HOH', seed: 5 }));
 
     // Round 1: PA correct with 0 hints (10), PB wrong
-    const fig1 = FAMOUS_FIGURES[getState(store).currentFigureIndex];
-    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig1.canonicalName }));
+    const s0 = getState(store);
+    const fig1A = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PA, s0.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig1A.canonicalName }));
     store.dispatch(endRound());
     store.dispatch(nextRound());
 

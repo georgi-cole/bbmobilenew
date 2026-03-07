@@ -10,6 +10,7 @@ import famousFiguresReducer, {
   resetFamousFigures,
   markFamousFiguresOutcomeResolved,
   FAMOUS_FIGURES,
+  getPlayerFigureIndex,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';
 
@@ -57,7 +58,8 @@ describe('famousFiguresSlice', () => {
   it('submitPlayerGuess with correct answer awards points', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
+    const s0 = getState(store);
+    const figureIndex = getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound);
     const figure = FAMOUS_FIGURES[figureIndex];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
     const s = getState(store);
@@ -70,10 +72,10 @@ describe('famousFiguresSlice', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     expect(getState(store).status).toBe('round_active');
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
+    const s0 = getState(store);
+    const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     // First player solves — round should stay active since PLAYER_B hasn't answered
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     const s = getState(store);
     expect(s.playerCorrect[PLAYER_A]).toBe(true);
     expect(s.playerScores[PLAYER_A]).toBeGreaterThan(0);
@@ -84,8 +86,8 @@ describe('famousFiguresSlice', () => {
   it('playerCorrectTimestamp is recorded on correct answer', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
+    const s0 = getState(store);
+    const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     const before = Date.now();
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName, timestamp: 12345 }));
     expect(getState(store).playerCorrectTimestamp[PLAYER_A]).toBe(12345);
@@ -93,7 +95,8 @@ describe('famousFiguresSlice', () => {
     // Verify fallback timestamp is in range when not provided
     const store2 = makeStore();
     store2.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
-    const fig2 = FAMOUS_FIGURES[store2.getState().famousFigures.currentFigureIndex];
+    const s02 = store2.getState().famousFigures;
+    const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s02, PLAYER_A, s02.currentRound)];
     store2.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig2.canonicalName }));
     const ts = store2.getState().famousFigures.playerCorrectTimestamp[PLAYER_A];
     expect(ts).toBeGreaterThanOrEqual(before);
@@ -150,8 +153,8 @@ describe('famousFiguresSlice', () => {
     const store = makeStore();
     // Single participant — solving closes the round immediately (all solved)
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
+    const s0 = getState(store);
+    const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
     expect(getState(store).roundComplete).toBe(true);
     const phaseBeforeAdvance = getState(store).timerPhase;
@@ -163,10 +166,10 @@ describe('famousFiguresSlice', () => {
   it('advanceTimer is NOT blocked when only some participants have solved', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
+    const s0 = getState(store);
+    const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     // Only PLAYER_A solves — PLAYER_B has not, so roundComplete stays false
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).roundComplete).toBe(false);
     expect(getState(store).status).toBe('round_active');
     const phaseBefore = getState(store).timerPhase;
@@ -178,28 +181,29 @@ describe('famousFiguresSlice', () => {
   it('second correct guess by the same player is rejected (duplicate-correct guard)', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
+    const s0 = getState(store);
+    const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     // PLAYER_A answers correctly
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerCorrect[PLAYER_A]).toBe(true);
     const scoreAfterA = getState(store).playerScores[PLAYER_A];
     // PLAYER_A tries to submit again — should be rejected (already marked correct)
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
   });
 
   it('when all participants solve, round transitions to round_reveal', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
-    const figureIndex = getState(store).currentFigureIndex;
-    const figure = FAMOUS_FIGURES[figureIndex];
-    // PLAYER_A solves — round stays active
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    const s0 = getState(store);
+    const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
+    const figureB = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_B, s0.currentRound)];
+    // PLAYER_A solves their personal figure — round stays active
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).status).toBe('round_active');
     expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
-    // PLAYER_B solves — now all participants solved → round_reveal
-    store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figure.canonicalName }));
+    // PLAYER_B solves their personal figure — now all participants solved → round_reveal
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figureB.canonicalName }));
     const s = getState(store);
     expect(s.playerScores[PLAYER_B]).toBeGreaterThan(0);
     expect(s.playerCorrect[PLAYER_B]).toBe(true);

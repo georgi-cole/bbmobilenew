@@ -11,6 +11,7 @@ import famousFiguresReducer, {
   endRound,
   nextRound,
   FAMOUS_FIGURES,
+  getPlayerFigureIndex,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';
 
@@ -41,7 +42,8 @@ describe('match-flow integration', () => {
     expect(ff(store).currentRound).toBe(0);
 
     // ── Round 1: human guesses correctly with 0 hints ────────────────────
-    const fig1 = FAMOUS_FIGURES[ff(store).currentFigureIndex];
+    const s0 = ff(store);
+    const fig1 = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig1.canonicalName }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
@@ -61,7 +63,8 @@ describe('match-flow integration', () => {
     store.dispatch(revealNextHint());
     expect(ff(store).hintsRevealed).toBe(2);
 
-    const fig2 = FAMOUS_FIGURES[ff(store).currentFigureIndex];
+    const s1 = ff(store);
+    const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s1, HUMAN, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig2.canonicalName }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
@@ -74,9 +77,10 @@ describe('match-flow integration', () => {
     expect(ff(store).currentRound).toBe(2);
     expect(ff(store).status).toBe('round_active');
 
-    // ── Round 3: AI answers correctly, human misses ───────────────────────
-    const fig3 = FAMOUS_FIGURES[ff(store).currentFigureIndex];
-    store.dispatch(submitPlayerGuess({ playerId: AI, guess: fig3.canonicalName }));
+    // ── Round 3: AI answers correctly (their own figure), human misses ────
+    const s2 = ff(store);
+    const fig3Ai = FAMOUS_FIGURES[getPlayerFigureIndex(s2, AI, s2.currentRound)];
+    store.dispatch(submitPlayerGuess({ playerId: AI, guess: fig3Ai.canonicalName }));
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: 'completely wrong answer xyzzy' }));
 
     expect(ff(store).playerCorrect[AI]).toBe(true);

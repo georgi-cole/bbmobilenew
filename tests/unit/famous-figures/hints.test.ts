@@ -6,8 +6,9 @@
  *   1 → dataset hints[1]
  *   2 → generated "First name starts with 'X'" (or mononym variant)
  *   3 → generated "Last name starts with 'Y'" (or mononym fallback)
- *   4 → generated "Either 'Decoy A' or 'Decoy B'" — decoy pair sharing the
- *        figure's initials; NEVER reveals the canonical answer bluntly.
+ *   4 → generated "First name: <FirstName>. Last name starts with '<Initial>'."
+ *        Reveals the full first name and last-name initial; for mononyms
+ *        reveals the full single name.
  */
 import { describe, it, expect } from 'vitest';
 import { getHintText } from '../../../src/games/famous-figures/hints';
@@ -60,18 +61,17 @@ describe('getHintText — standard two-part name', () => {
     expect(text.toLowerCase()).toContain('last name');
   });
 
-  it('hint 4 uses "Either X or Y" decoy-pair format; does not bluntly reveal the canonical name', () => {
+  it('hint 4 reveals full first name and last-name initial', () => {
     const text = getHintText(figure, 4);
-    // Must start with "Either" (decoy-pair format)
-    expect(text).toMatch(/^Either/i);
-    // Must contain " or " separating the two decoys
-    expect(text).toContain(' or ');
-    // Must NOT bluntly reveal the canonical name
-    expect(text).not.toContain('Albert Einstein');
-    // Both decoys share the 'A' first-name initial
-    expect(text).toMatch(/"A[a-zA-Z]+/);
-    // Both decoys share the 'E' last-name initial
-    expect(text).toMatch(/"[A-Za-z]+ E[a-zA-Z]+/);
+    // Must reveal the full first name
+    expect(text).toContain('Albert');
+    // Must reveal the last-name initial
+    expect(text).toContain("'E'");
+    // Must use the required format
+    expect(text).toMatch(/^First name:/i);
+    expect(text).toContain("Last name starts with");
+    // Must NOT be the "Either X or Y" decoy format
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 
@@ -90,18 +90,11 @@ describe('getHintText — mononym (single name)', () => {
     expect(text).toContain('9'); // "Cleopatra" has 9 letters
   });
 
-  it('hint 4 uses "Either X or Y" decoy-pair format for mononyms; does not bluntly reveal the canonical name', () => {
+  it('hint 4 reveals the full single name for mononyms', () => {
     const text = getHintText(figure, 4);
-    expect(text).toMatch(/^Either/i);
-    expect(text).toContain(' or ');
-    // Must NOT bluntly reveal "Cleopatra"
-    expect(text).not.toContain('Cleopatra');
-    // Both decoys start with 'C' (same initial as Cleopatra)
-    const matches = text.match(/"([^"]+)"/g) ?? [];
-    expect(matches.length).toBe(2);
-    for (const m of matches) {
-      expect(m.toLowerCase()).toMatch(/^"c/);
-    }
+    expect(text).toContain('Cleopatra');
+    // Must NOT be the "Either X or Y" decoy format
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 
@@ -118,15 +111,12 @@ describe('getHintText — regnal / multi-word last name', () => {
     expect(text).toContain("'B'");
   });
 
-  it('hint 4 uses "Either X or Y" decoy-pair format; does not bluntly reveal the canonical name', () => {
+  it('hint 4 reveals full first name and last-name initial', () => {
     const text = getHintText(figure, 4);
-    expect(text).toMatch(/^Either/i);
-    expect(text).toContain(' or ');
-    // Must NOT bluntly reveal "Napoleon Bonaparte"
-    expect(text).not.toContain('Napoleon Bonaparte');
-    // Both decoys share the 'N' first-name initial and 'B' last-name initial
-    expect(text).toMatch(/"N[a-zA-Z]+/);
-    expect(text).toMatch(/"[A-Za-z]+ B[a-zA-Z]+/);
+    expect(text).toContain('Napoleon');
+    expect(text).toContain("'B'");
+    expect(text).toMatch(/^First name:/i);
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 
@@ -155,6 +145,13 @@ describe('getHintText — dataset hints use custom content', () => {
     expect(text).not.toBe('Custom content hint 3');
     expect(text).toContain("'M'");
   });
+
+  it('hint 4 reveals full first name "Marie" and last-name initial "C"', () => {
+    const text = getHintText(figure, 4);
+    expect(text).toContain('Marie');
+    expect(text).toContain("'C'");
+    expect(text).toMatch(/^First name:/i);
+  });
 });
 
 describe('getHintText — suffix stripping', () => {
@@ -174,16 +171,13 @@ describe('getHintText — suffix stripping', () => {
     expect(getHintText(figure, 3)).toContain("'F'");
   });
 
-  it('hint 4 uses "Either X or Y" decoy-pair and respects suffix stripping (initials from King, not Jr)', () => {
+  it('hint 4 reveals full first name and respects suffix stripping (last initial from King, not Jr)', () => {
     const figure = makeFigure({ canonicalName: 'Martin Luther King Jr' });
     const text = getHintText(figure, 4);
-    expect(text).toMatch(/^Either/i);
-    expect(text).toContain(' or ');
-    // Must NOT bluntly reveal the canonical name
-    expect(text).not.toContain('Martin Luther King Jr');
-    // Decoys share 'M' first-name initial and 'K' last-name initial (King, not Jr)
-    expect(text).toMatch(/"M[a-zA-Z]+/);
-    expect(text).toMatch(/"[A-Za-z]+ K[a-zA-Z]+/);
+    expect(text).toContain('Martin');
+    expect(text).toContain("'K'");
+    expect(text).toMatch(/^First name:/i);
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 

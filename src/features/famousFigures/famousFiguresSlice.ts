@@ -52,6 +52,19 @@ export interface FamousFiguresState {
   aiSubmissions: Record<number, Record<string, boolean>>;
   timerPhase: FamousFiguresTimerPhase;
   roundComplete: boolean;
+  /**
+   * Per-player shuffled queue of figure indices (length = totalRounds).
+   * Generated at match start using `seed ^ fnv1a32(playerId)` so each player
+   * sees a unique, reproducible set of figures.
+   */
+  playerFigureQueues: Record<string, number[]>;
+  /**
+   * Per-player cursor counting how many personal rounds have been completed
+   * (i.e. how many times the player guessed correctly). Range: 0…totalRounds.
+   * Incremented immediately on a correct guess; used to show the personal
+   * "waiting for others" screen once cursor === totalRounds.
+   */
+  playerRoundCursor: Record<string, number>;
 }
 
 // ─── Dataset ──────────────────────────────────────────────────────────────────
@@ -81,6 +94,8 @@ const initialState: FamousFiguresState = {
   aiSubmissions: {},
   timerPhase: 'clue',
   roundComplete: false,
+  playerFigureQueues: {},
+  playerRoundCursor: {},
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -263,7 +278,6 @@ const famousFiguresSlice = createSlice({
       state.currentRound = 0;
       state.round = 0;
       state.totalRounds = 3;
-      state.currentFigureIndex = order[0];
       state.hintsRevealed = 0;
       state.figureOrder = order;
       state.seed = seed;
@@ -279,12 +293,32 @@ const famousFiguresSlice = createSlice({
       state.playerCorrect = {};
       state.playerGuesses = {};
       state.playerCorrectTimestamp = {};
+
+      // Build per-player shuffled figure queues using seed ^ fnv1a32(playerId)
+      // so each player sees a unique, reproducible set of figures.
+      const playerFigureQueues: Record<string, number[]> = {};
+      const playerRoundCursor: Record<string, number> = {};
       for (const id of participantIds) {
+        const playerRng = mulberry32(seed ^ fnv1a32(id));
+        const playerOrder = shuffleIndices(playerRng, FAMOUS_FIGURES.length);
+        // Each player gets totalRounds (3) unique figures from their own shuffle.
+        playerFigureQueues[id] = playerOrder.slice(0, 3);
+        playerRoundCursor[id] = 0;
         state.playerScores[id] = 0;
         state.playerRoundScores[id] = [];
         state.playerCorrect[id] = false;
         state.playerGuesses[id] = [];
       }
+      state.playerFigureQueues = playerFigureQueues;
+      state.playerRoundCursor = playerRoundCursor;
+
+      // currentFigureIndex points to the first participant's round-0 figure
+      // (used for reveal display and backward-compat code paths).
+      const firstId = participantIds[0];
+      state.currentFigureIndex =
+        firstId !== undefined
+          ? (playerFigureQueues[firstId]?.[0] ?? order[0])
+          : order[0];
     },
 
     /** Reveal the next hint (increment hintsRevealed, update timerPhase). */
@@ -353,8 +387,15 @@ const famousFiguresSlice = createSlice({
       if (already.some((g) => normalizeForMatching(g) === normalizedGuess)) return;
       state.playerGuesses[playerId] = [...already, trimmed];
 
-      // We call the fuzzy matcher to check the guess.
-      const figure = FAMOUS_FIGURES[state.currentFigureIndex];
+      // Resolve this player's personal figure for the current global round.
+      // Each player has their own shuffled queue so they are never guessing the
+      // same figure as another player in the same round.
+      const playerQueue = state.playerFigureQueues[playerId];
+      const playerFigIdx =
+        playerQueue !== undefined
+          ? (playerQueue[state.currentRound] ?? state.currentFigureIndex)
+          : state.currentFigureIndex;
+      const figure = FAMOUS_FIGURES[playerFigIdx];
       if (!figure) return;
 
       const correct: boolean = isAcceptedGuess(trimmed, figure);
@@ -367,6 +408,8 @@ const famousFiguresSlice = createSlice({
         state.playerScores[playerId] += points;
         // Record time-to-correct for tiebreaker traceability
         state.playerCorrectTimestamp[playerId] = timestamp ?? Date.now();
+        // Advance this player's personal round cursor immediately.
+        state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1;
         // Close the round only when every participant has now solved
         const participantIds = Object.keys(state.playerScores);
         if (participantIds.length > 0 && participantIds.every((id) => state.playerCorrect[id])) {
@@ -391,9 +434,9 @@ const famousFiguresSlice = createSlice({
     nextRound(state) {
       if (state.status !== 'round_reveal') return;
 
-      const nextRound = state.currentRound + 1;
+      const nextRoundIndex = state.currentRound + 1;
 
-      if (nextRound >= state.totalRounds) {
+      if (nextRoundIndex >= state.totalRounds) {
         // All rounds complete — determine winner
         state.status = 'complete';
         const ids = Object.keys(state.playerScores);
@@ -401,11 +444,23 @@ const famousFiguresSlice = createSlice({
         return;
       }
 
-      state.currentRound = nextRound;
-      state.round = nextRound;
-      state.currentFigureIndex = state.figureOrder[nextRound];
+      state.currentRound = nextRoundIndex;
+      state.round = nextRoundIndex;
       state.status = 'round_active';
       resetRoundPlayerState(state);
+
+      // currentFigureIndex tracks the first participant's figure for the reveal
+      // display; per-player figures are resolved via playerFigureQueues in
+      // submitPlayerGuess and the component.
+      const ids = Object.keys(state.playerScores);
+      const firstId = ids[0];
+      if (firstId !== undefined && state.playerFigureQueues[firstId] !== undefined) {
+        state.currentFigureIndex =
+          state.playerFigureQueues[firstId][nextRoundIndex] ??
+          state.figureOrder[nextRoundIndex];
+      } else {
+        state.currentFigureIndex = state.figureOrder[nextRoundIndex];
+      }
     },
 
     /** Store AI submission results for a round. */
@@ -440,5 +495,20 @@ export const {
   markFamousFiguresOutcomeResolved,
   resetFamousFigures,
 } = famousFiguresSlice.actions;
+
+/**
+ * Return the figure index that `playerId` should be guessing in the given
+ * `round`. Falls back to the global `figureOrder[round]` if the player has no
+ * personal queue (e.g. in legacy state or tests that pre-load partial state).
+ */
+export function getPlayerFigureIndex(
+  state: Pick<FamousFiguresState, 'playerFigureQueues' | 'figureOrder' | 'currentFigureIndex'>,
+  playerId: string,
+  round: number,
+): number {
+  const queue = state.playerFigureQueues[playerId];
+  if (queue !== undefined && queue[round] !== undefined) return queue[round];
+  return state.figureOrder[round] ?? state.currentFigureIndex;
+}
 
 export default famousFiguresSlice.reducer;
