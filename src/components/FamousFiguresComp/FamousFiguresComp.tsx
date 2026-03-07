@@ -183,6 +183,17 @@ export default function FamousFiguresComp({
   ffRef.current = ff;
   const completeFiredRef = useRef(false);
   const cooldownUntilRef = useRef<number>(0);
+  // ── AI submission tracking ────────────────────────────────────────────────
+  // Tracks the round for which we have already scheduled AI submissions so we
+  // only schedule once per round regardless of how many timer-phase changes
+  // occur. Resets when the round advances.
+  const aiSubmitScheduledRoundRef = useRef<number>(-1);
+  // Pending AI submission timeouts — cancelled when the round ends or the
+  // component unmounts to prevent stale dispatches.
+  const pendingAiTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // 300 ms debounce for the hint button — prevents rapid clicking from
+  // advancing multiple hint stages in one gesture.
+  const hintCooldownUntilRef = useRef<number>(0);
 
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -248,27 +259,56 @@ export default function FamousFiguresComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.status, ff.currentRound, ff.hintsRevealed]);
 
-  // Submit AI answers only after the clue phase has expired.
-  // Guarding on timerPhase !== 'clue' prevents the AI from immediately
-  // closing the round before the human has seen the clue (autopilot regression
-  // fix). The human always gets the full 15-second base-clue window first.
+  // Cancel any pending AI submission timeouts when the round advances (or on
+  // unmount). This prevents stale submissions from firing after the round ends.
+  useEffect(() => {
+    return () => {
+      pendingAiTimeoutsRef.current.forEach(clearTimeout);
+      pendingAiTimeoutsRef.current = [];
+      // Reset so the new round can schedule its own submissions.
+      aiSubmitScheduledRoundRef.current = -1;
+    };
+  }, [ff.currentRound]);
+
+  // Schedule AI answers with a random delay after the clue phase expires.
+  //
+  // We only schedule ONCE per round (aiSubmitScheduledRoundRef guards this) so
+  // that subsequent timer-phase changes (hint_2, hint_3 …) or hint-button clicks
+  // that also advance the phase do NOT re-trigger a second batch of submissions.
+  //
+  // The random 2–8 s delay means the AI doesn't snap-close the round the
+  // instant the clue phase ends — the human always has meaningful play time.
   useEffect(() => {
     if (ff.status !== 'round_active') return;
-    // Wait until at least the first hint phase starts — human gets full clue window.
+    // Wait until the clue phase has passed (human gets the full 15 s base clue).
     if (ff.timerPhase === 'clue') return;
+
     const round = ff.currentRound;
+    // Only schedule once per round regardless of subsequent phase changes.
+    if (aiSubmitScheduledRoundRef.current === round) return;
+
     const aiSubs = ff.aiSubmissions[round];
     if (!aiSubs) return;
 
+    aiSubmitScheduledRoundRef.current = round;
+
+    const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
+    if (!figure) return;
+
     for (const [aiId, correct] of Object.entries(aiSubs)) {
+      if (!correct) continue;
+      // Skip AI players who somehow already answered (defensive check).
       if (ff.playerCorrect[aiId]) continue;
-      if (correct) {
-        // AI submits the correct canonical name
-        const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
-        if (figure) {
-          dispatch(submitPlayerGuess({ playerId: aiId, guess: figure.canonicalName, timestamp: Date.now() }));
-        }
-      }
+      // Random delay within 2–8 s so the AI doesn't autopilot-close the round.
+      const delay = 2000 + Math.random() * 6000;
+      const t = setTimeout(() => {
+        // Bail out if the round ended before the AI's delay elapsed.
+        const current = ffRef.current;
+        if (current.status !== 'round_active') return;
+        if (current.playerCorrect[aiId]) return;
+        dispatch(submitPlayerGuess({ playerId: aiId, guess: figure.canonicalName, timestamp: Date.now() }));
+      }, delay);
+      pendingAiTimeoutsRef.current.push(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.aiSubmissions, ff.currentRound, ff.status, ff.timerPhase]);
@@ -342,8 +382,15 @@ export default function FamousFiguresComp({
   );
 
   const handleRequestHint = useCallback(() => {
+    if (ff.status !== 'round_active') return;
+    if (ff.hintsRevealed >= 5) return;
+    // 300 ms server-side debounce: prevent rapid clicks from advancing more
+    // than one hint stage per gesture.
+    const now = Date.now();
+    if (now < hintCooldownUntilRef.current) return;
+    hintCooldownUntilRef.current = now + 300;
     dispatch(revealNextHint());
-  }, [dispatch]);
+  }, [ff.status, ff.hintsRevealed, dispatch]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const figure = FAMOUS_FIGURES[ff.currentFigureIndex] ?? null;
@@ -401,6 +448,15 @@ export default function FamousFiguresComp({
           </div>
 
           {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
+
+          <button
+            className="ff-continue-btn"
+            onClick={() => onComplete?.()}
+            aria-label="Continue game"
+            type="button"
+          >
+            Continue ›
+          </button>
         </div>
       );
     }
@@ -425,6 +481,14 @@ export default function FamousFiguresComp({
           <p className="ff-winner-subtitle">
             {prizeType} Winner — Total Score: {ff.playerScores[winnerId] ?? 0}
           </p>
+          <button
+            className="ff-continue-btn"
+            onClick={() => onComplete?.()}
+            aria-label="Continue game"
+            type="button"
+          >
+            Continue ›
+          </button>
         </div>
       </div>
     );
@@ -460,7 +524,7 @@ export default function FamousFiguresComp({
         {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
 
         <p style={{ fontSize: '0.75rem', color: '#557799', margin: 0 }}>
-          Auto-advancing in 3 seconds…
+          Next round loading…
         </p>
       </div>
     );
