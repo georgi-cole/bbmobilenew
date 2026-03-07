@@ -349,7 +349,7 @@ export default function BiographyBlitzComp({
     }, humanTimeout);
 
     return () => clearTimeout(t);
-  }, [bb.status, bb.currentQuestionId, bb.submissions, bb.activeContestants, humanId, humanTimeout, dispatch]);
+  }, [bb.status, bb.round, bb.currentQuestionId, bb.submissions, bb.activeContestants, humanId, humanTimeout, dispatch]);
 
   // ── Auto-fill AI and trigger reveal when all active contestants submitted ─
   useEffect(() => {
@@ -367,7 +367,7 @@ export default function BiographyBlitzComp({
       dispatch(revealResults());
     }, testMode ? 0 : 600);
     return () => clearTimeout(t);
-  }, [bb.status, bb.activeContestants, bb.submissions, testMode, dispatch]);
+  }, [bb.status, bb.round, bb.activeContestants, bb.submissions, testMode, dispatch]);
 
   // ── When human answers, fill remaining AI answers immediately ─────────────
   useEffect(() => {
@@ -397,7 +397,7 @@ export default function BiographyBlitzComp({
     });
 
     dispatch(autoFillAIAnswers(null));
-  }, [bb.status, bb.currentQuestionId, bb.activeContestants, bb.eliminatedContestants, humanId, dispatch]);
+  }, [bb.status, bb.round, bb.currentQuestionId, bb.activeContestants, bb.eliminatedContestants, humanId, dispatch]);
 
   // ── Auto-advance from reveal after suspense pause → choose_elimination ────
   useEffect(() => {
