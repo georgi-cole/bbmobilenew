@@ -29,6 +29,14 @@ import type { CSSProperties } from 'react';
 import { generateLevelConfig } from './castleRescueGenerator';
 import type { WrongPipeType } from './castleRescueGenerator';
 import {
+  playerLandsOnSurfaceTop,
+  playerHitsSurfaceFromBelow,
+  playerOverlapsPipeSide,
+  tryEnterPipe,
+  playerHitsBrickFromBelow,
+} from './castleRescueEngine';
+import type { CollisionRect } from './castleRescueEngine';
+import {
   TIME_LIMIT_MS,
   SCORE_ENEMY   as S_ENEMY,
   SCORE_BRICK   as S_BRICK,
@@ -78,6 +86,13 @@ type Phase = 'idle' | 'playing' | 'pipe_flash' | 'death_pause' | 'complete';
 
 interface Rect { x: number; y: number; w: number; h: number; }
 
+/**
+ * A platform surface.  oneWay controls collision behaviour:
+ *  - false (default) = full-solid: blocks from both above and below.
+ *  - true            = one-way: only blocks when the player falls onto the top.
+ */
+interface Platform extends Rect { oneWay?: boolean; }
+
 function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x &&
          a.y < b.y + b.h && a.y + a.h > b.y;
@@ -103,6 +118,12 @@ interface Enemy {
 interface Brick {
   id: string;
   x: number; y: number;
+  /** Brick logical width (default = BRICK constant). */
+  width: number;
+  /** Brick logical height (default = BRICK constant). */
+  height: number;
+  /** When true a head-hit from below breaks this brick and awards score. */
+  breakableFromBelow: boolean;
   broken: boolean;
   bounceTimer: number;
 }
@@ -114,6 +135,12 @@ interface Coin {
 interface Pipe {
   id: string;
   x: number; y: number;
+  /** Pipe collision width. */
+  width: number;
+  /** Pipe collision height. */
+  height: number;
+  /** Horizontal width of the centred entry zone at the pipe top. */
+  entryZoneWidth: number;
   slotIndex: number;
   routeIndex: number; // 0/1/2 if this is correct pipe I/II/III; -1 if wrong
   pipeType: PipeType; // what happens when the player enters this pipe
@@ -136,7 +163,7 @@ interface Checkpoint {
 interface RoomInstance {
   type: 'bonus' | 'ambush';
   width: number;            // room width in pixels (≤ CW → no horizontal scroll)
-  platforms: Rect[];        // includes the ground as index 0
+  platforms: Platform[];    // includes the ground as index 0
   bricks: Brick[];
   enemies: Enemy[];
   coins: Coin[];
@@ -146,7 +173,7 @@ interface RoomInstance {
 
 interface LevelGeom {
   width: number;
-  platforms: Rect[];  // includes the ground as first entry
+  platforms: Platform[];  // includes the ground as first entry
   bricks: Brick[];
   enemies: Enemy[];
   pipes: Pipe[];
@@ -199,24 +226,29 @@ const ROOM_EXIT_PIPE_Y = GROUND_TOP - PIPE_H; // same pipe-top y as the main lev
  * No enemies — a reward for curious explorers.
  */
 function buildBonusRoom(): RoomInstance {
-  const platforms: Rect[] = [
-    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground
-    { x: 100, y: 280,        w: 130, h: 16 },
-    { x: 310, y: 250,        w: 150, h: 16 },
-    { x: 530, y: 265,        w: 130, h: 16 },
+  const platforms: Platform[] = [
+    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground (full-solid by default)
+    { x: 100, y: 280,        w: 130, h: 16, oneWay: true },
+    { x: 310, y: 250,        w: 150, h: 16, oneWay: true },
+    { x: 530, y: 265,        w: 130, h: 16, oneWay: true },
   ];
+  // Bricks raised 8 px above platform surfaces so there is visible air-gap
+  // below them (player can stand under them and jump to hit from below).
   const brickDefs: [number, number][] = [
-    [115, 248], [147, 248],   // above platform 1
-    [325, 218], [357, 218],   // above platform 2
-    [545, 233], [577, 233],   // above platform 3
+    [115, 240], [147, 240],   // above platform 1 (y=280) — 8 px gap
+    [325, 210], [357, 210],   // above platform 2 (y=250) — 8 px gap
+    [545, 225], [577, 225],   // above platform 3 (y=265) — 8 px gap
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
-    id: `rb-${i}`, x: bx, y: by, broken: false, bounceTimer: 0,
+    id: `rb-${i}`, x: bx, y: by,
+    width: BRICK, height: BRICK,
+    breakableFromBelow: true,
+    broken: false, bounceTimer: 0,
   }));
   const coinDefs: [number, number][] = [
-    [130, 246], [162, 246],               // above platform-1 bricks
-    [340, 216], [372, 216], [404, 216],   // above platform-2 bricks
-    [560, 231], [592, 231],               // above platform-3 bricks
+    [130, 238], [162, 238],               // above platform-1 bricks
+    [340, 208], [372, 208], [404, 208],   // above platform-2 bricks
+    [560, 223], [592, 223],               // above platform-3 bricks
     [140, 265], [340, 235], [560, 250],   // on platform surfaces
   ];
   const coins: Coin[] = coinDefs.map(([cx, cy], i) => ({
@@ -233,10 +265,10 @@ function buildBonusRoom(): RoomInstance {
  * Stomp them for points, then escape through the exit pipe.
  */
 function buildAmbushRoom(): RoomInstance {
-  const platforms: Rect[] = [
-    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground
-    { x: 200, y: 295,        w: 110, h: 16 },
-    { x: 450, y: 275,        w: 110, h: 16 },
+  const platforms: Platform[] = [
+    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground (full-solid by default)
+    { x: 200, y: 295,        w: 110, h: 16, oneWay: true },
+    { x: 450, y: 275,        w: 110, h: 16, oneWay: true },
   ];
   const enemies: Enemy[] = [
     { id:'are-0', x:80,  y:GROUND_TOP-EH, vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:50,  patrolRight:340 },
@@ -278,6 +310,8 @@ function buildLevel(seed: number): LevelGeom {
     return {
       id: `pipe-${idx}`,
       x: px, y: py,
+      width: PIPE_W, height: PIPE_H,
+      entryZoneWidth: PIPE_W,  // full pipe width is enterable
       slotIndex: idx,
       routeIndex,
       pipeType,
@@ -285,38 +319,43 @@ function buildLevel(seed: number): LevelGeom {
     };
   });
 
-  // Ground + platforms
-  const platforms: Rect[] = [
-    { x: 0,    y: GROUND_TOP, w: 4800, h: 32 }, // ground (index 0)
-    { x: 200,  y: 270, w: 160, h: 16 },
-    { x: 430,  y: 228, w: 180, h: 16 },
-    { x: 730,  y: 268, w: 150, h: 16 },
-    { x: 950,  y: 248, w: 140, h: 16 },
-    { x: 1150, y: 242, w: 200, h: 16 },
-    { x: 1380, y: 196, w: 180, h: 16 },
-    { x: 1640, y: 244, w: 160, h: 16 },
-    { x: 1870, y: 268, w: 180, h: 16 },
-    { x: 2080, y: 232, w: 160, h: 16 },
-    { x: 2370, y: 280, w: 200, h: 16 },
-    { x: 2640, y: 264, w: 180, h: 16 },
-    { x: 2900, y: 276, w: 200, h: 16 },
-    { x: 3140, y: 260, w: 180, h: 16 },
-    { x: 3380, y: 280, w: 180, h: 16 },
-    { x: 3600, y: 240, w: 200, h: 16 },
-    { x: 3840, y: 268, w: 180, h: 16 },
-    { x: 4060, y: 250, w: 180, h: 16 },
-    { x: 4300, y: 264, w: 180, h: 16 },
-    { x: 4550, y: 248, w: 230, h: 16 },
+  // Ground (full-solid) + elevated platforms (one-way from above)
+  const platforms: Platform[] = [
+    { x: 0,    y: GROUND_TOP, w: 4800, h: 32 }, // ground — full-solid (oneWay omitted/false)
+    { x: 200,  y: 270, w: 160, h: 16, oneWay: true },
+    { x: 430,  y: 228, w: 180, h: 16, oneWay: true },
+    { x: 730,  y: 268, w: 150, h: 16, oneWay: true },
+    { x: 950,  y: 248, w: 140, h: 16, oneWay: true },
+    { x: 1150, y: 242, w: 200, h: 16, oneWay: true },
+    { x: 1380, y: 196, w: 180, h: 16, oneWay: true },
+    { x: 1640, y: 244, w: 160, h: 16, oneWay: true },
+    { x: 1870, y: 268, w: 180, h: 16, oneWay: true },
+    { x: 2080, y: 232, w: 160, h: 16, oneWay: true },
+    { x: 2370, y: 280, w: 200, h: 16, oneWay: true },
+    { x: 2640, y: 264, w: 180, h: 16, oneWay: true },
+    { x: 2900, y: 276, w: 200, h: 16, oneWay: true },
+    { x: 3140, y: 260, w: 180, h: 16, oneWay: true },
+    { x: 3380, y: 280, w: 180, h: 16, oneWay: true },
+    { x: 3600, y: 240, w: 200, h: 16, oneWay: true },
+    { x: 3840, y: 268, w: 180, h: 16, oneWay: true },
+    { x: 4060, y: 250, w: 180, h: 16, oneWay: true },
+    { x: 4300, y: 264, w: 180, h: 16, oneWay: true },
+    { x: 4550, y: 248, w: 230, h: 16, oneWay: true },
   ];
 
+  // Bricks raised 8 px above their reference platform so there is a visible
+  // air-gap below — the player can stand under them and jump to hit from below.
   const brickDefs: [number, number][] = [
-    [218,240],[250,240],[460,196],[492,196],[760,236],
-    [1170,212],[1202,212],[1410,164],[1442,164],[1660,212],
-    [2100,200],[2132,200],[2400,248],[2432,248],[2660,232],
-    [2692,232],[2930,244],[3162,228],[3622,208],[3654,208],[4080,218],
+    [218,232],[250,232],[460,188],[492,188],[760,228],
+    [1170,204],[1202,204],[1410,156],[1442,156],[1660,204],
+    [2100,192],[2132,192],[2400,240],[2432,240],[2660,224],
+    [2692,224],[2930,236],[3162,220],[3622,200],[3654,200],[4080,210],
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
-    id: `brick-${i}`, x: bx, y: by, broken: false, bounceTimer: 0,
+    id: `brick-${i}`, x: bx, y: by,
+    width: BRICK, height: BRICK,
+    breakableFromBelow: true,
+    broken: false, bounceTimer: 0,
   }));
 
   // Enemy patrol definitions: [left, right, y, speed-sign]
@@ -347,11 +386,11 @@ function buildLevel(seed: number): LevelGeom {
   });
 
   const coinDefs: [number, number][] = [
-    [230,238],[262,238],[460,180],[492,180],[524,180],[780,236],[812,236],
-    [1190,210],[1222,210],[1420,162],[1452,162],[1484,162],[1680,210],
-    [2110,198],[2142,198],[2410,246],[2442,246],[2474,246],[2680,230],[2712,230],
-    [2940,242],[2972,242],[3172,226],[3204,226],[3640,206],[3672,206],[3704,206],
-    [4100,216],[4132,216],[4570,214],[4602,214],[4634,214],
+    [230,230],[262,230],[460,172],[492,172],[524,172],[780,228],[812,228],
+    [1190,202],[1222,202],[1420,154],[1452,154],[1484,154],[1680,202],
+    [2110,190],[2142,190],[2410,238],[2442,238],[2474,238],[2680,222],[2712,222],
+    [2940,234],[2972,234],[3172,218],[3204,218],[3640,198],[3672,198],[3704,198],
+    [4100,208],[4132,208],[4570,214],[4602,214],[4634,214],
   ];
   const coins: Coin[] = coinDefs.map(([cx,cy], i) => ({
     id: `coin-${i}`, x: cx, y: cy, collected: false,
@@ -463,36 +502,65 @@ function updateGame(
   player.x     = Math.max(0, Math.min(geom.width - PW, player.x + player.vx * sc));
   player.onGround = false;
 
-  // ── Platform/ground landing (one-way from above) ──────────────────────────
+  // ── Platform/ground landing ───────────────────────────────────────────────
+  const pRect: CollisionRect = { x: player.x, y: player.y, w: PW, h: PH };
   for (const surf of geom.platforms) {
-    if (
-      player.x + PW > surf.x && player.x < surf.x + surf.w &&
-      prevY + PH <= surf.y + 4 && player.y + PH >= surf.y &&
-      player.vy >= 0
-    ) {
+    const sRect: CollisionRect = { x: surf.x, y: surf.y, w: surf.w, h: surf.h };
+    // Land on top (both one-way and full-solid)
+    if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, sRect)) {
       player.y = surf.y - PH;
       player.vy = 0;
       player.onGround = true;
+      pRect.y = player.y;
+    }
+    // Block upward motion for full-solid platforms only
+    if (!surf.oneWay && playerHitsSurfaceFromBelow(pRect, prevY, player.vy, sRect)) {
+      player.y = surf.y + surf.h;
+      player.vy = 0;
+      pRect.y = player.y;
+    }
+  }
+
+  // ── Pipe solidity (pipes are full solid — top landing + side block) ───────
+  for (const pipe of geom.pipes) {
+    const pipeSolidRect: CollisionRect = { x: pipe.x, y: pipe.y, w: pipe.width, h: pipe.height };
+    // Land on top of pipe
+    if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, pipeSolidRect)) {
+      player.y = pipe.y - PH;
+      player.vy = 0;
+      player.onGround = true;
+      pRect.y = player.y;
+    }
+    // Prevent walking through the pipe sides
+    if (playerOverlapsPipeSide(pRect, pipe.x, pipe.y, pipe.width, pipe.height)) {
+      // Push player out towards the nearer side
+      const fromLeft = (player.x + PW / 2) < (pipe.x + pipe.width / 2);
+      if (fromLeft) {
+        player.x = pipe.x - PW;
+      } else {
+        player.x = pipe.x + pipe.width;
+      }
+      player.vx = 0;
+      pRect.x = player.x;
     }
   }
 
   // ── Brick collisions ──────────────────────────────────────────────────────
   for (const brick of geom.bricks) {
-    if (brick.broken) continue;
-    const br: Rect = { x: brick.x, y: brick.y, w: BRICK, h: BRICK };
-    // Land on top
-    if (
-      player.x + PW > br.x && player.x < br.x + br.w &&
-      prevY + PH <= br.y + 4 && player.y + PH >= br.y && player.vy >= 0
-    ) {
-      player.y = br.y - PH; player.vy = 0; player.onGround = true;
+    if (brick.broken) {
+      if (brick.bounceTimer > 0) { brick.bounceTimer -= dt; }
+      continue;
     }
-    // Head-hit from below → break
-    if (
-      player.vy < 0 &&
-      player.x + PW - 4 > br.x && player.x + 4 < br.x + br.w &&
-      player.y <= br.y + br.h && prevY > br.y + br.h - 4
-    ) {
+    const brRect: CollisionRect = { x: brick.x, y: brick.y, w: brick.width, h: brick.height };
+    // Land on top
+    if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, brRect)) {
+      player.y = brick.y - PH; player.vy = 0; player.onGround = true;
+      pRect.y = player.y;
+    }
+    // Head-hit from below → break if breakableFromBelow
+    if (playerHitsBrickFromBelow(pRect, prevY, player.vy,
+          brick.x, brick.y, brick.width, brick.height,
+          brick.breakableFromBelow, brick.broken)) {
       brick.broken = true; brick.bounceTimer = 300;
       gs.score += S_BRICK;
       player.vy = Math.abs(player.vy) * 0.3;
@@ -554,14 +622,15 @@ function updateGame(
     }
   }
 
-  // ── Pipe entry (main level) ───────────────────────────────────────────────
+  // ── Pipe entry (main level) — deliberate down + standing on pipe top ──────
   if (goDown) {
     for (const pipe of geom.pipes) {
       if (pipe.done) continue; // already used (correct/bonus/ambush/dead all set done)
-      const cx = player.x + PW / 2;
-      const inX = cx > pipe.x - 4 && cx < pipe.x + PIPE_W + 4;
-      const inY = player.onGround && Math.abs((player.y + PH) - (pipe.y + PIPE_H)) < 12;
-      if (!inX || !inY) continue;
+      if (!tryEnterPipe(
+        player.x, player.y, PW, PH,
+        player.onGround, goDown,
+        pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
+      )) continue;
 
       if (pipe.pipeType === 'correct') {
         if (pipe.routeIndex === gs.pipesComplete) {
@@ -659,30 +728,30 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
   player.onGround = false;
 
   // Platform / ground collision (room)
+  const rPRect: CollisionRect = { x: player.x, y: player.y, w: PW, h: PH };
   for (const surf of room.platforms) {
-    if (
-      player.x + PW > surf.x && player.x < surf.x + surf.w &&
-      prevY + PH <= surf.y + 4 && player.y + PH >= surf.y && player.vy >= 0
-    ) {
+    const sRect: CollisionRect = { x: surf.x, y: surf.y, w: surf.w, h: surf.h };
+    if (playerLandsOnSurfaceTop(rPRect, prevY, player.vy, sRect)) {
       player.y = surf.y - PH; player.vy = 0; player.onGround = true;
+      rPRect.y = player.y;
+    }
+    if (!surf.oneWay && playerHitsSurfaceFromBelow(rPRect, prevY, player.vy, sRect)) {
+      player.y = surf.y + surf.h; player.vy = 0;
+      rPRect.y = player.y;
     }
   }
 
   // Brick collisions (room)
   for (const brick of room.bricks) {
     if (brick.broken) { if (brick.bounceTimer > 0) { brick.bounceTimer -= dt; } continue; }
-    const br: Rect = { x: brick.x, y: brick.y, w: BRICK, h: BRICK };
-    if (
-      player.x + PW > br.x && player.x < br.x + br.w &&
-      prevY + PH <= br.y + 4 && player.y + PH >= br.y && player.vy >= 0
-    ) {
-      player.y = br.y - PH; player.vy = 0; player.onGround = true;
+    const brRect: CollisionRect = { x: brick.x, y: brick.y, w: brick.width, h: brick.height };
+    if (playerLandsOnSurfaceTop(rPRect, prevY, player.vy, brRect)) {
+      player.y = brick.y - PH; player.vy = 0; player.onGround = true;
+      rPRect.y = player.y;
     }
-    if (
-      player.vy < 0 &&
-      player.x + PW - 4 > br.x && player.x + 4 < br.x + br.w &&
-      player.y <= br.y + br.h && prevY > br.y + br.h - 4
-    ) {
+    if (playerHitsBrickFromBelow(rPRect, prevY, player.vy,
+          brick.x, brick.y, brick.width, brick.height,
+          brick.breakableFromBelow, brick.broken)) {
       brick.broken = true; brick.bounceTimer = 300;
       gs.score += S_BRICK; player.vy = Math.abs(player.vy) * 0.3;
     }
@@ -733,11 +802,12 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
     }
   }
 
-  // Exit pipe detection — press ↓ at the exit pipe to leave
-  const cx = player.x + PW / 2;
-  const inX = cx > room.exitX - 4 && cx < room.exitX + PIPE_W + 4;
-  const inY = player.onGround && Math.abs((player.y + PH) - (room.exitY + PIPE_H)) < 12;
-  if (goDown && inX && inY) {
+  // Exit pipe detection — deliberate down + standing on exit pipe top
+  if (tryEnterPipe(
+    player.x, player.y, PW, PH,
+    player.onGround, goDown,
+    room.exitX, room.exitY, PIPE_W, PIPE_W,
+  )) {
     gs.room = null; // back to main level
     player.x = gs.spawnX; player.y = gs.spawnY; player.vx = 0; player.vy = 0;
     gs.camera = Math.max(0, Math.min(gs.geom.width - CW, gs.spawnX - CW * 0.4));
@@ -799,18 +869,21 @@ function renderGame(
 
   // Bricks
   for (const b of gs.geom.bricks) {
+    const bw = b.width; const bh = b.height;
     if (b.broken) {
       ctx.strokeStyle = '#5a3020'; ctx.lineWidth = 1;
-      ctx.strokeRect(b.x, b.y, BRICK, BRICK); continue;
+      ctx.strokeRect(b.x, b.y, bw, bh); continue;
     }
     const dy = b.bounceTimer > 0 ? -5 : 0;
-    ctx.fillStyle = '#b05830'; ctx.fillRect(b.x, b.y+dy, BRICK, BRICK);
-    ctx.fillStyle = '#c86838'; ctx.fillRect(b.x+2, b.y+dy+2, BRICK-4, 12);
+    ctx.fillStyle = '#b05830'; ctx.fillRect(b.x, b.y+dy, bw, bh);
+    ctx.fillStyle = '#c86838'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, Math.round(bh * 0.375));
     ctx.strokeStyle = '#7a3818'; ctx.lineWidth = 1;
-    ctx.strokeRect(b.x, b.y+dy, BRICK, BRICK);
+    ctx.strokeRect(b.x, b.y+dy, bw, bh);
     ctx.beginPath();
-    ctx.moveTo(b.x, b.y+dy+16); ctx.lineTo(b.x+BRICK, b.y+dy+16);
-    ctx.moveTo(b.x+16, b.y+dy); ctx.lineTo(b.x+16, b.y+dy+16);
+    const midY = b.y + dy + bh / 2;
+    const midX = b.x + bw / 2;
+    ctx.moveTo(b.x, midY); ctx.lineTo(b.x+bw, midY);
+    ctx.moveTo(midX, b.y+dy); ctx.lineTo(midX, midY);
     ctx.stroke();
   }
 
@@ -1057,18 +1130,21 @@ function renderRoom(
 
   // Bricks (bonus room only)
   for (const b of room.bricks) {
+    const bw = b.width; const bh = b.height;
     if (b.broken) {
       ctx.strokeStyle = '#7a4020'; ctx.lineWidth = 1;
-      ctx.strokeRect(b.x, b.y, BRICK, BRICK); continue;
+      ctx.strokeRect(b.x, b.y, bw, bh); continue;
     }
     const dy = b.bounceTimer > 0 ? -5 : 0;
-    ctx.fillStyle = '#c8a040'; ctx.fillRect(b.x, b.y+dy, BRICK, BRICK);
-    ctx.fillStyle = '#e0b850'; ctx.fillRect(b.x+2, b.y+dy+2, BRICK-4, 12);
+    ctx.fillStyle = '#c8a040'; ctx.fillRect(b.x, b.y+dy, bw, bh);
+    ctx.fillStyle = '#e0b850'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, Math.round(bh * 0.375));
     ctx.strokeStyle = '#906020'; ctx.lineWidth = 1;
-    ctx.strokeRect(b.x, b.y+dy, BRICK, BRICK);
+    ctx.strokeRect(b.x, b.y+dy, bw, bh);
     ctx.beginPath();
-    ctx.moveTo(b.x, b.y+dy+16); ctx.lineTo(b.x+BRICK, b.y+dy+16);
-    ctx.moveTo(b.x+16, b.y+dy); ctx.lineTo(b.x+16, b.y+dy+16);
+    const midY = b.y + dy + bh / 2;
+    const midX = b.x + bw / 2;
+    ctx.moveTo(b.x, midY); ctx.lineTo(b.x+bw, midY);
+    ctx.moveTo(midX, b.y+dy); ctx.lineTo(midX, midY);
     ctx.stroke();
   }
 
@@ -1130,6 +1206,33 @@ function renderRoom(
   drawHUD(ctx, gs, now, timeLimitMs);
 }
 
+// ═══ Responsive-layout helpers ════════════════════════════════════════════════
+
+/** Max CSS scale factor to avoid excessive zoom on very large screens. */
+const MAX_SCALE = 2;
+
+/** Pixels reserved for the control strip in portrait mode (below canvas). */
+const CTRL_H_PORTRAIT = 68;
+/** Pixels reserved for the control strip in landscape mode (right of canvas). */
+const CTRL_W_LANDSCAPE = 134;
+
+interface LayoutState {
+  scale: number;
+  landscape: boolean;
+}
+
+function computeLayout(vw: number, vh: number): LayoutState {
+  const landscape = vw > vh;
+  let scale: number;
+  if (landscape) {
+    scale = Math.min((vw - CTRL_W_LANDSCAPE) / CW, vh / CH);
+  } else {
+    scale = Math.min(vw / CW, (vh - CTRL_H_PORTRAIT) / CH);
+  }
+  scale = Math.min(Math.max(scale, 0.2), MAX_SCALE);
+  return { scale, landscape };
+}
+
 // ═══ Component ════════════════════════════════════════════════════════════════
 
 interface CastleRescueGameProps {
@@ -1155,6 +1258,32 @@ export default function CastleRescueGame({
 
   const [phase, setPhase]       = useState<Phase>('idle');
   const [endStats, setEndStats] = useState<{ score: number; rescued: boolean } | null>(null);
+
+  // ── Responsive layout ───────────────────────────────────────────────────────
+  const [layout, setLayout] = useState<LayoutState>(() =>
+    typeof window !== 'undefined'
+      ? computeLayout(window.innerWidth, window.innerHeight)
+      : { scale: 1, landscape: false },
+  );
+
+  useEffect(() => {
+    let rafId = 0;
+    const update = () => {
+      setLayout(computeLayout(window.innerWidth, window.innerHeight));
+    };
+    const onResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    update();
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   const initState = useCallback((): GameState => {
     const geom   = buildLevel(seed);
@@ -1273,36 +1402,72 @@ export default function CastleRescueGame({
   const touchPress   = useCallback((code: string) => keysRef.current.add(code),    []);
   const touchRelease = useCallback((code: string) => keysRef.current.delete(code), []);
 
+  const { scale, landscape } = layout;
+
+  // ── Controls: portrait = row below canvas, landscape = column right of canvas
+  const ctrlsStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: landscape ? 'column' : 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: landscape ? '8px 4px' : '4px 8px',
+    userSelect: 'none',
+    flexShrink: 0,
+  };
+
   return (
-    <div style={rootStyle}>
-      <canvas
-        ref={canvasRef}
-        width={CW} height={CH}
-        style={canvasStyle}
-        tabIndex={0}
-        aria-label="Castle Rescue platformer game"
-      />
+    <div style={outerStyle}>
+      <div style={{
+        display: 'flex',
+        flexDirection: landscape ? 'row' : 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: landscape ? 0 : 4,
+      }}>
+        {/* Canvas wrapper — takes the scaled visual size so flex layout is correct */}
+        <div style={{
+          position: 'relative',
+          width: CW * scale,
+          height: CH * scale,
+          flexShrink: 0,
+        }}>
+          <canvas
+            ref={canvasRef}
+            width={CW} height={CH}
+            style={{
+              display: 'block',
+              transformOrigin: 'top left',
+              transform: `scale(${scale})`,
+              border: '2px solid #1e3a8a',
+              borderRadius: 8,
+            }}
+            tabIndex={0}
+            aria-label="Castle Rescue platformer game"
+          />
 
-      {/* Touch/on-screen controls */}
-      <div style={controlsRow} aria-label="Game controls">
-        <TouchBtn code="ArrowLeft"  label="◀"      onPress={touchPress} onRelease={touchRelease} />
-        <TouchBtn code="ArrowRight" label="▶"      onPress={touchPress} onRelease={touchRelease} />
-        <TouchBtn code="Space"      label="▲ Jump" onPress={touchPress} onRelease={touchRelease} />
-        <TouchBtn code="ArrowDown"  label="↓ Pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
-      </div>
-
-      {/* End-of-run result */}
-      {phase === 'complete' && endStats && (
-        <div style={endStyle}>
-          <p style={{ fontSize:24, fontWeight:700, margin:'0 0 4px' }}>
-            {endStats.rescued ? '👑 Princess Rescued!' : '⏱ Time\'s Up!'}
-          </p>
-          <p style={{ fontSize:20, fontWeight:600, color:'#fbbf24', margin:'0 0 14px' }}>
-            Final Score: {endStats.score}
-          </p>
-          <button onClick={handleReset} style={btnCss('#1d4ed8')}>🔁 Play Again</button>
+          {/* End-of-run result — overlaid on the scaled canvas */}
+          {phase === 'complete' && endStats && (
+            <div style={endOverlayStyle}>
+              <p style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
+                {endStats.rescued ? '👑 Princess Rescued!' : '⏱ Time\'s Up!'}
+              </p>
+              <p style={{ fontSize: 18, fontWeight: 600, color: '#fbbf24', margin: '0 0 12px' }}>
+                Final Score: {endStats.score}
+              </p>
+              <button onClick={handleReset} style={btnCss('#1d4ed8')}>🔁 Play Again</button>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Touch / on-screen controls */}
+        <div style={ctrlsStyle} aria-label="Game controls">
+          <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"   onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right"  onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="Space"      label="▲" ariaLabel="Jump"        onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe"  onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1310,13 +1475,13 @@ export default function CastleRescueGame({
 // ── Sub-components & styles ────────────────────────────────────────────────────
 
 interface TouchBtnProps {
-  code: string; label: string; color?: string;
+  code: string; label: string; ariaLabel: string; color?: string;
   onPress: (code: string) => void; onRelease: (code: string) => void;
 }
-function TouchBtn({ code, label, color = '#374151', onPress, onRelease }: TouchBtnProps) {
+function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onRelease }: TouchBtnProps) {
   return (
     <button
-      aria-label={label}
+      aria-label={ariaLabel}
       style={btnCss(color)}
       onMouseDown={() => onPress(code)} onMouseUp={() => onRelease(code)} onMouseLeave={() => onRelease(code)}
       onTouchStart={(e) => { e.preventDefault(); onPress(code); }}
@@ -1327,20 +1492,41 @@ function TouchBtn({ code, label, color = '#374151', onPress, onRelease }: TouchB
   );
 }
 
-const rootStyle: CSSProperties = {
-  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-  background:'#111827', padding:12,
+const outerStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '100vw',
+  height: '100dvh',
+  overflow: 'hidden',
+  background: '#111827',
 };
-const canvasStyle: CSSProperties = {
-  border:'2px solid #1e3a8a', borderRadius:8, maxWidth:'100%', display:'block',
+
+const endOverlayStyle: CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  textAlign: 'center',
+  color: '#f3f4f6',
+  background: 'rgba(17,24,39,0.88)',
+  borderRadius: 12,
+  padding: '18px 28px',
+  pointerEvents: 'auto',
 };
-const controlsRow: CSSProperties = {
-  display:'flex', gap:8, marginTop:4, userSelect:'none',
-};
-const endStyle: CSSProperties = {
-  textAlign:'center', color:'#f3f4f6', marginTop:8,
-};
+
 function btnCss(bg: string): CSSProperties {
-  return { padding:'8px 18px', background:bg, color:'#fff', border:'none',
-           borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', touchAction:'none' };
+  return {
+    padding: '10px 20px',
+    background: bg,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+    touchAction: 'none',
+    minWidth: 52,
+    minHeight: 44,
+  };
 }
