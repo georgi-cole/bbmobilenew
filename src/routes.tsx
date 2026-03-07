@@ -46,6 +46,11 @@ const HoldTheWallTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/HoldTheWallTestPage/HoldTheWallTestPage'))
   : null;
 
+// Dev-only Famous Figures test page.
+const FamousFiguresTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/FamousFiguresTestPage/FamousFiguresTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -73,6 +78,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && HoldTheWallTestPage != null
         ? [{ path: 'htw-test', element: <Suspense fallback={null}><HoldTheWallTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && FamousFiguresTestPage != null
+        ? [{ path: 'ff-test', element: <Suspense fallback={null}><FamousFiguresTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },

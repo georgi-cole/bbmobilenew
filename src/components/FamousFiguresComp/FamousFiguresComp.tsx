@@ -34,7 +34,13 @@ import './FamousFiguresComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const REVEAL_PAUSE_MS = 3000;
+/**
+ * Duration (ms) to display the round-reveal screen before advancing to the
+ * next round. Short but non-zero to avoid visual jank; can be overridden via
+ * the `revealPauseMs` prop.
+ */
+const DEFAULT_REVEAL_PAUSE_MS = 1500;
+
 const WINNER_SCREEN_DURATION_MS = 4000;
 
 // Timer durations per phase (milliseconds)
@@ -97,6 +103,19 @@ interface Props {
   prizeType: FamousFiguresPrizeType;
   seed: number;
   onComplete?: () => void;
+  /**
+   * When true (default), skip the winner animation on match completion and
+   * show the final scoreboard immediately instead. The `onComplete` callback
+   * still fires after `WINNER_SCREEN_DURATION_MS` so players can read the
+   * results. Set to false to restore the animated winner card.
+   */
+  skipWinnerAnimation?: boolean;
+  /**
+   * Duration (ms) to hold the round-reveal screen before advancing to the
+   * next round. Must be non-zero to avoid visual jank. Defaults to
+   * `DEFAULT_REVEAL_PAUSE_MS` (1500 ms).
+   */
+  revealPauseMs?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -107,7 +126,11 @@ export default function FamousFiguresComp({
   prizeType,
   seed,
   onComplete,
+  skipWinnerAnimation = true,
+  revealPauseMs = DEFAULT_REVEAL_PAUSE_MS,
 }: Props) {
+  // Guard: the reveal pause must always be positive to prevent visual jank.
+  const safeRevealPauseMs = revealPauseMs > 0 ? revealPauseMs : DEFAULT_REVEAL_PAUSE_MS;
   const dispatch = useAppDispatch();
   const ff = useAppSelector(
     (s: RootState) =>
@@ -250,9 +273,9 @@ export default function FamousFiguresComp({
     if (ff.status !== 'round_reveal') return;
     const t = setTimeout(() => {
       dispatch(nextRound());
-    }, REVEAL_PAUSE_MS);
+    }, safeRevealPauseMs);
     return () => clearTimeout(t);
-  }, [ff.status, ff.currentRound, dispatch]);
+  }, [ff.status, ff.currentRound, dispatch, safeRevealPauseMs]);
 
   // ── Complete → fire onComplete ────────────────────────────────────────────
   useEffect(() => {
@@ -354,6 +377,30 @@ export default function FamousFiguresComp({
     const winnerId = ff.winnerId ?? '';
     const winnerName = displayName(winnerId);
     const isHumanWinner = winnerId === humanId;
+
+    if (skipWinnerAnimation) {
+      // Show the final scoreboard immediately — no trophy animation.
+      return (
+        <div className="ff-container ff-container--complete ff-container--final-scores" aria-live="assertive">
+          <div className="ff-header">
+            <span className="ff-comp-badge">{prizeType}</span>
+            <span className="ff-title">Famous Figures</span>
+            <span className="ff-round-badge">Final Results</span>
+          </div>
+
+          <div className="ff-winner-banner" role="status">
+            🏆&nbsp;{winnerName}
+            {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
+            &nbsp;wins!&nbsp;
+            <span className="ff-winner-banner-sub">{prizeType} Winner — {ff.playerScores[winnerId] ?? 0} pts</span>
+          </div>
+
+          {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
+        </div>
+      );
+    }
+
+    // Original animated winner card (skipWinnerAnimation === false)
     return (
       <div className="ff-container ff-container--complete" aria-live="assertive">
         <div className="ff-winner-card">
