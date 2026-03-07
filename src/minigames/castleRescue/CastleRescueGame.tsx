@@ -1575,6 +1575,8 @@ function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onReleas
       onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPress(code); }}
       onPointerUp={() => onRelease(code)}
       onPointerCancel={() => onRelease(code)}
+      onLostPointerCapture={() => onRelease(code)}
+      onPointerLeave={() => onRelease(code)}
     >
       {label}
     </button>
