@@ -876,12 +876,14 @@ function renderGame(
     }
     const dy = b.bounceTimer > 0 ? -5 : 0;
     ctx.fillStyle = '#b05830'; ctx.fillRect(b.x, b.y+dy, bw, bh);
-    ctx.fillStyle = '#c86838'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, 12);
+    ctx.fillStyle = '#c86838'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, Math.round(bh * 0.375));
     ctx.strokeStyle = '#7a3818'; ctx.lineWidth = 1;
     ctx.strokeRect(b.x, b.y+dy, bw, bh);
     ctx.beginPath();
-    ctx.moveTo(b.x, b.y+dy+16); ctx.lineTo(b.x+bw, b.y+dy+16);
-    ctx.moveTo(b.x+16, b.y+dy); ctx.lineTo(b.x+16, b.y+dy+16);
+    const midY = b.y + dy + bh / 2;
+    const midX = b.x + bw / 2;
+    ctx.moveTo(b.x, midY); ctx.lineTo(b.x+bw, midY);
+    ctx.moveTo(midX, b.y+dy); ctx.lineTo(midX, midY);
     ctx.stroke();
   }
 
@@ -1135,12 +1137,14 @@ function renderRoom(
     }
     const dy = b.bounceTimer > 0 ? -5 : 0;
     ctx.fillStyle = '#c8a040'; ctx.fillRect(b.x, b.y+dy, bw, bh);
-    ctx.fillStyle = '#e0b850'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, 12);
+    ctx.fillStyle = '#e0b850'; ctx.fillRect(b.x+2, b.y+dy+2, bw-4, Math.round(bh * 0.375));
     ctx.strokeStyle = '#906020'; ctx.lineWidth = 1;
     ctx.strokeRect(b.x, b.y+dy, bw, bh);
     ctx.beginPath();
-    ctx.moveTo(b.x, b.y+dy+16); ctx.lineTo(b.x+bw, b.y+dy+16);
-    ctx.moveTo(b.x+16, b.y+dy); ctx.lineTo(b.x+16, b.y+dy+16);
+    const midY = b.y + dy + bh / 2;
+    const midX = b.x + bw / 2;
+    ctx.moveTo(b.x, midY); ctx.lineTo(b.x+bw, midY);
+    ctx.moveTo(midX, b.y+dy); ctx.lineTo(midX, midY);
     ctx.stroke();
   }
 
@@ -1458,10 +1462,10 @@ export default function CastleRescueGame({
 
         {/* Touch / on-screen controls */}
         <div style={ctrlsStyle} aria-label="Game controls">
-          <TouchBtn code="ArrowLeft"  label="◀"      onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="ArrowRight" label="▶"      onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="Space"      label="▲"      onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="ArrowDown"  label="↓"      onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
+          <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"   onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right"  onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="Space"      label="▲" ariaLabel="Jump"        onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe"  onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
         </div>
       </div>
     </div>
@@ -1471,13 +1475,13 @@ export default function CastleRescueGame({
 // ── Sub-components & styles ────────────────────────────────────────────────────
 
 interface TouchBtnProps {
-  code: string; label: string; color?: string;
+  code: string; label: string; ariaLabel: string; color?: string;
   onPress: (code: string) => void; onRelease: (code: string) => void;
 }
-function TouchBtn({ code, label, color = '#374151', onPress, onRelease }: TouchBtnProps) {
+function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onRelease }: TouchBtnProps) {
   return (
     <button
-      aria-label={label}
+      aria-label={ariaLabel}
       style={btnCss(color)}
       onMouseDown={() => onPress(code)} onMouseUp={() => onRelease(code)} onMouseLeave={() => onRelease(code)}
       onTouchStart={(e) => { e.preventDefault(); onPress(code); }}
@@ -1493,7 +1497,7 @@ const outerStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   width: '100vw',
-  height: '100vh',
+  height: '100dvh',
   overflow: 'hidden',
   background: '#111827',
 };
