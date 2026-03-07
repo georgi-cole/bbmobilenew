@@ -108,6 +108,51 @@ export interface CastleRescueCompetitionConfig {
   timeLimitMs?: number;
 }
 
+// ─── Platformer geometry types ────────────────────────────────────────────────
+
+/**
+ * A platform surface in the platformer level.
+ *
+ * oneWay (default false) controls solid collision behaviour:
+ *  - false = full-solid: blocks player from both above and below.
+ *  - true  = one-way: only blocks the player when falling onto the top surface.
+ */
+export interface PlatformDef {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  oneWay?: boolean;
+}
+
+/** A breakable brick in the platformer level. */
+export interface BrickDef {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /**
+   * When true, a head-hit (player moving upward, head crossing brick underside)
+   * will break the brick and award score once.
+   */
+  breakableFromBelow: boolean;
+  broken: boolean;
+  bounceTimer: number;
+}
+
+/** Physical pipe geometry in the platformer level. */
+export interface PipeDef {
+  width: number;
+  height: number;
+  /**
+   * Horizontal width of the opening zone centred on the pipe top.
+   * The player's centre-X must be within this zone and the player must
+   * be on the pipe top before a down-press can trigger pipe entry.
+   */
+  entryZoneWidth: number;
+}
+
 // ─── Ranking types ────────────────────────────────────────────────────────────
 
 /** Raw result submitted by (or computed for) one player. */
