@@ -12,15 +12,30 @@
 import type { FigureRow } from './model';
 
 /**
+ * Common generational/honorific suffixes that should not be treated as the
+ * last name (e.g. "Martin Luther King Jr" → last = "King").
+ */
+const KNOWN_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v', 'vi']);
+
+/**
  * Parses a canonical name into first / last components.
- * Handles mononyms (e.g. "Cleopatra") and regnal names (e.g. "Louis XIV").
+ * Handles mononyms (e.g. "Cleopatra"), regnal names (e.g. "Louis XIV"),
+ * and names with generational suffixes (e.g. "Martin Luther King Jr").
  */
 function parseNameParts(canonicalName: string): {
   first: string;
   last: string;
   isMononym: boolean;
 } {
-  const parts = canonicalName.trim().split(/\s+/);
+  const raw = canonicalName.trim().split(/\s+/);
+
+  // Drop a trailing suffix so we don't mistake "Jr" / "III" for the last name.
+  const lastToken = raw[raw.length - 1] ?? '';
+  const parts =
+    raw.length > 1 && KNOWN_SUFFIXES.has(lastToken.toLowerCase().replace(/\.$/, ''))
+      ? raw.slice(0, -1)
+      : raw;
+
   if (parts.length === 1) {
     return { first: parts[0], last: '', isMononym: true };
   }
@@ -34,6 +49,10 @@ function parseNameParts(canonicalName: string): {
  * Indices 2–4 are generated from the figure's canonical name.
  */
 export function getHintText(figure: FigureRow, hintIndex: number): string {
+  if (hintIndex < 0 || hintIndex > 4) {
+    throw new RangeError(`getHintText: hintIndex must be 0–4, got ${hintIndex}`);
+  }
+
   if (hintIndex === 0) return figure.hints[0];
   if (hintIndex === 1) return figure.hints[1];
 

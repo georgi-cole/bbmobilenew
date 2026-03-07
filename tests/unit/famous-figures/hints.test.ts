@@ -6,7 +6,7 @@
  *   1 → dataset hints[1]
  *   2 → generated "First name starts with 'X'" (or mononym variant)
  *   3 → generated "Last name starts with 'Y'" (or mononym fallback)
- *   4 → generated "Either..." combined letter-count hint
+ *   4 → generated: reveals full first name, prompts for last name
  */
 import { describe, it, expect } from 'vitest';
 import { getHintText } from '../../../src/games/famous-figures/hints';
@@ -135,5 +135,40 @@ describe('getHintText — dataset hints use custom content', () => {
     const text = getHintText(figure, 2);
     expect(text).not.toBe('Custom content hint 3');
     expect(text).toContain("'M'");
+  });
+});
+
+describe('getHintText — suffix stripping', () => {
+  it('ignores trailing "Jr" when choosing last name initial', () => {
+    const figure = makeFigure({ canonicalName: 'Martin Luther King Jr' });
+    // hint 3 should be "K" for King, not "J" for Jr
+    expect(getHintText(figure, 3)).toContain("'K'");
+  });
+
+  it('ignores trailing "Sr" when choosing last name initial', () => {
+    const figure = makeFigure({ canonicalName: 'Robert Downey Sr' });
+    expect(getHintText(figure, 3)).toContain("'D'");
+  });
+
+  it('ignores trailing Roman numeral suffix (III) when choosing last name', () => {
+    const figure = makeFigure({ canonicalName: 'Henry Ford III' });
+    expect(getHintText(figure, 3)).toContain("'F'");
+  });
+
+  it('hint 4 reveals the meaningful first name (not the suffix)', () => {
+    const figure = makeFigure({ canonicalName: 'Martin Luther King Jr' });
+    expect(getHintText(figure, 4)).toContain('"Martin"');
+  });
+});
+
+describe('getHintText — out-of-range index', () => {
+  const figure = makeFigure({ canonicalName: 'Albert Einstein' });
+
+  it('throws RangeError for index 5', () => {
+    expect(() => getHintText(figure, 5)).toThrow(RangeError);
+  });
+
+  it('throws RangeError for negative index', () => {
+    expect(() => getHintText(figure, -1)).toThrow(RangeError);
   });
 });
