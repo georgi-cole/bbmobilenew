@@ -78,42 +78,24 @@ describe('handlePipeClick — wrong (decoy) click', () => {
     expect(state.wrongAttempts).toBe(1);
   });
 
-  it('resets selectedPipeIds to []', () => {
-    // First make a correct click, then a wrong one
-    let state = freshRun();
-    state = handlePipeClick(state, 'route-0', T1);
-    // Now click an adjacent decoy (decoy-0 is at 0,0 — not adjacent; use route-1 after skipping)
-    // Easier: click a totally wrong non-adjacent pipe to trigger wrong attempt
-    state = handlePipeClick(state, 'decoy-2', T1); // decoy-2 at 4,0 — not adjacent to head
-    // Non-adjacent → no-op (selection stays), BUT let's test with adjacent decoy:
-    // In FIXTURE_MAP_STRAIGHT, after selecting route-0 (2,1), head is at (2,1).
-    // Adjacent cells: (2,0)=source (not pipe), (2,2)=route-1, (1,1)=empty, (3,1)=empty
-    // There's no adjacent decoy! So after route-0 only route-1 is adjacent.
-    // Test the initial state: from source (2,0), adjacent cells: (2,1)=route-0, (1,0)=empty, (3,0)=empty
-    // Decoys are at (0,0), (0,4), (4,0) — none adjacent to source.
-    // So we can only test wrong click on a non-adjacent cell (which is a no-op) or
-    // we need to pick a pipe by ID without adjacency restriction — the engine blocks it.
-    // Let's verify that the initial state clicking a non-adjacent decoy is a no-op:
-    const s2 = handlePipeClick(freshRun(), 'decoy-0', T1); // decoy-0 at (0,0), not adjacent to (2,0)
-    expect(s2.wrongAttempts).toBe(0); // no-op, not adjacent
-    expect(s2.selectedPipeIds).toHaveLength(0);
+  it('does not change selection on non-adjacent wrong click (no-op)', () => {
+    // decoy-0 is at (0,0), which is not adjacent to the source (2,0).
+    // Clicking it is blocked by the adjacency guard: no wrongAttempts increment,
+    // no selection change.
+    const state = handlePipeClick(freshRun(), 'decoy-0', T1);
+    expect(state.wrongAttempts).toBe(0);
+    expect(state.selectedPipeIds).toHaveLength(0);
   });
 
-  it('resets currentHeadPos back to the source', () => {
-    // Trigger a wrong attempt by clicking route-1 (skipping route-0): route-1 at (2,2) is not adjacent to source (2,0)
-    // So this is a no-op due to adjacency guard... Let's create a state where a decoy IS adjacent
-    // In FIXTURE_MAP_LSHAPED: source(2,0), route-0(2,1). Decoys at (4,4),(0,0),(3,3).
-    // From source, only route-0 is adjacent. So we can't trigger wrong via adjacent decoy in fixtures.
-    // We CAN test: after advancing head to route-0(2,1), route-2(2,3) is NOT adjacent (col diff=2) → no-op.
-    let state = freshRun();
-    state = handlePipeClick(state, 'route-0', T1); // head → (2,1)
-    // route-2 is at (2,3): adjacent to (2,1)? abs(col diff)=2 → NOT adjacent → no-op
-    state = handlePipeClick(state, 'route-2', T1); // skipped a step — adjacency blocks it
-    expect(state.selectedPipeIds).toHaveLength(1); // still only route-0 selected
-    expect(state.wrongAttempts).toBe(0); // no-op, not adjacent
-    // Now advance to route-1 (2,2) — adjacent to head (2,1)
-    state = handlePipeClick(state, 'route-1', T1);
-    expect(state.selectedPipeIds).toHaveLength(2);
+  it('resets selectedPipeIds and currentHeadPos on an adjacent wrong click', () => {
+    // Place the head at (0,1) so that decoy-0 at (0,0) is adjacent.
+    let state = { ...freshRun(), currentHeadPos: { row: 0, col: 1 } };
+    // Simulate having already selected one route pipe (to verify the reset clears it)
+    state = { ...state, selectedPipeIds: ['route-0'] };
+    const after = handlePipeClick(state, 'decoy-0', T1);
+    expect(after.wrongAttempts).toBe(1);
+    expect(after.selectedPipeIds).toHaveLength(0);
+    expect(after.currentHeadPos).toEqual(FIXTURE_MAP_STRAIGHT.source);
   });
 
   it('clicking the correct pipe after respawn works normally', () => {

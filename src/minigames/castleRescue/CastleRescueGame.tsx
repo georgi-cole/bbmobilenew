@@ -22,7 +22,7 @@
  *  - autoStart (boolean, optional) — start immediately on mount (default false).
  */
 
-import { useReducer, useEffect, useRef, useCallback } from 'react';
+import { useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { castleRescueReducer } from './castleRescueReducer';
 import { createInitialRunState } from './castleRescueEngine';
 import { generateMapForSeed } from './castleRescueGenerator';
@@ -99,9 +99,16 @@ export default function CastleRescueGame({
   seed = 1,
   timeLimitMs = TIME_LIMIT_MS,
   onFinish,
-  autoStart = false,
+  autoStart = true,
 }: CastleRescueGameProps) {
   const [state, dispatch] = useReducer(castleRescueReducer, undefined, createInitialRunState);
+
+  /**
+   * Remaining seconds shown in the countdown label.
+   * Updated every 250 ms by a setInterval so the display counts down smoothly
+   * even when the player is not interacting with the grid.
+   */
+  const [remainingSeconds, setRemainingSeconds] = useState(Math.ceil(timeLimitMs / 1000));
 
   // Keep onFinish in a ref so the timer callback always has the latest version
   // without needing to be listed as a useEffect dependency.
@@ -147,6 +154,18 @@ export default function CastleRescueGame({
     return () => clearTimeout(timerId);
   }, [state.status, state.startTimeMs, timeLimitMs]);
 
+  // ── Countdown display interval ──────────────────────────────────────────────
+  // Re-compute remainingSeconds every 250 ms so the countdown label updates
+  // without depending on user interactions.
+  useEffect(() => {
+    if (state.status !== 'active') return;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - state.startTimeMs;
+      setRemainingSeconds(Math.ceil(Math.max(0, timeLimitMs - elapsed) / 1000));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [state.status, state.startTimeMs, timeLimitMs]);
+
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
     finishCalledRef.current = false;
@@ -176,10 +195,7 @@ export default function CastleRescueGame({
   const rows = state.map?.gridRows ?? 5;
   const cols = state.map?.gridCols ?? 5;
 
-  // Compute remaining seconds for the timer display.
-  const elapsedMs = state.status === 'active' ? Date.now() - state.startTimeMs : 0;
-  const remainingMs = Math.max(0, timeLimitMs - elapsedMs);
-  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  // remainingSeconds is maintained by the setInterval above; no Date.now() here.
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -251,7 +267,16 @@ export default function CastleRescueGame({
                       ? `Pipe at row ${r + 1} col ${c + 1}`
                       : `Empty cell at row ${r + 1} col ${c + 1}`
                   }
+                  // Keyboard support: clickable pipe cells are focusable and
+                  // respond to Enter/Space so keyboard and AT users can play.
+                  tabIndex={isClickable ? 0 : -1}
                   onClick={() => handleCellClick(pos)}
+                  onKeyDown={(e) => {
+                    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      handleCellClick(pos);
+                    }
+                  }}
                   style={{
                     width: CELL_SIZE,
                     height: CELL_SIZE,
@@ -263,6 +288,9 @@ export default function CastleRescueGame({
                     fontSize: 24,
                     cursor: isClickable ? 'pointer' : 'default',
                     border: isClickable ? '2px solid #fbbf24' : '2px solid transparent',
+                    // Focus ring uses outline for keyboard/AT accessibility;
+                    // non-clickable cells are excluded via tabIndex=-1.
+                    outlineOffset: 2,
                     transition: 'background 0.15s, border 0.15s',
                     userSelect: 'none',
                   }}

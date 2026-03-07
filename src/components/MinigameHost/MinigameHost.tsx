@@ -240,6 +240,8 @@ export default function MinigameHost({
                 } else {
                   return (
                     <GenericComp
+                      seed={seed}
+                      autoStart={true}
                       onFinish={(value: number) => {
                         setFinalValue(value);
                         setWasPartial(false);

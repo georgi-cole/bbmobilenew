@@ -47,13 +47,12 @@ describe('finalizeRunState — timeout on active run', () => {
     expect(finalised.score).not.toBeNull();
   });
 
-  it('score is SCORE_FLOOR when full time elapses and there are wrong attempts', () => {
-    // 60 000 ms elapsed → 600 time penalty (> MAX_SCORE 1000) → clamp to 0
+  it('computes the correct score when full time elapses with no wrong attempts', () => {
+    // 60 000 ms elapsed → 60s × 10pts/s = 600 time penalty
+    // With MAX_SCORE 1000 and 0 wrong attempts: score = 1000 - 600 = 400
     const active = makeActiveRun();
     const finalised = finalizeRunState(active, TIME_LIMIT_MS);
-    // 60s × 10pts/s = 600 penalty; score = max(0, 1000 - 600) = 400 with 0 wrongs
-    expect(finalised.score).toBeGreaterThanOrEqual(SCORE_FLOOR);
-    expect(finalised.score).toBeLessThanOrEqual(MAX_SCORE);
+    expect(finalised.score).toBe(400);
   });
 
   it('score is SCORE_FLOOR when combined penalties exceed MAX_SCORE', () => {
@@ -96,14 +95,15 @@ describe('finalizeRunState — idempotency', () => {
   });
 });
 
-describe('finalizeRunState — no-op on idle state', () => {
-  it('does not change an idle state (outcomeResolved is false, no-op)', () => {
+describe('finalizeRunState — idle state behaviour', () => {
+  it('marks outcomeResolved on an idle state without starting the run', () => {
     const idle = createInitialRunState();
-    // idle.outcomeResolved is false, so finalizeRunState will try to complete it
-    // but status is idle — it should flip outcomeResolved without breaking state
+    // idle.outcomeResolved is false; calling finalizeRunState on an idle run
+    // only flips outcomeResolved — the status stays 'idle' because the engine
+    // only force-completes 'active' runs in the timeout path.
     const result = finalizeRunState(idle, T0);
-    // idle → complete with 0 ms elapsed, score = MAX_SCORE - 0 = MAX_SCORE
-    // Since idle has status 'idle' (not 'active'), it goes through the non-timeout path
     expect(result.outcomeResolved).toBe(true);
+    // Status remains idle (an unstarted run is not converted to 'complete').
+    expect(result.status).toBe('idle');
   });
 });

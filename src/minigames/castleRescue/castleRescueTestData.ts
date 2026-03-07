@@ -79,6 +79,10 @@ export function makeActiveState(map: CastleRescueMap): RunState {
 /**
  * Returns a completed RunState with a specific elapsed time and wrong-attempts
  * count.  Useful for scoring / ranking tests.
+ *
+ * Note: currentHeadPos is set to the last route pipe cell, matching the engine's
+ * behavior in handlePipeClick — the head advances to the last route pipe on
+ * completion, NOT to the sink.
  */
 export function makeCompleteState(
   map: CastleRescueMap,
@@ -86,11 +90,18 @@ export function makeCompleteState(
   wrongAttempts: number,
   score: number,
 ): RunState {
+  // Resolve the last route pipe cell to match what the engine sets on completion.
+  const lastRouteId = map.correctRoute[map.correctRoute.length - 1];
+  const lastRoutePipe = map.pipes.find((p) => p.id === lastRouteId);
+  const headPos = lastRoutePipe
+    ? { row: lastRoutePipe.row, col: lastRoutePipe.col }
+    : { ...map.sink }; // fallback (should never occur with valid maps)
+
   return {
     status: 'complete',
     map,
     selectedPipeIds: [...map.correctRoute],
-    currentHeadPos: { ...map.sink },
+    currentHeadPos: headPos,
     wrongAttempts,
     startTimeMs: 0,
     endTimeMs: elapsedMs,

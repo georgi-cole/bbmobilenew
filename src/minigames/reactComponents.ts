@@ -10,10 +10,8 @@
 // ─────────────────────────────────────────
 // Each component in this map must accept (at minimum):
 //   onFinish?: (value: number) => void
-//
-// MinigameHost passes onFinish so the reported score is forwarded to the host's
-// results screen.  Extra optional props (width, height, autoStart, …) may be
-// present on the component but are not required for generic mounting.
+//   seed?: number        — competition seed forwarded from gameOptions.seed
+//   autoStart?: boolean  — when true the game begins immediately on mount
 
 import type { ComponentType } from 'react';
 import TiltedLedge from '../components/TiltedLedge/TiltedLedge';
@@ -25,9 +23,15 @@ import CastleRescueGame from './castleRescue/CastleRescueGame';
  * Minimal prop contract shared by all generic React minigame components.
  * Components mounted through this map must accept onFinish so that the
  * final score value can be forwarded to MinigameHost's results screen.
+ * seed and autoStart are forwarded from the host's gameOptions so that
+ * seeded-RNG games start deterministically without an extra user click.
  */
 export interface GenericMinigameProps {
   onFinish?: (value: number) => void;
+  /** Deterministic competition seed forwarded from gameOptions.seed. */
+  seed?: number;
+  /** When true the game starts immediately on mount (no Start button needed). */
+  autoStart?: boolean;
 }
 
 const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {

@@ -204,16 +204,23 @@ export function finalizeRunState(state: RunState, nowMs: number): RunState {
 export function getLiveScore(state: RunState, nowMs: number): number | null {
   if (state.status === 'idle') return null;
   if (state.status === 'complete') return state.score;
-  // Active: estimate based on elapsed time so far.
+  // Active: estimate score based on elapsed time so far without mutating state.
   const elapsedMs = Math.max(0, nowMs - state.startTimeMs);
-  const tempState: RunState = { ...state, endTimeMs: nowMs + elapsedMs };
-  return computeScoreFromState({ ...tempState, endTimeMs: state.startTimeMs + elapsedMs });
+  const liveState: RunState = { ...state, endTimeMs: state.startTimeMs + elapsedMs };
+  return computeScoreFromState(liveState);
 }
 
 /**
- * Return whether the player has clicked the correct next route pipe and
- * whether the sink is now reachable (all route pipes selected and adjacent
- * to the sink).  Exposed for selector/UI use.
+ * Return whether all correct route pipes have been selected in order and
+ * the routing head is sitting on the last route pipe cell (ready to reach
+ * the sink on the next step).
+ *
+ * Note: this does NOT check adjacency to the sink — it reflects the state
+ * immediately after the player's third correct pipe click, before the game
+ * transitions to 'complete'.  Use `state.status === 'complete'` to determine
+ * whether the full run has finished.
+ *
+ * Exposed for selector/UI use (e.g. to show a "connect to exit" prompt).
  */
 export function isRouteComplete(state: RunState): boolean {
   if (!state.map) return false;
