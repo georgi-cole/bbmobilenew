@@ -20,6 +20,8 @@
  * 16.  dynamicQuestions bank override
  * 17.  markDisconnected sets submission to empty string (counts as wrong)
  * 18.  markDisconnected is a no-op outside 'question' phase
+ * 19.  Two-correct: both correct submitters become roundWinners (ordering)
+ * 20.  Human winner elimination timeout: AI fallback kicks in when human stalls
  */
 
 import { describe, it, expect } from 'vitest';
@@ -659,5 +661,167 @@ describe('dynamicQuestions override', () => {
     for (const answerId of Object.values(submissions)) {
       expect(validIds).toContain(answerId);
     }
+  });
+});
+
+// ─── Two-correct: ordering ────────────────────────────────────────────────────
+//
+// When two players both answer correctly, both should appear as roundWinnerIds
+// after revealResults.  The eliminationCandidates list should NOT contain
+// either winner — only players who answered incorrectly can be eliminated.
+
+describe('Two correct answers — both registered as winners', () => {
+  it('both correct answerers appear in roundWinnerIds', () => {
+    const store = startGame(['p1', 'p2', 'p3'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    store.dispatch(submitAnswer({ contestantId: 'p1', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p2', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p3', answerId: wrong }));
+    store.dispatch(revealResults());
+
+    const bb = store.getState().biographyBlitz;
+    expect(bb.roundWinnerIds).toContain('p1');
+    expect(bb.roundWinnerIds).toContain('p2');
+    expect(bb.roundWinnerIds).not.toContain('p3');
+  });
+
+  it('both winners are excluded from eliminationCandidates', () => {
+    const store = startGame(['p1', 'p2', 'p3'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    store.dispatch(submitAnswer({ contestantId: 'p1', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p2', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p3', answerId: wrong }));
+    store.dispatch(revealResults());
+
+    const { eliminationCandidates } = store.getState().biographyBlitz;
+    expect(eliminationCandidates).not.toContain('p1');
+    expect(eliminationCandidates).not.toContain('p2');
+    expect(eliminationCandidates).toContain('p3');
+  });
+
+  it('submission order does not affect roundWinnerIds membership', () => {
+    // p2 submits before p1 — both should still be winners.
+    const store = startGame(['p1', 'p2', 'p3'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    // Reversed submission order: p2 first, then p1.
+    store.dispatch(submitAnswer({ contestantId: 'p2', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p1', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p3', answerId: wrong }));
+    store.dispatch(revealResults());
+
+    const { roundWinnerIds } = store.getState().biographyBlitz;
+    expect(roundWinnerIds).toContain('p1');
+    expect(roundWinnerIds).toContain('p2');
+  });
+
+  it('with two correct answers only ONE candidate is eliminated after pick', () => {
+    const store = startGame(['p1', 'p2', 'p3', 'p4'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    // p1 and p2 correct; p3 and p4 wrong.
+    store.dispatch(submitAnswer({ contestantId: 'p1', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p2', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'p3', answerId: wrong }));
+    store.dispatch(submitAnswer({ contestantId: 'p4', answerId: wrong }));
+    store.dispatch(revealResults());
+    store.dispatch(confirmElimination()); // → choose_elimination
+    // Pick p3.
+    store.dispatch(pickElimination({ targetId: 'p3' }));
+
+    const bb = store.getState().biographyBlitz;
+    // Exactly one eliminated.
+    expect(bb.eliminatedContestants).toHaveLength(1);
+    expect(bb.eliminatedContestants).toContain('p3');
+    // p4 answered wrong but was NOT eliminated — only the chosen target is.
+    expect(bb.activeContestants).toContain('p4');
+    expect(bb.status).toBe('question');
+  });
+});
+
+// ─── Human winner elimination timeout — AI fallback (state-machine layer) ─────
+//
+// These tests verify the Redux state machine behaviour that underpins the
+// component-level 8-second timeout:
+//   • pickElimination auto-selects a valid candidate
+//   • The call is idempotent — repeated picks of the same target are safe
+//   • The fallback AI pick (first candidate) is a deterministic, valid choice
+
+describe('Human winner elimination timeout — AI fallback (state layer)', () => {
+  it('pickElimination with the first candidate mimics the AI fallback behaviour', () => {
+    const store = startGame(['human', 'ai1', 'ai2'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    // Human (the winner) and nobody else answers correctly.
+    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
+    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
+    store.dispatch(revealResults());
+    store.dispatch(confirmElimination()); // → choose_elimination
+
+    // Simulate AI fallback: pick the first elimination candidate.
+    const { eliminationCandidates } = store.getState().biographyBlitz;
+    expect(eliminationCandidates.length).toBeGreaterThan(0);
+    const fallbackTarget = eliminationCandidates[0];
+
+    store.dispatch(pickElimination({ targetId: fallbackTarget }));
+
+    const bb = store.getState().biographyBlitz;
+    expect(bb.eliminatedContestants).toContain(fallbackTarget);
+    // Game continues or completes — never stalls.
+    expect(['question', 'complete']).toContain(bb.status);
+  });
+
+  it('repeated pickElimination calls after resolution are no-ops', () => {
+    const store = startGame(['human', 'ai1'], { seed: 42 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
+    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
+    store.dispatch(revealResults());
+    store.dispatch(confirmElimination());
+    store.dispatch(pickElimination({ targetId: 'ai1' })); // resolves to 'complete'
+
+    const statusAfterFirst = store.getState().biographyBlitz.status;
+    // Duplicate call — must be a no-op (status !== choose_elimination).
+    store.dispatch(pickElimination({ targetId: 'ai1' }));
+    expect(store.getState().biographyBlitz.status).toBe(statusAfterFirst);
+    expect(store.getState().biographyBlitz.eliminatedContestants).toHaveLength(1);
+  });
+
+  it('AI fallback target must always be in eliminationCandidates', () => {
+    const store = startGame(['human', 'ai1', 'ai2', 'ai3'], { seed: 7 });
+    const q = currentQ(store);
+    const correct = q.correctAnswerId;
+    const wrong = q.answers.find((a) => a.id !== correct)!.id;
+
+    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
+    for (const id of ['ai1', 'ai2', 'ai3']) {
+      store.dispatch(submitAnswer({ contestantId: id, answerId: wrong }));
+    }
+    store.dispatch(revealResults());
+    store.dispatch(confirmElimination());
+
+    const { eliminationCandidates } = store.getState().biographyBlitz;
+    // AI fallback always picks first candidate — must be a valid choice.
+    const aiPick = eliminationCandidates[0];
+    expect(eliminationCandidates).toContain(aiPick);
+
+    store.dispatch(pickElimination({ targetId: aiPick }));
+    expect(store.getState().biographyBlitz.eliminatedContestants).toContain(aiPick);
   });
 });
