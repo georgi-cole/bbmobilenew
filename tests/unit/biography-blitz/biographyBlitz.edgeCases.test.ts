@@ -385,34 +385,6 @@ describe('Final-2 flow', () => {
 // ─── Hot Streak — activation ──────────────────────────────────────────────────
 
 describe('Hot Streak — activation', () => {
-  /**
-   * Play N rounds where `id` answers correctly and everyone else answers wrong.
-   * Returns the store after all N rounds.
-   */
-  function winNRoundsFor(id: string, n: number, allIds: string[]) {
-    const others = allIds.filter((x) => x !== id);
-    const store = startGame(allIds, { seed: 10 });
-
-    for (let i = 0; i < n; i++) {
-      if (store.getState().biographyBlitz.status !== 'question') break;
-      // Only submit for still-active contestants.
-      const active = store.getState().biographyBlitz.activeContestants;
-      const q = currentQ(store);
-      if (active.includes(id)) {
-        store.dispatch(submitAnswer({ contestantId: id, answerId: q.correctAnswerId }));
-      }
-      for (const oid of others) {
-        if (active.includes(oid)) {
-          const wrongId = q.answers.find((a) => a.id !== q.correctAnswerId)!.id;
-          store.dispatch(submitAnswer({ contestantId: oid, answerId: wrongId }));
-        }
-      }
-      store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
-    }
-    return store;
-  }
-
   it('no streak after 1 win', () => {
     const store = startGame(['p1', 'p2', 'p3'], { seed: 10 });
     const q = currentQ(store);
