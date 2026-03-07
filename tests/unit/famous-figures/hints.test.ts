@@ -6,7 +6,8 @@
  *   1 → dataset hints[1]
  *   2 → generated "First name starts with 'X'" (or mononym variant)
  *   3 → generated "Last name starts with 'Y'" (or mononym fallback)
- *   4 → generated: reveals full first name, prompts for last name
+ *   4 → generated "Either 'Decoy A' or 'Decoy B'" — decoy pair sharing the
+ *        figure's initials; NEVER reveals the canonical answer bluntly.
  */
 import { describe, it, expect } from 'vitest';
 import { getHintText } from '../../../src/games/famous-figures/hints';
@@ -59,12 +60,18 @@ describe('getHintText — standard two-part name', () => {
     expect(text.toLowerCase()).toContain('last name');
   });
 
-  it('hint 4 reveals the full first name and asks for the last name', () => {
+  it('hint 4 uses "Either X or Y" decoy-pair format; does not bluntly reveal the canonical name', () => {
     const text = getHintText(figure, 4);
-    expect(text).toContain('"Albert"');
-    expect(text.toLowerCase()).toContain('last name');
-    // Should NOT look like the old "Either..." format
-    expect(text).not.toMatch(/^Either/i);
+    // Must start with "Either" (decoy-pair format)
+    expect(text).toMatch(/^Either/i);
+    // Must contain " or " separating the two decoys
+    expect(text).toContain(' or ');
+    // Must NOT bluntly reveal the canonical name
+    expect(text).not.toContain('Albert Einstein');
+    // Both decoys share the 'A' first-name initial
+    expect(text).toMatch(/"A[a-zA-Z]+/);
+    // Both decoys share the 'E' last-name initial
+    expect(text).toMatch(/"[A-Za-z]+ E[a-zA-Z]+/);
   });
 });
 
@@ -83,11 +90,18 @@ describe('getHintText — mononym (single name)', () => {
     expect(text).toContain('9'); // "Cleopatra" has 9 letters
   });
 
-  it('hint 4 reveals the full name for mononyms', () => {
+  it('hint 4 uses "Either X or Y" decoy-pair format for mononyms; does not bluntly reveal the canonical name', () => {
     const text = getHintText(figure, 4);
-    expect(text).toContain('"Cleopatra"');
-    // Should NOT look like the old "Either..." format
-    expect(text).not.toMatch(/^Either/i);
+    expect(text).toMatch(/^Either/i);
+    expect(text).toContain(' or ');
+    // Must NOT bluntly reveal "Cleopatra"
+    expect(text).not.toContain('Cleopatra');
+    // Both decoys start with 'C' (same initial as Cleopatra)
+    const matches = text.match(/"([^"]+)"/g) ?? [];
+    expect(matches.length).toBe(2);
+    for (const m of matches) {
+      expect(m.toLowerCase()).toMatch(/^"c/);
+    }
   });
 });
 
@@ -104,10 +118,15 @@ describe('getHintText — regnal / multi-word last name', () => {
     expect(text).toContain("'B'");
   });
 
-  it('hint 4 reveals the first name and prompts for last name', () => {
+  it('hint 4 uses "Either X or Y" decoy-pair format; does not bluntly reveal the canonical name', () => {
     const text = getHintText(figure, 4);
-    expect(text).toContain('"Napoleon"');
-    expect(text.toLowerCase()).toContain('last name');
+    expect(text).toMatch(/^Either/i);
+    expect(text).toContain(' or ');
+    // Must NOT bluntly reveal "Napoleon Bonaparte"
+    expect(text).not.toContain('Napoleon Bonaparte');
+    // Both decoys share the 'N' first-name initial and 'B' last-name initial
+    expect(text).toMatch(/"N[a-zA-Z]+/);
+    expect(text).toMatch(/"[A-Za-z]+ B[a-zA-Z]+/);
   });
 });
 
@@ -155,9 +174,16 @@ describe('getHintText — suffix stripping', () => {
     expect(getHintText(figure, 3)).toContain("'F'");
   });
 
-  it('hint 4 reveals the meaningful first name (not the suffix)', () => {
+  it('hint 4 uses "Either X or Y" decoy-pair and respects suffix stripping (initials from King, not Jr)', () => {
     const figure = makeFigure({ canonicalName: 'Martin Luther King Jr' });
-    expect(getHintText(figure, 4)).toContain('"Martin"');
+    const text = getHintText(figure, 4);
+    expect(text).toMatch(/^Either/i);
+    expect(text).toContain(' or ');
+    // Must NOT bluntly reveal the canonical name
+    expect(text).not.toContain('Martin Luther King Jr');
+    // Decoys share 'M' first-name initial and 'K' last-name initial (King, not Jr)
+    expect(text).toMatch(/"M[a-zA-Z]+/);
+    expect(text).toMatch(/"[A-Za-z]+ K[a-zA-Z]+/);
   });
 });
 
