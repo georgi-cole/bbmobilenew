@@ -383,7 +383,7 @@ export default function FamousFiguresComp({
   const handleRequestHint = useCallback(() => {
     if (ff.status !== 'round_active') return;
     if (ff.hintsRevealed >= 5) return;
-    // 300 ms server-side debounce: prevent rapid clicks from advancing more
+    // 300 ms client-side debounce: prevent rapid clicks from advancing more
     // than one hint stage per gesture.
     const now = Date.now();
     if (now < hintCooldownUntilRef.current) return;
