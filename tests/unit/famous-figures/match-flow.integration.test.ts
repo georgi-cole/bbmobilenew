@@ -11,7 +11,6 @@ import famousFiguresReducer, {
   endRound,
   nextRound,
   FAMOUS_FIGURES,
-  getPointsForHintsUsed,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';
 

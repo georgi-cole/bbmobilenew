@@ -8,7 +8,6 @@ import famousFiguresReducer, {
   nextRound,
   resetFamousFigures,
   markFamousFiguresOutcomeResolved,
-  getPointsForHintsUsed,
   FAMOUS_FIGURES,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';

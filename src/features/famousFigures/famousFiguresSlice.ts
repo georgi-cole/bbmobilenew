@@ -260,7 +260,8 @@ const famousFiguresSlice = createSlice({
       if (state.hintsRevealed >= 5) return;
       state.hintsRevealed += 1;
       const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'overtime', 'done'];
-      state.timerPhase = phases[state.hintsRevealed] as FamousFiguresTimerPhase;
+      const phaseIdx = Math.min(state.hintsRevealed, phases.length - 1);
+      state.timerPhase = phases[phaseIdx];
     },
 
     /**

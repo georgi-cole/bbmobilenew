@@ -27,6 +27,7 @@ import type {
 import { resolveFamousFiguresOutcome } from '../../features/famousFigures/thunks';
 import { mulberry32 } from '../../store/rng';
 import { getDicebear } from '../../utils/avatar';
+import { isAcceptedGuess } from '../../games/famous-figures/fuzzy';
 import './FamousFiguresComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -260,8 +261,8 @@ export default function FamousFiguresComp({
 
     const now = Date.now();
     if (now < cooldownUntilRef.current) return;
-    const jitter = 800 + Math.random() * 400;
-    cooldownUntilRef.current = now + jitter;
+    const cooldownMs = 800 + Math.random() * 400;
+    cooldownUntilRef.current = now + cooldownMs;
 
     const trimmed = guessInput.trim();
     if (trimmed.length === 0) return;
@@ -276,16 +277,14 @@ export default function FamousFiguresComp({
     if (!figure) return;
 
     // Check correctness locally for immediate UI feedback
-    import('../../games/famous-figures/fuzzy').then(({ isAcceptedGuess }) => {
-      const correct = isAcceptedGuess(trimmed, figure);
-      dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed }));
-      setInputState(correct ? 'correct' : 'wrong');
-      if (correct) {
-        setGuessInput('');
-      }
-      // Clear feedback after a moment
-      setTimeout(() => setInputState('idle'), 1500);
-    });
+    const correct = isAcceptedGuess(trimmed, figure);
+    dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed }));
+    setInputState(correct ? 'correct' : 'wrong');
+    if (correct) {
+      setGuessInput('');
+    }
+    // Clear feedback after a moment
+    setTimeout(() => setInputState('idle'), 1500);
   }, [humanId, ff.status, ff.playerCorrect, ff.playerGuesses, ff.currentFigureIndex, guessInput, dispatch]);
 
   const handleKeyDown = useCallback(

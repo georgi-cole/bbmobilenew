@@ -100,7 +100,7 @@ The fuzzy matcher is in `src/games/famous-figures/fuzzy.ts`.
 | `Alexander the Great` | `alexander great` |
 | `Nikola Tesla` | `nikola tesla` |
 
-### Levenshtein Distance
+### Damerau-Levenshtein Distance
 
 Full **Damerau-Levenshtein** distance (not restricted). Transpositions count as a single edit (e.g. `"enistein"` → `"einstein"` = 1 edit).
 
