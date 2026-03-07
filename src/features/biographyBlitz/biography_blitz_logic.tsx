@@ -102,7 +102,7 @@ function questionIdxForRound(questionOrder: number[], round: number): number {
 /**
  * Build deterministic AI submissions for the current question.
  *
- * Each AI contestant is assigned a personal accuracy rating derived from the
+ * each contestant is assigned a personal accuracy rating derived from the
  * seed XOR their stringified index in the participant list.  A second RNG
  * draw determines whether they answer correctly; if not, a random wrong answer
  * is chosen.

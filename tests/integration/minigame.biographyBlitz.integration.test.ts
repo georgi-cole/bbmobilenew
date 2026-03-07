@@ -100,7 +100,7 @@ describe('biographyBlitzSlice — startBiographyBlitz integration', () => {
     expect(store.getState().biographyBlitz.status).toBe('question');
   });
 
-  it('populars aliveContestants from participantIds', () => {
+  it('populates aliveContestants from participantIds', () => {
     const store = makeIntegrationStore();
     const ids = ['alice', 'bob', 'carol'];
     store.dispatch(startBiographyBlitz({ participantIds: ids, competitionType: 'HOH', seed: 2 }));
