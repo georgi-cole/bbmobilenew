@@ -66,16 +66,19 @@ describe('famousFiguresSlice', () => {
     expect(s.correctPlayers).toContain(PLAYER_A);
   });
 
-  it('correct answer immediately transitions round to round_reveal (Bug 1 fix)', () => {
+  it('correct answer with multiple participants leaves round active until all solved', () => {
     const store = makeStore();
-    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     expect(getState(store).status).toBe('round_active');
     const figureIndex = getState(store).currentFigureIndex;
     const figure = FAMOUS_FIGURES[figureIndex];
+    // First player solves — round should stay active since PLAYER_B hasn't answered
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
     const s = getState(store);
-    expect(s.status).toBe('round_reveal');
-    expect(s.roundComplete).toBe(true);
+    expect(s.playerCorrect[PLAYER_A]).toBe(true);
+    expect(s.playerScores[PLAYER_A]).toBeGreaterThan(0);
+    expect(s.status).toBe('round_active');
+    expect(s.roundComplete).toBe(false);
   });
 
   it('playerCorrectTimestamp is recorded on correct answer', () => {
@@ -143,31 +146,65 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).hintsRevealed).toBe(5);
   });
 
-  it('advanceTimer is blocked after round is solved by correct answer', () => {
+  it('advanceTimer is blocked after all participants solve the round', () => {
     const store = makeStore();
+    // Single participant — solving closes the round immediately (all solved)
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     const figureIndex = getState(store).currentFigureIndex;
     const figure = FAMOUS_FIGURES[figureIndex];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
-    expect(getState(store).status).toBe('round_reveal');
+    expect(getState(store).roundComplete).toBe(true);
     const phaseBeforeAdvance = getState(store).timerPhase;
     store.dispatch(advanceTimer());
-    // Phase should NOT have changed since round is complete
+    // Phase should NOT have changed since roundComplete is true
     expect(getState(store).timerPhase).toBe(phaseBeforeAdvance);
   });
 
-  it('second correct guess after round solve is rejected', () => {
+  it('advanceTimer is NOT blocked when only some participants have solved', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     const figureIndex = getState(store).currentFigureIndex;
     const figure = FAMOUS_FIGURES[figureIndex];
-    // PLAYER_A answers correctly → round closes immediately
+    // Only PLAYER_A solves — PLAYER_B has not, so roundComplete stays false
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
-    expect(getState(store).status).toBe('round_reveal');
-    const scoreAfterA = getState(store).playerScores[PLAYER_B] ?? 0;
-    // PLAYER_B submitting correct answer now is rejected (status is round_reveal)
+    expect(getState(store).roundComplete).toBe(false);
+    expect(getState(store).status).toBe('round_active');
+    const phaseBefore = getState(store).timerPhase;
+    store.dispatch(advanceTimer());
+    // Timer should have advanced since the round is not yet complete
+    expect(getState(store).timerPhase).not.toBe(phaseBefore);
+  });
+
+  it('second correct guess by the same player is rejected (duplicate-correct guard)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    // PLAYER_A answers correctly
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    expect(getState(store).playerCorrect[PLAYER_A]).toBe(true);
+    const scoreAfterA = getState(store).playerScores[PLAYER_A];
+    // PLAYER_A tries to submit again — should be rejected (already marked correct)
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
+  });
+
+  it('when all participants solve, round transitions to round_reveal', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    // PLAYER_A solves — round stays active
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    expect(getState(store).status).toBe('round_active');
+    expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
+    // PLAYER_B solves — now all participants solved → round_reveal
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figure.canonicalName }));
-    expect(getState(store).playerScores[PLAYER_B] ?? 0).toBe(scoreAfterA);
+    const s = getState(store);
+    expect(s.playerScores[PLAYER_B]).toBeGreaterThan(0);
+    expect(s.playerCorrect[PLAYER_B]).toBe(true);
+    expect(s.status).toBe('round_reveal');
+    expect(s.roundComplete).toBe(true);
   });
 
   it('advanceTimer progresses past hint_5 to overtime (timer deadlock fix)', () => {

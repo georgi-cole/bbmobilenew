@@ -80,7 +80,7 @@ describe('match-flow integration', () => {
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: 'completely wrong answer xyzzy' }));
 
     expect(ff(store).playerCorrect[AI]).toBe(true);
-    // HUMAN's guess was submitted after AI closed the round, so playerCorrect may be unset
+    // HUMAN submitted a wrong answer — playerCorrect remains false
     expect(ff(store).playerCorrect[HUMAN] ?? false).toBe(false);
     expect(ff(store).playerScores[AI]).toBeGreaterThan(0);
 

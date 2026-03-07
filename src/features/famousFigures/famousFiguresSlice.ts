@@ -323,8 +323,10 @@ const famousFiguresSlice = createSlice({
     /**
      * Submit a player's guess for the current figure.
      * Checks fuzzy match, awards points, suppresses duplicates.
-     * On first accepted correct guess: records timestamp, closes the round
-     * immediately (transitions to round_reveal), and stops hint timers.
+     * On correct guess: marks the player solved and awards points.
+     * Closes the round (transitions to round_reveal) only when every
+     * registered participant has solved — otherwise the round stays active
+     * so remaining players can still answer.
      */
     submitPlayerGuess(
       state,
@@ -365,14 +367,17 @@ const famousFiguresSlice = createSlice({
         state.playerScores[playerId] += points;
         // Record time-to-correct for tiebreaker traceability
         state.playerCorrectTimestamp[playerId] = timestamp ?? Date.now();
-        // Close the round immediately on first correct answer
-        doEndRound(state);
+        // Close the round only when every participant has now solved
+        const participantIds = Object.keys(state.playerScores);
+        if (participantIds.length > 0 && participantIds.every((id) => state.playerCorrect[id])) {
+          doEndRound(state);
+        }
       }
     },
 
     /**
      * End the current round: record per-round scores, transition to
-     * round_reveal. No-op if the round was already closed by a correct answer.
+     * round_reveal. No-op if the round was already closed (all players solved).
      */
     endRound(state) {
       doEndRound(state);
