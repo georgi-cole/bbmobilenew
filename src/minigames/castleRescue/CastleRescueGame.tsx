@@ -27,6 +27,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { generateLevelConfig } from './castleRescueGenerator';
+import type { WrongPipeType } from './castleRescueGenerator';
 import { TIME_LIMIT_MS } from './castleRescueConstants';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
@@ -70,6 +71,7 @@ const DEATH_PAUSE_MS   =  900;
 const PIT_DEATH_PAUSE_MS = 200;
 
 // ═══ Types ════════════════════════════════════════════════════════════════════
+type PipeType = 'correct' | WrongPipeType; // 'correct' | 'setback' | 'bonus' | 'ambush' | 'dead'
 type Phase = 'idle' | 'playing' | 'pipe_flash' | 'death_pause' | 'complete';
 
 interface Rect { x: number; y: number; w: number; h: number; }
@@ -112,7 +114,8 @@ interface Pipe {
   x: number; y: number;
   slotIndex: number;
   routeIndex: number; // 0/1/2 if this is correct pipe I/II/III; -1 if wrong
-  done: boolean;      // player successfully entered this pipe in the right order
+  pipeType: PipeType; // what happens when the player enters this pipe
+  done: boolean;      // player has already used this pipe (prevents re-entry)
 }
 
 interface Checkpoint {
@@ -120,6 +123,23 @@ interface Checkpoint {
   x: number; y: number;
   activated: boolean;
   respawnX: number; respawnY: number;
+}
+
+/**
+ * Geometry and entity state for a side room the player can enter via a pipe.
+ * While `GameState.room` is non-null, physics and rendering use the room
+ * geometry instead of the main level.  Exiting via the room's exit pipe
+ * returns the player to the main level at their last spawn position.
+ */
+interface RoomInstance {
+  type: 'bonus' | 'ambush';
+  width: number;            // room width in pixels (≤ CW → no horizontal scroll)
+  platforms: Rect[];        // includes the ground as index 0
+  bricks: Brick[];
+  enemies: Enemy[];
+  coins: Coin[];
+  exitX: number;            // left edge of the exit pipe in room coordinates
+  exitY: number;            // top edge of the exit pipe
 }
 
 interface LevelGeom {
@@ -146,11 +166,15 @@ interface GameState {
   startTime: number;      // performance.now()
   finalElapsedMs: number; // set when game ends; 0 while running
   spawnX: number; spawnY: number;
-  pipeFlashTimer: number; pipeFlashCorrect: boolean;
+  pipeFlashTimer: number;
+  /** Determines flash colour/message; only meaningful during 'pipe_flash' phase. */
+  pipeFlashType: 'correct' | 'setback' | 'dead';
   deathPauseTimer: number;
   princessRescued: boolean;
   gateOpen: boolean;
   finalScore: number;
+  /** Non-null while the player is inside a bonus or ambush side-room. */
+  room: RoomInstance | null;
 }
 
 // ═══ mulberry32 RNG (inline to keep component self-contained) ═════════════════
@@ -161,6 +185,72 @@ function rng32(seed: number): () => number {
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
+// ═══ Room builders ════════════════════════════════════════════════════════════
+// Rooms are ≤ CW (800 px) wide so the camera is always fixed at x=0 inside them.
+const ROOM_EXIT_PIPE_Y = GROUND_TOP - PIPE_H; // same pipe-top y as the main level
+
+/**
+ * A cosy treasure room filled with coins and breakable bricks.
+ * No enemies — a reward for curious explorers.
+ */
+function buildBonusRoom(): RoomInstance {
+  const platforms: Rect[] = [
+    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground
+    { x: 100, y: 280,        w: 130, h: 16 },
+    { x: 310, y: 250,        w: 150, h: 16 },
+    { x: 530, y: 265,        w: 130, h: 16 },
+  ];
+  const brickDefs: [number, number][] = [
+    [115, 248], [147, 248],   // above platform 1
+    [325, 218], [357, 218],   // above platform 2
+    [545, 233], [577, 233],   // above platform 3
+  ];
+  const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
+    id: `rb-${i}`, x: bx, y: by, broken: false, bounceTimer: 0,
+  }));
+  const coinDefs: [number, number][] = [
+    [130, 246], [162, 246],               // above platform-1 bricks
+    [340, 216], [372, 216], [404, 216],   // above platform-2 bricks
+    [560, 231], [592, 231],               // above platform-3 bricks
+    [140, 265], [340, 235], [560, 250],   // on platform surfaces
+  ];
+  const coins: Coin[] = coinDefs.map(([cx, cy], i) => ({
+    id: `rc-${i}`, x: cx, y: cy, collected: false,
+  }));
+  return {
+    type: 'bonus', width: 800, platforms, bricks, enemies: [], coins,
+    exitX: 720, exitY: ROOM_EXIT_PIPE_Y,
+  };
+}
+
+/**
+ * A dark trap room swarming with 5 enemies.
+ * Stomp them for points, then escape through the exit pipe.
+ */
+function buildAmbushRoom(): RoomInstance {
+  const platforms: Rect[] = [
+    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground
+    { x: 200, y: 295,        w: 110, h: 16 },
+    { x: 450, y: 275,        w: 110, h: 16 },
+  ];
+  const enemies: Enemy[] = [
+    { id:'are-0', x:80,  y:GROUND_TOP-EH, vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:50,  patrolRight:340 },
+    { id:'are-1', x:250, y:GROUND_TOP-EH, vx:-ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:100, patrolRight:420 },
+    { id:'are-2', x:420, y:GROUND_TOP-EH, vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:320, patrolRight:620 },
+    { id:'are-3', x:580, y:GROUND_TOP-EH, vx:-ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:480, patrolRight:730 },
+    { id:'are-4', x:215, y:295-EH,        vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:200, patrolRight:310 },
+  ];
+  const coins: Coin[] = [
+    { id:'arc-0', x:215, y:275, collected:false },
+    { id:'arc-1', x:460, y:255, collected:false },
+    { id:'arc-2', x:600, y:268, collected:false },
+  ];
+  return {
+    type: 'ambush', width: 800, platforms, bricks: [], enemies, coins,
+    exitX: 720, exitY: ROOM_EXIT_PIPE_Y,
   };
 }
 
@@ -180,13 +270,18 @@ function buildLevel(seed: number): LevelGeom {
     [3110, PIPE_GY],   // 5 — Underground
   ];
 
-  const pipes: Pipe[] = SLOTS.map(([px, py], idx) => ({
-    id: `pipe-${idx}`,
-    x: px, y: py,
-    slotIndex: idx,
-    routeIndex: config.correctPipeSlots.indexOf(idx), // 0/1/2 or -1
-    done: false,
-  }));
+  const pipes: Pipe[] = SLOTS.map(([px, py], idx) => {
+    const routeIndex = config.correctPipeSlots.indexOf(idx);
+    const pipeType: PipeType = routeIndex >= 0 ? 'correct' : config.wrongPipeTypes[idx];
+    return {
+      id: `pipe-${idx}`,
+      x: px, y: py,
+      slotIndex: idx,
+      routeIndex,
+      pipeType,
+      done: false,
+    };
+  });
 
   // Ground + platforms
   const platforms: Rect[] = [
@@ -311,7 +406,8 @@ function updateGame(
   if (gs.phase === 'pipe_flash') {
     gs.pipeFlashTimer -= dt;
     if (gs.pipeFlashTimer <= 0) {
-      if (!gs.pipeFlashCorrect) {
+      // Setback: teleport to last spawn.  Correct / dead: stay in place.
+      if (gs.pipeFlashType === 'setback') {
         gs.player.x = gs.spawnX; gs.player.y = gs.spawnY;
         gs.player.vx = 0;        gs.player.vy = 0;
       }
@@ -335,6 +431,12 @@ function updateGame(
     gs.finalElapsedMs = elapsed;
     gs.finalScore     = computeFinalScore(gs, elapsed);
     gs.phase = 'complete';
+    return;
+  }
+
+  // ── Room mode: delegate physics/rendering to the side-room ───────────────
+  if (gs.room !== null) {
+    updateRoom(gs, keys, dt, now);
     return;
   }
 
@@ -450,29 +552,62 @@ function updateGame(
     }
   }
 
-  // ── Pipe entry ────────────────────────────────────────────────────────────
+  // ── Pipe entry (main level) ───────────────────────────────────────────────
   if (goDown) {
     for (const pipe of geom.pipes) {
-      if (pipe.routeIndex !== -1 && pipe.done) continue;
+      if (pipe.done) continue; // already used (correct/bonus/ambush/dead all set done)
       const cx = player.x + PW / 2;
       const inX = cx > pipe.x - 4 && cx < pipe.x + PIPE_W + 4;
       const inY = player.onGround && Math.abs((player.y + PH) - (pipe.y + PIPE_H)) < 12;
-      if (inX && inY) {
+      if (!inX || !inY) continue;
+
+      if (pipe.pipeType === 'correct') {
         if (pipe.routeIndex === gs.pipesComplete) {
-          // Correct pipe, correct order
+          // Correct pipe entered in the right order
           pipe.done = true; gs.pipesComplete++;
-          gs.pipeFlashCorrect = true;
+          gs.pipeFlashType = 'correct';
           if (gs.pipesComplete === 3) gs.gateOpen = true;
         } else {
-          // Wrong pipe (decoy or correct pipe entered out of order)
+          // Correct pipe entered out of order → setback
           gs.wrongPipes++;
-          gs.score        = Math.max(0, gs.score - P_WRONG_PIPE);
-          gs.pipeFlashCorrect = false;
+          gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
+          gs.pipeFlashType = 'setback';
         }
         gs.pipeFlashTimer = PIPE_FLASH_MS;
-        gs.phase          = 'pipe_flash';
-        return;
+        gs.phase = 'pipe_flash';
+
+      } else if (pipe.pipeType === 'setback') {
+        // Penalise and teleport to last checkpoint (re-enterable — no done flag)
+        gs.wrongPipes++;
+        gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
+        gs.pipeFlashType = 'setback';
+        gs.pipeFlashTimer = PIPE_FLASH_MS;
+        gs.phase = 'pipe_flash';
+
+      } else if (pipe.pipeType === 'bonus') {
+        // Teleport to the bonus treasure room; mark pipe done (one visit only)
+        pipe.done = true;
+        gs.room = buildBonusRoom();
+        gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
+        gs.player.vx = 0; gs.player.vy = 0;
+        gs.camera = 0;
+
+      } else if (pipe.pipeType === 'ambush') {
+        // Teleport to the ambush trap room; mark pipe done (one visit only)
+        pipe.done = true;
+        gs.room = buildAmbushRoom();
+        gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
+        gs.player.vx = 0; gs.player.vy = 0;
+        gs.camera = 0;
+
+      } else {
+        // dead pipe: brief visual animation, player stays in place, no progress
+        pipe.done = true;
+        gs.pipeFlashType = 'dead';
+        gs.pipeFlashTimer = PIPE_FLASH_MS;
+        gs.phase = 'pipe_flash';
       }
+      return;
     }
   }
 
@@ -492,6 +627,121 @@ function updateGame(
   gs.camera = Math.max(0, Math.min(geom.width - CW, player.x - CW * 0.4));
 }
 
+// ═══ Room update ══════════════════════════════════════════════════════════════
+/**
+ * Physics, collision, and entity updates for when the player is inside a
+ * bonus or ambush side-room.  Mirrors the main-level update logic but uses
+ * the room's own geometry.  The timer still ticks in the background.
+ */
+function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): void {
+  const room = gs.room;
+  if (!room) return;
+  const { player } = gs;
+  const sc = dt / 16.667;
+
+  const goLeft  = keys.has('ArrowLeft')  || keys.has('KeyA');
+  const goRight = keys.has('ArrowRight') || keys.has('KeyD');
+  const jump    = keys.has('ArrowUp')    || keys.has('KeyW') || keys.has('Space') || keys.has('KeyZ');
+  const goDown  = keys.has('ArrowDown')  || keys.has('KeyS');
+
+  player.vx = goLeft ? -WALK : goRight ? WALK : 0;
+  if (goLeft)  player.facingRight = false;
+  if (goRight) player.facingRight = true;
+  if (jump && player.onGround) { player.vy = JUMP_VY; player.onGround = false; }
+
+  // Physics
+  player.vy = Math.min(player.vy + GRAVITY * sc, MAX_FALL);
+  const prevY = player.y;
+  player.y   += player.vy * sc;
+  player.x    = Math.max(0, Math.min(room.width - PW, player.x + player.vx * sc));
+  player.onGround = false;
+
+  // Platform / ground collision (room)
+  for (const surf of room.platforms) {
+    if (
+      player.x + PW > surf.x && player.x < surf.x + surf.w &&
+      prevY + PH <= surf.y + 4 && player.y + PH >= surf.y && player.vy >= 0
+    ) {
+      player.y = surf.y - PH; player.vy = 0; player.onGround = true;
+    }
+  }
+
+  // Brick collisions (room)
+  for (const brick of room.bricks) {
+    if (brick.broken) { if (brick.bounceTimer > 0) { brick.bounceTimer -= dt; } continue; }
+    const br: Rect = { x: brick.x, y: brick.y, w: BRICK, h: BRICK };
+    if (
+      player.x + PW > br.x && player.x < br.x + br.w &&
+      prevY + PH <= br.y + 4 && player.y + PH >= br.y && player.vy >= 0
+    ) {
+      player.y = br.y - PH; player.vy = 0; player.onGround = true;
+    }
+    if (
+      player.vy < 0 &&
+      player.x + PW - 4 > br.x && player.x + 4 < br.x + br.w &&
+      player.y <= br.y + br.h && prevY > br.y + br.h - 4
+    ) {
+      brick.broken = true; brick.bounceTimer = 300;
+      gs.score += S_BRICK; player.vy = Math.abs(player.vy) * 0.3;
+    }
+    if (brick.bounceTimer > 0) brick.bounceTimer -= dt;
+  }
+
+  // Pit death in room → respawn at room entrance with damage
+  if (player.y > PLAY_H + 60) {
+    gs.score  = Math.max(0, gs.score - P_DEATH);
+    gs.hearts = Math.max(0, gs.hearts - 1);
+    if (gs.hearts === 0) gs.hearts = MAX_HEARTS;
+    player.invincibleUntil = now + INVINCIBLE_MS;
+    player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
+    return;
+  }
+
+  // Enemies (room)
+  const pR: Rect = { x: player.x, y: player.y, w: PW, h: PH };
+  for (const enemy of room.enemies) {
+    if (enemy.squishTimer > 0) { enemy.squishTimer -= dt; continue; }
+    if (!enemy.alive) continue;
+    enemy.x += enemy.vx * sc;
+    if (enemy.x <= enemy.patrolLeft || enemy.x + EW >= enemy.patrolRight) {
+      enemy.vx = -enemy.vx;
+      enemy.x  = Math.max(enemy.patrolLeft, Math.min(enemy.patrolRight - EW, enemy.x));
+    }
+    const eR: Rect = { x: enemy.x, y: enemy.y, w: EW, h: EH };
+    if (overlaps(pR, eR)) {
+      if (player.vy > 0 && player.y + PH < enemy.y + EH * 0.45 + player.vy * sc + 4) {
+        enemy.alive = false; enemy.squishTimer = 500;
+        gs.score += S_ENEMY; player.vy = -8;
+      } else if (now >= player.invincibleUntil) {
+        gs.score  = Math.max(0, gs.score - P_DEATH);
+        gs.hearts = Math.max(0, gs.hearts - 1);
+        if (gs.hearts === 0) gs.hearts = MAX_HEARTS;
+        player.invincibleUntil = now + INVINCIBLE_MS;
+        player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
+        return;
+      }
+    }
+  }
+
+  // Coins (room)
+  for (const coin of room.coins) {
+    if (coin.collected) continue;
+    if (overlaps(pR, { x: coin.x-COIN_R, y: coin.y-COIN_R, w: COIN_R*2, h: COIN_R*2 })) {
+      coin.collected = true; gs.score += S_COIN;
+    }
+  }
+
+  // Exit pipe detection — press ↓ at the exit pipe to leave
+  const cx = player.x + PW / 2;
+  const inX = cx > room.exitX - 4 && cx < room.exitX + PIPE_W + 4;
+  const inY = player.onGround && Math.abs((player.y + PH) - (room.exitY + PIPE_H)) < 12;
+  if (goDown && inX && inY) {
+    gs.room = null; // back to main level
+    player.x = gs.spawnX; player.y = gs.spawnY; player.vx = 0; player.vy = 0;
+    gs.camera = Math.max(0, Math.min(gs.geom.width - CW, gs.spawnX - CW * 0.4));
+  }
+}
+
 // ═══ Renderer ════════════════════════════════════════════════════════════════
 function renderGame(
   ctx: CanvasRenderingContext2D,
@@ -499,6 +749,12 @@ function renderGame(
   now: number,
   timeLimitMs: number,
 ): void {
+  // Delegate to the room renderer while the player is inside a side-room.
+  if (gs.room !== null) {
+    renderRoom(ctx, gs, now, timeLimitMs);
+    return;
+  }
+
   ctx.clearRect(0, 0, CW, CH);
 
   // Background
@@ -558,24 +814,32 @@ function renderGame(
 
   // Pipes
   for (const pipe of gs.geom.pipes) {
-    const isRoute = pipe.routeIndex >= 0;
+    const isRoute = pipe.pipeType === 'correct';
     const isDone  = pipe.done;
-    ctx.fillStyle = isDone ? '#1a5c1a' : isRoute ? '#1e7a1e' : '#7a1e1e';
+    // Correct pipes: green while available, dark green when done.
+    // Wrong pipes (any other type): red while available, dark when done.
+    // Players can't see the wrong-pipe sub-type — they all show '?' until entered.
+    ctx.fillStyle = isRoute
+      ? (isDone ? '#1a5c1a' : '#1e7a1e')
+      : (isDone ? '#3a1a1a' : '#7a1e1e');
     ctx.fillRect(pipe.x+4, pipe.y+14, PIPE_W-8, PIPE_H-14);
-    ctx.fillStyle = isDone ? '#2a8a2a' : isRoute ? '#28a028' : '#a02828';
+    ctx.fillStyle = isRoute
+      ? (isDone ? '#2a8a2a' : '#28a028')
+      : (isDone ? '#5a2a2a' : '#a02828');
     ctx.fillRect(pipe.x, pipe.y, PIPE_W, 14);
     // Shine
     ctx.fillStyle = 'rgba(255,255,255,0.1)';
     ctx.fillRect(pipe.x+8, pipe.y+16, 8, PIPE_H-18);
-    // Label
+    // Label: Ⅰ/Ⅱ/Ⅲ for correct pipes (route order visible), '?' for others, '✕' once used
     ctx.fillStyle = isDone ? '#afffaf' : '#fff';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const routeLabels = ['Ⅰ','Ⅱ','Ⅲ'];
-    ctx.fillText(
-      isRoute ? (isDone ? '✓' : routeLabels[pipe.routeIndex]) : '?',
-      pipe.x + PIPE_W/2, pipe.y + PIPE_H * 0.62,
-    );
+    let pipeLabel: string;
+    if (isRoute)       { pipeLabel = isDone ? '✓' : routeLabels[pipe.routeIndex]; }
+    else if (isDone)   { pipeLabel = '✕'; }
+    else               { pipeLabel = '?'; }
+    ctx.fillText(pipeLabel, pipe.x + PIPE_W/2, pipe.y + PIPE_H * 0.62);
   }
 
   // Checkpoints
@@ -668,18 +932,32 @@ function renderGame(
     ctx.strokeRect(px+(fr?0:PW-8), py+16, 8, 14);
   }
 
-  // Pipe flash / correct-pipe overlay
+  // Pipe flash overlay (correct / setback / dead)
   if (gs.phase === 'pipe_flash') {
     const alpha = Math.min(0.5, (gs.pipeFlashTimer / PIPE_FLASH_MS) * 0.5);
-    ctx.fillStyle = gs.pipeFlashCorrect ? `rgba(0,200,80,${alpha})` : `rgba(220,30,30,${alpha})`;
+    const overlayColor =
+      gs.pipeFlashType === 'correct' ? `rgba(0,200,80,${alpha})`
+      : gs.pipeFlashType === 'dead'  ? `rgba(100,100,100,${alpha})`
+      :                                `rgba(220,30,30,${alpha})`;
+    ctx.fillStyle = overlayColor;
     ctx.fillRect(gs.camera, 0, CW, PLAY_H);
     ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = gs.pipeFlashCorrect ? '#4ade80' : '#f87171';
+    ctx.fillStyle =
+      gs.pipeFlashType === 'correct' ? '#4ade80'
+      : gs.pipeFlashType === 'dead'  ? '#9ca3af'
+      :                                '#f87171';
     const idx = gs.pipesComplete - 1;
-    const label = gs.pipeFlashCorrect
-      ? (gs.pipesComplete === 3 ? '🗝️ All pipes found! Gate opens!' : `✅ Pipe ${['Ⅰ','Ⅱ','Ⅲ'][idx]} found — ${gs.pipesComplete}/3`)
-      : '❌ Wrong pipe! Back to spawn…';
-    ctx.fillText(label, gs.camera + CW/2, PLAY_H/2);
+    let flashLabel: string;
+    if (gs.pipeFlashType === 'correct') {
+      flashLabel = gs.pipesComplete === 3
+        ? '🗝️ All pipes found! Gate opens!'
+        : `✅ Pipe ${['Ⅰ','Ⅱ','Ⅲ'][idx]} found — ${gs.pipesComplete}/3`;
+    } else if (gs.pipeFlashType === 'setback') {
+      flashLabel = '❌ Wrong pipe! Back to spawn…';
+    } else {
+      flashLabel = '💀 Dead end! No progress made.';
+    }
+    ctx.fillText(flashLabel, gs.camera + CW/2, PLAY_H/2);
   }
 
   ctx.restore();
@@ -723,6 +1001,133 @@ function drawHUD(
   ctx.fillText(`🔑 ${gs.pipesComplete}/3`, CW-16, midY);
 }
 
+// ═══ Room renderer ════════════════════════════════════════════════════════════
+/**
+ * Renders the bonus or ambush side-room with its own background, geometry,
+ * entities, and the persistent HUD strip at the top.
+ */
+function renderRoom(
+  ctx: CanvasRenderingContext2D,
+  gs: GameState,
+  now: number,
+  timeLimitMs: number,
+): void {
+  const room = gs.room;
+  if (!room) return;
+  const { player } = gs;
+
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Distinct background per room type
+  const bg = ctx.createLinearGradient(0, HUD_H, 0, CH);
+  if (room.type === 'bonus') {
+    bg.addColorStop(0, '#2d1b00'); bg.addColorStop(1, '#1a0e00');
+  } else {
+    bg.addColorStop(0, '#2d0000'); bg.addColorStop(1, '#1a0000');
+  }
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, HUD_H, CW, PLAY_H);
+
+  // Room-type banner (just below HUD)
+  ctx.fillStyle = room.type === 'bonus' ? '#fbbf24' : '#ef4444';
+  ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(
+    room.type === 'bonus' ? '✨ BONUS ROOM — collect coins & break bricks!' : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
+    CW / 2, HUD_H + 4,
+  );
+
+  ctx.save();
+  ctx.translate(0, HUD_H);
+
+  // Ground
+  const [gnd] = room.platforms;
+  ctx.fillStyle = room.type === 'bonus' ? '#78501a' : '#5c1a1a';
+  ctx.fillRect(gnd.x, gnd.y, gnd.w, gnd.h);
+
+  // Elevated platforms
+  for (let i = 1; i < room.platforms.length; i++) {
+    const p = room.platforms[i];
+    ctx.fillStyle = room.type === 'bonus' ? '#9a7030' : '#7a3030';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = room.type === 'bonus' ? '#c09040' : '#9a4040';
+    ctx.fillRect(p.x, p.y, p.w, 4);
+  }
+
+  // Bricks (bonus room only)
+  for (const b of room.bricks) {
+    if (b.broken) {
+      ctx.strokeStyle = '#7a4020'; ctx.lineWidth = 1;
+      ctx.strokeRect(b.x, b.y, BRICK, BRICK); continue;
+    }
+    const dy = b.bounceTimer > 0 ? -5 : 0;
+    ctx.fillStyle = '#c8a040'; ctx.fillRect(b.x, b.y+dy, BRICK, BRICK);
+    ctx.fillStyle = '#e0b850'; ctx.fillRect(b.x+2, b.y+dy+2, BRICK-4, 12);
+    ctx.strokeStyle = '#906020'; ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, b.y+dy, BRICK, BRICK);
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y+dy+16); ctx.lineTo(b.x+BRICK, b.y+dy+16);
+    ctx.moveTo(b.x+16, b.y+dy); ctx.lineTo(b.x+16, b.y+dy+16);
+    ctx.stroke();
+  }
+
+  // Exit pipe (always green — the way out)
+  ctx.fillStyle = '#1a5c1a'; ctx.fillRect(room.exitX+4, room.exitY+14, PIPE_W-8, PIPE_H-14);
+  ctx.fillStyle = '#28a028'; ctx.fillRect(room.exitX, room.exitY, PIPE_W, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(room.exitX+8, room.exitY+16, 8, PIPE_H-18);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('EXIT', room.exitX + PIPE_W/2, room.exitY + PIPE_H * 0.62);
+
+  // Coins
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const coin of room.coins) {
+    if (coin.collected) continue;
+    const wobble = Math.sin(now * 0.003 + coin.x * 0.01) * 2;
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath(); ctx.arc(coin.x, coin.y+wobble, COIN_R, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#78350f'; ctx.font = 'bold 8px sans-serif';
+    ctx.fillText('$', coin.x, coin.y+wobble);
+  }
+
+  // Enemies
+  for (const e of room.enemies) {
+    if (!e.alive && e.squishTimer <= 0) continue;
+    const squished = !e.alive;
+    const eh = squished ? 8 : EH;
+    const ey = squished ? e.y + EH - 8 : e.y;
+    ctx.fillStyle = '#dc2626'; ctx.fillRect(e.x, ey, EW, eh);
+    if (!squished) {
+      ctx.fillStyle = '#fff';
+      const ex = e.vx > 0 ? e.x+EW-12 : e.x+4;
+      ctx.fillRect(ex, e.y+5, 7, 7);
+      ctx.fillStyle = '#000'; ctx.fillRect(ex + (e.vx>0 ? 2:1), e.y+7, 3, 3);
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(e.x+2, e.y+EH-6, 8, 6); ctx.fillRect(e.x+EW-10, e.y+EH-6, 8, 6);
+    }
+  }
+
+  // Player
+  const blink = now < player.invincibleUntil && Math.floor(now / 100) % 2 === 1;
+  if (!blink) {
+    const px = player.x; const py = player.y; const fr = player.facingRight;
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(px+2, py+PH-12, 10, 12); ctx.fillRect(px+PW-12, py+PH-12, 10, 12);
+    ctx.fillStyle = '#2563eb'; ctx.fillRect(px+2, py+14, PW-4, PH-26);
+    ctx.fillStyle = '#3b82f6'; ctx.fillRect(px+4, py+16, 6, PH-28);
+    ctx.fillStyle = '#fde68a'; ctx.fillRect(px+5, py+2, PW-10, 14);
+    ctx.fillStyle = '#1e3a8a'; ctx.fillRect(px+3, py-5, PW-6, 11);
+    ctx.fillStyle = '#ef4444'; ctx.fillRect(px+(fr?PW-7:3), py-10, 5, 7);
+    ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+4, 4, 4);
+    ctx.fillStyle = '#1d4ed8'; ctx.fillRect(px+(fr?0:PW-8), py+16, 8, 14);
+    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1; ctx.strokeRect(px+(fr?0:PW-8), py+16, 8, 14);
+  }
+
+  ctx.restore();
+
+  // Normal HUD (timer keeps ticking while in room)
+  drawHUD(ctx, gs, now, timeLimitMs);
+}
+
 // ═══ Component ════════════════════════════════════════════════════════════════
 
 interface CastleRescueGameProps {
@@ -759,9 +1164,10 @@ export default function CastleRescueGame({
       pipesComplete:0, wrongPipes:0,
       startTime:performance.now(), finalElapsedMs:0,
       spawnX:80, spawnY,
-      pipeFlashTimer:0, pipeFlashCorrect:true,
+      pipeFlashTimer:0, pipeFlashType: 'correct',
       deathPauseTimer:0,
       princessRescued:false, gateOpen:false, finalScore:0,
+      room: null,
     };
   }, [seed]);
 
