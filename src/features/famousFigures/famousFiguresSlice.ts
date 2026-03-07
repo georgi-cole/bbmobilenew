@@ -40,6 +40,8 @@ export interface FamousFiguresState {
   playerRoundScores: Record<string, number[]>;
   playerCorrect: Record<string, boolean>;
   playerGuesses: Record<string, string[]>;
+  /** Unix timestamp (ms) when each player answered correctly this round. */
+  playerCorrectTimestamp: Record<string, number>;
   correctPlayers: string[];
   figureOrder: number[];
   round: number;
@@ -69,6 +71,7 @@ const initialState: FamousFiguresState = {
   playerRoundScores: {},
   playerCorrect: {},
   playerGuesses: {},
+  playerCorrectTimestamp: {},
   correctPlayers: [],
   figureOrder: [],
   round: 0,
@@ -201,10 +204,36 @@ function determineWinner(
 function resetRoundPlayerState(state: FamousFiguresState): void {
   state.playerCorrect = {};
   state.playerGuesses = {};
+  state.playerCorrectTimestamp = {};
   state.correctPlayers = [];
   state.roundComplete = false;
   state.hintsRevealed = 0;
   state.timerPhase = 'clue';
+}
+
+/**
+ * Record per-round scores and transition the match to round_reveal.
+ * Safe to call multiple times — guards against status !== round_active.
+ */
+function doEndRound(state: FamousFiguresState): void {
+  if (state.status !== 'round_active') return;
+
+  const allIds = Object.keys(state.playerScores);
+  for (const id of allIds) {
+    if (!state.playerRoundScores[id]) state.playerRoundScores[id] = [];
+    if (state.playerRoundScores[id].length === state.currentRound) {
+      const previousTotal = state.playerRoundScores[id].reduce(
+        (sum, value) => sum + value,
+        0,
+      );
+      const currentTotal = state.playerScores[id] ?? 0;
+      const roundScore = Math.max(0, currentTotal - previousTotal);
+      state.playerRoundScores[id].push(roundScore);
+    }
+  }
+
+  state.status = 'round_reveal';
+  state.roundComplete = true;
 }
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -249,6 +278,7 @@ const famousFiguresSlice = createSlice({
       state.playerRoundScores = {};
       state.playerCorrect = {};
       state.playerGuesses = {};
+      state.playerCorrectTimestamp = {};
       for (const id of participantIds) {
         state.playerScores[id] = 0;
         state.playerRoundScores[id] = [];
@@ -260,6 +290,7 @@ const famousFiguresSlice = createSlice({
     /** Reveal the next hint (increment hintsRevealed, update timerPhase). */
     revealNextHint(state) {
       if (state.status !== 'round_active') return;
+      if (state.roundComplete) return;
       if (state.hintsRevealed >= 5) return;
       state.hintsRevealed += 1;
       const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'overtime', 'done'];
@@ -270,8 +301,10 @@ const famousFiguresSlice = createSlice({
     /**
      * Advance the timer phase to the next stage.
      * The React component calls this on each timer expiry.
+     * No-ops when the round has already been solved (roundComplete).
      */
     advanceTimer(state) {
+      if (state.roundComplete) return;
       const order: FamousFiguresTimerPhase[] = [
         'clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'overtime', 'done',
       ];
@@ -290,13 +323,15 @@ const famousFiguresSlice = createSlice({
     /**
      * Submit a player's guess for the current figure.
      * Checks fuzzy match, awards points, suppresses duplicates.
+     * On first accepted correct guess: records timestamp, closes the round
+     * immediately (transitions to round_reveal), and stops hint timers.
      */
     submitPlayerGuess(
       state,
-      action: PayloadAction<{ playerId: string; guess: string }>,
+      action: PayloadAction<{ playerId: string; guess: string; timestamp?: number }>,
     ) {
       if (state.status !== 'round_active') return;
-      const { playerId, guess } = action.payload;
+      const { playerId, guess, timestamp } = action.payload;
 
       // Ensure player exists
       if (!(playerId in state.playerGuesses)) {
@@ -328,37 +363,19 @@ const famousFiguresSlice = createSlice({
         const points = getPointsForHintsUsed(state.hintsRevealed);
         if (!(playerId in state.playerScores)) state.playerScores[playerId] = 0;
         state.playerScores[playerId] += points;
+        // Record time-to-correct for tiebreaker traceability
+        state.playerCorrectTimestamp[playerId] = timestamp ?? Date.now();
+        // Close the round immediately on first correct answer
+        doEndRound(state);
       }
     },
 
     /**
      * End the current round: record per-round scores, transition to
-     * round_reveal.
+     * round_reveal. No-op if the round was already closed by a correct answer.
      */
     endRound(state) {
-      if (state.status !== 'round_active') return;
-
-      // Record this round's score for each player as the delta between their
-      // current cumulative total and the sum of all previous rounds. This
-      // correctly captures the exact points awarded at the moment the player
-      // answered (regardless of how many hints were revealed when endRound fires).
-      const allIds = Object.keys(state.playerScores);
-      for (const id of allIds) {
-        if (!state.playerRoundScores[id]) state.playerRoundScores[id] = [];
-        // Only push if we haven't already recorded this round
-        if (state.playerRoundScores[id].length === state.currentRound) {
-          const previousTotal = state.playerRoundScores[id].reduce(
-            (sum, value) => sum + value,
-            0,
-          );
-          const currentTotal = state.playerScores[id] ?? 0;
-          const roundScore = Math.max(0, currentTotal - previousTotal);
-          state.playerRoundScores[id].push(roundScore);
-        }
-      }
-
-      state.status = 'round_reveal';
-      state.roundComplete = true;
+      doEndRound(state);
     },
 
     /**
