@@ -248,9 +248,14 @@ export default function FamousFiguresComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.status, ff.currentRound, ff.hintsRevealed]);
 
-  // Submit AI answers when their submission is available
+  // Submit AI answers only after the clue phase has expired.
+  // Guarding on timerPhase !== 'clue' prevents the AI from immediately
+  // closing the round before the human has seen the clue (autopilot regression
+  // fix). The human always gets the full 15-second base-clue window first.
   useEffect(() => {
     if (ff.status !== 'round_active') return;
+    // Wait until at least the first hint phase starts — human gets full clue window.
+    if (ff.timerPhase === 'clue') return;
     const round = ff.currentRound;
     const aiSubs = ff.aiSubmissions[round];
     if (!aiSubs) return;
@@ -266,7 +271,7 @@ export default function FamousFiguresComp({
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ff.aiSubmissions, ff.currentRound, ff.status]);
+  }, [ff.aiSubmissions, ff.currentRound, ff.status, ff.timerPhase]);
 
   // ── Auto-advance from reveal ──────────────────────────────────────────────
   useEffect(() => {
