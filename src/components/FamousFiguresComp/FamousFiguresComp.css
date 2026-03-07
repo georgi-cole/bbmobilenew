@@ -500,6 +500,34 @@
   margin: 0;
 }
 
+/* ── Continue button (final screen) ─────────────────────────────────────── */
+
+.ff-continue-btn {
+  margin-top: 1rem;
+  padding: 0.85rem 2.5rem;
+  background: linear-gradient(135deg, #3ca0ff 0%, #1c70cc 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+  touch-action: manipulation;
+  min-height: 52px;
+  box-shadow: 0 4px 16px rgba(60, 160, 255, 0.4);
+}
+
+.ff-continue-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 24px rgba(60, 160, 255, 0.55);
+}
+
+.ff-continue-btn:active {
+  transform: scale(0.98);
+}
+
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
 .ff-container--loading {
