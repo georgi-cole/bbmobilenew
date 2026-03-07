@@ -59,13 +59,12 @@ describe('getHintText — standard two-part name', () => {
     expect(text.toLowerCase()).toContain('last name');
   });
 
-  it('hint 4 starts with "Either" and contains both initials and letter counts', () => {
+  it('hint 4 reveals the full first name and asks for the last name', () => {
     const text = getHintText(figure, 4);
-    expect(text).toMatch(/^Either/i);
-    expect(text).toContain("'A'");
-    expect(text).toContain("'E'");
-    expect(text).toContain('6'); // "Albert" has 6 letters
-    expect(text).toContain('8'); // "Einstein" has 8 letters
+    expect(text).toContain('"Albert"');
+    expect(text.toLowerCase()).toContain('last name');
+    // Should NOT look like the old "Either..." format
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 
@@ -84,11 +83,11 @@ describe('getHintText — mononym (single name)', () => {
     expect(text).toContain('9'); // "Cleopatra" has 9 letters
   });
 
-  it('hint 4 mentions single-name format and letter count', () => {
+  it('hint 4 reveals the full name for mononyms', () => {
     const text = getHintText(figure, 4);
-    expect(text).toMatch(/^Either/i);
-    expect(text).toContain("'C'");
-    expect(text).toContain('9');
+    expect(text).toContain('"Cleopatra"');
+    // Should NOT look like the old "Either..." format
+    expect(text).not.toMatch(/^Either/i);
   });
 });
 
@@ -105,12 +104,10 @@ describe('getHintText — regnal / multi-word last name', () => {
     expect(text).toContain("'B'");
   });
 
-  it('hint 4 shows both initials and letter counts', () => {
+  it('hint 4 reveals the first name and prompts for last name', () => {
     const text = getHintText(figure, 4);
-    expect(text).toContain("'N'");
-    expect(text).toContain("'B'");
-    expect(text).toContain('8');  // "Napoleon" has 8 letters
-    expect(text).toContain('9');  // "Bonaparte" has 9 letters
+    expect(text).toContain('"Napoleon"');
+    expect(text.toLowerCase()).toContain('last name');
   });
 });
 

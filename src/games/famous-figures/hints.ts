@@ -6,7 +6,8 @@
  *   1  →  dataset hints[1]  — another big content clue
  *   2  →  generated          — "First name starts with 'X'"
  *   3  →  generated          — "Last name starts with 'Y'" (mononym fallback)
- *   4  →  generated          — "Either first name (X, N letters) or last name (Y, M letters)"
+ *   4  →  generated          — "The first name is {firstName} — guess the last name!"
+ *                              (for mononyms: "The full name is {name}!")
  */
 import type { FigureRow } from './model';
 
@@ -54,9 +55,9 @@ export function getHintText(figure: FigureRow, hintIndex: number): string {
   }
 
   // hintIndex === 4  (Hint 5)
+  // Reveal the full first name; player must guess the last name.
   if (isMononym) {
-    return `Either this person goes by one name — ${first.length} letters starting with '${firstInitial}'`;
+    return `The full name is "${first}" — type it to confirm!`;
   }
-  const lastInitial = (last[0] ?? '?').toUpperCase();
-  return `Either first name (starts with '${firstInitial}', ${first.length} letters) or last name (starts with '${lastInitial}', ${last.length} letters)`;
+  return `The first name is "${first}" — now guess the last name!`;
 }
