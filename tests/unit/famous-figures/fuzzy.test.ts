@@ -82,6 +82,8 @@ describe('normalizeForMatching', () => {
 
   it('removes punctuation', () => {
     expect(normalizeForMatching("Jeanne d'Arc")).toBe('jeanne arc');
+    // Typographic (curly) apostrophe from mobile keyboards
+    expect(normalizeForMatching('Jeanne d\u2019Arc')).toBe('jeanne arc');
     expect(normalizeForMatching('Martin Luther King Jr.')).toBe('martin luther king jr');
   });
 

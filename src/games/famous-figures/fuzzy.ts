@@ -21,7 +21,7 @@ export function normalizeForMatching(text: string): string {
   let s = text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // strip combining diacritics
-    .replace(/['''`]/g, ' ')          // apostrophes/elisions → space before other punct removal
+    .replace(/['''\u2018\u2019\u201B`´\u2032\u2035]/g, ' ') // apostrophes/elisions (ASCII + typographic) → space
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '') // strip remaining punctuation/symbols
     .replace(/\s+/g, ' ')

@@ -3,6 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import famousFiguresReducer, {
   startFamousFigures,
   revealNextHint,
+  advanceTimer,
   submitPlayerGuess,
   endRound,
   nextRound,
@@ -83,6 +84,17 @@ describe('famousFiguresSlice', () => {
     expect(s.playerGuesses[PLAYER_A]).toHaveLength(1);
   });
 
+  it('duplicate suppression is case-insensitive (normalised comparison)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'Einstein' }));
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'einstein' })); // same after normalisation
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'EINSTEIN' }));
+    const s = getState(store);
+    // All three normalise to the same string — only 1 entry should be stored
+    expect(s.playerGuesses[PLAYER_A]).toHaveLength(1);
+  });
+
   it('revealNextHint increments hintsRevealed', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
@@ -98,6 +110,20 @@ describe('famousFiguresSlice', () => {
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     for (let i = 0; i < 10; i++) store.dispatch(revealNextHint());
     expect(getState(store).hintsRevealed).toBe(5);
+  });
+
+  it('advanceTimer progresses past hint_5 to overtime (timer deadlock fix)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    // Advance through all hint phases
+    for (let i = 0; i < 5; i++) store.dispatch(revealNextHint());
+    expect(getState(store).timerPhase).toBe('hint_5');
+    // Firing advanceTimer (not revealNextHint) should transition to overtime
+    store.dispatch(advanceTimer());
+    expect(getState(store).timerPhase).toBe('overtime');
+    // One more advance → done
+    store.dispatch(advanceTimer());
+    expect(getState(store).timerPhase).toBe('done');
   });
 
   it('endRound transitions to round_reveal', () => {

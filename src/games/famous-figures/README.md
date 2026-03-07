@@ -129,9 +129,9 @@ Full **Damerau-Levenshtein** distance (not restricted). Transpositions count as 
 
 ### Mononyms
 Figures known by a single name (e.g. Michelangelo, Mozart, Cleopatra):
-- The `canonicalName` is the mononym.
-- The mononym **must** appear in both `acceptedAliases` and `normalizedAliases`.
-- Short mononyms (≤4 chars) require exact match.
+- The `canonicalName` is the mononym and is **always a direct match target** — you do not need to add it to `acceptedAliases`.
+- Only add the mononym to `acceptedAliases` / `normalizedAliases` if you also want to list alternative spellings or variants of the mononym itself.
+- Short mononyms (≤4 chars) are matched by **exact** spelling only (no fuzzy distance allowed).
 
 ### Regnal and title names
 - Caesar (alias for Julius Caesar), Gandhi (for Mahatma Gandhi).

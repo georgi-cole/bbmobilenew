@@ -12,7 +12,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
 import type { FigureRow } from '../../games/famous-figures/model';
-import { isAcceptedGuess } from '../../games/famous-figures/fuzzy';
+import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import figuresData from '../../games/famous-figures/data/famous_figures.json';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -122,10 +122,13 @@ function fnv1a32(s: string): number {
  * Build deterministic AI submissions for a single round.
  * Returns a map of playerId → correct (boolean).
  *
- * Probability of correct answer depends on figure difficulty:
- *   easy   → 70% at 'clue' stage
- *   medium → 50% at 'hint_2' stage
- *   hard   → 30% at 'hint_3' stage
+ * Probability of correct answer depends solely on figure difficulty:
+ *   easy   → 70 % chance of correct
+ *   medium → 50 % chance of correct
+ *   hard   → 30 % chance of correct
+ *
+ * The result is deterministic: given the same participantIds, figureIndex,
+ * hintsRevealed and rng state, the output is always identical.
  */
 export function buildAiSubmissionsForRound(
   participantIds: string[],
@@ -307,9 +310,10 @@ const famousFiguresSlice = createSlice({
       const trimmed = guess.trim();
       if (trimmed.length === 0) return;
 
-      // Duplicate suppression
+      // Duplicate suppression — compare by normalized form so "Einstein" and "einstein" are the same guess
+      const normalizedGuess = normalizeForMatching(trimmed);
       const already = state.playerGuesses[playerId];
-      if (already.includes(trimmed)) return;
+      if (already.some((g) => normalizeForMatching(g) === normalizedGuess)) return;
       state.playerGuesses[playerId] = [...already, trimmed];
 
       // We call the fuzzy matcher to check the guess.
@@ -334,15 +338,21 @@ const famousFiguresSlice = createSlice({
     endRound(state) {
       if (state.status !== 'round_active') return;
 
-      // Record this round's score for each player (points earned only if correct)
+      // Record this round's score for each player as the delta between their
+      // current cumulative total and the sum of all previous rounds. This
+      // correctly captures the exact points awarded at the moment the player
+      // answered (regardless of how many hints were revealed when endRound fires).
       const allIds = Object.keys(state.playerScores);
       for (const id of allIds) {
         if (!state.playerRoundScores[id]) state.playerRoundScores[id] = [];
         // Only push if we haven't already recorded this round
         if (state.playerRoundScores[id].length === state.currentRound) {
-          const roundScore = state.playerCorrect[id]
-            ? getPointsForHintsUsed(state.hintsRevealed)
-            : 0;
+          const previousTotal = state.playerRoundScores[id].reduce(
+            (sum, value) => sum + value,
+            0,
+          );
+          const currentTotal = state.playerScores[id] ?? 0;
+          const roundScore = Math.max(0, currentTotal - previousTotal);
           state.playerRoundScores[id].push(roundScore);
         }
       }

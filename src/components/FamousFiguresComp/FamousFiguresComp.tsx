@@ -12,6 +12,7 @@ import type { RootState } from '../../store/store';
 import {
   startFamousFigures,
   revealNextHint,
+  advanceTimer,
   submitPlayerGuess,
   endRound,
   nextRound,
@@ -178,8 +179,10 @@ export default function FamousFiguresComp({
       if (phase === 'done' || phase === 'overtime') {
         dispatch(endRound());
       } else {
-        // Auto-reveal next hint
-        dispatch(revealNextHint());
+        // Advance timer phase (clue→hint_1→…→hint_5→overtime→done)
+        // This correctly handles hint_5 expiry by entering overtime rather
+        // than calling revealNextHint() which would be a no-op (capped at 5).
+        dispatch(advanceTimer());
       }
     }, duration);
 
