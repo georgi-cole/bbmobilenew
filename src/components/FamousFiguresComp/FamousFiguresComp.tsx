@@ -290,11 +290,10 @@ export default function FamousFiguresComp({
     const aiSubs = ff.aiSubmissions[round];
     if (!aiSubs) return;
 
-    aiSubmitScheduledRoundRef.current = round;
-
     const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
     if (!figure) return;
 
+    aiSubmitScheduledRoundRef.current = round;
     for (const [aiId, correct] of Object.entries(aiSubs)) {
       if (!correct) continue;
       // Skip AI players who somehow already answered (defensive check).
