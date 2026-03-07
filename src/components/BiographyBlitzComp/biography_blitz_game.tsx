@@ -67,9 +67,10 @@ const HUMAN_ELIM_TIMEOUT_MS = 8_000;
 const WINNER_AUTO_ADVANCE_MS = 1_200;
 
 /**
- * Golden-ratio prime used as a round seed multiplier when computing
- * deterministic AI elimination targets.  Matches the constant used in the
- * slice's `buildAiSubmissions` so all seeded picks share the same multiplier.
+ * Golden-ratio-derived 32-bit constant used as a round seed multiplier when
+ * computing deterministic AI elimination targets. Matches the constant used
+ * in the slice's `buildAiSubmissions` so all seeded picks share the same
+ * multiplier.
  */
 const ELIM_SEED_MULTIPLIER = 0x9e3779b9;
 
