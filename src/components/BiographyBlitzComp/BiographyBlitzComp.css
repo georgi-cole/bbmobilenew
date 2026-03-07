@@ -1,0 +1,350 @@
+/* ─── Biography Blitz Competition Styles ─────────────────────────────────── */
+
+.bb-blitz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100%;
+  background: linear-gradient(160deg, #0d0d2b 0%, #1a0a3c 60%, #0d0d2b 100%);
+  color: #f0e6ff;
+  font-family: inherit;
+  padding: 1rem;
+  box-sizing: border-box;
+  gap: 0.75rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.bb-blitz__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 600px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  border: 1px solid rgba(160, 100, 255, 0.3);
+}
+
+.bb-blitz__comp-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: #a040ff;
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.bb-blitz__title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #d4aaff;
+}
+
+.bb-blitz__round-badge {
+  font-size: 0.75rem;
+  color: #a080d0;
+  font-weight: 600;
+}
+
+/* ── Contestant pills ────────────────────────────────────────────────────── */
+
+.bb-blitz__contestants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.bb-blitz__contestant-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(160, 100, 255, 0.25);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.bb-blitz__contestant-pill--you {
+  border-color: rgba(100, 180, 255, 0.6);
+  background: rgba(100, 180, 255, 0.1);
+}
+
+.bb-blitz__contestant-pill--answered {
+  border-color: rgba(200, 160, 255, 0.5);
+  background: rgba(120, 60, 200, 0.15);
+}
+
+.bb-blitz__contestant-pill--correct {
+  border-color: rgba(80, 220, 120, 0.8);
+  background: rgba(40, 180, 80, 0.18);
+}
+
+.bb-blitz__contestant-pill--wrong {
+  border-color: rgba(255, 80, 80, 0.7);
+  background: rgba(200, 40, 40, 0.15);
+  opacity: 0.65;
+}
+
+.bb-blitz__pill-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.bb-blitz__pill-name {
+  font-weight: 600;
+  color: #e8d5ff;
+}
+
+.bb-blitz__pill-check {
+  color: #80e0a0;
+  font-size: 0.9rem;
+}
+
+/* ── Narration banner ────────────────────────────────────────────────────── */
+
+.bb-blitz__narration {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #c8a8f0;
+  font-style: italic;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  min-height: 2.4rem;
+}
+
+/* ── Question card ───────────────────────────────────────────────────────── */
+
+.bb-blitz__question-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(160, 100, 255, 0.35);
+  border-radius: 12px;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.bb-blitz__question-prompt {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #eedeff;
+  text-align: center;
+  margin: 0 0 0.85rem;
+  line-height: 1.4;
+}
+
+.bb-blitz__answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bb-blitz__answer-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(160, 100, 255, 0.25);
+  border-radius: 8px;
+  color: #e0d0ff;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.bb-blitz__answer-btn:hover:not(:disabled) {
+  background: rgba(140, 80, 240, 0.2);
+  border-color: rgba(160, 100, 255, 0.6);
+  transform: translateX(2px);
+}
+
+.bb-blitz__answer-btn:disabled {
+  cursor: default;
+}
+
+.bb-blitz__answer-btn--selected {
+  background: rgba(120, 60, 210, 0.35);
+  border-color: rgba(180, 120, 255, 0.8);
+}
+
+.bb-blitz__answer-btn--correct {
+  background: rgba(40, 180, 80, 0.25);
+  border-color: rgba(80, 220, 120, 0.9);
+  color: #a0ffb0;
+}
+
+.bb-blitz__answer-btn--wrong {
+  background: rgba(200, 40, 40, 0.2);
+  border-color: rgba(255, 80, 80, 0.7);
+  color: #ffa0a0;
+}
+
+.bb-blitz__answer-letter {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #c090ff;
+  min-width: 1.2rem;
+}
+
+.bb-blitz__answer-text {
+  flex: 1;
+}
+
+.bb-blitz__answer-badge {
+  font-size: 1rem;
+  margin-left: auto;
+}
+
+/* ── Human feedback ──────────────────────────────────────────────────────── */
+
+.bb-blitz__feedback {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  margin: 0;
+  animation: bb-blitz-fade-in 0.3s ease-out;
+}
+
+.bb-blitz__feedback--correct {
+  background: rgba(40, 160, 80, 0.25);
+  border: 1px solid rgba(80, 220, 120, 0.5);
+  color: #80ffaa;
+}
+
+.bb-blitz__feedback--wrong {
+  background: rgba(180, 40, 40, 0.25);
+  border: 1px solid rgba(255, 80, 80, 0.5);
+  color: #ffaaaa;
+}
+
+/* ── Eliminated list ─────────────────────────────────────────────────────── */
+
+.bb-blitz__eliminated {
+  width: 100%;
+  max-width: 600px;
+  font-size: 0.78rem;
+  color: #9070b0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.bb-blitz__eliminated-label {
+  font-weight: 600;
+  color: #705090;
+}
+
+.bb-blitz__eliminated-name {
+  background: rgba(140, 60, 60, 0.2);
+  border: 1px solid rgba(200, 80, 80, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  color: #d090a0;
+}
+
+/* ── Winner screen ───────────────────────────────────────────────────────── */
+
+.bb-blitz--complete {
+  justify-content: center;
+  gap: 1rem;
+}
+
+.bb-blitz__winner-badge {
+  font-size: 4rem;
+  animation: bb-blitz-bounce 0.6s ease-out;
+}
+
+.bb-blitz__winner-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: center;
+  color: #f0d060;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(240, 200, 60, 0.5);
+}
+
+.bb-blitz__winner-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #f0d060;
+  box-shadow: 0 0 20px rgba(240, 200, 60, 0.4);
+}
+
+.bb-blitz__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bb-blitz__winner-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  text-align: center;
+}
+
+.bb-blitz__you-badge {
+  color: #80d0ff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.bb-blitz__winner-subtitle {
+  font-size: 0.85rem;
+  color: #c0a0e0;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Loading state ───────────────────────────────────────────────────────── */
+
+.bb-blitz--loading {
+  justify-content: center;
+  color: #8060a0;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes bb-blitz-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bb-blitz-bounce {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}

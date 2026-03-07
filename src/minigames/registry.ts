@@ -263,6 +263,30 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  biographyBlitz: {
+    key: 'biographyBlitz',
+    title: 'Biography Blitz',
+    description:
+      'Trivia competition — answer questions about your housemates\' biographies. Wrong answer and you\'re out!',
+    instructions: [
+      'Each round a question about a houseguest\'s biography is revealed.',
+      'Tap the correct answer before the timer runs out.',
+      'Answer incorrectly and you are eliminated.',
+      'Last player standing wins the prize.',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'BiographyBlitz',
+    legacy: false,
+    weight: 1,
+    category: 'trivia',
+    retired: false,
+  },
+
   tiltedLedge: {
     key: 'tiltedLedge',
     title: 'The Tilted Ledge',

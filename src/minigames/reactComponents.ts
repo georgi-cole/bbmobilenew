@@ -4,7 +4,7 @@
 // MinigameHost uses this map to generically mount any game whose registry entry
 // has  implementation: 'react'  and a  reactComponentKey  that is NOT already
 // handled by a dedicated special-case branch (e.g. ClosestWithoutGoingOver,
-// HoldTheWall).
+// HoldTheWall, BiographyBlitz).
 //
 // Component contract for generic mounting
 // ─────────────────────────────────────────
