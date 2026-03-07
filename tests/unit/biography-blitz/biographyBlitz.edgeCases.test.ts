@@ -31,6 +31,7 @@ import biographyBlitzReducer, {
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
+  pickElimination,
   resetBiographyBlitz,
 } from '../../../src/features/biographyBlitz/biography_blitz_logic';
 import type { BiographyBlitzQuestion } from '../../../src/features/biographyBlitz/biography_blitz_logic';
@@ -83,6 +84,25 @@ function submitRound(
   }
 }
 
+/**
+ * Run a full round: submit answers, reveal, confirmElimination, and if the
+ * game transitions to choose_elimination, auto-pick the first candidate.
+ * For void rounds, confirmElimination advances directly to question (no pick needed).
+ */
+function doRound(
+  store: ReturnType<typeof makeStore>,
+  correctIds: string[],
+  wrongIds: string[],
+) {
+  submitRound(store, correctIds, wrongIds);
+  store.dispatch(revealResults());
+  store.dispatch(confirmElimination());
+  const bb = store.getState().biographyBlitz;
+  if (bb.status === 'choose_elimination' && bb.eliminationCandidates.length > 0) {
+    store.dispatch(pickElimination({ targetId: bb.eliminationCandidates[0] }));
+  }
+}
+
 // ─── 5-contestant game ────────────────────────────────────────────────────────
 
 describe('5-contestant game', () => {
@@ -93,24 +113,29 @@ describe('5-contestant game', () => {
     expect(store.getState().biographyBlitz.activeContestants).toHaveLength(5);
   });
 
-  it('eliminates 3 wrong-answerers in one round', () => {
+  it('eliminates ONE wrong-answerer per round (winner picks first candidate)', () => {
     const store = startGame(ids);
-    submitRound(store, ['p1', 'p2'], ['p3', 'p4', 'p5']);
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    doRound(store, ['p1', 'p2'], ['p3', 'p4', 'p5']);
 
     const bb = store.getState().biographyBlitz;
-    expect(bb.activeContestants).toEqual(['p1', 'p2']);
-    expect(bb.eliminatedContestants).toHaveLength(3);
+    // New rule: only one eliminated per round — the first candidate (p3)
+    expect(bb.eliminatedContestants).toHaveLength(1);
+    expect(bb.eliminatedContestants).toContain('p3');
+    // All others (including p4, p5 who answered wrong) still active
+    expect(bb.activeContestants).toContain('p1');
+    expect(bb.activeContestants).toContain('p2');
+    expect(bb.activeContestants).toContain('p4');
+    expect(bb.activeContestants).toContain('p5');
     expect(bb.status).toBe('question');
   });
 
-  it('reaches complete after enough rounds', () => {
+  it('reaches complete after enough rounds of one-elimination-per-round', () => {
     const store = startGame(ids, { seed: 1 });
-    // Round 1: p2–p5 wrong → p1 wins round 1
-    submitRound(store, ['p1'], ['p2', 'p3', 'p4', 'p5']);
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    // p1 always answers correctly; eliminate others one by one
+    doRound(store, ['p1'], ['p2', 'p3', 'p4', 'p5']);
+    doRound(store, ['p1'], store.getState().biographyBlitz.activeContestants.filter((id) => id !== 'p1'));
+    doRound(store, ['p1'], store.getState().biographyBlitz.activeContestants.filter((id) => id !== 'p1'));
+    doRound(store, ['p1'], store.getState().biographyBlitz.activeContestants.filter((id) => id !== 'p1'));
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
@@ -128,25 +153,24 @@ describe('6+-contestant game', () => {
     expect(store.getState().biographyBlitz.activeContestants).toHaveLength(6);
   });
 
-  it('eliminates multiple contestants per round', () => {
+  it('eliminates exactly ONE contestant per round (new rule)', () => {
     const store = startGame(ids);
-    submitRound(store, ['p1', 'p2', 'p3'], ['p4', 'p5', 'p6']);
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    doRound(store, ['p1', 'p2', 'p3'], ['p4', 'p5', 'p6']);
 
-    expect(store.getState().biographyBlitz.activeContestants).toHaveLength(3);
-    expect(store.getState().biographyBlitz.eliminatedContestants).toHaveLength(3);
+    // Only one wrong-answerer eliminated; 5 remain
+    expect(store.getState().biographyBlitz.activeContestants).toHaveLength(5);
+    expect(store.getState().biographyBlitz.eliminatedContestants).toHaveLength(1);
   });
 
   it('handles 8 contestants without error', () => {
     const eightIds = Array.from({ length: 8 }, (_, i) => `player${i}`);
     const store = startGame(eightIds, { seed: 7 });
     expect(store.getState().biographyBlitz.activeContestants).toHaveLength(8);
-    submitRound(store, ['player0'], eightIds.slice(1));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    expect(store.getState().biographyBlitz.status).toBe('complete');
-    expect(store.getState().biographyBlitz.winnerId).toBe('player0');
+    // player0 correct, everyone else wrong → enter choose_elimination
+    doRound(store, ['player0'], eightIds.slice(1));
+    // One person eliminated, 7 remain; game continues
+    expect(store.getState().biographyBlitz.activeContestants).toHaveLength(7);
+    expect(store.getState().biographyBlitz.status).toBe('question');
   });
 });
 
@@ -200,7 +224,7 @@ describe('Mixed AI/human game', () => {
     expect(submissions['human']).toBe('a');
   });
 
-  it('game continues after human is eliminated', () => {
+  it('game continues after human is eliminated (AI winner picks human)', () => {
     const store = startGame(['human', 'ai1', 'ai2']);
     const q = currentQ(store);
     const correct = q.correctAnswerId;
@@ -211,7 +235,9 @@ describe('Mixed AI/human game', () => {
     store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: correct }));
     store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: correct }));
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination (AI is winner)
+    // AI auto-picks first candidate (human)
+    store.dispatch(pickElimination({ targetId: 'human' }));
 
     const bb = store.getState().biographyBlitz;
     expect(bb.eliminatedContestants).toContain('human');
@@ -259,7 +285,7 @@ describe('Nobody correct — void round', () => {
 // ─── Single contestant correct ────────────────────────────────────────────────
 
 describe('Single contestant correct', () => {
-  it('eliminates all others and completes the game', () => {
+  it('winner picks ONE person to eliminate per round (not all others)', () => {
     const store = startGame(['p1', 'p2', 'p3', 'p4']);
     const q = currentQ(store);
     const wrong = q.answers.find((a) => a.id !== q.correctAnswerId)!.id;
@@ -269,12 +295,28 @@ describe('Single contestant correct', () => {
       store.dispatch(submitAnswer({ contestantId: id, answerId: wrong }));
     }
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination
+    // Pick p2 to eliminate
+    store.dispatch(pickElimination({ targetId: 'p2' }));
+
+    const bb = store.getState().biographyBlitz;
+    // Only ONE eliminated — p2
+    expect(bb.eliminatedContestants).toHaveLength(1);
+    expect(bb.eliminatedContestants).toContain('p2');
+    // p3, p4 still active despite answering wrong
+    expect(bb.activeContestants).toContain('p3');
+    expect(bb.activeContestants).toContain('p4');
+    expect(bb.status).toBe('question');
+  });
+
+  it('completes when the last opponent is eliminated', () => {
+    const store = startGame(['p1', 'p2']);
+    doRound(store, ['p1'], ['p2']);
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
     expect(bb.winnerId).toBe('p1');
-    expect(bb.eliminatedContestants).toHaveLength(3);
+    expect(bb.eliminatedContestants).toContain('p2');
   });
 });
 
@@ -309,13 +351,14 @@ describe('markDisconnected', () => {
     expect(store.getState().biographyBlitz.submissions['human']).toBe('');
   });
 
-  it('disconnected contestant is eliminated when others answer correctly', () => {
+  it('disconnected contestant is eliminated when the other answers correctly', () => {
     const store = startGame(['human', 'ai1']);
     const q = currentQ(store);
     store.dispatch(markDisconnected('human'));
     store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: q.correctAnswerId }));
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination (ai1 is winner)
+    store.dispatch(pickElimination({ targetId: 'human' }));
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
@@ -351,21 +394,23 @@ describe('Final-2 flow', () => {
     store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
     store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination
+    store.dispatch(pickElimination({ targetId: 'p2' }));
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
     expect(bb.winnerId).toBe('p1');
   });
 
-  it('sets winnerId immediately when only 1 active contestant remains', () => {
+  it('sets winnerId immediately when only 1 active contestant remains after pickElimination', () => {
     const store = startGame(['p1', 'p2'], { seed: 5 });
     const q = currentQ(store);
     store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
     store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
     store.dispatch(revealResults());
     store.dispatch(confirmElimination());
-    // winnerId must be set at this point — no additional action needed.
+    store.dispatch(pickElimination({ targetId: 'p2' }));
+    // winnerId must be set at this point.
     expect(store.getState().biographyBlitz.winnerId).not.toBeNull();
   });
 
@@ -376,6 +421,7 @@ describe('Final-2 flow', () => {
     store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
     store.dispatch(revealResults());
     store.dispatch(confirmElimination());
+    store.dispatch(pickElimination({ targetId: 'p2' }));
     // confirmElimination after complete should be a no-op.
     store.dispatch(confirmElimination());
     expect(store.getState().biographyBlitz.status).toBe('complete');
@@ -387,12 +433,7 @@ describe('Final-2 flow', () => {
 describe('Hot Streak — activation', () => {
   it('no streak after 1 win', () => {
     const store = startGame(['p1', 'p2', 'p3'], { seed: 10 });
-    const q = currentQ(store);
-    store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'p3', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    doRound(store, ['p1', 'p2'], ['p3']);
 
     const bb = store.getState().biographyBlitz;
     expect(bb.hotStreakOwner).toBeNull();
@@ -402,28 +443,13 @@ describe('Hot Streak — activation', () => {
     // Use 4 contestants so p1 can win 2 rounds without completing the game.
     const store = startGame(['p1', 'p2', 'p3', 'p4'], { seed: 20 });
 
-    // Round 1: p1 correct, p4 wrong (others correct).
-    {
-      const q = currentQ(store);
-      store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p3', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p4', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
-      store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
-    }
+    // Round 1: p1, p2, p3 correct; p4 wrong → one eliminated (first candidate = p4).
+    doRound(store, ['p1', 'p2', 'p3'], ['p4']);
 
     expect(store.getState().biographyBlitz.hotStreakOwner).toBeNull();
 
-    // Round 2: p1, p2 correct; p3 wrong.
-    {
-      const q = currentQ(store);
-      store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p3', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
-      store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
-    }
+    // Round 2: p1, p2 correct; p3 wrong (p4 already gone).
+    doRound(store, ['p1', 'p2'], ['p3']);
 
     const bb = store.getState().biographyBlitz;
     // p1 and p2 both have 2 consecutive wins — one of them becomes streak owner.
@@ -452,19 +478,10 @@ describe('Hot Streak — bonus', () => {
   it('hotStreakBonusWrongAnswerId is set after streak activation', () => {
     const store = startGame(['p1', 'p2', 'p3', 'p4'], { seed: 20 });
 
-    // Two rounds where p1 answers correctly and one person is eliminated each round.
-    for (let round = 0; round < 2; round++) {
-      if (store.getState().biographyBlitz.status !== 'question') break;
-      const active = store.getState().biographyBlitz.activeContestants;
-      const q = currentQ(store);
-      store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.correctAnswerId }));
-      // p3/p4 wrong (whichever is still active).
-      for (const id of active.filter(x => x !== 'p1' && x !== 'p2')) {
-        store.dispatch(submitAnswer({ contestantId: id, answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
-      }
-      store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
+    // Two rounds where p1 and p2 answer correctly and one person is eliminated each round.
+    doRound(store, ['p1', 'p2', 'p3'], ['p4']);
+    if (store.getState().biographyBlitz.status === 'question') {
+      doRound(store, ['p1', 'p2'], ['p3']);
     }
 
     const bb = store.getState().biographyBlitz;
@@ -485,21 +502,13 @@ describe('Hot Streak — bonus', () => {
 // ─── Hot Streak — cleared on elimination ─────────────────────────────────────
 
 describe('Hot Streak — cleared when owner is eliminated', () => {
-  it('clears hotStreakOwner when streak owner answers wrong', () => {
+  it('clears hotStreakOwner when streak owner is chosen for elimination', () => {
     const store = startGame(['p1', 'p2', 'p3', 'p4'], { seed: 20 });
 
     // Give p1 a streak (2 wins).
-    for (let r = 0; r < 2; r++) {
-      if (store.getState().biographyBlitz.status !== 'question') break;
-      const active = store.getState().biographyBlitz.activeContestants;
-      const q = currentQ(store);
-      store.dispatch(submitAnswer({ contestantId: 'p1', answerId: q.correctAnswerId }));
-      store.dispatch(submitAnswer({ contestantId: 'p2', answerId: q.correctAnswerId }));
-      for (const id of active.filter(x => x !== 'p1' && x !== 'p2')) {
-        store.dispatch(submitAnswer({ contestantId: id, answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
-      }
-      store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
+    doRound(store, ['p1', 'p2', 'p3'], ['p4']);
+    if (store.getState().biographyBlitz.status === 'question') {
+      doRound(store, ['p1', 'p2'], ['p3']);
     }
 
     const streakOwner = store.getState().biographyBlitz.hotStreakOwner;
@@ -508,7 +517,7 @@ describe('Hot Streak — cleared when owner is eliminated', () => {
       return;
     }
 
-    // Now make the streak owner answer wrong.
+    // Now make the streak owner answer wrong, so they become an elimination candidate.
     const active = store.getState().biographyBlitz.activeContestants;
     const q = currentQ(store);
     const wrong = q.answers.find((a) => a.id !== q.correctAnswerId)!.id;
@@ -522,10 +531,12 @@ describe('Hot Streak — cleared when owner is eliminated', () => {
       }
     }
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-
-    const bb = store.getState().biographyBlitz;
-    if (bb.eliminatedContestants.includes(streakOwner)) {
+    store.dispatch(confirmElimination()); // → choose_elimination
+    // Pick the streak owner to eliminate
+    const candidates = store.getState().biographyBlitz.eliminationCandidates;
+    if (candidates.includes(streakOwner)) {
+      store.dispatch(pickElimination({ targetId: streakOwner }));
+      const bb = store.getState().biographyBlitz;
       expect(bb.hotStreakOwner).toBeNull();
     }
   });
@@ -534,16 +545,16 @@ describe('Hot Streak — cleared when owner is eliminated', () => {
 // ─── Final winner resolves immediately ────────────────────────────────────────
 
 describe('Final winner resolves immediately', () => {
-  it('status transitions to complete in the same confirmElimination call', () => {
+  it('status transitions to complete via pickElimination (last opponent)', () => {
     const store = startGame(['winner', 'loser'], { seed: 99 });
     const q = currentQ(store);
     store.dispatch(submitAnswer({ contestantId: 'winner', answerId: q.correctAnswerId }));
     store.dispatch(submitAnswer({ contestantId: 'loser', answerId: q.answers.find(a => a.id !== q.correctAnswerId)!.id }));
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination
+    store.dispatch(pickElimination({ targetId: 'loser' })); // → complete
 
     const bb = store.getState().biographyBlitz;
-    // No intermediate state — immediate transition.
     expect(bb.status).toBe('complete');
     expect(bb.winnerId).toBe('winner');
     expect(bb.currentQuestionId).toBeNull();

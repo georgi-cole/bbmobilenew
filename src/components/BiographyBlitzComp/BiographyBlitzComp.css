@@ -490,7 +490,145 @@
   text-align: center;
 }
 
-/* ── Loading state ───────────────────────────────────────────────────────── */
+/* ── Winner confirm button ───────────────────────────────────────────────── */
+
+.bb-blitz__confirm-btn {
+  margin-top: 1rem;
+  padding: 0.85rem 2.5rem;
+  background: linear-gradient(135deg, #a040ff 0%, #6020d0 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+  touch-action: manipulation;
+  min-height: 52px;
+  box-shadow: 0 4px 16px rgba(160, 64, 255, 0.4);
+  animation: bb-blitz-fade-in 0.4s ease-out;
+}
+
+.bb-blitz__confirm-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 24px rgba(160, 64, 255, 0.55);
+}
+
+.bb-blitz__confirm-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Elimination picker ──────────────────────────────────────────────────── */
+
+.bb-blitz__elim-picker {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bb-blitz__elim-picker--cinematic {
+  animation: bb-blitz-elim-entrance 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bb-blitz__elim-picker-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ff6060;
+  text-shadow: 0 0 12px rgba(255, 80, 80, 0.5);
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+  animation: bb-blitz-elim-pulse 1s ease-in-out infinite alternate;
+}
+
+.bb-blitz__elim-candidates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.bb-blitz__elim-candidate-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.4rem 0.5rem;
+  background: rgba(200, 40, 40, 0.12);
+  border: 2px solid rgba(255, 80, 80, 0.45);
+  border-radius: 10px;
+  cursor: pointer;
+  color: #ffd0d0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  min-height: 88px;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.bb-blitz__elim-candidate-btn:hover {
+  background: rgba(200, 40, 40, 0.28);
+  border-color: rgba(255, 80, 80, 0.85);
+  transform: scale(1.06);
+  box-shadow: 0 0 14px rgba(255, 80, 80, 0.35);
+}
+
+.bb-blitz__elim-candidate-btn:active {
+  transform: scale(0.97);
+}
+
+.bb-blitz__elim-icon {
+  font-size: 1rem;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+}
+
+/* ── AI elimination waiting indicator ───────────────────────────────────── */
+
+.bb-blitz__elim-waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 180, 0, 0.1);
+  border: 1px solid rgba(255, 180, 0, 0.3);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffc060;
+  animation: bb-blitz-streak-pulse 1s ease-in-out infinite alternate;
+}
+
+.bb-blitz__elim-waiting-icon {
+  font-size: 1.1rem;
+  animation: bb-blitz-bounce 0.6s ease-out;
+}
+
+/* ── Avatar initials fallback ────────────────────────────────────────────── */
+
+.bb-blitz__avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7030c0, #a060e0);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  border: 2px solid rgba(160, 100, 255, 0.4);
+}
+
+
 
 .bb-blitz--loading {
   justify-content: center;
@@ -549,6 +687,18 @@
   to   { opacity: 1;    text-shadow: 0 0 16px rgba(255, 200, 0, 0.7); }
 }
 
+/* Elimination choice entrance */
+@keyframes bb-blitz-elim-entrance {
+  from { opacity: 0; transform: scale(0.85) translateY(16px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Elimination title pulse (red glow) */
+@keyframes bb-blitz-elim-pulse {
+  from { text-shadow: 0 0 8px rgba(255, 80, 80, 0.4); }
+  to   { text-shadow: 0 0 20px rgba(255, 80, 80, 0.8), 0 0 40px rgba(255, 80, 80, 0.3); }
+}
+
 /* Reduced-motion override: disable all animations for accessibility */
 @media (prefers-reduced-motion: reduce) {
   .bb-blitz__question-card--reveal,
@@ -560,7 +710,11 @@
   .bb-blitz__answer-btn--selected,
   .bb-blitz__answer-btn--correct,
   .bb-blitz__avatar-btn--locked,
-  .bb-blitz__avatar-btn--correct {
+  .bb-blitz__avatar-btn--correct,
+  .bb-blitz__elim-picker--cinematic,
+  .bb-blitz__elim-picker-title,
+  .bb-blitz__elim-waiting,
+  .bb-blitz__confirm-btn {
     animation: none !important;
   }
 }
@@ -575,7 +729,11 @@
 [data-test-mode='true'] .bb-blitz__answer-btn--selected,
 [data-test-mode='true'] .bb-blitz__answer-btn--correct,
 [data-test-mode='true'] .bb-blitz__avatar-btn--locked,
-[data-test-mode='true'] .bb-blitz__avatar-btn--correct {
+[data-test-mode='true'] .bb-blitz__avatar-btn--correct,
+[data-test-mode='true'] .bb-blitz__elim-picker--cinematic,
+[data-test-mode='true'] .bb-blitz__elim-picker-title,
+[data-test-mode='true'] .bb-blitz__elim-waiting,
+[data-test-mode='true'] .bb-blitz__confirm-btn {
   animation: none !important;
   transition: none !important;
 }
