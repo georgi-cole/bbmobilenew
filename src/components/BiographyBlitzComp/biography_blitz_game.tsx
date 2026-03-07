@@ -462,7 +462,6 @@ export default function BiographyBlitzComp({
         <button
           className="bb-blitz__confirm-btn"
           onClick={() => onComplete?.()}
-          onTouchStart={(e) => { e.preventDefault(); onComplete?.(); }}
           aria-label="Continue game"
           type="button"
         >
@@ -568,10 +567,6 @@ export default function BiographyBlitzComp({
                   key={candidateId}
                   className="bb-blitz__elim-candidate-btn"
                   onClick={() => handleEliminationPick(candidateId)}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleEliminationPick(candidateId);
-                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
