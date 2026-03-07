@@ -71,6 +71,23 @@ const PIPE_W = 48;
 const PIPE_H = 64;
 const BRICK = 32;
 const COIN_R = 7;
+/**
+ * Minimum vertical clearance (px) between the bottom of a brick and the top
+ * of the nearest platform below it.  Ensures the player can stand on the
+ * platform with headroom, then jump to hit the brick from below.
+ * Must be ≥ PH (40) to fit the player body; 42 px adds a 2 px safety margin.
+ */
+const MIN_CLEARANCE = 42;
+
+/**
+ * Returns the brick top-edge y coordinate that satisfies MIN_CLEARANCE above
+ * a reference platform at `platformY`.
+ *
+ * brick.y = platformY − MIN_CLEARANCE − BRICK
+ */
+function brickTop(platformY: number): number {
+  return platformY - MIN_CLEARANCE - BRICK;
+}
 
 // ═══ Game timing / feedback constants ════════════════════════════════════════
 const MAX_HEARTS       =    3;
@@ -232,12 +249,12 @@ function buildBonusRoom(): RoomInstance {
     { x: 310, y: 250,        w: 150, h: 16, oneWay: true },
     { x: 530, y: 265,        w: 130, h: 16, oneWay: true },
   ];
-  // Bricks raised 8 px above platform surfaces so there is visible air-gap
-  // below them (player can stand under them and jump to hit from below).
+  // Bricks positioned with MIN_CLEARANCE = 42 px above the reference platform.
+  // Formula: brick.y = brickTop(platform.y) = platform.y − MIN_CLEARANCE − BRICK.
   const brickDefs: [number, number][] = [
-    [115, 240], [147, 240],   // above platform 1 (y=280) — 8 px gap
-    [325, 210], [357, 210],   // above platform 2 (y=250) — 8 px gap
-    [545, 225], [577, 225],   // above platform 3 (y=265) — 8 px gap
+    [115, brickTop(280)], [147, brickTop(280)],   // platform 1 (y=280)
+    [325, brickTop(250)], [357, brickTop(250)],   // platform 2 (y=250)
+    [545, brickTop(265)], [577, brickTop(265)],   // platform 3 (y=265)
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
     id: `rb-${i}`, x: bx, y: by,
@@ -246,9 +263,9 @@ function buildBonusRoom(): RoomInstance {
     broken: false, bounceTimer: 0,
   }));
   const coinDefs: [number, number][] = [
-    [130, 238], [162, 238],               // above platform-1 bricks
-    [340, 208], [372, 208], [404, 208],   // above platform-2 bricks
-    [560, 223], [592, 223],               // above platform-3 bricks
+    [130, brickTop(280) - 2], [162, brickTop(280) - 2],               // above platform-1 bricks
+    [340, brickTop(250) - 2], [372, brickTop(250) - 2], [404, brickTop(250) - 2],   // above platform-2 bricks
+    [560, brickTop(265) - 2], [592, brickTop(265) - 2],               // above platform-3 bricks
     [140, 265], [340, 235], [560, 250],   // on platform surfaces
   ];
   const coins: Coin[] = coinDefs.map(([cx, cy], i) => ({
@@ -343,13 +360,24 @@ function buildLevel(seed: number): LevelGeom {
     { x: 4550, y: 248, w: 230, h: 16, oneWay: true },
   ];
 
-  // Bricks raised 8 px above their reference platform so there is a visible
-  // air-gap below — the player can stand under them and jump to hit from below.
+  // Bricks positioned with MIN_CLEARANCE = 42 px of vertical air-gap above
+  // the reference platform so the player can stand on the platform and then
+  // jump to hit the brick from below without the player body overlapping it.
+  // Formula: brick.y = brickTop(platform.y) = platform.y − MIN_CLEARANCE − BRICK.
   const brickDefs: [number, number][] = [
-    [218,232],[250,232],[460,188],[492,188],[760,228],
-    [1170,204],[1202,204],[1410,156],[1442,156],[1660,204],
-    [2100,192],[2132,192],[2400,240],[2432,240],[2660,224],
-    [2692,224],[2930,236],[3162,220],[3622,200],[3654,200],[4080,210],
+    [218, brickTop(270)], [250, brickTop(270)],   // platform y=270
+    [460, brickTop(228)], [492, brickTop(228)],   // platform y=228
+    [760, brickTop(268)],                          // platform y=268
+    [1170, brickTop(242)], [1202, brickTop(242)], // platform y=242
+    [1410, brickTop(196)], [1442, brickTop(196)], // platform y=196
+    [1660, brickTop(244)],                         // platform y=244
+    [2100, brickTop(232)], [2132, brickTop(232)], // platform y=232
+    [2400, brickTop(280)], [2432, brickTop(280)], // platform y=280
+    [2660, brickTop(264)], [2692, brickTop(264)], // platform y=264
+    [2930, brickTop(276)],                         // platform y=276
+    [3162, brickTop(260)],                         // platform y=260
+    [3622, brickTop(240)], [3654, brickTop(240)], // platform y=240
+    [4080, brickTop(250)],                         // platform y=250
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
     id: `brick-${i}`, x: bx, y: by,
@@ -386,11 +414,23 @@ function buildLevel(seed: number): LevelGeom {
   });
 
   const coinDefs: [number, number][] = [
-    [230,230],[262,230],[460,172],[492,172],[524,172],[780,228],[812,228],
-    [1190,202],[1222,202],[1420,154],[1452,154],[1484,154],[1680,202],
-    [2110,190],[2142,190],[2410,238],[2442,238],[2474,238],[2680,222],[2712,222],
-    [2940,234],[2972,234],[3172,218],[3204,218],[3640,198],[3672,198],[3704,198],
-    [4100,208],[4132,208],[4570,214],[4602,214],[4634,214],
+    // Coins sit 2 px above the corresponding brick top (brickTop(platform.y) − 2).
+    [230, brickTop(270)-2], [262, brickTop(270)-2],
+    [460, brickTop(228)-2], [492, brickTop(228)-2], [524, brickTop(228)-2],
+    [780, brickTop(268)-2], [812, brickTop(268)-2],
+    [1190, brickTop(242)-2], [1222, brickTop(242)-2],
+    [1420, brickTop(196)-2], [1452, brickTop(196)-2], [1484, brickTop(196)-2],
+    [1680, brickTop(244)-2],
+    [2110, brickTop(232)-2], [2142, brickTop(232)-2],
+    [2410, brickTop(280)-2], [2442, brickTop(280)-2], [2474, brickTop(280)-2],
+    [2680, brickTop(264)-2], [2712, brickTop(264)-2],
+    [2940, brickTop(276)-2], [2972, brickTop(276)-2],
+    [3172, brickTop(260)-2], [3204, brickTop(260)-2],
+    [3640, brickTop(240)-2], [3672, brickTop(240)-2], [3704, brickTop(240)-2],
+    [4100, brickTop(250)-2], [4132, brickTop(250)-2],
+    // Standalone coins in the final stretch (no reference brick; floated
+    // 34 px above the last platform at y=248 as a reward trail).
+    [4570, 214], [4602, 214], [4634, 214],
   ];
   const coins: Coin[] = coinDefs.map(([cx,cy], i) => ({
     id: `coin-${i}`, x: cx, y: cy, collected: false,
@@ -1211,8 +1251,11 @@ function renderRoom(
 /** Max CSS scale factor to avoid excessive zoom on very large screens. */
 const MAX_SCALE = 2;
 
-/** Pixels reserved for the control strip in portrait mode (below canvas). */
-const CTRL_H_PORTRAIT = 68;
+/**
+ * Pixels reserved for the control strip in portrait mode (below canvas).
+ * Must be ≥ touch button minHeight (90) + 2 × vertical padding (8px each side) + gap = 116 px.
+ */
+const CTRL_H_PORTRAIT = 116;
 /** Pixels reserved for the control strip in landscape mode (right of canvas). */
 const CTRL_W_LANDSCAPE = 134;
 
@@ -1408,10 +1451,10 @@ export default function CastleRescueGame({
   const ctrlsStyle: CSSProperties = {
     display: 'flex',
     flexDirection: landscape ? 'column' : 'row',
-    gap: 8,
+    gap: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: landscape ? '8px 4px' : '4px 8px',
+    padding: landscape ? '12px 8px' : '8px 12px',
     userSelect: 'none',
     flexShrink: 0,
   };
@@ -1482,7 +1525,7 @@ function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onReleas
   return (
     <button
       aria-label={ariaLabel}
-      style={btnCss(color)}
+      style={touchBtnCss(color)}
       onMouseDown={() => onPress(code)} onMouseUp={() => onRelease(code)} onMouseLeave={() => onRelease(code)}
       onTouchStart={(e) => { e.preventDefault(); onPress(code); }}
       onTouchEnd={(e)   => { e.preventDefault(); onRelease(code); }}
@@ -1515,7 +1558,8 @@ const endOverlayStyle: CSSProperties = {
   pointerEvents: 'auto',
 };
 
-function btnCss(bg: string): CSSProperties {
+/** Style for the on-screen touch control buttons (large touch targets). */
+function touchBtnCss(bg: string): CSSProperties {
   return {
     padding: '10px 20px',
     background: bg,
@@ -1526,7 +1570,22 @@ function btnCss(bg: string): CSSProperties {
     fontWeight: 700,
     cursor: 'pointer',
     touchAction: 'none',
-    minWidth: 52,
-    minHeight: 44,
+    minWidth: 90,
+    minHeight: 90,
+  };
+}
+
+/** Style for action buttons (e.g. "Play Again") — compact, not touch-target sized. */
+function btnCss(bg: string): CSSProperties {
+  return {
+    padding: '10px 24px',
+    background: bg,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+    touchAction: 'none',
   };
 }
