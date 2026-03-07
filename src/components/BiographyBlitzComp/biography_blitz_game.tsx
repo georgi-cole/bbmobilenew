@@ -3,21 +3,32 @@
  *
  * Broadcast-style presentation with three main UI states:
  *   question  — Displays the current trivia question and answer choices.
+ *               Avatar grid: tap a houseguest to select them as the answer.
+ *               Text-button fallback when dynamic bio questions are not available.
  *               The human player taps an answer; AI players auto-submit via Redux.
- *   reveal    — Highlights the correct answer and shows who was eliminated.
- *               A short pause before confirmElimination is dispatched.
- *   complete  — Winner screen with confetti-style announcement; fires onComplete.
+ *   reveal    — Highlights the correct answer; shows who was eliminated.
+ *               A short suspense pause before confirmElimination is dispatched.
+ *   complete  — Winner screen with announcement; fires onComplete.
  *
- * NOTE: The pre-game "Get Ready" countdown and rules modal are handled upstream
- * by MinigameHost before this component mounts. Per-question timing (e.g. the
- * human answer timeout) is managed within this component.
+ * Cinematic phases (driven by CSS class toggling):
+ *   - Question slide-in on new round
+ *   - Answer lock shimmer on submission
+ *   - Spotlight pulse on correct-answer reveal
+ *   - Elimination fade-out for evicted avatars
+ *   - Winner zoom for the final survivor
+ *
+ * NOTE: Pre-game "Get Ready" countdown and rules modal are handled upstream
+ * by MinigameHost before this component mounts. Per-question timing (the
+ * human answer timeout, the hidden 15 s deadline) is managed here via setTimeout.
+ * The testMode flag (from Redux state) collapses all delays to 0 for CI/tests.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
   startBiographyBlitz,
   submitAnswer,
+  markDisconnected,
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
@@ -26,17 +37,21 @@ import {
 import type { BiographyBlitzState, BiographyBlitzCompetitionType } from '../../features/biographyBlitz/biography_blitz_logic';
 import { resolveBiographyBlitzOutcome } from '../../features/biographyBlitz/thunks';
 import { BIOGRAPHY_BLITZ_QUESTIONS } from '../../features/biographyBlitz/biographyBlitzQuestions';
+import { generateBioQuestions } from '../../features/biographyBlitz/bioQuestionGenerator';
 import { getDicebear } from '../../utils/avatar';
 import './BiographyBlitzComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
-/** Ms to wait on the reveal screen before auto-advancing. */
-const REVEAL_PAUSE_MS = 3000;
-/** Ms to show the winner screen before firing onComplete. */
-const WINNER_SCREEN_DURATION_MS = 5000;
-/** Ms the human has to answer before AI auto-fill triggers. */
-const HUMAN_ANSWER_TIMEOUT_MS = 15000;
+/** Minimum number of generated bio questions required to prefer avatar mode. */
+const MIN_DYNAMIC_QUESTIONS = 3;
+const HUMAN_ANSWER_TIMEOUT_MS = 15_000;
+/** Suspense pause on reveal screen before confirming eliminations. */
+const REVEAL_PAUSE_MS = 3_000;
+/** Time to show the winner screen before firing onComplete. */
+const WINNER_SCREEN_DURATION_MS = 5_000;
+/** Shimmer animation lasts this long after answer is locked. */
+const SHIMMER_DURATION_MS = 600;
 
 // ─── Narration ────────────────────────────────────────────────────────────────
 
@@ -76,6 +91,11 @@ const NARRATION = {
     "WINNER! Your knowledge of your housemates is UNRIVALLED! 👑",
     "BIOGRAPHY BLITZ CHAMPION! You know everyone's deepest secrets! 🎉",
   ],
+  streak: [
+    "🔥 HOT STREAK! {name} is ON FIRE!",
+    "🔥 {name} can't be stopped — HOT STREAK!",
+    "🔥 Two in a row for {name}! They're BLAZING!",
+  ],
 };
 
 function pickLine(lines: string[], index: number): string {
@@ -93,10 +113,12 @@ interface ParticipantProp {
 interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
-  /** Matches the `prizeType` convention used by other authoritative competition components. */
+  /** Matches the `prizeType` convention used by other competition components. */
   prizeType: BiographyBlitzCompetitionType;
   seed: number;
   onComplete?: () => void;
+  /** Collapse all animation delays for CI / Storybook test mode. */
+  testMode?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -107,6 +129,7 @@ export default function BiographyBlitzComp({
   prizeType,
   seed,
   onComplete,
+  testMode: testModeProp = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const bb = useAppSelector(
@@ -115,22 +138,39 @@ export default function BiographyBlitzComp({
   );
   const storePlayers = useAppSelector(
     (s: RootState) =>
-      (s as RootState & { game: { players: Array<{ id: string; name: string; isUser?: boolean }> } })
-        .game?.players ?? [],
+      (
+        s as RootState & {
+          game: { players: Array<{ id: string; name: string; isUser?: boolean }> };
+        }
+      ).game?.players ?? [],
   );
 
-  // Build player name/avatar map
-  const playerMap: Record<string, { name: string; isHuman: boolean }> = {};
-  if (participantsProp) {
-    for (const p of participantsProp) {
-      playerMap[p.id] = { name: p.name, isHuman: p.isHuman };
+  // Effective test mode: prop OR Redux flag.
+  const testMode = testModeProp || bb.testMode;
+
+  // Derive timing based on test mode.
+  const revealPause = testMode ? 0 : REVEAL_PAUSE_MS;
+  const winnerDuration = testMode ? 0 : WINNER_SCREEN_DURATION_MS;
+  const humanTimeout = testMode ? 100 : HUMAN_ANSWER_TIMEOUT_MS;
+
+  // Build player name map (memoised to avoid re-creating each render).
+  // participantIds.join is a stable dependency key that changes only when
+  // the roster changes (which never happens mid-game).
+  const playerMap = useMemo(() => {
+    const m: Record<string, { name: string; isHuman: boolean }> = {};
+    if (participantsProp) {
+      for (const p of participantsProp) {
+        m[p.id] = { name: p.name, isHuman: p.isHuman };
+      }
     }
-  }
-  for (const p of storePlayers) {
-    if (participantIds.includes(p.id)) {
-      playerMap[p.id] = { name: p.name, isHuman: !!p.isUser };
+    for (const p of storePlayers) {
+      if (participantIds.includes(p.id)) {
+        m[p.id] = { name: p.name, isHuman: !!p.isUser };
+      }
     }
-  }
+    return m;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participantsProp, storePlayers, participantIds.join(',')]);
 
   const humanId: string | null =
     Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
@@ -139,98 +179,91 @@ export default function BiographyBlitzComp({
     return playerMap[id]?.name ?? id;
   }
 
-  // Refs to prevent stale-closure issues in effects
+  // Ref to avoid stale closures in effects.
   const bbRef = useRef(bb);
   bbRef.current = bb;
+
+  // Generate dynamic bio questions from live contestant data.
+  // participantIds.join is used as a dependency key — stable as long as the
+  // roster doesn't change mid-game (which it never does in practice).
+  const dynamicQuestions = useMemo(
+    () => generateBioQuestions(participantIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [participantIds.join(',')],
+  );
 
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
     dispatch(
-      startBiographyBlitz({ participantIds, competitionType: prizeType, seed }),
+      startBiographyBlitz({
+        participantIds,
+        competitionType: prizeType,
+        seed,
+        testMode: testModeProp,
+        dynamicQuestions: dynamicQuestions.length >= MIN_DYNAMIC_QUESTIONS ? dynamicQuestions : [],
+      }),
     );
     return () => {
       dispatch(resetBiographyBlitz());
     };
-    // Run once on mount only — deps are intentionally empty.
+    // Run once on mount only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Human answer timeout: auto-submit wrong after HUMAN_ANSWER_TIMEOUT_MS ─
-  const humanAnswerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // ── Human answer timeout (hidden 15 s deadline) ───────────────────────────
   useEffect(() => {
     if (bb.status !== 'question') return;
     if (!humanId) return;
-    // If human has already answered, no timeout needed.
     if (humanId in bb.submissions) return;
 
-    humanAnswerTimerRef.current = setTimeout(() => {
+    const t = setTimeout(() => {
       const current = bbRef.current;
       if (current.status !== 'question') return;
       if (humanId in current.submissions) return;
-      // Pick the first wrong answer as the default "missed" submission.
-      const question = BIOGRAPHY_BLITZ_QUESTIONS.find(
-        (q) => q.id === current.currentQuestionId,
-      );
-      if (!question) return;
-      const wrongAnswer = question.answers.find(
-        (a) => a.id !== question.correctAnswerId,
-      );
-      if (wrongAnswer) {
-        dispatch(submitAnswer({ contestantId: humanId, answerId: wrongAnswer.id }));
-      }
-    }, HUMAN_ANSWER_TIMEOUT_MS);
+      // Mark as disconnected/timed-out so they are treated as wrong.
+      dispatch(markDisconnected(humanId));
+    }, humanTimeout);
 
-    return () => {
-      if (humanAnswerTimerRef.current !== null) {
-        clearTimeout(humanAnswerTimerRef.current);
-      }
-    };
-  }, [bb.status, bb.currentQuestionId, bb.submissions, humanId, dispatch]);
+    return () => clearTimeout(t);
+  }, [bb.status, bb.currentQuestionId, bb.submissions, humanId, humanTimeout, dispatch]);
 
   // ── Auto-fill AI and trigger reveal when all active contestants submitted ─
   useEffect(() => {
     if (bb.status !== 'question') return;
-
     const allSubmitted = bb.activeContestants.every((id) => id in bb.submissions);
     if (!allSubmitted) return;
 
-    // Small delay for UX — let the human see "Submitted" feedback briefly.
     const t = setTimeout(() => {
       dispatch(revealResults());
-    }, 600);
+    }, testMode ? 0 : 600);
     return () => clearTimeout(t);
-  }, [bb.status, bb.activeContestants, bb.submissions, dispatch]);
+  }, [bb.status, bb.activeContestants, bb.submissions, testMode, dispatch]);
 
-  // ── When human answers, immediately fill AI so we can advance ────────────
+  // ── When human answers, fill remaining AI answers immediately ─────────────
   useEffect(() => {
     if (bb.status !== 'question') return;
     if (!humanId) return;
     if (!(humanId in bb.submissions)) return;
-
-    // Human has answered — auto-fill remaining AI contestants now.
     dispatch(autoFillAIAnswers(humanId));
   }, [bb.status, bb.submissions, humanId, dispatch]);
 
-  // ── When status reaches 'question' with no human, fill AI immediately ────
+  // ── All-AI round: fill everyone immediately ───────────────────────────────
   useEffect(() => {
     if (bb.status !== 'question') return;
     if (humanId !== null) return;
-    // All-AI round — auto-fill everyone.
     dispatch(autoFillAIAnswers(null));
   }, [bb.status, bb.currentQuestionId, humanId, dispatch]);
 
-  // ── Auto-advance from reveal after pause ──────────────────────────────────
+  // ── Auto-advance from reveal after suspense pause ─────────────────────────
   useEffect(() => {
     if (bb.status !== 'reveal') return;
-
     const t = setTimeout(() => {
       dispatch(confirmElimination());
-    }, REVEAL_PAUSE_MS);
+    }, revealPause);
     return () => clearTimeout(t);
-  }, [bb.status, bb.round, dispatch]);
+  }, [bb.status, bb.round, revealPause, dispatch]);
 
-  // ── Resolve outcome and fire onComplete when complete ─────────────────────
+  // ── Resolve outcome and fire onComplete when game is complete ─────────────
   const completeFiredRef = useRef(false);
 
   useEffect(() => {
@@ -242,17 +275,17 @@ export default function BiographyBlitzComp({
 
     const t = setTimeout(() => {
       onComplete?.();
-    }, WINNER_SCREEN_DURATION_MS);
+    }, winnerDuration);
     return () => clearTimeout(t);
-  }, [bb.status, dispatch, onComplete]);
+  }, [bb.status, winnerDuration, dispatch, onComplete]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Answer handler ────────────────────────────────────────────────────────
 
-  const handleAnswerClick = useCallback(
+  const handleAnswerSelect = useCallback(
     (answerId: string) => {
       if (!humanId) return;
       if (bb.status !== 'question') return;
-      if (humanId in bb.submissions) return; // already answered
+      if (humanId in bb.submissions) return; // single-submission enforcement
       dispatch(submitAnswer({ contestantId: humanId, answerId }));
     },
     [humanId, bb.status, bb.submissions, dispatch],
@@ -260,8 +293,11 @@ export default function BiographyBlitzComp({
 
   // ── Derived values ────────────────────────────────────────────────────────
 
+  const activeQuestionBank =
+    bb.dynamicQuestions.length > 0 ? bb.dynamicQuestions : BIOGRAPHY_BLITZ_QUESTIONS;
+
   const currentQuestion = bb.currentQuestionId
-    ? BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === bb.currentQuestionId) ?? null
+    ? activeQuestionBank.find((q) => q.id === bb.currentQuestionId) ?? null
     : null;
 
   const humanAnswer = humanId ? bb.submissions[humanId] : null;
@@ -274,6 +310,12 @@ export default function BiographyBlitzComp({
       : [];
   const voidedRound = eliminatedThisRound.length === bb.activeContestants.length;
   const actuallyEliminated = voidedRound ? [] : eliminatedThisRound;
+
+  // Avatar mode: dynamic questions where answer IDs are contestant IDs.
+  const avatarMode =
+    bb.dynamicQuestions.length > 0 &&
+    currentQuestion !== null &&
+    currentQuestion.answers.some((a) => participantIds.includes(a.id));
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -295,7 +337,7 @@ export default function BiographyBlitzComp({
         <h2 className="bb-blitz__winner-title">
           {pickLine(NARRATION.winner, bb.round)}
         </h2>
-        <div className="bb-blitz__winner-avatar">
+        <div className="bb-blitz__winner-avatar bb-blitz__winner-avatar--zoom">
           <img
             src={getDicebear(winnerName)}
             alt={winnerName}
@@ -314,13 +356,27 @@ export default function BiographyBlitzComp({
   }
 
   return (
-    <div className="bb-blitz" data-status={bb.status}>
+    <div
+      className="bb-blitz"
+      data-status={bb.status}
+      data-test-mode={testMode ? 'true' : undefined}
+    >
       {/* Header ─────────────────────────────────────────────────────────── */}
       <div className="bb-blitz__header">
         <span className="bb-blitz__comp-badge">{prizeType}</span>
         <span className="bb-blitz__title">Biography Blitz</span>
         <span className="bb-blitz__round-badge">Round {bb.round + 1}</span>
       </div>
+
+      {/* Hot streak banner ───────────────────────────────────────────────── */}
+      {bb.hotStreakOwner && bb.status === 'question' && (
+        <div className="bb-blitz__streak-banner" role="status" aria-live="polite">
+          {pickLine(NARRATION.streak, bb.round).replace(
+            '{name}',
+            bb.hotStreakOwner === humanId ? 'You' : displayName(bb.hotStreakOwner),
+          )}
+        </div>
+      )}
 
       {/* Contestant strip ────────────────────────────────────────────────── */}
       <div className="bb-blitz__contestants" aria-label="Active contestants">
@@ -337,6 +393,7 @@ export default function BiographyBlitzComp({
               ? ' bb-blitz__contestant-pill--correct'
               : ' bb-blitz__contestant-pill--wrong';
           }
+          if (id === bb.hotStreakOwner) pillClass += ' bb-blitz__contestant-pill--streak';
           return (
             <div key={id} className={pillClass} aria-label={name}>
               <img
@@ -348,6 +405,9 @@ export default function BiographyBlitzComp({
               <span className="bb-blitz__pill-name">{isHumanPlayer ? 'You' : name}</span>
               {hasAnswered && bb.status === 'question' && (
                 <span className="bb-blitz__pill-check" aria-hidden="true">✓</span>
+              )}
+              {id === bb.hotStreakOwner && (
+                <span className="bb-blitz__streak-icon" aria-hidden="true">🔥</span>
               )}
             </div>
           );
@@ -370,48 +430,146 @@ export default function BiographyBlitzComp({
 
       {/* Question card ───────────────────────────────────────────────────── */}
       {currentQuestion && (
-        <div className="bb-blitz__question-card" role="region" aria-label="Current question">
+        <div
+          className="bb-blitz__question-card bb-blitz__question-card--reveal"
+          role="region"
+          aria-label="Current question"
+        >
           <p className="bb-blitz__question-prompt">{currentQuestion.prompt}</p>
-          <ul className="bb-blitz__answers" role="list">
-            {currentQuestion.answers.map((answer) => {
-              const isSelected = humanAnswer === answer.id;
-              const isCorrect = bb.status === 'reveal' && answer.id === bb.correctAnswerId;
-              const isWrong =
-                bb.status === 'reveal' &&
-                answer.id !== bb.correctAnswerId &&
-                answer.id === humanAnswer;
 
-              let cls = 'bb-blitz__answer-btn';
-              if (isSelected && bb.status === 'question') cls += ' bb-blitz__answer-btn--selected';
-              if (isCorrect) cls += ' bb-blitz__answer-btn--correct';
-              if (isWrong) cls += ' bb-blitz__answer-btn--wrong';
+          {avatarMode ? (
+            /* ── Avatar grid (dynamic bio questions) ── */
+            <div
+              className="bb-blitz__avatar-grid"
+              role="group"
+              aria-label="Select the correct houseguest"
+            >
+              {currentQuestion.answers.map((answer) => {
+                const isSelected = humanAnswer === answer.id;
+                const isCorrect = bb.status === 'reveal' && answer.id === bb.correctAnswerId;
+                const isWrong =
+                  bb.status === 'reveal' &&
+                  answer.id !== bb.correctAnswerId &&
+                  answer.id === humanAnswer;
+                const isLocked = isSelected && bb.status === 'question';
+                const isDisabled =
+                  bb.status !== 'question' ||
+                  humanAnswer !== null ||
+                  humanId === null;
+                // Hot streak bonus: visually dim a provably-wrong answer for
+                // the streak owner. The bonus never reveals the correct answer.
+                const isStreakBonusWrong =
+                  bb.hotStreakOwner === humanId &&
+                  bb.hotStreakBonusWrongAnswerId === answer.id &&
+                  bb.status === 'question' &&
+                  !isSelected;
 
-              return (
-                <li key={answer.id} role="listitem">
+                const answerName = displayName(answer.id);
+
+                let cls = 'bb-blitz__avatar-btn';
+                if (isSelected) cls += ' bb-blitz__avatar-btn--selected';
+                if (isLocked) cls += ' bb-blitz__avatar-btn--locked';
+                if (isCorrect) cls += ' bb-blitz__avatar-btn--correct';
+                if (isWrong) cls += ' bb-blitz__avatar-btn--wrong';
+                if (isStreakBonusWrong) cls += ' bb-blitz__avatar-btn--bonus-hint';
+                if (isDisabled && !isCorrect && !isWrong) {
+                  cls += ' bb-blitz__avatar-btn--disabled';
+                }
+
+                return (
                   <button
+                    key={answer.id}
                     className={cls}
-                    onClick={() => handleAnswerClick(answer.id)}
-                    disabled={
-                      bb.status !== 'question' || humanAnswer !== null || humanId === null
-                    }
+                    onClick={() => handleAnswerSelect(answer.id)}
+                    onTouchStart={(e) => {
+                      // Prevent ghost click on mobile.
+                      e.preventDefault();
+                      handleAnswerSelect(answer.id);
+                    }}
+                    disabled={isDisabled}
                     aria-pressed={isSelected}
-                    aria-label={answer.text}
+                    aria-label={`Select ${answerName}${isStreakBonusWrong ? ' (unlikely)' : ''}`}
+                    tabIndex={isDisabled ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleAnswerSelect(answer.id);
+                      }
+                    }}
                   >
-                    <span className="bb-blitz__answer-letter" aria-hidden="true">
-                      {answer.id.toUpperCase()}
+                    <span className="bb-blitz__avatar-wrapper">
+                      <img
+                        src={getDicebear(answerName)}
+                        alt={answerName}
+                        className="bb-blitz__avatar-img"
+                      />
+                      {isLocked && (
+                        <span className="bb-blitz__lock-icon" aria-hidden="true">🔒</span>
+                      )}
+                      {isCorrect && (
+                        <span className="bb-blitz__spotlight-icon" aria-hidden="true">✓</span>
+                      )}
+                      {isWrong && (
+                        <span className="bb-blitz__wrong-icon" aria-hidden="true">✗</span>
+                      )}
                     </span>
-                    <span className="bb-blitz__answer-text">{answer.text}</span>
-                    {isCorrect && (
-                      <span className="bb-blitz__answer-badge" aria-hidden="true">✓</span>
-                    )}
-                    {isWrong && (
-                      <span className="bb-blitz__answer-badge" aria-hidden="true">✗</span>
-                    )}
+                    <span className="bb-blitz__avatar-name">{answerName}</span>
                   </button>
-                </li>
-              );
-            })}
-          </ul>
+                );
+              })}
+            </div>
+          ) : (
+            /* ── Text-button mode (static question bank fallback) ── */
+            <ul className="bb-blitz__answers" role="list">
+              {currentQuestion.answers.map((answer) => {
+                const isSelected = humanAnswer === answer.id;
+                const isCorrect = bb.status === 'reveal' && answer.id === bb.correctAnswerId;
+                const isWrong =
+                  bb.status === 'reveal' &&
+                  answer.id !== bb.correctAnswerId &&
+                  answer.id === humanAnswer;
+
+                let cls = 'bb-blitz__answer-btn';
+                if (isSelected && bb.status === 'question') cls += ' bb-blitz__answer-btn--selected';
+                if (isCorrect) cls += ' bb-blitz__answer-btn--correct';
+                if (isWrong) cls += ' bb-blitz__answer-btn--wrong';
+
+                return (
+                  <li key={answer.id} role="listitem">
+                    <button
+                      className={cls}
+                      onClick={() => handleAnswerSelect(answer.id)}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        handleAnswerSelect(answer.id);
+                      }}
+                      disabled={
+                        bb.status !== 'question' || humanAnswer !== null || humanId === null
+                      }
+                      aria-pressed={isSelected}
+                      aria-label={answer.text}
+                      tabIndex={
+                        bb.status !== 'question' || humanAnswer !== null || humanId === null
+                          ? -1
+                          : 0
+                      }
+                    >
+                      <span className="bb-blitz__answer-letter" aria-hidden="true">
+                        {answer.id.toUpperCase()}
+                      </span>
+                      <span className="bb-blitz__answer-text">{answer.text}</span>
+                      {isCorrect && (
+                        <span className="bb-blitz__answer-badge" aria-hidden="true">✓</span>
+                      )}
+                      {isWrong && (
+                        <span className="bb-blitz__answer-badge" aria-hidden="true">✗</span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
 
@@ -443,3 +601,6 @@ export default function BiographyBlitzComp({
     </div>
   );
 }
+
+// Export timing constants so Storybook / integration tests can import them.
+export { HUMAN_ANSWER_TIMEOUT_MS, REVEAL_PAUSE_MS, WINNER_SCREEN_DURATION_MS, SHIMMER_DURATION_MS };

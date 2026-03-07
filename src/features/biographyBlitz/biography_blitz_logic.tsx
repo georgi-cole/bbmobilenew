@@ -13,10 +13,19 @@
  *
  * AI answers are generated deterministically from the seeded RNG so results
  * are reproducible across rerenders and reruns.
+ *
+ * Hot Streak: a contestant who wins 2 consecutive rounds gains a one-round
+ * informational bonus (one impossible answer is flagged for their UI only).
+ * The streak is cleared if the streak owner is eliminated or when the bonus
+ * is consumed at the start of the next round.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32, seededPickN } from '../../store/rng';
 import { BIOGRAPHY_BLITZ_QUESTIONS } from './biographyBlitzQuestions';
+import type { BiographyBlitzQuestion } from './biographyBlitzQuestions';
+
+// Re-export for consumers so they don't need a direct dependency on the questions file.
+export type { BiographyBlitzQuestion };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +68,39 @@ export interface BiographyBlitzState {
   outcomeResolved: boolean;
   /** ID of the final surviving contestant once status reaches 'complete'. */
   winnerId: string | null;
+
+  // ── Hot Streak ──────────────────────────────────────────────────────────────
+  /**
+   * ID of the contestant currently on a Hot Streak (2+ consecutive wins).
+   * Null when no streak is active.
+   */
+  hotStreakOwner: string | null;
+  /**
+   * Tracks consecutive wins per contestant. Reset to 0 when a contestant
+   * answers incorrectly; incremented by 1 each time they answer correctly.
+   * Entries for eliminated contestants are removed.
+   */
+  consecutiveWinsMap: Record<string, number>;
+  /**
+   * An answer ID that is provably wrong for the current question — surfaced
+   * to the hotStreakOwner's UI as a one-round bonus hint. Never the correct
+   * answer. Null when no streak bonus is active.
+   */
+  hotStreakBonusWrongAnswerId: string | null;
+
+  // ── Configuration ───────────────────────────────────────────────────────────
+  /**
+   * When true, animation delays are collapsed to 0 so tests and CI can run
+   * without waiting for timers.  Components should read this flag and skip
+   * or reduce all setTimeout-based animations.
+   */
+  testMode: boolean;
+  /**
+   * Optional question bank injected at start-time.  When non-empty these
+   * questions take precedence over the static BIOGRAPHY_BLITZ_QUESTIONS bank.
+   * Typically populated by the component from live houseguest bio data.
+   */
+  dynamicQuestions: BiographyBlitzQuestion[];
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -76,9 +118,27 @@ const initialState: BiographyBlitzState = {
   seed: 0,
   outcomeResolved: false,
   winnerId: null,
+  hotStreakOwner: null,
+  consecutiveWinsMap: {},
+  hotStreakBonusWrongAnswerId: null,
+  testMode: false,
+  dynamicQuestions: [],
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Seed constants ───────────────────────────────────────────────────────────
+
+/**
+ * Prime constant used to vary per-round seeds during Fisher-Yates shuffle.
+ * Mirrors the golden-ratio constant used elsewhere in the codebase.
+ */
+const ROUND_SEED_MULTIPLIER = 0x9e3779b9;
+
+/**
+ * Additional seed constant used for the Hot Streak bonus hint pick.
+ * A distinct value from ROUND_SEED_MULTIPLIER ensures the bonus RNG
+ * sequence is independent of the AI-answer RNG sequence.
+ */
+const STREAK_BONUS_SEED_MULTIPLIER = 0xdeadbeef;
 
 /**
  * Fisher-Yates shuffle of [0 … length-1] using the given RNG.
@@ -97,6 +157,26 @@ function shuffleIndices(rng: () => number, length: number): number[] {
  */
 function questionIdxForRound(questionOrder: number[], round: number): number {
   return questionOrder[round % questionOrder.length];
+}
+
+/**
+ * Return the active question bank: dynamic questions if any were injected,
+ * otherwise the static fallback bank.
+ */
+function getQuestionBank(state: BiographyBlitzState): BiographyBlitzQuestion[] {
+  return state.dynamicQuestions.length > 0
+    ? state.dynamicQuestions
+    : BIOGRAPHY_BLITZ_QUESTIONS;
+}
+
+/**
+ * Lookup a question from the active bank by ID.
+ */
+function findQuestion(
+  state: BiographyBlitzState,
+  id: string,
+): BiographyBlitzQuestion | undefined {
+  return getQuestionBank(state).find((q) => q.id === id);
 }
 
 /**
@@ -139,7 +219,7 @@ export function buildAiSubmissions(
     // Unique per-contestant seed: mix competition seed, round, and a stable
     // hash of the contestant ID so order of aiIds does not affect results.
     const idHash = fnv1a32(aiId);
-    const contestantSeed = ((seed ^ (round * 0x9e3779b9) ^ idHash) >>> 0);
+    const contestantSeed = ((seed ^ (round * ROUND_SEED_MULTIPLIER) ^ idHash) >>> 0);
     const rng = mulberry32(contestantSeed);
     // Accuracy band: 45 % – 85 % (harder questions are not modeled here; the
     // question bank itself is the difficulty source).
@@ -152,6 +232,23 @@ export function buildAiSubmissions(
     }
   }
   return result;
+}
+
+/**
+ * Pick a wrong answer ID to surface as the Hot Streak bonus hint.
+ * Deterministically selects a wrong answer using a seed derived from the
+ * competition seed and round so results are reproducible.
+ */
+function pickBonusWrongAnswer(
+  seed: number,
+  round: number,
+  correctId: string,
+  allAnswerIds: string[],
+): string | null {
+  const wrongIds = allAnswerIds.filter((id) => id !== correctId);
+  if (wrongIds.length === 0) return null;
+  const rng = mulberry32(((seed ^ (round * STREAK_BONUS_SEED_MULTIPLIER)) >>> 0));
+  return seededPickN(rng, wrongIds, 1)[0];
 }
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -171,12 +268,30 @@ const biographyBlitzSlice = createSlice({
         participantIds: string[];
         competitionType: BiographyBlitzCompetitionType;
         seed: number;
+        /** When true, animation delays collapse to 0 for CI/test runs. */
+        testMode?: boolean;
+        /**
+         * Optional question bank generated from live houseguest bio data.
+         * When provided, overrides the static BIOGRAPHY_BLITZ_QUESTIONS bank.
+         */
+        dynamicQuestions?: BiographyBlitzQuestion[];
       }>,
     ) {
-      const { participantIds, competitionType, seed } = action.payload;
+      const {
+        participantIds,
+        competitionType,
+        seed,
+        testMode = false,
+        dynamicQuestions = [],
+      } = action.payload;
+
+      // Use injected bank if provided, otherwise fall back to static bank.
+      const bank =
+        dynamicQuestions.length > 0 ? dynamicQuestions : BIOGRAPHY_BLITZ_QUESTIONS;
+
       const rng = mulberry32(seed);
-      const order = shuffleIndices(rng, BIOGRAPHY_BLITZ_QUESTIONS.length);
-      const firstQuestion = BIOGRAPHY_BLITZ_QUESTIONS[order[0]];
+      const order = shuffleIndices(rng, bank.length);
+      const firstQuestion = bank[order[0]];
 
       state.competitionType = competitionType;
       state.activeContestants = [...participantIds];
@@ -190,6 +305,11 @@ const biographyBlitzSlice = createSlice({
       state.seed = seed;
       state.outcomeResolved = false;
       state.winnerId = null;
+      state.hotStreakOwner = null;
+      state.consecutiveWinsMap = {};
+      state.hotStreakBonusWrongAnswerId = null;
+      state.testMode = testMode;
+      state.dynamicQuestions = dynamicQuestions;
     },
 
     /**
@@ -208,6 +328,20 @@ const biographyBlitzSlice = createSlice({
     },
 
     /**
+     * Mark a contestant as disconnected for the current round.
+     * Their submission is recorded as the empty string which will never
+     * match a valid answer ID, treating them as having answered incorrectly.
+     * No-op if status is not 'question' or the contestant is not active.
+     */
+    markDisconnected(state, action: PayloadAction<string>) {
+      if (state.status !== 'question') return;
+      const id = action.payload;
+      if (!state.activeContestants.includes(id)) return;
+      // Use empty string as sentinel — no valid answer has an empty id.
+      state.submissions[id] = '';
+    },
+
+    /**
      * Auto-fill submissions for AI contestants who have not yet submitted.
      * Uses deterministic seeded RNG so results are reproducible.
      *
@@ -218,9 +352,7 @@ const biographyBlitzSlice = createSlice({
       if (!state.currentQuestionId) return;
 
       const humanId = action.payload;
-      const question = BIOGRAPHY_BLITZ_QUESTIONS.find(
-        (q) => q.id === state.currentQuestionId,
-      );
+      const question = findQuestion(state, state.currentQuestionId);
       if (!question) return;
 
       const aiIds = state.activeContestants.filter(
@@ -251,9 +383,7 @@ const biographyBlitzSlice = createSlice({
       if (state.status !== 'question') return;
       if (!state.currentQuestionId) return;
 
-      const question = BIOGRAPHY_BLITZ_QUESTIONS.find(
-        (q) => q.id === state.currentQuestionId,
-      );
+      const question = findQuestion(state, state.currentQuestionId);
       if (!question) return;
 
       state.correctAnswerId = question.correctAnswerId;
@@ -263,6 +393,14 @@ const biographyBlitzSlice = createSlice({
     /**
      * Confirm eliminations after the reveal animation, then advance to the
      * next round or declare the competition complete.
+     *
+     * Hot Streak tracking:
+     *  - Each round-winner's consecutiveWins count is incremented.
+     *  - Incorrect/no-answer contestants reset to 0.
+     *  - When a contestant reaches 2 consecutive wins they become the
+     *    hotStreakOwner for the following round and receive a one-round
+     *    bonus: a provably-wrong answer ID is flagged in hotStreakBonusWrongAnswerId.
+     *  - If the streak owner is eliminated the streak is cleared.
      *
      * Transitions: reveal → question  (if more than one contestant survives)
      *              reveal → complete   (if exactly one contestant survives)
@@ -285,8 +423,26 @@ const biographyBlitzSlice = createSlice({
       if (!voidRound) {
         for (const id of eliminated) {
           state.eliminatedContestants.push(id);
+          // Remove eliminated contestants from the streak map.
+          delete state.consecutiveWinsMap[id];
+          // Clear streak if the streak owner is eliminated.
+          if (state.hotStreakOwner === id) {
+            state.hotStreakOwner = null;
+            state.hotStreakBonusWrongAnswerId = null;
+          }
         }
         state.activeContestants = survivors;
+      }
+
+      // Update consecutive wins map for participants in a non-void round.
+      if (!voidRound) {
+        for (const id of survivors) {
+          state.consecutiveWinsMap[id] = (state.consecutiveWinsMap[id] ?? 0) + 1;
+        }
+        for (const id of eliminated) {
+          // Already removed above; guard in case of future refactor.
+          state.consecutiveWinsMap[id] = 0;
+        }
       }
 
       // Single survivor (after a real elimination) → complete.
@@ -295,13 +451,38 @@ const biographyBlitzSlice = createSlice({
         state.winnerId = state.activeContestants[0];
         state.currentQuestionId = null;
         state.correctAnswerId = null;
+        state.hotStreakBonusWrongAnswerId = null;
         return;
       }
 
       // More than one survivor → next question.
       const nextRound = state.round + 1;
+      const bank = getQuestionBank(state);
       const nextIdx = questionIdxForRound(state.questionOrder, nextRound);
-      const nextQuestion = BIOGRAPHY_BLITZ_QUESTIONS[nextIdx];
+      const nextQuestion = bank[nextIdx];
+
+      // Determine hot streak owner for the upcoming round.
+      // A contestant with 2+ consecutive wins earns the bonus.
+      let newStreakOwner: string | null = null;
+      let bonusWrongId: string | null = null;
+
+      for (const id of state.activeContestants) {
+        if ((state.consecutiveWinsMap[id] ?? 0) >= 2) {
+          newStreakOwner = id;
+          // Pick a wrong answer for the bonus hint on the upcoming question.
+          const allAnswerIds = nextQuestion.answers.map((a) => a.id);
+          bonusWrongId = pickBonusWrongAnswer(
+            state.seed,
+            nextRound,
+            nextQuestion.correctAnswerId,
+            allAnswerIds,
+          );
+          break; // at most one streak owner
+        }
+      }
+
+      state.hotStreakOwner = newStreakOwner;
+      state.hotStreakBonusWrongAnswerId = bonusWrongId;
 
       state.round = nextRound;
       state.currentQuestionId = nextQuestion.id;
@@ -325,6 +506,7 @@ const biographyBlitzSlice = createSlice({
 export const {
   startBiographyBlitz,
   submitAnswer,
+  markDisconnected,
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
