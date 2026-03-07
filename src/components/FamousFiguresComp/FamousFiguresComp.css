@@ -416,6 +416,33 @@
   gap: 1rem;
 }
 
+/* Final-scores variant: start from top so the full scoreboard is visible. */
+.ff-container--final-scores {
+  justify-content: flex-start;
+}
+
+.ff-winner-banner {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.75rem 1rem;
+  background: rgba(240, 200, 60, 0.12);
+  border: 1px solid rgba(240, 200, 60, 0.45);
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f0d060;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.ff-winner-banner-sub {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c8aa48;
+  margin-top: 0.2rem;
+}
+
 .ff-winner-card {
   display: flex;
   flex-direction: column;
