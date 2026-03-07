@@ -377,7 +377,7 @@ const famousFiguresSlice = createSlice({
 
     /**
      * End the current round: record per-round scores, transition to
-     * round_reveal. No-op if the round was already closed (all players solved).
+     * round_reveal. No-op if status !== 'round_active' (round already closed).
      */
     endRound(state) {
       doEndRound(state);
