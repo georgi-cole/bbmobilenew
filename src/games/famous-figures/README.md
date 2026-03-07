@@ -22,6 +22,45 @@ A Big Brother-style trivia minigame where players identify famous historical fig
 
 ---
 
+## Per-player Progression
+
+Each player gets their own **unique, reproducible** shuffled figure queue for the match.
+- Built at match start via `mulberry32(seed ^ fnv1a32(playerId))`.
+- Each player guesses a **different** figure from every other player in the same round.
+- A player's **personal round cursor** (`playerRoundCursor`) increments immediately on
+  each correct guess, independently of the global round timer.
+- When a player's cursor reaches `totalRounds` before the match ends, they see a
+  personal **"waiting for others"** screen displaying their per-round breakdown and a
+  live scoreboard until the global match completes.
+
+### Key state fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `playerFigureQueues` | `Record<string, number[]>` | Per-player list of figure indices (length = `totalRounds`) |
+| `playerRoundCursor` | `Record<string, number>` | How many rounds each player has solved so far (0…`totalRounds`) |
+| `playerPersonalRoundScores` | `Record<string, number[]>` | Points earned per solved round, written immediately on correct guess |
+
+Use `getPlayerFigureIndex(state, playerId, round)` to resolve the correct figure index for any player and round.
+
+---
+
+## Hint System
+
+Hints are revealed one at a time; requesting more reduces the points available.
+
+| Index | Source | Content |
+|-------|--------|---------|
+| 0 | Dataset `hints[0]` | Vague — no direct identifying information |
+| 1 | Dataset `hints[1]` | General field or era |
+| 2 | Generated | First-name initial: `"First name starts with 'X'."` |
+| 3 | Generated | Last-name initial (or letter count for mononyms): `"Last name starts with 'Y'."` |
+| 4 | Generated | **Name reveal** — full first name + last-name initial for two-part names (`"First name: Marie. Last name starts with 'C'."`) or full name for mononyms (`"Name: Cleopatra"`) |
+
+> **Note:** `hints[2]`, `hints[3]`, and `hints[4]` in the dataset JSON are **ignored at runtime** — indices 2–4 are always generated from `canonicalName`.
+
+---
+
 ## Dataset Format (JSON Schema)
 
 Each figure in `src/games/famous-figures/data/famous_figures.json` follows this schema:
@@ -35,9 +74,9 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
   "hints": [
     "Hint 1 — vague, no direct identifying info",
     "Hint 2 — general field or era",
-    "Hint 3 — notable works or events",
-    "Hint 4 — more specific detail",
-    "Hint 5 — most specific, near-giveaway (first name or strong clue)"
+    "(ignored — hint 3 is generated from canonicalName)",
+    "(ignored — hint 4 is generated from canonicalName)",
+    "(ignored — hint 5 is generated from canonicalName)"
   ],
   "baseClueFact": "A single sentence shown as the initial clue.",
   "difficulty": "easy",
@@ -54,7 +93,7 @@ Each figure in `src/games/famous-figures/data/famous_figures.json` follows this 
 | `normalizedName` | `string` | Output of `normalizeForMatching(canonicalName)` |
 | `acceptedAliases` | `string[]` | Alternative names players might use |
 | `normalizedAliases` | `string[]` | `normalizeForMatching` applied to each alias |
-| `hints` | `[string, string, string, string, string]` | Exactly 5 hints, vague → specific |
+| `hints` | `[string, string, string, string, string]` | Exactly 5 entries; only `hints[0]` and `hints[1]` are shown at runtime — indices 2–4 are generated |
 | `baseClueFact` | `string` | Opening clue shown before any hint is requested |
 | `difficulty` | `"easy" \| "medium" \| "hard"` | Affects AI correct-answer probability |
 | `category` | `string` | Free-form (artist, scientist, ruler, leader, etc.) |
@@ -120,7 +159,7 @@ Full **Damerau-Levenshtein** distance (not restricted). Transpositions count as 
    import { normalizeForMatching } from 'src/games/famous-figures/fuzzy';
    console.log(normalizeForMatching('Joan of Arc')); // → "joan arc"
    ```
-4. Write at least 5 hints of increasing specificity. Hint 5 should include the first name or an unambiguous clue.
+4. Write 2 hints of increasing specificity for `hints[0]` and `hints[1]`. The remaining three entries (`hints[2–4]`) are ignored at runtime but must still be present for schema compliance; use placeholder strings.
 5. Run tests: `npm run test:famous-figures`
 
 ---
@@ -132,6 +171,7 @@ Figures known by a single name (e.g. Michelangelo, Mozart, Cleopatra):
 - The `canonicalName` is the mononym and is **always a direct match target** — you do not need to add it to `acceptedAliases`.
 - Only add the mononym to `acceptedAliases` / `normalizedAliases` if you also want to list alternative spellings or variants of the mononym itself.
 - Short mononyms (≤4 chars) are matched by **exact** spelling only (no fuzzy distance allowed).
+- Hint 4 (index 4) for mononyms shows the full single name: `"Name: Cleopatra"`.
 
 ### Regnal and title names
 - Caesar (alias for Julius Caesar), Gandhi (for Mahatma Gandhi).
@@ -150,6 +190,7 @@ The normaliser strips all combining diacritics via NFD decomposition. `Cleopâtr
 - The 20-figure dataset is embedded in the bundle; no server fetch is required.
 - If a figure at index N is somehow missing (programming error), the relevant `submitPlayerGuess` call silently no-ops.
 - Seed-based figure shuffling ensures reproducible round order across page reloads.
+- Per-player queues are built with `mulberry32(seed ^ fnv1a32(playerId))` — reproducible but unique per player.
 
 ---
 
@@ -174,6 +215,7 @@ npm run start:famous-figures
 |------|---------|
 | `src/games/famous-figures/model.ts` | TypeScript types (`FigureRow`, `MatchStatus`, …) |
 | `src/games/famous-figures/fuzzy.ts` | Normalisation + Damerau-Levenshtein matching |
+| `src/games/famous-figures/hints.ts` | Hint generation (`getHintText`) |
 | `src/games/famous-figures/data/famous_figures.json` | 20-figure dataset |
 | `src/features/famousFigures/famousFiguresSlice.ts` | Redux slice (state machine) |
 | `src/features/famousFigures/thunks.ts` | Outcome resolution thunk |

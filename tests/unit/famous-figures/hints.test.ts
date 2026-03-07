@@ -93,7 +93,8 @@ describe('getHintText — mononym (single name)', () => {
   it('hint 4 reveals the full single name for mononyms', () => {
     const text = getHintText(figure, 4);
     expect(text).toContain('Cleopatra');
-    // Must NOT be the "Either X or Y" decoy format
+    // Must use the required format and NOT be the old "Either X or Y" decoy format
+    expect(text).toMatch(/^Name:/i);
     expect(text).not.toMatch(/^Either/i);
   });
 });

@@ -300,9 +300,6 @@ export default function FamousFiguresComp({
     const aiSubs = ff.aiSubmissions[round];
     if (!aiSubs) return;
 
-    const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
-    if (!figure) return;
-
     aiSubmitScheduledRoundRef.current = round;
     for (const [aiId, correct] of Object.entries(aiSubs)) {
       if (!correct) continue;
@@ -487,18 +484,15 @@ export default function FamousFiguresComp({
   // the global match hasn't ended yet (other players still playing).
   if (humanAllDone) {
     const humanTotal = humanId ? (ff.playerScores[humanId] ?? 0) : 0;
-    // playerRoundScores is populated by doEndRound(), which runs after the
-    // global round ends (timer or all-solved). When the human finishes their
-    // last round early, the current round's score hasn't been written yet.
-    // We reconstruct it from the cumulative total minus the previously recorded
-    // round scores so the display is always complete and accurate.
-    const recordedScores = humanId ? (ff.playerRoundScores[humanId] ?? []) : [];
-    const recordedSum = recordedScores.reduce((s, v) => s + v, 0);
-    const pendingScore = humanTotal - recordedSum;
-    const allRoundScores =
-      recordedScores.length < ff.totalRounds
-        ? [...recordedScores, pendingScore]
-        : recordedScores;
+    // playerPersonalRoundScores is written immediately on each correct guess,
+    // so it always has one entry per round the human solved — even before
+    // doEndRound fires. Rounds where the human didn't answer correctly have
+    // no entry; pad with 0 so the display always shows totalRounds items.
+    const personalScores = humanId ? (ff.playerPersonalRoundScores[humanId] ?? []) : [];
+    const allRoundScores = Array.from(
+      { length: ff.totalRounds },
+      (_, i) => personalScores[i] ?? 0,
+    );
     return (
       <div className="ff-container ff-container--waiting">
         <div className="ff-header">

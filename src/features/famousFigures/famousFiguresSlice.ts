@@ -65,6 +65,13 @@ export interface FamousFiguresState {
    * "waiting for others" screen once cursor === totalRounds.
    */
   playerRoundCursor: Record<string, number>;
+  /**
+   * Per-player per-round points earned, recorded immediately on each correct
+   * guess — not deferred to `doEndRound`. Length === number of correct rounds
+   * so far. Used by the waiting screen to display the per-round breakdown
+   * before the global round timer expires.
+   */
+  playerPersonalRoundScores: Record<string, number[]>;
 }
 
 // ─── Dataset ──────────────────────────────────────────────────────────────────
@@ -96,6 +103,7 @@ const initialState: FamousFiguresState = {
   roundComplete: false,
   playerFigureQueues: {},
   playerRoundCursor: {},
+  playerPersonalRoundScores: {},
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -298,12 +306,14 @@ const famousFiguresSlice = createSlice({
       // so each player sees a unique, reproducible set of figures.
       const playerFigureQueues: Record<string, number[]> = {};
       const playerRoundCursor: Record<string, number> = {};
+      const playerPersonalRoundScores: Record<string, number[]> = {};
       for (const id of participantIds) {
         const playerRng = mulberry32(seed ^ fnv1a32(id));
         const playerOrder = shuffleIndices(playerRng, FAMOUS_FIGURES.length);
         // Each player gets totalRounds unique figures from their own shuffle.
         playerFigureQueues[id] = playerOrder.slice(0, state.totalRounds);
         playerRoundCursor[id] = 0;
+        playerPersonalRoundScores[id] = [];
         state.playerScores[id] = 0;
         state.playerRoundScores[id] = [];
         state.playerCorrect[id] = false;
@@ -311,6 +321,7 @@ const famousFiguresSlice = createSlice({
       }
       state.playerFigureQueues = playerFigureQueues;
       state.playerRoundCursor = playerRoundCursor;
+      state.playerPersonalRoundScores = playerPersonalRoundScores;
 
       // currentFigureIndex points to the first participant's round-0 figure
       // (used for reveal display and backward-compat code paths).
@@ -408,6 +419,15 @@ const famousFiguresSlice = createSlice({
         state.playerScores[playerId] += points;
         // Record time-to-correct for tiebreaker traceability
         state.playerCorrectTimestamp[playerId] = timestamp ?? Date.now();
+        // Record this round's personal score immediately — not deferred to
+        // doEndRound — so the waiting screen always has a complete breakdown.
+        if (!state.playerPersonalRoundScores[playerId]) {
+          state.playerPersonalRoundScores[playerId] = [];
+        }
+        state.playerPersonalRoundScores[playerId] = [
+          ...state.playerPersonalRoundScores[playerId],
+          points,
+        ];
         // Advance this player's personal round cursor immediately.
         state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1;
         // Close the round only when every participant has now solved
