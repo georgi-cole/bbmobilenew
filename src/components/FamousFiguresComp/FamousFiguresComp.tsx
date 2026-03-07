@@ -87,6 +87,7 @@ interface ParticipantProp {
   id: string;
   name: string;
   isHuman: boolean;
+  avatar?: string;
 }
 
 interface Props {
@@ -113,18 +114,28 @@ export default function FamousFiguresComp({
   );
   const storePlayers = useAppSelector(
     (s: RootState) =>
-      (s as RootState & { game: { players: Array<{ id: string; name: string; isUser?: boolean }> } })
+      (s as RootState & { game: { players: Array<{ id: string; name: string; avatar?: string; isUser?: boolean }> } })
         .game?.players ?? [],
   );
 
   // ── Build player map ──────────────────────────────────────────────────────
-  const playerMap: Record<string, { name: string; isHuman: boolean }> = {};
+  const playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }> = {};
   if (participantsProp) {
-    for (const p of participantsProp) playerMap[p.id] = { name: p.name, isHuman: p.isHuman };
+    for (const p of participantsProp) {
+      playerMap[p.id] = {
+        name: p.name,
+        isHuman: p.isHuman,
+        avatar: p.avatar ?? getDicebear(p.name),
+      };
+    }
   }
   for (const p of storePlayers) {
     if (participantIds.includes(p.id)) {
-      playerMap[p.id] = { name: p.name, isHuman: !!p.isUser };
+      playerMap[p.id] = {
+        name: p.name,
+        isHuman: !!p.isUser,
+        avatar: resolveAvatar({ id: p.id, name: p.name, avatar: p.avatar ?? '' }),
+      };
     }
   }
 
@@ -133,6 +144,10 @@ export default function FamousFiguresComp({
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
+  }
+
+  function playerAvatar(id: string): string {
+    return playerMap[id]?.avatar ?? getDicebear(displayName(id));
   }
 
   // ── Local UI state ────────────────────────────────────────────────────────
@@ -344,7 +359,11 @@ export default function FamousFiguresComp({
           <div className="ff-winner-trophy" aria-hidden="true">🏆</div>
           <h2 className="ff-winner-title">Famous Figures Champion!</h2>
           <div className="ff-winner-avatar">
-            <img src={getDicebear(winnerName)} alt={winnerName} />
+            <img
+              src={playerAvatar(winnerId)}
+              alt={winnerName}
+              onError={(e) => { e.currentTarget.src = getDicebear(winnerName); }}
+            />
           </div>
           <p className="ff-winner-name">
             {winnerName}
@@ -385,7 +404,7 @@ export default function FamousFiguresComp({
           )}
         </div>
 
-        {renderScoreboard(ff, participantIds, humanId, displayName)}
+        {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
 
         <p style={{ fontSize: '0.75rem', color: '#557799', margin: 0 }}>
           Auto-advancing in 3 seconds…
@@ -499,7 +518,7 @@ export default function FamousFiguresComp({
       </div>
 
       {/* Scoreboard */}
-      {renderScoreboard(ff, participantIds, humanId, displayName)}
+      {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
     </div>
   );
 }
@@ -511,6 +530,7 @@ function renderScoreboard(
   participantIds: string[],
   humanId: string | null,
   displayName: (id: string) => string,
+  playerAvatar: (id: string) => string,
 ) {
   const sorted = [...participantIds].sort(
     (a, b) => (ff.playerScores[b] ?? 0) - (ff.playerScores[a] ?? 0),
@@ -522,13 +542,28 @@ function renderScoreboard(
       <div className="ff-scoreboard-list">
         {sorted.map((id) => {
           const isHuman = id === humanId;
+          const name = displayName(id);
           const total = ff.playerScores[id] ?? 0;
           const roundScores = ff.playerRoundScores[id] ?? [];
           const correct = ff.playerCorrect[id];
           return (
             <div key={id} className="ff-scoreboard-row">
+              <span className="ff-scoreboard-avatar-wrap">
+                <img
+                  className="ff-scoreboard-avatar"
+                  src={playerAvatar(id)}
+                  alt=""
+                  aria-hidden="true"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    // one-shot fallback to Dicebear to avoid infinite onError loop
+                    img.onerror = null;
+                    img.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(name)}`;
+                  }}
+                />
+              </span>
               <span className={`ff-scoreboard-name${isHuman ? ' ff-scoreboard-name--you' : ''}`}>
-                {isHuman ? 'You' : displayName(id)}
+                {isHuman ? 'You' : name}
               </span>
               <span className="ff-scoreboard-round">
                 [{roundScores.join(', ')}]

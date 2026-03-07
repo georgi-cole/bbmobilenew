@@ -5,7 +5,9 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
   background: linear-gradient(160deg, #0a1a2e 0%, #0d2240 60%, #0a1a2e 100%);
   color: #e8f4ff;
   font-family: inherit;
@@ -301,6 +303,24 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.82rem;
+}
+
+/* ── Player avatar chip in scoreboard ──────────────────────────────────── */
+.ff-scoreboard-avatar-wrap {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(136, 221, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ff-scoreboard-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .ff-scoreboard-name {
