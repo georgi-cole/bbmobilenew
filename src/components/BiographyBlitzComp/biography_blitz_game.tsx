@@ -22,7 +22,7 @@
  * human answer timeout, the hidden 15 s deadline) is managed here via setTimeout.
  * The testMode flag (from Redux state) collapses all delays to 0 for CI/tests.
  */
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
@@ -32,13 +32,14 @@ import {
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
+  pickElimination,
   resetBiographyBlitz,
 } from '../../features/biographyBlitz/biography_blitz_logic';
 import type { BiographyBlitzState, BiographyBlitzCompetitionType } from '../../features/biographyBlitz/biography_blitz_logic';
 import { resolveBiographyBlitzOutcome } from '../../features/biographyBlitz/thunks';
 import { BIOGRAPHY_BLITZ_QUESTIONS } from '../../features/biographyBlitz/biographyBlitzQuestions';
 import { generateBioQuestions } from '../../features/biographyBlitz/bioQuestionGenerator';
-import { getDicebear } from '../../utils/avatar';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import './BiographyBlitzComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -46,10 +47,10 @@ import './BiographyBlitzComp.css';
 /** Minimum number of generated bio questions required to prefer avatar mode. */
 const MIN_DYNAMIC_QUESTIONS = 3;
 const HUMAN_ANSWER_TIMEOUT_MS = 15_000;
-/** Suspense pause on reveal screen before confirming eliminations. */
+/** Suspense pause on reveal screen before advancing to choose_elimination. */
 const REVEAL_PAUSE_MS = 3_000;
-/** Time to show the winner screen before firing onComplete. */
-const WINNER_SCREEN_DURATION_MS = 5_000;
+/** Delay before AI auto-picks an elimination target when AI is the winner. */
+const CHOOSE_ELIMINATION_AUTO_DELAY_MS = 2_000;
 /** Shimmer animation lasts this long after answer is locked. */
 const SHIMMER_DURATION_MS = 600;
 
@@ -76,15 +77,27 @@ const NARRATION = {
     "Nope! So much for social awareness! 👀",
   ],
   eliminated: [
-    "{names} couldn't keep up with the biography blitz — eliminated! 💥",
-    "{names} got the wrong answer — they're out of here! 🚪",
-    "{names} didn't know their housemates well enough — goodbye! 👋",
-    "The knowledge drain claims {names} — eliminated! 📉",
+    "{name} couldn't keep up with the biography blitz — eliminated! 💥",
+    "{name} got the wrong answer — they're out of here! 🚪",
+    "{name} didn't know their housemates well enough — goodbye! 👋",
+    "The knowledge drain claims {name} — eliminated! 📉",
   ],
   voided: [
     "Everyone got that wrong — we'll let that one slide! Moving on! 🤷",
     "Wow, nobody knew that one! Question voided — next round! 🎲",
     "Not a single correct answer! That was a tough one — next question! 😅",
+  ],
+  chooseElimination: [
+    "{winner} answered correctly! Now choose one houseguest to eliminate… 🎯",
+    "{winner} got it right and earns the power to eliminate! Choose your target! ⚡",
+    "{winner} is the round winner! Pick one houseguest to send home! 🚪",
+    "{winner} knows the bios! Use that knowledge — who goes home? 💀",
+  ],
+  chooseEliminationYou: [
+    "You answered correctly! Now tap a houseguest to eliminate them! 🎯",
+    "You got it right! Choose who to send packing! ⚡",
+    "Power is yours! Tap to eliminate one houseguest! 🚪",
+    "You've earned the right to choose! Who goes home? 💀",
   ],
   winner: [
     "WE HAVE OUR BIOGRAPHY BLITZ CHAMPION! 🏆",
@@ -123,6 +136,67 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── Avatar helper ─────────────────────────────────────────────────────────────
+
+/**
+ * FallbackAvatar — renders an <img> with a two-step fallback chain:
+ *  1. resolveAvatar() for the player (local file first, e.g. avatars/Finn.png)
+ *  2. Dicebear SVG (on first load error)
+ *  3. Initials text node (if Dicebear also fails)
+ */
+function FallbackAvatar({
+  id,
+  name,
+  avatar,
+  className,
+  altText,
+}: {
+  id: string;
+  name: string;
+  avatar: string;
+  className?: string;
+  altText?: string;
+}) {
+  const [src, setSrc] = useState(() =>
+    resolveAvatar({ id, name, avatar }),
+  );
+  const [showInitials, setShowInitials] = useState(false);
+
+  function handleError() {
+    const dicebear = getDicebear(name);
+    if (src !== dicebear) {
+      setSrc(dicebear);
+    } else {
+      setShowInitials(true);
+    }
+  }
+
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .toUpperCase();
+
+  if (showInitials) {
+    return (
+      <span className={`bb-blitz__avatar-initials ${className ?? ''}`} aria-label={altText ?? name}>
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={altText ?? name}
+      className={className}
+      onError={handleError}
+      loading="lazy"
+    />
+  );
+}
+
 export default function BiographyBlitzComp({
   participantIds,
   participants: participantsProp,
@@ -140,7 +214,7 @@ export default function BiographyBlitzComp({
     (s: RootState) =>
       (
         s as RootState & {
-          game: { players: Array<{ id: string; name: string; isUser?: boolean }> };
+          game: { players: Array<{ id: string; name: string; avatar?: string; isUser?: boolean }> };
         }
       ).game?.players ?? [],
   );
@@ -150,22 +224,22 @@ export default function BiographyBlitzComp({
 
   // Derive timing based on test mode.
   const revealPause = testMode ? 0 : REVEAL_PAUSE_MS;
-  const winnerDuration = testMode ? 0 : WINNER_SCREEN_DURATION_MS;
+  const chooseElimDelay = testMode ? 0 : CHOOSE_ELIMINATION_AUTO_DELAY_MS;
   const humanTimeout = testMode ? 100 : HUMAN_ANSWER_TIMEOUT_MS;
 
-  // Build player name map (memoised to avoid re-creating each render).
+  // Build player info map (memoised to avoid re-creating each render).
   // participantIds.join is a stable dependency key that changes only when
   // the roster changes (which never happens mid-game).
   const playerMap = useMemo(() => {
-    const m: Record<string, { name: string; isHuman: boolean }> = {};
+    const m: Record<string, { name: string; isHuman: boolean; avatar: string }> = {};
     if (participantsProp) {
       for (const p of participantsProp) {
-        m[p.id] = { name: p.name, isHuman: p.isHuman };
+        m[p.id] = { name: p.name, isHuman: p.isHuman, avatar: '' };
       }
     }
     for (const p of storePlayers) {
       if (participantIds.includes(p.id)) {
-        m[p.id] = { name: p.name, isHuman: !!p.isUser };
+        m[p.id] = { name: p.name, isHuman: !!p.isUser, avatar: p.avatar ?? '' };
       }
     }
     return m;
@@ -177,6 +251,10 @@ export default function BiographyBlitzComp({
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
+  }
+
+  function playerAvatar(id: string): string {
+    return playerMap[id]?.avatar ?? '';
   }
 
   // Ref to avoid stale closures in effects.
@@ -254,7 +332,7 @@ export default function BiographyBlitzComp({
     dispatch(autoFillAIAnswers(null));
   }, [bb.status, bb.currentQuestionId, humanId, dispatch]);
 
-  // ── Auto-advance from reveal after suspense pause ─────────────────────────
+  // ── Auto-advance from reveal after suspense pause → choose_elimination ────
   useEffect(() => {
     if (bb.status !== 'reveal') return;
     const t = setTimeout(() => {
@@ -263,21 +341,35 @@ export default function BiographyBlitzComp({
     return () => clearTimeout(t);
   }, [bb.status, bb.round, revealPause, dispatch]);
 
-  // ── Resolve outcome and fire onComplete when game is complete ─────────────
-  const completeFiredRef = useRef(false);
+  // ── Auto-pick elimination when AI is the (sole/first) winner ─────────────
+  // When the human is NOT a round winner, the AI auto-picks deterministically
+  // after a short delay to give the cinematic a moment to breathe.
+  useEffect(() => {
+    if (bb.status !== 'choose_elimination') return;
+    // Human is a winner → they must choose manually; do not auto-pick.
+    if (humanId !== null && bb.roundWinnerIds.includes(humanId)) return;
+    if (bb.eliminationCandidates.length === 0) return;
+
+    const t = setTimeout(() => {
+      const current = bbRef.current;
+      if (current.status !== 'choose_elimination') return;
+      if (current.eliminationCandidates.length === 0) return;
+      // Deterministically pick the first candidate (stable across rerenders).
+      dispatch(pickElimination({ targetId: current.eliminationCandidates[0] }));
+    }, chooseElimDelay);
+
+    return () => clearTimeout(t);
+  }, [bb.status, bb.round, humanId, bb.roundWinnerIds, bb.eliminationCandidates, chooseElimDelay, dispatch]);
+
+  // ── Resolve outcome when game is complete (does NOT auto-fire onComplete) ──
+  const outcomeResolvedRef = useRef(false);
 
   useEffect(() => {
     if (bb.status !== 'complete') return;
-    if (completeFiredRef.current) return;
-    completeFiredRef.current = true;
-
+    if (outcomeResolvedRef.current) return;
+    outcomeResolvedRef.current = true;
     dispatch(resolveBiographyBlitzOutcome());
-
-    const t = setTimeout(() => {
-      onComplete?.();
-    }, winnerDuration);
-    return () => clearTimeout(t);
-  }, [bb.status, winnerDuration, dispatch, onComplete]);
+  }, [bb.status, dispatch]);
 
   // ── Answer handler ────────────────────────────────────────────────────────
 
@@ -291,6 +383,17 @@ export default function BiographyBlitzComp({
     [humanId, bb.status, bb.submissions, dispatch],
   );
 
+  // ── Elimination pick handler (human winner picks target) ──────────────────
+
+  const handleEliminationPick = useCallback(
+    (targetId: string) => {
+      if (bb.status !== 'choose_elimination') return;
+      if (!bb.eliminationCandidates.includes(targetId)) return;
+      dispatch(pickElimination({ targetId }));
+    },
+    [bb.status, bb.eliminationCandidates, dispatch],
+  );
+
   // ── Derived values ────────────────────────────────────────────────────────
 
   const activeQuestionBank =
@@ -302,20 +405,22 @@ export default function BiographyBlitzComp({
 
   const humanAnswer = humanId ? bb.submissions[humanId] : null;
   const humanAnsweredCorrectly =
-    bb.status === 'reveal' && humanAnswer === bb.correctAnswerId;
+    (bb.status === 'reveal' || bb.status === 'choose_elimination') &&
+    humanAnswer === bb.correctAnswerId;
 
-  const eliminatedThisRound =
-    bb.status === 'reveal' && bb.correctAnswerId
-      ? bb.activeContestants.filter((id) => bb.submissions[id] !== bb.correctAnswerId)
-      : [];
-  const voidedRound = eliminatedThisRound.length === bb.activeContestants.length;
-  const actuallyEliminated = voidedRound ? [] : eliminatedThisRound;
+  const voidedRound = bb.status === 'reveal' && bb.eliminationCandidates.length === 0 && bb.roundWinnerIds.length === 0;
 
   // Avatar mode: dynamic questions where answer IDs are contestant IDs.
   const avatarMode =
     bb.dynamicQuestions.length > 0 &&
     currentQuestion !== null &&
     currentQuestion.answers.some((a) => participantIds.includes(a.id));
+
+  // Is the human the one who gets to pick the elimination target?
+  const humanIsChooser =
+    bb.status === 'choose_elimination' &&
+    humanId !== null &&
+    bb.roundWinnerIds.includes(humanId);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -330,6 +435,7 @@ export default function BiographyBlitzComp({
   if (bb.status === 'complete') {
     const winnerId = bb.winnerId ?? '';
     const winnerName = displayName(winnerId);
+    const winnerAvatarVal = playerAvatar(winnerId);
     const isHumanWinner = winnerId === humanId;
     return (
       <div className="bb-blitz bb-blitz--complete" aria-live="assertive">
@@ -338,10 +444,12 @@ export default function BiographyBlitzComp({
           {pickLine(NARRATION.winner, bb.round)}
         </h2>
         <div className="bb-blitz__winner-avatar bb-blitz__winner-avatar--zoom">
-          <img
-            src={getDicebear(winnerName)}
-            alt={winnerName}
+          <FallbackAvatar
+            id={winnerId}
+            name={winnerName}
+            avatar={winnerAvatarVal}
             className="bb-blitz__avatar-img"
+            altText={winnerName}
           />
         </div>
         <p className="bb-blitz__winner-name">
@@ -351,6 +459,14 @@ export default function BiographyBlitzComp({
         <p className="bb-blitz__winner-subtitle">
           {prizeType} Winner — {bb.round + 1} round{bb.round !== 0 ? 's' : ''} played
         </p>
+        <button
+          className="bb-blitz__confirm-btn"
+          onClick={() => onComplete?.()}
+          aria-label="Continue game"
+          type="button"
+        >
+          Continue ›
+        </button>
       </div>
     );
   }
@@ -382,12 +498,13 @@ export default function BiographyBlitzComp({
       <div className="bb-blitz__contestants" aria-label="Active contestants">
         {bb.activeContestants.map((id) => {
           const name = displayName(id);
+          const avatarVal = playerAvatar(id);
           const hasAnswered = id in bb.submissions;
           const isHumanPlayer = id === humanId;
           let pillClass = 'bb-blitz__contestant-pill';
           if (hasAnswered) pillClass += ' bb-blitz__contestant-pill--answered';
           if (isHumanPlayer) pillClass += ' bb-blitz__contestant-pill--you';
-          if (bb.status === 'reveal') {
+          if (bb.status === 'reveal' || bb.status === 'choose_elimination') {
             const correct = bb.submissions[id] === bb.correctAnswerId;
             pillClass += correct
               ? ' bb-blitz__contestant-pill--correct'
@@ -396,11 +513,12 @@ export default function BiographyBlitzComp({
           if (id === bb.hotStreakOwner) pillClass += ' bb-blitz__contestant-pill--streak';
           return (
             <div key={id} className={pillClass} aria-label={name}>
-              <img
-                src={getDicebear(name)}
-                alt=""
-                aria-hidden="true"
+              <FallbackAvatar
+                id={id}
+                name={name}
+                avatar={avatarVal}
                 className="bb-blitz__pill-avatar"
+                altText=""
               />
               <span className="bb-blitz__pill-name">{isHumanPlayer ? 'You' : name}</span>
               {hasAnswered && bb.status === 'question' && (
@@ -416,20 +534,81 @@ export default function BiographyBlitzComp({
 
       {/* Narration banner ────────────────────────────────────────────────── */}
       <p className="bb-blitz__narration" aria-live="polite">
-        {bb.status === 'reveal'
-          ? voidedRound
-            ? pickLine(NARRATION.voided, bb.round)
-            : actuallyEliminated.length > 0
-              ? pickLine(NARRATION.eliminated, bb.round).replace(
-                  '{names}',
-                  actuallyEliminated.map((id) => displayName(id)).join(' & '),
-                )
+        {bb.status === 'choose_elimination'
+          ? humanIsChooser
+            ? pickLine(NARRATION.chooseEliminationYou, bb.round)
+            : pickLine(NARRATION.chooseElimination, bb.round).replace(
+                '{winner}',
+                displayName(bb.roundWinnerIds[0] ?? ''),
+              )
+          : bb.status === 'reveal'
+            ? voidedRound
+              ? pickLine(NARRATION.voided, bb.round)
               : pickLine(NARRATION.correct, bb.round)
-          : pickLine(NARRATION.question, bb.round)}
+            : bb.status === 'question' && bb.lastEliminatedId !== null
+              ? pickLine(NARRATION.eliminated, bb.round).replace(
+                  '{name}',
+                  displayName(bb.lastEliminatedId),
+                )
+              : pickLine(NARRATION.question, bb.round)}
       </p>
 
+      {/* Choose elimination screen ──────────────────────────────────────── */}
+      {bb.status === 'choose_elimination' && humanIsChooser && (
+        <div
+          className="bb-blitz__elim-picker bb-blitz__elim-picker--cinematic"
+          role="group"
+          aria-label="Choose a houseguest to eliminate"
+        >
+          <p className="bb-blitz__elim-picker-title" aria-hidden="true">
+            ☠️ Choose your target
+          </p>
+          <div className="bb-blitz__elim-candidates">
+            {bb.eliminationCandidates.map((candidateId) => {
+              const cname = displayName(candidateId);
+              const cavatar = playerAvatar(candidateId);
+              return (
+                <button
+                  key={candidateId}
+                  className="bb-blitz__elim-candidate-btn"
+                  onClick={() => handleEliminationPick(candidateId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleEliminationPick(candidateId);
+                    }
+                  }}
+                  aria-label={`Eliminate ${cname}`}
+                  type="button"
+                >
+                  <span className="bb-blitz__avatar-wrapper">
+                    <FallbackAvatar
+                      id={candidateId}
+                      name={cname}
+                      avatar={cavatar}
+                      className="bb-blitz__avatar-img"
+                      altText={cname}
+                    />
+                  </span>
+                  <span className="bb-blitz__avatar-name">{cname}</span>
+                  <span className="bb-blitz__elim-icon" aria-hidden="true">🚪</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* AI is choosing — show suspense overlay */}
+      {bb.status === 'choose_elimination' && !humanIsChooser && (
+        <div className="bb-blitz__elim-waiting" aria-live="polite">
+          <span className="bb-blitz__elim-waiting-icon" aria-hidden="true">⚡</span>
+          <span>{displayName(bb.roundWinnerIds[0] ?? '')} is choosing…</span>
+        </div>
+      )}
+
       {/* Question card ───────────────────────────────────────────────────── */}
-      {currentQuestion && (
+      {currentQuestion && bb.status !== 'choose_elimination' && (
         <div
           className="bb-blitz__question-card bb-blitz__question-card--reveal"
           role="region"
@@ -498,10 +677,12 @@ export default function BiographyBlitzComp({
                     }}
                   >
                     <span className="bb-blitz__avatar-wrapper">
-                      <img
-                        src={getDicebear(answerName)}
-                        alt={answerName}
+                      <FallbackAvatar
+                        id={answer.id}
+                        name={answerName}
+                        avatar={playerAvatar(answer.id)}
                         className="bb-blitz__avatar-img"
+                        altText={answerName}
                       />
                       {isLocked && (
                         <span className="bb-blitz__lock-icon" aria-hidden="true">🔒</span>
@@ -574,7 +755,7 @@ export default function BiographyBlitzComp({
       )}
 
       {/* Human feedback banner ───────────────────────────────────────────── */}
-      {bb.status === 'reveal' && humanId && (
+      {(bb.status === 'reveal' || bb.status === 'choose_elimination') && humanId && (
         <p
           className={`bb-blitz__feedback ${
             humanAnsweredCorrectly ? 'bb-blitz__feedback--correct' : 'bb-blitz__feedback--wrong'
@@ -603,4 +784,4 @@ export default function BiographyBlitzComp({
 }
 
 // Export timing constants so Storybook / integration tests can import them.
-export { HUMAN_ANSWER_TIMEOUT_MS, REVEAL_PAUSE_MS, WINNER_SCREEN_DURATION_MS, SHIMMER_DURATION_MS };
+export { HUMAN_ANSWER_TIMEOUT_MS, REVEAL_PAUSE_MS, CHOOSE_ELIMINATION_AUTO_DELAY_MS, SHIMMER_DURATION_MS };

@@ -2,22 +2,31 @@
  * Redux slice for the "Biography Blitz" trivia competition.
  *
  * State machine:
- *   idle → question → reveal → question  (repeat until one contestant remains)
- *                   → complete           (single contestant left)
  *
- * Each round a question is presented to all active contestants.  Contestants
- * who answer incorrectly are eliminated.  If every remaining contestant
- * answers incorrectly in the same round, no one is eliminated that round
- * (the question is voided and the next one plays), preserving at least one
- * surviving contestant.
+ *   idle
+ *    └─ startBiographyBlitz → question
+ *         └─ revealResults  → reveal
+ *              ├─ confirmElimination (void round: everyone wrong) → question
+ *              └─ confirmElimination (non-void) → choose_elimination
+ *                   └─ pickElimination → question  (≥2 active contestants)
+ *                                      → complete  (1 active contestant)
+ *
+ * Each round a question is presented to all active contestants.
+ * Round winners are contestants who answered correctly.
+ * After the reveal, the round winner(s) pick exactly ONE other contestant to
+ * eliminate.  All other contestants (including those who answered wrong) remain
+ * active — only the chosen target is eliminated.
+ *
+ * Void round: if every remaining contestant answers incorrectly, no elimination
+ * occurs and the game advances directly to the next question, ensuring at least
+ * one survivor always remains.
  *
  * AI answers are generated deterministically from the seeded RNG so results
  * are reproducible across rerenders and reruns.
  *
  * Hot Streak: a contestant who wins 2 consecutive rounds gains a one-round
  * informational bonus (one impossible answer is flagged for their UI only).
- * The streak is cleared if the streak owner is eliminated or when the bonus
- * is consumed at the start of the next round.
+ * The streak resets if the streak owner is eliminated or fails to win a round.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32, seededPickN } from '../../store/rng';
@@ -31,7 +40,12 @@ export type { BiographyBlitzQuestion };
 
 export type BiographyBlitzCompetitionType = 'HOH' | 'POV';
 
-export type BiographyBlitzStatus = 'idle' | 'question' | 'reveal' | 'complete';
+export type BiographyBlitzStatus =
+  | 'idle'
+  | 'question'
+  | 'reveal'
+  | 'choose_elimination'
+  | 'complete';
 
 /**
  * State object for Biography Blitz as required by the competition architecture.
@@ -101,6 +115,25 @@ export interface BiographyBlitzState {
    * Typically populated by the component from live houseguest bio data.
    */
   dynamicQuestions: BiographyBlitzQuestion[];
+
+  // ── Elimination choice ───────────────────────────────────────────────────────
+  /**
+   * IDs of contestants who answered correctly in the current/most-recent round.
+   * Set during revealResults; cleared at the start of the next question.
+   */
+  roundWinnerIds: string[];
+  /**
+   * IDs of active contestants who can be chosen for elimination in the
+   * choose_elimination phase (active contestants minus round winners).
+   * Set during revealResults; cleared at the start of the next question.
+   */
+  eliminationCandidates: string[];
+  /**
+   * The contestant who was most recently eliminated (set by pickElimination,
+   * cleared at the start of the next round's reveal).  Used to display an
+   * elimination-announcement narration line at the top of each new question.
+   */
+  lastEliminatedId: string | null;
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -123,6 +156,9 @@ const initialState: BiographyBlitzState = {
   hotStreakBonusWrongAnswerId: null,
   testMode: false,
   dynamicQuestions: [],
+  roundWinnerIds: [],
+  eliminationCandidates: [],
+  lastEliminatedId: null,
 };
 
 // ─── Seed constants ───────────────────────────────────────────────────────────
@@ -310,6 +346,9 @@ const biographyBlitzSlice = createSlice({
       state.hotStreakBonusWrongAnswerId = null;
       state.testMode = testMode;
       state.dynamicQuestions = dynamicQuestions;
+      state.roundWinnerIds = [];
+      state.eliminationCandidates = [];
+      state.lastEliminatedId = null;
     },
 
     /**
@@ -370,12 +409,15 @@ const biographyBlitzSlice = createSlice({
     },
 
     /**
-     * Reveal the correct answer and eliminate contestants who answered
-     * incorrectly.
+     * Reveal the correct answer and compute round winners and elimination
+     * candidates.
+     *
+     * Round winners: contestants who submitted the correct answer.
+     * Elimination candidates: all active contestants who are NOT round winners.
      *
      * Edge-case: if every active contestant answered incorrectly the round is
-     * voided — no one is eliminated.  This ensures the competition always
-     * produces a winner rather than eliminating everyone simultaneously.
+     * voided — eliminationCandidates is empty (no one can be eliminated).
+     * This ensures the competition always produces a winner.
      *
      * Transitions: question → reveal
      */
@@ -386,72 +428,112 @@ const biographyBlitzSlice = createSlice({
       const question = findQuestion(state, state.currentQuestionId);
       if (!question) return;
 
-      state.correctAnswerId = question.correctAnswerId;
+      const correct = question.correctAnswerId;
+      const winners = state.activeContestants.filter(
+        (id) => state.submissions[id] === correct,
+      );
+      const candidates = state.activeContestants.filter(
+        (id) => state.submissions[id] !== correct,
+      );
+
+      state.correctAnswerId = correct;
+      state.roundWinnerIds = winners;
+      // Void round: no candidates (everyone was wrong) → keep candidates empty
+      state.eliminationCandidates = winners.length > 0 ? candidates : [];
+      // Clear the previous round's elimination announcement when a new reveal starts.
+      state.lastEliminatedId = null;
       state.status = 'reveal';
     },
 
     /**
-     * Confirm eliminations after the reveal animation, then advance to the
-     * next round or declare the competition complete.
+     * Advance from the reveal phase after the reveal animation completes.
      *
-     * Hot Streak tracking:
-     *  - Each round-winner's consecutiveWins count is incremented.
-     *  - Incorrect/no-answer contestants reset to 0.
-     *  - When a contestant reaches 2 consecutive wins they become the
-     *    hotStreakOwner for the following round and receive a one-round
-     *    bonus: a provably-wrong answer ID is flagged in hotStreakBonusWrongAnswerId.
-     *  - If the streak owner is eliminated the streak is cleared.
+     * If there are elimination candidates (round was not voided): transitions
+     * to choose_elimination so the round winner can pick one target.
      *
-     * Transitions: reveal → question  (if more than one contestant survives)
-     *              reveal → complete   (if exactly one contestant survives)
+     * Void round (no one answered correctly → eliminationCandidates is empty):
+     * advances directly to the next question without any elimination.
+     *
+     * Transitions: reveal → choose_elimination  (non-void round)
+     *              reveal → question             (void round)
      */
     confirmElimination(state) {
       if (state.status !== 'reveal') return;
-      if (!state.correctAnswerId) return;
 
-      const correct = state.correctAnswerId;
-      const eliminated = state.activeContestants.filter(
-        (id) => state.submissions[id] !== correct,
-      );
-      const survivors = state.activeContestants.filter(
-        (id) => state.submissions[id] === correct,
-      );
+      const voidRound = state.eliminationCandidates.length === 0;
 
-      // Void round: no-one answered correctly — keep everyone alive.
-      const voidRound = survivors.length === 0;
+      if (voidRound) {
+        // Void round: advance directly to next question, hot streak unchanged.
+        const nextRound = state.round + 1;
+        const bank = getQuestionBank(state);
+        const nextIdx = questionIdxForRound(state.questionOrder, nextRound);
+        const nextQuestion = bank[nextIdx];
 
-      if (!voidRound) {
-        for (const id of eliminated) {
-          state.eliminatedContestants.push(id);
-          // Remove eliminated contestants from the streak map.
-          delete state.consecutiveWinsMap[id];
-          // Clear streak if the streak owner is eliminated.
-          if (state.hotStreakOwner === id) {
-            state.hotStreakOwner = null;
-            state.hotStreakBonusWrongAnswerId = null;
-          }
-        }
-        state.activeContestants = survivors;
+        state.round = nextRound;
+        state.currentQuestionId = nextQuestion.id;
+        state.correctAnswerId = null;
+        state.submissions = {};
+        state.roundWinnerIds = [];
+        state.eliminationCandidates = [];
+        state.status = 'question';
+        return;
       }
 
-      // Update consecutive wins map for participants in a non-void round.
-      if (!voidRound) {
-        for (const id of survivors) {
+      // Non-void: go to choose_elimination so winner can pick a target.
+      state.status = 'choose_elimination';
+    },
+
+    /**
+     * The round winner picks one elimination target.
+     *
+     * The target must be in eliminationCandidates (active but answered
+     * incorrectly this round).  No-op if the target is not a valid candidate
+     * or if the status is not choose_elimination.
+     *
+     * Hot Streak tracking (applied here after the choice is confirmed):
+     *  - Round winners (correct answer) increment their consecutiveWins.
+     *  - The eliminated contestant is removed from the streak map.
+     *  - Remaining contestants who answered wrong reset to 0.
+     *
+     * Transitions: choose_elimination → question  (>1 active after elimination)
+     *              choose_elimination → complete   (1 active after elimination)
+     */
+    pickElimination(state, action: PayloadAction<{ targetId: string }>) {
+      if (state.status !== 'choose_elimination') return;
+
+      const { targetId } = action.payload;
+      if (!state.eliminationCandidates.includes(targetId)) return;
+
+      // Eliminate the chosen target.
+      state.eliminatedContestants.push(targetId);
+      state.lastEliminatedId = targetId;
+      delete state.consecutiveWinsMap[targetId];
+      if (state.hotStreakOwner === targetId) {
+        state.hotStreakOwner = null;
+        state.hotStreakBonusWrongAnswerId = null;
+      }
+      state.activeContestants = state.activeContestants.filter((id) => id !== targetId);
+
+      // Update hot streak for all remaining active contestants.
+      // Winners increment; non-winners (answered wrong but survived) reset to 0.
+      for (const id of state.activeContestants) {
+        if (state.roundWinnerIds.includes(id)) {
           state.consecutiveWinsMap[id] = (state.consecutiveWinsMap[id] ?? 0) + 1;
-        }
-        for (const id of eliminated) {
-          // Already removed above; guard in case of future refactor.
+        } else {
           state.consecutiveWinsMap[id] = 0;
         }
       }
 
-      // Single survivor (after a real elimination) → complete.
-      if (!voidRound && state.activeContestants.length === 1) {
+      // Single survivor → complete.
+      if (state.activeContestants.length === 1) {
         state.status = 'complete';
         state.winnerId = state.activeContestants[0];
         state.currentQuestionId = null;
         state.correctAnswerId = null;
         state.hotStreakBonusWrongAnswerId = null;
+        state.roundWinnerIds = [];
+        state.eliminationCandidates = [];
+        // lastEliminatedId already set above; keep it so winner screen can reference it if needed.
         return;
       }
 
@@ -462,14 +544,12 @@ const biographyBlitzSlice = createSlice({
       const nextQuestion = bank[nextIdx];
 
       // Determine hot streak owner for the upcoming round.
-      // A contestant with 2+ consecutive wins earns the bonus.
       let newStreakOwner: string | null = null;
       let bonusWrongId: string | null = null;
 
       for (const id of state.activeContestants) {
         if ((state.consecutiveWinsMap[id] ?? 0) >= 2) {
           newStreakOwner = id;
-          // Pick a wrong answer for the bonus hint on the upcoming question.
           const allAnswerIds = nextQuestion.answers.map((a) => a.id);
           bonusWrongId = pickBonusWrongAnswer(
             state.seed,
@@ -477,7 +557,7 @@ const biographyBlitzSlice = createSlice({
             nextQuestion.correctAnswerId,
             allAnswerIds,
           );
-          break; // at most one streak owner
+          break;
         }
       }
 
@@ -488,6 +568,8 @@ const biographyBlitzSlice = createSlice({
       state.currentQuestionId = nextQuestion.id;
       state.correctAnswerId = null;
       state.submissions = {};
+      state.roundWinnerIds = [];
+      state.eliminationCandidates = [];
       state.status = 'question';
     },
 
@@ -510,6 +592,7 @@ export const {
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
+  pickElimination,
   markBiographyBlitzOutcomeResolved,
   resetBiographyBlitz,
 } = biographyBlitzSlice.actions;

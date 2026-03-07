@@ -21,6 +21,7 @@ import biographyBlitzReducer, {
   submitAnswer,
   revealResults,
   confirmElimination,
+  pickElimination,
   markBiographyBlitzOutcomeResolved,
 } from '../../src/features/biographyBlitz/biography_blitz_logic';
 import { resolveBiographyBlitzOutcome } from '../../src/features/biographyBlitz/thunks';
@@ -50,6 +51,27 @@ function makeIntegrationStore(initialGamePhase: string = 'hoh_comp') {
       game: gameReducer,
     },
   });
+}
+
+/**
+ * Helper: run a complete elimination round (submit → reveal → confirm → pick).
+ * For void rounds, confirmElimination advances directly without a pick.
+ */
+function doEliminationRound(
+  store: ReturnType<typeof makeIntegrationStore>,
+  correct: string,
+  wrong: string,
+  winnerId: string,
+  loserId: string,
+) {
+  store.dispatch(submitAnswer({ contestantId: winnerId, answerId: correct }));
+  store.dispatch(submitAnswer({ contestantId: loserId, answerId: wrong }));
+  store.dispatch(revealResults());
+  store.dispatch(confirmElimination());
+  const bb = store.getState().biographyBlitz;
+  if (bb.status === 'choose_elimination' && bb.eliminationCandidates.length > 0) {
+    store.dispatch(pickElimination({ targetId: bb.eliminationCandidates[0] }));
+  }
 }
 
 // ── Registry wiring ───────────────────────────────────────────────────────────
@@ -125,10 +147,7 @@ describe('Biography Blitz — full 2-player elimination scenario', () => {
     const correct = question.correctAnswerId;
     const wrong = question.answers.find((a) => a.id !== correct)!.id;
 
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    doEliminationRound(store, correct, wrong, 'human', 'ai1');
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
@@ -151,10 +170,7 @@ describe('Biography Blitz — full 2-player elimination scenario', () => {
     const correct = question.correctAnswerId;
     const wrong = question.answers.find((a) => a.id !== correct)!.id;
 
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrong }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: correct }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    doEliminationRound(store, correct, wrong, 'ai1', 'human');
 
     const bb = store.getState().biographyBlitz;
     expect(bb.status).toBe('complete');
@@ -182,6 +198,8 @@ describe('resolveBiographyBlitzOutcome — idempotency', () => {
     store.dispatch(submitAnswer({ contestantId: 'loser', answerId: wrong }));
     store.dispatch(revealResults());
     store.dispatch(confirmElimination());
+    // winner picks loser to eliminate → complete
+    store.dispatch(pickElimination({ targetId: 'loser' }));
     return store;
   }
 
@@ -238,7 +256,8 @@ describe('resolveBiographyBlitzOutcome — idempotency', () => {
     store.dispatch(submitAnswer({ contestantId: 'winner', answerId: correct }));
     store.dispatch(submitAnswer({ contestantId: 'loser', answerId: wrong }));
     store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
+    store.dispatch(confirmElimination()); // → choose_elimination
+    store.dispatch(pickElimination({ targetId: 'loser' })); // → complete
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     store.dispatch(resolveBiographyBlitzOutcome());
@@ -298,7 +317,7 @@ describe('Biography Blitz — multi-round progression', () => {
       }),
     );
 
-    // Round 1: ai2 answers wrong, human and ai1 answer correctly → ai2 eliminated
+    // Round 1: ai2 answers wrong, human and ai1 answer correctly → ai2 eliminated (winner picks)
     {
       const { currentQuestionId } = store.getState().biographyBlitz;
       const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
@@ -309,7 +328,8 @@ describe('Biography Blitz — multi-round progression', () => {
       store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: correct }));
       store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
       store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
+      store.dispatch(confirmElimination()); // → choose_elimination
+      store.dispatch(pickElimination({ targetId: 'ai2' })); // → question
 
       expect(store.getState().biographyBlitz.status).toBe('question');
       expect(store.getState().biographyBlitz.activeContestants).toEqual(['human', 'ai1']);
@@ -326,7 +346,8 @@ describe('Biography Blitz — multi-round progression', () => {
       store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
       store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
       store.dispatch(revealResults());
-      store.dispatch(confirmElimination());
+      store.dispatch(confirmElimination()); // → choose_elimination
+      store.dispatch(pickElimination({ targetId: 'ai1' })); // → complete
     }
 
     const bb = store.getState().biographyBlitz;

@@ -37,6 +37,7 @@ export {
   autoFillAIAnswers,
   revealResults,
   confirmElimination,
+  pickElimination,
   markBiographyBlitzOutcomeResolved,
   resetBiographyBlitz,
   buildAiSubmissions,

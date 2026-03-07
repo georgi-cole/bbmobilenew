@@ -125,9 +125,10 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     // Plea messages must appear in the TV feed
     await expect(tvFeed).toContainText(/asks nominees for their pleas/i, { timeout: 10000 });
 
-    // If the ChatOverlay is present (skippable plea cinematic), click Skip to
-    // immediately complete it so the decision modal appears without delay.
-    const skipBtn = page.getByRole('button', { name: /skip/i });
+    // If the ChatOverlay is present (skippable plea cinematic), click "Skip to end"
+    // to immediately complete it so the decision modal appears without delay.
+    // Use the specific aria-label to avoid matching the debug-panel "Skip Minigame" button.
+    const skipBtn = page.getByRole('button', { name: 'Skip to end', exact: true });
     if (await skipBtn.isVisible({ timeout: 1000 })) {
       await skipBtn.click();
     }
