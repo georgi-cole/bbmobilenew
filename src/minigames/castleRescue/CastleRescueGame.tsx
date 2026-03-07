@@ -1251,8 +1251,11 @@ function renderRoom(
 /** Max CSS scale factor to avoid excessive zoom on very large screens. */
 const MAX_SCALE = 2;
 
-/** Pixels reserved for the control strip in portrait mode (below canvas). */
-const CTRL_H_PORTRAIT = 68;
+/**
+ * Pixels reserved for the control strip in portrait mode (below canvas).
+ * Must be ≥ touch button minHeight (90) + 2 × vertical padding (8px each side) + gap = 116 px.
+ */
+const CTRL_H_PORTRAIT = 116;
 /** Pixels reserved for the control strip in landscape mode (right of canvas). */
 const CTRL_W_LANDSCAPE = 134;
 
@@ -1522,7 +1525,7 @@ function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onReleas
   return (
     <button
       aria-label={ariaLabel}
-      style={btnCss(color)}
+      style={touchBtnCss(color)}
       onMouseDown={() => onPress(code)} onMouseUp={() => onRelease(code)} onMouseLeave={() => onRelease(code)}
       onTouchStart={(e) => { e.preventDefault(); onPress(code); }}
       onTouchEnd={(e)   => { e.preventDefault(); onRelease(code); }}
@@ -1555,7 +1558,8 @@ const endOverlayStyle: CSSProperties = {
   pointerEvents: 'auto',
 };
 
-function btnCss(bg: string): CSSProperties {
+/** Style for the on-screen touch control buttons (large touch targets). */
+function touchBtnCss(bg: string): CSSProperties {
   return {
     padding: '10px 20px',
     background: bg,
@@ -1568,5 +1572,20 @@ function btnCss(bg: string): CSSProperties {
     touchAction: 'none',
     minWidth: 90,
     minHeight: 90,
+  };
+}
+
+/** Style for action buttons (e.g. "Play Again") — compact, not touch-target sized. */
+function btnCss(bg: string): CSSProperties {
+  return {
+    padding: '10px 24px',
+    background: bg,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+    touchAction: 'none',
   };
 }

@@ -26,3 +26,4 @@ dist-ssr
 # Server environment secrets
 server/.env
 screenshots/
+*.bak
