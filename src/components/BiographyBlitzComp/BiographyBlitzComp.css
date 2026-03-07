@@ -72,6 +72,25 @@
   font-size: 0.85rem;
 }
 
+/* ── Spectator mode (human eliminated, watching AI-only rounds) ──────────── */
+
+.bb-blitz--spectator .bb-blitz__question-card {
+  opacity: 0.75;
+}
+
+.bb-blitz__spectator-banner {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #c0a0d0;
+  background: rgba(100, 60, 120, 0.18);
+  border: 1px solid rgba(180, 100, 200, 0.3);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+}
+
 /* ── Contestant pills ────────────────────────────────────────────────────── */
 
 .bb-blitz__contestants {
