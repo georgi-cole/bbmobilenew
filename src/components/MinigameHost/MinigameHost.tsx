@@ -21,6 +21,8 @@ import HoldTheWallComp from '../HoldTheWallComp/HoldTheWallComp';
 import type { HoldTheWallPrizeType } from '../../features/holdTheWall/holdTheWallSlice';
 import BiographyBlitzComp from '../BiographyBlitzComp/biography_blitz_game';
 import type { BiographyBlitzCompetitionType } from '../../features/biographyBlitz/biography_blitz_logic';
+import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
+import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -219,6 +221,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as BiographyBlitzCompetitionType}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'FamousFigures') {
+              return (
+                <FamousFiguresComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as FamousFiguresPrizeType}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />

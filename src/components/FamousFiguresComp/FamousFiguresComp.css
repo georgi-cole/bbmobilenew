@@ -1,0 +1,524 @@
+/* ─── Famous Figures Competition Styles ──────────────────────────────────── */
+
+.ff-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
+  background: linear-gradient(160deg, #0a1a2e 0%, #0d2240 60%, #0a1a2e 100%);
+  color: #e8f4ff;
+  font-family: inherit;
+  padding: 1rem;
+  box-sizing: border-box;
+  gap: 0.75rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.ff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 600px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  border: 1px solid rgba(60, 160, 255, 0.3);
+}
+
+.ff-comp-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: #1a6aff;
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.ff-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #88ccff;
+}
+
+.ff-round-badge {
+  font-size: 0.75rem;
+  color: #6090c0;
+  font-weight: 600;
+}
+
+/* ── Timer ───────────────────────────────────────────────────────────────── */
+
+.ff-timer {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #80aacc;
+}
+
+.ff-timer-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ff-timer-fill {
+  height: 100%;
+  background: #3399ff;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.ff-timer-fill--warning {
+  background: #ffaa33;
+}
+
+.ff-timer-fill--danger {
+  background: #ff4444;
+}
+
+.ff-timer-label {
+  min-width: 2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Clue card ───────────────────────────────────────────────────────────── */
+
+.ff-clue-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(60, 160, 255, 0.35);
+  border-radius: 12px;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.ff-clue-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #4488aa;
+  margin-bottom: 0.5rem;
+}
+
+.ff-base-clue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #cce8ff;
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+/* ── Hint list ───────────────────────────────────────────────────────────── */
+
+.ff-hint-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ff-hint-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(60, 160, 255, 0.08);
+  border: 1px solid rgba(60, 160, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: #b0d8f8;
+  animation: ff-hint-appear 0.35s ease-out;
+}
+
+.ff-hint-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #3399cc;
+  min-width: 1.2rem;
+  padding-top: 0.1rem;
+}
+
+/* ── Input area ──────────────────────────────────────────────────────────── */
+
+.ff-input-area {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ff-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ff-input-field {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(60, 160, 255, 0.35);
+  border-radius: 8px;
+  color: #e8f4ff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ff-input-field:focus {
+  border-color: rgba(60, 160, 255, 0.8);
+}
+
+.ff-input-field:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ff-input-field--correct {
+  border-color: rgba(60, 220, 100, 0.9);
+  background: rgba(40, 180, 80, 0.12);
+  animation: ff-pulse-correct 0.5s ease-out;
+}
+
+.ff-input-field--shake {
+  animation: ff-input-shake 0.4s ease-out;
+  border-color: rgba(255, 80, 80, 0.7);
+}
+
+.ff-submit-btn {
+  padding: 0.6rem 1rem;
+  background: #1a6aff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.ff-submit-btn:hover:not(:disabled) {
+  background: #3388ff;
+  transform: translateY(-1px);
+}
+
+.ff-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ff-input-feedback {
+  font-size: 0.8rem;
+  min-height: 1.2rem;
+  padding-left: 0.25rem;
+}
+
+.ff-input-feedback--correct {
+  color: #60ee90;
+}
+
+.ff-input-feedback--wrong {
+  color: #ff8888;
+}
+
+.ff-input-feedback--duplicate {
+  color: #aaaaaa;
+}
+
+/* ── Hint button ─────────────────────────────────────────────────────────── */
+
+.ff-hint-btn {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 170, 0, 0.12);
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  border-radius: 8px;
+  color: #ffcc66;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: center;
+}
+
+.ff-hint-btn:hover:not(:disabled) {
+  background: rgba(255, 170, 0, 0.22);
+}
+
+.ff-hint-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Scoreboard ──────────────────────────────────────────────────────────── */
+
+.ff-scoreboard {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(60, 160, 255, 0.2);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.ff-scoreboard-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #4488aa;
+  margin-bottom: 0.5rem;
+}
+
+.ff-scoreboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ff-scoreboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+/* ── Player avatar chip in scoreboard ──────────────────────────────────── */
+.ff-scoreboard-avatar-wrap {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(136, 221, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ff-scoreboard-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ff-scoreboard-name {
+  flex: 1;
+  color: #b0d8f8;
+  font-weight: 600;
+}
+
+.ff-scoreboard-name--you {
+  color: #88ddff;
+}
+
+.ff-scoreboard-round {
+  color: #6699bb;
+  font-size: 0.76rem;
+}
+
+.ff-scoreboard-total {
+  font-weight: 700;
+  color: #cce8ff;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.ff-scoreboard-correct {
+  font-size: 0.8rem;
+  color: #60ee90;
+}
+
+/* ── Reveal card ─────────────────────────────────────────────────────────── */
+
+.ff-reveal-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(60, 220, 100, 0.4);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  text-align: center;
+  animation: ff-hint-appear 0.4s ease-out;
+}
+
+.ff-reveal-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #44aa66;
+  margin-bottom: 0.5rem;
+}
+
+.ff-reveal-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #80ffaa;
+  margin: 0 0 0.75rem;
+  text-shadow: 0 0 16px rgba(80, 255, 140, 0.4);
+}
+
+.ff-reveal-winners {
+  font-size: 0.88rem;
+  color: #b0e8c8;
+  margin-bottom: 0.5rem;
+}
+
+.ff-reveal-no-winner {
+  font-size: 0.88rem;
+  color: #aa8888;
+}
+
+.ff-next-btn {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.5rem;
+  background: #1a6aff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ff-next-btn:hover {
+  background: #3388ff;
+}
+
+/* ── Winner card ─────────────────────────────────────────────────────────── */
+
+.ff-container--complete {
+  justify-content: center;
+  gap: 1rem;
+}
+
+.ff-winner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.ff-winner-trophy {
+  font-size: 4rem;
+  animation: ff-bounce 0.6s ease-out;
+}
+
+.ff-winner-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f0d060;
+  text-shadow: 0 0 20px rgba(240, 200, 60, 0.5);
+  margin: 0;
+}
+
+.ff-winner-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #f0d060;
+  box-shadow: 0 0 20px rgba(240, 200, 60, 0.4);
+}
+
+.ff-winner-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ff-winner-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.ff-you-badge {
+  color: #80d0ff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ff-winner-subtitle {
+  font-size: 0.85rem;
+  color: #a0b8d0;
+  margin: 0;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.ff-container--loading {
+  justify-content: center;
+  color: #5080a0;
+}
+
+/* ── Narration ───────────────────────────────────────────────────────────── */
+
+.ff-narration {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #88aacc;
+  font-style: italic;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  min-height: 2.2rem;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes ff-hint-appear {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ff-bounce {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes ff-input-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+@keyframes ff-pulse-correct {
+  0%   { box-shadow: 0 0 0 0 rgba(60, 220, 100, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(60, 220, 100, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(60, 220, 100, 0); }
+}
