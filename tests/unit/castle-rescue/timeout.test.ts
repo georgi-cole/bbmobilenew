@@ -17,7 +17,7 @@ import {
   startRun,
   finalizeRunState,
 } from '../../../src/minigames/castleRescue/castleRescueEngine';
-import { SCORE_FLOOR, MAX_SCORE, TIME_LIMIT_MS } from '../../../src/minigames/castleRescue/castleRescueConstants';
+import { SCORE_FLOOR, TIME_LIMIT_MS } from '../../../src/minigames/castleRescue/castleRescueConstants';
 
 /** Start time constant — all tests use 0 ms for determinism. */
 const T0 = 0;
