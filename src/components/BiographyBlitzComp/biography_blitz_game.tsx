@@ -249,6 +249,18 @@ export default function BiographyBlitzComp({
       ).game?.players ?? [],
   );
 
+  // Authoritative session user id — the player flagged isUser:true in the
+  // game slice.  Used as the primary source for humanId so the component can
+  // always identify the human even when participant props lack isHuman flags.
+  const sessionUserId = useAppSelector(
+    (s: RootState) =>
+      (
+        s as RootState & {
+          game: { players: Array<{ id: string; isUser?: boolean }> };
+        }
+      ).game?.players?.find((p) => p.isUser)?.id ?? null,
+  );
+
   // Effective test mode: prop OR Redux flag.
   const testMode = testModeProp || bb.testMode;
 
@@ -281,8 +293,19 @@ export default function BiographyBlitzComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participantsProp, storePlayers, participantIds.join(',')]);
 
-  const humanId: string | null =
-    Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
+  const humanId: string | null = (() => {
+    // Prefer the authoritative session user id (from Redux game state) when the
+    // user is one of the participants.  This is reliable regardless of whether
+    // participant props carry isHuman flags or the store entry carries isUser.
+    if (sessionUserId && participantIds.includes(sessionUserId)) {
+      console.debug('[BiographyBlitz] humanId resolved from session userId', { sessionUserId });
+      return sessionUserId;
+    }
+    // Fallback: find the player flagged as human in the playerMap.  Supports
+    // test/debug contexts where a fake "human" participant is passed via props
+    // without a matching game-slice entry.
+    return Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
+  })();
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
