@@ -160,7 +160,7 @@ function rng32(seed: number): () => number {
     s = (s + 0x6D2B79F5) | 0;
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 0xFFFFFFFF;
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
   };
 }
 
@@ -276,11 +276,13 @@ function buildLevel(seed: number): LevelGeom {
 }
 
 // ═══ Compute final score ══════════════════════════════════════════════════════
+// Wrong-pipe penalties are applied to gs.score as they occur (real-time
+// feedback); they must NOT be subtracted again here to avoid double-counting.
+// Only the rescue bonus and time penalty are applied at finalisation time.
 function computeFinalScore(gs: GameState, elapsedMs: number): number {
   const rescue      = gs.princessRescued ? RESCUE_BONUS : 0;
   const timePenalty = Math.floor(elapsedMs / 1000) * TIME_PEN;
-  const wrongPenalty = gs.wrongPipes * P_WRONG_PIPE;
-  return Math.max(0, gs.score + rescue - timePenalty - wrongPenalty);
+  return Math.max(0, gs.score + rescue - timePenalty);
 }
 
 // ═══ Damage player ════════════════════════════════════════════════════════════
