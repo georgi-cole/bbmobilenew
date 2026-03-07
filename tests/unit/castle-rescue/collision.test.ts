@@ -176,6 +176,8 @@ describe('playerOverlapsPipeSide — pipe acts as a solid body', () => {
 describe('tryEnterPipe — requires deliberate input and top alignment', () => {
   // Pipe at x=490, y=304, width=48, entryZoneWidth=48 (full width)
   const PIPE_X = 490; const PIPE_Y = 304; const PIPE_W = 48; const ENTRY_W = 48;
+  // Typical vy when truly standing still (after landing, gravity resets vy to 0)
+  const VY_STANDING = 0;
 
   /** Player standing on pipe top: feet at PIPE_Y, center X in pipe range. */
   function onPipeTop(cx: number): { px: number; py: number } {
@@ -184,44 +186,54 @@ describe('tryEnterPipe — requires deliberate input and top alignment', () => {
 
   it('returns true when player is on pipe top and presses down', () => {
     const { px, py } = onPipeTop(514); // center X = 514, within [490, 538]
-    expect(tryEnterPipe(px, py, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
   });
 
   it('returns false when down is not pressed', () => {
     const { px, py } = onPipeTop(514);
-    expect(tryEnterPipe(px, py, PW, PH, true, false, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, false, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
   });
 
   it('returns false when the player is not on the ground (mid-air)', () => {
     const { px, py } = onPipeTop(514);
-    expect(tryEnterPipe(px, py, PW, PH, false, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    expect(tryEnterPipe(px, py, PW, PH, false, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+  });
+
+  it('returns false when |vy| >= 0.08 (player not fully settled on surface)', () => {
+    const { px, py } = onPipeTop(514);
+    // vy = 0.1 (slightly bouncing) → blocked
+    expect(tryEnterPipe(px, py, PW, PH, true, 0.1, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    // vy = -0.1 (tiny upward) → blocked
+    expect(tryEnterPipe(px, py, PW, PH, true, -0.1, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    // vy = 0.07 (just below threshold) → allowed
+    expect(tryEnterPipe(px, py, PW, PH, true, 0.07, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
   });
 
   it('returns false when the player is not aligned with the pipe top (standing next to pipe)', () => {
     // Player at ground level (y = 328, feet at 368) next to the pipe
     const px = 505; const py = 328;
-    expect(tryEnterPipe(px, py, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
   });
 
   it('returns false when the player center is outside the entry zone', () => {
     // Player center at x = 489 — just outside left edge of entry zone (490)
     const py = PIPE_Y - PH;
     const px = 489 - PW / 2; // center at 489 < entryLeft=490
-    expect(tryEnterPipe(px, py, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(false);
   });
 
   it('returns true at the left boundary of the entry zone', () => {
     // Entry zone: [490, 538]. Center exactly at 490 → alignedX passes.
     const px = 490 - PW / 2; // center at 490
     const py = PIPE_Y - PH;
-    expect(tryEnterPipe(px, py, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
   });
 
   it('returns true at the right boundary of the entry zone', () => {
     // Entry zone right edge = 490 + 48 = 538. Center exactly at 538 → passes.
     const px = 538 - PW / 2;
     const py = PIPE_Y - PH;
-    expect(tryEnterPipe(px, py, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
+    expect(tryEnterPipe(px, py, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, ENTRY_W)).toBe(true);
   });
 
   it('works with a narrower entryZoneWidth than the pipe width', () => {
@@ -232,15 +244,15 @@ describe('tryEnterPipe — requires deliberate input and top alignment', () => {
 
     // Center at 514 — within narrow zone
     const px1 = 514 - PW / 2; const py1 = PIPE_Y - PH;
-    expect(tryEnterPipe(px1, py1, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(true);
+    expect(tryEnterPipe(px1, py1, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(true);
 
     // Center at 501 — just outside left edge of narrow zone (502)
     const px2 = 501 - PW / 2; const py2 = PIPE_Y - PH;
-    expect(tryEnterPipe(px2, py2, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(false);
+    expect(tryEnterPipe(px2, py2, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(false);
 
     // Center at entryRight + 1 — just outside right edge of narrow zone
     const px3 = entryRight + 1 - PW / 2; const py3 = PIPE_Y - PH;
-    expect(tryEnterPipe(px3, py3, PW, PH, true, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(false);
+    expect(tryEnterPipe(px3, py3, PW, PH, true, VY_STANDING, true, PIPE_X, PIPE_Y, PIPE_W, narrowEntry)).toBe(false);
   });
 });
 

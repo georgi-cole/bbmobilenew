@@ -196,9 +196,11 @@ export function playerOverlapsPipeSide(
  *
  *  1. `downPressed` — the player deliberately presses the down/enter key.
  *  2. `onGround` — the player is standing on a surface (not mid-air).
- *  3. The player's centre-X is within the pipe's entry zone (centred on the
+ *  3. `|vy| < 0.08` — the player's vertical velocity is effectively zero,
+ *     confirming they are truly standing still (not bouncing or sliding).
+ *  4. The player's centre-X is within the pipe's entry zone (centred on the
  *     pipe top, `entryZoneWidth` pixels wide).
- *  4. The player's feet (py + ph) are within 8 px of the pipe top (pipeY),
+ *  5. The player's feet (py + ph) are within 6 px of the pipe top (pipeY),
  *     meaning the player is standing ON the pipe, not next to it.
  *
  * @param px             Player left edge.
@@ -206,6 +208,7 @@ export function playerOverlapsPipeSide(
  * @param pw             Player width.
  * @param ph             Player height.
  * @param onGround       Player is on a solid surface.
+ * @param vy             Player vertical velocity (positive = falling).
  * @param downPressed    Down-input key is held.
  * @param pipeX          Pipe left edge.
  * @param pipeY          Pipe top edge.
@@ -218,17 +221,18 @@ export function tryEnterPipe(
   pw: number,
   ph: number,
   onGround: boolean,
+  vy: number,
   downPressed: boolean,
   pipeX: number,
   pipeY: number,
   pipeW: number,
   entryZoneWidth: number,
 ): boolean {
-  if (!downPressed || !onGround) return false;
+  if (!downPressed || !onGround || Math.abs(vy) >= 0.08) return false;
   const cx = px + pw / 2;
   const entryLeft = pipeX + (pipeW - entryZoneWidth) / 2;
   const alignedX = cx >= entryLeft && cx <= entryLeft + entryZoneWidth;
-  const onPipeTop = Math.abs((py + ph) - pipeY) < 8;
+  const onPipeTop = Math.abs((py + ph) - pipeY) <= 6;
   return alignedX && onPipeTop;
 }
 

@@ -668,7 +668,7 @@ function updateGame(
       if (pipe.done) continue; // already used (correct/bonus/ambush/dead all set done)
       if (!tryEnterPipe(
         player.x, player.y, PW, PH,
-        player.onGround, goDown,
+        player.onGround, player.vy, goDown,
         pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
       )) continue;
 
@@ -845,7 +845,7 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
   // Exit pipe detection — deliberate down + standing on exit pipe top
   if (tryEnterPipe(
     player.x, player.y, PW, PH,
-    player.onGround, goDown,
+    player.onGround, player.vy, goDown,
     room.exitX, room.exitY, PIPE_W, PIPE_W,
   )) {
     gs.room = null; // back to main level
@@ -1447,20 +1447,60 @@ export default function CastleRescueGame({
 
   const { scale, landscape } = layout;
 
-  // ── Controls: portrait = row below canvas, landscape = column right of canvas
-  const ctrlsStyle: CSSProperties = {
+  // ── Controls: portrait = row below canvas, landscape = LEFT group on left
+  //   edge and RIGHT group on right edge (fixed to viewport corners)
+  const ctrlGroupStyle: CSSProperties = {
     display: 'flex',
-    flexDirection: landscape ? 'column' : 'row',
-    gap: 12,
+    flexDirection: 'row',
+    gap: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: landscape ? '12px 8px' : '8px 12px',
+    userSelect: 'none',
+    flexShrink: 0,
+  };
+
+  // Portrait layout: two groups side-by-side below canvas
+  // Landscape layout: groups are positionally anchored (see JSX below)
+  const portraitCtrlsStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 16px',
+    width: '100%',
     userSelect: 'none',
     flexShrink: 0,
   };
 
   return (
     <div style={outerStyle}>
+      {/* Landscape: LEFT/RIGHT buttons anchored to bottom-left of viewport */}
+      {landscape && (
+        <div style={{
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          ...ctrlGroupStyle,
+          zIndex: 10,
+        }} aria-label="Movement controls">
+          <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} />
+          <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} />
+        </div>
+      )}
+      {/* Landscape: JUMP/DOWN buttons anchored to bottom-right of viewport */}
+      {landscape && (
+        <div style={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          ...ctrlGroupStyle,
+          zIndex: 10,
+        }} aria-label="Action controls">
+          <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
+          <TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} />
+        </div>
+      )}
+
       <div style={{
         display: 'flex',
         flexDirection: landscape ? 'row' : 'column',
@@ -1503,13 +1543,19 @@ export default function CastleRescueGame({
           )}
         </div>
 
-        {/* Touch / on-screen controls */}
-        <div style={ctrlsStyle} aria-label="Game controls">
-          <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"   onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right"  onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="Space"      label="▲" ariaLabel="Jump"        onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe"  onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
-        </div>
+        {/* Portrait: touch controls below canvas — LEFT/RIGHT on left, JUMP/DOWN on right */}
+        {!landscape && (
+          <div style={portraitCtrlsStyle} aria-label="Game controls">
+            <div style={ctrlGroupStyle}>
+              <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} />
+              <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} />
+            </div>
+            <div style={ctrlGroupStyle}>
+              <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
+              <TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1526,9 +1572,11 @@ function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onReleas
     <button
       aria-label={ariaLabel}
       style={touchBtnCss(color)}
-      onMouseDown={() => onPress(code)} onMouseUp={() => onRelease(code)} onMouseLeave={() => onRelease(code)}
-      onTouchStart={(e) => { e.preventDefault(); onPress(code); }}
-      onTouchEnd={(e)   => { e.preventDefault(); onRelease(code); }}
+      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPress(code); }}
+      onPointerUp={() => onRelease(code)}
+      onPointerCancel={() => onRelease(code)}
+      onLostPointerCapture={() => onRelease(code)}
+      onPointerLeave={() => onRelease(code)}
     >
       {label}
     </button>
