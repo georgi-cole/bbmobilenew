@@ -797,6 +797,30 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'trivia',
     retired: false,
   },
+
+  castleRescue: {
+    key: 'castleRescue',
+    title: 'Castle Rescue',
+    description: 'Route water through the castle pipes to rescue the kingdom!',
+    instructions: [
+      'Trace a path from the green source to the red destination.',
+      'Click pipe segments (🔧) in order to route the flow.',
+      'Only pipes adjacent to your current position are clickable.',
+      'Wrong pipe clicks reset your route and cost points.',
+      'Complete the route as quickly as possible for the highest score.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 60_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
