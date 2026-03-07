@@ -52,6 +52,26 @@
   font-weight: 600;
 }
 
+/* ── Hot Streak banner ───────────────────────────────────────────────────── */
+
+.bb-blitz__streak-banner {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffd060;
+  background: rgba(255, 160, 0, 0.12);
+  border: 1px solid rgba(255, 200, 0, 0.35);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  animation: bb-blitz-streak-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.bb-blitz__streak-icon {
+  font-size: 0.85rem;
+}
+
 /* ── Contestant pills ────────────────────────────────────────────────────── */
 
 .bb-blitz__contestants {
@@ -94,6 +114,11 @@
   border-color: rgba(255, 80, 80, 0.7);
   background: rgba(200, 40, 40, 0.15);
   opacity: 0.65;
+}
+
+.bb-blitz__contestant-pill--streak {
+  border-color: rgba(255, 200, 0, 0.7);
+  background: rgba(255, 160, 0, 0.12);
 }
 
 .bb-blitz__pill-avatar {
@@ -141,6 +166,10 @@
   box-sizing: border-box;
 }
 
+.bb-blitz__question-card--reveal {
+  animation: bb-blitz-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .bb-blitz__question-prompt {
   font-size: 1rem;
   font-weight: 600;
@@ -149,6 +178,8 @@
   margin: 0 0 0.85rem;
   line-height: 1.4;
 }
+
+/* ── Text-button answers (fallback mode) ─────────────────────────────────── */
 
 .bb-blitz__answers {
   list-style: none;
@@ -173,6 +204,9 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  /* Ensure tap targets are large enough on mobile */
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .bb-blitz__answer-btn:hover:not(:disabled) {
@@ -188,12 +222,14 @@
 .bb-blitz__answer-btn--selected {
   background: rgba(120, 60, 210, 0.35);
   border-color: rgba(180, 120, 255, 0.8);
+  animation: bb-blitz-shimmer 0.6s ease-out;
 }
 
 .bb-blitz__answer-btn--correct {
   background: rgba(40, 180, 80, 0.25);
   border-color: rgba(80, 220, 120, 0.9);
   color: #a0ffb0;
+  animation: bb-blitz-spotlight 0.5s ease-out;
 }
 
 .bb-blitz__answer-btn--wrong {
@@ -216,6 +252,126 @@
 .bb-blitz__answer-badge {
   font-size: 1rem;
   margin-left: auto;
+}
+
+/* ── Avatar grid (dynamic bio mode) ─────────────────────────────────────── */
+
+.bb-blitz__avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.bb-blitz__avatar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(160, 100, 255, 0.25);
+  border-radius: 10px;
+  cursor: pointer;
+  color: #e0d0ff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, opacity 0.2s;
+  /* Large tap target for mobile */
+  min-height: 88px;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.bb-blitz__avatar-btn:hover:not(:disabled) {
+  background: rgba(140, 80, 240, 0.2);
+  border-color: rgba(160, 100, 255, 0.6);
+  transform: scale(1.04);
+}
+
+.bb-blitz__avatar-btn:disabled {
+  cursor: default;
+}
+
+.bb-blitz__avatar-btn--selected {
+  border-color: rgba(180, 120, 255, 0.9);
+  background: rgba(120, 60, 210, 0.3);
+}
+
+.bb-blitz__avatar-btn--locked {
+  animation: bb-blitz-shimmer 0.6s ease-out;
+}
+
+.bb-blitz__avatar-btn--correct {
+  border-color: rgba(80, 220, 120, 0.9);
+  background: rgba(40, 180, 80, 0.2);
+  animation: bb-blitz-spotlight 0.5s ease-out;
+}
+
+.bb-blitz__avatar-btn--wrong {
+  border-color: rgba(255, 80, 80, 0.6);
+  background: rgba(200, 40, 40, 0.15);
+  opacity: 0.7;
+}
+
+/* Hot streak bonus: dimmed "unlikely" answer */
+.bb-blitz__avatar-btn--bonus-hint {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+}
+
+.bb-blitz__avatar-btn--disabled {
+  pointer-events: none;
+}
+
+.bb-blitz__avatar-wrapper {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: visible;
+}
+
+.bb-blitz__avatar-wrapper .bb-blitz__avatar-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(160, 100, 255, 0.3);
+}
+
+.bb-blitz__avatar-btn--selected .bb-blitz__avatar-wrapper .bb-blitz__avatar-img,
+.bb-blitz__avatar-btn--locked .bb-blitz__avatar-wrapper .bb-blitz__avatar-img {
+  border-color: rgba(200, 150, 255, 0.8);
+}
+
+.bb-blitz__avatar-btn--correct .bb-blitz__avatar-wrapper .bb-blitz__avatar-img {
+  border-color: rgba(80, 220, 120, 0.9);
+  box-shadow: 0 0 12px rgba(80, 220, 120, 0.5);
+}
+
+.bb-blitz__lock-icon,
+.bb-blitz__spotlight-icon,
+.bb-blitz__wrong-icon {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 1rem;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.bb-blitz__avatar-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #d8c8f8;
+  max-width: 82px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Human feedback ──────────────────────────────────────────────────────── */
@@ -268,6 +424,7 @@
   border-radius: 4px;
   padding: 0.1rem 0.4rem;
   color: #d090a0;
+  animation: bb-blitz-eliminated-fade 0.5s ease-out;
 }
 
 /* ── Winner screen ───────────────────────────────────────────────────────── */
@@ -300,6 +457,10 @@
   overflow: hidden;
   border: 3px solid #f0d060;
   box-shadow: 0 0 20px rgba(240, 200, 60, 0.4);
+}
+
+.bb-blitz__winner-avatar--zoom {
+  animation: bb-blitz-winner-zoom 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .bb-blitz__avatar-img {
@@ -347,4 +508,74 @@
   0%   { transform: scale(0.5); opacity: 0; }
   60%  { transform: scale(1.2); opacity: 1; }
   100% { transform: scale(1); }
+}
+
+/* Shimmer: lock animation when answer is submitted */
+@keyframes bb-blitz-shimmer {
+  0%   { box-shadow: 0 0 0 0 rgba(180, 120, 255, 0); }
+  30%  { box-shadow: 0 0 0 6px rgba(180, 120, 255, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(180, 120, 255, 0); }
+}
+
+/* Spotlight: correct answer reveal */
+@keyframes bb-blitz-spotlight {
+  0%   { box-shadow: 0 0 0 0 rgba(80, 220, 120, 0); }
+  40%  { box-shadow: 0 0 0 8px rgba(80, 220, 120, 0.45); }
+  100% { box-shadow: 0 0 0 0 rgba(80, 220, 120, 0); }
+}
+
+/* Question card slide-in on new round */
+@keyframes bb-blitz-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Winner zoom */
+@keyframes bb-blitz-winner-zoom {
+  0%   { transform: scale(0.3); opacity: 0; }
+  70%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* Eliminated fade */
+@keyframes bb-blitz-eliminated-fade {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Hot streak pulse */
+@keyframes bb-blitz-streak-pulse {
+  from { opacity: 0.85; text-shadow: 0 0 8px rgba(255, 200, 0, 0.4); }
+  to   { opacity: 1;    text-shadow: 0 0 16px rgba(255, 200, 0, 0.7); }
+}
+
+/* Reduced-motion override: disable all animations for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bb-blitz__question-card--reveal,
+  .bb-blitz__winner-avatar--zoom,
+  .bb-blitz__winner-badge,
+  .bb-blitz__feedback,
+  .bb-blitz__eliminated-name,
+  .bb-blitz__streak-banner,
+  .bb-blitz__answer-btn--selected,
+  .bb-blitz__answer-btn--correct,
+  .bb-blitz__avatar-btn--locked,
+  .bb-blitz__avatar-btn--correct {
+    animation: none !important;
+  }
+}
+
+/* Test-mode: also disable animations (set via data-test-mode="true") */
+[data-test-mode='true'] .bb-blitz__question-card--reveal,
+[data-test-mode='true'] .bb-blitz__winner-avatar--zoom,
+[data-test-mode='true'] .bb-blitz__winner-badge,
+[data-test-mode='true'] .bb-blitz__feedback,
+[data-test-mode='true'] .bb-blitz__eliminated-name,
+[data-test-mode='true'] .bb-blitz__streak-banner,
+[data-test-mode='true'] .bb-blitz__answer-btn--selected,
+[data-test-mode='true'] .bb-blitz__answer-btn--correct,
+[data-test-mode='true'] .bb-blitz__avatar-btn--locked,
+[data-test-mode='true'] .bb-blitz__avatar-btn--correct {
+  animation: none !important;
+  transition: none !important;
 }
