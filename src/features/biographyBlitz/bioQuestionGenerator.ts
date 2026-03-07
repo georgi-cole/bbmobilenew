@@ -72,16 +72,17 @@ export function generateBioQuestions(
 
   for (const field of BIO_FIELDS) {
     for (const [id, profile] of profiles) {
-      const rawValue = (profile as Record<string, unknown>)[field.key];
+      const rawValue = (profile as unknown as Record<string, unknown>)[field.key];
       if (typeof rawValue !== 'string') continue;
       const value = rawValue.trim();
       if (!value || PLACEHOLDER_VALUES.has(value)) continue;
 
       // Reject ambiguous questions: multiple contestants share the same value.
       const sameValue = [...profiles.values()].filter(
-        (p) =>
-          typeof (p as Record<string, unknown>)[field.key] === 'string' &&
-          ((p as Record<string, unknown>)[field.key] as string).trim() === value,
+        (p) => {
+          const v = (p as unknown as Record<string, unknown>)[field.key];
+          return typeof v === 'string' && v.trim() === value;
+        },
       );
       if (sameValue.length !== 1) continue;
 
