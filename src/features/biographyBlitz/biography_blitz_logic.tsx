@@ -2,22 +2,31 @@
  * Redux slice for the "Biography Blitz" trivia competition.
  *
  * State machine:
- *   idle → question → reveal → question  (repeat until one contestant remains)
- *                   → complete           (single contestant left)
  *
- * Each round a question is presented to all active contestants.  Contestants
- * who answer incorrectly are eliminated.  If every remaining contestant
- * answers incorrectly in the same round, no one is eliminated that round
- * (the question is voided and the next one plays), preserving at least one
- * surviving contestant.
+ *   idle
+ *    └─ startBiographyBlitz → question
+ *         └─ revealResults  → reveal
+ *              ├─ confirmElimination (void round: everyone wrong) → question
+ *              └─ confirmElimination (non-void) → choose_elimination
+ *                   └─ pickElimination → question  (≥2 active contestants)
+ *                                      → complete  (1 active contestant)
+ *
+ * Each round a question is presented to all active contestants.
+ * Round winners are contestants who answered correctly.
+ * After the reveal, the round winner(s) pick exactly ONE other contestant to
+ * eliminate.  All other contestants (including those who answered wrong) remain
+ * active — only the chosen target is eliminated.
+ *
+ * Void round: if every remaining contestant answers incorrectly, no elimination
+ * occurs and the game advances directly to the next question, ensuring at least
+ * one survivor always remains.
  *
  * AI answers are generated deterministically from the seeded RNG so results
  * are reproducible across rerenders and reruns.
  *
  * Hot Streak: a contestant who wins 2 consecutive rounds gains a one-round
  * informational bonus (one impossible answer is flagged for their UI only).
- * The streak is cleared if the streak owner is eliminated or when the bonus
- * is consumed at the start of the next round.
+ * The streak resets if the streak owner is eliminated or fails to win a round.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32, seededPickN } from '../../store/rng';
@@ -119,6 +128,12 @@ export interface BiographyBlitzState {
    * Set during revealResults; cleared at the start of the next question.
    */
   eliminationCandidates: string[];
+  /**
+   * The contestant who was most recently eliminated (set by pickElimination,
+   * cleared at the start of the next round's reveal).  Used to display an
+   * elimination-announcement narration line at the top of each new question.
+   */
+  lastEliminatedId: string | null;
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -143,6 +158,7 @@ const initialState: BiographyBlitzState = {
   dynamicQuestions: [],
   roundWinnerIds: [],
   eliminationCandidates: [],
+  lastEliminatedId: null,
 };
 
 // ─── Seed constants ───────────────────────────────────────────────────────────
@@ -332,6 +348,7 @@ const biographyBlitzSlice = createSlice({
       state.dynamicQuestions = dynamicQuestions;
       state.roundWinnerIds = [];
       state.eliminationCandidates = [];
+      state.lastEliminatedId = null;
     },
 
     /**
@@ -423,6 +440,8 @@ const biographyBlitzSlice = createSlice({
       state.roundWinnerIds = winners;
       // Void round: no candidates (everyone was wrong) → keep candidates empty
       state.eliminationCandidates = winners.length > 0 ? candidates : [];
+      // Clear the previous round's elimination announcement when a new reveal starts.
+      state.lastEliminatedId = null;
       state.status = 'reveal';
     },
 
@@ -487,6 +506,7 @@ const biographyBlitzSlice = createSlice({
 
       // Eliminate the chosen target.
       state.eliminatedContestants.push(targetId);
+      state.lastEliminatedId = targetId;
       delete state.consecutiveWinsMap[targetId];
       if (state.hotStreakOwner === targetId) {
         state.hotStreakOwner = null;
@@ -513,6 +533,7 @@ const biographyBlitzSlice = createSlice({
         state.hotStreakBonusWrongAnswerId = null;
         state.roundWinnerIds = [];
         state.eliminationCandidates = [];
+        // lastEliminatedId already set above; keep it so winner screen can reference it if needed.
         return;
       }
 

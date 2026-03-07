@@ -545,7 +545,12 @@ export default function BiographyBlitzComp({
             ? voidedRound
               ? pickLine(NARRATION.voided, bb.round)
               : pickLine(NARRATION.correct, bb.round)
-            : pickLine(NARRATION.question, bb.round)}
+            : bb.status === 'question' && bb.lastEliminatedId !== null
+              ? pickLine(NARRATION.eliminated, bb.round).replace(
+                  '{name}',
+                  displayName(bb.lastEliminatedId),
+                )
+              : pickLine(NARRATION.question, bb.round)}
       </p>
 
       {/* Choose elimination screen ──────────────────────────────────────── */}
