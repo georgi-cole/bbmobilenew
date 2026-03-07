@@ -9,8 +9,7 @@
  *   import {
  *     CastleRescueGame,
  *     createInitialRunState,
- *     generateMapForSeed,
- *     validateGeneratedMap,
+ *     generateLevelConfig,
  *     rankCastleRescueResults,
  *   } from '../minigames/castleRescue';
  */
@@ -22,13 +21,13 @@ export { default as CastleRescueGame } from './CastleRescueGame';
 export {
   createInitialRunState,
   startRun,
-  handlePipeClick,
   finalizeRunState,
   getLiveScore,
 } from './castleRescueEngine';
 
 // ── Generator ──────────────────────────────────────────────────────────────
-export { generateMapForSeed, validateGeneratedMap } from './castleRescueGenerator';
+export { generateLevelConfig, validateLevelConfig } from './castleRescueGenerator';
+export type { LevelConfig } from './castleRescueGenerator';
 
 // ── Scoring ────────────────────────────────────────────────────────────────
 export { computeScore, computeScoreFromState } from './castleRescueScoring';
@@ -46,8 +45,6 @@ export type {
   CastleRescueMap,
   CastleRescueResult,
   CastleRescueRankedResult,
-  CellPos,
-  PipeSegment,
   RunState,
   RunStatus,
 } from './castleRescueTypes';
@@ -58,4 +55,5 @@ export {
   TIME_LIMIT_MS,
   RESPAWN_PENALTY,
   CORRECT_ROUTE_LENGTH,
+  PIPE_SLOT_COUNT,
 } from './castleRescueConstants';

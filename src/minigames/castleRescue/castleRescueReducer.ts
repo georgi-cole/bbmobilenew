@@ -6,24 +6,19 @@
  *
  *   const [state, dispatch] = useReducer(castleRescueReducer, createInitialRunState());
  *
- * Each action is a discriminated union tagged by `type`.
- * All mutation logic is delegated to pure engine functions in castleRescueEngine.ts.
+ * The platformer game component manages its own canvas state directly;
+ * this reducer is provided for external competition-system wiring that
+ * needs to track the run lifecycle (start time, finalization, reset).
  */
 
-import type { RunState, CastleRescueMap } from './castleRescueTypes';
-import {
-  createInitialRunState,
-  startRun,
-  handlePipeClick,
-  finalizeRunState,
-} from './castleRescueEngine';
+import type { RunState } from './castleRescueTypes';
+import { createInitialRunState, startRun, finalizeRunState } from './castleRescueEngine';
 
 // ─── Action types ─────────────────────────────────────────────────────────────
 
 export type CastleRescueAction =
-  | { type: 'START'; map: CastleRescueMap; nowMs: number }
-  | { type: 'CLICK_PIPE'; pipeId: string; nowMs: number }
-  | { type: 'FINALIZE'; nowMs: number }
+  | { type: 'START'; nowMs: number }
+  | { type: 'FINALIZE'; nowMs: number; wrongAttempts?: number }
   | { type: 'RESET' };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -40,18 +35,15 @@ export function castleRescueReducer(
 ): RunState {
   switch (action.type) {
     case 'START':
-      return startRun(state, action.map, action.nowMs);
+      return startRun(state, null, action.nowMs);
 
-    case 'CLICK_PIPE':
-      return handlePipeClick(state, action.pipeId, action.nowMs);
-
-    case 'FINALIZE':
-      /**
-       * Idempotent: calling FINALIZE multiple times (e.g. from a timer AND
-       * from a component unmount) is safe — finalizeRunState checks
-       * outcomeResolved and returns the state unchanged after the first call.
-       */
-      return finalizeRunState(state, action.nowMs);
+    case 'FINALIZE': {
+      const withWrongs =
+        action.wrongAttempts !== undefined
+          ? { ...state, wrongAttempts: action.wrongAttempts }
+          : state;
+      return finalizeRunState(withWrongs, action.nowMs);
+    }
 
     case 'RESET':
       return createInitialRunState();

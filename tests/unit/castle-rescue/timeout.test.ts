@@ -17,7 +17,6 @@ import {
   startRun,
   finalizeRunState,
 } from '../../../src/minigames/castleRescue/castleRescueEngine';
-import { FIXTURE_MAP_STRAIGHT } from '../../../src/minigames/castleRescue/castleRescueTestData';
 import { SCORE_FLOOR, MAX_SCORE, TIME_LIMIT_MS } from '../../../src/minigames/castleRescue/castleRescueConstants';
 
 /** Start time constant — all tests use 0 ms for determinism. */
@@ -26,7 +25,7 @@ const T0 = 0;
 describe('finalizeRunState — timeout on active run', () => {
   function makeActiveRun(nowMs = T0) {
     const idle = createInitialRunState();
-    return startRun(idle, FIXTURE_MAP_STRAIGHT, nowMs);
+    return startRun(idle, null, nowMs);
   }
 
   it('transitions status from active to complete', () => {
@@ -48,11 +47,11 @@ describe('finalizeRunState — timeout on active run', () => {
   });
 
   it('computes the correct score when full time elapses with no wrong attempts', () => {
-    // 60 000 ms elapsed → 60s × 10pts/s = 600 time penalty
-    // With MAX_SCORE 1000 and 0 wrong attempts: score = 1000 - 600 = 400
+    // TIME_LIMIT_MS = 150 000 ms → 150s × 10pts/s = 1500 time penalty
+    // With MAX_SCORE 1000 and 0 wrong attempts: 1000 - 1500 = −500 → clamped to SCORE_FLOOR (0)
     const active = makeActiveRun();
     const finalised = finalizeRunState(active, TIME_LIMIT_MS);
-    expect(finalised.score).toBe(400);
+    expect(finalised.score).toBe(SCORE_FLOOR);
   });
 
   it('score is SCORE_FLOOR when combined penalties exceed MAX_SCORE', () => {
@@ -75,7 +74,7 @@ describe('finalizeRunState — timeout on active run', () => {
 describe('finalizeRunState — idempotency', () => {
   it('second call returns state unchanged (no double-finalization)', () => {
     const active = createInitialRunState();
-    const started = startRun(active, FIXTURE_MAP_STRAIGHT, T0);
+    const started = startRun(active, null, T0);
     const once = finalizeRunState(started, TIME_LIMIT_MS);
     const twice = finalizeRunState(once, TIME_LIMIT_MS + 1000);
 
@@ -86,7 +85,7 @@ describe('finalizeRunState — idempotency', () => {
   });
 
   it('calling FINALIZE on an already-complete run with outcomeResolved=true is a no-op', () => {
-    const active = startRun(createInitialRunState(), FIXTURE_MAP_STRAIGHT, T0);
+    const active = startRun(createInitialRunState(), null, T0);
     const finalised = finalizeRunState(active, 5_000);
     const refinalised = finalizeRunState(finalised, 99_000);
 
