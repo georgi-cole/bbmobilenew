@@ -287,6 +287,29 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  famousFigures: {
+    key: 'famousFigures',
+    title: 'Famous Figures',
+    description: 'Identify famous historical figures from progressive clues. Fewer hints = higher score!',
+    instructions: [
+      'A historical figure is hidden — guess who it is from clues.',
+      'You start with one clue and can request up to 5 hints.',
+      'Fewer hints used = more points: 10 down to 1.',
+      'Three rounds per match — highest total score wins!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'FamousFigures',
+    legacy: false,
+    weight: 1,
+    category: 'trivia',
+    retired: false,
+  },
+
   tiltedLedge: {
     key: 'tiltedLedge',
     title: 'The Tilted Ledge',

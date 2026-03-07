@@ -12,7 +12,9 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:famous-figures": "vitest run tests/unit/famous-figures",
+    "start:famous-figures": "vite --open"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
