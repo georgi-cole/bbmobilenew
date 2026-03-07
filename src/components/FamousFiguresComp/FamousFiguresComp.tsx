@@ -29,6 +29,7 @@ import { resolveFamousFiguresOutcome } from '../../features/famousFigures/thunks
 import { mulberry32 } from '../../store/rng';
 import { getDicebear, resolveAvatar } from '../../utils/avatar';
 import { isAcceptedGuess } from '../../games/famous-figures/fuzzy';
+import { getHintText } from '../../games/famous-figures/hints';
 import './FamousFiguresComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ export default function FamousFiguresComp({
         // AI submits the correct canonical name
         const figure = FAMOUS_FIGURES[ff.currentFigureIndex];
         if (figure) {
-          dispatch(submitPlayerGuess({ playerId: aiId, guess: figure.canonicalName }));
+          dispatch(submitPlayerGuess({ playerId: aiId, guess: figure.canonicalName, timestamp: Date.now() }));
         }
       }
     }
@@ -296,7 +297,7 @@ export default function FamousFiguresComp({
 
     // Check correctness locally for immediate UI feedback
     const correct = isAcceptedGuess(trimmed, figure);
-    dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed }));
+    dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed, timestamp: Date.now() }));
     setInputState(correct ? 'correct' : 'wrong');
     if (correct) {
       setGuessInput('');
@@ -471,7 +472,7 @@ export default function FamousFiguresComp({
               {Array.from({ length: ff.hintsRevealed }, (_, i) => (
                 <li key={i} className="ff-hint-item">
                   <span className="ff-hint-num">#{i + 1}</span>
-                  <span>{figure.hints[i]}</span>
+                  <span>{getHintText(figure, i)}</span>
                 </li>
               ))}
             </ul>

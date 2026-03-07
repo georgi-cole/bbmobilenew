@@ -66,6 +66,37 @@ describe('famousFiguresSlice', () => {
     expect(s.correctPlayers).toContain(PLAYER_A);
   });
 
+  it('correct answer immediately transitions round to round_reveal (Bug 1 fix)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    expect(getState(store).status).toBe('round_active');
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    const s = getState(store);
+    expect(s.status).toBe('round_reveal');
+    expect(s.roundComplete).toBe(true);
+  });
+
+  it('playerCorrectTimestamp is recorded on correct answer', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    const before = Date.now();
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName, timestamp: 12345 }));
+    expect(getState(store).playerCorrectTimestamp[PLAYER_A]).toBe(12345);
+    const after = Date.now();
+    // Verify fallback timestamp is in range when not provided
+    const store2 = makeStore();
+    store2.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    const fig2 = FAMOUS_FIGURES[store2.getState().famousFigures.currentFigureIndex];
+    store2.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig2.canonicalName }));
+    const ts = store2.getState().famousFigures.playerCorrectTimestamp[PLAYER_A];
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after + 50);
+  });
+
   it('submitPlayerGuess with wrong answer does not change score', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
@@ -110,6 +141,33 @@ describe('famousFiguresSlice', () => {
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     for (let i = 0; i < 10; i++) store.dispatch(revealNextHint());
     expect(getState(store).hintsRevealed).toBe(5);
+  });
+
+  it('advanceTimer is blocked after round is solved by correct answer', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    expect(getState(store).status).toBe('round_reveal');
+    const phaseBeforeAdvance = getState(store).timerPhase;
+    store.dispatch(advanceTimer());
+    // Phase should NOT have changed since round is complete
+    expect(getState(store).timerPhase).toBe(phaseBeforeAdvance);
+  });
+
+  it('second correct guess after round solve is rejected', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const figureIndex = getState(store).currentFigureIndex;
+    const figure = FAMOUS_FIGURES[figureIndex];
+    // PLAYER_A answers correctly → round closes immediately
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    expect(getState(store).status).toBe('round_reveal');
+    const scoreAfterA = getState(store).playerScores[PLAYER_B] ?? 0;
+    // PLAYER_B submitting correct answer now is rejected (status is round_reveal)
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figure.canonicalName }));
+    expect(getState(store).playerScores[PLAYER_B] ?? 0).toBe(scoreAfterA);
   });
 
   it('advanceTimer progresses past hint_5 to overtime (timer deadlock fix)', () => {
