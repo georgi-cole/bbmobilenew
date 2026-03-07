@@ -11,6 +11,7 @@ import uiReducer from './uiSlice';
 import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
+import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ export const store = configureStore({
     ui: uiReducer,
     cwgo: cwgoReducer,
     holdTheWall: holdTheWallReducer,
+    biographyBlitz: biographyBlitzReducer,
   },
   preloadedState: {
     settings: loadSettings(),
