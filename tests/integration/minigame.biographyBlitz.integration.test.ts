@@ -19,7 +19,6 @@ import { configureStore } from '@reduxjs/toolkit';
 import biographyBlitzReducer, {
   startBiographyBlitz,
   submitAnswer,
-  autoFillAIAnswers,
   revealResults,
   confirmElimination,
   markBiographyBlitzOutcomeResolved,
@@ -338,12 +337,13 @@ describe('Biography Blitz — multi-round progression', () => {
   });
 
   it('question ID changes between rounds', () => {
+    // seed=50: deterministically places different questions at index 0 and 1
     const store = makeIntegrationStore();
     store.dispatch(
       startBiographyBlitz({
         participantIds: ['human', 'ai1'],
         competitionType: 'HOH',
-        seed: 55,
+        seed: 50,
       }),
     );
 
@@ -359,13 +359,10 @@ describe('Biography Blitz — multi-round progression', () => {
     store.dispatch(confirmElimination());
 
     const secondQuestionId = store.getState().biographyBlitz.currentQuestionId;
-    // After advancing, the question should have changed.
-    // (It is theoretically possible for the same question to appear consecutively
-    //  if the shuffle happens to place it at both index 0 and index 1, but this
-    //  is extremely unlikely and we assert they differ for seed=55.)
     expect(store.getState().biographyBlitz.round).toBe(1);
-    expect(secondQuestionId).toBeDefined();
-    // The question order wraps with modulo so both IDs come from the bank.
+    // For seed=50 the shuffled order places different questions at positions 0 and 1.
+    expect(secondQuestionId).not.toBe(firstQuestionId);
+    // Both IDs must be valid question IDs from the bank.
     const validIds = BIOGRAPHY_BLITZ_QUESTIONS.map((q) => q.id);
     expect(validIds).toContain(firstQuestionId);
     expect(validIds).toContain(secondQuestionId);

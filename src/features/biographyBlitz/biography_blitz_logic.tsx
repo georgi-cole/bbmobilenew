@@ -102,10 +102,10 @@ function questionIdxForRound(questionOrder: number[], round: number): number {
 /**
  * Build deterministic AI submissions for the current question.
  *
- * each contestant is assigned a personal accuracy rating derived from the
- * seed XOR their stringified index in the participant list.  A second RNG
- * draw determines whether they answer correctly; if not, a random wrong answer
- * is chosen.
+ * Each contestant is assigned a personal accuracy rating derived from a
+ * stable hash of the contestant ID XOR the competition seed and round.
+ * Using a hash of the ID (rather than the loop index) ensures the result
+ * is independent of the order in which AI IDs are passed in.
  *
  * @param seed          Competition seed.
  * @param round         Current round number (0-indexed).
@@ -114,6 +114,17 @@ function questionIdxForRound(questionOrder: number[], round: number): number {
  * @param correctId     ID of the correct answer.
  * @returns Map of contestantId → answerId.
  */
+
+/** FNV-1a 32-bit hash — fast, stable string → uint32 mapping. */
+function fnv1a32(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (Math.imul(h, 0x01000193)) >>> 0;
+  }
+  return h;
+}
+
 export function buildAiSubmissions(
   seed: number,
   round: number,
@@ -124,12 +135,13 @@ export function buildAiSubmissions(
   const result: Record<string, string> = {};
   const wrongIds = allAnswerIds.filter((id) => id !== correctId);
 
-  for (let i = 0; i < aiIds.length; i++) {
-    const aiId = aiIds[i];
-    // Unique per-contestant seed: mix competition seed, round, and contestant index.
-    const contestantSeed = ((seed ^ (round * 0x9e3779b9 + i * 0x517cc1b)) >>> 0);
+  for (const aiId of aiIds) {
+    // Unique per-contestant seed: mix competition seed, round, and a stable
+    // hash of the contestant ID so order of aiIds does not affect results.
+    const idHash = fnv1a32(aiId);
+    const contestantSeed = ((seed ^ (round * 0x9e3779b9) ^ idHash) >>> 0);
     const rng = mulberry32(contestantSeed);
-    // Accuracy band: 45 % – 85 % (harder questions are not modelled here; the
+    // Accuracy band: 45 % – 85 % (harder questions are not modeled here; the
     // question bank itself is the difficulty source).
     const accuracy = 0.45 + rng() * 0.40;
     const answersCorrectly = rng() < accuracy;
@@ -277,8 +289,8 @@ const biographyBlitzSlice = createSlice({
         state.activeContestants = survivors;
       }
 
-      // Single survivor (or void + single active after void) → complete.
-      if (state.activeContestants.length === 1) {
+      // Single survivor (after a real elimination) → complete.
+      if (!voidRound && state.activeContestants.length === 1) {
         state.status = 'complete';
         state.winnerId = state.activeContestants[0];
         state.currentQuestionId = null;

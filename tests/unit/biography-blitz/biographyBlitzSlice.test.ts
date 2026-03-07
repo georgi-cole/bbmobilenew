@@ -200,13 +200,10 @@ describe('biographyBlitzSlice — autoFillAIAnswers', () => {
   it('does not overwrite an already-submitted AI answer', () => {
     const store = makeStore();
     startThreePlayer(store);
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: 'z' }));
-    // Note: 'z' is not a real answer id, just testing non-overwrite behaviour
-    // but since submitAnswer checks active contestants, use a real id.
     const { currentQuestionId } = store.getState().biographyBlitz;
     const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
     const answerId = question.answers[0].id;
-    // Submit ai1's answer manually
+    // Submit ai1's answer manually first.
     store.dispatch(submitAnswer({ contestantId: 'ai1', answerId }));
     const before = store.getState().biographyBlitz.submissions['ai1'];
     store.dispatch(autoFillAIAnswers('human'));
@@ -254,34 +251,19 @@ describe('biographyBlitzSlice — revealResults', () => {
 // ── confirmElimination ────────────────────────────────────────────────────────
 
 describe('biographyBlitzSlice — confirmElimination', () => {
-  function advanceToReveal(
-    store: ReturnType<typeof makeStore>,
-    humanAnswer: string,
-  ) {
+  it('eliminates wrong-answerers from activeContestants', () => {
+    const store = makeStore();
     startThreePlayer(store);
     const { currentQuestionId } = store.getState().biographyBlitz;
     const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: humanAnswer }));
-    // Force all AI to answer correctly so they don't interfere with elimination logic
+    const wrongId = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
+    // human answers wrong; ai1 and ai2 answer correctly
+    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrongId }));
     store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
     store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: question.correctAnswerId }));
     store.dispatch(revealResults());
-    return question;
-  }
-
-  it('eliminates wrong-answerers from activeContestants', () => {
-    const store = makeStore();
-    const question = advanceToReveal(store, 'WRONG_ANSWER');
-    // human answered 'WRONG_ANSWER' but correct is question.correctAnswerId
-    // (WRONG_ANSWER won't be a valid answer, so treated as wrong)
-    // Actually submitAnswer no-ops for invalid IDs but we want human to be wrong
-    // Use a real wrong answer id
-    const wrongId = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-    const store2 = makeStore();
-    advanceToReveal(store2, wrongId);
-    store2.dispatch(confirmElimination());
-    const bb = store2.getState().biographyBlitz;
+    store.dispatch(confirmElimination());
+    const bb = store.getState().biographyBlitz;
     expect(bb.eliminatedContestants).toContain('human');
     expect(bb.activeContestants).not.toContain('human');
   });
@@ -397,6 +379,34 @@ describe('biographyBlitzSlice — confirmElimination', () => {
 
     expect(store.getState().biographyBlitz.submissions).toEqual({});
   });
+
+  it('void round with single participant does NOT complete the game', () => {
+    // Edge case: 1 player answers wrong → void round, activeContestants stays 1
+    // but the game must NOT declare them winner (void means no real elimination).
+    const store = makeStore();
+    store.dispatch(
+      startBiographyBlitz({
+        participantIds: ['human'],
+        competitionType: 'HOH',
+        seed: 99,
+      }),
+    );
+    const { currentQuestionId } = store.getState().biographyBlitz;
+    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
+    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
+
+    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrong }));
+    store.dispatch(revealResults());
+    store.dispatch(confirmElimination());
+
+    const bb = store.getState().biographyBlitz;
+    // Void round: human answered wrong but is the only contestant, so no one eliminated.
+    // The game advances to the next question rather than completing.
+    expect(bb.status).toBe('question');
+    expect(bb.winnerId).toBeNull();
+    expect(bb.eliminatedContestants).toHaveLength(0);
+    expect(bb.round).toBe(1);
+  });
 });
 
 // ── outcomeResolved idempotency ───────────────────────────────────────────────
@@ -447,8 +457,6 @@ describe('buildAiSubmissions', () => {
   });
 
   it('different seeds produce different submissions (with high probability)', () => {
-    const a = buildAiSubmissions(1, 0, ['ai1'], allAnswerIds, correctId);
-    const b = buildAiSubmissions(2, 0, ['ai1'], allAnswerIds, correctId);
     // With 4 choices and different seeds, results MAY differ — run over 20 seeds
     let differences = 0;
     for (let s = 0; s < 20; s++) {

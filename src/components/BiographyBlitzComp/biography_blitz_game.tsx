@@ -8,8 +8,9 @@
  *               A short pause before confirmElimination is dispatched.
  *   complete  — Winner screen with confetti-style announcement; fires onComplete.
  *
- * NOTE: Countdown and rules display are handled upstream by MinigameHost before
- * this component mounts.
+ * NOTE: The pre-game "Get Ready" countdown and rules modal are handled upstream
+ * by MinigameHost before this component mounts. Per-question timing (e.g. the
+ * human answer timeout) is managed within this component.
  */
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -92,7 +93,8 @@ interface ParticipantProp {
 interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
-  competitionType: BiographyBlitzCompetitionType;
+  /** Matches the `prizeType` convention used by other authoritative competition components. */
+  prizeType: BiographyBlitzCompetitionType;
   seed: number;
   onComplete?: () => void;
 }
@@ -102,7 +104,7 @@ interface Props {
 export default function BiographyBlitzComp({
   participantIds,
   participants: participantsProp,
-  competitionType,
+  prizeType,
   seed,
   onComplete,
 }: Props) {
@@ -144,7 +146,7 @@ export default function BiographyBlitzComp({
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
     dispatch(
-      startBiographyBlitz({ participantIds, competitionType, seed }),
+      startBiographyBlitz({ participantIds, competitionType: prizeType, seed }),
     );
     return () => {
       dispatch(resetBiographyBlitz());
@@ -184,7 +186,7 @@ export default function BiographyBlitzComp({
         clearTimeout(humanAnswerTimerRef.current);
       }
     };
-  }, [bb.status, bb.currentQuestionId, humanId, dispatch]);
+  }, [bb.status, bb.currentQuestionId, bb.submissions, humanId, dispatch]);
 
   // ── Auto-fill AI and trigger reveal when all active contestants submitted ─
   useEffect(() => {
@@ -305,7 +307,7 @@ export default function BiographyBlitzComp({
           {isHumanWinner && <span className="bb-blitz__you-badge"> (You!)</span>}
         </p>
         <p className="bb-blitz__winner-subtitle">
-          {competitionType} Winner — {bb.round + 1} round{bb.round !== 0 ? 's' : ''} played
+          {prizeType} Winner — {bb.round + 1} round{bb.round !== 0 ? 's' : ''} played
         </p>
       </div>
     );
@@ -315,7 +317,7 @@ export default function BiographyBlitzComp({
     <div className="bb-blitz" data-status={bb.status}>
       {/* Header ─────────────────────────────────────────────────────────── */}
       <div className="bb-blitz__header">
-        <span className="bb-blitz__comp-badge">{competitionType}</span>
+        <span className="bb-blitz__comp-badge">{prizeType}</span>
         <span className="bb-blitz__title">Biography Blitz</span>
         <span className="bb-blitz__round-badge">Round {bb.round + 1}</span>
       </div>

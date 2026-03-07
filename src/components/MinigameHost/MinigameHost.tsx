@@ -218,7 +218,7 @@ export default function MinigameHost({
                 <BiographyBlitzComp
                   participantIds={participantIds}
                   participants={participants}
-                  competitionType={gameOptions?.prizeType as BiographyBlitzCompetitionType}
+                  prizeType={gameOptions?.prizeType as BiographyBlitzCompetitionType}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />

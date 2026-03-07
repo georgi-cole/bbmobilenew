@@ -4,7 +4,7 @@
 // MinigameHost uses this map to generically mount any game whose registry entry
 // has  implementation: 'react'  and a  reactComponentKey  that is NOT already
 // handled by a dedicated special-case branch (e.g. ClosestWithoutGoingOver,
-// HoldTheWall).
+// HoldTheWall, BiographyBlitz).
 //
 // Component contract for generic mounting
 // ─────────────────────────────────────────
@@ -19,7 +19,6 @@ import type { ComponentType } from 'react';
 import TiltedLedge from '../components/TiltedLedge/TiltedLedge';
 import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverComp';
 import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
-import BiographyBlitzComp from '../components/BiographyBlitzComp/biography_blitz_game';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -34,7 +33,6 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   TiltedLedge: TiltedLedge as ComponentType<GenericMinigameProps>,
   ClosestWithoutGoingOver: ClosestWithoutGoingOverComp as ComponentType<GenericMinigameProps>,
   HoldTheWall: HoldTheWallComp as ComponentType<GenericMinigameProps>,
-  BiographyBlitz: BiographyBlitzComp as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
