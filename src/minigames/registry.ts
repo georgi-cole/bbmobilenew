@@ -820,6 +820,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'trivia',
     retired: false,
   },
+
+  castleRescue: {
+    key: 'castleRescue',
+    title: 'Castle Rescue',
+    description: 'Run and jump through the castle, enter the correct pipes in order, and rescue the princess before time runs out!',
+    instructions: [
+      'Use Arrow Keys or WASD to run left/right, Up/Space to jump.',
+      'Find the 3 correct pipes (Ⅰ, Ⅱ, Ⅲ) and enter them in order by pressing ↓.',
+      'Wrong pipes send you back to your last checkpoint — watch out!',
+      'Stomp enemies (land on them) for bonus points.',
+      'Break bricks by jumping into them from below.',
+      'Collect coins for extra score. Reach the princess to win!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
