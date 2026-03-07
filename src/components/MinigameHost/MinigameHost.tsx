@@ -19,6 +19,7 @@ import ClosestWithoutGoingOverComp from '../ClosestWithoutGoingOverComp';
 import type { CwgoPrizeType } from '../../features/cwgo/cwgoCompetitionSlice';
 import HoldTheWallComp from '../HoldTheWallComp/HoldTheWallComp';
 import type { HoldTheWallPrizeType } from '../../features/holdTheWall/holdTheWallSlice';
+import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -209,6 +210,32 @@ export default function MinigameHost({
                   onComplete={handleReactComplete}
                 />
               );
+            }
+            if (game.implementation === 'react') {
+              const key = game.reactComponentKey;
+              if (!key) {
+                console.warn(
+                  `[MinigameHost] game '${game.key}' has implementation 'react' but no reactComponentKey defined.`,
+                );
+              } else {
+                const GenericComp = reactComponents[key];
+                if (!GenericComp) {
+                  console.warn(
+                    `[MinigameHost] reactComponentKey '${key}' not found in reactComponents map. ` +
+                      `Add it to src/minigames/reactComponents.ts.`,
+                  );
+                } else {
+                  return (
+                    <GenericComp
+                      onFinish={(value: number) => {
+                        setFinalValue(value);
+                        setWasPartial(false);
+                        setPhase('results');
+                      }}
+                    />
+                  );
+                }
+              }
             }
             return (
               <LegacyMinigameWrapper
