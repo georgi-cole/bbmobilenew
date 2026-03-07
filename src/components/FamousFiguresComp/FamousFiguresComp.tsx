@@ -27,7 +27,7 @@ import type {
 } from '../../features/famousFigures/famousFiguresSlice';
 import { resolveFamousFiguresOutcome } from '../../features/famousFigures/thunks';
 import { mulberry32 } from '../../store/rng';
-import { getDicebear } from '../../utils/avatar';
+import { getDicebear, resolveAvatar } from '../../utils/avatar';
 import { isAcceptedGuess } from '../../games/famous-figures/fuzzy';
 import './FamousFiguresComp.css';
 
