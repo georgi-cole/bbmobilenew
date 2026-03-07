@@ -372,7 +372,17 @@ export default function FamousFiguresComp({
     }
 
     // Use the human's personal figure for immediate local feedback.
-    const humanFigIdx = getPlayerFigureIndex(ff, humanId, ff.currentRound);
+    // Pass only the specific fields needed to avoid ESLint's exhaustive-deps
+    // flagging the whole `ff` object as a missing dependency.
+    const humanFigIdx = getPlayerFigureIndex(
+      {
+        playerFigureQueues: ff.playerFigureQueues,
+        figureOrder: ff.figureOrder,
+        currentFigureIndex: ff.currentFigureIndex,
+      },
+      humanId,
+      ff.currentRound,
+    );
     const localFigure = FAMOUS_FIGURES[humanFigIdx];
     if (!localFigure) return;
 
@@ -392,6 +402,8 @@ export default function FamousFiguresComp({
     ff.playerGuesses,
     ff.currentRound,
     ff.playerFigureQueues,
+    ff.figureOrder,
+    ff.currentFigureIndex,
     guessInput,
     dispatch,
   ]);
