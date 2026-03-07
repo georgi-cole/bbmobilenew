@@ -53,6 +53,18 @@ const REVEAL_PAUSE_MS = 3_000;
 const CHOOSE_ELIMINATION_AUTO_DELAY_MS = 2_000;
 /** Shimmer animation lasts this long after answer is locked. */
 const SHIMMER_DURATION_MS = 600;
+/**
+ * Time (ms) the human winner has to choose an elimination target before the
+ * AI fallback auto-picks on their behalf.  Ensures the game never stalls if
+ * the human disconnects or does not respond during the elimination phase.
+ */
+const HUMAN_ELIM_TIMEOUT_MS = 8_000;
+/**
+ * Auto-advance delay on the winner screen for unattended / spectator runs.
+ * After this delay the onComplete hook is called automatically so the main
+ * ceremony flow can resume without requiring a tap.
+ */
+const WINNER_AUTO_ADVANCE_MS = 1_200;
 
 // ─── Narration ────────────────────────────────────────────────────────────────
 
@@ -226,6 +238,8 @@ export default function BiographyBlitzComp({
   const revealPause = testMode ? 0 : REVEAL_PAUSE_MS;
   const chooseElimDelay = testMode ? 0 : CHOOSE_ELIMINATION_AUTO_DELAY_MS;
   const humanTimeout = testMode ? 100 : HUMAN_ANSWER_TIMEOUT_MS;
+  const humanElimTimeout = testMode ? 0 : HUMAN_ELIM_TIMEOUT_MS;
+  const winnerAutoAdvance = testMode ? 0 : WINNER_AUTO_ADVANCE_MS;
 
   // Build player info map (memoised to avoid re-creating each render).
   // participantIds.join is a stable dependency key that changes only when
@@ -361,6 +375,28 @@ export default function BiographyBlitzComp({
     return () => clearTimeout(t);
   }, [bb.status, bb.round, humanId, bb.roundWinnerIds, bb.eliminationCandidates, chooseElimDelay, dispatch]);
 
+  // ── Human winner elimination timeout (AI fallback after 8 s) ─────────────
+  // When the human IS the round winner and must pick an elimination target,
+  // start a safety timer.  If the human has not tapped within humanElimTimeout
+  // ms (default 8 000 ms) the AI picks the first candidate on their behalf so
+  // the game never stalls after a disconnect or unresponsive client.
+  useEffect(() => {
+    if (bb.status !== 'choose_elimination') return;
+    // Only activate when the human is the one who must choose.
+    if (humanId === null || !bb.roundWinnerIds.includes(humanId)) return;
+    if (bb.eliminationCandidates.length === 0) return;
+
+    const t = setTimeout(() => {
+      const current = bbRef.current;
+      if (current.status !== 'choose_elimination') return;
+      if (current.eliminationCandidates.length === 0) return;
+      // Fallback: AI picks the first candidate for the human.
+      dispatch(pickElimination({ targetId: current.eliminationCandidates[0] }));
+    }, humanElimTimeout);
+
+    return () => clearTimeout(t);
+  }, [bb.status, bb.round, humanId, bb.roundWinnerIds, bb.eliminationCandidates, humanElimTimeout, dispatch]);
+
   // ── Resolve outcome when game is complete (does NOT auto-fire onComplete) ──
   const outcomeResolvedRef = useRef(false);
 
@@ -370,6 +406,21 @@ export default function BiographyBlitzComp({
     outcomeResolvedRef.current = true;
     dispatch(resolveBiographyBlitzOutcome());
   }, [bb.status, dispatch]);
+
+  // ── Winner screen auto-advance (fallback for unattended / spectator runs) ─
+  // After winnerAutoAdvance ms the onComplete hook fires automatically so the
+  // main ceremony flow resumes without requiring a manual tap.  In test mode
+  // this collapses to 0 ms for immediate resolution.
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    if (bb.status !== 'complete') return;
+    const t = setTimeout(() => {
+      onCompleteRef.current?.();
+    }, winnerAutoAdvance);
+    return () => clearTimeout(t);
+  }, [bb.status, winnerAutoAdvance]);
 
   // ── Answer handler ────────────────────────────────────────────────────────
 
@@ -784,4 +835,4 @@ export default function BiographyBlitzComp({
 }
 
 // Export timing constants so Storybook / integration tests can import them.
-export { HUMAN_ANSWER_TIMEOUT_MS, REVEAL_PAUSE_MS, CHOOSE_ELIMINATION_AUTO_DELAY_MS, SHIMMER_DURATION_MS };
+export { HUMAN_ANSWER_TIMEOUT_MS, REVEAL_PAUSE_MS, CHOOSE_ELIMINATION_AUTO_DELAY_MS, SHIMMER_DURATION_MS, HUMAN_ELIM_TIMEOUT_MS, WINNER_AUTO_ADVANCE_MS };
