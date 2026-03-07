@@ -28,7 +28,17 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { generateLevelConfig } from './castleRescueGenerator';
 import type { WrongPipeType } from './castleRescueGenerator';
-import { TIME_LIMIT_MS } from './castleRescueConstants';
+import {
+  TIME_LIMIT_MS,
+  SCORE_ENEMY   as S_ENEMY,
+  SCORE_BRICK   as S_BRICK,
+  SCORE_COIN    as S_COIN,
+  SCORE_CHECKPOINT as S_CHECKPOINT,
+  SCORE_RESCUE  as RESCUE_BONUS,
+  PENALTY_DEATH as P_DEATH,
+  RESPAWN_PENALTY as P_WRONG_PIPE,
+  TIME_PENALTY_PER_SECOND as TIME_PEN,
+} from './castleRescueConstants';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
 const CW = 800;           // canvas width
@@ -54,16 +64,8 @@ const PIPE_H = 64;
 const BRICK = 32;
 const COIN_R = 7;
 
-// ═══ Scoring ═════════════════════════════════════════════════════════════════
-const S_ENEMY      =   20;
-const S_BRICK      =    5;
-const S_COIN       =   25;
-const S_CHECKPOINT =   50;
-const RESCUE_BONUS = 1000;
-const P_DEATH      =   50;
-const P_WRONG_PIPE =  100;
-const TIME_PEN     =   10; // points lost per elapsed second
-const MAX_HEARTS   =    3;
+// ═══ Game timing / feedback constants ════════════════════════════════════════
+const MAX_HEARTS       =    3;
 const INVINCIBLE_MS    = 1500;
 const PIPE_FLASH_MS    =  700;
 const DEATH_PAUSE_MS   =  900;
@@ -1182,8 +1184,27 @@ export default function CastleRescueGame({
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       keysRef.current.add(e.code);
-      if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))
-        e.preventDefault();
+
+      const isGameKey =
+        e.code === 'Space'      ||
+        e.code === 'ArrowUp'    ||
+        e.code === 'ArrowDown'  ||
+        e.code === 'ArrowLeft'  ||
+        e.code === 'ArrowRight';
+      if (!isGameKey) return;
+
+      // Skip if focus is on an interactive host-UI element (button, input, …).
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('button, input, textarea, select, a[href]')) return;
+
+      // Only prevent default scroll/activation when the canvas (or a child of
+      // the game wrapper) is the active element, so host-UI controls remain
+      // fully accessible while the game is mounted.
+      const canvas = canvasRef.current;
+      const active = document.activeElement;
+      const canvasHasFocus =
+        canvas != null && (active === canvas || canvas.contains(active));
+      if (canvasHasFocus) e.preventDefault();
     };
     const onUp = (e: KeyboardEvent) => keysRef.current.delete(e.code);
     window.addEventListener('keydown', onDown);
@@ -1308,7 +1329,7 @@ function TouchBtn({ code, label, color = '#374151', onPress, onRelease }: TouchB
 
 const rootStyle: CSSProperties = {
   display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-  background:'#111827', padding:12, minHeight:'100vh',
+  background:'#111827', padding:12,
 };
 const canvasStyle: CSSProperties = {
   border:'2px solid #1e3a8a', borderRadius:8, maxWidth:'100%', display:'block',

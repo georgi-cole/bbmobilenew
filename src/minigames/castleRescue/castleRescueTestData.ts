@@ -7,7 +7,7 @@
  * engine can break test data).
  *
  * ALL positions in this file have been manually verified to satisfy
- * validateGeneratedMap.
+ * validateLevelConfig.
  */
 
 import type { CastleRescueMap, RunState } from './castleRescueTypes';

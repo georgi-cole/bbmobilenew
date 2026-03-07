@@ -111,19 +111,41 @@ export function generateLevelConfig(seed: number): LevelConfig {
  *
  * Checks:
  *  - Exactly CORRECT_ROUTE_LENGTH correct pipe slots.
- *  - All slot indices are within [0, PIPE_SLOT_COUNT).
- *  - No duplicate slot indices.
+ *  - All correct slot indices are within [0, PIPE_SLOT_COUNT).
+ *  - No duplicate correct slot indices.
+ *  - `wrongPipeTypes` contains exactly (PIPE_SLOT_COUNT − CORRECT_ROUTE_LENGTH) entries.
+ *  - All wrong slot indices are within [0, PIPE_SLOT_COUNT), do not overlap any
+ *    correct slot, and contain no duplicates.
+ *  - All wrong-pipe values are valid WrongPipeType strings.
  *
  * Returns true when all checks pass.
  */
 export function validateLevelConfig(config: LevelConfig): boolean {
-  const { correctPipeSlots } = config;
+  const { correctPipeSlots, wrongPipeTypes } = config;
+
+  // ── Correct-route slots ──────────────────────────────────────────────────────
   if (correctPipeSlots.length !== CORRECT_ROUTE_LENGTH) return false;
-  const seen = new Set<number>();
+  const correctSeen = new Set<number>();
   for (const slot of correctPipeSlots) {
     if (slot < 0 || slot >= PIPE_SLOT_COUNT) return false;
-    if (seen.has(slot)) return false;
-    seen.add(slot);
+    if (correctSeen.has(slot)) return false;
+    correctSeen.add(slot);
+  }
+
+  // ── Wrong-pipe type map ──────────────────────────────────────────────────────
+  const expectedWrongCount = PIPE_SLOT_COUNT - CORRECT_ROUTE_LENGTH;
+  const wrongKeys = Object.keys(wrongPipeTypes);
+  if (wrongKeys.length !== expectedWrongCount) return false;
+
+  const allowedWrongTypes: WrongPipeType[] = ['setback', 'bonus', 'ambush', 'dead'];
+  const wrongSeen = new Set<number>();
+  for (const key of wrongKeys) {
+    const idx = Number(key);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= PIPE_SLOT_COUNT) return false;
+    if (correctSeen.has(idx)) return false; // overlaps a correct slot
+    if (wrongSeen.has(idx)) return false;   // duplicate wrong slot
+    wrongSeen.add(idx);
+    if (!allowedWrongTypes.includes(wrongPipeTypes[idx])) return false;
   }
   return true;
 }
