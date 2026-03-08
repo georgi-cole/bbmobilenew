@@ -123,7 +123,7 @@ const socialSlice = createSlice({
       const { week, resolvedAt } = action.payload;
       const resolvedTimestamp = resolvedAt ?? Date.now();
       state.incomingInteractions.forEach((interaction) => {
-        if (!interaction.resolved && interaction.expiresAtWeek < week) {
+        if (!interaction.resolved && interaction.expiresAtWeek <= week) {
           interaction.resolved = true;
           interaction.read = true;
           interaction.resolvedAt = resolvedTimestamp;

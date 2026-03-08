@@ -71,6 +71,8 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   other: ['We need to talk later.', 'Just wanted to say hey.'],
 };
 
+let incomingSeedCounter = 0;
+
 function pickRandom<T>(list: readonly T[]): T {
   return list[Math.floor(Math.random() * list.length)];
 }
@@ -79,9 +81,8 @@ function buildIncomingInteraction(fromId: string, week: number): IncomingInterac
   const type = pickRandom(INCOMING_TYPES);
   const text = pickRandom(INCOMING_TEXT[type]);
   const now = Date.now();
-  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `incoming-${now}`;
+  const canUseUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function';
+  const id = canUseUuid ? crypto.randomUUID() : `incoming-${now}-${incomingSeedCounter++}`;
   return {
     id,
     fromId,

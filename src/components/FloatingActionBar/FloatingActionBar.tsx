@@ -33,7 +33,7 @@ export default function FloatingActionBar() {
   const canAdvance = useAppSelector(selectAdvanceEnabled);
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
-  const pendingInteractionsCount = useAppSelector(selectPendingIncomingInteractionCount);
+  const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
 
@@ -122,14 +122,14 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label={`Inbox${pendingInteractionsCount > 0 ? ` (${pendingInteractionsCount} pending)` : ''}`}
+          aria-label={`Inbox${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
           title="Inbox"
           onClick={() => dispatch(openIncomingInbox())}
         >
           📥
-          {pendingInteractionsCount > 0 && (
+          {pendingCount > 0 && (
             <span className="fab__badge" aria-hidden="true">
-              {pendingInteractionsCount > 99 ? '99+' : pendingInteractionsCount}
+              {pendingCount > 99 ? '99+' : pendingCount}
             </span>
           )}
         </button>

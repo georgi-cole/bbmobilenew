@@ -91,7 +91,7 @@ describe('socialSlice incoming interactions', () => {
     const initial = socialReducer(undefined, { type: 'init' }) as SocialState;
     const seeded = reduce(
       reduce(initial, pushIncomingInteraction(makeInteraction({ id: 'i-1', expiresAtWeek: 1 }))),
-      pushIncomingInteraction(makeInteraction({ id: 'i-2', expiresAtWeek: 3 })),
+      pushIncomingInteraction(makeInteraction({ id: 'i-2', expiresAtWeek: 4 })),
     );
     const updated = socialReducer(
       seeded,

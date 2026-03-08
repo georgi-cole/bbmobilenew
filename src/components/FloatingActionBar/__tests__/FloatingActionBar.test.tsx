@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import gameReducer from '../../../store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
@@ -38,11 +38,17 @@ function makeStore(hasHuman = true) {
   });
 }
 
-function renderFAB(store: ReturnType<typeof makeStore>) {
+function LocationDisplay() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
+
+function renderFAB(store: ReturnType<typeof makeStore>, initialEntry = '/game') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Provider store={store}>
         <FloatingActionBar />
+        <LocationDisplay />
       </Provider>
     </MemoryRouter>,
   );
@@ -157,5 +163,25 @@ describe('FloatingActionBar – inbox badge', () => {
     renderFAB(store);
     expect(screen.getByText('1')).toBeDefined();
     expect(screen.getByRole('button', { name: /inbox/i })).toBeDefined();
+  });
+});
+
+describe('FloatingActionBar – navigation buttons', () => {
+  it('navigates to rules when the Help button is clicked', async () => {
+    const store = makeStore();
+    renderFAB(store, '/game');
+    act(() => {
+      screen.getByRole('button', { name: 'Help' }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/rules');
+  });
+
+  it('navigates to the Diary Room when the DR button is clicked', () => {
+    const store = makeStore();
+    renderFAB(store, '/game');
+    act(() => {
+      screen.getByRole('button', { name: /Diary Room/i }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
   });
 });
