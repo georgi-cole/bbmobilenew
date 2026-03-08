@@ -24,8 +24,8 @@ import './FloatingActionBar.css';
  * - Center button dispatches advance(); pulses when actionable; disabled when
  *   waiting for human input (replacement nominee, Final 4 POV vote, Final 3 HOH eviction).
  * - DR and Inbox buttons show numeric badges wired to store selectors.
- * - Left side: Social and Help buttons.
- * - Right side: DR and Inbox buttons with badge counts.
+ * - Left side: Social and Help buttons (Help opens Rules).
+ * - Right side: DR and Inbox buttons with badge counts (DR opens Diary Room).
  */
 export default function FloatingActionBar() {
   const dispatch = useAppDispatch();

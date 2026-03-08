@@ -40,8 +40,6 @@ export function getIncomingInteractionTypeLabel(type: IncomingInteractionType): 
 
 function getResponseDelta(responseType: IncomingInteractionResponseType): number {
   const deltas = socialConfig.incomingInteractionAffinityDeltas;
-  if (responseType === 'accept') return deltas.positive;
-  if (responseType === 'decline') return deltas.negative;
   return deltas[responseType] ?? 0;
 }
 

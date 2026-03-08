@@ -42,6 +42,8 @@ export const socialConfig = {
     positive: 6,
     neutral: 1,
     negative: -8,
+    accept: 6,
+    decline: -8,
     dismiss: -3,
     ignore: -4,
   },
