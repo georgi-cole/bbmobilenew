@@ -3,6 +3,15 @@
  * Chips are positioned in four corners: top-left, top-right, bottom-left, bottom-right
  */
 
+/* ===== Chip sizing / spacing variables ===== */
+:root {
+  --chip-size: 36px;        /* diameter of each corner chip */
+  --chip-size-sm: 34px;     /* diameter on narrow viewports (≤360 px) */
+  --chip-edge: 20px;        /* distance from the screen edge to the first chip */
+  --chip-bottom-edge: 40px; /* bottom-edge offset (larger to clear home buttons) */
+  --chip-gap: 8px;          /* gap between stacked chips in the same corner */
+}
+
 /* ===== Hub Container ===== */
 #intro-hub {
   position: fixed;
@@ -20,13 +29,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--chip-size);
+  height: var(--chip-size);
 
   /* small frosted glass container */
   background: rgba(255, 255, 255, 0.04); /* very subtle white tint */
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px; /* tiny pill, slightly rounded */
+  border-radius: 8px; /* slightly rounded square */
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 
   color: #ffffff;
@@ -37,7 +46,7 @@
   -webkit-appearance: none;
   appearance: none;
   transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
-  padding: 4px; /* keep the icon centered with a little breathing room */
+  padding: 3px; /* keep the icon centered with a little breathing room */
   box-sizing: border-box;
 }
 
@@ -92,7 +101,7 @@
 }
 
 /* Slightly reduce icon size so it sits comfortably inside the tiny container */
-.hub-chip__icon { font-size: 18px; line-height: 1; pointer-events: none; }
+.hub-chip__icon { font-size: 16px; line-height: 1; pointer-events: none; }
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {
@@ -102,13 +111,13 @@
 /* ===== Notification Badge Dot ===== */
 .hub-chip__badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 9px;
-  height: 9px;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #ff3b5c;
-  border: 2px solid rgba(15, 20, 35, 0.85);
+  border: 1.5px solid rgba(15, 20, 35, 0.85);
   display: none;
   box-shadow: 0 0 6px rgba(255, 59, 92, 0.6);
 }
@@ -119,76 +128,76 @@
 
 /* ===== Position Helpers ===== */
 .hub-chip--top-left {
-  top: 16px;
-  left: 16px;
+  top: var(--chip-edge);
+  left: var(--chip-edge);
 }
 
 .hub-chip--top-right {
-  top: 16px;
-  right: 16px;
+  top: var(--chip-edge);
+  right: var(--chip-edge);
 }
 
 .hub-chip--bottom-left {
-  bottom: 32px;
-  left: 16px;
+  bottom: var(--chip-bottom-edge);
+  left: var(--chip-edge);
 }
 
 .hub-chip--bottom-right {
-  bottom: 32px;
-  right: 16px;
+  bottom: var(--chip-bottom-edge);
+  right: var(--chip-edge);
 }
 
-/* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
+/* Secondary chips stacked below/above primary in each corner */
 .hub-chip--top-left-2 {
-  top: 60px;
-  left: 16px;
+  top: calc(var(--chip-edge) + var(--chip-size) + var(--chip-gap));
+  left: var(--chip-edge);
 }
 
 .hub-chip--top-right-2 {
-  top: 60px;
-  right: 16px;
+  top: calc(var(--chip-edge) + var(--chip-size) + var(--chip-gap));
+  right: var(--chip-edge);
 }
 
 .hub-chip--bottom-left-2 {
-  bottom: 84px;
-  left: 16px;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap));
+  left: var(--chip-edge);
 }
 
 .hub-chip--bottom-right-2 {
-  bottom: 84px;
-  right: 16px;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap));
+  right: var(--chip-edge);
 }
 
 /* Third row if needed */
 .hub-chip--top-left-3 {
-  top: 104px;
-  left: 16px;
+  top: calc(var(--chip-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
+  left: var(--chip-edge);
 }
 
 .hub-chip--top-right-3 {
-  top: 104px;
-  right: 16px;
+  top: calc(var(--chip-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
+  right: var(--chip-edge);
 }
 
 .hub-chip--bottom-left-3 {
-  bottom: 128px;
-  left: 16px;
+  bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
+  left: var(--chip-edge);
 }
 
 .hub-chip--bottom-right-3 {
-  bottom: 128px;
-  right: 16px;
+  bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
+  right: var(--chip-edge);
 }
 
 /* ===== Responsive ===== */
 @media (max-width: 360px) {
   .hub-chip {
-    width: 38px;
-    height: 38px;
+    width: var(--chip-size-sm);
+    height: var(--chip-size-sm);
   }
 
   .hub-chip__icon {
-    font-size: 17px;
+    font-size: 15px;
   }
 }
 
@@ -196,33 +205,33 @@
 @supports (padding-top: env(safe-area-inset-top)) {
   .hub-chip--top-left,
   .hub-chip--top-right {
-    top: calc(16px + env(safe-area-inset-top));
+    top: calc(var(--chip-edge) + env(safe-area-inset-top));
   }
 
   .hub-chip--top-left-2,
   .hub-chip--top-right-2 {
-    top: calc(60px + env(safe-area-inset-top));
+    top: calc(var(--chip-edge) + var(--chip-size) + var(--chip-gap) + env(safe-area-inset-top));
   }
 
   .hub-chip--top-left-3,
   .hub-chip--top-right-3 {
-    top: calc(104px + env(safe-area-inset-top));
+    top: calc(var(--chip-edge) + 2 * (var(--chip-size) + var(--chip-gap)) + env(safe-area-inset-top));
   }
 }
 
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .hub-chip--bottom-left,
   .hub-chip--bottom-right {
-    bottom: calc(32px + env(safe-area-inset-bottom));
+    bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom));
   }
 
   .hub-chip--bottom-left-2,
   .hub-chip--bottom-right-2 {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap) + env(safe-area-inset-bottom));
   }
 
   .hub-chip--bottom-left-3,
   .hub-chip--bottom-right-3 {
-    bottom: calc(128px + env(safe-area-inset-bottom));
+    bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)) + env(safe-area-inset-bottom));
   }
 }
