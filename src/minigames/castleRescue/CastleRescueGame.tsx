@@ -567,6 +567,10 @@ function updateGame(
       }
     }
   }
+  // Re-apply level-bounds clamp after collision resolution (a side-push can
+  // move player.x outside [0, geom.width-PW]).
+  player.x = Math.max(0, Math.min(geom.width - PW, player.x));
+  pRect.x  = player.x;
 
   // ── Pipe solidity (pipes are full solid — top landing + side block) ───────
   for (const pipe of geom.pipes) {
@@ -1260,10 +1264,14 @@ const MAX_SCALE = 2;
 
 /**
  * Pixels reserved for the control strip in portrait mode (below canvas).
- * Must be ≥ touch button minHeight (90) + 2 × vertical padding (8px each side) + gap = 116 px.
+ * Must be ≥ touch button max height (90) + 2 × vertical padding (8px each side) + gap = 116 px.
  */
 const CTRL_H_PORTRAIT = 116;
-/** Pixels reserved for the control strip in landscape mode (right of canvas). */
+/**
+ * Pixels reserved for the control strip in landscape mode (beside canvas).
+ * Must be ≥ touch button max width (90) + horizontal padding (16px each side) + gap = 122 px;
+ * rounded up to 134 for breathing room.
+ */
 const CTRL_W_LANDSCAPE = 134;
 
 interface LayoutState {
@@ -1466,8 +1474,8 @@ export default function CastleRescueGame({
 
   const { scale, landscape } = layout;
 
-  // Responsive button size: clamp between 56–72px, scaled from base 56px.
-  const btnSize = Math.min(72, Math.max(56, Math.round(56 * (scale || 1))));
+  // Responsive button size: clamp between 72–90px, scaled from base 72px.
+  const btnSize = Math.min(90, Math.max(72, Math.round(72 * (scale || 1))));
 
   // ── Controls: portrait = row below canvas, landscape = LEFT group on left
   //   edge and RIGHT group on right edge (fixed to viewport corners)
