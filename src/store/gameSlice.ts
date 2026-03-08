@@ -1386,13 +1386,17 @@ const gameSlice = createSlice({
       state.players = action.payload;
     },
     /** Reset game state with a fresh random roster (debug only). */
-    resetGame(state) {
+    resetGame(state, action: PayloadAction<SeasonArchive[] | undefined>) {
       // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
       // This seed drives in-game RNG (HOH/POV/vote outcomes); it is independent
       // of the Math.random() seed used in pickHouseguests() for roster selection.
       const seed = (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0;
-      // Preserve season archives across resets so history is not lost.
-      const seasonArchives = state.seasonArchives ?? [];
+      // When an explicit archives array is provided (e.g. on profile switch) use it;
+      // otherwise preserve the current in-memory archives so a regular game restart
+      // does not lose season history.
+      const seasonArchives = action.payload !== undefined
+        ? action.payload
+        : (state.seasonArchives ?? []);
       // Build a fresh normalized player roster — no stale eviction/jury/grayscale flags.
       const freshPlayers: Player[] = buildInitialPlayers().map((p) => ({
         ...p,

@@ -10,9 +10,11 @@ import {
   deleteProfile,
   enterGuestMode,
   MAX_PROFILES,
+  archiveKeyForProfile,
   type StoredProfile,
 } from '../../store/profilesSlice';
 import { resetGame } from '../../store/gameSlice';
+import { loadSeasonArchives } from '../../store/archivePersistence';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { imageIdToDataUrl } from '../../utils/imageDb';
 import { deleteImage } from '../../utils/imageDb';
@@ -93,7 +95,12 @@ export default function ProfilePicker() {
 
   function commitSwitch(id: string) {
     dispatch(selectActiveProfile(id));
-    dispatch(resetGame());
+    // Load archives for the newly-selected profile so they are not cross-contaminated
+    // with the previous profile's in-memory archives.
+    // After dispatch(selectActiveProfile), store.subscribe has already flushed the new
+    // activeProfileId to localStorage, so the key below resolves to the right profile.
+    const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
+    dispatch(resetGame(archives));
     navigate('/profile');
   }
 
@@ -107,15 +114,16 @@ export default function ProfilePicker() {
 
   function commitGuest() {
     dispatch(enterGuestMode());
-    dispatch(resetGame());
+    // Guest mode never persists archives, so start with an empty list.
+    dispatch(resetGame([]));
     navigate('/game');
   }
 
   function handleCreate() {
     if (!newName.trim() || atLimit) return;
-    // If game is in progress we reset it so the new profile starts fresh
+    // A newly created profile has no archives yet.
     dispatch(createProfile({ name: newName.trim(), avatar: newAvatar }));
-    dispatch(resetGame());
+    dispatch(resetGame([]));
     setShowCreateForm(false);
     setNewName('');
     setNewAvatar('🧑');

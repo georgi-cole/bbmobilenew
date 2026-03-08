@@ -7,6 +7,7 @@ import userProfileReducer, { loadUserProfile, saveUserProfile } from './userProf
 import profilesReducer, {
   loadProfilesState,
   saveProfilesState,
+  archiveKeyForProfile,
 } from './profilesSlice';
 import socialReducer from '../social/socialSlice';
 import { socialMiddleware } from '../social/socialMiddleware';
@@ -69,7 +70,7 @@ store.subscribe(() => {
     // Guest mode: skip archive persistence entirely.
     if (!current.profiles.isGuest) {
       const archiveKey = current.profiles.activeProfileId
-        ? `bbmobilenew:seasonArchives:${encodeURIComponent(current.profiles.activeProfileId)}`
+        ? archiveKeyForProfile(current.profiles.activeProfileId)
         : DEFAULT_ARCHIVE_KEY;
       saveSeasonArchives(archiveKey, current.game.seasonArchives ?? []);
     }

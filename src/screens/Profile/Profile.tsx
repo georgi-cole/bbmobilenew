@@ -121,9 +121,7 @@ export default function Profile() {
       );
     }
 
-    return chips.length > 0 ? chips : (
-      <p className="profile-screen__no-game">No active status this week.</p>
-    );
+    return chips;
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────

@@ -98,6 +98,19 @@ export default function EditProfile() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Track the current preview object URL so we can revoke it to avoid memory leaks.
+  const previewUrlRef = useRef<string | null>(null);
+
+  // Revoke any outstanding preview URL on unmount.
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
   // Load existing photo from IndexedDB on mount
   useEffect(() => {
     if (profile?.photoId) {
@@ -111,16 +124,29 @@ export default function EditProfile() {
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Reset the input so the same file can be re-selected later.
+    e.target.value = '';
+
     setProcessingPhoto(true);
     try {
       const blob = await resizeAndCompressImage(file);
+      // Revoke the previous preview URL before creating a new one.
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
       const url = URL.createObjectURL(blob);
-      setPhotoDataUrl(url);
+      previewUrlRef.current = url;
       setNewPhotoBlob(blob);
+      setPhotoDataUrl(url);
     } catch {
-      // If processing fails, fall back to the original file as blob
-      setNewPhotoBlob(file);
+      // If processing fails, fall back to the original file as blob.
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
       const url = URL.createObjectURL(file);
+      previewUrlRef.current = url;
+      setNewPhotoBlob(file);
       setPhotoDataUrl(url);
     } finally {
       setProcessingPhoto(false);
@@ -133,14 +159,23 @@ export default function EditProfile() {
     let photoId = profile.photoId;
 
     // Persist new photo to IndexedDB; delete the old one to avoid storage growth.
+    // Only update photoId if the write actually succeeds — if IndexedDB is unavailable
+    // (e.g. private browsing, quota exceeded) we keep the existing photoId so the
+    // profile does not reference an image that can never be loaded.
     if (newPhotoBlob) {
       const id = `photo-${profile.id}-${Date.now()}`;
-      await saveImage(id, newPhotoBlob);
-      // Clean up the previous photo blob now that the new one is persisted.
-      if (profile.photoId && profile.photoId !== id) {
-        await deleteImage(profile.photoId);
+      try {
+        await saveImage(id, newPhotoBlob);
+        // Clean up the previous photo blob now that the new one is persisted.
+        if (profile.photoId && profile.photoId !== id) {
+          await deleteImage(profile.photoId);
+        }
+        photoId = id;
+      } catch (err) {
+        // saveImage failed (e.g. private browsing, quota exceeded).
+        // Keep the existing photoId so the profile does not reference a missing image.
+        console.error('Failed to save profile photo to IndexedDB', err);
       }
-      photoId = id;
     }
 
     const bio: ProfileBio = {

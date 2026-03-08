@@ -123,13 +123,31 @@ describe('replacePlayers reducer', () => {
 });
 
 describe('resetGame with archives', () => {
-  it('preserves existing seasonArchives across reset', () => {
+  it('preserves existing seasonArchives across reset (no payload)', () => {
     const existing: SeasonArchive[] = [makeArchive(1), makeArchive(2)];
     const store = makeStore({ seasonArchives: existing });
     store.dispatch(resetGame());
     const archives = store.getState().game.seasonArchives ?? [];
     expect(archives).toHaveLength(2);
     expect(archives[0].seasonIndex).toBe(1);
+  });
+
+  it('uses provided archives when explicit payload is given (profile switch)', () => {
+    const existing: SeasonArchive[] = [makeArchive(1), makeArchive(2)];
+    const store = makeStore({ seasonArchives: existing });
+    const newArchives: SeasonArchive[] = [makeArchive(99)];
+    store.dispatch(resetGame(newArchives));
+    const archives = store.getState().game.seasonArchives ?? [];
+    expect(archives).toHaveLength(1);
+    expect(archives[0].seasonIndex).toBe(99);
+  });
+
+  it('clears archives when empty array is passed (guest mode / new profile)', () => {
+    const existing: SeasonArchive[] = [makeArchive(1), makeArchive(2)];
+    const store = makeStore({ seasonArchives: existing });
+    store.dispatch(resetGame([]));
+    const archives = store.getState().game.seasonArchives ?? [];
+    expect(archives).toHaveLength(0);
   });
 
   it('all fresh players have status active after reset', () => {

@@ -18,6 +18,8 @@ import type { RootState } from './store';
 
 export const MAX_PROFILES = 5;
 const PROFILES_STORAGE_KEY = 'bbmobilenew:profiles:v1';
+/** Prefix for per-profile season-archive localStorage keys. */
+export const DEFAULT_ARCHIVE_KEY_PREFIX = 'bbmobilenew:seasonArchives:';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,14 +91,43 @@ function generateId(): string {
 // These functions do NOT import the Redux store, so they are safe to call from
 // gameSlice.ts (or any module that runs before the store is created).
 
+/**
+ * Coerce a raw parsed value into a valid StoredProfile, normalizing any
+ * missing/invalid fields to safe defaults so corrupted localStorage entries
+ * do not cause runtime errors downstream (e.g. new Date(createdAt) crashes,
+ * rendering undefined name, etc.).
+ */
+function coerceStoredProfile(raw: unknown): StoredProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  // id and createdAt are required; discard the entry if either is missing.
+  if (typeof r.id !== 'string' || !r.id) return null;
+  if (typeof r.createdAt !== 'string' || !r.createdAt) return null;
+  return {
+    id: r.id,
+    name: typeof r.name === 'string' && r.name.trim() ? r.name.trim() : 'You',
+    avatar: typeof r.avatar === 'string' && r.avatar ? r.avatar : '👤',
+    photoId: typeof r.photoId === 'string' && r.photoId ? r.photoId : undefined,
+    bio: r.bio && typeof r.bio === 'object' ? (r.bio as ProfileBio) : undefined,
+    createdAt: r.createdAt,
+  };
+}
+
 /** Load profiles state from localStorage. Returns DEFAULT_PROFILES_STATE on error/miss. */
 export function loadProfilesState(): ProfilesState {
   try {
     const raw = localStorage.getItem(PROFILES_STORAGE_KEY);
     if (!raw) return DEFAULT_PROFILES_STATE;
     const parsed = JSON.parse(raw) as Partial<ProfilesState>;
+    const profiles: StoredProfile[] = Array.isArray(parsed.profiles)
+      ? (parsed.profiles as unknown[]).reduce<StoredProfile[]>((acc, p) => {
+          const coerced = coerceStoredProfile(p);
+          if (coerced) acc.push(coerced);
+          return acc;
+        }, [])
+      : [];
     return {
-      profiles: Array.isArray(parsed.profiles) ? (parsed.profiles as StoredProfile[]) : [],
+      profiles,
       activeProfileId:
         typeof parsed.activeProfileId === 'string' ? parsed.activeProfileId : null,
       isGuest: typeof parsed.isGuest === 'boolean' ? parsed.isGuest : false,
@@ -146,16 +177,22 @@ export function loadActiveProfile(): { name: string; avatar: string } {
 }
 
 /**
- * Build the localStorage key under which season archives are stored for the
- * currently active profile.  Guest mode → returns the global fallback key.
- *
+ * Build the localStorage key for a specific profile's season archives.
  * The profile ID is encoded with encodeURIComponent to prevent storage-key
  * injection in the unlikely event that an ID contains special characters.
+ */
+export function archiveKeyForProfile(profileId: string): string {
+  return `${DEFAULT_ARCHIVE_KEY_PREFIX}${encodeURIComponent(profileId)}`;
+}
+
+/**
+ * Build the localStorage key under which season archives are stored for the
+ * currently active profile.  Guest mode → returns the global fallback key.
  */
 export function archiveKeyForActiveProfile(): string {
   const state = loadProfilesState();
   if (!state.isGuest && state.activeProfileId) {
-    return `bbmobilenew:seasonArchives:${encodeURIComponent(state.activeProfileId)}`;
+    return archiveKeyForProfile(state.activeProfileId);
   }
   return 'bbmobilenew:seasonArchives';
 }

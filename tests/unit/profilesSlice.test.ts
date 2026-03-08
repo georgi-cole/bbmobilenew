@@ -28,6 +28,7 @@ import profilesReducer, {
   saveProfilesState,
   loadActiveProfile,
   archiveKeyForActiveProfile,
+  archiveKeyForProfile,
   type ProfilesState,
 } from '../../src/store/profilesSlice';
 
@@ -210,6 +211,37 @@ describe('loadProfilesState / saveProfilesState', () => {
     const state = loadProfilesState();
     expect(state.profiles).toEqual([]);
   });
+
+  it('discards profile entries with missing id', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        profiles: [
+          { name: 'NoId', avatar: '🧑', createdAt: '2025-01-01T00:00:00Z' },
+          { id: 'ok', name: 'Good', avatar: '👩', createdAt: '2025-01-01T00:00:00Z' },
+        ],
+        activeProfileId: 'ok',
+        isGuest: false,
+      }),
+    );
+    const state = loadProfilesState();
+    expect(state.profiles).toHaveLength(1);
+    expect(state.profiles[0].id).toBe('ok');
+  });
+
+  it('normalises missing name/avatar to safe defaults', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        profiles: [{ id: 'p1', createdAt: '2025-01-01T00:00:00Z' }],
+        activeProfileId: 'p1',
+        isGuest: false,
+      }),
+    );
+    const state = loadProfilesState();
+    expect(state.profiles[0].name).toBe('You');
+    expect(state.profiles[0].avatar).toBe('👤');
+  });
 });
 
 describe('loadActiveProfile', () => {
@@ -248,6 +280,28 @@ describe('loadActiveProfile', () => {
     const result = loadActiveProfile();
     expect(result.name).toBe('You');
     expect(result.avatar).toBe('👤');
+  });
+});
+
+describe('archiveKeyForProfile', () => {
+  it('returns a key with the encoded profile ID', () => {
+    expect(archiveKeyForProfile('p42')).toBe('bbmobilenew:seasonArchives:p42');
+  });
+
+  it('encodes special characters in profile ID', () => {
+    expect(archiveKeyForProfile('a:b')).toBe('bbmobilenew:seasonArchives:a%3Ab');
+  });
+
+  it('produces the same key as archiveKeyForActiveProfile when the profile is active', () => {
+    const PROFILES_KEY = 'bbmobilenew:profiles:v1';
+    const state: ProfilesState = {
+      profiles: [{ id: 'p99', name: 'Test', avatar: '🧑', createdAt: '2025-01-01T00:00:00Z' }],
+      activeProfileId: 'p99',
+      isGuest: false,
+    };
+    saveProfilesState(state);
+    expect(archiveKeyForProfile('p99')).toBe(archiveKeyForActiveProfile());
+    localStorage.removeItem(PROFILES_KEY);
   });
 });
 

@@ -36,21 +36,18 @@ function openDb(): Promise<IDBDatabase> {
 
 /**
  * Persist a Blob under `id` in IndexedDB.
- * Silently ignores any storage errors.
+ * Throws on failure so callers can decide whether to record the image ID.
+ * (Callers that do not need error handling can catch and ignore.)
  */
 export async function saveImage(id: string, blob: Blob): Promise<void> {
-  try {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.put(blob, id);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
-  } catch {
-    // Silently ignore storage failures (quota exceeded, private mode, etc.)
-  }
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put(blob, id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
 /**
