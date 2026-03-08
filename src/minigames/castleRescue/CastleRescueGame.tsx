@@ -30,13 +30,15 @@ import { generateLevelConfig } from './castleRescueGenerator';
 import type { WrongPipeType } from './castleRescueGenerator';
 import {
   playerLandsOnSurfaceTop,
-  playerHitsSurfaceFromBelow,
   playerOverlapsPipeSide,
   tryEnterPipe,
   playerHitsBrickFromBelow,
   resolveFullSolidCollision,
 } from './castleRescueEngine';
 import type { CollisionRect } from './castleRescueEngine';
+import { validateAndFixPipeClearance } from './castleRescueUtils';
+import { buildBonusRoom, buildAmbushRoom } from './castleRescueRooms';
+import type { RoomInstance } from './castleRescueRooms';
 import {
   TIME_LIMIT_MS,
   SCORE_ENEMY   as S_ENEMY,
@@ -177,18 +179,9 @@ interface Checkpoint {
  * While `GameState.room` is non-null, physics and rendering use the room
  * geometry instead of the main level.  Exiting via the room's exit pipe
  * returns the player to the main level at their last spawn position.
+ *
+ * Defined in castleRescueRooms.ts and re-exported here as a type alias.
  */
-interface RoomInstance {
-  type: 'bonus' | 'ambush';
-  width: number;            // room width in pixels (≤ CW → no horizontal scroll)
-  platforms: Platform[];    // includes the ground as index 0
-  bricks: Brick[];
-  enemies: Enemy[];
-  coins: Coin[];
-  exitX: number;            // left edge of the exit pipe in room coordinates
-  exitY: number;            // top edge of the exit pipe
-}
-
 interface LevelGeom {
   width: number;
   platforms: Platform[];  // includes the ground as first entry
@@ -232,77 +225,6 @@ function rng32(seed: number): () => number {
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
-  };
-}
-
-// ═══ Room builders ════════════════════════════════════════════════════════════
-// Rooms are ≤ CW (800 px) wide so the camera is always fixed at x=0 inside them.
-const ROOM_EXIT_PIPE_Y = GROUND_TOP - PIPE_H; // same pipe-top y as the main level
-
-/**
- * A cosy treasure room filled with coins and breakable bricks.
- * No enemies — a reward for curious explorers.
- */
-function buildBonusRoom(): RoomInstance {
-  const platforms: Platform[] = [
-    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground (full-solid by default)
-    { x: 100, y: 280,        w: 130, h: 16, oneWay: true },
-    { x: 310, y: 250,        w: 150, h: 16, oneWay: true },
-    { x: 530, y: 265,        w: 130, h: 16, oneWay: true },
-  ];
-  // Bricks positioned with MIN_CLEARANCE = 42 px above the reference platform.
-  // Formula: brick.y = brickTop(platform.y) = platform.y − MIN_CLEARANCE − BRICK.
-  const brickDefs: [number, number][] = [
-    [115, brickTop(280)], [147, brickTop(280)],   // platform 1 (y=280)
-    [325, brickTop(250)], [357, brickTop(250)],   // platform 2 (y=250)
-    [545, brickTop(265)], [577, brickTop(265)],   // platform 3 (y=265)
-  ];
-  const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
-    id: `rb-${i}`, x: bx, y: by,
-    width: BRICK, height: BRICK,
-    breakableFromBelow: true,
-    broken: false, bounceTimer: 0,
-  }));
-  const coinDefs: [number, number][] = [
-    [130, brickTop(280) - 2], [162, brickTop(280) - 2],               // above platform-1 bricks
-    [340, brickTop(250) - 2], [372, brickTop(250) - 2], [404, brickTop(250) - 2],   // above platform-2 bricks
-    [560, brickTop(265) - 2], [592, brickTop(265) - 2],               // above platform-3 bricks
-    [140, 265], [340, 235], [560, 250],   // on platform surfaces
-  ];
-  const coins: Coin[] = coinDefs.map(([cx, cy], i) => ({
-    id: `rc-${i}`, x: cx, y: cy, collected: false,
-  }));
-  return {
-    type: 'bonus', width: 800, platforms, bricks, enemies: [], coins,
-    exitX: 720, exitY: ROOM_EXIT_PIPE_Y,
-  };
-}
-
-/**
- * A dark trap room swarming with 5 enemies.
- * Stomp them for points, then escape through the exit pipe.
- */
-function buildAmbushRoom(): RoomInstance {
-  const platforms: Platform[] = [
-    { x: 0,   y: GROUND_TOP, w: 800, h: 32 }, // ground (full-solid by default)
-    { x: 200, y: 295,        w: 110, h: 16, oneWay: true },
-    { x: 450, y: 275,        w: 110, h: 16, oneWay: true },
-  ];
-  const enemies: Enemy[] = [
-    { id:'are-0', x:80,  y:GROUND_TOP-EH, vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:50,  patrolRight:340 },
-    { id:'are-1', x:250, y:GROUND_TOP-EH, vx:-ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:100, patrolRight:420 },
-    { id:'are-2', x:420, y:GROUND_TOP-EH, vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:320, patrolRight:620 },
-    { id:'are-3', x:580, y:GROUND_TOP-EH, vx:-ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:480, patrolRight:730 },
-    { id:'are-4', x:215, y:295-EH,        vx: ENEMY_SPD,  alive:true, squishTimer:0, patrolLeft:200, patrolRight:310 },
-  ];
-  const coins: Coin[] = [
-    { id:'arc-0', x:215, y:275, collected:false },
-    { id:'arc-1', x:460, y:255, collected:false },
-    { id:'arc-2', x:600, y:268, collected:false },
-  ];
-  return {
-    type: 'ambush', width: 800, platforms, bricks: [], enemies, coins,
-    exitX: 720, exitY: ROOM_EXIT_PIPE_Y,
   };
 }
 
@@ -361,24 +283,32 @@ function buildLevel(seed: number): LevelGeom {
     { x: 4550, y: 248, w: 230, h: 16 },
   ];
 
+  // Validate and adjust pipe/platform clearance before computing brick and coin
+  // positions.  Platforms that sit too close to a pipe top (clearance < PH+8=48px)
+  // are moved upward; running this first ensures brickTop(platform.y) below uses
+  // the already-adjusted y values so MIN_CLEARANCE is preserved above each platform.
+  validateAndFixPipeClearance({ pipes, platforms });
+
   // Bricks positioned with MIN_CLEARANCE = 42 px of vertical air-gap above
   // the reference platform so the player can stand on the platform and then
   // jump to hit the brick from below without the player body overlapping it.
   // Formula: brick.y = brickTop(platform.y) = platform.y − MIN_CLEARANCE − BRICK.
+  // Platforms that were adjusted by validateAndFixPipeClearance are referenced
+  // by index so their adjusted y propagates into the brick positions.
   const brickDefs: [number, number][] = [
-    [218, brickTop(270)], [250, brickTop(270)],   // platform y=270
-    [460, brickTop(228)], [492, brickTop(228)],   // platform y=228
-    [760, brickTop(268)],                          // platform y=268
-    [1170, brickTop(242)], [1202, brickTop(242)], // platform y=242
-    [1410, brickTop(196)], [1442, brickTop(196)], // platform y=196
-    [1660, brickTop(244)],                         // platform y=244
-    [2100, brickTop(232)], [2132, brickTop(232)], // platform y=232
-    [2400, brickTop(280)], [2432, brickTop(280)], // platform y=280
-    [2660, brickTop(264)], [2692, brickTop(264)], // platform y=264
-    [2930, brickTop(276)],                         // platform y=276
-    [3162, brickTop(260)],                         // platform y=260
-    [3622, brickTop(240)], [3654, brickTop(240)], // platform y=240
-    [4080, brickTop(250)],                         // platform y=250
+    [218, brickTop(270)], [250, brickTop(270)],             // platforms[1]  y=270
+    [460, brickTop(228)], [492, brickTop(228)],             // platforms[2]  y=228
+    [760, brickTop(platforms[3].y)],                        // platforms[3]  y=268 (may be adjusted)
+    [1170, brickTop(242)], [1202, brickTop(242)],           // platforms[5]  y=242
+    [1410, brickTop(196)], [1442, brickTop(196)],           // platforms[6]  y=196
+    [1660, brickTop(244)],                                  // platforms[7]  y=244
+    [2100, brickTop(232)], [2132, brickTop(232)],           // platforms[9]  y=232
+    [2400, brickTop(280)], [2432, brickTop(280)],           // platforms[10] y=280
+    [2660, brickTop(platforms[11].y)], [2692, brickTop(platforms[11].y)], // platforms[11] y=264 (may be adjusted)
+    [2930, brickTop(276)],                                  // platforms[12] y=276
+    [3162, brickTop(platforms[13].y)],                      // platforms[13] y=260 (may be adjusted)
+    [3622, brickTop(240)], [3654, brickTop(240)],           // platforms[15] y=240
+    [4080, brickTop(250)],                                  // platforms[17] y=250
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
     id: `brick-${i}`, x: bx, y: by,
@@ -416,17 +346,18 @@ function buildLevel(seed: number): LevelGeom {
 
   const coinDefs: [number, number][] = [
     // Coins sit 2 px above the corresponding brick top (brickTop(platform.y) − 2).
+    // Platforms adjusted by validateAndFixPipeClearance are referenced by index.
     [230, brickTop(270)-2], [262, brickTop(270)-2],
     [460, brickTop(228)-2], [492, brickTop(228)-2], [524, brickTop(228)-2],
-    [780, brickTop(268)-2], [812, brickTop(268)-2],
+    [780, brickTop(platforms[3].y)-2], [812, brickTop(platforms[3].y)-2],    // platforms[3] (may be adjusted)
     [1190, brickTop(242)-2], [1222, brickTop(242)-2],
     [1420, brickTop(196)-2], [1452, brickTop(196)-2], [1484, brickTop(196)-2],
     [1680, brickTop(244)-2],
     [2110, brickTop(232)-2], [2142, brickTop(232)-2],
     [2410, brickTop(280)-2], [2442, brickTop(280)-2], [2474, brickTop(280)-2],
-    [2680, brickTop(264)-2], [2712, brickTop(264)-2],
+    [2680, brickTop(platforms[11].y)-2], [2712, brickTop(platforms[11].y)-2], // platforms[11] (may be adjusted)
     [2940, brickTop(276)-2], [2972, brickTop(276)-2],
-    [3172, brickTop(260)-2], [3204, brickTop(260)-2],
+    [3172, brickTop(platforms[13].y)-2], [3204, brickTop(platforms[13].y)-2], // platforms[13] (may be adjusted)
     [3640, brickTop(240)-2], [3672, brickTop(240)-2], [3704, brickTop(240)-2],
     [4100, brickTop(250)-2], [4132, brickTop(250)-2],
     // Standalone coins in the final stretch (no reference brick; floated
@@ -773,23 +704,45 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
 
   // Physics
   player.vy = Math.min(player.vy + GRAVITY * sc, MAX_FALL);
+  const prevX = player.x;
   const prevY = player.y;
   player.y   += player.vy * sc;
   player.x    = Math.max(0, Math.min(room.width - PW, player.x + player.vx * sc));
   player.onGround = false;
 
-  // Platform / ground collision (room)
+  // Platform / ground collision (room) — mirrors main-level full-solid resolution.
   const rPRect: CollisionRect = { x: player.x, y: player.y, w: PW, h: PH };
   for (const surf of room.platforms) {
     const sRect: CollisionRect = { x: surf.x, y: surf.y, w: surf.w, h: surf.h };
-    if (playerLandsOnSurfaceTop(rPRect, prevY, player.vy, sRect)) {
-      player.y = surf.y - PH; player.vy = 0; player.onGround = true;
-      rPRect.y = player.y;
+    if (surf.oneWay) {
+      // One-way: only allow landing on top; skip underside resolution.
+      if (playerLandsOnSurfaceTop(rPRect, prevY, player.vy, sRect)) {
+        player.y = surf.y - PH; player.vy = 0; player.onGround = true;
+        rPRect.y = player.y;
+      }
+    } else {
+      // Full-solid: use AABB resolver for all axes (same path as main level).
+      const res = resolveFullSolidCollision(rPRect, prevX, prevY, player.vx, player.vy, sRect);
+      if (res.x !== rPRect.x || res.y !== rPRect.y) {
+        player.x = res.x; player.y = res.y;
+        player.vx = res.vx; player.vy = res.vy;
+        if (res.onGround) player.onGround = true;
+        rPRect.x = player.x; rPRect.y = player.y;
+      }
     }
-    if (!surf.oneWay && playerHitsSurfaceFromBelow(rPRect, prevY, player.vy, sRect)) {
-      player.y = surf.y + surf.h; player.vy = 0;
-      rPRect.y = player.y;
-    }
+  }
+  // Clamp to room bounds after resolution (a side-push can move player outside).
+  player.x = Math.max(0, Math.min(room.width - PW, player.x));
+  rPRect.x = player.x;
+
+  // Exit pipe solid collision (full-solid — top landing + side block).
+  const exitPipeRect: CollisionRect = { x: room.exitX, y: room.exitY, w: PIPE_W, h: PIPE_H };
+  const exitRes = resolveFullSolidCollision(rPRect, prevX, prevY, player.vx, player.vy, exitPipeRect);
+  if (exitRes.x !== rPRect.x || exitRes.y !== rPRect.y) {
+    player.x = exitRes.x; player.y = exitRes.y;
+    player.vx = exitRes.vx; player.vy = exitRes.vy;
+    if (exitRes.onGround) player.onGround = true;
+    rPRect.x = player.x; rPRect.y = player.y;
   }
 
   // Brick collisions (room)
