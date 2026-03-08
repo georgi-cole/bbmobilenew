@@ -84,6 +84,61 @@ function seededEliminationIdx(seed: number, round: number, candidateCount: numbe
   return idxSeed % candidateCount;
 }
 
+/**
+ * Resolves the in-competition contestant ID for the human player.
+ *
+ * In competition contexts the session/account user ID can differ from the
+ * contestant ID assigned for this specific game (e.g. "houseguest_7" vs
+ * "account_abc123").  This resolver tries three sources in priority order:
+ *
+ *  1. localPlayerId  — explicit contestant ID supplied by the parent (highest fidelity).
+ *  2. sessionUserId  — authoritative account ID from Redux, matched directly
+ *                      against the contestant roster keys in playerMap.
+ *  3. isHuman flag   — contestant explicitly marked isHuman in playerMap
+ *                      (set from participantsProp or game slice's isUser flag).
+ *
+ * Returns null when no human contestant can be identified (AI-only or
+ * pure-spectator context).
+ */
+function resolveHumanContestantId(
+  playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }>,
+  sessionUserId: string | null,
+  localPlayerId: string | null,
+): string | null {
+  // 1. Explicit localPlayerId override — caller knows the contestant ID directly.
+  if (localPlayerId && localPlayerId in playerMap) {
+    console.debug('[BiographyBlitz] humanContestantId resolved from localPlayerId', { localPlayerId });
+    return localPlayerId;
+  }
+
+  // 2. Session user ID matched directly against the contestant roster.
+  //    Works when the account ID equals the contestant ID (the common case).
+  if (sessionUserId && sessionUserId in playerMap) {
+    console.debug('[BiographyBlitz] humanContestantId resolved from sessionUserId', { sessionUserId });
+    return sessionUserId;
+  }
+
+  // 3. Fall back to any contestant explicitly flagged isHuman in the playerMap.
+  //    Covers competitions where account ID ≠ contestant ID and the mapping is
+  //    surfaced via participantsProp[x].isHuman or game.players[x].isUser.
+  const fromFlag = Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
+  if (fromFlag !== null) {
+    console.debug('[BiographyBlitz] humanContestantId resolved from isHuman flag', {
+      fromFlag,
+      sessionUserId,
+      localPlayerId,
+    });
+    return fromFlag;
+  }
+
+  console.debug('[BiographyBlitz] humanContestantId could not be resolved — AI-only or spectator', {
+    sessionUserId,
+    localPlayerId,
+    rosterKeys: Object.keys(playerMap),
+  });
+  return null;
+}
+
 // ─── Narration ────────────────────────────────────────────────────────────────
 
 const NARRATION = {
@@ -162,6 +217,14 @@ interface Props {
   onComplete?: () => void;
   /** Collapse all animation delays for CI / Storybook test mode. */
   testMode?: boolean;
+  /**
+   * Explicit in-competition contestant ID for the local human player.
+   * Use this when the session/account user ID (from Redux game state) differs
+   * from the contestant ID assigned for this specific competition (e.g. when
+   * houseguest IDs ≠ account IDs).  Takes priority over sessionUserId and the
+   * isHuman prop flag during humanContestantId resolution.
+   */
+  localPlayerId?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -234,6 +297,7 @@ export default function BiographyBlitzComp({
   seed,
   onComplete,
   testMode: testModeProp = false,
+  localPlayerId,
 }: Props) {
   const dispatch = useAppDispatch();
   const bb = useAppSelector(
@@ -250,8 +314,8 @@ export default function BiographyBlitzComp({
   );
 
   // Authoritative session user id — the player flagged isUser:true in the
-  // game slice.  Used as the primary source for humanId so the component can
-  // always identify the human even when participant props lack isHuman flags.
+  // game slice.  Passed to resolveHumanContestantId as the second-priority
+  // source when no localPlayerId prop is supplied.
   const sessionUserId = useAppSelector(
     (s: RootState) =>
       (
@@ -293,19 +357,14 @@ export default function BiographyBlitzComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participantsProp, storePlayers, participantIds.join(',')]);
 
-  const humanId: string | null = (() => {
-    // Prefer the authoritative session user id (from Redux game state) when the
-    // user is one of the participants.  This is reliable regardless of whether
-    // participant props carry isHuman flags or the store entry carries isUser.
-    if (sessionUserId && participantIds.includes(sessionUserId)) {
-      console.debug('[BiographyBlitz] humanId resolved from session userId', { sessionUserId });
-      return sessionUserId;
-    }
-    // Fallback: find the player flagged as human in the playerMap.  Supports
-    // test/debug contexts where a fake "human" participant is passed via props
-    // without a matching game-slice entry.
-    return Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
-  })();
+  // Resolve the in-competition contestant ID for the human player.
+  // Uses a three-tier priority: localPlayerId prop → sessionUserId (Redux) → isHuman flag.
+  // See resolveHumanContestantId above for full rationale.
+  const humanContestantId = resolveHumanContestantId(
+    playerMap,
+    sessionUserId,
+    localPlayerId ?? null,
+  );
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
@@ -349,14 +408,14 @@ export default function BiographyBlitzComp({
   // ── Human answer timeout (hidden 15 s deadline) ───────────────────────────
   useEffect(() => {
     if (bb.status !== 'question') return;
-    if (!humanId) return;
+    if (!humanContestantId) return;
     // Skip timeout when the human has already been eliminated — they are not
     // in activeContestants and cannot submit, so the game must not wait for them.
-    if (!bb.activeContestants.includes(humanId)) return;
-    if (humanId in bb.submissions) return;
+    if (!bb.activeContestants.includes(humanContestantId)) return;
+    if (humanContestantId in bb.submissions) return;
 
     console.debug('[BiographyBlitz] Human answer timeout started', {
-      humanId,
+      humanContestantId,
       round: bb.round,
       activeContestants: bb.activeContestants,
     });
@@ -364,15 +423,15 @@ export default function BiographyBlitzComp({
     const t = setTimeout(() => {
       const current = bbRef.current;
       if (current.status !== 'question') return;
-      if (!current.activeContestants.includes(humanId)) return;
-      if (humanId in current.submissions) return;
-      console.debug('[BiographyBlitz] Human timed out — marking disconnected', { humanId });
+      if (!current.activeContestants.includes(humanContestantId)) return;
+      if (humanContestantId in current.submissions) return;
+      console.debug('[BiographyBlitz] Human timed out — marking disconnected', { humanContestantId });
       // Mark as disconnected/timed-out so they are treated as wrong.
-      dispatch(markDisconnected(humanId));
+      dispatch(markDisconnected(humanContestantId));
     }, humanTimeout);
 
     return () => clearTimeout(t);
-  }, [bb.status, bb.round, bb.currentQuestionId, bb.submissions, bb.activeContestants, humanId, humanTimeout, dispatch]);
+  }, [bb.status, bb.round, bb.currentQuestionId, bb.submissions, bb.activeContestants, humanContestantId, humanTimeout, dispatch]);
 
   // ── Auto-fill AI and trigger reveal when all active contestants submitted ─
   useEffect(() => {
@@ -395,12 +454,12 @@ export default function BiographyBlitzComp({
   // ── When human answers, fill remaining AI answers immediately ─────────────
   useEffect(() => {
     if (bb.status !== 'question') return;
-    if (!humanId) return;
+    if (!humanContestantId) return;
     // Skip when the human is eliminated — handled by the all-AI effect below.
-    if (!bb.activeContestants.includes(humanId)) return;
-    if (!(humanId in bb.submissions)) return;
-    dispatch(autoFillAIAnswers(humanId));
-  }, [bb.status, bb.submissions, bb.activeContestants, humanId, dispatch]);
+    if (!bb.activeContestants.includes(humanContestantId)) return;
+    if (!(humanContestantId in bb.submissions)) return;
+    dispatch(autoFillAIAnswers(humanContestantId));
+  }, [bb.status, bb.submissions, bb.activeContestants, humanContestantId, dispatch]);
 
   // ── All-AI round OR human eliminated: fill everyone immediately ───────────
   // Runs when (a) there is no human player at all, or (b) the human has been
@@ -408,19 +467,19 @@ export default function BiographyBlitzComp({
   // no human input to wait for, so AI answers are submitted immediately.
   useEffect(() => {
     if (bb.status !== 'question') return;
-    const humanIsActive = humanId !== null && bb.activeContestants.includes(humanId);
+    const humanIsActive = humanContestantId !== null && bb.activeContestants.includes(humanContestantId);
     if (humanIsActive) return; // human can still answer — handled by the effect above
 
     console.debug('[BiographyBlitz] AI-only round (human absent/eliminated) — auto-filling', {
       round: bb.round,
       activeContestants: bb.activeContestants,
-      humanId,
+      humanContestantId,
       humanIsActive,
       eliminatedContestants: bb.eliminatedContestants,
     });
 
     dispatch(autoFillAIAnswers(null));
-  }, [bb.status, bb.round, bb.currentQuestionId, bb.activeContestants, bb.eliminatedContestants, humanId, dispatch]);
+  }, [bb.status, bb.round, bb.currentQuestionId, bb.activeContestants, bb.eliminatedContestants, humanContestantId, dispatch]);
 
   // ── Auto-advance from reveal after suspense pause → choose_elimination ────
   useEffect(() => {
@@ -437,14 +496,14 @@ export default function BiographyBlitzComp({
   useEffect(() => {
     if (bb.status !== 'choose_elimination') return;
     // Human is an active winner → they must choose manually; do not auto-pick.
-    if (humanId !== null && bb.roundWinnerIds.includes(humanId) && bb.activeContestants.includes(humanId)) return;
+    if (humanContestantId !== null && bb.roundWinnerIds.includes(humanContestantId) && bb.activeContestants.includes(humanContestantId)) return;
     if (bb.eliminationCandidates.length === 0) return;
 
     console.debug('[BiographyBlitz] AI elimination auto-pick scheduled', {
       round: bb.round,
       roundWinnerIds: bb.roundWinnerIds,
       eliminationCandidates: bb.eliminationCandidates,
-      humanId,
+      humanContestantId,
     });
 
     const t = setTimeout(() => {
@@ -465,7 +524,7 @@ export default function BiographyBlitzComp({
     }, chooseElimDelay);
 
     return () => clearTimeout(t);
-  }, [bb.status, bb.round, humanId, bb.roundWinnerIds, bb.eliminationCandidates, bb.activeContestants, chooseElimDelay, dispatch]);
+  }, [bb.status, bb.round, humanContestantId, bb.roundWinnerIds, bb.eliminationCandidates, bb.activeContestants, chooseElimDelay, dispatch]);
 
   // ── Human winner elimination timeout (AI fallback after 8 s) ─────────────
   // When the human IS the round winner and must pick an elimination target,
@@ -474,8 +533,8 @@ export default function BiographyBlitzComp({
   useEffect(() => {
     if (bb.status !== 'choose_elimination') return;
     // Only activate when the human is the active round winner who must choose.
-    if (humanId === null || !bb.roundWinnerIds.includes(humanId)) return;
-    if (!bb.activeContestants.includes(humanId)) return;
+    if (humanContestantId === null || !bb.roundWinnerIds.includes(humanContestantId)) return;
+    if (!bb.activeContestants.includes(humanContestantId)) return;
     if (bb.eliminationCandidates.length === 0) return;
 
     const t = setTimeout(() => {
@@ -491,7 +550,7 @@ export default function BiographyBlitzComp({
     }, humanElimTimeout);
 
     return () => clearTimeout(t);
-  }, [bb.status, bb.round, humanId, bb.roundWinnerIds, bb.eliminationCandidates, bb.activeContestants, humanElimTimeout, dispatch]);
+  }, [bb.status, bb.round, humanContestantId, bb.roundWinnerIds, bb.eliminationCandidates, bb.activeContestants, humanElimTimeout, dispatch]);
 
   // ── Resolve outcome when game is complete (does NOT auto-fire onComplete) ──
   const outcomeResolvedRef = useRef(false);
@@ -522,12 +581,12 @@ export default function BiographyBlitzComp({
 
   const handleAnswerSelect = useCallback(
     (answerId: string) => {
-      if (!humanId) return;
+      if (!humanContestantId) return;
       if (bb.status !== 'question') return;
-      if (humanId in bb.submissions) return; // single-submission enforcement
-      dispatch(submitAnswer({ contestantId: humanId, answerId }));
+      if (humanContestantId in bb.submissions) return; // single-submission enforcement
+      dispatch(submitAnswer({ contestantId: humanContestantId, answerId }));
     },
-    [humanId, bb.status, bb.submissions, dispatch],
+    [humanContestantId, bb.status, bb.submissions, dispatch],
   );
 
   // ── Elimination pick handler (human winner picks target) ──────────────────
@@ -552,9 +611,9 @@ export default function BiographyBlitzComp({
 
   /** True when the human player has been eliminated (no longer in activeContestants). */
   const humanIsEliminated =
-    humanId !== null && !bb.activeContestants.includes(humanId);
+    humanContestantId !== null && !bb.activeContestants.includes(humanContestantId);
 
-  const humanAnswer = humanId ? bb.submissions[humanId] : null;
+  const humanAnswer = humanContestantId ? bb.submissions[humanContestantId] : null;
   const humanAnsweredCorrectly =
     (bb.status === 'reveal' || bb.status === 'choose_elimination') &&
     humanAnswer === bb.correctAnswerId;
@@ -571,9 +630,9 @@ export default function BiographyBlitzComp({
   // Requires the human to be active (not eliminated) AND a round winner.
   const humanIsChooser =
     bb.status === 'choose_elimination' &&
-    humanId !== null &&
+    humanContestantId !== null &&
     !humanIsEliminated &&
-    bb.roundWinnerIds.includes(humanId);
+    bb.roundWinnerIds.includes(humanContestantId);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -589,7 +648,7 @@ export default function BiographyBlitzComp({
     const winnerId = bb.winnerId ?? '';
     const winnerName = displayName(winnerId);
     const winnerAvatarVal = playerAvatar(winnerId);
-    const isHumanWinner = winnerId === humanId;
+    const isHumanWinner = winnerId === humanContestantId;
     return (
       <div className="bb-blitz bb-blitz--complete" aria-live="assertive">
         <div className="bb-blitz__winner-badge" aria-hidden="true">🏆</div>
@@ -649,7 +708,7 @@ export default function BiographyBlitzComp({
         <div className="bb-blitz__streak-banner" role="status" aria-live="polite">
           {pickLine(NARRATION.streak, bb.round).replace(
             '{name}',
-            bb.hotStreakOwner === humanId ? 'You' : displayName(bb.hotStreakOwner),
+            bb.hotStreakOwner === humanContestantId ? 'You' : displayName(bb.hotStreakOwner),
           )}
         </div>
       )}
@@ -660,7 +719,7 @@ export default function BiographyBlitzComp({
           const name = displayName(id);
           const avatarVal = playerAvatar(id);
           const hasAnswered = id in bb.submissions;
-          const isHumanPlayer = id === humanId;
+          const isHumanPlayer = id === humanContestantId;
           let pillClass = 'bb-blitz__contestant-pill';
           if (hasAnswered) pillClass += ' bb-blitz__contestant-pill--answered';
           if (isHumanPlayer) pillClass += ' bb-blitz__contestant-pill--you';
@@ -794,12 +853,12 @@ export default function BiographyBlitzComp({
                 const isDisabled =
                   bb.status !== 'question' ||
                   humanAnswer !== null ||
-                  humanId === null ||
+                  humanContestantId === null ||
                   humanIsEliminated; // spectator — human can no longer answer
                 // Hot streak bonus: visually dim a provably-wrong answer for
                 // the streak owner. The bonus never reveals the correct answer.
                 const isStreakBonusWrong =
-                  bb.hotStreakOwner === humanId &&
+                  bb.hotStreakOwner === humanContestantId &&
                   bb.hotStreakBonusWrongAnswerId === answer.id &&
                   bb.status === 'question' &&
                   !isSelected;
@@ -886,12 +945,12 @@ export default function BiographyBlitzComp({
                         handleAnswerSelect(answer.id);
                       }}
                       disabled={
-                        bb.status !== 'question' || humanAnswer !== null || humanId === null || humanIsEliminated
+                        bb.status !== 'question' || humanAnswer !== null || humanContestantId === null || humanIsEliminated
                       }
                       aria-pressed={isSelected}
                       aria-label={answer.text}
                       tabIndex={
-                        bb.status !== 'question' || humanAnswer !== null || humanId === null || humanIsEliminated
+                        bb.status !== 'question' || humanAnswer !== null || humanContestantId === null || humanIsEliminated
                           ? -1
                           : 0
                       }
@@ -916,7 +975,7 @@ export default function BiographyBlitzComp({
       )}
 
       {/* Human feedback banner ───────────────────────────────────────────── */}
-      {(bb.status === 'reveal' || bb.status === 'choose_elimination') && humanId && (
+      {(bb.status === 'reveal' || bb.status === 'choose_elimination') && humanContestantId && (
         <p
           className={`bb-blitz__feedback ${
             humanAnsweredCorrectly ? 'bb-blitz__feedback--correct' : 'bb-blitz__feedback--wrong'
