@@ -10,7 +10,7 @@
  * validateLevelConfig.
  */
 
-import type { CastleRescueMap, RunState } from './castleRescueTypes';
+import type { CastleRescueGridMap as CastleRescueMap, RunState } from './castleRescueTypes';
 
 /**
  * Minimal valid map: straight 3-pipe path across the middle row.

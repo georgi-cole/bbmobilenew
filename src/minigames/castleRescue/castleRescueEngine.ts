@@ -10,7 +10,7 @@
  *  - Score is hard-clamped to [SCORE_FLOOR, MAX_SCORE] in computeScore.
  */
 
-import type { RunState, CastleRescueMap } from './castleRescueTypes';
+import type { RunState, CastleRescueGridMap as CastleRescueMap } from './castleRescueTypes';
 import { computeScoreFromState } from './castleRescueScoring';
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
