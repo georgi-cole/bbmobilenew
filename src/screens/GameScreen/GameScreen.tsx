@@ -1367,10 +1367,10 @@ export default function GameScreen() {
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
 
-            // ── dontGoOver / holdWall: skip SpotlightAnimation, use lightweight QuickCrown ──
+            // ── dontGoOver / holdWall / famousFigures: skip SpotlightAnimation ──
             let skipSpotlightAnimation = false;
             const gameKey = pendingChallenge.game.key;
-            if (gameKey === 'dontGoOver' || gameKey === 'holdWall') {
+            if (gameKey === 'dontGoOver' || gameKey === 'holdWall' || gameKey === 'famousFigures') {
               // Don't start the heavy SpotlightAnimation for these games — it's brittle and
               // causes race/measurement issues. Instead, ensure the winner is applied and
               // show the lightweight QuickCrown. Do this asynchronously to avoid

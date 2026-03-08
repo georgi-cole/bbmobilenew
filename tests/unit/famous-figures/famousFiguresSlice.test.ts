@@ -5,6 +5,7 @@ import famousFiguresReducer, {
   revealNextHint,
   advanceTimer,
   submitPlayerGuess,
+  advancePlayerCursor,
   endRound,
   nextRound,
   resetFamousFigures,
@@ -56,7 +57,7 @@ describe('famousFiguresSlice', () => {
     expect(s.outcomeResolved).toBe(false);
   });
 
-  it('submitPlayerGuess with correct answer awards points', () => {
+  it('submitPlayerGuess with correct answer awards points (cursor advances via advancePlayerCursor)', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     const s0 = getState(store);
@@ -67,6 +68,11 @@ describe('famousFiguresSlice', () => {
     expect(s.playerCorrect[PLAYER_A]).toBe(true);
     expect(s.playerScores[PLAYER_A]).toBeGreaterThan(0);
     expect(s.correctPlayers).toContain(PLAYER_A);
+    // Cursor does NOT advance until advancePlayerCursor is dispatched
+    expect(s.playerRoundCursor[PLAYER_A]).toBe(0);
+    // Dispatch advancePlayerCursor — cursor should now be 1
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
   });
 
   it('correct answer with multiple participants leaves round active until all solved', () => {
@@ -77,6 +83,8 @@ describe('famousFiguresSlice', () => {
     const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     // First player solves — round should stay active since PLAYER_B hasn't answered
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
+    // Cursor not yet advanced (waiting for advancePlayerCursor)
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     const s = getState(store);
     expect(s.playerCorrect[PLAYER_A]).toBe(true);
     expect(s.playerScores[PLAYER_A]).toBeGreaterThan(0);
@@ -152,11 +160,14 @@ describe('famousFiguresSlice', () => {
 
   it('advanceTimer is blocked after all participants solve the round', () => {
     const store = makeStore();
-    // Single participant — solving closes the round immediately (all solved)
+    // Single participant — solving + advancePlayerCursor closes the round immediately (all solved)
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     const s0 = getState(store);
     const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
+    // roundComplete still false until cursor advances
+    expect(getState(store).roundComplete).toBe(false);
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).roundComplete).toBe(true);
     const phaseBeforeAdvance = getState(store).timerPhase;
     store.dispatch(advanceTimer());
@@ -171,6 +182,7 @@ describe('famousFiguresSlice', () => {
     const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     // Only PLAYER_A solves — PLAYER_B has not, so roundComplete stays false
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).roundComplete).toBe(false);
     expect(getState(store).status).toBe('round_active');
     const phaseBefore = getState(store).timerPhase;
@@ -188,12 +200,16 @@ describe('famousFiguresSlice', () => {
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerCorrect[PLAYER_A]).toBe(true);
     const scoreAfterA = getState(store).playerScores[PLAYER_A];
-    // PLAYER_A tries to submit again — should be rejected (already marked correct)
+    // PLAYER_A tries to submit again BEFORE advancePlayerCursor — should be rejected
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
+    expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
+    // PLAYER_A tries again AFTER advancePlayerCursor — cursor is now 1, targetRound=0 fails guard
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
   });
 
-  it('when all participants solve, round transitions to round_reveal', () => {
+  it('when all participants solve (via advancePlayerCursor), round transitions to round_reveal', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     const s0 = getState(store);
@@ -201,10 +217,12 @@ describe('famousFiguresSlice', () => {
     const figureB = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_B, s0.currentRound)];
     // PLAYER_A solves their personal figure — round stays active
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).status).toBe('round_active');
     expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
-    // PLAYER_B solves their personal figure — now all participants solved → round_reveal
+    // PLAYER_B solves their personal figure + advancePlayerCursor → all solved → round_reveal
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figureB.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_B, targetRound: 0 }));
     const s = getState(store);
     expect(s.playerScores[PLAYER_B]).toBeGreaterThan(0);
     expect(s.playerCorrect[PLAYER_B]).toBe(true);
@@ -306,14 +324,17 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).playerRoundCursor[PLAYER_B]).toBe(0);
   });
 
-  it('playerRoundCursor increments immediately on a correct guess', () => {
+  it('playerRoundCursor does NOT increment on a correct guess until advancePlayerCursor fires', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
     const s0 = getState(store);
     const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
-    // Cursor must be 1 immediately — before endRound or nextRound
+    // Cursor must still be 0 — advancePlayerCursor has not been dispatched yet
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+    // Now dispatch advancePlayerCursor — cursor must be 1
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
   });
 
@@ -324,7 +345,7 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
   });
 
-  it('playerRoundCursor reaches totalRounds after 3 correct guesses across rounds', () => {
+  it('playerRoundCursor reaches totalRounds after 3 correct guesses + advancePlayerCursor calls', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
 
@@ -332,6 +353,7 @@ describe('famousFiguresSlice', () => {
       const s = getState(store);
       const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s, PLAYER_A, s.currentRound)];
       store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName }));
+      store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: round }));
       // After the last correct guess the round auto-closes (single participant),
       // advance to next round if not yet complete.
       if (round < 2) {
@@ -373,6 +395,7 @@ describe('famousFiguresSlice', () => {
     const s0 = getState(store);
     const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
 
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
     // PLAYER_B hasn't answered yet — cursor stays 0
@@ -381,13 +404,16 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).status).toBe('round_active');
   });
 
-  it('humanDoneWithRound: cursor advances beyond currentRound on correct guess', () => {
+  it('humanDoneWithRound: cursor advances beyond currentRound after advancePlayerCursor', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     const s0 = getState(store);
     expect(s0.currentRound).toBe(0);
     const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
+    // Cursor is still at 0 — advancePlayerCursor not yet dispatched
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     const s = getState(store);
     // humanDoneWithRound condition: cursor > currentRound
     expect(s.playerRoundCursor[PLAYER_A]).toBeGreaterThan(s.currentRound);
@@ -431,15 +457,17 @@ describe('famousFiguresSlice', () => {
     const s0 = getState(store);
     const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
 
-    // PLAYER_A answers round 0 correctly (cursor becomes 1)
+    // PLAYER_A answers round 0 correctly then dispatches advancePlayerCursor (cursor becomes 1)
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig0.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
     expect(getState(store).status).toBe('round_active'); // PLAYER_B hasn't answered
 
     // PLAYER_A answers round 1 AHEAD (targetRound=1, global still on 0)
+    // For ahead rounds the cursor advances immediately in submitPlayerGuess
     const fig1 = FAMOUS_FIGURES[getState(store).matchFigureOrder[1]];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig1.canonicalName, targetRound: 1 }));
-    // Cursor should advance to 2
+    // Cursor should advance to 2 immediately (ahead round)
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(2);
     // Global round still 0 — PLAYER_B hasn't answered
     expect(getState(store).currentRound).toBe(0);
@@ -454,8 +482,13 @@ describe('famousFiguresSlice', () => {
 
     const s0 = getState(store);
 
-    // PLAYER_A answers all 3 rounds ahead
-    for (let r = 0; r < 3; r++) {
+    // PLAYER_A answers round 0 then dispatches advancePlayerCursor, then answers rounds 1 and 2 ahead.
+    // Round 0 is the current global round so needs advancePlayerCursor.
+    const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig0.canonicalName, targetRound: 0 }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    // Rounds 1 and 2 are ahead rounds — cursor advances immediately in submitPlayerGuess.
+    for (let r = 1; r < 3; r++) {
       const s = getState(store);
       const fig = FAMOUS_FIGURES[s.matchFigureOrder[r]];
       store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName, targetRound: r }));
@@ -479,8 +512,9 @@ describe('famousFiguresSlice', () => {
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
     const s0 = getState(store);
 
-    // PLAYER_A answers round 0 (earns 10 pts, 0 hints)
+    // PLAYER_A answers round 0 (earns 10 pts, 0 hints) then advances cursor
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: FAMOUS_FIGURES[s0.matchFigureOrder[0]].canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     // PLAYER_A answers round 1 AHEAD (earns points based on hintsRevealed=0)
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: FAMOUS_FIGURES[s0.matchFigureOrder[1]].canonicalName, targetRound: 1 }));
 
@@ -490,5 +524,65 @@ describe('famousFiguresSlice', () => {
     const personalRound0 = getState(store).playerPersonalRoundScores[PLAYER_A][0];
     expect(scoreRound0).toBe(personalRound0); // must match personalRoundScores
     expect(scoreRound0).toBeGreaterThan(0);
+  });
+
+  // ── advancePlayerCursor tests ──────────────────────────────────────────────
+
+  it('advancePlayerCursor advances cursor from 0 to 1', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName }));
+    // Cursor still 0 after submitPlayerGuess for current round
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
+    // Now dispatch advancePlayerCursor
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+  });
+
+  it('advancePlayerCursor triggers doEndRound when all participants advance past currentRound', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+    const figB = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_B, 0)];
+
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    // Still active — PLAYER_B cursor at 0
+    expect(getState(store).status).toBe('round_active');
+
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figB.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_B, targetRound: 0 }));
+    // Now both cursors > 0 — round should have closed
+    expect(getState(store).status).toBe('round_reveal');
+    expect(getState(store).roundComplete).toBe(true);
+  });
+
+  it('advancePlayerCursor is a no-op (idempotent) if cursor already advanced past targetRound', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+
+    // Dispatching again with the same targetRound=0 is a no-op (stale dispatch)
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+  });
+
+  it('advancePlayerCursor single-participant: closes round immediately', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName }));
+    expect(getState(store).status).toBe('round_active'); // not closed yet
+    store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
+    expect(getState(store).status).toBe('round_reveal'); // closed
   });
 });
