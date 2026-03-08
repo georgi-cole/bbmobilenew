@@ -37,7 +37,6 @@ import {
 } from './castleRescueEngine';
 import type { CollisionRect } from './castleRescueEngine';
 import { validateAndFixPipeClearance } from './castleRescueUtils';
-import type { LevelGeomDef } from './castleRescueUtils';
 import { buildBonusRoom, buildAmbushRoom } from './castleRescueRooms';
 import type { RoomInstance } from './castleRescueRooms';
 import {
@@ -284,24 +283,32 @@ function buildLevel(seed: number): LevelGeom {
     { x: 4550, y: 248, w: 230, h: 16 },
   ];
 
+  // Validate and adjust pipe/platform clearance before computing brick and coin
+  // positions.  Platforms that sit too close to a pipe top (clearance < PH+8=48px)
+  // are moved upward; running this first ensures brickTop(platform.y) below uses
+  // the already-adjusted y values so MIN_CLEARANCE is preserved above each platform.
+  validateAndFixPipeClearance({ pipes, platforms });
+
   // Bricks positioned with MIN_CLEARANCE = 42 px of vertical air-gap above
   // the reference platform so the player can stand on the platform and then
   // jump to hit the brick from below without the player body overlapping it.
   // Formula: brick.y = brickTop(platform.y) = platform.y − MIN_CLEARANCE − BRICK.
+  // Platforms that were adjusted by validateAndFixPipeClearance are referenced
+  // by index so their adjusted y propagates into the brick positions.
   const brickDefs: [number, number][] = [
-    [218, brickTop(270)], [250, brickTop(270)],   // platform y=270
-    [460, brickTop(228)], [492, brickTop(228)],   // platform y=228
-    [760, brickTop(268)],                          // platform y=268
-    [1170, brickTop(242)], [1202, brickTop(242)], // platform y=242
-    [1410, brickTop(196)], [1442, brickTop(196)], // platform y=196
-    [1660, brickTop(244)],                         // platform y=244
-    [2100, brickTop(232)], [2132, brickTop(232)], // platform y=232
-    [2400, brickTop(280)], [2432, brickTop(280)], // platform y=280
-    [2660, brickTop(264)], [2692, brickTop(264)], // platform y=264
-    [2930, brickTop(276)],                         // platform y=276
-    [3162, brickTop(260)],                         // platform y=260
-    [3622, brickTop(240)], [3654, brickTop(240)], // platform y=240
-    [4080, brickTop(250)],                         // platform y=250
+    [218, brickTop(270)], [250, brickTop(270)],             // platforms[1]  y=270
+    [460, brickTop(228)], [492, brickTop(228)],             // platforms[2]  y=228
+    [760, brickTop(platforms[3].y)],                        // platforms[3]  y=268 (may be adjusted)
+    [1170, brickTop(242)], [1202, brickTop(242)],           // platforms[5]  y=242
+    [1410, brickTop(196)], [1442, brickTop(196)],           // platforms[6]  y=196
+    [1660, brickTop(244)],                                  // platforms[7]  y=244
+    [2100, brickTop(232)], [2132, brickTop(232)],           // platforms[9]  y=232
+    [2400, brickTop(280)], [2432, brickTop(280)],           // platforms[10] y=280
+    [2660, brickTop(platforms[11].y)], [2692, brickTop(platforms[11].y)], // platforms[11] y=264 (may be adjusted)
+    [2930, brickTop(276)],                                  // platforms[12] y=276
+    [3162, brickTop(platforms[13].y)],                      // platforms[13] y=260 (may be adjusted)
+    [3622, brickTop(240)], [3654, brickTop(240)],           // platforms[15] y=240
+    [4080, brickTop(250)],                                  // platforms[17] y=250
   ];
   const bricks: Brick[] = brickDefs.map(([bx, by], i) => ({
     id: `brick-${i}`, x: bx, y: by,
@@ -339,17 +346,18 @@ function buildLevel(seed: number): LevelGeom {
 
   const coinDefs: [number, number][] = [
     // Coins sit 2 px above the corresponding brick top (brickTop(platform.y) − 2).
+    // Platforms adjusted by validateAndFixPipeClearance are referenced by index.
     [230, brickTop(270)-2], [262, brickTop(270)-2],
     [460, brickTop(228)-2], [492, brickTop(228)-2], [524, brickTop(228)-2],
-    [780, brickTop(268)-2], [812, brickTop(268)-2],
+    [780, brickTop(platforms[3].y)-2], [812, brickTop(platforms[3].y)-2],    // platforms[3] (may be adjusted)
     [1190, brickTop(242)-2], [1222, brickTop(242)-2],
     [1420, brickTop(196)-2], [1452, brickTop(196)-2], [1484, brickTop(196)-2],
     [1680, brickTop(244)-2],
     [2110, brickTop(232)-2], [2142, brickTop(232)-2],
     [2410, brickTop(280)-2], [2442, brickTop(280)-2], [2474, brickTop(280)-2],
-    [2680, brickTop(264)-2], [2712, brickTop(264)-2],
+    [2680, brickTop(platforms[11].y)-2], [2712, brickTop(platforms[11].y)-2], // platforms[11] (may be adjusted)
     [2940, brickTop(276)-2], [2972, brickTop(276)-2],
-    [3172, brickTop(260)-2], [3204, brickTop(260)-2],
+    [3172, brickTop(platforms[13].y)-2], [3204, brickTop(platforms[13].y)-2], // platforms[13] (may be adjusted)
     [3640, brickTop(240)-2], [3672, brickTop(240)-2], [3704, brickTop(240)-2],
     [4100, brickTop(250)-2], [4132, brickTop(250)-2],
     // Standalone coins in the final stretch (no reference brick; floated
@@ -367,14 +375,12 @@ function buildLevel(seed: number): LevelGeom {
     { id:'cp-2', x:3510, y:GROUND_TOP-60, activated:false, respawnX:2305, respawnY:SPAWN_Y },
   ];
 
-  const level: LevelGeom = {
+  return {
     width: 4800,
     platforms, bricks, enemies, pipes, coins, checkpoints,
     princessX: 4670, princessY: SPAWN_Y,
     gateX: 3530,
   };
-  validateAndFixPipeClearance(level as LevelGeomDef);
-  return level;
 }
 
 // ═══ Compute final score ══════════════════════════════════════════════════════

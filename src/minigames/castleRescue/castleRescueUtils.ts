@@ -5,7 +5,7 @@
  * All functions are free of side-effects and safe to call from tests.
  */
 
-import type { CellPos } from './castleRescueTypes';
+import type { CellPos, PipeBehavior } from './castleRescueTypes';
 import { GRID_ROWS, GRID_COLS } from './castleRescueConstants';
 
 // ── Pipe geometry constants ───────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export interface PipeDef {
   entryZoneWidth: number;
   slotIndex: number;
   routeIndex: number;
-  pipeType: string;
+  pipeType: PipeBehavior;
   done: boolean;
 }
 
@@ -112,7 +112,7 @@ export function makePipe(
   y: number,
   slotIndex: number,
   routeIndex: number,
-  pipeType: string,
+  pipeType: PipeBehavior,
   entryZoneWidth?: number,
 ): PipeDef {
   return {

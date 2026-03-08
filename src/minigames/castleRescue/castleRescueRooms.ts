@@ -139,5 +139,5 @@ export function buildAmbushRoom(): RoomInstance {
   };
 }
 
-// Re-export pipe geometry used by updateRoom in CastleRescueGame.tsx
+// Re-export pipe geometry for use by CastleRescueGame.tsx and other callers
 export { ROOM_EXIT_PIPE_Y, PIPE_W as ROOM_PIPE_W, PIPE_H as ROOM_PIPE_H };
