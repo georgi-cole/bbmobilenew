@@ -93,9 +93,9 @@
   font-weight: 800;
   color: var(--color-text);
   cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.10); /* subtle translucent border for glass edge */
-  background: rgba(6, 12, 28, 0.58); /* more transparent base */
-  box-shadow: 0 18px 48px rgba(6, 10, 20, 0.55); /* slightly softer/deeper shadow */
+  border: 1px solid rgba(255,255,255,0.12); /* subtle translucent border for glass edge */
+  background: rgba(6, 12, 28, 0.50); /* more transparent base */
+  box-shadow: 0 16px 44px rgba(6, 10, 20, 0.48); /* softer shadow */
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
   position: relative;
   overflow: visible;
@@ -107,10 +107,10 @@
 /* Backdrop blur where available to create the frosted look */
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .home-hub__btn {
-    -webkit-backdrop-filter: blur(10px) saturate(1.08);
-    backdrop-filter: blur(10px) saturate(1.08);
-    background: linear-gradient(180deg, rgba(10,14,26,0.44), rgba(8,12,22,0.36));
-    border: 1px solid rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(14px) saturate(1.10);
+    backdrop-filter: blur(14px) saturate(1.10);
+    background: linear-gradient(180deg, rgba(10,14,26,0.38), rgba(8,12,22,0.30));
+    border: 1px solid rgba(255,255,255,0.10);
   }
 }
 /* Primary button — keep the purple vibrancy but with more glass feel */
