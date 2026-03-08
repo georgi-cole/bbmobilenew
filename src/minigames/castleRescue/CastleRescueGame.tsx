@@ -41,16 +41,17 @@ import { buildBonusRoom, buildAmbushRoom } from './castleRescueRooms';
 import type { RoomInstance } from './castleRescueRooms';
 import {
   TIME_LIMIT_MS,
-  CORRECT_ROUTE_LENGTH,
+  PIPE_FLASH_MS,
   SCORE_ENEMY   as S_ENEMY,
   SCORE_BRICK   as S_BRICK,
   SCORE_COIN    as S_COIN,
   SCORE_CHECKPOINT as S_CHECKPOINT,
-  SCORE_RESCUE  as RESCUE_BONUS,
   PENALTY_DEATH as P_DEATH,
-  RESPAWN_PENALTY as P_WRONG_PIPE,
-  TIME_PENALTY_PER_SECOND as TIME_PEN,
 } from './castleRescueConstants';
+import {
+  computePlatformerFinalScore,
+  applyPipeEntry,
+} from './castleRescuePlatformerLogic';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
 const CW = 800;           // canvas width
@@ -96,7 +97,6 @@ function brickTop(platformY: number): number {
 // ═══ Game timing / feedback constants ════════════════════════════════════════
 const MAX_HEARTS       =    3;
 const INVINCIBLE_MS    = 1500;
-const PIPE_FLASH_MS    =  700;
 const DEATH_PAUSE_MS   =  900;
 /** Short pause before respawning after a pit fall (no enemy death animation needed). */
 const PIT_DEATH_PAUSE_MS = 200;
@@ -382,84 +382,6 @@ function buildLevel(seed: number): LevelGeom {
     princessX: 4670, princessY: SPAWN_Y,
     gateX: 3530,
   };
-}
-
-// ═══ Compute final score ══════════════════════════════════════════════════════
-// Wrong-pipe penalties are applied to gs.score as they occur (real-time
-// feedback); they must NOT be subtracted again here to avoid double-counting.
-// Only the rescue bonus and time penalty are applied at finalisation time.
-export function computePlatformerFinalScore(gs: { score: number; princessRescued: boolean }, elapsedMs: number): number {
-  const rescue      = gs.princessRescued ? RESCUE_BONUS : 0;
-  const timePenalty = Math.floor(elapsedMs / 1000) * TIME_PEN;
-  return Math.max(0, gs.score + rescue - timePenalty);
-}
-
-// ═══ Pipe entry state mutation ════════════════════════════════════════════════
-/**
- * Applies the state changes for entering a pipe.  Exported for unit testing.
- *
- * Returns:
- *  'handled'      — state already updated; caller should return from the loop.
- *  'enter_bonus'  — mark pipe done; caller should set gs.room = buildBonusRoom().
- *  'enter_ambush' — mark pipe done; caller should set gs.room = buildAmbushRoom().
- */
-export type PipeEntryResult = 'handled' | 'enter_bonus' | 'enter_ambush';
-
-export function applyPipeEntry(gs: GameState, pipe: Pipe): PipeEntryResult {
-  // Already-used pipe: brief visual feedback, no progression change.
-  if (pipe.done) {
-    gs.pipeFlashType = 'dead';
-    gs.pipeFlashTimer = PIPE_FLASH_MS;
-    gs.phase = 'pipe_flash';
-    return 'handled';
-  }
-
-  if (pipe.pipeType === 'correct') {
-    if (pipe.routeIndex === gs.pipesComplete) {
-      // Correct pipe entered in the right order — advance progression.
-      pipe.done = true;
-      gs.pipesComplete++;
-      gs.pipeFlashType = 'correct';
-      if (gs.pipesComplete >= CORRECT_ROUTE_LENGTH) gs.gateOpen = true;
-    } else {
-      // Correct pipe entered out of order — penalise but do not mark done
-      // (the player must come back and enter it in order later).
-      gs.wrongPipes++;
-      gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
-      gs.pipeFlashType = 'setback';
-    }
-    gs.pipeFlashTimer = PIPE_FLASH_MS;
-    gs.phase = 'pipe_flash';
-    return 'handled';
-  }
-
-  if (pipe.pipeType === 'setback') {
-    // Penalise and mark done to prevent repeated-entry score drain.
-    pipe.done = true;
-    gs.wrongPipes++;
-    gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
-    gs.pipeFlashType = 'setback';
-    gs.pipeFlashTimer = PIPE_FLASH_MS;
-    gs.phase = 'pipe_flash';
-    return 'handled';
-  }
-
-  if (pipe.pipeType === 'bonus') {
-    pipe.done = true;
-    return 'enter_bonus';
-  }
-
-  if (pipe.pipeType === 'ambush') {
-    pipe.done = true;
-    return 'enter_ambush';
-  }
-
-  // dead pipe: brief visual animation only.
-  pipe.done = true;
-  gs.pipeFlashType = 'dead';
-  gs.pipeFlashTimer = PIPE_FLASH_MS;
-  gs.phase = 'pipe_flash';
-  return 'handled';
 }
 
 // ═══ Damage player ════════════════════════════════════════════════════════════

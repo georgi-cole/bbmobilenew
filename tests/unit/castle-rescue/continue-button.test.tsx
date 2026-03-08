@@ -100,7 +100,7 @@ async function renderCompleted(onFinish?: (score: number) => void) {
   for (let frame = 0; frame < 3; frame++) {
     if (!latestRafCb) break;
     const cb = latestRafCb;
-    await act(async () => { cb(performance.now()); }); // eslint-disable-line no-await-in-loop
+    await act(async () => { cb(performance.now()); });
   }
 }
 

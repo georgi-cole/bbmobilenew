@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computePlatformerFinalScore } from '../../../src/minigames/castleRescue/CastleRescueGame';
+import { computePlatformerFinalScore } from '../../../src/minigames/castleRescue/castleRescuePlatformerLogic';
 import {
   TIME_PENALTY_PER_SECOND,
   SCORE_RESCUE,

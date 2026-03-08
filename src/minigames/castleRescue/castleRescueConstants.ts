@@ -63,3 +63,6 @@ export const PIPE_SLOT_COUNT = 6;
 
 /** Default game duration in milliseconds (2 minutes 30 seconds). */
 export const TIME_LIMIT_MS = 150_000;
+
+/** Duration of the pipe-entry flash animation in milliseconds. */
+export const PIPE_FLASH_MS = 700;
