@@ -166,6 +166,10 @@ function fnv1a32(s: string): number {
  * their ID so results are independent of list order.
  *
  * Accuracy: 45 %–85 %.  Timing: 700–4 000 ms after question start.
+ *
+ * @param allActiveIds  Full set of active contestant IDs (used as the
+ *                      answer-choice pool so AI can "guess" any active
+ *                      contestant, not just other AIs).
  */
 export function buildAiSubmissions(
   seed: number,
@@ -173,9 +177,12 @@ export function buildAiSubmissions(
   aiIds: string[],
   correctId: string,
   questionStartedAt: number,
+  allActiveIds?: string[],
 ): Record<string, BiographyBlitzSubmission> {
   const result: Record<string, BiographyBlitzSubmission> = {};
-  const allContestantIds = aiIds; // wrong answer choices aren't needed separately
+  // Use the full active set as answer candidates; fall back to aiIds for
+  // backwards-compat when callers don't yet pass allActiveIds.
+  const answerChoices = allActiveIds && allActiveIds.length > 0 ? allActiveIds : aiIds;
 
   for (const aiId of aiIds) {
     const idHash = fnv1a32(aiId);
@@ -186,7 +193,7 @@ export function buildAiSubmissions(
     // Timing: 700–4000 ms delay
     const delayMs = 700 + rng() * 3300;
     const submittedAt = questionStartedAt + delayMs;
-    const wrongCandidates = allContestantIds.filter(id => id !== correctId);
+    const wrongCandidates = answerChoices.filter(id => id !== correctId);
     const selectedAnswerId = answersCorrectly
       ? correctId
       : (wrongCandidates.length > 0 ? seededPickN(rng, wrongCandidates, 1)[0] : correctId);
@@ -223,24 +230,33 @@ export function resolveBiographyBlitzRound(
 /**
  * Resolve the human contestant ID from participants list.
  * Returns the ID of the participant with isHuman === true that is also in
- * contestantIds.  Logs a clear error if resolution fails.
+ * contestantIds.
+ *
+ * Null / undefined `isHumanId` means there is no human player in this
+ * session (e.g. AI-only or spectator context) — returns null silently.
+ * Only logs an error when a non-null candidate ID is provided but cannot
+ * be found in participantIds (genuine resolution failure).
  */
 export function resolveBiographyBlitzHumanContestantId(
   participantIds: string[],
   isHumanId?: string | null,
 ): string | null {
-  if (isHumanId && participantIds.includes(isHumanId)) {
+  // No human player in this session — not an error.
+  if (isHumanId == null) return null;
+
+  if (participantIds.includes(isHumanId)) {
     if (DEBUG) {
       console.log('[BiographyBlitz] Resolved human contestant id', {
         humanContestantId: isHumanId,
         participantIds,
-        containsHuman: participantIds.includes(isHumanId),
       });
     }
     return isHumanId;
   }
+
+  // Non-null candidate not found — genuine resolution failure.
   console.error(
-    '[BiographyBlitz] resolveBiographyBlitzHumanContestantId: failed to resolve human contestant id',
+    '[BiographyBlitz] resolveBiographyBlitzHumanContestantId: candidate id not found in participants',
     { isHumanId, participantIds },
   );
   return null;
@@ -384,6 +400,42 @@ const biographyBlitzSlice = createSlice({
 
       const firstQuestion = pickNextQuestion(pool, [], participantIds, seed, 0);
 
+      // If no question could be generated (e.g. all participants have sparse
+      // bios), skip to complete immediately so the game doesn't get stuck.
+      if (!firstQuestion) {
+        console.error(
+          '[BiographyBlitz] initBiographyBlitz: no questions available; resolving to complete with no winner.',
+          { participantIds },
+        );
+        state.competitionType = competitionType;
+        state.phase = 'complete';
+        state.round = 0;
+        state.contestantIds = [...participantIds];
+        state.activeContestantIds = [...participantIds];
+        state.eliminatedContestantIds = [];
+        state.humanContestantId = humanContestantId;
+        state.currentQuestion = null;
+        state.currentQuestionId = null;
+        state.correctAnswerId = null;
+        state.questionPool = pool;
+        state.usedQuestionIds = [];
+        state.submissions = {};
+        state.roundWinnerId = null;
+        state.eliminationTargetId = null;
+        // Designate the first participant as fallback winner so the outcome
+        // thunk can always resolve (avoids null-winner stall).
+        state.competitionWinnerId = participantIds[0] ?? null;
+        state.questionStartedAt = null;
+        state.hiddenDeadlineAt = null;
+        state.consecutiveRoundWins = {};
+        state.hotStreakContestantId = null;
+        state.isSpectating = false;
+        state.outcomeResolved = false;
+        state.seed = seed;
+        state.testMode = testMode;
+        return;
+      }
+
       state.competitionType = competitionType;
       state.phase = 'question';
       state.round = 0;
@@ -421,7 +473,8 @@ const biographyBlitzSlice = createSlice({
     /**
      * Record a contestant's answer for the current round.
      * First submission wins; double-submit is silently ignored.
-     * No-op if phase is not 'question' or contestant is not active.
+     * No-op if phase is not 'question', contestant is not active, or the
+     * hidden answer deadline has already passed.
      */
     submitBiographyBlitzAnswer(
       state,
@@ -435,6 +488,8 @@ const biographyBlitzSlice = createSlice({
       const { contestantId, answerId, now = Date.now() } = action.payload;
       if (!state.activeContestantIds.includes(contestantId)) return;
       if (contestantId in state.submissions) return; // double-submit guard
+      // Enforce hidden deadline: late submissions are silently discarded.
+      if (state.hiddenDeadlineAt !== null && now >= state.hiddenDeadlineAt) return;
 
       state.submissions[contestantId] = {
         contestantId,
@@ -620,6 +675,43 @@ const biographyBlitzSlice = createSlice({
       state.outcomeResolved = true;
     },
 
+    /**
+     * Fast-forward the game to `complete` without animating further rounds.
+     * Used by the spectator skip button so that resolveBiographyBlitzOutcome()
+     * can still fire correctly.
+     *
+     * Chooses the winner as the highest-win-streak active contestant
+     * (seeded random tiebreak) so the result is still deterministic.
+     * No-op if phase is already 'complete'.
+     */
+    skipToComplete(state) {
+      if (state.phase === 'complete') return;
+      if (state.activeContestantIds.length === 0) return;
+
+      // Pick winner: contestant with most consecutive wins; seeded tiebreak.
+      let winner = state.activeContestantIds[0];
+      let maxWins = state.consecutiveRoundWins[winner] ?? 0;
+      for (const id of state.activeContestantIds) {
+        const wins = state.consecutiveRoundWins[id] ?? 0;
+        if (wins > maxWins) {
+          maxWins = wins;
+          winner = id;
+        }
+      }
+
+      // Eliminate everyone else.
+      const losers = state.activeContestantIds.filter(id => id !== winner);
+      state.eliminatedContestantIds = [...state.eliminatedContestantIds, ...losers];
+      state.activeContestantIds = [winner];
+      state.competitionWinnerId = winner;
+      state.phase = 'complete';
+
+      console.log('[BiographyBlitz] skipToComplete', {
+        competitionWinnerId: winner,
+        skippedRounds: losers.length,
+      });
+    },
+
     /** Reset to idle (e.g. when navigating away). */
     resetBiographyBlitz() {
       return initialState;
@@ -635,6 +727,7 @@ export const {
   pickEliminationTarget,
   startNextRound,
   markBiographyBlitzOutcomeResolved,
+  skipToComplete,
   resetBiographyBlitz,
 } = biographyBlitzSlice.actions;
 

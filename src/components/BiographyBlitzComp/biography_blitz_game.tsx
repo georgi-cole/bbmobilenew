@@ -31,6 +31,7 @@ import {
   pickEliminationTarget,
   startNextRound,
   resetBiographyBlitz,
+  skipToComplete,
   buildAiSubmissions,
   resolveBiographyBlitzHumanContestantId,
   chooseBiographyBlitzEliminationTarget,
@@ -200,7 +201,7 @@ export default function BiographyBlitzComp({
     const aiIds = bb.activeContestantIds.filter(
       id => id !== bb.humanContestantId,
     );
-    const aiSubs = buildAiSubmissions(bb.seed, bb.round, aiIds, correctId, questionStartedAt);
+    const aiSubs = buildAiSubmissions(bb.seed, bb.round, aiIds, correctId, questionStartedAt, bb.activeContestantIds);
 
     for (const [aiId, sub] of Object.entries(aiSubs)) {
       const delay = Math.max(0, sub.submittedAt - now);
@@ -332,9 +333,18 @@ export default function BiographyBlitzComp({
   }, [bb.phase, bb.roundWinnerId, bb.humanContestantId, bb.isSpectating, dispatch]);
 
   // ── Skip button: fast-forward when spectating ─────────────────────────────
+  // Dispatches skipToComplete so the state machine reaches 'complete',
+  // which in turn triggers the outcome resolution effect and auto-advance
+  // timer already in place.  Does NOT call onComplete() directly so that
+  // resolveBiographyBlitzOutcome() always fires first.
   const handleSkip = useCallback(() => {
-    onComplete?.();
-  }, [onComplete]);
+    if (bb.phase === 'complete') {
+      onComplete?.();
+      return;
+    }
+    dispatch(skipToComplete());
+    // onComplete will be called by the auto-advance timer once phase === 'complete'.
+  }, [bb.phase, dispatch, onComplete]);
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 

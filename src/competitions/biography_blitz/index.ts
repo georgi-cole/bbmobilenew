@@ -19,6 +19,7 @@ export {
   pickEliminationTarget,
   startNextRound,
   markBiographyBlitzOutcomeResolved,
+  skipToComplete,
   resetBiographyBlitz,
   buildAiSubmissions,
   resolveBiographyBlitzRound,
