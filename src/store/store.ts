@@ -69,7 +69,7 @@ store.subscribe(() => {
     // Guest mode: skip archive persistence entirely.
     if (!current.profiles.isGuest) {
       const archiveKey = current.profiles.activeProfileId
-        ? `bbmobilenew:seasonArchives:${current.profiles.activeProfileId}`
+        ? `bbmobilenew:seasonArchives:${encodeURIComponent(current.profiles.activeProfileId)}`
         : DEFAULT_ARCHIVE_KEY;
       saveSeasonArchives(archiveKey, current.game.seasonArchives ?? []);
     }

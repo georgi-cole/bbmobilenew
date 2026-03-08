@@ -75,9 +75,14 @@ const DEFAULT_PROFILES_STATE: ProfilesState = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Simple collision-resistant ID generator (no external dep). */
+/** Collision-resistant profile ID using the Web Crypto API (falls back to timestamp+random). */
 function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // Fallback for environments where crypto.randomUUID is unavailable.
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  }
 }
 
 // ─── Standalone persistence helpers ──────────────────────────────────────────
@@ -143,11 +148,14 @@ export function loadActiveProfile(): { name: string; avatar: string } {
 /**
  * Build the localStorage key under which season archives are stored for the
  * currently active profile.  Guest mode → returns the global fallback key.
+ *
+ * The profile ID is encoded with encodeURIComponent to prevent storage-key
+ * injection in the unlikely event that an ID contains special characters.
  */
 export function archiveKeyForActiveProfile(): string {
   const state = loadProfilesState();
   if (!state.isGuest && state.activeProfileId) {
-    return `bbmobilenew:seasonArchives:${state.activeProfileId}`;
+    return `bbmobilenew:seasonArchives:${encodeURIComponent(state.activeProfileId)}`;
   }
   return 'bbmobilenew:seasonArchives';
 }

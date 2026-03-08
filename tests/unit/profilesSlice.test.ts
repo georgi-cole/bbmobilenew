@@ -264,7 +264,7 @@ describe('archiveKeyForActiveProfile', () => {
 
   it('returns profile-scoped key when a profile is active', () => {
     const state: ProfilesState = {
-      profiles: [{ id: 'p42', name: 'Alice', avatar: '👩', createdAt: '' }],
+      profiles: [{ id: 'p42', name: 'Alice', avatar: '👩', createdAt: '2025-01-01T00:00:00Z' }],
       activeProfileId: 'p42',
       isGuest: false,
     };

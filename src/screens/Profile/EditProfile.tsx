@@ -7,7 +7,7 @@ import {
   type ProfileBio,
 } from '../../store/profilesSlice';
 import { resizeAndCompressImage } from '../../utils/imageUtils';
-import { saveImage, imageIdToDataUrl } from '../../utils/imageDb';
+import { saveImage, imageIdToDataUrl, deleteImage } from '../../utils/imageDb';
 import './EditProfile.css';
 
 const AVATAR_OPTIONS = [
@@ -132,10 +132,14 @@ export default function EditProfile() {
 
     let photoId = profile.photoId;
 
-    // Persist new photo to IndexedDB
+    // Persist new photo to IndexedDB; delete the old one to avoid storage growth.
     if (newPhotoBlob) {
       const id = `photo-${profile.id}-${Date.now()}`;
       await saveImage(id, newPhotoBlob);
+      // Clean up the previous photo blob now that the new one is persisted.
+      if (profile.photoId && profile.photoId !== id) {
+        await deleteImage(profile.photoId);
+      }
       photoId = id;
     }
 

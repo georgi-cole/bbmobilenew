@@ -205,14 +205,6 @@ export default function ProfilePicker() {
           <span>⚠️</span>
           <div>
             Maximum of 5 profiles. Delete one to create another.
-            <br />
-            <button
-              type="button"
-              className="profile-picker__limit-manage"
-              onClick={() => {/* already on manage page */}}
-            >
-              Manage Profiles ↑
-            </button>
           </div>
         </div>
       )}
