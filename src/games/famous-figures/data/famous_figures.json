@@ -4,19 +4,17 @@
     "normalizedName": "leonardo vinci",
     "acceptedAliases": [
       "Da Vinci",
-      "Leonardo",
-      "Leonardo da Vinci"
+      "Leonardo"
     ],
     "normalizedAliases": [
       "vinci",
-      "leonardo",
-      "leonardo vinci"
+      "leonardo"
     ],
     "hints": [
       "This Italian Renaissance polymath was born in 1452 near Florence.",
-      "A painter, sculptor, architect, and scientist who kept extensive notebooks filled with inventions.",
-      "His famous works include the Last Supper mural and a portrait of a woman with a mysterious smile.",
-      "The smiling portrait is known as the Mona Lisa, now displayed in the Louvre.",
+      "He filled notebooks with sketches of inventions, anatomy, and engineering ideas.",
+      "He painted both The Last Supper and a portrait with a famously enigmatic smile.",
+      "That portrait is the Mona Lisa, now in the Louvre.",
       "First name: Leonardo. Last name starts with 'V'."
     ],
     "baseClueFact": "A Renaissance master born in Tuscany, Italy in 1452.",
@@ -38,8 +36,8 @@
     "hints": [
       "This ancient ruler is one of history's most famous monarchs.",
       "She was the last active ruler of the Ptolemaic Kingdom of Egypt.",
-      "Known for her political alliances with Julius Caesar and Mark Antony.",
-      "She reportedly died by snake bite in 30 BC after the defeat of Antony.",
+      "She is strongly associated with Julius Caesar and Mark Antony.",
+      "She died in 30 BC after Antony's defeat by Octavian.",
       "Name: Cleopatra."
     ],
     "baseClueFact": "An ancient Egyptian queen who ruled in the 1st century BC.",
@@ -59,13 +57,13 @@
       "bonaparte"
     ],
     "hints": [
-      "This European military leader rose to prominence during a major late-18th-century revolution.",
-      "He became Emperor of the French in 1804 and reshaped the map of Europe.",
-      "Known for his Napoleonic Code, his Egyptian campaign, and his eventual exile.",
-      "He was defeated at the Battle of Waterloo in 1815 and exiled to Saint Helena.",
+      "This military leader rose during the French Revolution.",
+      "He became Emperor of the French in 1804 and redrew much of Europe's map.",
+      "He is linked to the Napoleonic Code and a disastrous Russian campaign.",
+      "He was defeated at Waterloo in 1815 and exiled to Saint Helena.",
       "First name: Napoleon. Last name starts with 'B'."
     ],
-    "baseClueFact": "A French military genius who became Emperor in the early 19th century.",
+    "baseClueFact": "A French military genius who became emperor in the early 19th century.",
     "difficulty": "medium",
     "category": "ruler",
     "era": "Napoleonic"
@@ -85,9 +83,9 @@
     ],
     "hints": [
       "This scientist was the first woman to win a Nobel Prize.",
-      "Born in Warsaw, she moved to Paris to pursue her scientific career.",
-      "She discovered two new elements and pioneered research into radioactivity.",
-      "The two elements she discovered are polonium (named after her homeland) and radium.",
+      "Born in Warsaw, she later built her career in Paris.",
+      "She discovered polonium and radium and helped define radioactivity research.",
+      "She remains the only person awarded Nobels in two different scientific fields.",
       "First name: Marie. Last name starts with 'C'."
     ],
     "baseClueFact": "A Polish-French physicist and chemist who pioneered radioactivity research.",
@@ -105,13 +103,13 @@
       "einstein"
     ],
     "hints": [
-      "This 20th-century physicist is considered one of the greatest scientists who ever lived.",
+      "This 20th-century physicist is one of the best known scientists ever.",
       "Born in Germany in 1879, he later moved to the United States.",
       "He developed the special and general theories of relativity.",
-      "His mass-energy equivalence formula, E = mc², is the world's most famous equation.",
+      "His equation E = mc² became the symbol of modern physics.",
       "First name: Albert. Last name starts with 'E'."
     ],
-    "baseClueFact": "A German-born theoretical physicist who revolutionized modern physics.",
+    "baseClueFact": "A German-born theoretical physicist who transformed modern physics.",
     "difficulty": "easy",
     "category": "scientist",
     "era": "Modern"
@@ -128,10 +126,10 @@
       "bard"
     ],
     "hints": [
-      "This English writer from the late 16th and early 17th century is widely regarded as the greatest writer in the English language.",
-      "He wrote approximately 37 plays and 154 sonnets.",
-      "He was an actor and part-owner of the Globe Theatre in London.",
-      "His works include Hamlet, Othello, Romeo and Juliet, and A Midsummer Night's Dream.",
+      "This English writer is often called the greatest playwright in the language.",
+      "He wrote tragedies, comedies, histories, and more than 150 sonnets.",
+      "He was associated with the Globe Theatre in London.",
+      "His works include Hamlet, Macbeth, Othello, and Romeo and Juliet.",
       "First name: William. Last name starts with 'S'."
     ],
     "baseClueFact": "An English playwright and poet from Stratford-upon-Avon, born in 1564.",
@@ -149,13 +147,13 @@
       "newton"
     ],
     "hints": [
-      "This English mathematician and physicist is one of the most influential scientists in history.",
-      "He was born in 1643 in Woolsthorpe, Lincolnshire, England.",
+      "This English mathematician and physicist was central to the Scientific Revolution.",
+      "He wrote Philosophiæ Naturalis Principia Mathematica.",
       "He formulated the laws of motion and universal gravitation.",
-      "The story of an apple falling from a tree is famously associated with his discovery of gravity.",
+      "A falling apple is famously linked with his thinking about gravity.",
       "First name: Isaac. Last name starts with 'N'."
     ],
-    "baseClueFact": "An English mathematician and physicist who described gravity and the laws of motion.",
+    "baseClueFact": "An English mathematician and physicist who described gravity and motion.",
     "difficulty": "medium",
     "category": "scientist",
     "era": "Scientific Revolution"
@@ -170,13 +168,13 @@
       "galileo"
     ],
     "hints": [
-      "This Italian astronomer and physicist was born in Pisa in 1564.",
-      "Often called the 'father of observational astronomy' and the 'father of modern physics'.",
-      "He improved the telescope and used it to make significant astronomical discoveries.",
-      "He confirmed the heliocentric model and was placed under house arrest by the Inquisition.",
+      "This Italian scientist was born in Pisa in 1564.",
+      "He improved telescopes and used them for major astronomical observations.",
+      "He supported heliocentrism and clashed with church authorities.",
+      "He spent his final years under house arrest after an Inquisition trial.",
       "First name: Galileo. Last name starts with 'G'."
     ],
-    "baseClueFact": "An Italian astronomer who championed the heliocentric model of the solar system.",
+    "baseClueFact": "An Italian astronomer who championed the heliocentric model.",
     "difficulty": "medium",
     "category": "scientist",
     "era": "Scientific Revolution"
@@ -191,13 +189,13 @@
       "caesar"
     ],
     "hints": [
-      "This ancient Roman statesman, general, and writer transformed the Roman Republic.",
-      "He conquered Gaul and made two expeditions to Britain.",
-      "He crossed the Rubicon river in 49 BC, triggering a civil war.",
-      "He was famously assassinated on the Ides of March (March 15) 44 BC.",
+      "This Roman general and statesman helped end the Roman Republic.",
+      "He conquered Gaul and later crossed the Rubicon.",
+      "His civil war victories made him dictator.",
+      "He was assassinated on the Ides of March in 44 BC.",
       "First name: Julius. Last name starts with 'C'."
     ],
-    "baseClueFact": "A Roman general and statesman who played a critical role in the fall of the Roman Republic.",
+    "baseClueFact": "A Roman general and statesman critical to the fall of the Republic.",
     "difficulty": "medium",
     "category": "ruler",
     "era": "Ancient"
@@ -214,13 +212,13 @@
       "alexander macedon"
     ],
     "hints": [
-      "This ancient conqueror built one of the largest empires in history by the age of 30.",
-      "He was the King of the ancient Greek kingdom of Macedon.",
-      "He was a student of Aristotle from the age of 13.",
-      "His empire stretched from Greece and Egypt across Persia to northwestern India.",
+      "This conqueror built one of history's largest empires before age 33.",
+      "He was king of Macedon and a student of Aristotle.",
+      "He defeated the Persian Empire in a series of major campaigns.",
+      "His empire stretched from Greece and Egypt to northwestern India.",
       "First name: Alexander. Last name starts with 'G'."
     ],
-    "baseClueFact": "An ancient Macedonian king who created one of the largest empires in history.",
+    "baseClueFact": "An ancient Macedonian king who built a vast empire.",
     "difficulty": "hard",
     "category": "ruler",
     "era": "Ancient"
@@ -229,21 +227,21 @@
     "canonicalName": "Michelangelo",
     "normalizedName": "michelangelo",
     "acceptedAliases": [
-      "Michelangelo di Lodovico",
+      "Michelangelo Buonarroti",
       "Buonarroti"
     ],
     "normalizedAliases": [
-      "michelangelo lodovico",
+      "michelangelo buonarroti",
       "buonarroti"
     ],
     "hints": [
-      "This Italian Renaissance artist is considered one of the greatest artists of all time.",
-      "He worked in Florence and Rome during the late 15th and 16th centuries.",
-      "He sculpted the famous marble statue of David and the Pietà.",
-      "He painted the breathtaking ceiling of the Sistine Chapel in the Vatican.",
+      "This Italian Renaissance artist excelled in sculpture, painting, and architecture.",
+      "He created the marble David and the Pietà.",
+      "He painted the ceiling of the Sistine Chapel.",
+      "He also contributed to the design of St Peter's Basilica.",
       "Name: Michelangelo."
     ],
-    "baseClueFact": "An Italian Renaissance sculptor and painter whose works are in Rome and Florence.",
+    "baseClueFact": "An Italian Renaissance master active in Florence and Rome.",
     "difficulty": "medium",
     "category": "artist",
     "era": "Renaissance"
@@ -258,13 +256,13 @@
       "tesla"
     ],
     "hints": [
-      "This inventor and electrical engineer is known for his contributions to the modern electrical system.",
-      "Born in 1856 in what is now Serbia, he later emigrated to the United States.",
-      "He developed the alternating current (AC) electrical supply system.",
-      "He had a famous rivalry with Thomas Edison over AC vs DC power.",
+      "This inventor and engineer is closely tied to modern electrical power systems.",
+      "Born in the Balkans, he later emigrated to the United States.",
+      "He became the great champion of alternating current power.",
+      "His rivalry with Thomas Edison is often called the War of the Currents.",
       "First name: Nikola. Last name starts with 'T'."
     ],
-    "baseClueFact": "A Serbian-American inventor who laid the groundwork for modern AC electricity.",
+    "baseClueFact": "A Serbian-American inventor who helped develop AC electricity.",
     "difficulty": "medium",
     "category": "scientist",
     "era": "Modern"
@@ -279,13 +277,13 @@
       "darwin"
     ],
     "hints": [
-      "This 19th-century English naturalist changed our understanding of life on Earth.",
-      "He was born in Shrewsbury, England in 1809.",
-      "He voyaged on the HMS Beagle to the Galápagos Islands and South America.",
-      "He proposed the theory of evolution by natural selection.",
+      "This English naturalist changed biology forever.",
+      "He sailed on HMS Beagle and studied species across the world.",
+      "His observations helped him formulate natural selection.",
+      "He published On the Origin of Species in 1859.",
       "First name: Charles. Last name starts with 'D'."
     ],
-    "baseClueFact": "An English naturalist who proposed the theory of evolution by natural selection.",
+    "baseClueFact": "An English naturalist who proposed evolution by natural selection.",
     "difficulty": "easy",
     "category": "scientist",
     "era": "Victorian"
@@ -304,20 +302,20 @@
       "mohandas karamchand gandhi"
     ],
     "hints": [
-      "This political leader is revered as the father of a nation that gained independence in 1947.",
-      "He was born in Porbandar, India in 1869.",
-      "He pioneered the philosophy and practice of nonviolent civil disobedience.",
-      "He led the famous Salt March in 1930 to protest British salt taxes.",
+      "This political leader is revered as a father of modern India.",
+      "He trained as a lawyer and developed strategies of nonviolent resistance.",
+      "He led campaigns such as the Salt March against British rule.",
+      "India gained independence in 1947, the year before his assassination.",
       "First name: Mahatma. Last name starts with 'G'."
     ],
-    "baseClueFact": "An Indian independence leader who championed nonviolent resistance.",
+    "baseClueFact": "An Indian independence leader who championed nonviolence.",
     "difficulty": "medium",
     "category": "leader",
     "era": "Modern"
   },
   {
     "canonicalName": "Martin Luther King Jr",
-    "normalizedName": "martin luther king jr",
+    "normalizedName": "martin luther king",
     "acceptedAliases": [
       "MLK",
       "Martin Luther King",
@@ -325,17 +323,16 @@
     ],
     "normalizedAliases": [
       "mlk",
-      "martin luther king",
       "dr king"
     ],
     "hints": [
-      "This American civil rights leader is one of the most celebrated figures of the 20th century.",
-      "Born in Atlanta, Georgia in 1929, he became a Baptist minister.",
-      "He led the Montgomery Bus Boycott in 1955 and 1956.",
-      "His 'I Have a Dream' speech was delivered at the March on Washington in 1963.",
-      "First name: Martin. Last name starts with 'K'."
+      "This American civil rights leader became one of the defining figures of the 20th century.",
+      "He was a Baptist minister from Atlanta, Georgia.",
+      "He helped lead the Montgomery Bus Boycott and the March on Washington.",
+      "His best-known speech begins with the words 'I Have a Dream.'",
+      "First name: Martin. Last name starts with 'J'."
     ],
-    "baseClueFact": "An American Baptist minister and civil rights activist, famous for his 'I Have a Dream' speech.",
+    "baseClueFact": "An American civil rights activist and minister.",
     "difficulty": "easy",
     "category": "leader",
     "era": "Modern"
@@ -348,17 +345,17 @@
       "The Maid of Orleans"
     ],
     "normalizedAliases": [
-      "jeanne arc",
+      "jeanne d arc",
       "maid orleans"
     ],
     "hints": [
-      "This medieval French heroine claimed to receive visions from God.",
-      "She was born around 1412 in Domrémy, a village in northeastern France.",
-      "She led the French army to several important victories during the Hundred Years' War.",
-      "She was captured by the Burgundians and sold to the English, who burned her at the stake in 1431.",
+      "This medieval French heroine said she received divine visions.",
+      "She emerged during the Hundred Years' War.",
+      "She inspired French victories, especially around Orléans.",
+      "Captured by enemies, she was tried and burned in 1431.",
       "First name: Joan. Last name starts with 'A'."
     ],
-    "baseClueFact": "A French peasant girl who became a military heroine during the Hundred Years' War.",
+    "baseClueFact": "A French peasant girl turned military heroine.",
     "difficulty": "hard",
     "category": "warrior",
     "era": "Medieval"
@@ -375,13 +372,13 @@
       "honest abe"
     ],
     "hints": [
-      "This American statesman served as President during the nation's most turbulent period.",
-      "He was born in a log cabin in Kentucky in 1809.",
-      "He led the United States through the Civil War and preserved the Union.",
-      "He issued the Emancipation Proclamation in 1863, freeing enslaved people in Confederate states.",
+      "This American president led his country through its bloodiest internal war.",
+      "He was born in Kentucky and largely self-educated.",
+      "He issued the Emancipation Proclamation during the Civil War.",
+      "He was assassinated in 1865, days after Union victory.",
       "First name: Abraham. Last name starts with 'L'."
     ],
-    "baseClueFact": "The 16th President of the United States, who led the nation through the Civil War.",
+    "baseClueFact": "The 16th U.S. president who led the Union through the Civil War.",
     "difficulty": "easy",
     "category": "leader",
     "era": "19th Century"
@@ -398,13 +395,13 @@
       "wolfgang amadeus mozart"
     ],
     "hints": [
-      "This Austrian composer is widely regarded as one of the greatest musicians of all time.",
-      "He was born in Salzburg in 1756 and showed extraordinary musical talent from childhood.",
-      "A child prodigy, he began composing at age five and performing for royalty.",
-      "He composed over 600 works including symphonies, operas, concertos, and chamber music.",
+      "This Austrian composer was a child prodigy.",
+      "He performed across Europe before reaching adulthood.",
+      "He wrote symphonies, operas, chamber works, and concertos at astonishing speed.",
+      "His operas include The Magic Flute and Don Giovanni.",
       "Name: Mozart."
     ],
-    "baseClueFact": "An Austrian musical prodigy who composed over 600 works in the Classical era.",
+    "baseClueFact": "An Austrian musical prodigy of the Classical era.",
     "difficulty": "medium",
     "category": "composer",
     "era": "Classical"
@@ -419,13 +416,13 @@
       "dickens"
     ],
     "hints": [
-      "This Victorian English author is one of the most popular novelists of all time.",
-      "He was born in Portsmouth, England in 1812.",
-      "He published many of his works in serialised form in magazines.",
-      "His novels include Oliver Twist, A Tale of Two Cities, Great Expectations, and A Christmas Carol.",
+      "This Victorian author wrote some of the most famous English novels ever.",
+      "Many of his works first appeared in serial form.",
+      "He created characters like Oliver Twist, Ebenezer Scrooge, and Miss Havisham.",
+      "His books include Great Expectations and A Tale of Two Cities.",
       "First name: Charles. Last name starts with 'D'."
     ],
-    "baseClueFact": "A Victorian English novelist known for works like Oliver Twist and A Christmas Carol.",
+    "baseClueFact": "A Victorian English novelist known for social critique and memorable characters.",
     "difficulty": "easy",
     "category": "writer",
     "era": "Victorian"
@@ -442,15 +439,3734 @@
       "countess lovelace"
     ],
     "hints": [
-      "This 19th-century mathematician is often considered the world's first computer programmer.",
-      "She was born in 1815 and was the daughter of the famous poet Lord Byron.",
-      "She worked with Charles Babbage on his Analytical Engine.",
-      "She wrote an algorithm intended to be carried out by the Analytical Engine — the first algorithm ever designed for a computer.",
+      "This mathematician is often called the first computer programmer.",
+      "She collaborated with Charles Babbage on the Analytical Engine.",
+      "She described how a machine could follow a sequence of operations.",
+      "Her notes included an algorithm for calculating Bernoulli numbers.",
       "First name: Ada. Last name starts with 'L'."
     ],
-    "baseClueFact": "A 19th-century mathematician considered the world's first computer programmer.",
+    "baseClueFact": "A 19th-century mathematician associated with the first computer algorithm.",
     "difficulty": "hard",
     "category": "scientist",
     "era": "Victorian"
+  },
+  {
+    "canonicalName": "Socrates",
+    "normalizedName": "socrates",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Athenian philosopher left no writings of his own.",
+      "He is known largely through the works of Plato and Xenophon.",
+      "He questioned assumptions through relentless dialogue.",
+      "He was sentenced to death and drank hemlock.",
+      "Name: Socrates."
+    ],
+    "baseClueFact": "A classical Greek philosopher famous for dialectic questioning.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Plato",
+    "normalizedName": "plato",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This philosopher founded the Academy in Athens.",
+      "He wrote dialogues featuring his teacher Socrates.",
+      "His works include the Republic and the Symposium.",
+      "He had an enormous influence on Western philosophy and political thought.",
+      "Name: Plato."
+    ],
+    "baseClueFact": "A Greek philosopher and student of Socrates.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Aristotle",
+    "normalizedName": "aristotle",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This philosopher studied under Plato and later tutored Alexander the Great.",
+      "He wrote on logic, ethics, politics, biology, and rhetoric.",
+      "His school in Athens was called the Lyceum.",
+      "He shaped philosophy and science for centuries.",
+      "Name: Aristotle."
+    ],
+    "baseClueFact": "A Greek philosopher whose work influenced many fields.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Confucius",
+    "normalizedName": "confucius",
+    "acceptedAliases": [
+      "Kong Fuzi"
+    ],
+    "normalizedAliases": [
+      "kong fuzi"
+    ],
+    "hints": [
+      "This Chinese thinker emphasized ethics, family duty, and proper conduct.",
+      "His ideas were preserved by later followers in sayings and dialogues.",
+      "He stressed social harmony and respect within relationships.",
+      "His teachings became central to East Asian political and moral traditions.",
+      "Name: Confucius."
+    ],
+    "baseClueFact": "A Chinese philosopher whose teachings shaped East Asia.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Laozi",
+    "normalizedName": "laozi",
+    "acceptedAliases": [
+      "Lao Tzu"
+    ],
+    "normalizedAliases": [
+      "lao tzu"
+    ],
+    "hints": [
+      "This ancient Chinese sage is traditionally linked to Daoism.",
+      "He is associated with a compact text of paradoxical wisdom.",
+      "That work is the Tao Te Ching.",
+      "He teaches harmony with the Way rather than forceful control.",
+      "Name: Laozi."
+    ],
+    "baseClueFact": "A legendary Chinese philosopher associated with Daoism.",
+    "difficulty": "medium",
+    "category": "philosopher",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Sun Tzu",
+    "normalizedName": "sun tzu",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This strategist wrote one of the world's most famous military treatises.",
+      "His text emphasizes deception, planning, and winning efficiently.",
+      "The book is called The Art of War.",
+      "It has influenced generals, politicians, and business thinkers for centuries.",
+      "First name: Sun. Last name starts with 'T'."
+    ],
+    "baseClueFact": "An ancient Chinese military theorist and writer.",
+    "difficulty": "medium",
+    "category": "strategist",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Qin Shi Huang",
+    "normalizedName": "qin shi huang",
+    "acceptedAliases": [
+      "Ying Zheng"
+    ],
+    "normalizedAliases": [
+      "ying zheng"
+    ],
+    "hints": [
+      "This ruler unified a major East Asian civilization under one empire.",
+      "He became the first emperor of a unified China in 221 BC.",
+      "He standardized weights, measures, and writing across his realm.",
+      "He is linked with the early Great Wall and the Terracotta Army.",
+      "First name: Qin. Last name starts with 'H'."
+    ],
+    "baseClueFact": "The first emperor of a unified China.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Ashoka",
+    "normalizedName": "ashoka",
+    "acceptedAliases": [
+      "Ashoka the Great"
+    ],
+    "normalizedAliases": [
+      "ashoka great"
+    ],
+    "hints": [
+      "This South Asian emperor once expanded an enormous empire through warfare.",
+      "After the brutal Kalinga War, he embraced Buddhism.",
+      "He promoted moral edicts carved on pillars and rocks.",
+      "His lion capital later became a national symbol of India.",
+      "Name: Ashoka."
+    ],
+    "baseClueFact": "A Mauryan emperor known for embracing Buddhism after conquest.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Pericles",
+    "normalizedName": "pericles",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Athenian statesman helped shape his city during its golden age.",
+      "He promoted democracy, public building, and naval power.",
+      "The Parthenon was built during his leadership.",
+      "He gave a famous funeral oration during the Peloponnesian War.",
+      "Name: Pericles."
+    ],
+    "baseClueFact": "An Athenian leader of the 5th century BC.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Hannibal",
+    "normalizedName": "hannibal",
+    "acceptedAliases": [
+      "Hannibal Barca"
+    ],
+    "normalizedAliases": [
+      "hannibal barca"
+    ],
+    "hints": [
+      "This Carthaginian commander became Rome's great nightmare.",
+      "He led troops, cavalry, and elephants across the Alps.",
+      "He won major victories such as Cannae during the Second Punic War.",
+      "Despite his brilliance, Carthage ultimately lost the war.",
+      "Name: Hannibal."
+    ],
+    "baseClueFact": "A Carthaginian general famed for crossing the Alps.",
+    "difficulty": "medium",
+    "category": "warrior",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Augustus",
+    "normalizedName": "augustus",
+    "acceptedAliases": [
+      "Octavian",
+      "Gaius Octavius"
+    ],
+    "normalizedAliases": [
+      "octavian",
+      "gaius octavius"
+    ],
+    "hints": [
+      "This ruler transformed Rome after years of civil war.",
+      "He defeated Antony and Cleopatra and became Rome's first emperor.",
+      "He launched a long period later called the Pax Romana.",
+      "He was the adopted heir of Julius Caesar.",
+      "Name: Augustus."
+    ],
+    "baseClueFact": "The first Roman emperor.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Marcus Aurelius",
+    "normalizedName": "marcus aurelius",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Roman emperor is remembered both for rule and reflection.",
+      "He belonged to the group later called the Five Good Emperors.",
+      "He wrote private philosophical notes during military campaigns.",
+      "Those notes became known as Meditations.",
+      "First name: Marcus. Last name starts with 'A'."
+    ],
+    "baseClueFact": "A Roman emperor and Stoic philosopher.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Boudica",
+    "normalizedName": "boudica",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This female leader led a violent revolt against Roman rule in Britain.",
+      "She was queen of the Iceni people.",
+      "Her forces destroyed settlements including Londinium.",
+      "Though initially successful, her uprising was eventually crushed.",
+      "Name: Boudica."
+    ],
+    "baseClueFact": "A Celtic queen who rebelled against Rome.",
+    "difficulty": "medium",
+    "category": "warrior",
+    "era": "Ancient"
+  },
+  {
+    "canonicalName": "Constantine the Great",
+    "normalizedName": "constantine great",
+    "acceptedAliases": [
+      "Constantine I"
+    ],
+    "normalizedAliases": [
+      "constantine i"
+    ],
+    "hints": [
+      "This emperor reshaped the Roman world in the 4th century.",
+      "He won the Battle of the Milvian Bridge after a famous vision.",
+      "He favored Christianity and called the Council of Nicaea.",
+      "He founded a new imperial capital at Constantinople.",
+      "First name: Constantine. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A Roman emperor who promoted Christianity and founded Constantinople.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Late Antiquity"
+  },
+  {
+    "canonicalName": "Attila the Hun",
+    "normalizedName": "attila hun",
+    "acceptedAliases": [
+      "Attila"
+    ],
+    "normalizedAliases": [
+      "attila"
+    ],
+    "hints": [
+      "This feared ruler led a confederation that threatened both Roman Empires.",
+      "He gained a reputation for devastating invasions across Europe.",
+      "He was called the 'Scourge of God' by later writers.",
+      "His power collapsed soon after his death in 453.",
+      "First name: Attila. Last name starts with 'H'."
+    ],
+    "baseClueFact": "The powerful leader of the Huns.",
+    "difficulty": "medium",
+    "category": "warrior",
+    "era": "Late Antiquity"
+  },
+  {
+    "canonicalName": "Justinian I",
+    "normalizedName": "justinian i",
+    "acceptedAliases": [
+      "Justinian"
+    ],
+    "normalizedAliases": [
+      "justinian"
+    ],
+    "hints": [
+      "This Byzantine emperor sought to restore Roman greatness.",
+      "His reign saw reconquests in North Africa and Italy.",
+      "He sponsored a major codification of Roman law.",
+      "The Hagia Sophia in Constantinople was built under his rule.",
+      "First name: Justinian. Last name starts with 'I'."
+    ],
+    "baseClueFact": "A Byzantine emperor known for legal reform and building Hagia Sophia.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Late Antiquity"
+  },
+  {
+    "canonicalName": "Charlemagne",
+    "normalizedName": "charlemagne",
+    "acceptedAliases": [
+      "Charles the Great"
+    ],
+    "normalizedAliases": [
+      "charles great"
+    ],
+    "hints": [
+      "This medieval ruler forged a large western European empire.",
+      "He was crowned emperor in Rome on Christmas Day in the year 800.",
+      "His rule promoted learning and church reform.",
+      "He became a foundational figure for both French and German history.",
+      "Name: Charlemagne."
+    ],
+    "baseClueFact": "A Frankish king and emperor crowned in 800.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "William the Conqueror",
+    "normalizedName": "william conqueror",
+    "acceptedAliases": [
+      "William I"
+    ],
+    "normalizedAliases": [
+      "william i"
+    ],
+    "hints": [
+      "This ruler changed English history in 1066.",
+      "He invaded from Normandy and won the Battle of Hastings.",
+      "He ordered a great survey known as the Domesday Book.",
+      "His conquest reshaped England's aristocracy and language.",
+      "First name: William. Last name starts with 'C'."
+    ],
+    "baseClueFact": "The Norman ruler who conquered England in 1066.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Eleanor of Aquitaine",
+    "normalizedName": "eleanor aquitaine",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This powerful medieval noblewoman was queen of both France and England.",
+      "She was one of the wealthiest and most influential women of her time.",
+      "She was mother to Richard the Lionheart and King John.",
+      "She took part in politics, patronage, and even a crusade.",
+      "First name: Eleanor. Last name starts with 'A'."
+    ],
+    "baseClueFact": "A medieval queen and duchess of enormous influence.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Saladin",
+    "normalizedName": "saladin",
+    "acceptedAliases": [
+      "Salah ad-Din"
+    ],
+    "normalizedAliases": [
+      "salah ad din"
+    ],
+    "hints": [
+      "This Muslim leader became famous during the Crusades.",
+      "He united major territories in Egypt and Syria.",
+      "He recaptured Jerusalem in 1187 after the Battle of Hattin.",
+      "He is often remembered for both military skill and chivalry.",
+      "Name: Saladin."
+    ],
+    "baseClueFact": "A Muslim ruler who recaptured Jerusalem during the Crusades.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Genghis Khan",
+    "normalizedName": "genghis khan",
+    "acceptedAliases": [
+      "Chinggis Khan",
+      "Temujin"
+    ],
+    "normalizedAliases": [
+      "chinggis khan",
+      "temujin"
+    ],
+    "hints": [
+      "This conqueror united the Mongol tribes into a vast war machine.",
+      "His armies created the largest contiguous land empire in history.",
+      "He relied on mobility, discipline, and ruthless strategy.",
+      "His birth name was Temujin.",
+      "First name: Genghis. Last name starts with 'K'."
+    ],
+    "baseClueFact": "Founder of the Mongol Empire.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Kublai Khan",
+    "normalizedName": "kublai khan",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This grandson of a great conqueror ruled both steppe and settled empire.",
+      "He completed the Mongol conquest of China.",
+      "He founded the Yuan dynasty.",
+      "His court is described in accounts connected with Marco Polo.",
+      "First name: Kublai. Last name starts with 'K'."
+    ],
+    "baseClueFact": "A Mongol ruler who became emperor of China.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Marco Polo",
+    "normalizedName": "marco polo",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Venetian traveler became linked with descriptions of Asia.",
+      "He journeyed east and later dictated stories while imprisoned.",
+      "His book introduced many Europeans to the riches of the East.",
+      "He is especially associated with the court of Kublai Khan.",
+      "First name: Marco. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A Venetian merchant traveler associated with Asia.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Dante Alighieri",
+    "normalizedName": "dante alighieri",
+    "acceptedAliases": [
+      "Dante"
+    ],
+    "normalizedAliases": [
+      "dante"
+    ],
+    "hints": [
+      "This Italian poet wrote one of literature's greatest journeys.",
+      "His masterpiece travels through Hell, Purgatory, and Paradise.",
+      "The first part of that work is Inferno.",
+      "He helped elevate vernacular Italian literature.",
+      "First name: Dante. Last name starts with 'A'."
+    ],
+    "baseClueFact": "An Italian poet best known for the Divine Comedy.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Geoffrey Chaucer",
+    "normalizedName": "geoffrey chaucer",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This English writer helped shape Middle English literature.",
+      "He is best known for a framed collection of pilgrimage stories.",
+      "That work is The Canterbury Tales.",
+      "He wrote during the late 14th century under royal patronage.",
+      "First name: Geoffrey. Last name starts with 'C'."
+    ],
+    "baseClueFact": "An English poet best known for The Canterbury Tales.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Christine de Pizan",
+    "normalizedName": "christine pizan",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This medieval writer is among Europe's earliest professional women authors.",
+      "She wrote in French at the turn of the 15th century.",
+      "Her works defended women against misogynistic stereotypes.",
+      "One of her famous books is The Book of the City of Ladies.",
+      "First name: Christine. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A medieval author known for early feminist arguments.",
+    "difficulty": "hard",
+    "category": "writer",
+    "era": "Medieval"
+  },
+  {
+    "canonicalName": "Johannes Gutenberg",
+    "normalizedName": "johannes gutenberg",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This inventor transformed communication in Europe.",
+      "He developed a practical movable-type printing press in Mainz.",
+      "His most famous early large work was a Latin Bible.",
+      "His innovation helped spread books, literacy, and the Reformation.",
+      "First name: Johannes. Last name starts with 'G'."
+    ],
+    "baseClueFact": "The German printer associated with movable type in Europe.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Renaissance"
+  },
+  {
+    "canonicalName": "Christopher Columbus",
+    "normalizedName": "christopher columbus",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This navigator sailed west across the Atlantic under the Spanish crown.",
+      "He reached Caribbean islands in 1492.",
+      "He believed he had reached lands near Asia.",
+      "His voyages linked Europe and the Americas in lasting and destructive ways.",
+      "First name: Christopher. Last name starts with 'C'."
+    ],
+    "baseClueFact": "The Genoese navigator whose 1492 voyage crossed the Atlantic.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "Age of Discovery"
+  },
+  {
+    "canonicalName": "Vasco da Gama",
+    "normalizedName": "vasco gama",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This explorer found a sea route from Europe to India around Africa.",
+      "He sailed for Portugal in the late 15th century.",
+      "His voyage rounded the Cape of Good Hope and reached Calicut.",
+      "His route transformed global trade and imperial competition.",
+      "First name: Vasco. Last name starts with 'G'."
+    ],
+    "baseClueFact": "The Portuguese navigator who reached India by sea.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Age of Discovery"
+  },
+  {
+    "canonicalName": "Ferdinand Magellan",
+    "normalizedName": "ferdinand magellan",
+    "acceptedAliases": [
+      "Magellan"
+    ],
+    "normalizedAliases": [
+      "magellan"
+    ],
+    "hints": [
+      "This navigator organized the first expedition to circumnavigate the globe.",
+      "He sailed under the Spanish flag despite being Portuguese.",
+      "He died in the Philippines before the voyage finished.",
+      "One ocean and one strait now bear his name.",
+      "First name: Ferdinand. Last name starts with 'M'."
+    ],
+    "baseClueFact": "The explorer whose expedition first circumnavigated the Earth.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Age of Discovery"
+  },
+  {
+    "canonicalName": "Hernan Cortes",
+    "normalizedName": "hernan cortes",
+    "acceptedAliases": [
+      "Cortes"
+    ],
+    "normalizedAliases": [
+      "cortes"
+    ],
+    "hints": [
+      "This conquistador led the expedition that toppled the Aztec Empire.",
+      "He marched inland from the Gulf Coast into central Mexico.",
+      "He allied with Indigenous enemies of the Aztecs.",
+      "He captured Tenochtitlan and defeated Moctezuma's state.",
+      "First name: Hernan. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A Spanish conquistador associated with the fall of the Aztec Empire.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Age of Discovery"
+  },
+  {
+    "canonicalName": "Francisco Pizarro",
+    "normalizedName": "francisco pizarro",
+    "acceptedAliases": [
+      "Pizarro"
+    ],
+    "normalizedAliases": [
+      "pizarro"
+    ],
+    "hints": [
+      "This conquistador overthrew a major Andean empire.",
+      "He led a small Spanish force into Peru.",
+      "He captured the Inca ruler Atahualpa.",
+      "His conquest opened the way for Spanish rule in much of South America.",
+      "First name: Francisco. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A Spanish conquistador associated with the fall of the Inca Empire.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Age of Discovery"
+  },
+  {
+    "canonicalName": "Niccolo Machiavelli",
+    "normalizedName": "niccolo machiavelli",
+    "acceptedAliases": [
+      "Machiavelli"
+    ],
+    "normalizedAliases": [
+      "machiavelli"
+    ],
+    "hints": [
+      "This Florentine thinker wrote a notorious handbook on power.",
+      "He served the Republic of Florence before Medici restoration.",
+      "His most famous short work is The Prince.",
+      "His name became linked with shrewd, ruthless political realism.",
+      "First name: Niccolo. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A Renaissance political thinker from Florence.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Renaissance"
+  },
+  {
+    "canonicalName": "Nicolaus Copernicus",
+    "normalizedName": "nicolaus copernicus",
+    "acceptedAliases": [
+      "Copernicus"
+    ],
+    "normalizedAliases": [
+      "copernicus"
+    ],
+    "hints": [
+      "This astronomer proposed that Earth moves around the sun.",
+      "He was born in the Polish city of Toruń.",
+      "His heliocentric model challenged older geocentric cosmology.",
+      "His great work was published in the year of his death, 1543.",
+      "First name: Nicolaus. Last name starts with 'C'."
+    ],
+    "baseClueFact": "The astronomer who advanced the heliocentric model.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Renaissance"
+  },
+  {
+    "canonicalName": "Martin Luther",
+    "normalizedName": "martin luther",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This theologian became central to the Protestant Reformation.",
+      "He challenged indulgences and church practices.",
+      "According to tradition, he posted Ninety-Five Theses in 1517.",
+      "He translated the Bible into German and broke with Rome.",
+      "First name: Martin. Last name starts with 'L'."
+    ],
+    "baseClueFact": "A German reformer whose protests helped spark the Reformation.",
+    "difficulty": "easy",
+    "category": "religious",
+    "era": "Reformation"
+  },
+  {
+    "canonicalName": "John Calvin",
+    "normalizedName": "john calvin",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This reformer gave his name to a major Protestant tradition.",
+      "He worked primarily in Geneva.",
+      "His theology emphasized divine sovereignty and predestination.",
+      "His major work was the Institutes of the Christian Religion.",
+      "First name: John. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A leading Protestant reformer based in Geneva.",
+    "difficulty": "medium",
+    "category": "religious",
+    "era": "Reformation"
+  },
+  {
+    "canonicalName": "Henry VIII",
+    "normalizedName": "henry viii",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This English king is famous for marriage, power, and religious rupture.",
+      "He had six wives.",
+      "His break with Rome led to the English Reformation.",
+      "He dissolved monasteries and made himself supreme head of the church in England.",
+      "First name: Henry. Last name starts with 'V'."
+    ],
+    "baseClueFact": "The Tudor king with six wives.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Tudor"
+  },
+  {
+    "canonicalName": "Elizabeth I",
+    "normalizedName": "elizabeth i",
+    "acceptedAliases": [
+      "Queen Elizabeth I"
+    ],
+    "normalizedAliases": [
+      "queen elizabeth i"
+    ],
+    "hints": [
+      "This Tudor ruler presided over a celebrated English age.",
+      "She was the daughter of Henry VIII and Anne Boleyn.",
+      "England defeated the Spanish Armada during her reign.",
+      "She was known as the 'Virgin Queen.'",
+      "First name: Elizabeth. Last name starts with 'I'."
+    ],
+    "baseClueFact": "The English queen associated with the Elizabethan age.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Tudor"
+  },
+  {
+    "canonicalName": "Mary Queen of Scots",
+    "normalizedName": "mary queen scots",
+    "acceptedAliases": [
+      "Mary Stuart"
+    ],
+    "normalizedAliases": [
+      "mary stuart"
+    ],
+    "hints": [
+      "This monarch's turbulent life linked Scotland, France, and England.",
+      "She was a Catholic claimant to the English throne.",
+      "She was forced to abdicate in Scotland.",
+      "Her cousin Elizabeth I eventually had her executed.",
+      "First name: Mary. Last name starts with 'S'."
+    ],
+    "baseClueFact": "The Scottish queen executed after years of captivity in England.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Tudor"
+  },
+  {
+    "canonicalName": "Akbar",
+    "normalizedName": "akbar",
+    "acceptedAliases": [
+      "Akbar the Great"
+    ],
+    "normalizedAliases": [
+      "akbar great"
+    ],
+    "hints": [
+      "This emperor expanded and consolidated a great South Asian empire.",
+      "He ruled the Mughal Empire in the 16th century.",
+      "He became known for administrative reform and relative religious openness.",
+      "His court patronized art, learning, and architecture.",
+      "Name: Akbar."
+    ],
+    "baseClueFact": "A Mughal emperor known for expansion and tolerance.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Suleiman the Magnificent",
+    "normalizedName": "suleiman magnificent",
+    "acceptedAliases": [
+      "Suleiman I"
+    ],
+    "normalizedAliases": [
+      "suleiman i"
+    ],
+    "hints": [
+      "This ruler presided over the Ottoman Empire at its height.",
+      "He expanded Ottoman power in Europe, the Mediterranean, and the Middle East.",
+      "He was also known as a lawgiver and patron of culture.",
+      "Westerners call him 'the Magnificent.'",
+      "First name: Suleiman. Last name starts with 'M'."
+    ],
+    "baseClueFact": "An Ottoman sultan of the empire's golden age.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Ivan the Terrible",
+    "normalizedName": "ivan terrible",
+    "acceptedAliases": [
+      "Ivan IV"
+    ],
+    "normalizedAliases": [
+      "ivan iv"
+    ],
+    "hints": [
+      "This ruler became the first tsar of Russia.",
+      "He expanded Russian territory but ruled with extreme brutality.",
+      "His reign is associated with the oprichnina.",
+      "He is remembered for both state-building and terror.",
+      "First name: Ivan. Last name starts with 'T'."
+    ],
+    "baseClueFact": "The first tsar of Russia.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Tokugawa Ieyasu",
+    "normalizedName": "tokugawa ieyasu",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Japanese leader emerged victorious after long civil wars.",
+      "He won the Battle of Sekigahara in 1600.",
+      "He founded a shogunate that ruled for over 250 years.",
+      "His government was based in Edo, later Tokyo.",
+      "First name: Tokugawa. Last name starts with 'I'."
+    ],
+    "baseClueFact": "Founder of the Tokugawa shogunate.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Francis Bacon",
+    "normalizedName": "francis bacon",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This English thinker argued for a new empirical approach to knowledge.",
+      "He served in politics as well as philosophy.",
+      "He is associated with early modern scientific method.",
+      "His essays and Novum Organum were highly influential.",
+      "First name: Francis. Last name starts with 'B'."
+    ],
+    "baseClueFact": "An English philosopher linked to empiricism and scientific method.",
+    "difficulty": "medium",
+    "category": "philosopher",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Rene Descartes",
+    "normalizedName": "rene descartes",
+    "acceptedAliases": [
+      "Descartes"
+    ],
+    "normalizedAliases": [
+      "descartes"
+    ],
+    "hints": [
+      "This philosopher and mathematician sought certainty through doubt.",
+      "He is famous for the statement 'I think, therefore I am.'",
+      "He also helped develop analytic geometry.",
+      "He was a major figure in rationalist philosophy.",
+      "First name: Rene. Last name starts with 'D'."
+    ],
+    "baseClueFact": "A French philosopher and mathematician of the 17th century.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Scientific Revolution"
+  },
+  {
+    "canonicalName": "Blaise Pascal",
+    "normalizedName": "blaise pascal",
+    "acceptedAliases": [
+      "Pascal"
+    ],
+    "normalizedAliases": [
+      "pascal"
+    ],
+    "hints": [
+      "This French thinker contributed to both mathematics and religious thought.",
+      "He worked on probability and fluid pressure.",
+      "A mechanical calculator is associated with his name.",
+      "His Pensées explored faith, reason, and the human condition.",
+      "First name: Blaise. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A French mathematician, inventor, and religious thinker.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Scientific Revolution"
+  },
+  {
+    "canonicalName": "Johannes Kepler",
+    "normalizedName": "johannes kepler",
+    "acceptedAliases": [
+      "Kepler"
+    ],
+    "normalizedAliases": [
+      "kepler"
+    ],
+    "hints": [
+      "This astronomer discovered the mathematical laws of planetary motion.",
+      "He worked with Tycho Brahe's observational data.",
+      "He showed that planets move in ellipses rather than perfect circles.",
+      "His work helped prepare the way for Newtonian physics.",
+      "First name: Johannes. Last name starts with 'K'."
+    ],
+    "baseClueFact": "A German astronomer known for the laws of planetary motion.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Scientific Revolution"
+  },
+  {
+    "canonicalName": "Tycho Brahe",
+    "normalizedName": "tycho brahe",
+    "acceptedAliases": [
+      "Brahe"
+    ],
+    "normalizedAliases": [
+      "brahe"
+    ],
+    "hints": [
+      "This astronomer made highly precise observations before the telescope era.",
+      "He built observatories with royal support in Denmark.",
+      "He proposed a hybrid cosmological system.",
+      "His data later helped Johannes Kepler transform astronomy.",
+      "First name: Tycho. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A Danish astronomer famous for precise observations.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Scientific Revolution"
+  },
+  {
+    "canonicalName": "Rembrandt",
+    "normalizedName": "rembrandt",
+    "acceptedAliases": [
+      "Rembrandt van Rijn"
+    ],
+    "normalizedAliases": [
+      "rembrandt rijn"
+    ],
+    "hints": [
+      "This Dutch painter became a master of light, shadow, and portraiture.",
+      "He worked during the Dutch Golden Age.",
+      "His paintings include The Night Watch and many self-portraits.",
+      "He also produced remarkable etchings and biblical scenes.",
+      "Name: Rembrandt."
+    ],
+    "baseClueFact": "A Dutch Golden Age painter known for dramatic light.",
+    "difficulty": "easy",
+    "category": "artist",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Johannes Vermeer",
+    "normalizedName": "johannes vermeer",
+    "acceptedAliases": [
+      "Vermeer"
+    ],
+    "normalizedAliases": [
+      "vermeer"
+    ],
+    "hints": [
+      "This Dutch painter created quiet domestic scenes of extraordinary light.",
+      "He produced relatively few works.",
+      "His paintings include Girl with a Pearl Earring and The Milkmaid.",
+      "He became world-famous long after his death.",
+      "First name: Johannes. Last name starts with 'V'."
+    ],
+    "baseClueFact": "A Dutch painter known for luminous interior scenes.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Caravaggio",
+    "normalizedName": "caravaggio",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Italian painter brought startling realism and intense contrast to Baroque art.",
+      "His work is known for dramatic chiaroscuro.",
+      "His life was turbulent and included violence and flight.",
+      "He painted scenes like The Calling of Saint Matthew.",
+      "Name: Caravaggio."
+    ],
+    "baseClueFact": "An Italian painter famed for dramatic light and realism.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Diego Velazquez",
+    "normalizedName": "diego velazquez",
+    "acceptedAliases": [
+      "Velazquez"
+    ],
+    "normalizedAliases": [
+      "velazquez"
+    ],
+    "hints": [
+      "This Spanish painter served at the court of Philip IV.",
+      "He painted royal portraits and complex scenes.",
+      "His most discussed masterpiece is Las Meninas.",
+      "He is considered one of the greatest painters in Western art.",
+      "First name: Diego. Last name starts with 'V'."
+    ],
+    "baseClueFact": "A Spanish court painter best known for Las Meninas.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Peter Paul Rubens",
+    "normalizedName": "peter paul rubens",
+    "acceptedAliases": [
+      "Rubens"
+    ],
+    "normalizedAliases": [
+      "rubens"
+    ],
+    "hints": [
+      "This Flemish artist became a giant of Baroque painting.",
+      "His canvases are full of movement, color, and powerful bodies.",
+      "He painted mythological scenes, altarpieces, and diplomatic portraits.",
+      "His workshop influenced generations of European artists.",
+      "First name: Peter. Last name starts with 'R'."
+    ],
+    "baseClueFact": "A Flemish Baroque painter and diplomat.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Johann Sebastian Bach",
+    "normalizedName": "johann sebastian bach",
+    "acceptedAliases": [
+      "Bach"
+    ],
+    "normalizedAliases": [
+      "bach"
+    ],
+    "hints": [
+      "This German composer mastered counterpoint and sacred music.",
+      "He worked as organist, cantor, and court musician.",
+      "His works include the Brandenburg Concertos and the Mass in B minor.",
+      "He is often seen as the culmination of the Baroque style.",
+      "First name: Johann. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A German composer central to Baroque music.",
+    "difficulty": "easy",
+    "category": "composer",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "George Frideric Handel",
+    "normalizedName": "george frideric handel",
+    "acceptedAliases": [
+      "Handel"
+    ],
+    "normalizedAliases": [
+      "handel"
+    ],
+    "hints": [
+      "This Baroque composer was born in Germany but flourished in Britain.",
+      "He composed operas, instrumental works, and oratorios.",
+      "His best-known choral work is Messiah.",
+      "One famous chorus begins with the word 'Hallelujah.'",
+      "First name: George. Last name starts with 'H'."
+    ],
+    "baseClueFact": "A Baroque composer best known for Messiah.",
+    "difficulty": "easy",
+    "category": "composer",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Antonio Vivaldi",
+    "normalizedName": "antonio vivaldi",
+    "acceptedAliases": [
+      "Vivaldi"
+    ],
+    "normalizedAliases": [
+      "vivaldi"
+    ],
+    "hints": [
+      "This Venetian priest and composer wrote a famous cycle of violin concertos.",
+      "That cycle depicts the seasons of the year.",
+      "He composed hundreds of concertos and many sacred works.",
+      "He was nicknamed the 'Red Priest.'",
+      "First name: Antonio. Last name starts with 'V'."
+    ],
+    "baseClueFact": "An Italian Baroque composer best known for The Four Seasons.",
+    "difficulty": "easy",
+    "category": "composer",
+    "era": "Baroque"
+  },
+  {
+    "canonicalName": "Catherine the Great",
+    "normalizedName": "catherine great",
+    "acceptedAliases": [
+      "Catherine II"
+    ],
+    "normalizedAliases": [
+      "catherine ii"
+    ],
+    "hints": [
+      "This empress presided over a major era of Russian expansion.",
+      "Born a German princess, she seized power after her husband's downfall.",
+      "She cultivated Enlightenment contacts while ruling as an autocrat.",
+      "Her reign expanded Russia into the Black Sea region.",
+      "First name: Catherine. Last name starts with 'G'."
+    ],
+    "baseClueFact": "The empress who ruled Russia from 1762 to 1796.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Frederick the Great",
+    "normalizedName": "frederick great",
+    "acceptedAliases": [
+      "Frederick II"
+    ],
+    "normalizedAliases": [
+      "frederick ii"
+    ],
+    "hints": [
+      "This king made his state a major European power.",
+      "He ruled Prussia and won major victories in the Seven Years' War.",
+      "He admired Enlightenment culture and corresponded with Voltaire.",
+      "He is remembered as both reformer and military strategist.",
+      "First name: Frederick. Last name starts with 'G'."
+    ],
+    "baseClueFact": "The Prussian king who elevated his state to great-power status.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "George Washington",
+    "normalizedName": "george washington",
+    "acceptedAliases": [
+      "Washington"
+    ],
+    "normalizedAliases": [
+      "washington"
+    ],
+    "hints": [
+      "This leader commanded forces in a revolution and then became a first president.",
+      "He led the Continental Army during the American Revolution.",
+      "He presided over the Constitutional Convention and served two presidential terms.",
+      "He voluntarily left office, setting an important precedent.",
+      "First name: George. Last name starts with 'W'."
+    ],
+    "baseClueFact": "The first president of the United States.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Benjamin Franklin",
+    "normalizedName": "benjamin franklin",
+    "acceptedAliases": [
+      "Franklin"
+    ],
+    "normalizedAliases": [
+      "franklin"
+    ],
+    "hints": [
+      "This American polymath was printer, inventor, writer, and statesman.",
+      "He helped draft foundational documents of a new republic.",
+      "He conducted famous electricity experiments with lightning.",
+      "He also founded civic institutions and wrote Poor Richard's Almanack.",
+      "First name: Benjamin. Last name starts with 'F'."
+    ],
+    "baseClueFact": "An American inventor and statesman of the 18th century.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Thomas Jefferson",
+    "normalizedName": "thomas jefferson",
+    "acceptedAliases": [
+      "Jefferson"
+    ],
+    "normalizedAliases": [
+      "jefferson"
+    ],
+    "hints": [
+      "This statesman wrote a foundational declaration in 1776.",
+      "He later became the third president of the United States.",
+      "He oversaw the Louisiana Purchase.",
+      "He founded the University of Virginia and designed his home, Monticello.",
+      "First name: Thomas. Last name starts with 'J'."
+    ],
+    "baseClueFact": "An American statesman who drafted the Declaration of Independence.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Toussaint Louverture",
+    "normalizedName": "toussaint louverture",
+    "acceptedAliases": [
+      "Louverture"
+    ],
+    "normalizedAliases": [
+      "louverture"
+    ],
+    "hints": [
+      "This revolutionary leader rose from slavery in a Caribbean colony.",
+      "He became a central figure in the Haitian Revolution.",
+      "He outmaneuvered European powers and local rivals.",
+      "Though captured before independence, he paved the way for Haiti's freedom.",
+      "First name: Toussaint. Last name starts with 'L'."
+    ],
+    "baseClueFact": "A key leader of the Haitian Revolution.",
+    "difficulty": "hard",
+    "category": "leader",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Maximilien Robespierre",
+    "normalizedName": "maximilien robespierre",
+    "acceptedAliases": [
+      "Robespierre"
+    ],
+    "normalizedAliases": [
+      "robespierre"
+    ],
+    "hints": [
+      "This revolutionary became a dominant figure in France's most radical phase.",
+      "He sat on the Committee of Public Safety.",
+      "His name is closely linked to the Reign of Terror.",
+      "He was overthrown and executed by guillotine in 1794.",
+      "First name: Maximilien. Last name starts with 'R'."
+    ],
+    "baseClueFact": "A French revolutionary associated with the Reign of Terror.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Voltaire",
+    "normalizedName": "voltaire",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This Enlightenment writer and critic attacked fanaticism and injustice.",
+      "He wrote satire, history, essays, and polemics.",
+      "His novella Candide mocked easy optimism.",
+      "He became one of the best-known French philosophes.",
+      "Name: Voltaire."
+    ],
+    "baseClueFact": "A French Enlightenment writer and critic.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Jean-Jacques Rousseau",
+    "normalizedName": "jean jacques rousseau",
+    "acceptedAliases": [
+      "Rousseau"
+    ],
+    "normalizedAliases": [
+      "rousseau"
+    ],
+    "hints": [
+      "This thinker wrote powerfully about freedom, society, and education.",
+      "His work The Social Contract influenced revolutionary politics.",
+      "He also wrote Emile on education.",
+      "His line begins, 'Man is born free, and everywhere he is in chains.'",
+      "First name: Jean-Jacques. Last name starts with 'R'."
+    ],
+    "baseClueFact": "A Genevan-born philosopher of the Enlightenment.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Immanuel Kant",
+    "normalizedName": "immanuel kant",
+    "acceptedAliases": [
+      "Kant"
+    ],
+    "normalizedAliases": [
+      "kant"
+    ],
+    "hints": [
+      "This philosopher sought to explain the limits and powers of human reason.",
+      "He lived his entire life in Königsberg.",
+      "His major works include the Critique of Pure Reason.",
+      "He is central to modern ethics because of the categorical imperative.",
+      "First name: Immanuel. Last name starts with 'K'."
+    ],
+    "baseClueFact": "A German philosopher central to modern philosophy.",
+    "difficulty": "medium",
+    "category": "philosopher",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Mary Wollstonecraft",
+    "normalizedName": "mary wollstonecraft",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This writer argued forcefully for women's education and rights.",
+      "She wrote during the era of revolutions.",
+      "Her most famous work is A Vindication of the Rights of Woman.",
+      "She was the mother of Mary Shelley.",
+      "First name: Mary. Last name starts with 'W'."
+    ],
+    "baseClueFact": "An Enlightenment writer and early feminist thinker.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Enlightenment"
+  },
+  {
+    "canonicalName": "Beethoven",
+    "normalizedName": "beethoven",
+    "acceptedAliases": [
+      "Ludwig van Beethoven",
+      "Ludwig Beethoven"
+    ],
+    "normalizedAliases": [
+      "ludwig beethoven"
+    ],
+    "hints": [
+      "This composer bridged the Classical and Romantic eras.",
+      "He produced symphonies, sonatas, quartets, and concertos of huge influence.",
+      "As his career progressed, he lost much of his hearing.",
+      "His Ninth Symphony ends with the 'Ode to Joy.'",
+      "Name: Beethoven."
+    ],
+    "baseClueFact": "A German composer who transformed Western music.",
+    "difficulty": "easy",
+    "category": "composer",
+    "era": "Classical"
+  },
+  {
+    "canonicalName": "Joseph Haydn",
+    "normalizedName": "joseph haydn",
+    "acceptedAliases": [
+      "Haydn"
+    ],
+    "normalizedAliases": [
+      "haydn"
+    ],
+    "hints": [
+      "This Austrian composer worked for decades with the Esterházy family.",
+      "He helped define the symphony and string quartet.",
+      "He was a teacher of Beethoven and friend of Mozart.",
+      "He is often called the 'Father of the Symphony.'",
+      "First name: Joseph. Last name starts with 'H'."
+    ],
+    "baseClueFact": "An Austrian Classical composer associated with symphonies and quartets.",
+    "difficulty": "medium",
+    "category": "composer",
+    "era": "Classical"
+  },
+  {
+    "canonicalName": "Franz Schubert",
+    "normalizedName": "franz schubert",
+    "acceptedAliases": [
+      "Schubert"
+    ],
+    "normalizedAliases": [
+      "schubert"
+    ],
+    "hints": [
+      "This Austrian composer died young but left a vast catalogue.",
+      "He wrote songs, chamber music, piano works, and symphonies.",
+      "His lieder include Erlkonig and Ave Maria.",
+      "His Symphony No. 8 is nicknamed the 'Unfinished.'",
+      "First name: Franz. Last name starts with 'S'."
+    ],
+    "baseClueFact": "An Austrian composer known for lieder and lyricism.",
+    "difficulty": "medium",
+    "category": "composer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Jane Austen",
+    "normalizedName": "jane austen",
+    "acceptedAliases": [
+      "Austen"
+    ],
+    "normalizedAliases": [
+      "austen"
+    ],
+    "hints": [
+      "This English novelist is known for wit, courtship, and social observation.",
+      "She wrote during the late Georgian and Regency periods.",
+      "Her novels include Pride and Prejudice and Emma.",
+      "She sharply examined class, manners, and marriage.",
+      "First name: Jane. Last name starts with 'A'."
+    ],
+    "baseClueFact": "An English novelist known for irony and social insight.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Regency"
+  },
+  {
+    "canonicalName": "Victor Hugo",
+    "normalizedName": "victor hugo",
+    "acceptedAliases": [
+      "Hugo"
+    ],
+    "normalizedAliases": [
+      "hugo"
+    ],
+    "hints": [
+      "This French writer excelled in novels, poetry, and drama.",
+      "He wrote both Notre-Dame de Paris and Les Miserables.",
+      "He was also a political figure and exile.",
+      "His work mixes social criticism with grand emotion.",
+      "First name: Victor. Last name starts with 'H'."
+    ],
+    "baseClueFact": "A French writer best known for Les Miserables and The Hunchback of Notre-Dame.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Alexandre Dumas",
+    "normalizedName": "alexandre dumas",
+    "acceptedAliases": [
+      "Dumas"
+    ],
+    "normalizedAliases": [
+      "dumas"
+    ],
+    "hints": [
+      "This French novelist wrote some of the most famous adventure stories ever.",
+      "His works include The Three Musketeers and The Count of Monte Cristo.",
+      "He collaborated with assistants while producing huge amounts of fiction.",
+      "His father had been a general of mixed-race origin.",
+      "First name: Alexandre. Last name starts with 'D'."
+    ],
+    "baseClueFact": "A French novelist best known for swashbuckling adventure tales.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Mary Shelley",
+    "normalizedName": "mary shelley",
+    "acceptedAliases": [
+      "Shelley"
+    ],
+    "normalizedAliases": [
+      "shelley"
+    ],
+    "hints": [
+      "This writer created one of literature's defining modern myths.",
+      "She was the daughter of Mary Wollstonecraft and William Godwin.",
+      "She wrote Frankenstein after a ghost-story challenge in Switzerland.",
+      "Her novel helped launch modern science fiction and horror.",
+      "First name: Mary. Last name starts with 'S'."
+    ],
+    "baseClueFact": "An English novelist who wrote Frankenstein.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Lord Byron",
+    "normalizedName": "lord byron",
+    "acceptedAliases": [
+      "Byron",
+      "George Gordon Byron"
+    ],
+    "normalizedAliases": [
+      "byron",
+      "george gordon byron"
+    ],
+    "hints": [
+      "This poet embodied the rebellious glamour of Romanticism.",
+      "He wrote Childe Harold's Pilgrimage and Don Juan.",
+      "He became a celebrity through scandal and literary fame.",
+      "He died while supporting Greek independence.",
+      "First name: Lord. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A Romantic poet known for brilliance, scandal, and rebellion.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "John Keats",
+    "normalizedName": "john keats",
+    "acceptedAliases": [
+      "Keats"
+    ],
+    "normalizedAliases": [
+      "keats"
+    ],
+    "hints": [
+      "This English Romantic poet died at only 25.",
+      "He wrote great odes on beauty, autumn, and the nightingale.",
+      "His fame grew after his early death from tuberculosis.",
+      "A line of his declares that beauty is truth and truth beauty.",
+      "First name: John. Last name starts with 'K'."
+    ],
+    "baseClueFact": "An English Romantic poet of intense lyric beauty.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Percy Bysshe Shelley",
+    "normalizedName": "percy bysshe shelley",
+    "acceptedAliases": [
+      "Shelley"
+    ],
+    "normalizedAliases": [
+      "shelley"
+    ],
+    "hints": [
+      "This radical Romantic poet wrote lyrical and political verse.",
+      "He was married to Mary Shelley.",
+      "His best-known works include Ozymandias and Prometheus Unbound.",
+      "He died in a boating accident off the Italian coast.",
+      "First name: Percy. Last name starts with 'S'."
+    ],
+    "baseClueFact": "An English Romantic poet known for idealism and lyricism.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "William Wordsworth",
+    "normalizedName": "william wordsworth",
+    "acceptedAliases": [
+      "Wordsworth"
+    ],
+    "normalizedAliases": [
+      "wordsworth"
+    ],
+    "hints": [
+      "This poet helped launch English Romanticism.",
+      "A collection he made with Coleridge was Lyrical Ballads.",
+      "He often wrote about memory, nature, and childhood.",
+      "One famous poem begins, 'I wandered lonely as a cloud.'",
+      "First name: William. Last name starts with 'W'."
+    ],
+    "baseClueFact": "An English Romantic poet closely associated with nature.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Samuel Taylor Coleridge",
+    "normalizedName": "samuel taylor coleridge",
+    "acceptedAliases": [
+      "Coleridge"
+    ],
+    "normalizedAliases": [
+      "coleridge"
+    ],
+    "hints": [
+      "This poet and critic collaborated with Wordsworth.",
+      "He wrote visionary works like The Rime of the Ancient Mariner and Kubla Khan.",
+      "He was deeply influenced by imagination, philosophy, and opium.",
+      "He became a major literary critic as well as poet.",
+      "First name: Samuel. Last name starts with 'C'."
+    ],
+    "baseClueFact": "An English Romantic poet and critic.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "JMW Turner",
+    "normalizedName": "jmw turner",
+    "acceptedAliases": [
+      "Turner",
+      "Joseph Mallord William Turner"
+    ],
+    "normalizedAliases": [
+      "turner",
+      "joseph mallord william turner"
+    ],
+    "hints": [
+      "This British painter became famous for swirling light and atmosphere.",
+      "He painted storms, seas, ships, and glowing landscapes.",
+      "His late work foreshadowed Impressionism.",
+      "One of his iconic images is The Fighting Temeraire.",
+      "First name: JMW. Last name starts with 'T'."
+    ],
+    "baseClueFact": "A British painter known for luminous landscapes and seascapes.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Francisco Goya",
+    "normalizedName": "francisco goya",
+    "acceptedAliases": [
+      "Goya"
+    ],
+    "normalizedAliases": [
+      "goya"
+    ],
+    "hints": [
+      "This Spanish artist spanned court portraiture and haunting darkness.",
+      "He painted royal families as well as war and nightmare scenes.",
+      "His works include The Third of May 1808 and the Black Paintings.",
+      "He created disturbing images such as Saturn Devouring His Son.",
+      "First name: Francisco. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A Spanish painter and printmaker of the late 18th and early 19th centuries.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Eugene Delacroix",
+    "normalizedName": "eugene delacroix",
+    "acceptedAliases": [
+      "Delacroix"
+    ],
+    "normalizedAliases": [
+      "delacroix"
+    ],
+    "hints": [
+      "This French painter became a major face of Romanticism.",
+      "He used dynamic color and movement in historical and exotic scenes.",
+      "His best-known work shows Liberty leading people over barricades.",
+      "That painting commemorates the July Revolution of 1830.",
+      "First name: Eugene. Last name starts with 'D'."
+    ],
+    "baseClueFact": "A French Romantic painter known for Liberty Leading the People.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Caspar David Friedrich",
+    "normalizedName": "caspar david friedrich",
+    "acceptedAliases": [
+      "Friedrich"
+    ],
+    "normalizedAliases": [
+      "friedrich"
+    ],
+    "hints": [
+      "This German painter explored solitude, landscape, and the sublime.",
+      "His figures often stand before vast natural scenes.",
+      "One famous work shows a wanderer above a sea of fog.",
+      "He became a defining visual voice of Romanticism.",
+      "First name: Caspar. Last name starts with 'F'."
+    ],
+    "baseClueFact": "A German Romantic landscape painter.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Romantic"
+  },
+  {
+    "canonicalName": "Gustave Courbet",
+    "normalizedName": "gustave courbet",
+    "acceptedAliases": [
+      "Courbet"
+    ],
+    "normalizedAliases": [
+      "courbet"
+    ],
+    "hints": [
+      "This painter rejected idealization in favor of ordinary reality.",
+      "He became a leader of Realism in France.",
+      "His works include The Stone Breakers and A Burial at Ornans.",
+      "He also played a role during the Paris Commune.",
+      "First name: Gustave. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A French painter associated with Realism.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Honore de Balzac",
+    "normalizedName": "honore balzac",
+    "acceptedAliases": [
+      "Balzac"
+    ],
+    "normalizedAliases": [
+      "balzac"
+    ],
+    "hints": [
+      "This novelist attempted to map an entire society through fiction.",
+      "His huge sequence of interlinked works is called La Comedie humaine.",
+      "He wrote about ambition, money, desire, and status.",
+      "His realism deeply influenced later novelists.",
+      "First name: Honore. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A French novelist known for La Comedie humaine.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Gustave Flaubert",
+    "normalizedName": "gustave flaubert",
+    "acceptedAliases": [
+      "Flaubert"
+    ],
+    "normalizedAliases": [
+      "flaubert"
+    ],
+    "hints": [
+      "This novelist pursued precision of style with obsessive discipline.",
+      "He wrote Madame Bovary, a landmark of realism.",
+      "That novel faced obscenity charges after publication.",
+      "He also wrote Sentimental Education and Salammbô.",
+      "First name: Gustave. Last name starts with 'F'."
+    ],
+    "baseClueFact": "A French novelist best known for Madame Bovary.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Leo Tolstoy",
+    "normalizedName": "leo tolstoy",
+    "acceptedAliases": [
+      "Tolstoy"
+    ],
+    "normalizedAliases": [
+      "tolstoy"
+    ],
+    "hints": [
+      "This Russian writer created vast novels of war, family, and moral struggle.",
+      "His masterpieces include War and Peace and Anna Karenina.",
+      "Later in life he underwent a religious and moral crisis.",
+      "He became a global voice on nonviolence and ethics.",
+      "First name: Leo. Last name starts with 'T'."
+    ],
+    "baseClueFact": "A Russian novelist best known for War and Peace and Anna Karenina.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Fyodor Dostoevsky",
+    "normalizedName": "fyodor dostoevsky",
+    "acceptedAliases": [
+      "Dostoevsky"
+    ],
+    "normalizedAliases": [
+      "dostoevsky"
+    ],
+    "hints": [
+      "This Russian novelist explored guilt, freedom, and the psychology of suffering.",
+      "He survived a mock execution and years in Siberian exile.",
+      "His novels include Crime and Punishment and The Brothers Karamazov.",
+      "He became one of literature's greatest psychological writers.",
+      "First name: Fyodor. Last name starts with 'D'."
+    ],
+    "baseClueFact": "A Russian novelist known for intense moral and psychological fiction.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Anton Chekhov",
+    "normalizedName": "anton chekhov",
+    "acceptedAliases": [
+      "Chekhov"
+    ],
+    "normalizedAliases": [
+      "chekhov"
+    ],
+    "hints": [
+      "This Russian author excelled in both short stories and drama.",
+      "He also worked as a physician.",
+      "His plays include The Seagull, Uncle Vanya, and The Cherry Orchard.",
+      "He transformed modern theatre through mood, subtext, and understatement.",
+      "First name: Anton. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A Russian writer and dramatist known for subtle realism.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Henrik Ibsen",
+    "normalizedName": "henrik ibsen",
+    "acceptedAliases": [
+      "Ibsen"
+    ],
+    "normalizedAliases": [
+      "ibsen"
+    ],
+    "hints": [
+      "This playwright is often called the father of modern drama.",
+      "He wrote in Norway and transformed stage realism.",
+      "His plays include A Doll's House, Ghosts, and Hedda Gabler.",
+      "He challenged social conventions and bourgeois morality.",
+      "First name: Henrik. Last name starts with 'I'."
+    ],
+    "baseClueFact": "A Norwegian playwright who helped create modern drama.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Mark Twain",
+    "normalizedName": "mark twain",
+    "acceptedAliases": [
+      "Twain",
+      "Samuel Clemens"
+    ],
+    "normalizedAliases": [
+      "twain",
+      "samuel clemens"
+    ],
+    "hints": [
+      "This American writer became famous for wit and vernacular voice.",
+      "He created Tom Sawyer and Huckleberry Finn.",
+      "He worked as printer, journalist, and river pilot before fame.",
+      "His pen name is linked to Mississippi riverboat measurement.",
+      "First name: Mark. Last name starts with 'T'."
+    ],
+    "baseClueFact": "An American author best known for Huckleberry Finn.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Emily Dickinson",
+    "normalizedName": "emily dickinson",
+    "acceptedAliases": [
+      "Dickinson"
+    ],
+    "normalizedAliases": [
+      "dickinson"
+    ],
+    "hints": [
+      "This poet lived much of her life in relative seclusion.",
+      "She wrote compressed, striking poems on death, nature, and consciousness.",
+      "Most of her work was published only after her death.",
+      "Her style uses dashes, slant rhyme, and startling insight.",
+      "First name: Emily. Last name starts with 'D'."
+    ],
+    "baseClueFact": "An American poet known for highly original lyric poems.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Walt Whitman",
+    "normalizedName": "walt whitman",
+    "acceptedAliases": [
+      "Whitman"
+    ],
+    "normalizedAliases": [
+      "whitman"
+    ],
+    "hints": [
+      "This American poet celebrated democracy, body, and expansive selfhood.",
+      "His lifelong poetic project was Leaves of Grass.",
+      "He wrote in long free-verse lines unlike most predecessors.",
+      "He also worked as nurse and journalist during the Civil War.",
+      "First name: Walt. Last name starts with 'W'."
+    ],
+    "baseClueFact": "An American poet best known for Leaves of Grass.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Florence Nightingale",
+    "normalizedName": "florence nightingale",
+    "acceptedAliases": [
+      "Nightingale"
+    ],
+    "normalizedAliases": [
+      "nightingale"
+    ],
+    "hints": [
+      "This reformer transformed nursing during a major 19th-century war.",
+      "She became famous during the Crimean War.",
+      "She used statistics and sanitation reform to save lives.",
+      "She was known as the 'Lady with the Lamp.'",
+      "First name: Florence. Last name starts with 'N'."
+    ],
+    "baseClueFact": "A nursing pioneer associated with the Crimean War.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Victorian"
+  },
+  {
+    "canonicalName": "Louis Pasteur",
+    "normalizedName": "louis pasteur",
+    "acceptedAliases": [
+      "Pasteur"
+    ],
+    "normalizedAliases": [
+      "pasteur"
+    ],
+    "hints": [
+      "This French scientist made breakthroughs in microbiology.",
+      "He helped establish germ theory and developed vaccines.",
+      "Pasteurization takes its name from him.",
+      "His work affected chemistry, medicine, and food safety.",
+      "First name: Louis. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A French scientist associated with germ theory and pasteurization.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Gregor Mendel",
+    "normalizedName": "gregor mendel",
+    "acceptedAliases": [
+      "Mendel"
+    ],
+    "normalizedAliases": [
+      "mendel"
+    ],
+    "hints": [
+      "This monk's pea-plant experiments founded genetics.",
+      "He studied inheritance by counting trait ratios.",
+      "His work was overlooked at first and recognized later.",
+      "He is often called the father of genetics.",
+      "First name: Gregor. Last name starts with 'M'."
+    ],
+    "baseClueFact": "An Augustinian friar whose experiments helped found genetics.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Dmitri Mendeleev",
+    "normalizedName": "dmitri mendeleev",
+    "acceptedAliases": [
+      "Mendeleev"
+    ],
+    "normalizedAliases": [
+      "mendeleev"
+    ],
+    "hints": [
+      "This chemist organized the elements into a system.",
+      "He arranged them in a table that revealed periodic relationships.",
+      "He left gaps for undiscovered elements and predicted their properties.",
+      "The modern periodic table traces back to his work.",
+      "First name: Dmitri. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A Russian chemist who created the periodic table framework.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Michael Faraday",
+    "normalizedName": "michael faraday",
+    "acceptedAliases": [
+      "Faraday"
+    ],
+    "normalizedAliases": [
+      "faraday"
+    ],
+    "hints": [
+      "This experimental scientist transformed the study of electricity and magnetism.",
+      "He rose from humble origins and had limited formal schooling.",
+      "He discovered electromagnetic induction and advanced electrochemistry.",
+      "Units and effects in electromagnetism still bear his name.",
+      "First name: Michael. Last name starts with 'F'."
+    ],
+    "baseClueFact": "A British scientist known for electromagnetism and induction.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "James Clerk Maxwell",
+    "normalizedName": "james clerk maxwell",
+    "acceptedAliases": [
+      "Maxwell"
+    ],
+    "normalizedAliases": [
+      "maxwell"
+    ],
+    "hints": [
+      "This physicist unified electricity, magnetism, and light mathematically.",
+      "His equations became foundational for modern physics.",
+      "He also contributed to kinetic theory and color vision.",
+      "Einstein said his work changed the world forever.",
+      "First name: James. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A Scottish physicist who formulated classical electromagnetism.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Charles Babbage",
+    "normalizedName": "charles babbage",
+    "acceptedAliases": [
+      "Babbage"
+    ],
+    "normalizedAliases": [
+      "babbage"
+    ],
+    "hints": [
+      "This inventor designed mechanical calculating engines.",
+      "He conceived both the Difference Engine and the Analytical Engine.",
+      "His later machine designs anticipated programmable computation.",
+      "Ada Lovelace wrote notes on one of his proposed devices.",
+      "First name: Charles. Last name starts with 'B'."
+    ],
+    "baseClueFact": "An English inventor associated with early computer design.",
+    "difficulty": "medium",
+    "category": "inventor",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Alfred Nobel",
+    "normalizedName": "alfred nobel",
+    "acceptedAliases": [
+      "Nobel"
+    ],
+    "normalizedAliases": [
+      "nobel"
+    ],
+    "hints": [
+      "This inventor and industrialist became linked to both explosives and prizes.",
+      "He patented dynamite.",
+      "His will established major international awards after his death.",
+      "Those prizes include categories for peace, literature, and science.",
+      "First name: Alfred. Last name starts with 'N'."
+    ],
+    "baseClueFact": "The inventor whose fortune founded the Nobel Prizes.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Thomas Edison",
+    "normalizedName": "thomas edison",
+    "acceptedAliases": [
+      "Edison"
+    ],
+    "normalizedAliases": [
+      "edison"
+    ],
+    "hints": [
+      "This inventor became a symbol of industrial-age innovation.",
+      "He held or helped secure vast numbers of patents.",
+      "He worked on electric light, sound recording, and motion pictures.",
+      "He is often contrasted with Nikola Tesla in popular memory.",
+      "First name: Thomas. Last name starts with 'E'."
+    ],
+    "baseClueFact": "An American inventor associated with electric light and recording.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Alexander Graham Bell",
+    "normalizedName": "alexander graham bell",
+    "acceptedAliases": [
+      "Bell"
+    ],
+    "normalizedAliases": [
+      "bell"
+    ],
+    "hints": [
+      "This inventor is strongly associated with a key communications breakthrough.",
+      "He worked on devices related to sound and speech.",
+      "He is widely credited with inventing the telephone.",
+      "He also taught the deaf and pursued other experiments.",
+      "First name: Alexander. Last name starts with 'B'."
+    ],
+    "baseClueFact": "An inventor commonly linked to the telephone.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Theodor Herzl",
+    "normalizedName": "theodor herzl",
+    "acceptedAliases": [
+      "Herzl"
+    ],
+    "normalizedAliases": [
+      "herzl"
+    ],
+    "hints": [
+      "This journalist and political thinker became a founder of modern Zionism.",
+      "He organized the First Zionist Congress in 1897.",
+      "He argued that Jewish self-determination required a state.",
+      "His book The Jewish State became central to that movement.",
+      "First name: Theodor. Last name starts with 'H'."
+    ],
+    "baseClueFact": "A political thinker associated with modern Zionism.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Simón Bolívar",
+    "normalizedName": "simon bolivar",
+    "acceptedAliases": [
+      "Bolivar"
+    ],
+    "normalizedAliases": [
+      "bolivar"
+    ],
+    "hints": [
+      "This revolutionary leader helped free much of northern South America from Spanish rule.",
+      "He campaigned across Venezuela, Colombia, Ecuador, Peru, and Bolivia.",
+      "He is often called 'El Libertador.'",
+      "A country was later named in his honor.",
+      "First name: Simón. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A South American independence leader known as El Libertador.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Jose de San Martin",
+    "normalizedName": "jose san martin",
+    "acceptedAliases": [
+      "San Martin"
+    ],
+    "normalizedAliases": [
+      "san martin"
+    ],
+    "hints": [
+      "This general became a central liberator of southern South America.",
+      "He fought for independence in Argentina, Chile, and Peru.",
+      "He crossed the Andes in a legendary campaign.",
+      "He later met Simon Bolivar before withdrawing from politics.",
+      "First name: Jose. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A South American independence leader who crossed the Andes.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Miguel de Cervantes",
+    "normalizedName": "miguel cervantes",
+    "acceptedAliases": [
+      "Cervantes"
+    ],
+    "normalizedAliases": [
+      "cervantes"
+    ],
+    "hints": [
+      "This Spanish author wrote a novel often called the first modern novel.",
+      "Its hero mistakes windmills for giants.",
+      "The book is Don Quixote.",
+      "He had earlier served as a soldier and spent years in captivity.",
+      "First name: Miguel. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A Spanish writer best known for Don Quixote.",
+    "difficulty": "easy",
+    "category": "writer",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Miguel Hidalgo y Costilla",
+    "normalizedName": "miguel hidalgo y costilla",
+    "acceptedAliases": [
+      "Miguel Hidalgo",
+      "Hidalgo"
+    ],
+    "normalizedAliases": [
+      "miguel hidalgo",
+      "hidalgo"
+    ],
+    "hints": [
+      "This priest helped ignite a major independence struggle in 1810.",
+      "He issued the Cry of Dolores in New Spain.",
+      "Though executed early, he became a father of Mexican independence.",
+      "Mexico commemorates his call each year.",
+      "First name: Miguel. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A priest associated with the start of Mexican independence.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Benito Juarez",
+    "normalizedName": "benito juarez",
+    "acceptedAliases": [
+      "Juarez"
+    ],
+    "normalizedAliases": [
+      "juarez"
+    ],
+    "hints": [
+      "This statesman became a symbol of republican resistance in Mexico.",
+      "He was of Zapotec origin and rose from humble beginnings.",
+      "He opposed French intervention and Emperor Maximilian.",
+      "His liberal reforms reshaped church-state relations.",
+      "First name: Benito. Last name starts with 'J'."
+    ],
+    "baseClueFact": "A Mexican president associated with liberal reform and resistance to empire.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Giuseppe Garibaldi",
+    "normalizedName": "giuseppe garibaldi",
+    "acceptedAliases": [
+      "Garibaldi"
+    ],
+    "normalizedAliases": [
+      "garibaldi"
+    ],
+    "hints": [
+      "This soldier and nationalist became a hero of Italian unification.",
+      "His volunteer force was known as the Redshirts.",
+      "He campaigned in Sicily and southern Italy.",
+      "He also fought in South America before returning to Europe.",
+      "First name: Giuseppe. Last name starts with 'G'."
+    ],
+    "baseClueFact": "An Italian nationalist and military leader known as the hero of two worlds.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Otto von Bismarck",
+    "normalizedName": "otto bismarck",
+    "acceptedAliases": [
+      "Bismarck"
+    ],
+    "normalizedAliases": [
+      "bismarck"
+    ],
+    "hints": [
+      "This statesman unified Germany through diplomacy and war.",
+      "He served Prussia and later the German Empire.",
+      "His political approach is often described as Realpolitik.",
+      "He was nicknamed the Iron Chancellor.",
+      "First name: Otto. Last name starts with 'B'."
+    ],
+    "baseClueFact": "The Prussian statesman who unified Germany.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Queen Victoria",
+    "normalizedName": "queen victoria",
+    "acceptedAliases": [
+      "Victoria"
+    ],
+    "normalizedAliases": [
+      "victoria"
+    ],
+    "hints": [
+      "This monarch gave her name to an era.",
+      "She ruled Britain for more than six decades in the 19th century.",
+      "Her reign saw industrial expansion and imperial growth.",
+      "Her husband was Prince Albert.",
+      "First name: Queen. Last name starts with 'V'."
+    ],
+    "baseClueFact": "The British queen whose reign defined the Victorian era.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Victorian"
+  },
+  {
+    "canonicalName": "Prince Albert",
+    "normalizedName": "prince albert",
+    "acceptedAliases": [
+      "Albert of Saxe-Coburg and Gotha"
+    ],
+    "normalizedAliases": [
+      "albert saxe coburg and gotha"
+    ],
+    "hints": [
+      "This royal consort influenced art, science, and exhibition culture.",
+      "He was the husband of Queen Victoria.",
+      "He helped promote the Great Exhibition of 1851.",
+      "His early death deeply affected the British queen.",
+      "First name: Prince. Last name starts with 'A'."
+    ],
+    "baseClueFact": "The husband of Queen Victoria.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Victorian"
+  },
+  {
+    "canonicalName": "Emmeline Pankhurst",
+    "normalizedName": "emmeline pankhurst",
+    "acceptedAliases": [
+      "Pankhurst"
+    ],
+    "normalizedAliases": [
+      "pankhurst"
+    ],
+    "hints": [
+      "This activist led a militant campaign for women's suffrage in Britain.",
+      "She founded the Women's Social and Political Union.",
+      "Her movement used the slogan 'Deeds, not words.'",
+      "She became one of the best-known faces of the suffragette movement.",
+      "First name: Emmeline. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A British suffragette leader.",
+    "difficulty": "medium",
+    "category": "activist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Susan B Anthony",
+    "normalizedName": "susan b anthony",
+    "acceptedAliases": [
+      "Susan Anthony",
+      "Anthony"
+    ],
+    "normalizedAliases": [
+      "susan anthony",
+      "anthony"
+    ],
+    "hints": [
+      "This activist fought for women's rights in the United States.",
+      "She campaigned for suffrage, property rights, and abolition.",
+      "She was arrested for voting illegally in 1872.",
+      "A constitutional amendment for women's suffrage later bore her movement's stamp.",
+      "First name: Susan. Last name starts with 'A'."
+    ],
+    "baseClueFact": "An American activist associated with women's suffrage.",
+    "difficulty": "medium",
+    "category": "activist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Harriet Tubman",
+    "normalizedName": "harriet tubman",
+    "acceptedAliases": [
+      "Tubman"
+    ],
+    "normalizedAliases": [
+      "tubman"
+    ],
+    "hints": [
+      "This freedom fighter escaped slavery and returned many times to help others.",
+      "She became a conductor on the Underground Railroad.",
+      "During the U.S. Civil War she also worked for the Union cause.",
+      "She is sometimes called the 'Moses' of her people.",
+      "First name: Harriet. Last name starts with 'T'."
+    ],
+    "baseClueFact": "An American abolitionist who led enslaved people to freedom.",
+    "difficulty": "easy",
+    "category": "activist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Frederick Douglass",
+    "normalizedName": "frederick douglass",
+    "acceptedAliases": [
+      "Douglass"
+    ],
+    "normalizedAliases": [
+      "douglass"
+    ],
+    "hints": [
+      "This orator and writer escaped slavery and became a leading abolitionist voice.",
+      "His autobiographies exposed the brutality of slavery.",
+      "He also advocated for women's rights and citizenship.",
+      "He advised presidents and became a major public intellectual.",
+      "First name: Frederick. Last name starts with 'D'."
+    ],
+    "baseClueFact": "An American abolitionist and writer born into slavery.",
+    "difficulty": "easy",
+    "category": "activist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Sojourner Truth",
+    "normalizedName": "sojourner truth",
+    "acceptedAliases": [
+      "Truth"
+    ],
+    "normalizedAliases": [
+      "truth"
+    ],
+    "hints": [
+      "This abolitionist and women's rights advocate delivered a famous speech on equality.",
+      "She had escaped slavery in New York.",
+      "Her best-known speech is commonly remembered as 'Ain't I a Woman?'",
+      "She traveled widely as preacher, speaker, and reformer.",
+      "First name: Sojourner. Last name starts with 'T'."
+    ],
+    "baseClueFact": "An American abolitionist and women's rights activist.",
+    "difficulty": "medium",
+    "category": "activist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Karl Marx",
+    "normalizedName": "karl marx",
+    "acceptedAliases": [
+      "Marx"
+    ],
+    "normalizedAliases": [
+      "marx"
+    ],
+    "hints": [
+      "This thinker analyzed capitalism, class struggle, and historical change.",
+      "He wrote with Friedrich Engels.",
+      "One of their most famous political texts is The Communist Manifesto.",
+      "His major economic work is Das Kapital.",
+      "First name: Karl. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A German philosopher and economist associated with communism.",
+    "difficulty": "easy",
+    "category": "philosopher",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Friedrich Engels",
+    "normalizedName": "friedrich engels",
+    "acceptedAliases": [
+      "Engels"
+    ],
+    "normalizedAliases": [
+      "engels"
+    ],
+    "hints": [
+      "This thinker collaborated closely with Karl Marx.",
+      "He co-authored The Communist Manifesto.",
+      "He also wrote on the working class in industrial England.",
+      "After Marx's death, he edited later volumes of Das Kapital.",
+      "First name: Friedrich. Last name starts with 'E'."
+    ],
+    "baseClueFact": "A German social theorist and collaborator of Marx.",
+    "difficulty": "medium",
+    "category": "philosopher",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Sigmund Freud",
+    "normalizedName": "sigmund freud",
+    "acceptedAliases": [
+      "Freud"
+    ],
+    "normalizedAliases": [
+      "freud"
+    ],
+    "hints": [
+      "This physician founded a controversial new approach to the mind.",
+      "He developed psychoanalysis in Vienna.",
+      "His ideas involved the unconscious, dreams, repression, and conflict.",
+      "Terms like id, ego, and superego became linked to his school.",
+      "First name: Sigmund. Last name starts with 'F'."
+    ],
+    "baseClueFact": "The founder of psychoanalysis.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Carl Jung",
+    "normalizedName": "carl jung",
+    "acceptedAliases": [
+      "Jung"
+    ],
+    "normalizedAliases": [
+      "jung"
+    ],
+    "hints": [
+      "This psychiatrist first worked with Freud and later broke away.",
+      "He developed ideas such as archetypes and the collective unconscious.",
+      "He linked psychology with myth, religion, and symbolism.",
+      "He became one of the most influential analytical psychologists.",
+      "First name: Carl. Last name starts with 'J'."
+    ],
+    "baseClueFact": "A Swiss psychiatrist associated with archetypes and analytical psychology.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Ivan Pavlov",
+    "normalizedName": "ivan pavlov",
+    "acceptedAliases": [
+      "Pavlov"
+    ],
+    "normalizedAliases": [
+      "pavlov"
+    ],
+    "hints": [
+      "This physiologist became famous for a behavioral learning experiment.",
+      "He studied digestion and won a Nobel Prize.",
+      "Dogs in his experiments came to salivate to a signal.",
+      "The concept that emerged is classical conditioning.",
+      "First name: Ivan. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A Russian physiologist known for classical conditioning.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Marie Antoinette",
+    "normalizedName": "marie antoinette",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This queen became one of the French Revolution's most famous victims.",
+      "She was born an Austrian archduchess and married Louis XVI.",
+      "She became a symbol of royal extravagance, fairly or unfairly.",
+      "She was executed by guillotine in 1793.",
+      "First name: Marie. Last name starts with 'A'."
+    ],
+    "baseClueFact": "The queen of France executed during the Revolution.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Louis XIV",
+    "normalizedName": "louis xiv",
+    "acceptedAliases": [
+      "Louis the Great",
+      "Sun King"
+    ],
+    "normalizedAliases": [
+      "louis great",
+      "sun king"
+    ],
+    "hints": [
+      "This ruler made monarchy into a grand performance of absolute power.",
+      "He ruled France for more than seventy years.",
+      "His court centered on the palace of Versailles.",
+      "He was known as the Sun King.",
+      "First name: Louis. Last name starts with 'X'."
+    ],
+    "baseClueFact": "The long-reigning French king associated with Versailles.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Peter the Great",
+    "normalizedName": "peter great",
+    "acceptedAliases": [
+      "Peter I"
+    ],
+    "normalizedAliases": [
+      "peter i"
+    ],
+    "hints": [
+      "This tsar sought to modernize and westernize his state.",
+      "He traveled in Europe to learn shipbuilding and military methods.",
+      "He founded a new capital on the Baltic Sea.",
+      "That city was Saint Petersburg.",
+      "First name: Peter. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A Russian tsar known for modernization and founding Saint Petersburg.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Early Modern"
+  },
+  {
+    "canonicalName": "Louis XVI",
+    "normalizedName": "louis xvi",
+    "acceptedAliases": [],
+    "normalizedAliases": [],
+    "hints": [
+      "This king's troubled reign ended in revolution.",
+      "He inherited deep financial and political problems in France.",
+      "He attempted to flee during the Revolution in the Flight to Varennes.",
+      "He was executed by guillotine in 1793.",
+      "First name: Louis. Last name starts with 'X'."
+    ],
+    "baseClueFact": "The French king executed during the Revolution.",
+    "difficulty": "medium",
+    "category": "ruler",
+    "era": "Revolutionary"
+  },
+  {
+    "canonicalName": "Toussaint Charbonneau",
+    "normalizedName": "toussaint charbonneau",
+    "acceptedAliases": [
+      "Charbonneau"
+    ],
+    "normalizedAliases": [
+      "charbonneau"
+    ],
+    "hints": [
+      "This fur trader is less famous than the woman who traveled with him.",
+      "He joined a major North American exploration mission.",
+      "He was married to Sacagawea.",
+      "He served as interpreter during the Lewis and Clark expedition.",
+      "First name: Toussaint. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A fur trader associated with the Lewis and Clark expedition.",
+    "difficulty": "hard",
+    "category": "explorer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Sacagawea",
+    "normalizedName": "sacagawea",
+    "acceptedAliases": [
+      "Sakakawea"
+    ],
+    "normalizedAliases": [
+      "sakakawea"
+    ],
+    "hints": [
+      "This Indigenous woman became crucial to a famous American expedition.",
+      "She traveled with Lewis and Clark while carrying her infant son.",
+      "Her presence helped signal peaceful intent to many communities.",
+      "She served as guide, interpreter, and symbol of the journey.",
+      "Name: Sacagawea."
+    ],
+    "baseClueFact": "An Indigenous woman associated with the Lewis and Clark expedition.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "Meriwether Lewis",
+    "normalizedName": "meriwether lewis",
+    "acceptedAliases": [
+      "Lewis"
+    ],
+    "normalizedAliases": [
+      "lewis"
+    ],
+    "hints": [
+      "This American explorer led a journey across the continent after a large land purchase.",
+      "He co-led the Corps of Discovery expedition.",
+      "His partner in the mission was William Clark.",
+      "The expedition followed the Louisiana Purchase.",
+      "First name: Meriwether. Last name starts with 'L'."
+    ],
+    "baseClueFact": "An American explorer who co-led the Lewis and Clark expedition.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "William Clark",
+    "normalizedName": "william clark",
+    "acceptedAliases": [
+      "Clark"
+    ],
+    "normalizedAliases": [
+      "clark"
+    ],
+    "hints": [
+      "This American explorer co-led an overland expedition after a huge territorial purchase.",
+      "He journeyed with Meriwether Lewis.",
+      "The expedition mapped routes, peoples, and resources across the West.",
+      "It became known as the Lewis and Clark expedition.",
+      "First name: William. Last name starts with 'C'."
+    ],
+    "baseClueFact": "An American explorer who co-led the Corps of Discovery.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "David Livingstone",
+    "normalizedName": "david livingstone",
+    "acceptedAliases": [
+      "Livingstone"
+    ],
+    "normalizedAliases": [
+      "livingstone"
+    ],
+    "hints": [
+      "This missionary and explorer became associated with central and southern Africa.",
+      "He searched for the source of the Nile and opposed the slave trade.",
+      "His long disappearance prompted a famous journalist to seek him out.",
+      "He is tied to the phrase 'Dr Livingstone, I presume?'",
+      "First name: David. Last name starts with 'L'."
+    ],
+    "baseClueFact": "A missionary-explorer associated with Africa.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Victorian"
+  },
+  {
+    "canonicalName": "Henry Morton Stanley",
+    "normalizedName": "henry morton stanley",
+    "acceptedAliases": [
+      "Stanley"
+    ],
+    "normalizedAliases": [
+      "stanley"
+    ],
+    "hints": [
+      "This journalist and explorer became famous for locating a missing missionary.",
+      "He later helped facilitate colonial ambitions in central Africa.",
+      "He is associated with the phrase 'Dr Livingstone, I presume?'",
+      "His expeditions traced the Congo River.",
+      "First name: Henry. Last name starts with 'S'."
+    ],
+    "baseClueFact": "A journalist-explorer who found David Livingstone.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Victorian"
+  },
+  {
+    "canonicalName": "Roald Amundsen",
+    "normalizedName": "roald amundsen",
+    "acceptedAliases": [
+      "Amundsen"
+    ],
+    "normalizedAliases": [
+      "amundsen"
+    ],
+    "hints": [
+      "This polar explorer achieved one of the great geographic firsts.",
+      "He led the first successful expedition to the South Pole.",
+      "He had earlier navigated the Northwest Passage.",
+      "He beat Robert Falcon Scott to the pole in 1911.",
+      "First name: Roald. Last name starts with 'A'."
+    ],
+    "baseClueFact": "A Norwegian explorer who first reached the South Pole.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Robert Falcon Scott",
+    "normalizedName": "robert falcon scott",
+    "acceptedAliases": [
+      "Scott"
+    ],
+    "normalizedAliases": [
+      "scott"
+    ],
+    "hints": [
+      "This British explorer led a famous Antarctic expedition.",
+      "He reached the South Pole only to find another party had arrived first.",
+      "He and his companions died on the return journey.",
+      "His tragic end became part of British heroic mythology.",
+      "First name: Robert. Last name starts with 'S'."
+    ],
+    "baseClueFact": "A British Antarctic explorer who died returning from the South Pole.",
+    "difficulty": "medium",
+    "category": "explorer",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Ernest Shackleton",
+    "normalizedName": "ernest shackleton",
+    "acceptedAliases": [
+      "Shackleton"
+    ],
+    "normalizedAliases": [
+      "shackleton"
+    ],
+    "hints": [
+      "This explorer never reached the South Pole but became legendary for leadership.",
+      "His ship Endurance was crushed by Antarctic ice.",
+      "He then guided his men through an extraordinary survival ordeal.",
+      "His story is often cited as a model of resilience and command.",
+      "First name: Ernest. Last name starts with 'S'."
+    ],
+    "baseClueFact": "An Antarctic explorer famous for the Endurance expedition.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Amelia Earhart",
+    "normalizedName": "amelia earhart",
+    "acceptedAliases": [
+      "Earhart"
+    ],
+    "normalizedAliases": [
+      "earhart"
+    ],
+    "hints": [
+      "This aviator broke barriers in the air and in public imagination.",
+      "She became the first woman to fly solo across the Atlantic.",
+      "She disappeared during an attempt to fly around the world.",
+      "Her fate remains one of aviation's enduring mysteries.",
+      "First name: Amelia. Last name starts with 'E'."
+    ],
+    "baseClueFact": "An aviator known for solo Atlantic flight and mysterious disappearance.",
+    "difficulty": "easy",
+    "category": "explorer",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Wright Brothers",
+    "normalizedName": "wright brothers",
+    "acceptedAliases": [
+      "Orville and Wilbur Wright",
+      "Orville Wright",
+      "Wilbur Wright"
+    ],
+    "normalizedAliases": [
+      "orville and wilbur wright",
+      "orville wright",
+      "wilbur wright"
+    ],
+    "hints": [
+      "These siblings are associated with a landmark in powered flight.",
+      "They ran a bicycle business before their experiments.",
+      "In 1903 they achieved a successful powered airplane flight at Kitty Hawk.",
+      "Their work transformed transport and warfare.",
+      "First name: Wright. Last name starts with 'B'."
+    ],
+    "baseClueFact": "The brothers credited with the first successful powered airplane flight.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Guglielmo Marconi",
+    "normalizedName": "guglielmo marconi",
+    "acceptedAliases": [
+      "Marconi"
+    ],
+    "normalizedAliases": [
+      "marconi"
+    ],
+    "hints": [
+      "This inventor became central to early wireless communication.",
+      "He worked on radio transmission across increasing distances.",
+      "He helped show that messages could be sent without wires over the sea.",
+      "He later received a Nobel Prize in Physics.",
+      "First name: Guglielmo. Last name starts with 'M'."
+    ],
+    "baseClueFact": "An inventor associated with early radio communication.",
+    "difficulty": "medium",
+    "category": "inventor",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Wilhelm Roentgen",
+    "normalizedName": "wilhelm roentgen",
+    "acceptedAliases": [
+      "Rontgen",
+      "Roentgen"
+    ],
+    "normalizedAliases": [
+      "rontgen",
+      "roentgen"
+    ],
+    "hints": [
+      "This physicist discovered a powerful new kind of radiation in 1895.",
+      "His discovery transformed medicine and imaging.",
+      "The rays first took images of bones inside the body.",
+      "They came to be called X-rays.",
+      "First name: Wilhelm. Last name starts with 'R'."
+    ],
+    "baseClueFact": "The physicist who discovered X-rays.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Niels Bohr",
+    "normalizedName": "niels bohr",
+    "acceptedAliases": [
+      "Bohr"
+    ],
+    "normalizedAliases": [
+      "bohr"
+    ],
+    "hints": [
+      "This physicist developed a landmark early model of the atom.",
+      "He worked on quantum theory and atomic structure.",
+      "His Copenhagen institute became a major center of modern physics.",
+      "He also played a role in wartime scientific efforts and later public debate.",
+      "First name: Niels. Last name starts with 'B'."
+    ],
+    "baseClueFact": "A Danish physicist associated with atomic theory.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Max Planck",
+    "normalizedName": "max planck",
+    "acceptedAliases": [
+      "Planck"
+    ],
+    "normalizedAliases": [
+      "planck"
+    ],
+    "hints": [
+      "This physicist helped launch quantum theory.",
+      "He proposed that energy comes in discrete packets.",
+      "A constant used throughout quantum physics bears his name.",
+      "He received the Nobel Prize in 1918.",
+      "First name: Max. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A German physicist who originated quantum theory.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Erwin Schrödinger",
+    "normalizedName": "erwin schrodinger",
+    "acceptedAliases": [
+      "Schrodinger"
+    ],
+    "normalizedAliases": [
+      "schrodinger"
+    ],
+    "hints": [
+      "This physicist developed a foundational wave equation.",
+      "A famous thought experiment of his involves a cat in a box.",
+      "He was one of the key architects of quantum mechanics.",
+      "He also wrote on life and heredity in What Is Life?",
+      "First name: Erwin. Last name starts with 'S'."
+    ],
+    "baseClueFact": "A physicist known for wave mechanics and the cat thought experiment.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Werner Heisenberg",
+    "normalizedName": "werner heisenberg",
+    "acceptedAliases": [
+      "Heisenberg"
+    ],
+    "normalizedAliases": [
+      "heisenberg"
+    ],
+    "hints": [
+      "This physicist formulated a central principle of quantum mechanics.",
+      "That principle concerns the limits of simultaneous measurement.",
+      "He also contributed matrix mechanics to the new physics.",
+      "He later led Germany's nuclear research during World War II.",
+      "First name: Werner. Last name starts with 'H'."
+    ],
+    "baseClueFact": "A physicist known for the uncertainty principle.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Paul Dirac",
+    "normalizedName": "paul dirac",
+    "acceptedAliases": [
+      "Dirac"
+    ],
+    "normalizedAliases": [
+      "dirac"
+    ],
+    "hints": [
+      "This theorist helped unite quantum mechanics with relativity.",
+      "His equations predicted the existence of antimatter.",
+      "He became known for exceptional austerity of style and speech.",
+      "He was among the great mathematical physicists of the 20th century.",
+      "First name: Paul. Last name starts with 'D'."
+    ],
+    "baseClueFact": "A theoretical physicist whose work predicted antimatter.",
+    "difficulty": "hard",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Enrico Fermi",
+    "normalizedName": "enrico fermi",
+    "acceptedAliases": [
+      "Fermi"
+    ],
+    "normalizedAliases": [
+      "fermi"
+    ],
+    "hints": [
+      "This physicist made major contributions to both theory and experiment.",
+      "He built the first controlled nuclear reactor under a stadium in Chicago.",
+      "His work spanned beta decay, neutrons, and nuclear chain reactions.",
+      "Many scientists called him the last man who knew everything in physics.",
+      "First name: Enrico. Last name starts with 'F'."
+    ],
+    "baseClueFact": "An Italian physicist central to nuclear physics.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Richard Feynman",
+    "normalizedName": "richard feynman",
+    "acceptedAliases": [
+      "Feynman"
+    ],
+    "normalizedAliases": [
+      "feynman"
+    ],
+    "hints": [
+      "This physicist became famous for brilliant explanations and playful style.",
+      "He worked on quantum electrodynamics and Manhattan Project research.",
+      "He later helped explain the Challenger disaster publicly.",
+      "His lectures became classics for generations of students.",
+      "First name: Richard. Last name starts with 'F'."
+    ],
+    "baseClueFact": "An American physicist known for QED and lucid teaching.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "J Robert Oppenheimer",
+    "normalizedName": "j robert oppenheimer",
+    "acceptedAliases": [
+      "Oppenheimer"
+    ],
+    "normalizedAliases": [
+      "oppenheimer"
+    ],
+    "hints": [
+      "This scientist directed the wartime laboratory that built the first atomic bombs.",
+      "He led work at Los Alamos during the Manhattan Project.",
+      "After the war he became a public figure in debates about nuclear ethics.",
+      "He famously quoted the Bhagavad Gita after the first test.",
+      "First name: J. Last name starts with 'O'."
+    ],
+    "baseClueFact": "The scientific director of Los Alamos during the Manhattan Project.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Rosalind Franklin",
+    "normalizedName": "rosalind franklin",
+    "acceptedAliases": [
+      "Franklin"
+    ],
+    "normalizedAliases": [
+      "franklin"
+    ],
+    "hints": [
+      "This scientist produced crucial images for understanding DNA structure.",
+      "She used X-ray diffraction to study molecules.",
+      "A famous image known as Photo 51 became central to the story.",
+      "Her contributions were long under-recognized compared with others.",
+      "First name: Rosalind. Last name starts with 'F'."
+    ],
+    "baseClueFact": "A chemist whose X-ray work helped reveal DNA structure.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "James Watson",
+    "normalizedName": "james watson",
+    "acceptedAliases": [
+      "Watson"
+    ],
+    "normalizedAliases": [
+      "watson"
+    ],
+    "hints": [
+      "This scientist co-described the double-helix structure of DNA.",
+      "He worked with Francis Crick in Cambridge.",
+      "The model drew on key data including X-ray diffraction evidence.",
+      "He later became a controversial public figure.",
+      "First name: James. Last name starts with 'W'."
+    ],
+    "baseClueFact": "A biologist who co-described DNA's double helix.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Francis Crick",
+    "normalizedName": "francis crick",
+    "acceptedAliases": [
+      "Crick"
+    ],
+    "normalizedAliases": [
+      "crick"
+    ],
+    "hints": [
+      "This scientist worked with James Watson on DNA structure.",
+      "He later also contributed to molecular biology and neuroscience.",
+      "He co-proposed the double helix in 1953.",
+      "The 'central dogma' of molecular biology is associated with him.",
+      "First name: Francis. Last name starts with 'C'."
+    ],
+    "baseClueFact": "A scientist who co-described DNA structure and shaped molecular biology.",
+    "difficulty": "medium",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Alan Turing",
+    "normalizedName": "alan turing",
+    "acceptedAliases": [
+      "Turing"
+    ],
+    "normalizedAliases": [
+      "turing"
+    ],
+    "hints": [
+      "This mathematician and codebreaker helped shape computer science.",
+      "He worked at Bletchley Park during World War II.",
+      "He is strongly associated with efforts against the Enigma cipher.",
+      "A test for machine intelligence later took his name.",
+      "First name: Alan. Last name starts with 'T'."
+    ],
+    "baseClueFact": "A mathematician and codebreaker central to computing history.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Grace Hopper",
+    "normalizedName": "grace hopper",
+    "acceptedAliases": [
+      "Hopper"
+    ],
+    "normalizedAliases": [
+      "hopper"
+    ],
+    "hints": [
+      "This computer pioneer also served in the U.S. Navy.",
+      "She promoted machine-independent programming languages.",
+      "She is linked with COBOL and with the popular story of the computer 'bug.'",
+      "She became one of the best-known figures in early software history.",
+      "First name: Grace. Last name starts with 'H'."
+    ],
+    "baseClueFact": "A computer pioneer associated with compilers and COBOL.",
+    "difficulty": "easy",
+    "category": "scientist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Tim Berners-Lee",
+    "normalizedName": "tim berners lee",
+    "acceptedAliases": [
+      "Berners Lee"
+    ],
+    "normalizedAliases": [
+      "berners lee"
+    ],
+    "hints": [
+      "This inventor created a system that transformed global information sharing.",
+      "He worked at CERN around 1990.",
+      "He combined URLs, HTTP, and HTML into the World Wide Web.",
+      "His invention sits on top of the internet rather than being the internet itself.",
+      "First name: Tim. Last name starts with 'B'."
+    ],
+    "baseClueFact": "The inventor of the World Wide Web.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Contemporary"
+  },
+  {
+    "canonicalName": "Steve Jobs",
+    "normalizedName": "steve jobs",
+    "acceptedAliases": [
+      "Jobs"
+    ],
+    "normalizedAliases": [
+      "jobs"
+    ],
+    "hints": [
+      "This entrepreneur became a symbol of design-driven consumer technology.",
+      "He co-founded a famous company in a garage.",
+      "He helped launch products like the Macintosh, iPod, iPhone, and iPad.",
+      "He was also central to the rise of Pixar.",
+      "First name: Steve. Last name starts with 'J'."
+    ],
+    "baseClueFact": "A co-founder of Apple known for influential consumer tech products.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Contemporary"
+  },
+  {
+    "canonicalName": "Bill Gates",
+    "normalizedName": "bill gates",
+    "acceptedAliases": [
+      "Gates"
+    ],
+    "normalizedAliases": [
+      "gates"
+    ],
+    "hints": [
+      "This entrepreneur helped popularize personal-computer software.",
+      "He co-founded Microsoft.",
+      "His company became dominant through operating systems and office software.",
+      "He later became one of the world's best-known philanthropists.",
+      "First name: Bill. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A co-founder of Microsoft and major philanthropist.",
+    "difficulty": "easy",
+    "category": "inventor",
+    "era": "Contemporary"
+  },
+  {
+    "canonicalName": "Nelson Mandela",
+    "normalizedName": "nelson mandela",
+    "acceptedAliases": [
+      "Mandela"
+    ],
+    "normalizedAliases": [
+      "mandela"
+    ],
+    "hints": [
+      "This leader spent decades imprisoned before helping reshape his country.",
+      "He fought apartheid in South Africa.",
+      "He became the nation's first Black president after democratic transition.",
+      "He received the Nobel Peace Prize with F W de Klerk.",
+      "First name: Nelson. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A South African anti-apartheid leader and president.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Desmond Tutu",
+    "normalizedName": "desmond tutu",
+    "acceptedAliases": [
+      "Tutu"
+    ],
+    "normalizedAliases": [
+      "tutu"
+    ],
+    "hints": [
+      "This cleric became a major moral voice against apartheid.",
+      "He was an Anglican archbishop in South Africa.",
+      "He later supported truth and reconciliation efforts after dictatorship.",
+      "He received the Nobel Peace Prize in 1984.",
+      "First name: Desmond. Last name starts with 'T'."
+    ],
+    "baseClueFact": "A South African archbishop and anti-apartheid activist.",
+    "difficulty": "medium",
+    "category": "activist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Mikhail Gorbachev",
+    "normalizedName": "mikhail gorbachev",
+    "acceptedAliases": [
+      "Gorbachev"
+    ],
+    "normalizedAliases": [
+      "gorbachev"
+    ],
+    "hints": [
+      "This Soviet leader introduced reforms that reshaped his state and the Cold War.",
+      "His policies are known as glasnost and perestroika.",
+      "He oversaw the end of communist rule across Eastern Europe.",
+      "He became the last leader of the Soviet Union.",
+      "First name: Mikhail. Last name starts with 'G'."
+    ],
+    "baseClueFact": "The Soviet leader associated with glasnost and perestroika.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Contemporary"
+  },
+  {
+    "canonicalName": "Vladimir Lenin",
+    "normalizedName": "vladimir lenin",
+    "acceptedAliases": [
+      "Lenin"
+    ],
+    "normalizedAliases": [
+      "lenin"
+    ],
+    "hints": [
+      "This revolutionary became the founding leader of a new socialist state.",
+      "He led the Bolsheviks in 1917.",
+      "He withdrew Russia from World War I and fought a civil war.",
+      "His embalmed body became a lasting symbol in Moscow.",
+      "First name: Vladimir. Last name starts with 'L'."
+    ],
+    "baseClueFact": "The Bolshevik leader of the Russian Revolution.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Joseph Stalin",
+    "normalizedName": "joseph stalin",
+    "acceptedAliases": [
+      "Stalin"
+    ],
+    "normalizedAliases": [
+      "stalin"
+    ],
+    "hints": [
+      "This ruler industrialized and terrorized a vast state.",
+      "He consolidated power after Lenin's death.",
+      "His rule included purges, forced collectivization, and wartime leadership.",
+      "The Soviet Union defeated Nazi Germany under his leadership at immense cost.",
+      "First name: Joseph. Last name starts with 'S'."
+    ],
+    "baseClueFact": "The Soviet dictator who ruled through terror and industrialization.",
+    "difficulty": "easy",
+    "category": "ruler",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Winston Churchill",
+    "normalizedName": "winston churchill",
+    "acceptedAliases": [
+      "Churchill"
+    ],
+    "normalizedAliases": [
+      "churchill"
+    ],
+    "hints": [
+      "This British leader is remembered for wartime speeches and defiance.",
+      "He served as prime minister during the Second World War.",
+      "His rhetoric stiffened British resolve during the Blitz.",
+      "He also won the Nobel Prize in Literature.",
+      "First name: Winston. Last name starts with 'C'."
+    ],
+    "baseClueFact": "The British wartime prime minister of World War II.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Franklin D Roosevelt",
+    "normalizedName": "franklin d roosevelt",
+    "acceptedAliases": [
+      "FDR",
+      "Roosevelt"
+    ],
+    "normalizedAliases": [
+      "fdr",
+      "roosevelt"
+    ],
+    "hints": [
+      "This president led the United States through depression and most of World War II.",
+      "He launched the New Deal.",
+      "He was elected to four terms.",
+      "He used radio 'fireside chats' to speak directly to the public.",
+      "First name: Franklin. Last name starts with 'R'."
+    ],
+    "baseClueFact": "The U.S. president of the New Deal and World War II.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Theodore Roosevelt",
+    "normalizedName": "theodore roosevelt",
+    "acceptedAliases": [
+      "Teddy Roosevelt",
+      "Roosevelt"
+    ],
+    "normalizedAliases": [
+      "teddy roosevelt",
+      "roosevelt"
+    ],
+    "hints": [
+      "This president became known for vigor, reform, and expansion of executive power.",
+      "He had earlier been a Rough Rider in the Spanish-American War.",
+      "He pursued trust-busting and conservation.",
+      "He said one should 'speak softly and carry a big stick.'",
+      "First name: Theodore. Last name starts with 'R'."
+    ],
+    "baseClueFact": "An American president known for progressivism and conservation.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "John F Kennedy",
+    "normalizedName": "john f kennedy",
+    "acceptedAliases": [
+      "JFK",
+      "Kennedy"
+    ],
+    "normalizedAliases": [
+      "jfk",
+      "kennedy"
+    ],
+    "hints": [
+      "This president represented a young image of American leadership in the early 1960s.",
+      "His presidency saw the Cuban Missile Crisis and the space race.",
+      "He delivered the line 'Ich bin ein Berliner.'",
+      "He was assassinated in Dallas in 1963.",
+      "First name: John. Last name starts with 'K'."
+    ],
+    "baseClueFact": "The U.S. president assassinated in 1963.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Mao Zedong",
+    "normalizedName": "mao zedong",
+    "acceptedAliases": [
+      "Mao Tse-tung",
+      "Mao"
+    ],
+    "normalizedAliases": [
+      "mao tse tung",
+      "mao"
+    ],
+    "hints": [
+      "This revolutionary leader founded a new state in 1949.",
+      "He led the Chinese Communist Party to victory in civil war.",
+      "His campaigns included the Great Leap Forward and Cultural Revolution.",
+      "His portrait dominates Tiananmen Gate in Beijing.",
+      "First name: Mao. Last name starts with 'Z'."
+    ],
+    "baseClueFact": "The communist leader who founded the People's Republic of China.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Sun Yat-sen",
+    "normalizedName": "sun yat sen",
+    "acceptedAliases": [
+      "Sun Yat Sen"
+    ],
+    "normalizedAliases": [],
+    "hints": [
+      "This revolutionary is often called the father of modern China.",
+      "He helped overthrow the Qing dynasty in 1911.",
+      "His political principles influenced both nationalist and later Chinese politics.",
+      "He became a symbolic founder for the Chinese republic.",
+      "First name: Sun. Last name starts with 'Y'."
+    ],
+    "baseClueFact": "A revolutionary associated with the 1911 Chinese Revolution.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Chiang Kai-shek",
+    "normalizedName": "chiang kai shek",
+    "acceptedAliases": [
+      "Chiang"
+    ],
+    "normalizedAliases": [
+      "chiang"
+    ],
+    "hints": [
+      "This leader headed the Nationalist government in China.",
+      "He fought both warlords and communist rivals.",
+      "After defeat in civil war, his regime relocated to Taiwan.",
+      "He was married to Soong Mei-ling.",
+      "First name: Chiang. Last name starts with 'K'."
+    ],
+    "baseClueFact": "The Nationalist Chinese leader who retreated to Taiwan.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Ho Chi Minh",
+    "normalizedName": "ho chi minh",
+    "acceptedAliases": [
+      "Ho"
+    ],
+    "normalizedAliases": [
+      "ho"
+    ],
+    "hints": [
+      "This revolutionary leader became the symbolic father of modern Vietnam.",
+      "He fought French colonial rule and later became linked with the Vietnam conflict.",
+      "He proclaimed independence in 1945.",
+      "A major city was renamed in his honor after the war.",
+      "First name: Ho. Last name starts with 'M'."
+    ],
+    "baseClueFact": "A Vietnamese revolutionary and founding leader.",
+    "difficulty": "medium",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Mustafa Kemal Ataturk",
+    "normalizedName": "mustafa kemal ataturk",
+    "acceptedAliases": [
+      "Ataturk",
+      "Mustafa Kemal"
+    ],
+    "normalizedAliases": [
+      "ataturk",
+      "mustafa kemal"
+    ],
+    "hints": [
+      "This military officer and statesman founded a republic from imperial collapse.",
+      "He led Turkish resistance after World War I.",
+      "He abolished the sultanate and launched secularizing reforms.",
+      "His surname means 'Father of the Turks.'",
+      "First name: Mustafa. Last name starts with 'A'."
+    ],
+    "baseClueFact": "Founder of modern Turkey.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Che Guevara",
+    "normalizedName": "che guevara",
+    "acceptedAliases": [
+      "Che",
+      "Ernesto Guevara"
+    ],
+    "normalizedAliases": [
+      "che",
+      "ernesto guevara"
+    ],
+    "hints": [
+      "This revolutionary became a global icon of rebellion.",
+      "He fought alongside Fidel Castro in Cuba.",
+      "He later sought to export revolution abroad.",
+      "His image is one of the most reproduced portraits in the world.",
+      "First name: Che. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A Marxist revolutionary associated with Cuba.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Fidel Castro",
+    "normalizedName": "fidel castro",
+    "acceptedAliases": [
+      "Castro"
+    ],
+    "normalizedAliases": [
+      "castro"
+    ],
+    "hints": [
+      "This revolutionary ruled a Caribbean island state for decades.",
+      "He overthrew Batista in 1959.",
+      "His government aligned with the Soviet bloc during the Cold War.",
+      "The Cuban Missile Crisis occurred under his rule.",
+      "First name: Fidel. Last name starts with 'C'."
+    ],
+    "baseClueFact": "The revolutionary leader of Cuba after 1959.",
+    "difficulty": "easy",
+    "category": "leader",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Mahatma Phule",
+    "normalizedName": "mahatma phule",
+    "acceptedAliases": [
+      "Jyotirao Phule",
+      "Jotiba Phule"
+    ],
+    "normalizedAliases": [
+      "jyotirao phule",
+      "jotiba phule"
+    ],
+    "hints": [
+      "This Indian reformer campaigned against caste oppression and for education.",
+      "He and his wife opened schools for girls and marginalized communities.",
+      "He criticized Brahmanical hierarchy and social exclusion.",
+      "He became a foundational anti-caste thinker in 19th-century India.",
+      "First name: Mahatma. Last name starts with 'P'."
+    ],
+    "baseClueFact": "An Indian social reformer who fought caste oppression.",
+    "difficulty": "hard",
+    "category": "activist",
+    "era": "19th Century"
+  },
+  {
+    "canonicalName": "B R Ambedkar",
+    "normalizedName": "b r ambedkar",
+    "acceptedAliases": [
+      "Ambedkar",
+      "Bhimrao Ambedkar"
+    ],
+    "normalizedAliases": [
+      "ambedkar",
+      "bhimrao ambedkar"
+    ],
+    "hints": [
+      "This jurist and thinker fought caste inequality and shaped a nation's constitution.",
+      "He was born into a marginalized community and became a major scholar.",
+      "He chaired the drafting committee of independent India's constitution.",
+      "He later converted to Buddhism with many followers.",
+      "First name: B. Last name starts with 'A'."
+    ],
+    "baseClueFact": "An Indian jurist and anti-caste leader who helped draft the constitution.",
+    "difficulty": "medium",
+    "category": "activist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Rabindranath Tagore",
+    "normalizedName": "rabindranath tagore",
+    "acceptedAliases": [
+      "Tagore"
+    ],
+    "normalizedAliases": [
+      "tagore"
+    ],
+    "hints": [
+      "This Bengali writer became a global literary figure.",
+      "He wrote poetry, songs, novels, and essays.",
+      "He won the Nobel Prize in Literature in 1913.",
+      "He composed songs later adopted as national anthems in more than one country.",
+      "First name: Rabindranath. Last name starts with 'T'."
+    ],
+    "baseClueFact": "A Bengali writer and Nobel laureate.",
+    "difficulty": "medium",
+    "category": "writer",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Pablo Picasso",
+    "normalizedName": "pablo picasso",
+    "acceptedAliases": [
+      "Picasso"
+    ],
+    "normalizedAliases": [
+      "picasso"
+    ],
+    "hints": [
+      "This artist constantly reinvented his style across the 20th century.",
+      "He co-developed Cubism with Georges Braque.",
+      "His antiwar masterpiece Guernica responded to a bombing in Spain.",
+      "His career included Blue, Rose, Cubist, and later phases.",
+      "First name: Pablo. Last name starts with 'P'."
+    ],
+    "baseClueFact": "A Spanish artist associated with Cubism and Guernica.",
+    "difficulty": "easy",
+    "category": "artist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Vincent van Gogh",
+    "normalizedName": "vincent gogh",
+    "acceptedAliases": [
+      "Van Gogh"
+    ],
+    "normalizedAliases": [
+      "gogh"
+    ],
+    "hints": [
+      "This Dutch painter created intensely emotional works in a short career.",
+      "He painted Sunflowers and The Starry Night.",
+      "He sold little in his lifetime and struggled with mental illness.",
+      "A famous story says he mutilated part of his ear.",
+      "First name: Vincent. Last name starts with 'G'."
+    ],
+    "baseClueFact": "A Dutch post-Impressionist painter known for vivid brushwork.",
+    "difficulty": "easy",
+    "category": "artist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Frida Kahlo",
+    "normalizedName": "frida kahlo",
+    "acceptedAliases": [
+      "Kahlo"
+    ],
+    "normalizedAliases": [
+      "kahlo"
+    ],
+    "hints": [
+      "This Mexican artist made herself the subject of powerful self-portraits.",
+      "She suffered lifelong pain after a bus accident.",
+      "Her work explored identity, body, politics, and suffering.",
+      "She was married to muralist Diego Rivera.",
+      "First name: Frida. Last name starts with 'K'."
+    ],
+    "baseClueFact": "A Mexican painter known for self-portraits and symbolic intensity.",
+    "difficulty": "easy",
+    "category": "artist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Diego Rivera",
+    "normalizedName": "diego rivera",
+    "acceptedAliases": [
+      "Rivera"
+    ],
+    "normalizedAliases": [
+      "rivera"
+    ],
+    "hints": [
+      "This artist became famous for large public murals.",
+      "He worked in Mexico and the United States.",
+      "His paintings often celebrated labor, revolution, and Indigenous heritage.",
+      "He was married to Frida Kahlo.",
+      "First name: Diego. Last name starts with 'R'."
+    ],
+    "baseClueFact": "A Mexican muralist associated with public art and politics.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Modern"
+  },
+  {
+    "canonicalName": "Georgia O Keeffe",
+    "normalizedName": "georgia o keeffe",
+    "acceptedAliases": [
+      "O'Keeffe",
+      "Georgia OKeeffe"
+    ],
+    "normalizedAliases": [
+      "o keeffe",
+      "georgia okeeffe"
+    ],
+    "hints": [
+      "This American artist is strongly associated with flowers, bones, and desert landscapes.",
+      "She became a central figure in American modernism.",
+      "She spent many years in New Mexico.",
+      "Her enlarged flower paintings are especially famous.",
+      "First name: Georgia. Last name starts with 'K'."
+    ],
+    "baseClueFact": "An American modernist painter associated with New Mexico.",
+    "difficulty": "medium",
+    "category": "artist",
+    "era": "Modern"
   }
 ]
