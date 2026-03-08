@@ -13,7 +13,8 @@
  *   complete      — Final winner announced; onComplete fires.
  *
  * Human flow:
- *   - Tap an avatar button to submit answer.
+ *   - Tap an avatar button to select a candidate answer.
+ *   - Press the Submit Answer button to confirm and submit the selection.
  *   - If eliminated: spectator mode (watch AI finish) or skip button.
  *
  * AI flow:
@@ -98,31 +99,17 @@ export default function BiographyBlitzComp({
 }: Props) {
   const dispatch = useAppDispatch();
   const bb = useAppSelector((s: RootState) => s.biographyBlitz);
-  // Read game players to resolve the real human player ID (not the string "user").
-  const gamePlayers = useAppSelector((s: RootState) => s.game?.players ?? []);
 
   // --- Resolve human contestant id ---
-  // E) Always use the real Player.id where isUser===true; never fall back to "user".
   const humanId = useMemo(() => {
-    // First preference: explicit isHuman flag from participants prop.
+    // Prefer the explicit isHuman flag from participants prop.
+    // Note: 'user' is the valid, intentional player ID for the human in this codebase.
     const humanPart = participants?.find(p => p.isHuman);
-    if (humanPart && humanPart.id !== 'user') {
+    if (humanPart) {
       return resolveBiographyBlitzHumanContestantId(participantIds, humanPart.id);
     }
-    // Second preference: real player id from game state where isUser === true.
-    const gameStateUser = gamePlayers.find(p => p.isUser);
-    if (gameStateUser && gameStateUser.id && gameStateUser.id !== 'user') {
-      return resolveBiographyBlitzHumanContestantId(participantIds, gameStateUser.id);
-    }
-    // If humanPart exists but its id resolved to "user" (invalid), log an error.
-    if (humanPart) {
-      console.error(
-        '[BiographyBlitz] humanId resolution: isHuman participant id is "user" or unmapped — no valid real ID found.',
-        { humanPartId: humanPart.id, gamePlayers },
-      );
-    }
     return resolveBiographyBlitzHumanContestantId(participantIds, null);
-  }, [participantIds, participants, gamePlayers]);
+  }, [participantIds, participants]);
 
   // A) Local selection state — tapping an avatar sets this; Submit button sends it.
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
@@ -516,7 +503,6 @@ export default function BiographyBlitzComp({
         isEliminated ||
         !isActive ||
         (mode === 'answer' && !humanCanSelect) ||
-        (mode === 'answer' && humanHasSubmitted) ||
         (mode === 'elimination' && !isHumanWinner) ||
         (mode === 'elimination' && !isValidElimTarget) ||
         (mode === 'elimination' && isSpectating);
