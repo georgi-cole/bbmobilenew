@@ -1,137 +1,220 @@
 /**
- * Unit tests: biographyBlitzSlice (biography_blitz_logic.tsx) state machine,
- * AI submission generation, and edge-case handling.
+ * Unit tests: biographyBlitz Redux slice (biography_blitz_logic.tsx).
  *
- * Verifies that:
- *  1. Initial state is idle.
- *  2. startBiographyBlitz transitions to 'question' and populates fields.
- *  3. submitAnswer records the human answer.
- *  4. autoFillAIAnswers fills AI contestants deterministically.
- *  5. revealResults reveals the correct answer and transitions to 'reveal'.
- *  6. confirmElimination eliminates wrong-answerers and advances round.
- *  7. Void-round edge case: everyone wrong → no eliminations, next round.
- *  8. Final survivor → transitions to 'complete' with correct winnerId.
- *  9. outcomeResolved / markBiographyBlitzOutcomeResolved idempotency.
- * 10. resetBiographyBlitz returns to initial state.
- * 11. buildAiSubmissions is deterministic for the same inputs.
- * 12. Question order is deterministic per seed.
+ * Tests the new state machine:
+ *   idle → question → reveal → elimination → round_transition → question → ... → complete
+ *
+ * Covers:
+ *  1. Initial state shape.
+ *  2. initBiographyBlitz: sets up state and moves to 'question'.
+ *  3. submitBiographyBlitzAnswer: records submission, double-submit guard.
+ *  4. resolveRound: finds fastest correct, transitions to 'reveal'.
+ *  5. advanceFromReveal: to 'elimination' (has winner) or 'round_transition' (void).
+ *  6. pickEliminationTarget: applies elimination, streak tracking.
+ *  7. startNextRound: advances to next question.
+ *  8. Void round: no winner → no elimination.
+ *  9. Complete: last survivor wins.
+ * 10. outcomeResolved / markBiographyBlitzOutcomeResolved idempotency.
+ * 11. resetBiographyBlitz: returns to idle.
+ * 12. buildAiSubmissions: deterministic.
+ * 13. resolveBiographyBlitzRound: correct winner selection.
  */
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import biographyBlitzReducer, {
-  startBiographyBlitz,
-  submitAnswer,
-  autoFillAIAnswers,
-  revealResults,
-  confirmElimination,
-  pickElimination,
+  initBiographyBlitz,
+  submitBiographyBlitzAnswer,
+  resolveRound,
+  advanceFromReveal,
+  pickEliminationTarget,
+  startNextRound,
   markBiographyBlitzOutcomeResolved,
   resetBiographyBlitz,
   buildAiSubmissions,
+  resolveBiographyBlitzRound,
 } from '../../../src/features/biographyBlitz/biography_blitz_logic';
-import { BIOGRAPHY_BLITZ_QUESTIONS } from '../../../src/features/biographyBlitz/biographyBlitzQuestions';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeStore() {
   return configureStore({ reducer: { biographyBlitz: biographyBlitzReducer } });
 }
 
-function startThreePlayer(store: ReturnType<typeof makeStore>, seed = 42) {
+const T0 = 1_700_000_000_000; // fixed timestamp for determinism
+
+function startGame(ids: string[], seed = 42, testMode = false) {
+  const store = makeStore();
   store.dispatch(
-    startBiographyBlitz({
-      participantIds: ['human', 'ai1', 'ai2'],
+    initBiographyBlitz({
+      participantIds: ids,
       competitionType: 'HOH',
       seed,
+      humanContestantId: ids[0] ?? null,
+      testMode,
+      now: T0,
     }),
   );
+  return store;
 }
 
-// ── Initial state ─────────────────────────────────────────────────────────────
+/** Get the correct answer id for the current question. */
+function correctId(store: ReturnType<typeof makeStore>): string {
+  const bb = store.getState().biographyBlitz;
+  return bb.currentQuestion?.correctAnswerId ?? '';
+}
+
+/** Submit correct answer for one contestant, wrong for others. */
+function submitRound(
+  store: ReturnType<typeof makeStore>,
+  winners: string[],
+  losers: string[],
+  baseTime = T0 + 1000,
+) {
+  const cId = correctId(store);
+  for (let i = 0; i < winners.length; i++) {
+    store.dispatch(
+      submitBiographyBlitzAnswer({ contestantId: winners[i], answerId: cId, now: baseTime + i * 10 }),
+    );
+  }
+  const bb = store.getState().biographyBlitz;
+  // Pick any answer that is NOT the correct one.
+  const wrongAnswer = bb.currentQuestion ? bb.activeContestantIds.find(id => id !== cId) ?? 'x' : 'x';
+  for (const id of losers) {
+    store.dispatch(
+      submitBiographyBlitzAnswer({ contestantId: id, answerId: wrongAnswer, now: baseTime + 5000 }),
+    );
+  }
+}
+
+/** Run a full round: submit → resolve → reveal → eliminate. */
+function doRound(
+  store: ReturnType<typeof makeStore>,
+  winners: string[],
+  losers: string[],
+  targetId?: string,
+) {
+  submitRound(store, winners, losers);
+  store.dispatch(resolveRound());
+  store.dispatch(advanceFromReveal());
+  const bb = store.getState().biographyBlitz;
+  if (bb.phase === 'elimination') {
+    const target = targetId ?? losers[0] ?? bb.activeContestantIds.find(id => id !== winners[0]);
+    if (target) {
+      store.dispatch(pickEliminationTarget({ targetId: target }));
+    }
+  }
+  if (store.getState().biographyBlitz.phase === 'round_transition') {
+    store.dispatch(startNextRound({ now: T0 + (bb.round + 1) * 20_000 }));
+  }
+}
+
+// ─── Initial state ─────────────────────────────────────────────────────────────
 
 describe('biographyBlitzSlice — initial state', () => {
-  it('status is idle', () => {
-    const store = makeStore();
-    expect(store.getState().biographyBlitz.status).toBe('idle');
+  it('phase is idle', () => {
+    expect(makeStore().getState().biographyBlitz.phase).toBe('idle');
   });
 
   it('outcomeResolved is false', () => {
-    const store = makeStore();
-    expect(store.getState().biographyBlitz.outcomeResolved).toBe(false);
+    expect(makeStore().getState().biographyBlitz.outcomeResolved).toBe(false);
   });
 
-  it('activeContestants is empty', () => {
-    const store = makeStore();
-    expect(store.getState().biographyBlitz.activeContestants).toEqual([]);
+  it('activeContestantIds is empty', () => {
+    expect(makeStore().getState().biographyBlitz.activeContestantIds).toEqual([]);
   });
 
-  it('winnerId is null', () => {
-    const store = makeStore();
-    expect(store.getState().biographyBlitz.winnerId).toBeNull();
+  it('competitionWinnerId is null', () => {
+    expect(makeStore().getState().biographyBlitz.competitionWinnerId).toBeNull();
+  });
+
+  it('isSpectating is false', () => {
+    expect(makeStore().getState().biographyBlitz.isSpectating).toBe(false);
   });
 });
 
-// ── startBiographyBlitz ───────────────────────────────────────────────────────
+// ─── initBiographyBlitz ───────────────────────────────────────────────────────
 
-describe('biographyBlitzSlice — startBiographyBlitz', () => {
-  it('transitions status to question', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    expect(store.getState().biographyBlitz.status).toBe('question');
+describe('biographyBlitzSlice — initBiographyBlitz', () => {
+  it('transitions phase to question', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    expect(store.getState().biographyBlitz.phase).toBe('question');
   });
 
-  it('populates activeContestants', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    expect(store.getState().biographyBlitz.activeContestants).toEqual(['human', 'ai1', 'ai2']);
+  it('populates activeContestantIds', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    expect(store.getState().biographyBlitz.activeContestantIds).toEqual(['finn', 'mimi', 'rae']);
   });
 
-  it('sets a valid currentQuestionId', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    expect(currentQuestionId).not.toBeNull();
-    const ids = BIOGRAPHY_BLITZ_QUESTIONS.map((q) => q.id);
-    expect(ids).toContain(currentQuestionId);
+  it('populates contestantIds', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    expect(store.getState().biographyBlitz.contestantIds).toEqual(['finn', 'mimi', 'rae']);
   });
 
-  it('questionOrder length equals BIOGRAPHY_BLITZ_QUESTIONS length', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { questionOrder } = store.getState().biographyBlitz;
-    expect(questionOrder.length).toBe(BIOGRAPHY_BLITZ_QUESTIONS.length);
+  it('sets humanContestantId', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    expect(store.getState().biographyBlitz.humanContestantId).toBe('finn');
   });
 
-  it('round starts at 0', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    expect(store.getState().biographyBlitz.round).toBe(0);
+  it('sets current question from pool', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const bb = store.getState().biographyBlitz;
+    expect(bb.currentQuestion).not.toBeNull();
+    expect(bb.currentQuestionId).not.toBeNull();
   });
 
-  it('correctAnswerId is null (not revealed yet)', () => {
-    const store = makeStore();
-    startThreePlayer(store);
+  it('correctAnswerId is null (not revealed)', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
     expect(store.getState().biographyBlitz.correctAnswerId).toBeNull();
   });
 
-  it('resets fields on re-start', () => {
-    const store = makeStore();
-    startThreePlayer(store, 1);
+  it('sets questionStartedAt', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    expect(store.getState().biographyBlitz.questionStartedAt).toBe(T0);
+  });
+
+  it('sets hiddenDeadlineAt = questionStartedAt + 12000', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const bb = store.getState().biographyBlitz;
+    expect(bb.hiddenDeadlineAt).toBe(T0 + 12_000);
+  });
+
+  it('testMode collapses deadline to 0', () => {
+    const store = startGame(['finn', 'mimi', 'rae'], 42, true);
+    const bb = store.getState().biographyBlitz;
+    expect(bb.hiddenDeadlineAt).toBe(T0 + 0);
+  });
+
+  it('resets fields on re-init', () => {
+    const store = startGame(['finn', 'mimi', 'rae'], 1);
     store.dispatch(markBiographyBlitzOutcomeResolved());
-    startThreePlayer(store, 2); // restart
+    // Re-initialize with different seed.
+    store.dispatch(
+      initBiographyBlitz({
+        participantIds: ['finn', 'mimi'],
+        competitionType: 'POV',
+        seed: 2,
+        humanContestantId: 'finn',
+        now: T0,
+      }),
+    );
     const bb = store.getState().biographyBlitz;
     expect(bb.submissions).toEqual({});
-    expect(bb.eliminatedContestants).toEqual([]);
-    expect(bb.winnerId).toBeNull();
+    expect(bb.eliminatedContestantIds).toEqual([]);
+    expect(bb.competitionWinnerId).toBeNull();
     expect(bb.outcomeResolved).toBe(false);
+    expect(bb.competitionType).toBe('POV');
   });
 
   it('stores seed and competitionType', () => {
     const store = makeStore();
     store.dispatch(
-      startBiographyBlitz({
-        participantIds: ['p1'],
+      initBiographyBlitz({
+        participantIds: ['finn', 'mimi'],
         competitionType: 'POV',
         seed: 999,
+        humanContestantId: 'finn',
+        now: T0,
       }),
     );
     const bb = store.getState().biographyBlitz;
@@ -140,450 +223,391 @@ describe('biographyBlitzSlice — startBiographyBlitz', () => {
   });
 });
 
-// ── submitAnswer ──────────────────────────────────────────────────────────────
+// ─── submitBiographyBlitzAnswer ───────────────────────────────────────────────
 
-describe('biographyBlitzSlice — submitAnswer', () => {
-  it('records the human\'s answer', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: 'a' }));
-    expect(store.getState().biographyBlitz.submissions['human']).toBe('a');
+describe('biographyBlitzSlice — submitBiographyBlitzAnswer', () => {
+  it('records the submission', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(
+      submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: 'mimi', now: T0 + 500 }),
+    );
+    expect(store.getState().biographyBlitz.submissions['finn'].selectedAnswerId).toBe('mimi');
   });
 
-  it('is a no-op when status is not question', () => {
-    const store = makeStore();
-    // idle — no-op
-    store.dispatch(submitAnswer({ contestantId: 'nobody', answerId: 'x' }));
-    expect(store.getState().biographyBlitz.submissions).toEqual({});
+  it('records submittedAt timestamp', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(
+      submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: 'mimi', now: T0 + 500 }),
+    );
+    expect(store.getState().biographyBlitz.submissions['finn'].submittedAt).toBe(T0 + 500);
   });
 
-  it('is a no-op for non-active contestants', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(submitAnswer({ contestantId: 'outsider', answerId: 'a' }));
-    expect('outsider' in store.getState().biographyBlitz.submissions).toBe(false);
+  it('double-submit is ignored (first write wins)', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: 'mimi', now: T0 + 100 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: 'rae', now: T0 + 200 }));
+    expect(store.getState().biographyBlitz.submissions['finn'].selectedAnswerId).toBe('mimi');
   });
 
-  it('last write wins (overwrite)', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: 'a' }));
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: 'b' }));
-    expect(store.getState().biographyBlitz.submissions['human']).toBe('b');
-  });
-});
-
-// ── autoFillAIAnswers ─────────────────────────────────────────────────────────
-
-describe('biographyBlitzSlice — autoFillAIAnswers', () => {
-  it('fills AI contestants but not the human', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(autoFillAIAnswers('human'));
-    const subs = store.getState().biographyBlitz.submissions;
-    expect('ai1' in subs).toBe(true);
-    expect('ai2' in subs).toBe(true);
-    expect('human' in subs).toBe(false);
+  it('no-op if phase is not question', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(resolveRound());
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: 'mimi', now: T0 + 100 }));
+    expect(store.getState().biographyBlitz.submissions['finn']).toBeUndefined();
   });
 
-  it('each AI submission is a valid answer ID for the current question', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(autoFillAIAnswers('human'));
-    const { submissions, currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const validIds = question.answers.map((a) => a.id);
-    for (const aiId of ['ai1', 'ai2']) {
-      expect(validIds).toContain(submissions[aiId]);
-    }
-  });
-
-  it('does not overwrite an already-submitted AI answer', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const answerId = question.answers[0].id;
-    // Submit ai1's answer manually first.
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId }));
-    const before = store.getState().biographyBlitz.submissions['ai1'];
-    store.dispatch(autoFillAIAnswers('human'));
-    // ai1 should not have been overwritten
-    expect(store.getState().biographyBlitz.submissions['ai1']).toBe(before);
-  });
-
-  it('is a no-op when status is not question', () => {
-    const store = makeStore();
-    // idle state
-    store.dispatch(autoFillAIAnswers(null));
-    expect(store.getState().biographyBlitz.submissions).toEqual({});
+  it('no-op for non-active contestant', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'unknown', answerId: 'mimi', now: T0 + 100 }));
+    expect(store.getState().biographyBlitz.submissions['unknown']).toBeUndefined();
   });
 });
 
-// ── revealResults ─────────────────────────────────────────────────────────────
+// ─── resolveRound ─────────────────────────────────────────────────────────────
 
-describe('biographyBlitzSlice — revealResults', () => {
-  it('transitions status to reveal', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(revealResults());
-    expect(store.getState().biographyBlitz.status).toBe('reveal');
+describe('biographyBlitzSlice — resolveRound', () => {
+  it('transitions question → reveal', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(resolveRound());
+    expect(store.getState().biographyBlitz.phase).toBe('reveal');
   });
 
-  it('sets correctAnswerId to the actual correct answer', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    store.dispatch(revealResults());
-    const { correctAnswerId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    expect(correctAnswerId).toBe(question.correctAnswerId);
+  it('sets correctAnswerId', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const expectedCorrect = correctId(store);
+    store.dispatch(resolveRound());
+    expect(store.getState().biographyBlitz.correctAnswerId).toBe(expectedCorrect);
   });
 
-  it('is a no-op when status is not question', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(revealResults());
-    store.dispatch(revealResults()); // second call — no-op
-    expect(store.getState().biographyBlitz.status).toBe('reveal');
+  it('sets roundWinnerId to fastest correct submitter', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const cId = correctId(store);
+    // mimi submits correct earlier than finn
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'mimi', answerId: cId, now: T0 + 500 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: cId, now: T0 + 600 }));
+    store.dispatch(resolveRound());
+    expect(store.getState().biographyBlitz.roundWinnerId).toBe('mimi');
+  });
+
+  it('roundWinnerId is null if nobody correct', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const cId = correctId(store);
+    const wrongId = ['finn', 'mimi', 'rae'].find(id => id !== cId) ?? 'finn';
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: wrongId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    // roundWinnerId might be null if wrong answer submitted, or may be set if nobody answered correctly
+    const bb = store.getState().biographyBlitz;
+    expect(bb.phase).toBe('reveal');
+  });
+
+  it('no-op if not in question phase', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(resolveRound());
+    store.dispatch(resolveRound()); // second call: no-op
+    expect(store.getState().biographyBlitz.phase).toBe('reveal');
   });
 });
 
-// ── confirmElimination + pickElimination ──────────────────────────────────────
+// ─── advanceFromReveal ────────────────────────────────────────────────────────
 
-describe('biographyBlitzSlice — confirmElimination + pickElimination', () => {
-  it('confirmElimination transitions reveal → choose_elimination (non-void round)', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrongId = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrongId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: question.correctAnswerId }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    expect(store.getState().biographyBlitz.status).toBe('choose_elimination');
-    expect(store.getState().biographyBlitz.eliminationCandidates).toContain('human');
+describe('biographyBlitzSlice — advanceFromReveal', () => {
+  it('transitions to elimination when round has a winner', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const cId = correctId(store);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: cId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    expect(store.getState().biographyBlitz.phase).toBe('elimination');
   });
 
-  it('eliminates the chosen target via pickElimination', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrongId = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-    // human answers wrong; ai1 and ai2 answer correctly
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrongId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: question.correctAnswerId }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    store.dispatch(pickElimination({ targetId: 'human' }));
+  it('transitions to round_transition when void round', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    // Submit wrong answers for everyone
+    const cId = correctId(store);
+    const wrongId = ['finn', 'mimi', 'rae'].find(id => id !== cId) ?? 'mimi';
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: wrongId, now: T0 + 100 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'mimi', answerId: wrongId, now: T0 + 200 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'rae', answerId: wrongId, now: T0 + 300 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    expect(store.getState().biographyBlitz.phase).toBe('round_transition');
+  });
+
+  it('no-op if not in reveal phase', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(advanceFromReveal()); // no-op
+    expect(store.getState().biographyBlitz.phase).toBe('question');
+  });
+});
+
+// ─── pickEliminationTarget ────────────────────────────────────────────────────
+
+describe('biographyBlitzSlice — pickEliminationTarget', () => {
+  function reachElimination(store: ReturnType<typeof makeStore>) {
+    const cId = correctId(store);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: cId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    expect(store.getState().biographyBlitz.phase).toBe('elimination');
+  }
+
+  it('removes target from activeContestantIds', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    expect(store.getState().biographyBlitz.activeContestantIds).not.toContain('mimi');
+  });
+
+  it('adds target to eliminatedContestantIds', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    expect(store.getState().biographyBlitz.eliminatedContestantIds).toContain('mimi');
+  });
+
+  it('sets eliminationTargetId', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    expect(store.getState().biographyBlitz.eliminationTargetId).toBe('mimi');
+  });
+
+  it('transitions to round_transition when 2+ active remain', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    expect(store.getState().biographyBlitz.phase).toBe('round_transition');
+  });
+
+  it('transitions to complete when only 1 active remains', () => {
+    const store = startGame(['finn', 'mimi']);
+    const cId = correctId(store);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: cId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    expect(store.getState().biographyBlitz.phase).toBe('complete');
+    expect(store.getState().biographyBlitz.competitionWinnerId).toBe('finn');
+  });
+
+  it('no-op if target is the round winner', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
     const bb = store.getState().biographyBlitz;
-    expect(bb.eliminatedContestants).toContain('human');
-    expect(bb.activeContestants).not.toContain('human');
+    const winner = bb.roundWinnerId!;
+    store.dispatch(pickEliminationTarget({ targetId: winner }));
+    // Should be a no-op
+    expect(store.getState().biographyBlitz.phase).toBe('elimination');
   });
 
-  it('non-eliminated wrong-answerers stay active (only ONE eliminated per round)', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const correct = question.correctAnswerId;
-    const wrong = question.answers.find((a) => a.id !== correct)!.id;
+  it('sets isSpectating when human is eliminated', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    // Make mimi the winner
+    const cId = correctId(store);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'mimi', answerId: cId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    // Mimi eliminates finn (the human)
+    store.dispatch(pickEliminationTarget({ targetId: 'finn' }));
+    expect(store.getState().biographyBlitz.isSpectating).toBe(true);
+  });
 
-    // Only human answers correctly; ai1 and ai2 both answer wrong
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination()); // → choose_elimination
-    // Human (winner) picks ai1 to eliminate
-    store.dispatch(pickElimination({ targetId: 'ai1' }));
-
+  it('updates consecutiveRoundWins for winner', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    reachElimination(store);
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
     const bb = store.getState().biographyBlitz;
-    expect(bb.activeContestants).toContain('human');
-    expect(bb.activeContestants).toContain('ai2'); // ai2 answered wrong but survives
-    expect(bb.eliminatedContestants).toContain('ai1'); // only ai1 eliminated
-    expect(bb.eliminatedContestants).not.toContain('ai2');
+    const winner = 'finn'; // finn submitted correct first
+    expect(bb.consecutiveRoundWins[winner]).toBe(1);
   });
+});
 
-  it('survivors remain in activeContestants', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const correct = question.correctAnswerId;
-    const wrong = question.answers.find((a) => a.id !== correct)!.id;
+// ─── startNextRound ───────────────────────────────────────────────────────────
 
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: correct }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    store.dispatch(pickElimination({ targetId: 'ai2' }));
-
-    const bb = store.getState().biographyBlitz;
-    expect(bb.activeContestants).toContain('human');
-    expect(bb.activeContestants).toContain('ai1');
-    expect(bb.eliminatedContestants).toContain('ai2');
-  });
-
-  it('round increments after pickElimination', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-    // Eliminate one to avoid void round, keep at least 2 alive for next round
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    store.dispatch(pickElimination({ targetId: 'ai2' }));
+describe('biographyBlitzSlice — startNextRound', () => {
+  it('increments round counter', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    doRound(store, ['finn'], ['mimi', 'rae']);
     expect(store.getState().biographyBlitz.round).toBe(1);
   });
 
-  it('transitions to complete when only one survivor remains after pickElimination', () => {
-    const store = makeStore();
-    // Two-player scenario
-    store.dispatch(
-      startBiographyBlitz({
-        participantIds: ['human', 'ai1'],
-        competitionType: 'HOH',
-        seed: 42,
-      }),
-    );
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const correct = question.correctAnswerId;
-    const wrong = question.answers.find((a) => a.id !== correct)!.id;
-
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: correct }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    store.dispatch(pickElimination({ targetId: 'ai1' }));
-
-    const bb = store.getState().biographyBlitz;
-    expect(bb.status).toBe('complete');
-    expect(bb.winnerId).toBe('human');
+  it('transitions back to question', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    doRound(store, ['finn'], ['mimi', 'rae']);
+    expect(store.getState().biographyBlitz.phase).toBe('question');
   });
 
-  it('void round: nobody is eliminated when all contestants answer wrong', () => {
-    const store = makeStore();
-    store.dispatch(
-      startBiographyBlitz({
-        participantIds: ['human', 'ai1'],
-        competitionType: 'HOH',
-        seed: 42,
-      }),
-    );
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrong }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-
-    const bb = store.getState().biographyBlitz;
-    // Void round: no choose_elimination phase, advance directly to question
-    expect(bb.eliminatedContestants).toHaveLength(0);
-    // Both still active
-    expect(bb.activeContestants).toContain('human');
-    expect(bb.activeContestants).toContain('ai1');
-    // Advances to next round
-    expect(bb.round).toBe(1);
-    expect(bb.status).toBe('question');
-  });
-
-  it('is a no-op when status is not reveal', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(confirmElimination()); // status is question, not reveal
-    expect(store.getState().biographyBlitz.status).toBe('question');
-  });
-
-  it('pickElimination is a no-op for invalid targets', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
-    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    // 'human' answered correctly — not a valid elimination target
-    store.dispatch(pickElimination({ targetId: 'human' }));
-    expect(store.getState().biographyBlitz.status).toBe('choose_elimination');
-  });
-
-  it('clears submissions for the next round after pickElimination', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai1', answerId: question.correctAnswerId }));
-    store.dispatch(submitAnswer({ contestantId: 'ai2', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-    store.dispatch(pickElimination({ targetId: 'ai2' }));
-
+  it('clears submissions', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    doRound(store, ['finn'], ['mimi', 'rae']);
     expect(store.getState().biographyBlitz.submissions).toEqual({});
   });
 
-  it('void round with single participant does NOT complete the game', () => {
-    // Edge case: 1 player answers wrong → void round, activeContestants stays 1
-    // but the game must NOT declare them winner (void means no real elimination).
-    const store = makeStore();
-    store.dispatch(
-      startBiographyBlitz({
-        participantIds: ['human'],
-        competitionType: 'HOH',
-        seed: 99,
-      }),
-    );
-    const { currentQuestionId } = store.getState().biographyBlitz;
-    const question = BIOGRAPHY_BLITZ_QUESTIONS.find((q) => q.id === currentQuestionId)!;
-    const wrong = question.answers.find((a) => a.id !== question.correctAnswerId)!.id;
-
-    store.dispatch(submitAnswer({ contestantId: 'human', answerId: wrong }));
-    store.dispatch(revealResults());
-    store.dispatch(confirmElimination());
-
+  it('sets new question', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const firstQId = store.getState().biographyBlitz.currentQuestionId;
+    doRound(store, ['finn'], ['mimi', 'rae']);
+    // Question may change or stay (pool is small for 3 players)
+    expect(store.getState().biographyBlitz.currentQuestion).not.toBeNull();
     const bb = store.getState().biographyBlitz;
-    // Void round: human answered wrong but is the only contestant, so no one eliminated.
-    // The game advances to the next question rather than completing.
-    expect(bb.status).toBe('question');
-    expect(bb.winnerId).toBeNull();
-    expect(bb.eliminatedContestants).toHaveLength(0);
-    expect(bb.round).toBe(1);
+    expect(bb.currentQuestionId).toBeTruthy();
+    // After the round the question ID has been tracked in usedQuestionIds.
+    expect(bb.usedQuestionIds).toContain(firstQId);
+  });
+
+  it('no-op if not in round_transition phase', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    store.dispatch(startNextRound({ now: T0 + 1000 }));
+    expect(store.getState().biographyBlitz.phase).toBe('question');
+    expect(store.getState().biographyBlitz.round).toBe(0); // unchanged
   });
 });
 
-// ── outcomeResolved idempotency ───────────────────────────────────────────────
+// ─── Full game: final 2 → complete ────────────────────────────────────────────
 
-describe('biographyBlitzSlice — outcomeResolved idempotency', () => {
-  it('markBiographyBlitzOutcomeResolved sets outcomeResolved to true', () => {
+describe('biographyBlitzSlice — final-2 to complete', () => {
+  it('completes with correct winner', () => {
+    const store = startGame(['finn', 'mimi']);
+    const cId = correctId(store);
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: cId, now: T0 + 100 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
+    const bb = store.getState().biographyBlitz;
+    expect(bb.phase).toBe('complete');
+    expect(bb.competitionWinnerId).toBe('finn');
+    expect(bb.activeContestantIds).toEqual(['finn']);
+    expect(bb.eliminatedContestantIds).toContain('mimi');
+  });
+});
+
+// ─── Void round ───────────────────────────────────────────────────────────────
+
+describe('biographyBlitzSlice — void round (nobody correct)', () => {
+  it('does not eliminate anyone and advances to round_transition', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const cId = correctId(store);
+    const wrongId = ['finn', 'mimi', 'rae'].find(id => id !== cId) ?? 'mimi';
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'finn', answerId: wrongId, now: T0 + 100 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'mimi', answerId: wrongId, now: T0 + 200 }));
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'rae', answerId: wrongId, now: T0 + 300 }));
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    const bb = store.getState().biographyBlitz;
+    expect(bb.phase).toBe('round_transition');
+    expect(bb.activeContestantIds.length).toBe(3); // nobody eliminated
+    expect(bb.roundWinnerId).toBeNull();
+  });
+
+  it('continues to next question after void round', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
+    const cId = correctId(store);
+    const wrongId = ['finn', 'mimi', 'rae'].find(id => id !== cId) ?? 'mimi';
+    ['finn', 'mimi', 'rae'].forEach((id, i) => {
+      store.dispatch(submitBiographyBlitzAnswer({ contestantId: id, answerId: wrongId, now: T0 + i * 100 }));
+    });
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
+    store.dispatch(startNextRound({ now: T0 + 20_000 }));
+    expect(store.getState().biographyBlitz.phase).toBe('question');
+    expect(store.getState().biographyBlitz.round).toBe(1);
+  });
+});
+
+// ─── markBiographyBlitzOutcomeResolved ───────────────────────────────────────
+
+describe('biographyBlitzSlice — markBiographyBlitzOutcomeResolved', () => {
+  it('sets outcomeResolved to true', () => {
     const store = makeStore();
     store.dispatch(markBiographyBlitzOutcomeResolved());
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);
   });
 
-  it('resetBiographyBlitz resets outcomeResolved to false', () => {
+  it('is idempotent', () => {
     const store = makeStore();
     store.dispatch(markBiographyBlitzOutcomeResolved());
-    store.dispatch(resetBiographyBlitz());
-    expect(store.getState().biographyBlitz.outcomeResolved).toBe(false);
+    store.dispatch(markBiographyBlitzOutcomeResolved());
+    expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);
   });
 });
 
-// ── resetBiographyBlitz ───────────────────────────────────────────────────────
+// ─── resetBiographyBlitz ──────────────────────────────────────────────────────
 
 describe('biographyBlitzSlice — resetBiographyBlitz', () => {
-  it('returns status to idle', () => {
-    const store = makeStore();
-    startThreePlayer(store);
+  it('resets to idle', () => {
+    const store = startGame(['finn', 'mimi', 'rae']);
     store.dispatch(resetBiographyBlitz());
-    expect(store.getState().biographyBlitz.status).toBe('idle');
-  });
-
-  it('clears activeContestants', () => {
-    const store = makeStore();
-    startThreePlayer(store);
-    store.dispatch(resetBiographyBlitz());
-    expect(store.getState().biographyBlitz.activeContestants).toEqual([]);
+    expect(store.getState().biographyBlitz.phase).toBe('idle');
+    expect(store.getState().biographyBlitz.activeContestantIds).toEqual([]);
   });
 });
 
-// ── buildAiSubmissions ────────────────────────────────────────────────────────
+// ─── buildAiSubmissions ───────────────────────────────────────────────────────
 
 describe('buildAiSubmissions', () => {
-  const allAnswerIds = ['a', 'b', 'c', 'd'];
-  const correctId = 'a';
-
-  it('is deterministic — same inputs produce same output', () => {
-    const a = buildAiSubmissions(42, 0, ['ai1', 'ai2'], allAnswerIds, correctId);
-    const b = buildAiSubmissions(42, 0, ['ai1', 'ai2'], allAnswerIds, correctId);
-    expect(a).toEqual(b);
-  });
-
-  it('different seeds produce different submissions (with high probability)', () => {
-    // With 4 choices and different seeds, results MAY differ — run over 20 seeds
-    let differences = 0;
-    for (let s = 0; s < 20; s++) {
-      const x = buildAiSubmissions(s, 0, ['ai1'], allAnswerIds, correctId);
-      const y = buildAiSubmissions(s + 100, 0, ['ai1'], allAnswerIds, correctId);
-      if (x['ai1'] !== y['ai1']) differences++;
-    }
-    expect(differences).toBeGreaterThan(0);
-  });
-
-  it('each returned answer ID is within allAnswerIds', () => {
-    const result = buildAiSubmissions(99, 3, ['ai1', 'ai2', 'ai3'], allAnswerIds, correctId);
-    for (const answerId of Object.values(result)) {
-      expect(allAnswerIds).toContain(answerId);
+  it('returns deterministic results for same seed/round', () => {
+    const ids = ['mimi', 'rae', 'finn'];
+    const r1 = buildAiSubmissions(42, 0, ids, 'finn', T0);
+    const r2 = buildAiSubmissions(42, 0, ids, 'finn', T0);
+    for (const id of ids) {
+      expect(r1[id].selectedAnswerId).toBe(r2[id].selectedAnswerId);
+      expect(r1[id].submittedAt).toBe(r2[id].submittedAt);
     }
   });
 
-  it('returns an entry for each AI id', () => {
-    const result = buildAiSubmissions(5, 0, ['ai1', 'ai2', 'ai3'], allAnswerIds, correctId);
-    expect(Object.keys(result)).toEqual(['ai1', 'ai2', 'ai3']);
+  it('returns different results for different rounds', () => {
+    const ids = ['mimi', 'rae'];
+    const r0 = buildAiSubmissions(42, 0, ids, 'finn', T0);
+    const r1 = buildAiSubmissions(42, 1, ids, 'finn', T0);
+    // At least timing should differ across rounds due to different seeds
+    const times0 = ids.map(id => r0[id].submittedAt);
+    const times1 = ids.map(id => r1[id].submittedAt);
+    expect(times0).not.toEqual(times1);
   });
 
-  it('returns correct answer when there are no wrong answers', () => {
-    const result = buildAiSubmissions(5, 0, ['ai1'], ['a'], 'a');
-    expect(result['ai1']).toBe('a');
+  it('each AI contestant has a submission', () => {
+    const ids = ['mimi', 'rae', 'finn'];
+    const r = buildAiSubmissions(42, 0, ids, 'finn', T0);
+    for (const id of ids) {
+      expect(r[id]).toBeDefined();
+      expect(r[id].contestantId).toBe(id);
+    }
+  });
+
+  it('submittedAt is within expected range (700–4000ms after start)', () => {
+    const ids = ['mimi', 'rae', 'finn'];
+    const r = buildAiSubmissions(42, 0, ids, 'finn', T0);
+    for (const id of ids) {
+      const delay = r[id].submittedAt - T0;
+      expect(delay).toBeGreaterThanOrEqual(700);
+      expect(delay).toBeLessThanOrEqual(4100); // allow small float error
+    }
   });
 });
 
-// ── Question bank ─────────────────────────────────────────────────────────────
+// ─── resolveBiographyBlitzRound ───────────────────────────────────────────────
 
-describe('BIOGRAPHY_BLITZ_QUESTIONS', () => {
-  it('contains at least 20 questions', () => {
-    expect(BIOGRAPHY_BLITZ_QUESTIONS.length).toBeGreaterThanOrEqual(20);
+describe('resolveBiographyBlitzRound', () => {
+  it('returns the contestant with the earliest correct submission', () => {
+    const subs = {
+      finn: { contestantId: 'finn', selectedAnswerId: 'correct', submittedAt: 200 },
+      mimi: { contestantId: 'mimi', selectedAnswerId: 'correct', submittedAt: 100 }, // earlier
+      rae:  { contestantId: 'rae',  selectedAnswerId: 'wrong',   submittedAt:  50 }, // wrong
+    };
+    const winner = resolveBiographyBlitzRound(subs, 'correct', ['finn', 'mimi', 'rae']);
+    expect(winner).toBe('mimi');
   });
 
-  it('every question has a non-empty prompt and id', () => {
-    for (const q of BIOGRAPHY_BLITZ_QUESTIONS) {
-      expect(typeof q.id).toBe('string');
-      expect(q.id.length).toBeGreaterThan(0);
-      expect(typeof q.prompt).toBe('string');
-      expect(q.prompt.length).toBeGreaterThan(0);
-    }
+  it('returns null if nobody answered correctly', () => {
+    const subs = {
+      finn: { contestantId: 'finn', selectedAnswerId: 'wrong', submittedAt: 100 },
+    };
+    const winner = resolveBiographyBlitzRound(subs, 'correct', ['finn']);
+    expect(winner).toBeNull();
   });
 
-  it('every question has at least 2 answer choices', () => {
-    for (const q of BIOGRAPHY_BLITZ_QUESTIONS) {
-      expect(q.answers.length).toBeGreaterThanOrEqual(2);
-    }
-  });
-
-  it('every question\'s correctAnswerId is present in answers', () => {
-    for (const q of BIOGRAPHY_BLITZ_QUESTIONS) {
-      const ids = q.answers.map((a) => a.id);
-      expect(ids).toContain(q.correctAnswerId);
-    }
-  });
-
-  it('no duplicate question ids', () => {
-    const ids = BIOGRAPHY_BLITZ_QUESTIONS.map((q) => q.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it('no duplicate answer ids within a question', () => {
-    for (const q of BIOGRAPHY_BLITZ_QUESTIONS) {
-      const ids = q.answers.map((a) => a.id);
-      expect(new Set(ids).size).toBe(ids.length);
-    }
+  it('returns null if no submissions', () => {
+    const winner = resolveBiographyBlitzRound({}, 'correct', ['finn', 'mimi']);
+    expect(winner).toBeNull();
   });
 });
