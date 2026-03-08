@@ -407,11 +407,15 @@ export default function FamousFiguresComp({
 
   // ── Reset input state when human advances to next figure ─────────────────
   // Fires on cursor advance (human played ahead) AND on global nextRound.
+  // Only humanCursor needs to be in the dependency array — every other value
+  // we care about (guessInput, inputState, humanAheadHints) is local state
+  // being *set* here, not read, so listing them would create an infinite loop.
   const humanCursor = humanId !== null ? (ff.playerRoundCursor[humanId] ?? 0) : 0;
   useEffect(() => {
     setGuessInput('');
     setInputState('idle');
     setHumanAheadHints(0);
+  // humanCursor is the only trigger needed — see comment above.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [humanCursor]);
 
@@ -576,11 +580,18 @@ export default function FamousFiguresComp({
   // For hints: when ahead of the global round use the local counter so we
   // don't mutate the global hintsRevealed for the ongoing AI round.
   const effectiveHintsRevealed = humanIsAhead ? humanAheadHints : ff.hintsRevealed;
-  const humanCorrect = humanId
-    ? humanCursor > ff.currentRound   // answered ahead
-      ? false                          // currently on next fresh round
-      : (ff.playerCorrect[humanId] ?? false)
-    : false;
+  // humanCorrect: true only if the human has already answered their CURRENT
+  // personal round. When the human is ahead, they are on a fresh round (cursor
+  // has already moved) so correct = false until they answer the new figure.
+  let humanCorrect = false;
+  if (humanId) {
+    if (humanIsAhead) {
+      // Cursor has advanced — human is on a new round not yet answered.
+      humanCorrect = false;
+    } else {
+      humanCorrect = ff.playerCorrect[humanId] ?? false;
+    }
+  }
   const hintsAllRevealed = effectiveHintsRevealed >= 5;
   const canRequestHint =
     ff.status === 'round_active' &&

@@ -259,17 +259,23 @@ function doEndRound(state: FamousFiguresState): void {
       // Prefer the per-player personal round score recorded at guess-time so
       // that players who answered ahead of the global round get the right value.
       const personal = state.playerPersonalRoundScores[id];
-      const roundScore =
-        personal !== undefined && personal[state.currentRound] !== undefined
-          ? personal[state.currentRound]
-          : (() => {
-              const previousTotal = state.playerRoundScores[id].reduce(
-                (sum, value) => sum + value,
-                0,
-              );
-              const currentTotal = state.playerScores[id] ?? 0;
-              return Math.max(0, currentTotal - previousTotal);
-            })();
+      const personalScore =
+        personal !== undefined ? personal[state.currentRound] : undefined;
+
+      let roundScore: number;
+      if (personalScore !== undefined) {
+        // Use the per-player personal score recorded at guess-time — this is
+        // accurate even when the player answered ahead of the global round.
+        roundScore = personalScore;
+      } else {
+        // Fallback: derive from the cumulative score diff.
+        const previousTotal = state.playerRoundScores[id].reduce(
+          (sum, value) => sum + value,
+          0,
+        );
+        const currentTotal = state.playerScores[id] ?? 0;
+        roundScore = Math.max(0, currentTotal - previousTotal);
+      }
       state.playerRoundScores[id].push(roundScore);
     }
   }

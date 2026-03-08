@@ -452,9 +452,7 @@ describe('famousFiguresSlice', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
 
-    // Pre-compute AI submissions for round 0 so finishAllRounds can apply them
     const s0 = getState(store);
-    const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
 
     // PLAYER_A answers all 3 rounds ahead
     for (let r = 0; r < 3; r++) {
@@ -472,8 +470,8 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).winnerId).toBeDefined();
     // PLAYER_A earned points across 3 rounds
     expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
-    // Suppress unused variable warning
-    void fig0;
+    // Silence unused-variable lint (s0 used only to establish initial round reference)
+    expect(s0.currentRound).toBe(0);
   });
 
   it('doEndRound uses playerPersonalRoundScores when available (ahead-answer fix)', () => {
