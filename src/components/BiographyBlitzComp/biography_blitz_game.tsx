@@ -97,48 +97,74 @@ function seededEliminationIdx(seed: number, round: number, candidateCount: numbe
  *  1. localPlayerId  — explicit contestant ID supplied by the parent (highest fidelity).
  *                      Accepted when present in playerMap OR in participantIds (handles
  *                      the race where playerMap is not yet populated for the contestant).
- *  2. sessionUserId  — authoritative account ID from Redux, matched against playerMap
- *                      keys first and participantIds as a fallback.
+ *  2. gameStateUserId — contestant ID derived from state.game.players[].isUser
+ *                      (the canonical game-level mapping; see issue #216).
  *  3. isHuman flag   — contestant explicitly marked isHuman in playerMap
- *                      (set from participantsProp or game slice's isUser flag).
+ *                      (set from participantsProp[].isHuman or game.players[].isUser
+ *                      via playerMap merge — covers participantsProp.isHuman fallback).
+ *  4. propSessionUserId — raw account/session ID passed as a prop.  Used only as
+ *                      a last resort when it literally equals a contestant ID in
+ *                      participantIds.  A generic ID like 'user' will NOT match here
+ *                      unless 'user' is actually a contestant ID.
  *
  * Returns null when no human contestant can be identified (AI-only or
  * pure-spectator context).
  */
 function resolveHumanContestantId(
   playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }>,
-  sessionUserId: string | null,
+  // Step a: explicit contestant ID supplied by the parent — highest fidelity.
   localPlayerId: string | null,
+  // Step b: contestant ID from state.game.players[].isUser — the canonical game-level mapping.
+  // The id field on a game.players entry IS the houseguest/contestant ID (not an account ID).
+  // We prefer this over any raw account/session ID from an external prop.
+  gameStateUserId: string | null,
   participantIds?: string[] | null,
-): string | null {
-  // 1. Explicit localPlayerId override — caller knows the contestant ID directly.
+  // Step d: raw account/session ID from a caller prop.  Used only as last resort.
+  // If other account mapping fields exist on game.players (e.g. accountId), add them here.
+  propSessionUserId?: string | null,
+): { id: string | null; source: string } {
+  // a. Explicit localPlayerId override — caller knows the contestant ID directly.
   //    Prefer a direct hit in playerMap; also accept a value present in participantIds
   //    to handle the case where playerMap has not yet been populated for this contestant.
   if (localPlayerId) {
     if (localPlayerId in playerMap) {
-      return localPlayerId;
+      return { id: localPlayerId, source: 'localPlayerId' };
     }
     if (participantIds && participantIds.includes(localPlayerId)) {
-      return localPlayerId;
+      return { id: localPlayerId, source: 'localPlayerId' };
     }
   }
 
-  // 2. Session user ID matched against the contestant roster.
-  //    Works when the account ID equals the contestant ID (the common case).
-  //    Same two-step check as localPlayerId for the same reason.
-  if (sessionUserId) {
-    if (sessionUserId in playerMap) {
-      return sessionUserId;
+  // b. Canonical game-level mapping: state.game.players[].isUser → contestant ID.
+  //    This is the authoritative source of truth (see issue #216).  The id field on
+  //    game.players entries IS the houseguest/contestant ID — prefer it over any
+  //    raw account/session ID passed via props.
+  if (gameStateUserId) {
+    if (gameStateUserId in playerMap) {
+      return { id: gameStateUserId, source: 'state.game.players.isUser' };
     }
-    if (participantIds && participantIds.includes(sessionUserId)) {
-      return sessionUserId;
+    if (participantIds && participantIds.includes(gameStateUserId)) {
+      return { id: gameStateUserId, source: 'state.game.players.isUser' };
     }
   }
 
-  // 3. Fall back to any contestant explicitly flagged isHuman in the playerMap.
-  //    Covers competitions where account ID ≠ contestant ID and the mapping is
-  //    surfaced via participantsProp[x].isHuman or game.players[x].isUser.
-  return Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
+  // c. isHuman flag in playerMap — covers participantsProp[].isHuman and any
+  //    game.players[].isUser entries already merged into the map.
+  const isHumanEntry = Object.entries(playerMap).find(([, v]) => v.isHuman);
+  if (isHumanEntry) {
+    return { id: isHumanEntry[0], source: 'playerMap.isHuman' };
+  }
+
+  // d. propSessionUserId as last resort — only if it exactly matches a contestant ID.
+  //    This handles the rare case where account ID === contestant ID and no isHuman
+  //    flag was set.  NEVER accept a generic ID like 'user' unless it literally appears
+  //    in participantIds.  If accountId or other mapping fields are added to game.players,
+  //    include them here before this fallback.
+  if (propSessionUserId && participantIds && participantIds.includes(propSessionUserId)) {
+    return { id: propSessionUserId, source: 'propSessionUserId.exactMatch' };
+  }
+
+  return { id: null, source: 'none' };
 }
 
 // ─── Narration ────────────────────────────────────────────────────────────────
@@ -226,7 +252,15 @@ interface Props {
    * houseguest IDs ≠ account IDs).  Takes priority over sessionUserId and the
    * isHuman prop flag during humanContestantId resolution.
    */
-  localPlayerId?: string;
+  localPlayerId?: string | null;
+  /**
+   * Raw account/session user ID from a caller-level auth store (e.g. 'user' from
+   * session state).  Used only as a last resort (step d) when it exactly matches a
+   * contestant ID in participantIds.  The resolver prefers localPlayerId and the
+   * canonical game-state mapping (state.game.players.isUser) over this value.
+   * Backwards-compatible: omitting this prop does not change existing behaviour.
+   */
+  sessionUserId?: string | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -300,6 +334,7 @@ export default function BiographyBlitzComp({
   onComplete,
   testMode: testModeProp = false,
   localPlayerId,
+  sessionUserId: propSessionUserId = null,
 }: Props) {
   const dispatch = useAppDispatch();
   const bb = useAppSelector(
@@ -315,10 +350,12 @@ export default function BiographyBlitzComp({
       ).game?.players ?? [],
   );
 
-  // Authoritative session user id — the player flagged isUser:true in the
-  // game slice.  Passed to resolveHumanContestantId as the second-priority
-  // source when no localPlayerId prop is supplied.
-  const sessionUserId = useAppSelector(
+  // Contestant ID for the human player derived from the canonical game-level mapping:
+  // state.game.players[].isUser.  This is preferred over any raw account/session ID
+  // because game.players[].id IS the houseguest/contestant ID (see issue #216).
+  // Passed to resolveHumanContestantId as step-b source; also encoded into playerMap
+  // via the storePlayers merge below (isHuman: alreadyHuman || !!p.isUser).
+  const gameStateUserId = useAppSelector(
     (s: RootState) =>
       (
         s as RootState & {
@@ -360,15 +397,18 @@ export default function BiographyBlitzComp({
   }, [participantsProp, storePlayers, participantIds.join(',')]);
 
   // Resolve the in-competition contestant ID for the human player.
-  // Uses a three-tier priority: localPlayerId prop → sessionUserId (Redux) → isHuman flag.
-  // participantIds is passed as a fallback so a valid ID present in the roster
-  // but not yet materialized in playerMap is still accepted.
-  // See resolveHumanContestantId above for full rationale.
-  const humanContestantId = resolveHumanContestantId(
+  // Five-tier priority (see resolveHumanContestantId for full rationale):
+  //   a) localPlayerId prop       — explicit contestant ID, highest fidelity
+  //   b) gameStateUserId          — from state.game.players[].isUser (canonical)
+  //   c) playerMap.isHuman flag   — from participantsProp[].isHuman
+  //   d) propSessionUserId        — raw account ID, exact match only (last resort)
+  //   e) null                     — no human found; AI-only / spectator mode
+  const { id: humanContestantId, source: humanContestantIdSource } = resolveHumanContestantId(
     playerMap,
-    sessionUserId,
     localPlayerId ?? null,
+    gameStateUserId,
     participantIds,
+    propSessionUserId,
   );
 
   // Debug-log the resolved humanContestantId and its inputs whenever they change.
@@ -378,17 +418,27 @@ export default function BiographyBlitzComp({
     if (humanContestantId !== null) {
       console.debug('[BiographyBlitz] humanContestantId resolved', {
         humanContestantId,
-        sessionUserId,
+        source: humanContestantIdSource,
+        gameStateUserId,
+        propSessionUserId,
         localPlayerId: localPlayerId ?? null,
+        activeContestants: bb.activeContestants,
+        activeContestantsIncludesGameStateUserId: gameStateUserId
+          ? bb.activeContestants.includes(gameStateUserId)
+          : false,
+        activeContestantsIncludesHumanContestantId: bb.activeContestants.includes(humanContestantId),
+        eliminationCandidates: bb.eliminationCandidates,
       });
     } else {
       console.debug('[BiographyBlitz] humanContestantId could not be resolved — AI-only or spectator', {
-        sessionUserId,
+        gameStateUserId,
+        propSessionUserId,
         localPlayerId: localPlayerId ?? null,
         rosterKeys: Object.keys(playerMap),
+        activeContestants: bb.activeContestants,
       });
     }
-  }, [humanContestantId, sessionUserId, localPlayerId, playerMap]);
+  }, [humanContestantId, humanContestantIdSource, gameStateUserId, propSessionUserId, localPlayerId, playerMap, bb.activeContestants, bb.eliminationCandidates]);
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
@@ -410,6 +460,33 @@ export default function BiographyBlitzComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [participantIds.join(',')],
   );
+
+  // ── Hard safety check: detect bad humanContestantId mappings ─────────────
+  // If humanContestantId is resolved (non-null) but the contestant is neither
+  // active nor eliminated, the mapping is invalid (e.g. an account ID 'user'
+  // was mistakenly accepted as a contestant ID). Log a detailed error and fall
+  // back gracefully — humanIsEliminated will be true (not in activeContestants),
+  // so the spectator banner shows and gameplay actions are disabled.
+  useEffect(() => {
+    if (bb.status === 'idle' || bb.status === 'complete') return;
+    if (humanContestantId === null) return;
+    if (bb.activeContestants.includes(humanContestantId)) return;
+    if (bb.eliminatedContestants.includes(humanContestantId)) return;
+    // Mapping is bad — contestant ID was never part of this game.
+    console.error(
+      '[BiographyBlitz] humanContestantId resolved but not found in activeContestants or eliminatedContestants — treating as spectator',
+      {
+        propSessionUserId,
+        gameStateUserId,
+        humanContestantId,
+        source: humanContestantIdSource,
+        activeContestants: bb.activeContestants,
+        eliminatedContestants: bb.eliminatedContestants,
+        playerMapKeys: Object.keys(playerMap),
+        participantIds,
+      },
+    );
+  }, [bb.status, bb.activeContestants, bb.eliminatedContestants, humanContestantId, humanContestantIdSource, playerMap, participantIds, gameStateUserId, propSessionUserId]);
 
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -657,6 +734,44 @@ export default function BiographyBlitzComp({
     humanContestantId !== null &&
     !humanIsEliminated &&
     bb.roundWinnerIds.includes(humanContestantId);
+
+  // ── QA debug log: question-change snapshot ───────────────────────────────
+  // Logs a snapshot of key IDs and state each time the question or active
+  // contestants change, providing a full picture for QA without per-render noise.
+  useEffect(() => {
+    if (bb.status !== 'question') return;
+    const question = bb.currentQuestionId
+      ? (bb.dynamicQuestions.length > 0 ? bb.dynamicQuestions : BIOGRAPHY_BLITZ_QUESTIONS).find(
+          (q) => q.id === bb.currentQuestionId,
+        ) ?? null
+      : null;
+    const isAvatarMode =
+      bb.dynamicQuestions.length > 0 &&
+      question !== null &&
+      question.answers.some((a) => participantIds.includes(a.id));
+    console.debug('[BiographyBlitz] question snapshot', {
+      humanContestantId,
+      source: humanContestantIdSource,
+      gameStateUserId,
+      propSessionUserId,
+      activeContestants: bb.activeContestants,
+      activeContestantsIncludesHumanContestantId:
+        humanContestantId !== null && bb.activeContestants.includes(humanContestantId),
+      eliminationCandidates: bb.eliminationCandidates,
+      avatarGridAnswerIds: isAvatarMode && question ? question.answers.map((a) => a.id) : [],
+    });
+  }, [
+    bb.status,
+    bb.currentQuestionId,
+    bb.activeContestants,
+    bb.eliminationCandidates,
+    bb.dynamicQuestions,
+    humanContestantId,
+    humanContestantIdSource,
+    gameStateUserId,
+    propSessionUserId,
+    participantIds,
+  ]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
