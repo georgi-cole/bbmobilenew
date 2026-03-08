@@ -13,14 +13,15 @@
  *   complete      — Final winner announced; onComplete fires.
  *
  * Human flow:
- *   - Tap an avatar button to submit answer.
+ *   - Tap an avatar button to select a candidate answer.
+ *   - Press the Submit Answer button to confirm and submit the selection.
  *   - If eliminated: spectator mode (watch AI finish) or skip button.
  *
  * AI flow:
  *   - Auto-submits after 700–4000 ms random delay (capped at deadline).
  *   - If round winner: AI auto-picks elimination target.
  */
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
@@ -46,14 +47,16 @@ import './BiographyBlitzComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
-/** Pause on reveal screen before advancing (ms). */
-const REVEAL_PAUSE_MS = 2_500;
+/** Pause on reveal screen before advancing (ms). Not applied in test mode. */
+const REVEAL_HOLD_MS = 1_800;
+/** Hold after elimination is applied before round_transition/complete (ms). Not applied in test mode. */
+const ELIMINATION_HOLD_MS = 1_500;
+/** Pause on round_transition screen before next question (ms). Not applied in test mode. */
+const ROUND_TRANSITION_HOLD_MS = 900;
 /** Delay before AI auto-picks elimination target (ms). */
 const AI_ELIM_DELAY_MS = 1_800;
 /** Time human has to pick before AI fallback fires (ms). */
 const HUMAN_ELIM_TIMEOUT_MS = 8_000;
-/** Pause on round_transition screen before next question (ms). */
-const ROUND_TRANSITION_MS = 1_200;
 /** Auto-advance delay on winner screen (ms). */
 const WINNER_AUTO_ADVANCE_MS = 2_000;
 /** Spectator AI round completion auto-advance (ms). */
@@ -100,12 +103,18 @@ export default function BiographyBlitzComp({
   // --- Resolve human contestant id ---
   const humanId = useMemo(() => {
     // Prefer the explicit isHuman flag from participants prop.
+    // Note: 'user' is the valid, intentional player ID for the human in this codebase.
     const humanPart = participants?.find(p => p.isHuman);
     if (humanPart) {
       return resolveBiographyBlitzHumanContestantId(participantIds, humanPart.id);
     }
     return resolveBiographyBlitzHumanContestantId(participantIds, null);
   }, [participantIds, participants]);
+
+  // A) Local selection state — tapping an avatar sets this; Submit button sends it.
+  const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
+  // Track whether human has submitted this question (cleared on new round).
+  const [humanSubmitted, setHumanSubmitted] = useState(false);
 
   // --- Refs for timer cleanup ---
   const aiSubmitTimersRef = useRef<number[]>([]);
@@ -191,6 +200,9 @@ export default function BiographyBlitzComp({
 
     // Clear any lingering timers from previous rounds.
     clearAllTimers();
+    // A) Reset local selection state for the new question.
+    setSelectedAnswerId(null);
+    setHumanSubmitted(false);
 
     const correctId = bb.currentQuestion.correctAnswerId;
     const questionStartedAt = bb.questionStartedAt ?? Date.now();
@@ -216,7 +228,7 @@ export default function BiographyBlitzComp({
       aiSubmitTimersRef.current.push(t);
     }
 
-    // --- Hidden deadline: resolve round ---
+    // --- Hidden deadline: resolve round (human with no submit = no answer) ---
     const deadlineDelay = Math.max(0, deadlineAt - now);
     deadlineTimerRef.current = window.setTimeout(() => {
       dispatch(resolveRound());
@@ -241,14 +253,15 @@ export default function BiographyBlitzComp({
     }
   }, [bb.phase, bb.submissions, bb.activeContestantIds, dispatch]);
 
-  // ── 6. Reveal phase: auto-advance after pause ─────────────────────────────
+  // ── 6. Reveal phase: auto-advance after hold (B: pacing delay) ───────────
   useEffect(() => {
     if (bb.phase !== 'reveal') return;
+    const delay = bb.testMode ? 0 : REVEAL_HOLD_MS;
     const t = window.setTimeout(() => {
       dispatch(advanceFromReveal());
-    }, REVEAL_PAUSE_MS);
+    }, delay);
     return () => window.clearTimeout(t);
-  }, [bb.phase, bb.round, dispatch]);
+  }, [bb.phase, bb.round, bb.testMode, dispatch]);
 
   // ── 7. Elimination phase: AI auto-picks, or human timeout fallback ────────
   useEffect(() => {
@@ -262,12 +275,16 @@ export default function BiographyBlitzComp({
     if (!isHumanWinner || bb.isSpectating) {
       // AI picks (or human in spectator mode falls back to AI pick).
       aiElimTimerRef.current = window.setTimeout(() => {
-        const target = chooseBiographyBlitzEliminationTarget(
-          bb.activeContestantIds,
-          winnerId,
-          bb.seed,
-          bb.round,
-        );
+        // C) Defensive: pre-filter valid targets to ensure self-elimination cannot occur.
+        const validTargets = bb.activeContestantIds.filter(id => id !== winnerId);
+        const target = validTargets.length > 0
+          ? chooseBiographyBlitzEliminationTarget(
+              validTargets,
+              winnerId,
+              bb.seed,
+              bb.round,
+            )
+          : null;
         if (target) {
           dispatch(pickEliminationTarget({ targetId: target }));
         }
@@ -275,12 +292,16 @@ export default function BiographyBlitzComp({
     } else {
       // Human is the winner: set a fallback timer so the game doesn't stall.
       humanElimTimerRef.current = window.setTimeout(() => {
-        const target = chooseBiographyBlitzEliminationTarget(
-          bb.activeContestantIds,
-          winnerId,
-          bb.seed,
-          bb.round,
-        );
+        // C) Defensive: pre-filter valid targets to ensure self-elimination cannot occur.
+        const validTargets = bb.activeContestantIds.filter(id => id !== winnerId);
+        const target = validTargets.length > 0
+          ? chooseBiographyBlitzEliminationTarget(
+              validTargets,
+              winnerId,
+              bb.seed,
+              bb.round,
+            )
+          : null;
         if (target) {
           dispatch(pickEliminationTarget({ targetId: target }));
         }
@@ -294,36 +315,61 @@ export default function BiographyBlitzComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bb.phase, bb.round]);
 
-  // ── 8. Round transition: advance to next round ────────────────────────────
+  // ── 8. Round transition: advance to next round (B: pacing delay) ─────────
   useEffect(() => {
     if (bb.phase !== 'round_transition') return;
-    const delay = bb.isSpectating ? SPECTATOR_ADVANCE_MS : ROUND_TRANSITION_MS;
+    // B) After an elimination, hold for ELIMINATION_HOLD_MS so players can see who was removed.
+    // For void rounds (no elimination), use the shorter ROUND_TRANSITION_HOLD_MS.
+    const baseDelay = bb.eliminationTargetId !== null ? ELIMINATION_HOLD_MS : ROUND_TRANSITION_HOLD_MS;
+    const delay = bb.isSpectating
+      ? SPECTATOR_ADVANCE_MS
+      : (bb.testMode ? 0 : baseDelay);
     const t = window.setTimeout(() => {
       dispatch(startNextRound({ now: Date.now() }));
     }, delay);
     return () => window.clearTimeout(t);
-  }, [bb.phase, bb.round, bb.isSpectating, dispatch]);
+  }, [bb.phase, bb.round, bb.isSpectating, bb.testMode, bb.eliminationTargetId, dispatch]);
 
-  // ── Human answer handler ──────────────────────────────────────────────────
-  const handleHumanAnswer = useCallback((answerId: string) => {
+  // ── A) Human avatar tap: just selects, does NOT submit ───────────────────
+  const handleHumanSelect = useCallback((answerId: string) => {
     if (!bb.humanContestantId) return;
     if (bb.phase !== 'question') return;
     if (!bb.activeContestantIds.includes(bb.humanContestantId)) return;
     if (bb.humanContestantId in bb.submissions) return;
+    if (humanSubmitted) return;
     const now = Date.now();
     if (bb.hiddenDeadlineAt !== null && now >= bb.hiddenDeadlineAt) return;
+    setSelectedAnswerId(answerId);
+  }, [bb.phase, bb.humanContestantId, bb.activeContestantIds, bb.submissions, bb.hiddenDeadlineAt, humanSubmitted]);
+
+  // ── A) Human Submit button: sends selected answer ────────────────────────
+  const handleHumanSubmit = useCallback(() => {
+    if (!selectedAnswerId) return;
+    if (!bb.humanContestantId) return;
+    if (bb.phase !== 'question') return;
+    if (!bb.activeContestantIds.includes(bb.humanContestantId)) return;
+    if (bb.humanContestantId in bb.submissions) return;
+    if (humanSubmitted) return;
+    const now = Date.now();
+    if (bb.hiddenDeadlineAt !== null && now >= bb.hiddenDeadlineAt) return;
+    setHumanSubmitted(true);
     dispatch(submitBiographyBlitzAnswer({
       contestantId: bb.humanContestantId,
-      answerId,
+      answerId: selectedAnswerId,
       now,
     }));
-  }, [bb.phase, bb.humanContestantId, bb.activeContestantIds, bb.submissions, bb.hiddenDeadlineAt, dispatch]);
+  }, [selectedAnswerId, bb.phase, bb.humanContestantId, bb.activeContestantIds, bb.submissions, bb.hiddenDeadlineAt, humanSubmitted, dispatch]);
 
   // ── Human elimination pick handler ───────────────────────────────────────
   const handleHumanElimPick = useCallback((targetId: string) => {
     if (bb.phase !== 'elimination') return;
     if (bb.roundWinnerId !== bb.humanContestantId) return;
     if (bb.isSpectating) return;
+    // C) Defensive: prevent self-elimination.
+    if (targetId === bb.roundWinnerId) {
+      console.warn('[BiographyBlitz] Human tried to eliminate themselves — ignored.', { targetId });
+      return;
+    }
     // Cancel the AI fallback timer.
     if (humanElimTimerRef.current !== null) {
       window.clearTimeout(humanElimTimerRef.current);
@@ -350,18 +396,21 @@ export default function BiographyBlitzComp({
 
   const phase = bb.phase;
   const isSpectating = bb.isSpectating;
-  const humanHasSubmitted = bb.humanContestantId !== null
-    && bb.humanContestantId in bb.submissions;
+  const humanHasSubmitted = humanSubmitted || (bb.humanContestantId !== null
+    && bb.humanContestantId in bb.submissions);
 
   const isHumanWinner = bb.phase === 'elimination'
     && bb.roundWinnerId === bb.humanContestantId;
 
-  // Determine if human answer buttons should be enabled.
-  const humanCanAnswer = phase === 'question'
+  // A) Human can tap avatars only when: question phase, not spectating, active, not yet submitted, deadline not passed.
+  const humanCanSelect = phase === 'question'
     && !isSpectating
     && bb.humanContestantId !== null
     && bb.activeContestantIds.includes(bb.humanContestantId)
     && !humanHasSubmitted;
+
+  // A) Submit button is enabled only once an avatar is selected (and not yet submitted).
+  const submitEnabled = humanCanSelect && selectedAnswerId !== null;
 
   if (phase === 'idle') {
     return (
@@ -432,7 +481,10 @@ export default function BiographyBlitzComp({
       const isEliminationTarget = id === bb.eliminationTargetId;
       const isValidElimTarget = mode === 'elimination' && targetSet.has(id);
       const isHuman = id === bb.humanContestantId;
-      const humanSelected = mode === 'answer' && hasSubmitted && isHuman;
+      // A) Human selected state: show selection highlight before submit.
+      const humanIsSelected = mode === 'answer' && isHuman && selectedAnswerId === id && !humanHasSubmitted;
+      // A) After submit, show the submitted answer highlighted.
+      const humanSubmittedThis = mode === 'answer' && isHuman && hasSubmitted;
 
       let tileClass = 'bb-blitz__contestant-btn';
       if (isEliminated) tileClass += ' bb-blitz__contestant-btn--eliminated';
@@ -440,19 +492,23 @@ export default function BiographyBlitzComp({
       if (phase === 'reveal' && isWinner) tileClass += ' bb-blitz__contestant-btn--winner';
       if (phase === 'reveal' && isCorrect && !isWinner) tileClass += ' bb-blitz__contestant-btn--correct';
       if (isEliminationTarget) tileClass += ' bb-blitz__contestant-btn--evicted';
-      if (humanSelected) tileClass += ' bb-blitz__contestant-btn--selected';
+      if (humanIsSelected) tileClass += ' bb-blitz__contestant-btn--selected';
+      if (humanSubmittedThis) tileClass += ' bb-blitz__contestant-btn--selected';
       if (isHuman) tileClass += ' bb-blitz__contestant-btn--you';
 
+      // A) Disable conditions for avatar taps:
+      //    - not in question phase, or human not active, or already submitted, or deadline passed
+      //    - elimination: only valid targets enabled for human winner
       const disabled =
         isEliminated ||
         !isActive ||
-        (mode === 'answer' && !humanCanAnswer) ||
+        (mode === 'answer' && !humanCanSelect) ||
         (mode === 'elimination' && !isHumanWinner) ||
         (mode === 'elimination' && !isValidElimTarget) ||
         (mode === 'elimination' && isSpectating);
 
       const onClick = disabled ? undefined :
-        mode === 'answer' ? () => handleHumanAnswer(id) :
+        mode === 'answer' ? () => handleHumanSelect(id) :
           () => handleHumanElimPick(id);
 
       return (
@@ -478,6 +534,9 @@ export default function BiographyBlitzComp({
           </span>
           {phase === 'question' && hasSubmitted && (
             <span className="bb-blitz__contestant-submitted" aria-label="Submitted">✓</span>
+          )}
+          {humanIsSelected && (
+            <span className="bb-blitz__contestant-selected-indicator" aria-label="Selected">●</span>
           )}
         </button>
       );
@@ -522,7 +581,11 @@ export default function BiographyBlitzComp({
         <div className="bb-blitz__question-card">
           <p className="bb-blitz__question-prompt">{bb.currentQuestion.prompt}</p>
           {phase === 'question' && !humanHasSubmitted && !isSpectating && bb.humanContestantId && bb.activeContestantIds.includes(bb.humanContestantId) && (
-            <p className="bb-blitz__question-hint">Tap the correct houseguest!</p>
+            <p className="bb-blitz__question-hint">
+              {selectedAnswerId
+                ? `Selected: ${getName(selectedAnswerId)} — Press Submit to confirm`
+                : 'Tap the correct houseguest, then press Submit!'}
+            </p>
           )}
           {phase === 'reveal' && bb.correctAnswerId && (
             <p className="bb-blitz__reveal-correct">
@@ -530,6 +593,21 @@ export default function BiographyBlitzComp({
               {bb.roundWinnerId ? ` — ${getName(bb.roundWinnerId)} wins the round!` : ' — Nobody got it!'}
             </p>
           )}
+        </div>
+      )}
+
+      {/* A) Submit Answer button — shown only when human can answer */}
+      {phase === 'question' && humanCanSelect && (
+        <div className="bb-blitz__submit-row">
+          <button
+            type="button"
+            className="bb-blitz__submit-btn"
+            onClick={handleHumanSubmit}
+            disabled={!submitEnabled}
+            aria-label="Submit your answer"
+          >
+            Submit Answer
+          </button>
         </div>
       )}
 
