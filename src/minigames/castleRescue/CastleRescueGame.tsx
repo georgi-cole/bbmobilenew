@@ -41,6 +41,7 @@ import { buildBonusRoom, buildAmbushRoom } from './castleRescueRooms';
 import type { RoomInstance } from './castleRescueRooms';
 import {
   TIME_LIMIT_MS,
+  CORRECT_ROUTE_LENGTH,
   SCORE_ENEMY   as S_ENEMY,
   SCORE_BRICK   as S_BRICK,
   SCORE_COIN    as S_COIN,
@@ -387,10 +388,78 @@ function buildLevel(seed: number): LevelGeom {
 // Wrong-pipe penalties are applied to gs.score as they occur (real-time
 // feedback); they must NOT be subtracted again here to avoid double-counting.
 // Only the rescue bonus and time penalty are applied at finalisation time.
-function computeFinalScore(gs: GameState, elapsedMs: number): number {
+export function computePlatformerFinalScore(gs: { score: number; princessRescued: boolean }, elapsedMs: number): number {
   const rescue      = gs.princessRescued ? RESCUE_BONUS : 0;
   const timePenalty = Math.floor(elapsedMs / 1000) * TIME_PEN;
   return Math.max(0, gs.score + rescue - timePenalty);
+}
+
+// ═══ Pipe entry state mutation ════════════════════════════════════════════════
+/**
+ * Applies the state changes for entering a pipe.  Exported for unit testing.
+ *
+ * Returns:
+ *  'handled'      — state already updated; caller should return from the loop.
+ *  'enter_bonus'  — mark pipe done; caller should set gs.room = buildBonusRoom().
+ *  'enter_ambush' — mark pipe done; caller should set gs.room = buildAmbushRoom().
+ */
+export type PipeEntryResult = 'handled' | 'enter_bonus' | 'enter_ambush';
+
+export function applyPipeEntry(gs: GameState, pipe: Pipe): PipeEntryResult {
+  // Already-used pipe: brief visual feedback, no progression change.
+  if (pipe.done) {
+    gs.pipeFlashType = 'dead';
+    gs.pipeFlashTimer = PIPE_FLASH_MS;
+    gs.phase = 'pipe_flash';
+    return 'handled';
+  }
+
+  if (pipe.pipeType === 'correct') {
+    if (pipe.routeIndex === gs.pipesComplete) {
+      // Correct pipe entered in the right order — advance progression.
+      pipe.done = true;
+      gs.pipesComplete++;
+      gs.pipeFlashType = 'correct';
+      if (gs.pipesComplete >= CORRECT_ROUTE_LENGTH) gs.gateOpen = true;
+    } else {
+      // Correct pipe entered out of order — penalise but do not mark done
+      // (the player must come back and enter it in order later).
+      gs.wrongPipes++;
+      gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
+      gs.pipeFlashType = 'setback';
+    }
+    gs.pipeFlashTimer = PIPE_FLASH_MS;
+    gs.phase = 'pipe_flash';
+    return 'handled';
+  }
+
+  if (pipe.pipeType === 'setback') {
+    // Penalise and mark done to prevent repeated-entry score drain.
+    pipe.done = true;
+    gs.wrongPipes++;
+    gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
+    gs.pipeFlashType = 'setback';
+    gs.pipeFlashTimer = PIPE_FLASH_MS;
+    gs.phase = 'pipe_flash';
+    return 'handled';
+  }
+
+  if (pipe.pipeType === 'bonus') {
+    pipe.done = true;
+    return 'enter_bonus';
+  }
+
+  if (pipe.pipeType === 'ambush') {
+    pipe.done = true;
+    return 'enter_ambush';
+  }
+
+  // dead pipe: brief visual animation only.
+  pipe.done = true;
+  gs.pipeFlashType = 'dead';
+  gs.pipeFlashTimer = PIPE_FLASH_MS;
+  gs.phase = 'pipe_flash';
+  return 'handled';
 }
 
 // ═══ Damage player ════════════════════════════════════════════════════════════
@@ -442,7 +511,7 @@ function updateGame(
   const elapsed = now - gs.startTime;
   if (elapsed >= timeLimitMs) {
     gs.finalElapsedMs = elapsed;
-    gs.finalScore     = computeFinalScore(gs, elapsed);
+    gs.finalScore     = computePlatformerFinalScore(gs, elapsed);
     gs.phase = 'complete';
     return;
   }
@@ -607,58 +676,25 @@ function updateGame(
   // ── Pipe entry (main level) — deliberate down + standing on pipe top ──────
   if (goDown) {
     for (const pipe of geom.pipes) {
-      if (pipe.done) continue; // already used (correct/bonus/ambush/dead all set done)
       if (!tryEnterPipe(
         player.x, player.y, PW, PH,
         player.onGround, player.vy, goDown,
         pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
       )) continue;
 
-      if (pipe.pipeType === 'correct') {
-        if (pipe.routeIndex === gs.pipesComplete) {
-          // Correct pipe entered in the right order
-          pipe.done = true; gs.pipesComplete++;
-          gs.pipeFlashType = 'correct';
-          if (gs.pipesComplete === 3) gs.gateOpen = true;
-        } else {
-          // Correct pipe entered out of order → setback
-          gs.wrongPipes++;
-          gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
-          gs.pipeFlashType = 'setback';
-        }
-        gs.pipeFlashTimer = PIPE_FLASH_MS;
-        gs.phase = 'pipe_flash';
-
-      } else if (pipe.pipeType === 'setback') {
-        // Penalise and teleport to last checkpoint (re-enterable — no done flag)
-        gs.wrongPipes++;
-        gs.score = Math.max(0, gs.score - P_WRONG_PIPE);
-        gs.pipeFlashType = 'setback';
-        gs.pipeFlashTimer = PIPE_FLASH_MS;
-        gs.phase = 'pipe_flash';
-
-      } else if (pipe.pipeType === 'bonus') {
-        // Teleport to the bonus treasure room; mark pipe done (one visit only)
-        pipe.done = true;
+      const result = applyPipeEntry(gs, pipe);
+      if (result === 'enter_bonus') {
+        // Teleport to the bonus treasure room.
         gs.room = buildBonusRoom();
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
         gs.camera = 0;
-
-      } else if (pipe.pipeType === 'ambush') {
-        // Teleport to the ambush trap room; mark pipe done (one visit only)
-        pipe.done = true;
+      } else if (result === 'enter_ambush') {
+        // Teleport to the ambush trap room.
         gs.room = buildAmbushRoom();
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
         gs.camera = 0;
-
-      } else {
-        // dead pipe: brief visual animation, player stays in place, no progress
-        pipe.done = true;
-        gs.pipeFlashType = 'dead';
-        gs.pipeFlashTimer = PIPE_FLASH_MS;
-        gs.phase = 'pipe_flash';
       }
       return;
     }
@@ -670,7 +706,7 @@ function updateGame(
       gs.princessRescued = true;
       const el = now - gs.startTime;
       gs.finalElapsedMs = el;
-      gs.finalScore     = computeFinalScore(gs, el);
+      gs.finalScore     = computePlatformerFinalScore(gs, el);
       gs.phase = 'complete';
       return;
     }
@@ -1419,7 +1455,22 @@ export default function CastleRescueGame({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  const handleReset = useCallback(() => startGame(), [startGame]);
+  const handleContinue = useCallback(() => {
+    if (onFinishRef.current) {
+      // The game loop already called onFinishRef when the run completed
+      // (finishedRef.current === true at that point).  Only call it again here
+      // if that automatic notification somehow did not happen (edge case).
+      if (!finishedRef.current) {
+        try { onFinishRef.current(endStats?.score ?? 0); } catch (err) {
+          console.error('[CastleRescue] Error in onFinish callback:', err);
+        }
+      }
+      // Let the host handle navigation; do not restart locally.
+      return;
+    }
+    // No host callback: restart locally (startGame resets finishedRef).
+    startGame();
+  }, [startGame, endStats]);
 
   // Touch / on-screen control helpers
   const touchPress   = useCallback((code: string) => keysRef.current.add(code),    []);
@@ -1532,7 +1583,9 @@ export default function CastleRescueGame({
               <p style={{ fontSize: 18, fontWeight: 600, color: '#fbbf24', margin: '0 0 12px' }}>
                 Final Score: {endStats.score}
               </p>
-              <button onClick={handleReset} style={btnCss('#1d4ed8')}>🔁 Play Again</button>
+              <button onClick={handleContinue} style={btnCss('#1d4ed8')}>
+                {onFinish ? '▶ Continue' : '🔁 Play Again'}
+              </button>
             </div>
           )}
         </div>
@@ -1598,6 +1651,7 @@ const endOverlayStyle: CSSProperties = {
   borderRadius: 12,
   padding: '18px 28px',
   pointerEvents: 'auto',
+  zIndex: 10,
 };
 
 /** Style for the on-screen touch control buttons (large touch targets). */
@@ -1619,7 +1673,7 @@ function touchBtnCss(bg: string): CSSProperties {
   };
 }
 
-/** Style for action buttons (e.g. "Play Again") — compact, not touch-target sized. */
+/** Style for action buttons (e.g. "Continue" / "Play Again") — compact, not touch-target sized. */
 function btnCss(bg: string): CSSProperties {
   return {
     padding: '10px 24px',
@@ -1630,6 +1684,7 @@ function btnCss(bg: string): CSSProperties {
     fontSize: 15,
     fontWeight: 700,
     cursor: 'pointer',
-    touchAction: 'none',
+    touchAction: 'manipulation',
+    pointerEvents: 'auto',
   };
 }
