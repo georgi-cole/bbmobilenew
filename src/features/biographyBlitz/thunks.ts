@@ -17,7 +17,7 @@ export const resolveBiographyBlitzOutcome =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
     const s = getState();
     const bb = (s as RootState & { biographyBlitz?: BiographyBlitzState }).biographyBlitz;
-    if (!bb || bb.status !== 'complete') return;
+    if (!bb || bb.phase !== 'complete') return;
 
     // Idempotency guard: outcome already resolved — do not dispatch again.
     if (bb.outcomeResolved) {
@@ -25,7 +25,7 @@ export const resolveBiographyBlitzOutcome =
       return;
     }
 
-    const winnerId = bb.winnerId;
+    const winnerId = bb.competitionWinnerId;
     if (!winnerId) return;
 
     const phase = s.game.phase;

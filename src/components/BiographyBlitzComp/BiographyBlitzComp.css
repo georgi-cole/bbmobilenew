@@ -755,3 +755,223 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* ── Answer grid ─────────────────────────────────────────────────────────── */
+
+.bb-blitz__answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* ── Contestant button ───────────────────────────────────────────────────── */
+
+.bb-blitz__contestant-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(160, 100, 255, 0.3);
+  border-radius: 10px;
+  padding: 0.5rem 0.35rem 0.4rem;
+  cursor: pointer;
+  color: #d4aaff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  position: relative;
+}
+.bb-blitz__contestant-btn:not(:disabled):hover {
+  background: rgba(160, 100, 255, 0.18);
+  border-color: #a040ff;
+  transform: scale(1.04);
+}
+.bb-blitz__contestant-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.bb-blitz__contestant-btn--eliminated {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+.bb-blitz__contestant-btn--winner {
+  border-color: #ffd060;
+  background: rgba(255, 208, 96, 0.18);
+  animation: bb-blitz-winner-pulse 0.9s ease-in-out infinite alternate;
+}
+.bb-blitz__contestant-btn--correct {
+  border-color: #50d090;
+  background: rgba(80, 208, 144, 0.12);
+}
+.bb-blitz__contestant-btn--evicted {
+  border-color: #ff4040;
+  background: rgba(255, 64, 64, 0.14);
+  animation: bb-blitz-evict-shake 0.3s ease-in-out;
+}
+.bb-blitz__contestant-btn--selected {
+  border-color: #9060e0;
+  background: rgba(144, 96, 224, 0.22);
+}
+.bb-blitz__contestant-btn--you {
+  border-color: #60b0ff;
+}
+
+.bb-blitz__contestant-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+.bb-blitz__contestant-name {
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  text-align: center;
+}
+.bb-blitz__contestant-submitted {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  color: #50d090;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+/* ── Question card ───────────────────────────────────────────────────────── */
+
+.bb-blitz__question-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(160, 100, 255, 0.3);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+.bb-blitz__question-prompt {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e8d0ff;
+  margin: 0 0 0.4rem;
+}
+.bb-blitz__question-hint {
+  font-size: 0.78rem;
+  color: #a080d0;
+  margin: 0;
+}
+.bb-blitz__reveal-correct {
+  font-size: 0.85rem;
+  color: #80e0b0;
+  margin: 0.4rem 0 0;
+  font-weight: 600;
+}
+
+/* ── Eliminated strip ────────────────────────────────────────────────────── */
+
+.bb-blitz__eliminated-strip {
+  width: 100%;
+  max-width: 600px;
+  font-size: 0.72rem;
+  color: #8060a0;
+  text-align: center;
+  padding: 0.3rem 0;
+}
+.bb-blitz__eliminated-label {
+  font-weight: 700;
+  color: #9060b0;
+}
+.bb-blitz__eliminated-name {
+  display: inline-block;
+  margin: 0 0.25rem;
+}
+
+/* ── Winner screen ───────────────────────────────────────────────────────── */
+
+.bb-blitz__winner-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+}
+.bb-blitz__winner-avatar-wrap {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 3px solid #ffd060;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+.bb-blitz__winner-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bb-blitz__winner-label {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffd060;
+  margin: 0;
+}
+.bb-blitz__winner-sub {
+  font-size: 0.85rem;
+  color: #c0a0d0;
+  margin: 0;
+}
+.bb-blitz__continue-btn {
+  margin-top: 0.5rem;
+  background: #7020c0;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.6rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bb-blitz__continue-btn:hover {
+  background: #8830d8;
+}
+
+/* ── Skip button ─────────────────────────────────────────────────────────── */
+
+.bb-blitz__skip-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(160, 100, 255, 0.4);
+  color: #c0a0d0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: background 0.12s;
+}
+.bb-blitz__skip-btn:hover {
+  background: rgba(160, 100, 255, 0.2);
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes bb-blitz-winner-pulse {
+  from { box-shadow: 0 0 6px rgba(255, 208, 96, 0.4); }
+  to   { box-shadow: 0 0 20px rgba(255, 208, 96, 0.8); }
+}
+
+@keyframes bb-blitz-evict-shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-4px); }
+  75%       { transform: translateX(4px); }
+}
+
+@keyframes bb-blitz-streak-pulse {
+  from { box-shadow: 0 0 4px rgba(255, 200, 0, 0.2); }
+  to   { box-shadow: 0 0 12px rgba(255, 200, 0, 0.5); }
+}
