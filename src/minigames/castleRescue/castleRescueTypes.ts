@@ -6,12 +6,15 @@
  *
  * This file exports two groups of types:
  *
- * 1. **Platformer game types** (primary): Used by the platformer level geometry,
- *    physics engine, and competition integration for the current implementation.
+ * 1. **Platformer game types** (primary): Public data contracts for the
+ *    platformer-style version of Castle Rescue. These describe the shape of
+ *    level geometry, physics-related data, and competition integration as seen
+ *    by callers. Internal runtime structures in the platformer engine may use
+ *    different field names or helper types, with conversion handled elsewhere.
  *
  * 2. **Legacy grid types** (deprecated): Used internally by the grid-based
- *    pipe-selection engine, selectors, and test fixtures.  New code should
- *    prefer the platformer types.
+ *    pipe-selection engine, selectors, and test fixtures. New code should
+ *    prefer the platformer types as the external/public schema.
  */
 
 // ═══════════════════════════════════════════════════════════════════════════════
