@@ -9,6 +9,7 @@ import famousFiguresReducer, {
   nextRound,
   resetFamousFigures,
   markFamousFiguresOutcomeResolved,
+  finishAllRounds,
   FAMOUS_FIGURES,
   getPlayerFigureIndex,
 } from '../../../src/features/famousFigures/famousFiguresSlice';
@@ -341,17 +342,19 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(3);
   });
 
-  it('per-player figure queues are distinct for different player IDs at same seed', () => {
+  it('all players see the same figures (shared matchFigureOrder)', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 42 }));
     const s = getState(store);
+    // matchFigureOrder is shared — all players have the same figure per round.
+    expect(s.matchFigureOrder).toHaveLength(s.totalRounds);
     const queueA = s.playerFigureQueues[PLAYER_A];
     const queueB = s.playerFigureQueues[PLAYER_B];
     expect(queueA).toBeDefined();
     expect(queueB).toBeDefined();
-    // The two queues should differ in at least one position
-    const allSame = queueA!.every((v, i) => v === queueB![i]);
-    expect(allSame).toBe(false);
+    // All queues must be identical to matchFigureOrder
+    expect(queueA).toEqual(s.matchFigureOrder);
+    expect(queueB).toEqual(s.matchFigureOrder);
   });
 
   it('per-player figure queues have length equal to totalRounds', () => {
@@ -390,5 +393,104 @@ describe('famousFiguresSlice', () => {
     expect(s.playerRoundCursor[PLAYER_A]).toBeGreaterThan(s.currentRound);
     // Round must remain active — PLAYER_B hasn't answered
     expect(s.status).toBe('round_active');
+  });
+
+  // ── matchFigureOrder tests ─────────────────────────────────────────────────
+
+  it('matchFigureOrder is populated with totalRounds figures on startFamousFigures', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 99 }));
+    const s = getState(store);
+    expect(s.matchFigureOrder).toHaveLength(s.totalRounds);
+    s.matchFigureOrder.forEach((idx) => {
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(FAMOUS_FIGURES.length);
+    });
+  });
+
+  it('matchFigureOrder is deterministic for the same seed', () => {
+    const store1 = makeStore();
+    const store2 = makeStore();
+    store1.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 77 }));
+    store2.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 77 }));
+    expect(getState(store1).matchFigureOrder).toEqual(getState(store2).matchFigureOrder);
+  });
+
+  it('matchFigureOrder differs for different seeds', () => {
+    const store1 = makeStore();
+    const store2 = makeStore();
+    store1.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 1 }));
+    store2.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'HOH', seed: 999 }));
+    // With high probability two different seeds produce different orderings
+    expect(getState(store1).matchFigureOrder).not.toEqual(getState(store2).matchFigureOrder);
+  });
+
+  it('human can submit for targetRound ahead of currentRound', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
+
+    // PLAYER_A answers round 0 correctly (cursor becomes 1)
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig0.canonicalName }));
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
+    expect(getState(store).status).toBe('round_active'); // PLAYER_B hasn't answered
+
+    // PLAYER_A answers round 1 AHEAD (targetRound=1, global still on 0)
+    const fig1 = FAMOUS_FIGURES[getState(store).matchFigureOrder[1]];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig1.canonicalName, targetRound: 1 }));
+    // Cursor should advance to 2
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(2);
+    // Global round still 0 — PLAYER_B hasn't answered
+    expect(getState(store).currentRound).toBe(0);
+    expect(getState(store).status).toBe('round_active');
+    // Score should include both rounds
+    expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
+  });
+
+  it('finishAllRounds atomically completes remaining rounds and transitions to complete', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+
+    // Pre-compute AI submissions for round 0 so finishAllRounds can apply them
+    const s0 = getState(store);
+    const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
+
+    // PLAYER_A answers all 3 rounds ahead
+    for (let r = 0; r < 3; r++) {
+      const s = getState(store);
+      const fig = FAMOUS_FIGURES[s.matchFigureOrder[r]];
+      store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName, targetRound: r }));
+    }
+    expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(3);
+    // PLAYER_B hasn't answered — global still on round 0
+    expect(getState(store).status).toBe('round_active');
+
+    // Dispatch finishAllRounds — should complete the match
+    store.dispatch(finishAllRounds());
+    expect(getState(store).status).toBe('complete');
+    expect(getState(store).winnerId).toBeDefined();
+    // PLAYER_A earned points across 3 rounds
+    expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
+    // Suppress unused variable warning
+    void fig0;
+  });
+
+  it('doEndRound uses playerPersonalRoundScores when available (ahead-answer fix)', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+
+    // PLAYER_A answers round 0 (earns 10 pts, 0 hints)
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: FAMOUS_FIGURES[s0.matchFigureOrder[0]].canonicalName }));
+    // PLAYER_A answers round 1 AHEAD (earns points based on hintsRevealed=0)
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: FAMOUS_FIGURES[s0.matchFigureOrder[1]].canonicalName, targetRound: 1 }));
+
+    // Global round 0 ends — PLAYER_A's round 0 score should be 10 (not 20)
+    store.dispatch(endRound());
+    const scoreRound0 = getState(store).playerRoundScores[PLAYER_A][0];
+    const personalRound0 = getState(store).playerPersonalRoundScores[PLAYER_A][0];
+    expect(scoreRound0).toBe(personalRound0); // must match personalRoundScores
+    expect(scoreRound0).toBeGreaterThan(0);
   });
 });

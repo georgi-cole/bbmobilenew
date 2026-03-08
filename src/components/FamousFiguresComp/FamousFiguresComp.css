@@ -621,6 +621,17 @@
   cursor: default;
 }
 
+/* "Finish Match" variant — green accent */
+.ff-fastforward-btn--finish {
+  background: linear-gradient(135deg, rgba(0, 210, 120, 0.22) 0%, rgba(0, 170, 80, 0.22) 100%);
+  border-color: rgba(0, 210, 120, 0.6);
+  color: #66ffb2;
+}
+
+.ff-fastforward-btn--finish:hover:not(:disabled) {
+  box-shadow: 0 4px 18px rgba(0, 210, 120, 0.38);
+}
+
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
 .ff-container--loading {
