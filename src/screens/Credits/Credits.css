@@ -5,19 +5,17 @@
   height: 100%;
   background: #000;
   z-index: 1000;
-  touch-action: manipulation;
   overflow: hidden;
   display: flex;
-  align-items: stretch;
-  justify-content: stretch;
+  align-items: center;
+  justify-content: center;
 }
 
-.credits-canvas {
+.credits-video {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   display: block;
-  background: transparent;
-  cursor: pointer;
 }
 
 /* Skip button top-right */
@@ -34,17 +32,6 @@
   border-radius: 6px;
   backdrop-filter: blur(4px);
   cursor: pointer;
-}
-
-/* small hint footer */
-.credits-hint {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  color: rgba(255,255,255,0.7);
-  font-size: 13px;
-  z-index: 1100;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.6);
 }
 
 /* Make sure the Skip button is usable on small screens */
