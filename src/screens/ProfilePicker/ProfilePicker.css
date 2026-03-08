@@ -1,0 +1,278 @@
+/* ProfilePicker */
+
+.profile-picker {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.profile-picker__title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.profile-picker__subtitle {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 20px;
+}
+
+/* Profile list */
+.profile-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.profile-picker__card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(180deg, #0d1728, #091220);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+  position: relative;
+}
+
+.profile-picker__card--active {
+  border-color: rgba(107, 183, 255, 0.45);
+  background: linear-gradient(180deg, #0d1d35, #0b1528);
+}
+
+.profile-picker__avatar {
+  font-size: 2.2rem;
+  line-height: 1;
+  min-width: 44px;
+  text-align: center;
+}
+
+.profile-picker__avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.profile-picker__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-picker__name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-picker__meta {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.profile-picker__badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7b5cff, #6fb7ff);
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.profile-picker__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.profile-picker__btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.profile-picker__btn--select {
+  background: linear-gradient(135deg, #7b5cff, #6fb7ff);
+  color: #fff;
+}
+
+.profile-picker__btn--delete {
+  background: rgba(255, 70, 70, 0.15);
+  color: rgba(255, 100, 100, 0.9);
+  border: 1px solid rgba(255, 70, 70, 0.2);
+}
+
+/* Divider */
+.profile-picker__divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.profile-picker__divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-picker__divider-label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Create new profile form */
+.profile-picker__create {
+  background: linear-gradient(180deg, #0d1728, #091220);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.profile-picker__create-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.profile-picker__input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.profile-picker__input:focus {
+  border-color: rgba(107, 183, 255, 0.4);
+}
+
+.profile-picker__avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.profile-picker__avatar-btn {
+  font-size: 1.5rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.profile-picker__avatar-btn--selected {
+  border-color: rgba(107, 183, 255, 0.6);
+  background: rgba(107, 183, 255, 0.12);
+}
+
+.profile-picker__create-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.profile-picker__btn--create {
+  background: linear-gradient(135deg, #7b5cff, #6fb7ff);
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  border: none;
+  cursor: pointer;
+}
+
+.profile-picker__btn--create:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-picker__btn--cancel {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 9px 14px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+/* Limit notice */
+.profile-picker__limit-notice {
+  background: rgba(255, 180, 60, 0.08);
+  border: 1px solid rgba(255, 180, 60, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: rgba(255, 200, 80, 0.9);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.profile-picker__limit-manage {
+  display: inline-block;
+  margin-top: 6px;
+  font-weight: 700;
+  color: rgba(107, 183, 255, 0.9);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Guest mode section */
+.profile-picker__guest {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.profile-picker__btn--guest {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+.profile-picker__guest-warning {
+  font-size: 0.75rem;
+  color: rgba(255, 200, 80, 0.75);
+  margin-top: 6px;
+}
+
+/* Confirm-switch modal (reuses existing confirm-modal styles) */

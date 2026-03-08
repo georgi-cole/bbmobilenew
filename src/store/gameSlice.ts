@@ -4,11 +4,11 @@ import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession
 import { mulberry32, seededPick, seededPickN } from './rng';
 import { simulateTapRaceAI } from './minigame';
 import HOUSEGUESTS from '../data/houseguests';
-import { loadUserProfile } from './userProfileSlice';
+import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
-import { loadSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence';
+import { loadSeasonArchives } from './archivePersistence';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -46,7 +46,7 @@ const GAME_ROSTER_SIZE = DEFAULT_ROSTER_SIZE;
  * capitalize('You') = 'You' → avatars/You.png.
  */
 function buildUserPlayer(): Player {
-  const profile = loadUserProfile();
+  const profile = loadActiveProfile();
   return {
     id: 'user',
     name: profile.name,
@@ -109,7 +109,7 @@ const initialState: GameState = {
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
-  seasonArchives: loadSeasonArchives(DEFAULT_ARCHIVE_KEY) ?? [],
+  seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
   spectatorActive: null,
 };
 
