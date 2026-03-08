@@ -206,7 +206,7 @@ export default function FamousFiguresComp({
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [guessInput, setGuessInput] = useState('');
-  const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong' | 'duplicate'>('idle');
+  const [inputState, setInputState] = useState<'idle' | 'wrong' | 'duplicate'>('idle');
   const [timerSecs, setTimerSecs] = useState(10);
   /**
    * Success confirmation overlay shown for CONFIRM_MS after a correct human
@@ -493,34 +493,36 @@ export default function FamousFiguresComp({
     dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed, targetRound: humanCursor, timestamp: Date.now() }));
 
     if (correct) {
-      // Compute points locally (same formula as slice) for the overlay display.
-      const hintsForPoints = isAheadRound ? humanAheadHints : ff.hintsRevealed;
-      const pts = (() => {
-        switch (hintsForPoints) {
-          case 0: return 10;
-          case 1: return 9;
-          case 2: return 7;
-          case 3: return 5;
-          case 4: return 3;
-          case 5: return 1;
-          default: return 1;
-        }
-      })();
-      // Cancel any previous pending timer (defensive).
-      if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current);
-      const roundForCursor = humanCursor; // capture before async
       setGuessInput('');
-      setSuccessOverlay({ figureName: localFigure.canonicalName, points: pts });
-      confirmTimerRef.current = setTimeout(() => {
-        confirmTimerRef.current = null;
-        setSuccessOverlay(null);
-        // For the current global round the cursor was NOT advanced in the
-        // reducer; dispatch advancePlayerCursor now so the round can close.
-        if (!isAheadRound) {
+      if (isAheadRound) {
+        // For ahead rounds the cursor already advanced in the reducer — no overlay
+        // shown (spec: overlay only for the current global round). Just clear input.
+        // Nothing else to dispatch; cursor is already at humanCursor+1 in the store.
+      } else {
+        // For the current global round: show the success overlay and dispatch
+        // advancePlayerCursor after CONFIRM_MS so the round can close.
+        // Compute points locally (same formula as slice) for the overlay display.
+        const pts = (() => {
+          switch (ff.hintsRevealed) {
+            case 0: return 10;
+            case 1: return 9;
+            case 2: return 7;
+            case 3: return 5;
+            case 4: return 3;
+            case 5: return 1;
+            default: return 1;
+          }
+        })();
+        // Cancel any previous pending timer (defensive).
+        if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current);
+        const roundForCursor = humanCursor; // capture before async
+        setSuccessOverlay({ figureName: localFigure.canonicalName, points: pts });
+        confirmTimerRef.current = setTimeout(() => {
+          confirmTimerRef.current = null;
+          setSuccessOverlay(null);
           dispatch(advancePlayerCursor({ playerId: humanId, targetRound: roundForCursor }));
-        }
-        // For ahead rounds the cursor already advanced in the reducer; nothing more to do.
-      }, CONFIRM_MS);
+        }, CONFIRM_MS);
+      }
     } else {
       setInputState('wrong');
       // Clear feedback after a moment
@@ -529,7 +531,6 @@ export default function FamousFiguresComp({
   }, [
     humanId,
     humanCursor,
-    humanAheadHints,
     ff.status,
     ff.totalRounds,
     ff.playerRoundCursor,
@@ -825,17 +826,14 @@ export default function FamousFiguresComp({
   // ── Render: round_active ──────────────────────────────────────────────────
   const inputFieldClass = [
     'ff-input-field',
-    inputState === 'correct' ? 'ff-input-field--correct' : '',
     inputState === 'wrong' ? 'ff-input-field--shake' : '',
   ].filter(Boolean).join(' ');
 
   const feedbackMsg =
-    inputState === 'correct' ? '✅ Correct!' :
     inputState === 'wrong' ? '❌ Not quite, try again!' :
     inputState === 'duplicate' ? 'Already guessed that.' : '';
 
   const feedbackClass =
-    inputState === 'correct' ? 'ff-input-feedback ff-input-feedback--correct' :
     inputState === 'wrong' ? 'ff-input-feedback ff-input-feedback--wrong' :
     inputState === 'duplicate' ? 'ff-input-feedback ff-input-feedback--duplicate' :
     'ff-input-feedback';

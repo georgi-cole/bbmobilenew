@@ -500,6 +500,17 @@ const famousFiguresSlice = createSlice({
       const cursor = state.playerRoundCursor[playerId] ?? 0;
       // Idempotency guard: only advance if cursor is at the expected position.
       if (cursor !== targetRound) return;
+
+      // Safety guard: only advance if the player actually has a recorded result
+      // for this round (either playerCorrect for the current round, or a personal
+      // round score entry for ahead rounds). This prevents accidental or stale
+      // dispatches from prematurely closing the round.
+      const hasResultForTargetRound =
+        targetRound === state.currentRound
+          ? !!state.playerCorrect?.[playerId]
+          : state.playerPersonalRoundScores?.[playerId]?.[targetRound] !== undefined;
+      if (!hasResultForTargetRound) return;
+
       state.playerRoundCursor[playerId] = cursor + 1;
 
       // Close the round when every participant's cursor has advanced past
