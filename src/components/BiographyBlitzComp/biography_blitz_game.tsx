@@ -112,11 +112,12 @@ function seededEliminationIdx(seed: number, round: number, candidateCount: numbe
  */
 function resolveHumanContestantId(
   playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }>,
+  // Step a: explicit contestant ID supplied by the parent — highest fidelity.
+  localPlayerId: string | null,
   // Step b: contestant ID from state.game.players[].isUser — the canonical game-level mapping.
   // The id field on a game.players entry IS the houseguest/contestant ID (not an account ID).
   // We prefer this over any raw account/session ID from an external prop.
   gameStateUserId: string | null,
-  localPlayerId: string | null,
   participantIds?: string[] | null,
   // Step d: raw account/session ID from a caller prop.  Used only as last resort.
   // If other account mapping fields exist on game.players (e.g. accountId), add them here.
@@ -404,8 +405,8 @@ export default function BiographyBlitzComp({
   //   e) null                     — no human found; AI-only / spectator mode
   const { id: humanContestantId, source: humanContestantIdSource } = resolveHumanContestantId(
     playerMap,
-    gameStateUserId,
     localPlayerId ?? null,
+    gameStateUserId,
     participantIds,
     propSessionUserId,
   );
@@ -764,10 +765,12 @@ export default function BiographyBlitzComp({
     bb.currentQuestionId,
     bb.activeContestants,
     bb.eliminationCandidates,
+    bb.dynamicQuestions,
     humanContestantId,
     humanContestantIdSource,
     gameStateUserId,
     propSessionUserId,
+    participantIds,
   ]);
 
   // ── Render ────────────────────────────────────────────────────────────────
