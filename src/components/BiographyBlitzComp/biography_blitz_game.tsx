@@ -87,13 +87,18 @@ function seededEliminationIdx(seed: number, round: number, candidateCount: numbe
 /**
  * Resolves the in-competition contestant ID for the human player.
  *
+ * This function is **pure** — it performs no logging.  Callers that want debug
+ * output should log the returned value themselves (e.g. in a `useEffect`).
+ *
  * In competition contexts the session/account user ID can differ from the
  * contestant ID assigned for this specific game (e.g. "houseguest_7" vs
- * "account_abc123").  This resolver tries three sources in priority order:
+ * "account_abc123").  The resolver tries three sources in priority order:
  *
  *  1. localPlayerId  — explicit contestant ID supplied by the parent (highest fidelity).
- *  2. sessionUserId  — authoritative account ID from Redux, matched directly
- *                      against the contestant roster keys in playerMap.
+ *                      Accepted when present in playerMap OR in participantIds (handles
+ *                      the race where playerMap is not yet populated for the contestant).
+ *  2. sessionUserId  — authoritative account ID from Redux, matched against playerMap
+ *                      keys first and participantIds as a fallback.
  *  3. isHuman flag   — contestant explicitly marked isHuman in playerMap
  *                      (set from participantsProp or game slice's isUser flag).
  *
@@ -104,39 +109,36 @@ function resolveHumanContestantId(
   playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }>,
   sessionUserId: string | null,
   localPlayerId: string | null,
+  participantIds?: string[] | null,
 ): string | null {
   // 1. Explicit localPlayerId override — caller knows the contestant ID directly.
-  if (localPlayerId && localPlayerId in playerMap) {
-    console.debug('[BiographyBlitz] humanContestantId resolved from localPlayerId', { localPlayerId });
-    return localPlayerId;
+  //    Prefer a direct hit in playerMap; also accept a value present in participantIds
+  //    to handle the case where playerMap has not yet been populated for this contestant.
+  if (localPlayerId) {
+    if (localPlayerId in playerMap) {
+      return localPlayerId;
+    }
+    if (participantIds && participantIds.includes(localPlayerId)) {
+      return localPlayerId;
+    }
   }
 
-  // 2. Session user ID matched directly against the contestant roster.
+  // 2. Session user ID matched against the contestant roster.
   //    Works when the account ID equals the contestant ID (the common case).
-  if (sessionUserId && sessionUserId in playerMap) {
-    console.debug('[BiographyBlitz] humanContestantId resolved from sessionUserId', { sessionUserId });
-    return sessionUserId;
+  //    Same two-step check as localPlayerId for the same reason.
+  if (sessionUserId) {
+    if (sessionUserId in playerMap) {
+      return sessionUserId;
+    }
+    if (participantIds && participantIds.includes(sessionUserId)) {
+      return sessionUserId;
+    }
   }
 
   // 3. Fall back to any contestant explicitly flagged isHuman in the playerMap.
   //    Covers competitions where account ID ≠ contestant ID and the mapping is
   //    surfaced via participantsProp[x].isHuman or game.players[x].isUser.
-  const fromFlag = Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
-  if (fromFlag !== null) {
-    console.debug('[BiographyBlitz] humanContestantId resolved from isHuman flag', {
-      fromFlag,
-      sessionUserId,
-      localPlayerId,
-    });
-    return fromFlag;
-  }
-
-  console.debug('[BiographyBlitz] humanContestantId could not be resolved — AI-only or spectator', {
-    sessionUserId,
-    localPlayerId,
-    rosterKeys: Object.keys(playerMap),
-  });
-  return null;
+  return Object.entries(playerMap).find(([, v]) => v.isHuman)?.[0] ?? null;
 }
 
 // ─── Narration ────────────────────────────────────────────────────────────────
@@ -359,12 +361,34 @@ export default function BiographyBlitzComp({
 
   // Resolve the in-competition contestant ID for the human player.
   // Uses a three-tier priority: localPlayerId prop → sessionUserId (Redux) → isHuman flag.
+  // participantIds is passed as a fallback so a valid ID present in the roster
+  // but not yet materialized in playerMap is still accepted.
   // See resolveHumanContestantId above for full rationale.
   const humanContestantId = resolveHumanContestantId(
     playerMap,
     sessionUserId,
     localPlayerId ?? null,
+    participantIds,
   );
+
+  // Debug-log the resolved humanContestantId and its inputs whenever they change.
+  // Kept here (not inside the pure resolver) so it fires only on actual changes,
+  // not on every render.
+  useEffect(() => {
+    if (humanContestantId !== null) {
+      console.debug('[BiographyBlitz] humanContestantId resolved', {
+        humanContestantId,
+        sessionUserId,
+        localPlayerId: localPlayerId ?? null,
+      });
+    } else {
+      console.debug('[BiographyBlitz] humanContestantId could not be resolved — AI-only or spectator', {
+        sessionUserId,
+        localPlayerId: localPlayerId ?? null,
+        rosterKeys: Object.keys(playerMap),
+      });
+    }
+  }, [humanContestantId, sessionUserId, localPlayerId, playerMap]);
 
   function displayName(id: string): string {
     return playerMap[id]?.name ?? id;
