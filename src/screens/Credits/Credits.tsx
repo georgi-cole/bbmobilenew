@@ -1,7 +1,7 @@
 /**
  * Credits.tsx
  *
- * Plays the end-credits video (public/assets/endcredtiskq.mp4).
+ * Plays the end-credits video (public/assets/endcreditskq.mp4).
  * Navigates back to '/' when the video ends or the user presses Skip / Esc.
  */
 
@@ -31,10 +31,11 @@ export default function Credits() {
       <video
         ref={videoRef}
         className="credits-video"
-        src="/assets/endcredtiskq.mp4"
+        src={`${import.meta.env.BASE_URL}assets/endcreditskq.mp4`}
         autoPlay
         playsInline
         onEnded={onDone}
+        onError={onDone} /* fallback if the video fails to load */
       />
       <button
         className="credits-skip"
