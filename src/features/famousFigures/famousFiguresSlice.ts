@@ -65,17 +65,18 @@ export interface FamousFiguresState {
    */
   playerFigureQueues: Record<string, number[]>;
   /**
-   * Per-player cursor counting how many personal rounds have been completed
-   * (i.e. how many times the player guessed correctly or their timer expired).
-   * Range: 0…totalRounds. Incremented immediately on a correct guess; used to
-   * show the personal "waiting for others" screen once cursor === totalRounds.
+   * Per-player cursor counting how many personal rounds have been resolved
+   * for that player (answered correctly, or the global round advanced past
+   * them). Range: 0…totalRounds. Incremented on correct guess; also bumped to
+   * `currentRound + 1` when `nextRound` advances so the cursor is always ≥
+   * the upcoming global round.
    */
   playerRoundCursor: Record<string, number>;
   /**
-   * Per-player per-round points earned, recorded immediately on each correct
-   * guess — not deferred to `doEndRound`. Length === number of correct rounds
-   * so far. Used by the waiting screen to display the per-round breakdown
-   * before the global round timer expires.
+   * Per-player per-round points, indexed by round number (0-based).
+   * Written at `playerPersonalRoundScores[id][roundIndex]` immediately on each
+   * correct guess — not deferred to `doEndRound`. Missed rounds default to 0
+   * when read. Used by the waiting screen for the per-round breakdown.
    */
   playerPersonalRoundScores: Record<string, number[]>;
 }
@@ -305,9 +306,6 @@ const famousFiguresSlice = createSlice({
       const { participantIds, competitionType, seed } = action.payload;
       const rng = mulberry32(seed);
       const order = shuffleIndices(rng, FAMOUS_FIGURES.length);
-      // Select exactly totalRounds figures — shared by all players so the
-      // competition is apples-to-apples regardless of who is faster.
-      const matchFigureOrder = order.slice(0, 3);
 
       state.competitionType = competitionType;
       state.status = 'round_active';
@@ -316,6 +314,9 @@ const famousFiguresSlice = createSlice({
       state.totalRounds = 3;
       state.hintsRevealed = 0;
       state.figureOrder = order;
+      // Select exactly totalRounds figures from the shuffle — shared by all
+      // players so the competition is apples-to-apples.
+      const matchFigureOrder = order.slice(0, state.totalRounds);
       state.matchFigureOrder = matchFigureOrder;
       state.seed = seed;
       state.outcomeResolved = false;
@@ -418,8 +419,9 @@ const famousFiguresSlice = createSlice({
         state.playerCorrect[playerId] = false;
       }
 
-      // Guard: player already answered this target round (cursor past it)
-      if ((state.playerRoundCursor[playerId] ?? 0) > targetRound) return;
+      // Guard: enforce monotonic per-player progression — targetRound must be
+      // the player's next unanswered round; this prevents skipping rounds.
+      if (targetRound !== (state.playerRoundCursor[playerId] ?? 0)) return;
 
       const trimmed = guess.trim();
       if (trimmed.length === 0) return;
@@ -449,15 +451,12 @@ const famousFiguresSlice = createSlice({
         state.playerScores[playerId] += points;
         // Record time-to-correct for tiebreaker traceability
         state.playerCorrectTimestamp[playerId] = timestamp ?? Date.now();
-        // Record this round's personal score immediately — not deferred to
-        // doEndRound — so the waiting screen always has a complete breakdown.
+        // Record this round's personal score indexed by targetRound so indices
+        // always match round numbers regardless of order of play.
         if (!state.playerPersonalRoundScores[playerId]) {
           state.playerPersonalRoundScores[playerId] = [];
         }
-        state.playerPersonalRoundScores[playerId] = [
-          ...state.playerPersonalRoundScores[playerId],
-          points,
-        ];
+        state.playerPersonalRoundScores[playerId][targetRound] = points;
         // Advance this player's personal round cursor immediately.
         state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1;
 
@@ -498,12 +497,30 @@ const famousFiguresSlice = createSlice({
       if (state.status !== 'round_reveal') return;
 
       const nextRoundIndex = state.currentRound + 1;
+      const allIds = Object.keys(state.playerScores);
+
+      // Advance cursor for any player whose cursor is still at or behind the
+      // current round (they missed it — didn't answer correctly in time).
+      // This ensures every player's cursor is always ≥ the upcoming round so
+      // they can participate and the monotonic targetRound guard doesn't block them.
+      for (const id of allIds) {
+        const cursor = state.playerRoundCursor[id] ?? 0;
+        if (cursor <= state.currentRound) {
+          // Record 0 for the missed round so the index-based array stays aligned.
+          if (!state.playerPersonalRoundScores[id]) {
+            state.playerPersonalRoundScores[id] = [];
+          }
+          if (state.playerPersonalRoundScores[id][state.currentRound] === undefined) {
+            state.playerPersonalRoundScores[id][state.currentRound] = 0;
+          }
+          state.playerRoundCursor[id] = state.currentRound + 1;
+        }
+      }
 
       if (nextRoundIndex >= state.totalRounds) {
         // All rounds complete — determine winner
         state.status = 'complete';
-        const ids = Object.keys(state.playerScores);
-        state.winnerId = determineWinner(ids, state.playerScores, state.playerRoundScores);
+        state.winnerId = determineWinner(allIds, state.playerScores, state.playerRoundScores);
         return;
       }
 
@@ -578,7 +595,19 @@ const famousFiguresSlice = createSlice({
         for (const id of allIds) {
           // Skip players who already answered this round (cursor past it).
           if ((state.playerRoundCursor[id] ?? 0) > roundIdx) continue;
-          if (!aiSubs[id]) continue; // AI submission was incorrect
+
+          if (!state.playerPersonalRoundScores[id]) {
+            state.playerPersonalRoundScores[id] = [];
+          }
+
+          if (!aiSubs[id]) {
+            // AI submission was incorrect — record 0 for this round.
+            if (state.playerPersonalRoundScores[id][roundIdx] === undefined) {
+              state.playerPersonalRoundScores[id][roundIdx] = 0;
+            }
+            state.playerRoundCursor[id] = (state.playerRoundCursor[id] ?? 0) + 1;
+            continue;
+          }
 
           const fig = FAMOUS_FIGURES[figIdx];
           if (!fig) continue;
@@ -589,13 +618,10 @@ const famousFiguresSlice = createSlice({
           state.correctPlayers = [...state.correctPlayers, id];
           state.playerCorrectTimestamp[id] = Date.now();
 
-          if (!state.playerPersonalRoundScores[id]) {
-            state.playerPersonalRoundScores[id] = [];
-          }
-          state.playerPersonalRoundScores[id] = [
-            ...state.playerPersonalRoundScores[id],
-            points,
-          ];
+          // Store at the specific round index so the array stays aligned even
+          // if earlier rounds were missed (they will already have been filled
+          // with 0 or a valid score from a previous iteration).
+          state.playerPersonalRoundScores[id][roundIdx] = points;
           state.playerRoundCursor[id] = (state.playerRoundCursor[id] ?? 0) + 1;
         }
 
@@ -612,11 +638,9 @@ const famousFiguresSlice = createSlice({
         // (round_reveal → will be transitioned to round_active at top of next iteration)
       }
 
-      // Fallback: if somehow we exit the loop without completing, determine winner now.
-      if (state.status !== 'complete') {
-        state.status = 'complete';
-        state.winnerId = determineWinner(allIds, state.playerScores, state.playerRoundScores);
-      }
+      // Fallback: ensure we always end in complete state.
+      state.status = 'complete';
+      state.winnerId = determineWinner(allIds, state.playerScores, state.playerRoundScores);
     },
 
     /** Idempotency guard — prevents outcome thunk from firing twice. */

@@ -30,7 +30,7 @@ import type {
 import { resolveFamousFiguresOutcome } from '../../features/famousFigures/thunks';
 import { mulberry32 } from '../../store/rng';
 import { getDicebear, resolveAvatar } from '../../utils/avatar';
-import { isAcceptedGuess } from '../../games/famous-figures/fuzzy';
+import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import { getHintText } from '../../games/famous-figures/hints';
 import './FamousFiguresComp.css';
 
@@ -102,14 +102,12 @@ interface ParticipantProp {
 }
 
 /**
- * Metadata attached to each pending AI submission timeout so that the
- * fast-forward handler can reschedule them with a reduced remaining delay.
+ * Metadata attached to each pending AI submission timeout so the cleanup
+ * handler can cancel stale timeouts on round advance or unmount.
  */
 type PendingAiTimeout = {
   /** The underlying setTimeout handle. */
   id: ReturnType<typeof setTimeout>;
-  /** Absolute ms timestamp when the timeout is set to fire. */
-  fireAt: number;
   /** The AI player id to submit a guess for. */
   aiId: string;
   /** Global round index the submission belongs to. */
@@ -203,7 +201,6 @@ export default function FamousFiguresComp({
   const [guessInput, setGuessInput] = useState('');
   const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong' | 'duplicate'>('idle');
   const [timerSecs, setTimerSecs] = useState(10);
-  const [fastForwardUsed, setFastForwardUsed] = useState(false);
   /**
    * Local hint counter for rounds where the human is playing ahead of the
    * global round. Reset to 0 whenever the human's cursor advances.
@@ -229,8 +226,7 @@ export default function FamousFiguresComp({
   // only schedule once per round regardless of how many timer-phase changes
   // occur. Resets when the round advances.
   const aiSubmitScheduledRoundRef = useRef<number>(-1);
-  // Pending AI submission timeouts — each entry carries fireAt metadata so the
-  // fast-forward handler can reschedule with a proportionally shorter delay.
+  // Pending AI submission timeouts — cleared on round advance or unmount.
   const pendingAiTimeoutsRef = useRef<PendingAiTimeout[]>([]);
   // 300 ms debounce for the hint button — prevents rapid clicking from
   // advancing multiple hint stages in one gesture.
@@ -365,7 +361,6 @@ export default function FamousFiguresComp({
       if (ff.playerCorrect[aiId]) continue;
       // Random delay within 2–8 s so the AI doesn't autopilot-close the round.
       const delay = 2000 + Math.random() * 6000;
-      const fireAt = Date.now() + delay;
       const t = setTimeout(() => {
         pendingAiTimeoutsRef.current = pendingAiTimeoutsRef.current.filter((e) => e.id !== t);
         // Bail out if the round ended before the AI's delay elapsed.
@@ -379,7 +374,7 @@ export default function FamousFiguresComp({
         if (!aiFigure) return;
         dispatch(submitPlayerGuess({ playerId: aiId, guess: aiFigure.canonicalName, timestamp: Date.now() }));
       }, delay);
-      pendingAiTimeoutsRef.current.push({ id: t, fireAt, aiId, round });
+      pendingAiTimeoutsRef.current.push({ id: t, aiId, round });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.aiSubmissions, ff.currentRound, ff.status, ff.timerPhase]);
@@ -436,10 +431,15 @@ export default function FamousFiguresComp({
     const trimmed = guessInput.trim();
     if (trimmed.length === 0) return;
 
-    // Local duplicate check for current global round only (to match slice logic)
+    // Local duplicate check for current global round only (to match slice logic).
+    // Use normalizeForMatching so the comparison is case-insensitive and
+    // particle-stripped — consistent with the slice's own duplicate guard.
     const isAheadRound = humanCursor > ff.currentRound;
     if (!isAheadRound) {
-      const alreadyGuessed = (ff.playerGuesses[humanId] ?? []).includes(trimmed);
+      const normalizedTrimmed = normalizeForMatching(trimmed);
+      const alreadyGuessed = (ff.playerGuesses[humanId] ?? []).some(
+        (g) => normalizeForMatching(g) === normalizedTrimmed,
+      );
       if (alreadyGuessed) {
         setInputState('duplicate');
         return;
@@ -516,42 +516,6 @@ export default function FamousFiguresComp({
     dispatch(revealNextHint());
   }, [ff.status, ff.hintsRevealed, ff.currentRound, humanCursor, humanAheadHints, dispatch]);
 
-  // Fast-forward pending AI submissions by 3×.
-  // Cancels all outstanding AI timeouts and reschedules each one with the
-  // remaining delay divided by 3 so AIs resolve roughly three times faster.
-  const handleFastForwardAi = useCallback(() => {
-    const multiplier = 3;
-    // Minimum delay after rescheduling — avoids scheduling 0ms timeouts for
-    // timeouts that have already elapsed (they would still fire but all in one
-    // synchronous batch, causing visual jank).
-    const MIN_RESCHEDULE_MS = 50;
-    const now = Date.now();
-    // Snapshot and clear the list atomically before rescheduling so that the
-    // cleanup effect running on the same tick cannot double-clear entries.
-    const entries = [...pendingAiTimeoutsRef.current];
-    pendingAiTimeoutsRef.current = [];
-    setFastForwardUsed(true);
-    for (const entry of entries) {
-      clearTimeout(entry.id);
-      const remaining = Math.max(0, entry.fireAt - now);
-      const newDelay = Math.max(MIN_RESCHEDULE_MS, Math.ceil(remaining / multiplier));
-      const newFireAt = now + newDelay;
-      const { aiId, round } = entry;
-      const t = setTimeout(() => {
-        pendingAiTimeoutsRef.current = pendingAiTimeoutsRef.current.filter((e) => e.id !== t);
-        const current = ffRef.current;
-        if (current.status !== 'round_active') return;
-        if (current.currentRound !== round) return;
-        if (current.playerCorrect[aiId]) return;
-        const aiFigIdx = getPlayerFigureIndex(current, aiId, round);
-        const aiFigure = FAMOUS_FIGURES[aiFigIdx];
-        if (!aiFigure) return;
-        dispatch(submitPlayerGuess({ playerId: aiId, guess: aiFigure.canonicalName, timestamp: Date.now() }));
-      }, newDelay);
-      pendingAiTimeoutsRef.current.push({ id: t, fireAt: newFireAt, aiId, round });
-    }
-  }, [dispatch]);
-
   // "Finish Match" — cancel all pending AI timeouts and atomically complete
   // all remaining rounds via the finishAllRounds slice action.
   const handleFinishMatch = useCallback(() => {
@@ -571,7 +535,7 @@ export default function FamousFiguresComp({
     humanId !== null && ff.matchFigureOrder.length > humanCursor
       ? ff.matchFigureOrder[humanCursor]
       : humanId !== null
-        ? getPlayerFigureIndex(ff, humanId, ff.currentRound)
+        ? getPlayerFigureIndex(ff, humanId, humanCursor)
         : ff.currentFigureIndex;
   // Always show the human's own figure — on round_reveal this is the figure
   // they were actually being tested on. When there is no local human player,
