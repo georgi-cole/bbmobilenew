@@ -14,8 +14,7 @@
   z-index: 9000;
 }
 
-/* ===== Chip Base Styles ===== */
-/* Icon-only transparent buttons — no background container. */
+/* ===== Hub Base: tiny glass containers for icon chips ===== */
 .hub-chip {
   position: absolute;
   display: inline-flex;
@@ -23,9 +22,13 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+
+  /* small frosted glass container */
+  background: rgba(255, 255, 255, 0.04); /* very subtle white tint */
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px; /* tiny pill, slightly rounded */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+
   color: #ffffff;
   font-family: inherit;
   cursor: pointer;
@@ -33,16 +36,33 @@
   user-select: none;
   -webkit-appearance: none;
   appearance: none;
-  transition: transform 180ms ease;
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  padding: 4px; /* keep the icon centered with a little breathing room */
+  box-sizing: border-box;
 }
 
-.hub-chip:hover {
-  transform: translateY(-3px);
+/* Use the heavy backdrop blur where supported for a true glass look */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .hub-chip {
+    background: rgba(255, 255, 255, 0.03); /* even more subtle tint when blur present */
+    -webkit-backdrop-filter: blur(6px) saturate(1.06);
+    backdrop-filter: blur(6px) saturate(1.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
 }
 
-.hub-chip:active {
-  transform: scale(0.94);
+/* When a browser doesn't support backdrop-filter, we keep a readable opaque fallback */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hub-chip {
+    background: rgba(6, 12, 28, 0.88); /* slightly more opaque fallback so icon stays legible */
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  }
 }
+
+/* Keep hover / active behaviour but adjust translate to match new visual */
+.hub-chip:hover { transform: translateY(-4px); }
+.hub-chip:active { transform: scale(0.96); }
 
 .hub-chip:focus-visible {
   outline: 2px solid rgba(123, 146, 255, 0.7);
@@ -71,12 +91,8 @@
   pointer-events: none;
 }
 
-/* ===== Chip Icon ===== */
-.hub-chip__icon {
-  font-size: 20px;
-  line-height: 1;
-  pointer-events: none;
-}
+/* Slightly reduce icon size so it sits comfortably inside the tiny container */
+.hub-chip__icon { font-size: 18px; line-height: 1; pointer-events: none; }
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {

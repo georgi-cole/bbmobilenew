@@ -76,51 +76,55 @@
   padding: 8px 4px;
 }
 
-/* Base button — now fits content (auto width) but respects a max-width */
+/* ===== Glassier main hub buttons ===== */
+
+/* Base button — more translucent and glassy */
 .home-hub__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  width: auto;               /* fits the text */
-  max-width: 86%;            /* caps on small viewports */
-  min-width: 180px;          /* prevents being too small; overridden on small screens below */
-  padding: 12px 34px;        /* horizontal padding determines button size */
-  /* Asymmetric corners — explicit px values so WebKit standalone honours them */
+  width: auto;
+  max-width: 86%;
+  min-width: 180px;
+  padding: 12px 34px;
   border-radius: 28px 8px 28px 8px;
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--color-text);
   cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.06);
-  /* slightly more transparent than before (about -8% alpha) */
-  background: rgba(6, 12, 28, 0.78);
-  /* Primary shadow; also acts as backdrop-filter fallback in standalone mode */
-  box-shadow: 0 16px 44px rgba(0,0,0,0.56);
-  /* backdrop-filter applied via @supports in _introhub-buttons.css */
+  border: 1px solid rgba(255,255,255,0.10); /* subtle translucent border for glass edge */
+  background: rgba(6, 12, 28, 0.58); /* more transparent base */
+  box-shadow: 0 18px 48px rgba(6, 10, 20, 0.55); /* slightly softer/deeper shadow */
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
   position: relative;
   overflow: visible;
-  white-space: nowrap;       /* keep single-line buttons */
-  /* Disable UA button styling so WebKit standalone doesn't flatten corners */
+  white-space: nowrap;
   -webkit-appearance: none;
   appearance: none;
 }
 
-/* Primary (Play) — stronger purple gradient with shimmer support */
+/* Backdrop blur where available to create the frosted look */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .home-hub__btn {
+    -webkit-backdrop-filter: blur(10px) saturate(1.08);
+    backdrop-filter: blur(10px) saturate(1.08);
+    background: linear-gradient(180deg, rgba(10,14,26,0.44), rgba(8,12,22,0.36));
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+}
+/* Primary button — keep the purple vibrancy but with more glass feel */
 .home-hub__btn--primary {
-  /* Deep purple gradient at alpha ~0.92 for more vibrancy */
   background: linear-gradient(135deg,
-    rgba(110,60,255,0.92) 0%,
-    rgba(160,100,255,0.92) 50%,
-    rgba(111,183,255,0.88) 100%);
+    rgba(110,60,255,0.86) 0%,
+    rgba(160,100,255,0.84) 50%,
+    rgba(111,183,255,0.80) 100%);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.18);
-  box-shadow: 0 28px 70px rgba(83,52,180,0.42);
-  padding: 14px 40px; /* slightly wider padding for prominence */
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 26px 64px rgba(83,52,180,0.32);
+  padding: 14px 40px;
   min-width: 220px;
 }
-
 /* Shimmer animation for Play button after splash — sweeps once then pauses */
 @keyframes hub-btn-shimmer {
   0%   { background-position: -200% center; }
@@ -140,28 +144,23 @@
   box-shadow: 0 28px 80px rgba(110,60,255,0.52);
 }
 
-/* Secondary buttons — ~7-8% more transparent than before */
+/* Slightly dim on inactive/secondary to keep contrast */
 .home-hub__btn--secondary {
-  background: linear-gradient(180deg,
-    rgba(10,14,26,0.85),
-    rgba(8,12,22,0.83));
-  color: #e9f0fb;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 18px 44px rgba(0,0,0,0.52);
-  padding: 12px 34px;
+  background: linear-gradient(180deg, rgba(10,14,26,0.50), rgba(8,12,22,0.44));
+  border: 1px solid rgba(255,255,255,0.08);
 }
-
-/* Ghost-style for credits — still visible */
+/* Ghost variant — keep subtle glass border and transparency */
 .home-hub__btn--ghost {
-  background: linear-gradient(180deg,
-    rgba(5,10,18,0.80),
-    rgba(8,12,22,0.80));
-  color: rgba(255,255,255,0.8);
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 12px 36px rgba(0,0,0,0.5);
-  padding: 12px 34px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
 }
 
+/* Press / active feedback */
+.home-hub__btn:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.5);
+}
 /* Hover/focus lift */
 .home-hub__btn:hover,
 .home-hub__btn:focus {
