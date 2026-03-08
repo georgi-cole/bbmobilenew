@@ -41,8 +41,27 @@ export type { CastleRescueAction } from './castleRescueReducer';
 
 // ── Types (re-exported for external consumers) ────────────────────────────
 export type {
+  // Platformer game types (current)
+  CastleRescuePhase,
   CastleRescueCompetitionConfig,
+  CastleSectionType,
+  CastleSection,
+  Platform,
+  Brick,
+  EnemySpawn,
+  PipeBehavior,
+  PipeNode,
+  Hazard,
+  Collectible,
+  Checkpoint,
+  PrincessChamber,
   CastleRescueMap,
+  PlayerState,
+  ScoreState,
+  ProgressState,
+  RouteState,
+  // Legacy grid-based types (deprecated — kept for backward compatibility)
+  CastleRescueGridMap,
   CastleRescueResult,
   CastleRescueRankedResult,
   RunState,

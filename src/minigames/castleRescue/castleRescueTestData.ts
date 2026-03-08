@@ -10,7 +10,7 @@
  * validateLevelConfig.
  */
 
-import type { CastleRescueMap, RunState } from './castleRescueTypes';
+import type { CastleRescueGridMap, RunState } from './castleRescueTypes';
 
 /**
  * Minimal valid map: straight 3-pipe path across the middle row.
@@ -19,7 +19,7 @@ import type { CastleRescueMap, RunState } from './castleRescueTypes';
  * (source=2,0  sink=2,4  route: 2,1→2,2→2,3)
  * Decoys at (0,0), (0,4), (4,0) — chosen to be far from the route.
  */
-export const FIXTURE_MAP_STRAIGHT: CastleRescueMap = {
+export const FIXTURE_MAP_STRAIGHT: CastleRescueGridMap = {
   gridRows: 5,
   gridCols: 5,
   source: { row: 2, col: 0 },
@@ -42,7 +42,7 @@ export const FIXTURE_MAP_STRAIGHT: CastleRescueMap = {
  *      ↑
  *   S  r? …  (source at 2,0, first route pipe right at 2,1, then up to 1,1, then right to 1,2, sink at 1,3)
  */
-export const FIXTURE_MAP_LSHAPED: CastleRescueMap = {
+export const FIXTURE_MAP_LSHAPED: CastleRescueGridMap = {
   gridRows: 5,
   gridCols: 5,
   source: { row: 2, col: 0 },
@@ -62,7 +62,7 @@ export const FIXTURE_MAP_LSHAPED: CastleRescueMap = {
  * Returns an active RunState positioned at the map source, ready to play.
  * Uses a fixed startTimeMs of 0 to keep tests independent of wall-clock time.
  */
-export function makeActiveState(map: CastleRescueMap): RunState {
+export function makeActiveState(map: CastleRescueGridMap): RunState {
   return {
     status: 'active',
     map,
@@ -85,7 +85,7 @@ export function makeActiveState(map: CastleRescueMap): RunState {
  * completion, NOT to the sink.
  */
 export function makeCompleteState(
-  map: CastleRescueMap,
+  map: CastleRescueGridMap,
   elapsedMs: number,
   wrongAttempts: number,
   score: number,

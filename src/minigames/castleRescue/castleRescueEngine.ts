@@ -10,7 +10,7 @@
  *  - Score is hard-clamped to [SCORE_FLOOR, MAX_SCORE] in computeScore.
  */
 
-import type { RunState, CastleRescueMap } from './castleRescueTypes';
+import type { RunState, CastleRescueGridMap } from './castleRescueTypes';
 import { computeScoreFromState } from './castleRescueScoring';
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export function createInitialRunState(): RunState {
  * @param map     - An optional map reference (may be null for the platformer).
  * @param nowMs   - Current wall-clock milliseconds for elapsed-time tracking.
  */
-export function startRun(state: RunState, map: CastleRescueMap | null, nowMs: number): RunState {
+export function startRun(state: RunState, map: CastleRescueGridMap | null, nowMs: number): RunState {
   if (state.status !== 'idle') return state;
   return {
     ...state,
