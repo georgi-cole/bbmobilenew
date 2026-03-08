@@ -528,6 +528,69 @@
   transform: scale(0.98);
 }
 
+/* ── Waiting / personal-results screen ──────────────────────────────────── */
+
+.ff-container--waiting {
+  justify-content: flex-start;
+}
+
+.ff-personal-results {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(60, 220, 100, 0.08);
+  border: 1px solid rgba(60, 220, 100, 0.35);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.ff-personal-results-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #44aa66;
+  margin-bottom: 0.5rem;
+}
+
+.ff-personal-results-score {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #80ffaa;
+  text-shadow: 0 0 14px rgba(80, 255, 140, 0.35);
+  margin-bottom: 0.25rem;
+}
+
+.ff-personal-results-rounds {
+  font-size: 0.82rem;
+  color: #6699bb;
+}
+
+.ff-waiting-banner {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.75rem 1rem;
+  background: rgba(60, 160, 255, 0.1);
+  border: 1px solid rgba(60, 160, 255, 0.35);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #88ccff;
+  text-align: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ff-waiting-banner-sub {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6699bb;
+}
+
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
 .ff-container--loading {
