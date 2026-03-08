@@ -24,7 +24,7 @@
  *  Princess rescued: +1000
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { generateLevelConfig } from './castleRescueGenerator';
 import type { WrongPipeType } from './castleRescueGenerator';
@@ -34,6 +34,7 @@ import {
   playerOverlapsPipeSide,
   tryEnterPipe,
   playerHitsBrickFromBelow,
+  resolveFullSolidCollision,
 } from './castleRescueEngine';
 import type { CollisionRect } from './castleRescueEngine';
 import {
@@ -336,28 +337,28 @@ function buildLevel(seed: number): LevelGeom {
     };
   });
 
-  // Ground (full-solid) + elevated platforms (one-way from above)
+  // Ground (full-solid) + elevated platforms (full-solid — block from all sides)
   const platforms: Platform[] = [
     { x: 0,    y: GROUND_TOP, w: 4800, h: 32 }, // ground — full-solid (oneWay omitted/false)
-    { x: 200,  y: 270, w: 160, h: 16, oneWay: true },
-    { x: 430,  y: 228, w: 180, h: 16, oneWay: true },
-    { x: 730,  y: 268, w: 150, h: 16, oneWay: true },
-    { x: 950,  y: 248, w: 140, h: 16, oneWay: true },
-    { x: 1150, y: 242, w: 200, h: 16, oneWay: true },
-    { x: 1380, y: 196, w: 180, h: 16, oneWay: true },
-    { x: 1640, y: 244, w: 160, h: 16, oneWay: true },
-    { x: 1870, y: 268, w: 180, h: 16, oneWay: true },
-    { x: 2080, y: 232, w: 160, h: 16, oneWay: true },
-    { x: 2370, y: 280, w: 200, h: 16, oneWay: true },
-    { x: 2640, y: 264, w: 180, h: 16, oneWay: true },
-    { x: 2900, y: 276, w: 200, h: 16, oneWay: true },
-    { x: 3140, y: 260, w: 180, h: 16, oneWay: true },
-    { x: 3380, y: 280, w: 180, h: 16, oneWay: true },
-    { x: 3600, y: 240, w: 200, h: 16, oneWay: true },
-    { x: 3840, y: 268, w: 180, h: 16, oneWay: true },
-    { x: 4060, y: 250, w: 180, h: 16, oneWay: true },
-    { x: 4300, y: 264, w: 180, h: 16, oneWay: true },
-    { x: 4550, y: 248, w: 230, h: 16, oneWay: true },
+    { x: 200,  y: 270, w: 160, h: 16 },
+    { x: 430,  y: 228, w: 180, h: 16 },
+    { x: 730,  y: 268, w: 150, h: 16 },
+    { x: 950,  y: 248, w: 140, h: 16 },
+    { x: 1150, y: 242, w: 200, h: 16 },
+    { x: 1380, y: 196, w: 180, h: 16 },
+    { x: 1640, y: 244, w: 160, h: 16 },
+    { x: 1870, y: 268, w: 180, h: 16 },
+    { x: 2080, y: 232, w: 160, h: 16 },
+    { x: 2370, y: 280, w: 200, h: 16 },
+    { x: 2640, y: 264, w: 180, h: 16 },
+    { x: 2900, y: 276, w: 200, h: 16 },
+    { x: 3140, y: 260, w: 180, h: 16 },
+    { x: 3380, y: 280, w: 180, h: 16 },
+    { x: 3600, y: 240, w: 200, h: 16 },
+    { x: 3840, y: 268, w: 180, h: 16 },
+    { x: 4060, y: 250, w: 180, h: 16 },
+    { x: 4300, y: 264, w: 180, h: 16 },
+    { x: 4550, y: 248, w: 230, h: 16 },
   ];
 
   // Bricks positioned with MIN_CLEARANCE = 42 px of vertical air-gap above
@@ -537,6 +538,7 @@ function updateGame(
 
   // ── Physics ───────────────────────────────────────────────────────────────
   player.vy = Math.min(player.vy + GRAVITY * sc, MAX_FALL);
+  const prevX  = player.x;
   const prevY  = player.y;
   player.y    += player.vy * sc;
   player.x     = Math.max(0, Math.min(geom.width - PW, player.x + player.vx * sc));
@@ -546,20 +548,29 @@ function updateGame(
   const pRect: CollisionRect = { x: player.x, y: player.y, w: PW, h: PH };
   for (const surf of geom.platforms) {
     const sRect: CollisionRect = { x: surf.x, y: surf.y, w: surf.w, h: surf.h };
-    // Land on top (both one-way and full-solid)
-    if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, sRect)) {
-      player.y = surf.y - PH;
-      player.vy = 0;
-      player.onGround = true;
-      pRect.y = player.y;
-    }
-    // Block upward motion for full-solid platforms only
-    if (!surf.oneWay && playerHitsSurfaceFromBelow(pRect, prevY, player.vy, sRect)) {
-      player.y = surf.y + surf.h;
-      player.vy = 0;
-      pRect.y = player.y;
+    if (surf.oneWay) {
+      // One-way: only allow landing on top; skip underside resolution.
+      if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, sRect)) {
+        player.y = surf.y - PH;
+        player.vy = 0;
+        player.onGround = true;
+        pRect.y = player.y;
+      }
+    } else {
+      // Full-solid: use AABB resolver for all axes.
+      const res = resolveFullSolidCollision(pRect, prevX, prevY, player.vx, player.vy, sRect);
+      if (res.x !== pRect.x || res.y !== pRect.y) {
+        player.x = res.x; player.y = res.y;
+        player.vx = res.vx; player.vy = res.vy;
+        if (res.onGround) player.onGround = true;
+        pRect.x = player.x; pRect.y = player.y;
+      }
     }
   }
+  // Re-apply level-bounds clamp after collision resolution (a side-push can
+  // move player.x outside [0, geom.width-PW]).
+  player.x = Math.max(0, Math.min(geom.width - PW, player.x));
+  pRect.x  = player.x;
 
   // ── Pipe solidity (pipes are full solid — top landing + side block) ───────
   for (const pipe of geom.pipes) {
@@ -1253,10 +1264,14 @@ const MAX_SCALE = 2;
 
 /**
  * Pixels reserved for the control strip in portrait mode (below canvas).
- * Must be ≥ touch button minHeight (90) + 2 × vertical padding (8px each side) + gap = 116 px.
+ * Must be ≥ touch button max height (90) + 2 × vertical padding (8px each side) + gap = 116 px.
  */
 const CTRL_H_PORTRAIT = 116;
-/** Pixels reserved for the control strip in landscape mode (right of canvas). */
+/**
+ * Pixels reserved for the control strip in landscape mode (beside canvas).
+ * Must be ≥ touch button max width (90) + horizontal padding (16px each side) + gap = 122 px;
+ * rounded up to 134 for breathing room.
+ */
 const CTRL_W_LANDSCAPE = 134;
 
 interface LayoutState {
@@ -1286,7 +1301,7 @@ interface CastleRescueGameProps {
 }
 
 export default function CastleRescueGame({
-  seed = 1,
+  seed,
   timeLimitMs = TIME_LIMIT_MS,
   onFinish,
   autoStart = true,
@@ -1328,8 +1343,8 @@ export default function CastleRescueGame({
     };
   }, []);
 
-  const initState = useCallback((): GameState => {
-    const geom   = buildLevel(seed);
+  const initState = useCallback((runSeed: number): GameState => {
+    const geom   = buildLevel(runSeed);
     const spawnY = GROUND_TOP - PH;
     return {
       phase: 'playing',
@@ -1343,14 +1358,26 @@ export default function CastleRescueGame({
       princessRescued:false, gateOpen:false, finalScore:0,
       room: null,
     };
-  }, [seed]);
+  }, []);
 
   const startGame = useCallback(() => {
+    // Use caller-supplied seed for deterministic runs (e.g. competitions);
+    // otherwise generate a run-unique seed so each play varies.
+    let runSeed: number;
+    if (seed !== undefined) {
+      runSeed = seed;
+    } else {
+      try {
+        runSeed = (crypto.getRandomValues(new Uint32Array(1))[0] >>> 0);
+      } catch {
+        runSeed = Math.floor(Math.random() * 0x100000000) >>> 0;
+      }
+    }
     finishedRef.current = false;
-    stateRef.current = initState();
+    stateRef.current = initState(runSeed);
     setPhase('playing');
     setEndStats(null);
-  }, [initState]);
+  }, [seed, initState]);
 
   // Keyboard input
   useEffect(() => {
@@ -1447,6 +1474,9 @@ export default function CastleRescueGame({
 
   const { scale, landscape } = layout;
 
+  // Responsive button size: clamp between 72–90px, scaled from base 72px.
+  const btnSize = Math.min(90, Math.max(72, Math.round(72 * (scale || 1))));
+
   // ── Controls: portrait = row below canvas, landscape = LEFT group on left
   //   edge and RIGHT group on right edge (fixed to viewport corners)
   const ctrlGroupStyle: CSSProperties = {
@@ -1472,6 +1502,15 @@ export default function CastleRescueGame({
     flexShrink: 0,
   };
 
+  /** Fixed-size wrapper that enforces compact touch button dimensions. */
+  const btnWrap = (child: React.ReactNode): React.ReactNode => (
+    <div style={{ width: btnSize, height: btnSize, flexShrink: 0 }}>{child}</div>
+  );
+
+  // Displayed canvas dimensions (CSS pixels)
+  const canvasCssW = Math.round(CW * scale);
+  const canvasCssH = Math.round(CH * scale);
+
   return (
     <div style={outerStyle}>
       {/* Landscape: LEFT/RIGHT buttons anchored to bottom-left of viewport */}
@@ -1483,8 +1522,8 @@ export default function CastleRescueGame({
           ...ctrlGroupStyle,
           zIndex: 10,
         }} aria-label="Movement controls">
-          <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} />
-          <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} />
+          {btnWrap(<TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
+          {btnWrap(<TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
         </div>
       )}
       {/* Landscape: JUMP/DOWN buttons anchored to bottom-right of viewport */}
@@ -1496,8 +1535,8 @@ export default function CastleRescueGame({
           ...ctrlGroupStyle,
           zIndex: 10,
         }} aria-label="Action controls">
-          <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
-          <TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} />
+          {btnWrap(<TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
+          {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
         </div>
       )}
 
@@ -1511,8 +1550,8 @@ export default function CastleRescueGame({
         {/* Canvas wrapper — takes the scaled visual size so flex layout is correct */}
         <div style={{
           position: 'relative',
-          width: CW * scale,
-          height: CH * scale,
+          width: canvasCssW,
+          height: canvasCssH,
           flexShrink: 0,
         }}>
           <canvas
@@ -1520,10 +1559,12 @@ export default function CastleRescueGame({
             width={CW} height={CH}
             style={{
               display: 'block',
-              transformOrigin: 'top left',
-              transform: `scale(${scale})`,
+              width: canvasCssW,
+              height: canvasCssH,
               border: '2px solid #1e3a8a',
               borderRadius: 8,
+              // Prevent default touch scroll/zoom gestures on the game canvas.
+              touchAction: 'none',
             }}
             tabIndex={0}
             aria-label="Castle Rescue platformer game"
@@ -1547,12 +1588,12 @@ export default function CastleRescueGame({
         {!landscape && (
           <div style={portraitCtrlsStyle} aria-label="Game controls">
             <div style={ctrlGroupStyle}>
-              <TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} />
-              <TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} />
+              {btnWrap(<TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
+              {btnWrap(<TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
             <div style={ctrlGroupStyle}>
-              <TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" />
-              <TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} />
+              {btnWrap(<TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
+              {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
           </div>
         )}
@@ -1564,7 +1605,7 @@ export default function CastleRescueGame({
 // ── Sub-components & styles ────────────────────────────────────────────────────
 
 interface TouchBtnProps {
-  code: string; label: string; ariaLabel: string; color?: string;
+  code: string; label: string; ariaLabel: string; color?: string; size?: number;
   onPress: (code: string) => void; onRelease: (code: string) => void;
 }
 function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onRelease }: TouchBtnProps) {
@@ -1609,7 +1650,8 @@ const endOverlayStyle: CSSProperties = {
 /** Style for the on-screen touch control buttons (large touch targets). */
 function touchBtnCss(bg: string): CSSProperties {
   return {
-    padding: '10px 20px',
+    width: '100%',
+    height: '100%',
     background: bg,
     color: '#fff',
     border: 'none',
@@ -1618,8 +1660,9 @@ function touchBtnCss(bg: string): CSSProperties {
     fontWeight: 700,
     cursor: 'pointer',
     touchAction: 'none',
-    minWidth: 90,
-    minHeight: 90,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   };
 }
 

@@ -237,6 +237,77 @@ export function tryEnterPipe(
 }
 
 /**
+ * Full AABB minimal-axis separation resolver for a full-solid surface.
+ *
+ * Computes the overlap on both axes and resolves along the minimal axis.
+ * Returns the corrected x, y, vx, vy, and onGround state.
+ *
+ * Vertical resolution:
+ *  - Landing from above: prevPY + player.h ≤ surface.y + 4  → onGround=true, vy=0,
+ *    y = surface.y − player.h
+ *  - Underside hit (upward motion): y = surface.y + surface.h, vy=0
+ *
+ * Horizontal resolution: vx=0, push player left or right based on center positions.
+ *
+ * @param player  - Current (post-move) player rect.
+ * @param prevX   - Player x before this frame's movement.
+ * @param prevY   - Player y before this frame's movement.
+ * @param vx      - Player horizontal velocity.
+ * @param vy      - Player vertical velocity.
+ * @param surface - Full-solid surface rect.
+ */
+export function resolveFullSolidCollision(
+  player: CollisionRect,
+  prevX: number,
+  prevY: number,
+  vx: number,
+  vy: number,
+  surface: CollisionRect,
+): { x: number; y: number; vx: number; vy: number; onGround: boolean } {
+  const overlapX =
+    Math.min(player.x + player.w, surface.x + surface.w) - Math.max(player.x, surface.x);
+  const overlapY =
+    Math.min(player.y + player.h, surface.y + surface.h) - Math.max(player.y, surface.y);
+
+  // No overlap — nothing to resolve.
+  if (overlapX <= 0 || overlapY <= 0) {
+    return { x: player.x, y: player.y, vx, vy, onGround: false };
+  }
+
+  let x = player.x;
+  let y = player.y;
+  let newVx = vx;
+  let newVy = vy;
+  let onGround = false;
+
+  if (overlapY <= overlapX) {
+    // Vertical axis is minimal — resolve vertically.
+    // Landing from above: prev feet were at or above the surface top (with 4 px grace band).
+    if (prevY + player.h <= surface.y + 4) {
+      y = surface.y - player.h;
+      newVy = 0;
+      onGround = true;
+    } else {
+      // Underside hit — push player below the surface.
+      y = surface.y + surface.h;
+      newVy = 0;
+    }
+  } else {
+    // Horizontal axis is minimal — resolve horizontally.
+    newVx = 0;
+    // Use previous x to determine which side the player approached from.
+    const fromLeft = (prevX + player.w / 2) <= (surface.x + surface.w / 2);
+    if (fromLeft) {
+      x = surface.x - player.w;
+    } else {
+      x = surface.x + surface.w;
+    }
+  }
+
+  return { x, y, vx: newVx, vy: newVy, onGround };
+}
+
+/**
  * Returns true when the player, moving upward (vy < 0), hits the underside of
  * a brick that has `breakableFromBelow` enabled and is not already broken.
  *
