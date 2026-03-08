@@ -2,14 +2,22 @@
   {
     "canonicalName": "Leonardo da Vinci",
     "normalizedName": "leonardo vinci",
-    "acceptedAliases": ["Da Vinci", "Leonardo", "Leonardo da Vinci"],
-    "normalizedAliases": ["vinci", "leonardo", "leonardo vinci"],
+    "acceptedAliases": [
+      "Da Vinci",
+      "Leonardo",
+      "Leonardo da Vinci"
+    ],
+    "normalizedAliases": [
+      "vinci",
+      "leonardo",
+      "leonardo vinci"
+    ],
     "hints": [
       "This Italian Renaissance polymath was born in 1452 near Florence.",
       "A painter, sculptor, architect, and scientist who kept extensive notebooks filled with inventions.",
       "His famous works include the Last Supper mural and a portrait of a woman with a mysterious smile.",
       "The smiling portrait is known as the Mona Lisa, now displayed in the Louvre.",
-      "First name: Leonardo. Surname particle: 'da'. Town of origin: Vinci."
+      "First name: Leonardo. Last name starts with 'V'."
     ],
     "baseClueFact": "A Renaissance master born in Tuscany, Italy in 1452.",
     "difficulty": "easy",
@@ -19,14 +27,20 @@
   {
     "canonicalName": "Cleopatra",
     "normalizedName": "cleopatra",
-    "acceptedAliases": ["Cleopatra VII", "Cleopatra Philopator"],
-    "normalizedAliases": ["cleopatra vii", "cleopatra philopator"],
+    "acceptedAliases": [
+      "Cleopatra VII",
+      "Cleopatra Philopator"
+    ],
+    "normalizedAliases": [
+      "cleopatra vii",
+      "cleopatra philopator"
+    ],
     "hints": [
       "This ancient ruler is one of history's most famous monarchs.",
       "She was the last active ruler of the Ptolemaic Kingdom of Egypt.",
       "Known for her political alliances with Julius Caesar and Mark Antony.",
       "She reportedly died by snake bite in 30 BC after the defeat of Antony.",
-      "Her kingdom was Egypt and her dynasty was Ptolemaic. First name starts with 'C'."
+      "Name: Cleopatra."
     ],
     "baseClueFact": "An ancient Egyptian queen who ruled in the 1st century BC.",
     "difficulty": "medium",
@@ -36,14 +50,20 @@
   {
     "canonicalName": "Napoleon Bonaparte",
     "normalizedName": "napoleon bonaparte",
-    "acceptedAliases": ["Napoleon", "Bonaparte"],
-    "normalizedAliases": ["napoleon", "bonaparte"],
+    "acceptedAliases": [
+      "Napoleon",
+      "Bonaparte"
+    ],
+    "normalizedAliases": [
+      "napoleon",
+      "bonaparte"
+    ],
     "hints": [
       "This European military leader rose to prominence during a major late-18th-century revolution.",
       "He became Emperor of the French in 1804 and reshaped the map of Europe.",
       "Known for his Napoleonic Code, his Egyptian campaign, and his eventual exile.",
       "He was defeated at the Battle of Waterloo in 1815 and exiled to Saint Helena.",
-      "First name: Napoleon. Surname: Bonaparte. Nationality: French, born in Corsica."
+      "First name: Napoleon. Last name starts with 'B'."
     ],
     "baseClueFact": "A French military genius who became Emperor in the early 19th century.",
     "difficulty": "medium",
@@ -53,14 +73,22 @@
   {
     "canonicalName": "Marie Curie",
     "normalizedName": "marie curie",
-    "acceptedAliases": ["Maria Curie", "Madame Curie", "Maria Sklodowska"],
-    "normalizedAliases": ["maria curie", "madame curie", "maria sklodowska"],
+    "acceptedAliases": [
+      "Maria Curie",
+      "Madame Curie",
+      "Maria Sklodowska"
+    ],
+    "normalizedAliases": [
+      "maria curie",
+      "madame curie",
+      "maria sklodowska"
+    ],
     "hints": [
       "This scientist was the first woman to win a Nobel Prize.",
       "Born in Warsaw, she moved to Paris to pursue her scientific career.",
       "She discovered two new elements and pioneered research into radioactivity.",
       "The two elements she discovered are polonium (named after her homeland) and radium.",
-      "First name: Marie (born Maria). Surname: Curie. She won Nobel Prizes in both Physics and Chemistry."
+      "First name: Marie. Last name starts with 'C'."
     ],
     "baseClueFact": "A Polish-French physicist and chemist who pioneered radioactivity research.",
     "difficulty": "medium",
@@ -70,14 +98,18 @@
   {
     "canonicalName": "Albert Einstein",
     "normalizedName": "albert einstein",
-    "acceptedAliases": ["Einstein"],
-    "normalizedAliases": ["einstein"],
+    "acceptedAliases": [
+      "Einstein"
+    ],
+    "normalizedAliases": [
+      "einstein"
+    ],
     "hints": [
       "This 20th-century physicist is considered one of the greatest scientists who ever lived.",
       "Born in Germany in 1879, he later moved to the United States.",
       "He developed the special and general theories of relativity.",
       "His mass-energy equivalence formula, E = mc², is the world's most famous equation.",
-      "First name: Albert. Surname: Einstein. Known for his wild hair and tongue-out photo."
+      "First name: Albert. Last name starts with 'E'."
     ],
     "baseClueFact": "A German-born theoretical physicist who revolutionized modern physics.",
     "difficulty": "easy",
@@ -87,14 +119,20 @@
   {
     "canonicalName": "William Shakespeare",
     "normalizedName": "william shakespeare",
-    "acceptedAliases": ["Shakespeare", "The Bard"],
-    "normalizedAliases": ["shakespeare", "bard"],
+    "acceptedAliases": [
+      "Shakespeare",
+      "The Bard"
+    ],
+    "normalizedAliases": [
+      "shakespeare",
+      "bard"
+    ],
     "hints": [
       "This English writer from the late 16th and early 17th century is widely regarded as the greatest writer in the English language.",
       "He wrote approximately 37 plays and 154 sonnets.",
       "He was an actor and part-owner of the Globe Theatre in London.",
       "His works include Hamlet, Othello, Romeo and Juliet, and A Midsummer Night's Dream.",
-      "First name: William. Surname: Shakespeare. Nicknamed 'The Bard of Avon'."
+      "First name: William. Last name starts with 'S'."
     ],
     "baseClueFact": "An English playwright and poet from Stratford-upon-Avon, born in 1564.",
     "difficulty": "easy",
@@ -104,14 +142,18 @@
   {
     "canonicalName": "Isaac Newton",
     "normalizedName": "isaac newton",
-    "acceptedAliases": ["Newton"],
-    "normalizedAliases": ["newton"],
+    "acceptedAliases": [
+      "Newton"
+    ],
+    "normalizedAliases": [
+      "newton"
+    ],
     "hints": [
       "This English mathematician and physicist is one of the most influential scientists in history.",
       "He was born in 1643 in Woolsthorpe, Lincolnshire, England.",
       "He formulated the laws of motion and universal gravitation.",
       "The story of an apple falling from a tree is famously associated with his discovery of gravity.",
-      "First name: Isaac. Surname: Newton. Wrote 'Principia Mathematica' in 1687."
+      "First name: Isaac. Last name starts with 'N'."
     ],
     "baseClueFact": "An English mathematician and physicist who described gravity and the laws of motion.",
     "difficulty": "medium",
@@ -121,14 +163,18 @@
   {
     "canonicalName": "Galileo Galilei",
     "normalizedName": "galileo galilei",
-    "acceptedAliases": ["Galileo"],
-    "normalizedAliases": ["galileo"],
+    "acceptedAliases": [
+      "Galileo"
+    ],
+    "normalizedAliases": [
+      "galileo"
+    ],
     "hints": [
       "This Italian astronomer and physicist was born in Pisa in 1564.",
       "Often called the 'father of observational astronomy' and the 'father of modern physics'.",
       "He improved the telescope and used it to make significant astronomical discoveries.",
       "He confirmed the heliocentric model and was placed under house arrest by the Inquisition.",
-      "First name: Galileo. Surname: Galilei. Associated with the Leaning Tower of Pisa experiment."
+      "First name: Galileo. Last name starts with 'G'."
     ],
     "baseClueFact": "An Italian astronomer who championed the heliocentric model of the solar system.",
     "difficulty": "medium",
@@ -138,14 +184,18 @@
   {
     "canonicalName": "Julius Caesar",
     "normalizedName": "julius caesar",
-    "acceptedAliases": ["Caesar"],
-    "normalizedAliases": ["caesar"],
+    "acceptedAliases": [
+      "Caesar"
+    ],
+    "normalizedAliases": [
+      "caesar"
+    ],
     "hints": [
       "This ancient Roman statesman, general, and writer transformed the Roman Republic.",
       "He conquered Gaul and made two expeditions to Britain.",
       "He crossed the Rubicon river in 49 BC, triggering a civil war.",
       "He was famously assassinated on the Ides of March (March 15) 44 BC.",
-      "First name: Julius. Surname: Caesar. 'Et tu, Brute?' is his famous dying words in Shakespeare."
+      "First name: Julius. Last name starts with 'C'."
     ],
     "baseClueFact": "A Roman general and statesman who played a critical role in the fall of the Roman Republic.",
     "difficulty": "medium",
@@ -155,14 +205,20 @@
   {
     "canonicalName": "Alexander the Great",
     "normalizedName": "alexander great",
-    "acceptedAliases": ["Alexander III", "Alexander of Macedon"],
-    "normalizedAliases": ["alexander iii", "alexander macedon"],
+    "acceptedAliases": [
+      "Alexander III",
+      "Alexander of Macedon"
+    ],
+    "normalizedAliases": [
+      "alexander iii",
+      "alexander macedon"
+    ],
     "hints": [
       "This ancient conqueror built one of the largest empires in history by the age of 30.",
       "He was the King of the ancient Greek kingdom of Macedon.",
       "He was a student of Aristotle from the age of 13.",
       "His empire stretched from Greece and Egypt across Persia to northwestern India.",
-      "First name: Alexander. Known as 'the Great'. Kingdom: Macedon. Born 356 BC."
+      "First name: Alexander. Last name starts with 'G'."
     ],
     "baseClueFact": "An ancient Macedonian king who created one of the largest empires in history.",
     "difficulty": "hard",
@@ -172,14 +228,20 @@
   {
     "canonicalName": "Michelangelo",
     "normalizedName": "michelangelo",
-    "acceptedAliases": ["Michelangelo di Lodovico", "Buonarroti"],
-    "normalizedAliases": ["michelangelo lodovico", "buonarroti"],
+    "acceptedAliases": [
+      "Michelangelo di Lodovico",
+      "Buonarroti"
+    ],
+    "normalizedAliases": [
+      "michelangelo lodovico",
+      "buonarroti"
+    ],
     "hints": [
       "This Italian Renaissance artist is considered one of the greatest artists of all time.",
       "He worked in Florence and Rome during the late 15th and 16th centuries.",
       "He sculpted the famous marble statue of David and the Pietà.",
       "He painted the breathtaking ceiling of the Sistine Chapel in the Vatican.",
-      "First name: Michelangelo. Surname: Buonarroti. He is often known by his first name alone."
+      "Name: Michelangelo."
     ],
     "baseClueFact": "An Italian Renaissance sculptor and painter whose works are in Rome and Florence.",
     "difficulty": "medium",
@@ -189,14 +251,18 @@
   {
     "canonicalName": "Nikola Tesla",
     "normalizedName": "nikola tesla",
-    "acceptedAliases": ["Tesla"],
-    "normalizedAliases": ["tesla"],
+    "acceptedAliases": [
+      "Tesla"
+    ],
+    "normalizedAliases": [
+      "tesla"
+    ],
     "hints": [
       "This inventor and electrical engineer is known for his contributions to the modern electrical system.",
       "Born in 1856 in what is now Serbia, he later emigrated to the United States.",
       "He developed the alternating current (AC) electrical supply system.",
       "He had a famous rivalry with Thomas Edison over AC vs DC power.",
-      "First name: Nikola. Surname: Tesla. The SI unit of magnetic flux density is named after him."
+      "First name: Nikola. Last name starts with 'T'."
     ],
     "baseClueFact": "A Serbian-American inventor who laid the groundwork for modern AC electricity.",
     "difficulty": "medium",
@@ -206,14 +272,18 @@
   {
     "canonicalName": "Charles Darwin",
     "normalizedName": "charles darwin",
-    "acceptedAliases": ["Darwin"],
-    "normalizedAliases": ["darwin"],
+    "acceptedAliases": [
+      "Darwin"
+    ],
+    "normalizedAliases": [
+      "darwin"
+    ],
     "hints": [
       "This 19th-century English naturalist changed our understanding of life on Earth.",
       "He was born in Shrewsbury, England in 1809.",
       "He voyaged on the HMS Beagle to the Galápagos Islands and South America.",
       "He proposed the theory of evolution by natural selection.",
-      "First name: Charles. Surname: Darwin. His landmark work was 'On the Origin of Species' (1859)."
+      "First name: Charles. Last name starts with 'D'."
     ],
     "baseClueFact": "An English naturalist who proposed the theory of evolution by natural selection.",
     "difficulty": "easy",
@@ -223,14 +293,22 @@
   {
     "canonicalName": "Mahatma Gandhi",
     "normalizedName": "mahatma gandhi",
-    "acceptedAliases": ["Gandhi", "Mohandas Gandhi", "Mohandas Karamchand Gandhi"],
-    "normalizedAliases": ["gandhi", "mohandas gandhi", "mohandas karamchand gandhi"],
+    "acceptedAliases": [
+      "Gandhi",
+      "Mohandas Gandhi",
+      "Mohandas Karamchand Gandhi"
+    ],
+    "normalizedAliases": [
+      "gandhi",
+      "mohandas gandhi",
+      "mohandas karamchand gandhi"
+    ],
     "hints": [
       "This political leader is revered as the father of a nation that gained independence in 1947.",
       "He was born in Porbandar, India in 1869.",
       "He pioneered the philosophy and practice of nonviolent civil disobedience.",
       "He led the famous Salt March in 1930 to protest British salt taxes.",
-      "First name: Mohandas. Honorific: Mahatma ('great soul'). Surname: Gandhi."
+      "First name: Mahatma. Last name starts with 'G'."
     ],
     "baseClueFact": "An Indian independence leader who championed nonviolent resistance.",
     "difficulty": "medium",
@@ -240,14 +318,22 @@
   {
     "canonicalName": "Martin Luther King Jr",
     "normalizedName": "martin luther king jr",
-    "acceptedAliases": ["MLK", "Martin Luther King", "Dr King"],
-    "normalizedAliases": ["mlk", "martin luther king", "dr king"],
+    "acceptedAliases": [
+      "MLK",
+      "Martin Luther King",
+      "Dr King"
+    ],
+    "normalizedAliases": [
+      "mlk",
+      "martin luther king",
+      "dr king"
+    ],
     "hints": [
       "This American civil rights leader is one of the most celebrated figures of the 20th century.",
       "Born in Atlanta, Georgia in 1929, he became a Baptist minister.",
       "He led the Montgomery Bus Boycott in 1955 and 1956.",
       "His 'I Have a Dream' speech was delivered at the March on Washington in 1963.",
-      "First name: Martin. Middle name: Luther. Surname: King Jr. Assassinated in 1968."
+      "First name: Martin. Last name starts with 'K'."
     ],
     "baseClueFact": "An American Baptist minister and civil rights activist, famous for his 'I Have a Dream' speech.",
     "difficulty": "easy",
@@ -257,14 +343,20 @@
   {
     "canonicalName": "Joan of Arc",
     "normalizedName": "joan arc",
-    "acceptedAliases": ["Jeanne d'Arc", "The Maid of Orleans"],
-    "normalizedAliases": ["jeanne arc", "maid orleans"],
+    "acceptedAliases": [
+      "Jeanne d'Arc",
+      "The Maid of Orleans"
+    ],
+    "normalizedAliases": [
+      "jeanne arc",
+      "maid orleans"
+    ],
     "hints": [
       "This medieval French heroine claimed to receive visions from God.",
       "She was born around 1412 in Domrémy, a village in northeastern France.",
       "She led the French army to several important victories during the Hundred Years' War.",
       "She was captured by the Burgundians and sold to the English, who burned her at the stake in 1431.",
-      "First name: Joan (Jeanne in French). Nickname: 'The Maid of Orléans'. Surname: of Arc (d'Arc)."
+      "First name: Joan. Last name starts with 'A'."
     ],
     "baseClueFact": "A French peasant girl who became a military heroine during the Hundred Years' War.",
     "difficulty": "hard",
@@ -274,14 +366,20 @@
   {
     "canonicalName": "Abraham Lincoln",
     "normalizedName": "abraham lincoln",
-    "acceptedAliases": ["Lincoln", "Honest Abe"],
-    "normalizedAliases": ["lincoln", "honest abe"],
+    "acceptedAliases": [
+      "Lincoln",
+      "Honest Abe"
+    ],
+    "normalizedAliases": [
+      "lincoln",
+      "honest abe"
+    ],
     "hints": [
       "This American statesman served as President during the nation's most turbulent period.",
       "He was born in a log cabin in Kentucky in 1809.",
       "He led the United States through the Civil War and preserved the Union.",
       "He issued the Emancipation Proclamation in 1863, freeing enslaved people in Confederate states.",
-      "First name: Abraham. Surname: Lincoln. The 16th President of the United States. Nicknamed 'Honest Abe'."
+      "First name: Abraham. Last name starts with 'L'."
     ],
     "baseClueFact": "The 16th President of the United States, who led the nation through the Civil War.",
     "difficulty": "easy",
@@ -291,14 +389,20 @@
   {
     "canonicalName": "Mozart",
     "normalizedName": "mozart",
-    "acceptedAliases": ["Wolfgang Mozart", "Wolfgang Amadeus Mozart"],
-    "normalizedAliases": ["wolfgang mozart", "wolfgang amadeus mozart"],
+    "acceptedAliases": [
+      "Wolfgang Mozart",
+      "Wolfgang Amadeus Mozart"
+    ],
+    "normalizedAliases": [
+      "wolfgang mozart",
+      "wolfgang amadeus mozart"
+    ],
     "hints": [
       "This Austrian composer is widely regarded as one of the greatest musicians of all time.",
       "He was born in Salzburg in 1756 and showed extraordinary musical talent from childhood.",
       "A child prodigy, he began composing at age five and performing for royalty.",
       "He composed over 600 works including symphonies, operas, concertos, and chamber music.",
-      "First name: Wolfgang Amadeus. Surname: Mozart. Died young at 35 in 1791."
+      "Name: Mozart."
     ],
     "baseClueFact": "An Austrian musical prodigy who composed over 600 works in the Classical era.",
     "difficulty": "medium",
@@ -308,14 +412,18 @@
   {
     "canonicalName": "Charles Dickens",
     "normalizedName": "charles dickens",
-    "acceptedAliases": ["Dickens"],
-    "normalizedAliases": ["dickens"],
+    "acceptedAliases": [
+      "Dickens"
+    ],
+    "normalizedAliases": [
+      "dickens"
+    ],
     "hints": [
       "This Victorian English author is one of the most popular novelists of all time.",
       "He was born in Portsmouth, England in 1812.",
       "He published many of his works in serialised form in magazines.",
       "His novels include Oliver Twist, A Tale of Two Cities, Great Expectations, and A Christmas Carol.",
-      "First name: Charles. Surname: Dickens. Created iconic characters like Ebenezer Scrooge and Fagin."
+      "First name: Charles. Last name starts with 'D'."
     ],
     "baseClueFact": "A Victorian English novelist known for works like Oliver Twist and A Christmas Carol.",
     "difficulty": "easy",
@@ -325,14 +433,20 @@
   {
     "canonicalName": "Ada Lovelace",
     "normalizedName": "ada lovelace",
-    "acceptedAliases": ["Ada Byron", "Countess of Lovelace"],
-    "normalizedAliases": ["ada byron", "countess lovelace"],
+    "acceptedAliases": [
+      "Ada Byron",
+      "Countess of Lovelace"
+    ],
+    "normalizedAliases": [
+      "ada byron",
+      "countess lovelace"
+    ],
     "hints": [
       "This 19th-century mathematician is often considered the world's first computer programmer.",
       "She was born in 1815 and was the daughter of the famous poet Lord Byron.",
       "She worked with Charles Babbage on his Analytical Engine.",
       "She wrote an algorithm intended to be carried out by the Analytical Engine — the first algorithm ever designed for a computer.",
-      "First name: Ada. Surname: Lovelace. Title: Countess of Lovelace. Born Augusta Ada Byron."
+      "First name: Ada. Last name starts with 'L'."
     ],
     "baseClueFact": "A 19th-century mathematician considered the world's first computer programmer.",
     "difficulty": "hard",

@@ -122,4 +122,48 @@ describe('match-flow integration', () => {
     expect(s.playerRoundScores[AI][0]).toBe(0);
     expect(s.correctPlayers).toHaveLength(0);
   });
+
+  it('human cursor advances immediately on correct guess, status stays round_active', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
+
+    expect(ff(store).status).toBe('round_active');
+    expect(ff(store).currentRound).toBe(0);
+
+    const s0 = ff(store);
+    const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, 0)];
+    store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig.canonicalName }));
+
+    // Cursor must advance immediately — before endRound or timer expiry
+    expect(ff(store).playerRoundCursor[HUMAN]).toBe(1);
+    // AI hasn't answered → round stays active (not round_reveal)
+    expect(ff(store).status).toBe('round_active');
+  });
+
+  it('human can complete all 3 rounds before global endRound', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
+
+    // Human solves all 3 rounds; AI never answers
+    for (let round = 0; round < 3; round++) {
+      const s = ff(store);
+      expect(s.status).toBe('round_active');
+      expect(s.currentRound).toBe(round);
+      const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s, HUMAN, round)];
+      store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig.canonicalName }));
+      // Cursor must be round+1 immediately
+      expect(ff(store).playerRoundCursor[HUMAN]).toBe(round + 1);
+      // AI hasn't answered → round stays active (not round_reveal)
+      expect(ff(store).status).toBe('round_active');
+      // Advance round via endRound/nextRound to proceed (AI still inactive)
+      store.dispatch(endRound());
+      if (round < 2) store.dispatch(nextRound());
+    }
+
+    store.dispatch(nextRound());
+    // After all 3 rounds, match is complete
+    expect(ff(store).status).toBe('complete');
+    // Human cursor is 3 (completed all rounds)
+    expect(ff(store).playerRoundCursor[HUMAN]).toBe(3);
+  });
 });

@@ -377,4 +377,18 @@ describe('famousFiguresSlice', () => {
     // Round is still active since PLAYER_B hasn't solved
     expect(getState(store).status).toBe('round_active');
   });
+
+  it('humanDoneWithRound: cursor advances beyond currentRound on correct guess', () => {
+    const store = makeStore();
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'HOH', seed: 1 }));
+    const s0 = getState(store);
+    expect(s0.currentRound).toBe(0);
+    const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
+    store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
+    const s = getState(store);
+    // humanDoneWithRound condition: cursor > currentRound
+    expect(s.playerRoundCursor[PLAYER_A]).toBeGreaterThan(s.currentRound);
+    // Round must remain active — PLAYER_B hasn't answered
+    expect(s.status).toBe('round_active');
+  });
 });

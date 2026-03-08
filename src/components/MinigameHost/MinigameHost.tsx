@@ -234,6 +234,7 @@ export default function MinigameHost({
                   prizeType={gameOptions?.prizeType as FamousFiguresPrizeType}
                   seed={seed}
                   onComplete={handleReactComplete}
+                  skipWinnerAnimation={true}
                 />
               );
             }
