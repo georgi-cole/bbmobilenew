@@ -15,8 +15,7 @@
 }
 
 /* ===== Chip Base Styles ===== */
-/* Icon-only square buttons styled to match the HomeHub button aesthetic:
-   asymmetric corners, dark-glass background, same border/shadow language. */
+/* Icon-only transparent buttons — no background container. */
 .hub-chip {
   position: absolute;
   display: inline-flex;
@@ -24,11 +23,9 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  /* Asymmetric corners — same pattern as home-hub__btn */
-  border-radius: 14px 4px 14px 4px;
-  /* Increased transparency by ~22%: alpha was 0.78, now ~0.61 */
-  background: rgba(6, 12, 28, 0.61);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   color: #ffffff;
   font-family: inherit;
   cursor: pointer;
@@ -36,33 +33,10 @@
   user-select: none;
   -webkit-appearance: none;
   appearance: none;
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
-  /* Stronger box-shadow */
-  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.70);
-  overflow: hidden;
-}
-
-/* Glass reflection via ::before pseudo-element */
-.hub-chip::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  /* Gradient opacity reduced by 22% relative to original level */
-  background: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.00) 60%);
-  pointer-events: none;
-}
-
-@supports (backdrop-filter: blur(1px)) {
-  .hub-chip {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
+  transition: transform 180ms ease;
 }
 
 .hub-chip:hover {
-  background: rgba(10, 18, 40, 0.72);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78);
   transform: translateY(-3px);
 }
 
