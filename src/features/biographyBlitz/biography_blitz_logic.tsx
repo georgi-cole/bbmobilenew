@@ -573,7 +573,15 @@ const biographyBlitzSlice = createSlice({
       const { targetId } = action.payload;
       // Validate: must be active and not the winner.
       if (!state.activeContestantIds.includes(targetId)) return;
-      if (targetId === state.roundWinnerId) return;
+      if (targetId === state.roundWinnerId) {
+        if (DEBUG) {
+          console.warn('[BiographyBlitz] pickEliminationTarget: invalid self-target, ignoring', {
+            targetId,
+            roundWinnerId: state.roundWinnerId,
+          });
+        }
+        return;
+      }
 
       // Apply elimination.
       state.eliminatedContestantIds.push(targetId);

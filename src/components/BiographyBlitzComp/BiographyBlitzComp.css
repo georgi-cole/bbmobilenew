@@ -958,6 +958,45 @@
   background: rgba(160, 100, 255, 0.2);
 }
 
+/* ── Submit answer button (2-step human answering) ───────────────────────── */
+
+.bb-blitz__submit-row {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 1rem 0.25rem;
+}
+
+.bb-blitz__submit-btn {
+  background: #7020c0;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.65rem 2.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  letter-spacing: 0.02em;
+}
+.bb-blitz__submit-btn:hover:not(:disabled) {
+  background: #8830d8;
+}
+.bb-blitz__submit-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Selected indicator on contestant tile ───────────────────────────────── */
+
+.bb-blitz__contestant-selected-indicator {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.6rem;
+  color: #b070ff;
+  line-height: 1;
+}
+
 /* ── Animations ──────────────────────────────────────────────────────────── */
 
 @keyframes bb-blitz-winner-pulse {

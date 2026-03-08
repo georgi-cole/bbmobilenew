@@ -1370,7 +1370,7 @@ export default function GameScreen() {
             // ── dontGoOver / holdWall: skip SpotlightAnimation, use lightweight QuickCrown ──
             let skipSpotlightAnimation = false;
             const gameKey = pendingChallenge.game.key;
-            if (gameKey === 'dontGoOver' || gameKey === 'holdWall') {
+            if (gameKey === 'dontGoOver' || gameKey === 'holdWall' || gameKey === 'biographyBlitz') {
               // Don't start the heavy SpotlightAnimation for these games — it's brittle and
               // causes race/measurement issues. Instead, ensure the winner is applied and
               // show the lightweight QuickCrown. Do this asynchronously to avoid
