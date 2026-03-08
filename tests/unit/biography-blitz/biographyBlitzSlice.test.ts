@@ -449,11 +449,10 @@ describe('biographyBlitzSlice — startNextRound', () => {
     doRound(store, ['finn'], ['mimi', 'rae']);
     // Question may change or stay (pool is small for 3 players)
     expect(store.getState().biographyBlitz.currentQuestion).not.toBeNull();
-    // If pool has more than 1 question, new question should differ
-    // (not strictly required if pool only has 1 valid question)
     const bb = store.getState().biographyBlitz;
     expect(bb.currentQuestionId).toBeTruthy();
-    void firstQId; // unused in assertion — just verify it's set
+    // After the round the question ID has been tracked in usedQuestionIds.
+    expect(bb.usedQuestionIds).toContain(firstQId);
   });
 
   it('no-op if not in round_transition phase', () => {

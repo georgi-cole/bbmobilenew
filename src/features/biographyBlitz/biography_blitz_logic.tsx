@@ -107,7 +107,7 @@ export const HIDDEN_DEADLINE_MS = 12_000;
 
 const ROUND_SEED_MULT = 0x9e3779b9;
 
-const DEBUG = true;
+const DEBUG = import.meta.env?.DEV ?? true;
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@
  *  6. Fastest correct answer wins over slower correct answer.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import biographyBlitzReducer, {
   initBiographyBlitz,
@@ -179,23 +179,23 @@ describe('resolveBiographyBlitzOutcome — idempotency', () => {
     const store = makeIntegrationStore('pov_comp'); // wrong phase for HOH
     store.dispatch(
       initBiographyBlitz({
-        participantIds: ['winner', 'loser'],
+        participantIds: ['finn', 'mimi'], // valid houseguest IDs
         competitionType: 'HOH',
         seed: 42,
-        humanContestantId: 'winner',
+        humanContestantId: 'finn',
         now: T0,
       }),
     );
     const cId = getCorrectId(store);
-    store.dispatch(submitBiographyBlitzAnswer({ contestantId: 'winner', answerId: cId, now: T0 + 100 }));
+    const winner = store.getState().biographyBlitz.activeContestantIds[0];
+    const loser = store.getState().biographyBlitz.activeContestantIds[1];
+    store.dispatch(submitBiographyBlitzAnswer({ contestantId: winner, answerId: cId, now: T0 + 100 }));
     store.dispatch(resolveRound());
     store.dispatch(advanceFromReveal());
-    store.dispatch(pickEliminationTarget({ targetId: 'loser' }));
-    const applyWinnerSpy = vi.fn();
-    // Dispatch without side effects — the thunk should bail out due to phase mismatch
+    store.dispatch(pickEliminationTarget({ targetId: loser }));
+    // Dispatch — the thunk should bail out due to phase mismatch (pov_comp vs HOH)
     store.dispatch(resolveBiographyBlitzOutcome());
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(false);
-    applyWinnerSpy.mockRestore();
   });
 
   it('outcomeResolved guard prevents re-dispatch after markBiographyBlitzOutcomeResolved', () => {

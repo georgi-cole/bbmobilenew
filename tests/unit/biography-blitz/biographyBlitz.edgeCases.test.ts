@@ -251,17 +251,20 @@ describe('edge cases — hot streak reset', () => {
     const store = startGame(['finn', 'mimi', 'rae', 'kai']);
     // Give finn 2 wins
     singleWinner(store, 'finn');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
     store.dispatch(startNextRound({ now: T0 + 20_000 }));
     singleWinner(store, 'finn');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: 'rae' }));
     expect(store.getState().biographyBlitz.hotStreakContestantId).toBe('finn');
     store.dispatch(startNextRound({ now: T0 + 40_000 }));
     // Round 3: kai wins instead
     singleWinner(store, 'kai');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     // Not picking finn (finn doesn't win)
     store.dispatch(pickEliminationTarget({ targetId: 'finn' })); // kai eliminates finn
     // After this round, finn is eliminated, streak should reset
@@ -275,17 +278,20 @@ describe('edge cases — hot streak holder eliminated', () => {
     const store = startGame(['finn', 'mimi', 'rae', 'kai']);
     // finn gets 2 wins
     singleWinner(store, 'finn');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: 'mimi' }));
     store.dispatch(startNextRound({ now: T0 + 20_000 }));
     singleWinner(store, 'finn');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: 'rae' }));
     expect(store.getState().biographyBlitz.hotStreakContestantId).toBe('finn');
     store.dispatch(startNextRound({ now: T0 + 40_000 }));
     // kai wins and eliminates finn (the streak holder)
     singleWinner(store, 'kai');
-    store.dispatch(resolveRound()); store.dispatch(advanceFromReveal());
+    store.dispatch(resolveRound());
+    store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: 'finn' }));
     expect(store.getState().biographyBlitz.hotStreakContestantId).toBeNull();
     expect(store.getState().biographyBlitz.consecutiveRoundWins['finn']).toBeUndefined();

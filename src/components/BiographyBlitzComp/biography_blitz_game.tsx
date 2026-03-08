@@ -116,10 +116,22 @@ export default function BiographyBlitzComp({
   function clearAllTimers() {
     aiSubmitTimersRef.current.forEach(t => window.clearTimeout(t));
     aiSubmitTimersRef.current = [];
-    if (autoAdvanceTimerRef.current !== null) { window.clearTimeout(autoAdvanceTimerRef.current); autoAdvanceTimerRef.current = null; }
-    if (humanElimTimerRef.current !== null) { window.clearTimeout(humanElimTimerRef.current); humanElimTimerRef.current = null; }
-    if (aiElimTimerRef.current !== null) { window.clearTimeout(aiElimTimerRef.current); aiElimTimerRef.current = null; }
-    if (deadlineTimerRef.current !== null) { window.clearTimeout(deadlineTimerRef.current); deadlineTimerRef.current = null; }
+    if (autoAdvanceTimerRef.current !== null) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    if (humanElimTimerRef.current !== null) {
+      window.clearTimeout(humanElimTimerRef.current);
+      humanElimTimerRef.current = null;
+    }
+    if (aiElimTimerRef.current !== null) {
+      window.clearTimeout(aiElimTimerRef.current);
+      aiElimTimerRef.current = null;
+    }
+    if (deadlineTimerRef.current !== null) {
+      window.clearTimeout(deadlineTimerRef.current);
+      deadlineTimerRef.current = null;
+    }
   }
 
   // --- Helper: get display name for contestant ---
@@ -129,22 +141,25 @@ export default function BiographyBlitzComp({
     return getContestantName(id);
   }, [participants]);
 
+  // Capture initial values in refs so the init effect can use them
+  // without needing to re-run when props change.
+  const initParamsRef = useRef({ participantIds, prizeType, seed, humanId });
+
   // ── 1. Initialize on mount ────────────────────────────────────────────────
   useEffect(() => {
-    const now = Date.now();
+    const { participantIds: pIds, prizeType: pt, seed: s, humanId: hId } = initParamsRef.current;
     dispatch(initBiographyBlitz({
-      participantIds,
-      competitionType: prizeType,
-      seed,
-      humanContestantId: humanId,
-      now,
+      participantIds: pIds,
+      competitionType: pt,
+      seed: s,
+      humanContestantId: hId,
+      now: Date.now(),
     }));
     return () => {
       clearAllTimers();
       dispatch(resetBiographyBlitz());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally run only once on mount
+  }, [dispatch]); // dispatch is stable; init params captured via ref
 
   // ── 2. Resolve outcome when complete ─────────────────────────────────────
   useEffect(() => {
