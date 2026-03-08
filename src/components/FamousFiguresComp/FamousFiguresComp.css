@@ -591,6 +591,36 @@
   color: #6699bb;
 }
 
+/* Fast-forward AI button — visible on the personal waiting screen */
+.ff-fastforward-btn {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.8rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 200, 0, 0.18) 0%, rgba(255, 140, 0, 0.18) 100%);
+  border: 1px solid rgba(255, 180, 0, 0.55);
+  border-radius: 10px;
+  color: #ffd966;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-sizing: border-box;
+}
+
+.ff-fastforward-btn:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 4px 18px rgba(255, 180, 0, 0.38);
+}
+
+.ff-fastforward-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ff-fastforward-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
 .ff-container--loading {
