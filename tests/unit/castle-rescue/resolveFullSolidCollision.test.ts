@@ -107,11 +107,6 @@ describe('resolveFullSolidCollision — side collision', () => {
     // Surface at x=200, w=80 → right edge 280.
     // Player right edge at 205 — small horizontal overlap.
     const surf   = surface(200, 280, 80, 16);
-    // Player standing at y=250 — vertical overlap is large (feet at 290 past surf y=280)
-    // so horizontal should be minimal axis.
-    const p      = player(177, 250); // x+28=205 → 5px horizontal overlap; y+40=290 → 10px vertical overlap
-    const prevX  = 170;              // was to the left
-    const prevY  = 248;              // was above → but with large vertical overlap we'd land
     // Make overlapX < overlapY by positioning so horizontal is definitely smaller
     // surf y=280, p.y=255: overlapY = min(255+40,280+16)-max(255,280) = min(295,296)-280 = 295-280 = 15
     // surf x=200, p.x+28=203: overlapX = min(203,280)-max(175,200) = 203-200 = 3
