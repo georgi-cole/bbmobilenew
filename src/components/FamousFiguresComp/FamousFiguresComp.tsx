@@ -14,6 +14,7 @@ import {
   revealNextHint,
   advanceTimer,
   submitPlayerGuess,
+  advancePlayerCursor,
   endRound,
   nextRound,
   resetFamousFigures,
@@ -42,6 +43,12 @@ import './FamousFiguresComp.css';
  * the `revealPauseMs` prop.
  */
 const DEFAULT_REVEAL_PAUSE_MS = 1500;
+
+/**
+ * Duration (ms) to show the success confirmation overlay after a correct
+ * human guess. Must be between 600 and 900 ms per spec.
+ */
+const CONFIRM_MS = 700;
 
 const WINNER_SCREEN_DURATION_MS = 4000;
 
@@ -199,8 +206,15 @@ export default function FamousFiguresComp({
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [guessInput, setGuessInput] = useState('');
-  const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong' | 'duplicate'>('idle');
+  const [inputState, setInputState] = useState<'idle' | 'wrong' | 'duplicate'>('idle');
   const [timerSecs, setTimerSecs] = useState(10);
+  /**
+   * Success confirmation overlay shown for CONFIRM_MS after a correct human
+   * guess. Non-modal, non-blocking for other players.
+   */
+  const [successOverlay, setSuccessOverlay] = useState<{ figureName: string; points: number } | null>(null);
+  /** Ref to the pending confirm-overlay timeout so it can be cancelled on unmount. */
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * Local hint counter for rounds where the human is playing ahead of the
    * global round. Reset to 0 whenever the human's cursor advances.
@@ -235,7 +249,14 @@ export default function FamousFiguresComp({
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
     dispatch(startFamousFigures({ participantIds, competitionType: prizeType, seed: effectiveSeed }));
-    return () => { dispatch(resetFamousFigures()); };
+    return () => {
+      dispatch(resetFamousFigures());
+      // Cancel any pending success-overlay timer to prevent state updates after unmount.
+      if (confirmTimerRef.current !== null) {
+        clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -373,6 +394,9 @@ export default function FamousFiguresComp({
         const aiFigure = FAMOUS_FIGURES[aiFigIdx];
         if (!aiFigure) return;
         dispatch(submitPlayerGuess({ playerId: aiId, guess: aiFigure.canonicalName, timestamp: Date.now() }));
+        // For AI players the cursor must be advanced immediately (no overlay shown).
+        // Use the round captured in the closure as targetRound for the idempotency guard.
+        dispatch(advancePlayerCursor({ playerId: aiId, targetRound: round }));
       }, delay);
       pendingAiTimeoutsRef.current.push({ id: t, aiId, round });
     }
@@ -467,12 +491,43 @@ export default function FamousFiguresComp({
     const correct = isAcceptedGuess(trimmed, localFigure);
     // Pass targetRound so the slice knows which round the human is answering.
     dispatch(submitPlayerGuess({ playerId: humanId, guess: trimmed, targetRound: humanCursor, timestamp: Date.now() }));
-    setInputState(correct ? 'correct' : 'wrong');
+
     if (correct) {
       setGuessInput('');
+      if (isAheadRound) {
+        // For ahead rounds the cursor already advanced in the reducer — no overlay
+        // shown (spec: overlay only for the current global round). Just clear input.
+        // Nothing else to dispatch; cursor is already at humanCursor+1 in the store.
+      } else {
+        // For the current global round: show the success overlay and dispatch
+        // advancePlayerCursor after CONFIRM_MS so the round can close.
+        // Compute points locally (same formula as slice) for the overlay display.
+        const pts = (() => {
+          switch (ff.hintsRevealed) {
+            case 0: return 10;
+            case 1: return 9;
+            case 2: return 7;
+            case 3: return 5;
+            case 4: return 3;
+            case 5: return 1;
+            default: return 1;
+          }
+        })();
+        // Cancel any previous pending timer (defensive).
+        if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current);
+        const roundForCursor = humanCursor; // capture before async
+        setSuccessOverlay({ figureName: localFigure.canonicalName, points: pts });
+        confirmTimerRef.current = setTimeout(() => {
+          confirmTimerRef.current = null;
+          setSuccessOverlay(null);
+          dispatch(advancePlayerCursor({ playerId: humanId, targetRound: roundForCursor }));
+        }, CONFIRM_MS);
+      }
+    } else {
+      setInputState('wrong');
+      // Clear feedback after a moment
+      setTimeout(() => setInputState('idle'), 1500);
     }
-    // Clear feedback after a moment
-    setTimeout(() => setInputState('idle'), 1500);
   }, [
     humanId,
     humanCursor,
@@ -481,6 +536,7 @@ export default function FamousFiguresComp({
     ff.playerRoundCursor,
     ff.playerGuesses,
     ff.currentRound,
+    ff.hintsRevealed,
     ff.matchFigureOrder,
     ff.playerFigureQueues,
     ff.figureOrder,
@@ -515,11 +571,16 @@ export default function FamousFiguresComp({
     dispatch(revealNextHint());
   }, [ff.status, ff.hintsRevealed, ff.currentRound, humanCursor, humanAheadHints, dispatch]);
 
-  // "Finish Match" — cancel all pending AI timeouts and atomically complete
-  // all remaining rounds via the finishAllRounds slice action.
+  // "Finish Match" — cancel all pending AI timeouts and the success-overlay
+  // confirm timer, then atomically complete all remaining rounds via finishAllRounds.
   const handleFinishMatch = useCallback(() => {
     pendingAiTimeoutsRef.current.forEach((e) => clearTimeout(e.id));
     pendingAiTimeoutsRef.current = [];
+    if (confirmTimerRef.current !== null) {
+      clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = null;
+    }
+    setSuccessOverlay(null);
     dispatch(finishAllRounds());
   }, [dispatch]);
 
@@ -765,17 +826,14 @@ export default function FamousFiguresComp({
   // ── Render: round_active ──────────────────────────────────────────────────
   const inputFieldClass = [
     'ff-input-field',
-    inputState === 'correct' ? 'ff-input-field--correct' : '',
     inputState === 'wrong' ? 'ff-input-field--shake' : '',
   ].filter(Boolean).join(' ');
 
   const feedbackMsg =
-    inputState === 'correct' ? '✅ Correct!' :
     inputState === 'wrong' ? '❌ Not quite, try again!' :
     inputState === 'duplicate' ? 'Already guessed that.' : '';
 
   const feedbackClass =
-    inputState === 'correct' ? 'ff-input-feedback ff-input-feedback--correct' :
     inputState === 'wrong' ? 'ff-input-feedback ff-input-feedback--wrong' :
     inputState === 'duplicate' ? 'ff-input-feedback ff-input-feedback--duplicate' :
     'ff-input-feedback';
@@ -844,6 +902,18 @@ export default function FamousFiguresComp({
         💡 Request Hint ({effectiveHintsRevealed}/5 used)
       </button>
 
+      {/* Success confirmation overlay — shown for CONFIRM_MS after a correct guess */}
+      {successOverlay && (
+        <div className="ff-success-overlay" role="status" aria-live="assertive" data-testid="ff-success-overlay">
+          <div className="ff-success-overlay-inner">
+            <div className="ff-success-checkmark" aria-hidden="true">✅</div>
+            <div className="ff-success-title">Correct!</div>
+            <div className="ff-success-figure">{successOverlay.figureName}</div>
+            <div className="ff-success-points">+{successOverlay.points} points</div>
+          </div>
+        </div>
+      )}
+
       {/* Guess input */}
       <div className="ff-input-area">
         <div className="ff-input-row">
@@ -856,12 +926,12 @@ export default function FamousFiguresComp({
             onKeyDown={handleKeyDown}
             placeholder="Type your guess…"
             aria-label="Guess the famous figure"
-            disabled={ff.status !== 'round_active' || humanCorrect || humanId === null || humanCursor >= ff.totalRounds}
+            disabled={ff.status !== 'round_active' || successOverlay !== null || humanCorrect || humanId === null || humanCursor >= ff.totalRounds}
           />
           <button
             className="ff-submit-btn"
             onClick={handleSubmitGuess}
-            disabled={ff.status !== 'round_active' || humanCorrect || humanId === null || guessInput.trim().length === 0 || humanCursor >= ff.totalRounds}
+            disabled={ff.status !== 'round_active' || successOverlay !== null || humanCorrect || humanId === null || guessInput.trim().length === 0 || humanCursor >= ff.totalRounds}
             aria-label="Submit guess"
           >
             Submit

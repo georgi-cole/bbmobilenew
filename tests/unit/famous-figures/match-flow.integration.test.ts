@@ -7,6 +7,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import famousFiguresReducer, {
   startFamousFigures,
   submitPlayerGuess,
+  advancePlayerCursor,
   revealNextHint,
   endRound,
   nextRound,
@@ -45,6 +46,7 @@ describe('match-flow integration', () => {
     const s0 = ff(store);
     const fig1 = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig1.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: 0 }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
     expect(ff(store).playerScores[HUMAN]).toBe(10); // 0 hints = 10 pts
@@ -66,6 +68,7 @@ describe('match-flow integration', () => {
     const s1 = ff(store);
     const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s1, HUMAN, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig2.canonicalName }));
+    store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: 1 }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
     expect(ff(store).playerScores[HUMAN]).toBe(17); // 10 + 7
@@ -81,6 +84,8 @@ describe('match-flow integration', () => {
     const s2 = ff(store);
     const fig3Ai = FAMOUS_FIGURES[getPlayerFigureIndex(s2, AI, s2.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: AI, guess: fig3Ai.canonicalName }));
+    // AI immediately dispatches advancePlayerCursor (no overlay for AI)
+    store.dispatch(advancePlayerCursor({ playerId: AI, targetRound: 2 }));
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: 'completely wrong answer xyzzy' }));
 
     expect(ff(store).playerCorrect[AI]).toBe(true);
@@ -123,7 +128,7 @@ describe('match-flow integration', () => {
     expect(s.correctPlayers).toHaveLength(0);
   });
 
-  it('human cursor advances immediately on correct guess, status stays round_active', () => {
+  it('human cursor advances after advancePlayerCursor, status stays round_active while AI pending', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
 
@@ -134,9 +139,14 @@ describe('match-flow integration', () => {
     const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, 0)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig.canonicalName }));
 
-    // Cursor must advance immediately — before endRound or timer expiry
-    expect(ff(store).playerRoundCursor[HUMAN]).toBe(1);
+    // Cursor must NOT advance yet — advancePlayerCursor not dispatched
+    expect(ff(store).playerRoundCursor[HUMAN]).toBe(0);
     // AI hasn't answered → round stays active (not round_reveal)
+    expect(ff(store).status).toBe('round_active');
+
+    // After advancePlayerCursor, cursor advances but round still active (AI pending)
+    store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: 0 }));
+    expect(ff(store).playerRoundCursor[HUMAN]).toBe(1);
     expect(ff(store).status).toBe('round_active');
   });
 
@@ -144,14 +154,18 @@ describe('match-flow integration', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
 
-    // Human solves all 3 rounds; AI never answers
+    // Human solves all 3 rounds; AI never answers.
+    // After endRound/nextRound each round becomes the current global round,
+    // so each human answer is a current-round answer requiring advancePlayerCursor.
     for (let round = 0; round < 3; round++) {
       const s = ff(store);
       expect(s.status).toBe('round_active');
       expect(s.currentRound).toBe(round);
       const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s, HUMAN, round)];
       store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig.canonicalName }));
-      // Cursor must be round+1 immediately
+      // Cursor must NOT advance until advancePlayerCursor fires
+      expect(ff(store).playerRoundCursor[HUMAN]).toBe(round);
+      store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: round }));
       expect(ff(store).playerRoundCursor[HUMAN]).toBe(round + 1);
       // AI hasn't answered → round stays active (not round_reveal)
       expect(ff(store).status).toBe('round_active');

@@ -423,6 +423,11 @@ const famousFiguresSlice = createSlice({
       // the player's next unanswered round; this prevents skipping rounds.
       if (targetRound !== (state.playerRoundCursor[playerId] ?? 0)) return;
 
+      // Guard: player already answered this round correctly but advancePlayerCursor
+      // has not yet fired (overlay is still visible). Prevent a second correct
+      // submission from double-awarding points.
+      if (targetRound === state.currentRound && state.playerCorrect[playerId]) return;
+
       const trimmed = guess.trim();
       if (trimmed.length === 0) return;
 
@@ -457,26 +462,66 @@ const famousFiguresSlice = createSlice({
           state.playerPersonalRoundScores[playerId] = [];
         }
         state.playerPersonalRoundScores[playerId][targetRound] = points;
-        // Advance this player's personal round cursor immediately.
-        state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1;
 
-        // Only update the current-round tracking when answering the global round.
-        // For ahead answers the global playerCorrect/correctPlayers are not
-        // updated — those are for the current global round only.
         if (targetRound === state.currentRound) {
+          // For the current global round: mark correct but do NOT advance the
+          // cursor yet. The UI will dispatch advancePlayerCursor after showing
+          // the short success confirmation overlay (~700 ms). This keeps input
+          // disabled during the overlay and the round open until every
+          // participant has been acknowledged.
           state.playerCorrect[playerId] = true;
           state.correctPlayers = [...state.correctPlayers, playerId];
+        } else {
+          // For ahead rounds (targetRound > currentRound): advance cursor
+          // immediately since no overlay is shown for ahead-play answers.
+          // doEndRound is NOT called here — it fires from advancePlayerCursor
+          // once all participants have advanced past the current global round.
+          state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1;
         }
+      }
+    },
 
-        // Close the round when every participant's cursor has advanced past
-        // the current round (all answered correctly at some point).
-        const participantIds = Object.keys(state.playerScores);
-        if (
-          participantIds.length > 0 &&
-          participantIds.every((id) => (state.playerRoundCursor[id] ?? 0) > state.currentRound)
-        ) {
-          doEndRound(state);
-        }
+    /**
+     * Advance a player's personal round cursor after the success confirmation
+     * overlay has been shown (~700 ms after the correct guess).
+     *
+     * `targetRound` must equal the player's current cursor position so that
+     * stale dispatches (e.g. if nextRound already bumped the cursor) are
+     * silently ignored.
+     *
+     * When every participant's cursor has advanced past `currentRound` this
+     * action also closes the round (transitions to round_reveal).
+     */
+    advancePlayerCursor(
+      state,
+      action: PayloadAction<{ playerId: string; targetRound: number }>,
+    ) {
+      const { playerId, targetRound } = action.payload;
+      const cursor = state.playerRoundCursor[playerId] ?? 0;
+      // Idempotency guard: only advance if cursor is at the expected position.
+      if (cursor !== targetRound) return;
+
+      // Safety guard: only advance if the player actually has a recorded result
+      // for this round (either playerCorrect for the current round, or a personal
+      // round score entry for ahead rounds). This prevents accidental or stale
+      // dispatches from prematurely closing the round.
+      const hasResultForTargetRound =
+        targetRound === state.currentRound
+          ? !!state.playerCorrect?.[playerId]
+          : state.playerPersonalRoundScores?.[playerId]?.[targetRound] !== undefined;
+      if (!hasResultForTargetRound) return;
+
+      state.playerRoundCursor[playerId] = cursor + 1;
+
+      // Close the round when every participant's cursor has advanced past
+      // the current global round.
+      if (state.status !== 'round_active') return;
+      const participantIds = Object.keys(state.playerScores);
+      if (
+        participantIds.length > 0 &&
+        participantIds.every((id) => (state.playerRoundCursor[id] ?? 0) > state.currentRound)
+      ) {
+        doEndRound(state);
       }
     },
 
@@ -596,6 +641,14 @@ const famousFiguresSlice = createSlice({
           // Skip players who already answered this round (cursor past it).
           if ((state.playerRoundCursor[id] ?? 0) > roundIdx) continue;
 
+          // Player answered correctly but advancePlayerCursor hasn't fired yet
+          // (success overlay was still visible when finishAllRounds was called).
+          // Advance the cursor so the round-close logic sees a consistent state.
+          if (state.playerPersonalRoundScores[id]?.[roundIdx] !== undefined) {
+            state.playerRoundCursor[id] = roundIdx + 1;
+            continue;
+          }
+
           if (!state.playerPersonalRoundScores[id]) {
             state.playerPersonalRoundScores[id] = [];
           }
@@ -660,6 +713,7 @@ export const {
   revealNextHint,
   advanceTimer,
   submitPlayerGuess,
+  advancePlayerCursor,
   endRound,
   nextRound,
   setAiSubmissionsForRound,
