@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
-import { openSocialPanel, selectEnergyBank } from '../../social/socialSlice';
+import {
+  openIncomingInbox,
+  openSocialPanel,
+  selectEnergyBank,
+  selectPendingIncomingInteractionCount,
+} from '../../social/socialSlice';
 import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectUnreadDrCount,
-  selectCurrentNomineesCount,
 } from '../../store/selectors';
 import './FloatingActionBar.css';
 
@@ -18,16 +23,17 @@ import './FloatingActionBar.css';
  *
  * - Center button dispatches advance(); pulses when actionable; disabled when
  *   waiting for human input (replacement nominee, Final 4 POV vote, Final 3 HOH eviction).
- * - DR and Actions buttons show numeric badges wired to store selectors.
- * - Left side: Social and Help buttons (UI placeholders — functionality TBD).
- * - Right side: DR and Actions buttons with badge counts.
+ * - DR and Inbox buttons show numeric badges wired to store selectors.
+ * - Left side: Social and Help buttons.
+ * - Right side: DR and Inbox buttons with badge counts.
  */
 export default function FloatingActionBar() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const canAdvance = useAppSelector(selectAdvanceEnabled);
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
-  const nomineesCount = useAppSelector(selectCurrentNomineesCount);
+  const pendingInteractionsCount = useAppSelector(selectPendingIncomingInteractionCount);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
 
@@ -75,6 +81,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label="Help"
           title="Help"
+          onClick={() => navigate('/rules')}
         >
           ❓
         </button>
@@ -103,6 +110,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label={`Diary Room${drCount > 0 ? ` (${Math.min(drCount, 99)}${drCount > 99 ? '+' : ''} entries)` : ''}`}
           title="Diary Room"
+          onClick={() => navigate('/diary-room')}
         >
           📓
           {drCount > 0 && (
@@ -114,13 +122,14 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label={`Actions${nomineesCount > 0 ? ` (${nomineesCount} nominee${nomineesCount !== 1 ? 's' : ''})` : ''}`}
-          title="Actions"
+          aria-label={`Inbox${pendingInteractionsCount > 0 ? ` (${pendingInteractionsCount} pending)` : ''}`}
+          title="Inbox"
+          onClick={() => dispatch(openIncomingInbox())}
         >
-          ⚡
-          {nomineesCount > 0 && (
+          📥
+          {pendingInteractionsCount > 0 && (
             <span className="fab__badge" aria-hidden="true">
-              {nomineesCount > 99 ? '99+' : nomineesCount}
+              {pendingInteractionsCount > 99 ? '99+' : pendingInteractionsCount}
             </span>
           )}
         </button>
@@ -128,4 +137,3 @@ export default function FloatingActionBar() {
     </div>
   );
 }
-

@@ -13,8 +13,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { MemoryRouter } from 'react-router-dom';
 import gameReducer from '../../../store/gameSlice';
-import socialReducer, { setEnergyBankEntry, applyEnergyDelta } from '../../../social/socialSlice';
+import socialReducer, {
+  setEnergyBankEntry,
+  applyEnergyDelta,
+  pushIncomingInteraction,
+} from '../../../social/socialSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 
@@ -35,9 +40,11 @@ function makeStore(hasHuman = true) {
 
 function renderFAB(store: ReturnType<typeof makeStore>) {
   return render(
-    <Provider store={store}>
-      <FloatingActionBar />
-    </Provider>,
+    <MemoryRouter>
+      <Provider store={store}>
+        <FloatingActionBar />
+      </Provider>
+    </MemoryRouter>,
   );
 }
 
@@ -125,5 +132,30 @@ describe('FloatingActionBar – social button flash animation', () => {
 
     const btn = screen.getByRole('button', { name: /energy: 3/i });
     expect(btn.className).toContain('fab__side-btn--flash');
+  });
+});
+
+describe('FloatingActionBar – inbox badge', () => {
+  it('shows pending incoming interaction count on the inbox button', () => {
+    const store = makeStore();
+    act(() => {
+      store.dispatch(
+        pushIncomingInteraction({
+          id: 'incoming-1',
+          fromId: 'p2',
+          type: 'compliment',
+          text: 'Great move.',
+          createdAt: 10,
+          createdWeek: 1,
+          expiresAtWeek: 1,
+          read: false,
+          requiresResponse: true,
+          resolved: false,
+        }),
+      );
+    });
+    renderFAB(store);
+    expect(screen.getByText('1')).toBeDefined();
+    expect(screen.getByRole('button', { name: /inbox/i })).toBeDefined();
   });
 });
