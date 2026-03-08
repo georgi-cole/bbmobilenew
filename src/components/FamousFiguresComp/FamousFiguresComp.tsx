@@ -411,7 +411,6 @@ export default function FamousFiguresComp({
     setInputState('idle');
     setHumanAheadHints(0);
   // humanCursor is the only trigger needed — see comment above.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [humanCursor]);
 
   // ── Guess handler ─────────────────────────────────────────────────────────
