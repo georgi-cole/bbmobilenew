@@ -6,7 +6,7 @@
  *   round_reveal  — Correct answer shown with who got it right. Auto-advances after 3s.
  *   complete      — Winner announcement. Fires onComplete after 4s.
  */
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
@@ -192,6 +192,12 @@ export default function FamousFiguresComp({
     return playerMap[id]?.avatar ?? getDicebear(displayName(id));
   }
 
+  // ── Effective seed ────────────────────────────────────────────────────────
+  // When no explicit seed is provided (seed === 0), use Date.now() so each
+  // production match gets fresh randomisation. Test pages can pass a non-zero
+  // seed for fully deterministic behaviour.
+  const effectiveSeed = useMemo(() => (seed !== 0 ? seed : Math.floor(Date.now())), [seed]);
+
   // ── Local UI state ────────────────────────────────────────────────────────
   const [guessInput, setGuessInput] = useState('');
   const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong' | 'duplicate'>('idle');
@@ -202,6 +208,16 @@ export default function FamousFiguresComp({
   ffRef.current = ff;
   const completeFiredRef = useRef(false);
   const cooldownUntilRef = useRef<number>(0);
+  /**
+   * Explicit ref to the currently active phase interval + timeout.
+   *
+   * Double-timer fix: React guarantees the effect cleanup function runs before
+   * the effect re-executes when `[ff.timerPhase, ff.currentRound, ff.status]`
+   * changes, so a stale interval/timeout is always cleared first.  This ref
+   * provides an additional explicit cancel so that any late-firing stale
+   * callback that slipped past the closure guards cannot start a second timer.
+   */
+  const activeTimerRef = useRef<{ interval: ReturnType<typeof setInterval>; timeout: ReturnType<typeof setTimeout> } | null>(null);
   // ── AI submission tracking ────────────────────────────────────────────────
   // Tracks the round for which we have already scheduled AI submissions so we
   // only schedule once per round regardless of how many timer-phase changes
@@ -216,14 +232,29 @@ export default function FamousFiguresComp({
 
   // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
-    dispatch(startFamousFigures({ participantIds, competitionType: prizeType, seed }));
+    dispatch(startFamousFigures({ participantIds, competitionType: prizeType, seed: effectiveSeed }));
     return () => { dispatch(resetFamousFigures()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Timer per phase ───────────────────────────────────────────────────────
+  // Double-timer fix: React runs the previous effect's cleanup (clearInterval +
+  // clearTimeout) before re-executing this effect whenever the dependency array
+  // [ff.timerPhase, ff.currentRound, ff.status] changes — this guarantees stale
+  // timers are cancelled before the new phase timer starts.  The `activeTimerRef`
+  // below provides an extra explicit cancel layer so that any late-firing stale
+  // callback that survived the closure guards cannot accidentally start a second
+  // concurrent timer.
   useEffect(() => {
     if (ff.status !== 'round_active') return;
+
+    // Cancel any previously active timers before starting new ones.
+    if (activeTimerRef.current) {
+      clearInterval(activeTimerRef.current.interval);
+      clearTimeout(activeTimerRef.current.timeout);
+      activeTimerRef.current = null;
+    }
+
     const phase = ff.timerPhase;
     const capturedRound = ff.currentRound;
     const duration = PHASE_DURATIONS[phase] ?? 15000;
@@ -258,9 +289,12 @@ export default function FamousFiguresComp({
       }
     }, duration);
 
+    activeTimerRef.current = { interval, timeout };
+
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      activeTimerRef.current = null;
     };
   // Re-run when the phase changes or the round changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,7 +309,7 @@ export default function FamousFiguresComp({
     const aiIds = participantIds.filter((id) => id !== humanId);
     if (aiIds.length === 0) return;
 
-    const rng = mulberry32(seed ^ (round * 0x9e3779b9));
+    const rng = mulberry32(effectiveSeed ^ (round * 0x9e3779b9));
     // Build per-AI submissions using each AI's own figure for this round.
     const submissions: Record<string, boolean> = {};
     for (const aiId of aiIds) {
@@ -502,6 +536,13 @@ export default function FamousFiguresComp({
     ff.timerPhase !== 'overtime' &&
     ff.timerPhase !== 'done';
 
+  // True when the human has completed the current round (guessed correctly) but
+  // the global round is still active (other players still answering / timer running).
+  // Once humanDoneWithRound is true the human must NOT see the active clue/input UI.
+  const humanDoneWithRound =
+    humanId !== null &&
+    (ff.playerRoundCursor[humanId] ?? 0) > ff.currentRound;
+
   // True when the local human player has solved all their personal rounds but
   // the global match has not yet transitioned to 'complete' (the timer for the
   // last round is still running for other players).
@@ -548,9 +589,11 @@ export default function FamousFiguresComp({
   }
 
   // ── Render: personal waiting screen ──────────────────────────────────────
-  // Shown when the local human player has solved all their personal rounds but
-  // the global match hasn't ended yet (other players still playing).
-  if (humanAllDone) {
+  // Shown when the local human player has solved the current round (or all
+  // rounds) but the global match/round hasn't ended yet.
+  // humanAllDone: all 3 rounds done, match still active → show personal results.
+  // humanDoneWithRound (mid-match): current round solved, more rounds to come.
+  if ((humanDoneWithRound && ff.status === 'round_active') || humanAllDone) {
     const humanTotal = humanId ? (ff.playerScores[humanId] ?? 0) : 0;
     // playerPersonalRoundScores is written immediately on each correct guess,
     // so it always has one entry per round the human solved — even before
@@ -566,19 +609,23 @@ export default function FamousFiguresComp({
         <div className="ff-header">
           <span className="ff-comp-badge">{prizeType}</span>
           <span className="ff-title">Famous Figures</span>
-          <span className="ff-round-badge">Your Rounds Done!</span>
+          <span className="ff-round-badge">
+            {humanAllDone ? 'Your Rounds Done!' : `Round ${ff.currentRound + 1} Complete!`}
+          </span>
         </div>
 
-        <div className="ff-personal-results">
-          <div className="ff-personal-results-title">Your Results</div>
-          <div className="ff-personal-results-score">{humanTotal} pts</div>
-          <div className="ff-personal-results-rounds">
-            [{allRoundScores.join(', ')}]
+        {humanAllDone && (
+          <div className="ff-personal-results">
+            <div className="ff-personal-results-title">Your Results</div>
+            <div className="ff-personal-results-score">{humanTotal} pts</div>
+            <div className="ff-personal-results-rounds">
+              [{allRoundScores.join(', ')}]
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="ff-waiting-banner" aria-live="polite">
-          ⏳ Waiting for other players…
+          ⏳ Waiting for other players to finish…
           {remainingPlayersCount > 0 && (
             <span className="ff-waiting-banner-sub">
               {remainingPlayersCount} player{remainingPlayersCount !== 1 ? 's' : ''} still playing
