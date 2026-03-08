@@ -759,8 +759,16 @@ export default function BiographyBlitzComp({
       eliminationCandidates: bb.eliminationCandidates,
       avatarGridAnswerIds: isAvatarMode && question ? question.answers.map((a) => a.id) : [],
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bb.status, bb.currentQuestionId, bb.activeContestants, bb.eliminationCandidates, humanContestantId, humanContestantIdSource]);
+  }, [
+    bb.status,
+    bb.currentQuestionId,
+    bb.activeContestants,
+    bb.eliminationCandidates,
+    humanContestantId,
+    humanContestantIdSource,
+    gameStateUserId,
+    propSessionUserId,
+  ]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
