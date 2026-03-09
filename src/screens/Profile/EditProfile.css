@@ -1,0 +1,226 @@
+/* EditProfile */
+
+.edit-profile {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.edit-profile__title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 18px;
+}
+
+/* Photo section */
+.edit-profile__photo-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.edit-profile__photo-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.edit-profile__photo-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+}
+
+.edit-profile__avatar-emoji {
+  font-size: 4rem;
+  line-height: 1;
+  display: block;
+}
+
+.edit-profile__photo-btn {
+  position: absolute;
+  bottom: -2px;
+  right: -6px;
+  background: linear-gradient(135deg, #7b5cff, #6fb7ff);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.edit-profile__photo-label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.edit-profile__photo-hint {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 2px;
+}
+
+/* Avatar emoji picker */
+.edit-profile__avatar-section {
+  margin-bottom: 18px;
+}
+
+.edit-profile__section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.edit-profile__avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.edit-profile__avatar-btn {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-profile__avatar-btn--selected {
+  border-color: rgba(107, 183, 255, 0.6);
+  background: rgba(107, 183, 255, 0.12);
+}
+
+/* Form fields */
+.edit-profile__field {
+  margin-bottom: 14px;
+}
+
+.edit-profile__label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.edit-profile__input,
+.edit-profile__textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.edit-profile__input:focus,
+.edit-profile__textarea:focus {
+  border-color: rgba(107, 183, 255, 0.4);
+}
+
+.edit-profile__textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+/* Collapsible section */
+.edit-profile__collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 0;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.edit-profile__collapse-arrow {
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+.edit-profile__collapse-arrow--open {
+  transform: rotate(180deg);
+}
+
+.edit-profile__collapse-body {
+  padding-bottom: 6px;
+}
+
+.edit-profile__sensitive-note {
+  font-size: 0.72rem;
+  color: rgba(255, 200, 80, 0.7);
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 180, 60, 0.06);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 180, 60, 0.12);
+}
+
+/* Bottom actions */
+.edit-profile__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  position: sticky;
+  bottom: 16px;
+}
+
+.edit-profile__btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-profile__btn--save {
+  background: linear-gradient(135deg, #7b5cff, #6fb7ff);
+  color: #fff;
+}
+
+.edit-profile__btn--cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Processing indicator */
+.edit-profile__processing {
+  font-size: 0.78rem;
+  color: rgba(107, 183, 255, 0.8);
+  margin-top: 4px;
+}

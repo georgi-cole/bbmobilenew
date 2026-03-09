@@ -4,6 +4,11 @@ import finaleReducer from './finaleSlice';
 import challengeReducer from './challengeSlice';
 import settingsReducer, { loadSettings, saveSettings } from './settingsSlice';
 import userProfileReducer, { loadUserProfile, saveUserProfile } from './userProfileSlice';
+import profilesReducer, {
+  loadProfilesState,
+  saveProfilesState,
+  archiveKeyForProfile,
+} from './profilesSlice';
 import socialReducer from '../social/socialSlice';
 import { socialMiddleware } from '../social/socialMiddleware';
 import { soundMiddleware } from './soundMiddleware';
@@ -21,6 +26,7 @@ export const store = configureStore({
     challenge: challengeReducer,
     settings: settingsReducer,
     userProfile: userProfileReducer,
+    profiles: profilesReducer,
     social: socialReducer,
     ui: uiReducer,
     cwgo: cwgoReducer,
@@ -31,6 +37,7 @@ export const store = configureStore({
   preloadedState: {
     settings: loadSettings(),
     userProfile: loadUserProfile(),
+    profiles: loadProfilesState(),
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(socialMiddleware, soundMiddleware),
@@ -40,6 +47,8 @@ export const store = configureStore({
 let prevSettings = store.getState().settings;
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile;
+// Persist profiles state to localStorage whenever it changes
+let prevProfiles = store.getState().profiles;
 // Persist season archives to localStorage whenever they change
 let prevSeasonArchives = store.getState().game.seasonArchives;
 store.subscribe(() => {
@@ -52,9 +61,19 @@ store.subscribe(() => {
     prevUserProfile = current.userProfile;
     saveUserProfile(current.userProfile);
   }
+  if (current.profiles !== prevProfiles) {
+    prevProfiles = current.profiles;
+    saveProfilesState(current.profiles);
+  }
   if (current.game.seasonArchives !== prevSeasonArchives) {
     prevSeasonArchives = current.game.seasonArchives;
-    saveSeasonArchives(DEFAULT_ARCHIVE_KEY, current.game.seasonArchives ?? []);
+    // Guest mode: skip archive persistence entirely.
+    if (!current.profiles.isGuest) {
+      const archiveKey = current.profiles.activeProfileId
+        ? archiveKeyForProfile(current.profiles.activeProfileId)
+        : DEFAULT_ARCHIVE_KEY;
+      saveSeasonArchives(archiveKey, current.game.seasonArchives ?? []);
+    }
   }
 });
 

@@ -16,6 +16,8 @@ import GameScreen           from './screens/GameScreen/GameScreen';
 import DiaryRoom            from './screens/DiaryRoom/DiaryRoom';
 import Houseguests          from './screens/Houseguests/Houseguests';
 import Profile              from './screens/Profile/Profile';
+import EditProfile          from './screens/Profile/EditProfile';
+import ProfilePicker        from './screens/ProfilePicker/ProfilePicker';
 import Leaderboard          from './screens/Leaderboard/Leaderboard';
 import Week                 from './screens/Week/Week';
 import CreatePlayer         from './screens/CreatePlayer/CreatePlayer';
@@ -62,6 +64,8 @@ export const router = createHashRouter([
       { path: 'diary-room',       element: <DiaryRoom />    },
       { path: 'houseguests',      element: <Houseguests />  },
       { path: 'profile',          element: <Profile />      },
+      { path: 'profile-edit',     element: <EditProfile />  },
+      { path: 'profile-picker',   element: <ProfilePicker /> },
       { path: 'leaderboard',      element: <Leaderboard />  },
       { path: 'credits',          element: <Suspense fallback={null}><Credits /></Suspense> },
       { path: 'week',             element: <Week />         },
