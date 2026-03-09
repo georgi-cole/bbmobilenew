@@ -181,14 +181,15 @@ const socialSlice = createSlice({
       }>,
     ) {
       const { actorId, targetId, deltas, event } = action.payload;
+      // Avoid creating zero-information social memory entries (no deltas, no event).
+      if (!event && !hasSocialMemoryDelta(deltas)) {
+        return;
+      }
       if (!state.socialMemory[actorId]) {
         state.socialMemory[actorId] = {};
       }
       let entry = state.socialMemory[actorId][targetId];
       if (!entry) {
-        if (!event && !hasSocialMemoryDelta(deltas)) {
-          return;
-        }
         entry = createSocialMemoryEntry();
         state.socialMemory[actorId][targetId] = entry;
       }
