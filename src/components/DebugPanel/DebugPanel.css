@@ -146,6 +146,43 @@
   font-family: monospace;
 }
 
+/* Incoming interaction logs */
+.dbg-logs summary {
+  cursor: pointer;
+  color: #7b8ecc;
+  font-size: 0.75rem;
+}
+.dbg-log-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.dbg-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(255 255 255 / 0.03);
+  font-family: monospace;
+  font-size: 0.7rem;
+}
+.dbg-log__stage {
+  color: #7b8ecc;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.6rem;
+}
+.dbg-log__reason {
+  color: #f2ce7b;
+}
+.dbg-log__meta {
+  color: #cbd6ff;
+}
+
 /* Controls rows */
 .dbg-row {
   display: flex;

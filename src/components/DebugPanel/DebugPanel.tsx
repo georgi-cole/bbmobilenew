@@ -16,7 +16,17 @@ import {
   fastForwardToEviction,
   startMinigame,
 } from '../../store/gameSlice';
-import { pushIncomingInteraction } from '../../social/socialSlice';
+import {
+  clearIncomingInteractionLogs,
+  pushIncomingInteraction,
+  scheduleIncomingInteraction,
+  selectIncomingInteractionLogs,
+  updateSocialMemory,
+} from '../../social/socialSlice';
+import { autoResolveExpiredIncomingInteractionsForWeek } from '../../social/incomingInteractions';
+import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler';
+import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteractionPhases';
+import { socialConfig } from '../../social/socialConfig';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
 import type { Phase } from '../../types';
@@ -77,8 +87,16 @@ function pickRandom<T>(list: readonly T[]): T {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-function buildIncomingInteraction(fromId: string, week: number): IncomingInteraction {
-  const type = pickRandom(INCOMING_TYPES);
+function interactionRequiresResponse(type: IncomingInteractionType): boolean {
+  return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea';
+}
+
+function buildIncomingInteraction(
+  fromId: string,
+  week: number,
+  overrides: { type?: IncomingInteractionType; expiresAtWeek?: number } = {},
+): IncomingInteraction {
+  const type = overrides.type ?? pickRandom(INCOMING_TYPES);
   const text = pickRandom(INCOMING_TEXT[type]);
   const now = Date.now();
   const canUseUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function';
@@ -90,10 +108,27 @@ function buildIncomingInteraction(fromId: string, week: number): IncomingInterac
     text,
     createdAt: now,
     createdWeek: week,
-    expiresAtWeek: week,
+    expiresAtWeek: overrides.expiresAtWeek ?? week + 1,
     read: false,
-    requiresResponse: true,
+    requiresResponse: interactionRequiresResponse(type),
     resolved: false,
+  };
+}
+
+function buildScheduledInteraction(
+  fromId: string,
+  week: number,
+  phase: string,
+  type: IncomingInteractionType,
+) {
+  const interaction = buildIncomingInteraction(fromId, week, { type, expiresAtWeek: week + 1 });
+  return {
+    interaction,
+    priority: getIncomingInteractionPriority(type),
+    scheduledAt: Date.now(),
+    scheduledForWeek: week,
+    scheduledForPhase: phase,
+    deliveryReason: 'debug_seed',
   };
 }
 
@@ -103,6 +138,7 @@ export default function DebugPanel() {
 
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
+  const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
 
   const [isOpen, setIsOpen] = useState(() => searchParams.get('debug') === '1');
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
@@ -138,6 +174,7 @@ export default function DebugPanel() {
   // Players eligible to be evicted in Final4 (current nominees)
   const f4Nominees = game.players.filter((p) => game.nomineeIds.includes(p.id));
   const canSeedInteraction = aiPlayers.length > 0 && !!humanPlayer;
+  const memoryCaps = socialConfig.socialMemoryConfig.caps;
 
   function handleSeedIncomingInteraction() {
     if (!canSeedInteraction || !humanPlayer) return;
@@ -145,6 +182,65 @@ export default function DebugPanel() {
     dispatch(
       pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)),
     );
+  }
+
+  function handleSeedIncomingBatch() {
+    if (!canSeedInteraction || !humanPlayer) return;
+    const batchSize = Math.min(6, aiPlayers.length * 2);
+    for (let i = 0; i < batchSize; i += 1) {
+      const fromPlayer = pickRandom(aiPlayers);
+      dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)));
+    }
+  }
+
+  function handleScheduleBusyWeek() {
+    if (!canSeedInteraction || !humanPlayer) return;
+    INCOMING_INTERACTION_PHASE_ORDER.forEach((phase) => {
+      const fromPlayer = pickRandom(aiPlayers);
+      const type = pickRandom(INCOMING_TYPES);
+      dispatch(scheduleIncomingInteraction(buildScheduledInteraction(fromPlayer.id, game.week, phase, type)));
+    });
+  }
+
+  function handleAutoResolveIgnored() {
+    dispatch(autoResolveExpiredIncomingInteractionsForWeek(game.week + 1));
+  }
+
+  function handleBoostTrust() {
+    if (!humanPlayer) return;
+    aiPlayers.forEach((player) => {
+      dispatch(
+        updateSocialMemory({
+          actorId: player.id,
+          targetId: humanPlayer.id,
+          deltas: {
+            gratitude: memoryCaps.gratitude,
+            trustMomentum: memoryCaps.trustMomentum,
+          },
+        }),
+      );
+    });
+  }
+
+  function handleBoostResentment() {
+    if (!humanPlayer) return;
+    aiPlayers.forEach((player) => {
+      dispatch(
+        updateSocialMemory({
+          actorId: player.id,
+          targetId: humanPlayer.id,
+          deltas: {
+            resentment: memoryCaps.resentment,
+            neglect: memoryCaps.neglect,
+            trustMomentum: -memoryCaps.trustMomentum,
+          },
+        }),
+      );
+    });
+  }
+
+  function handleClearInteractionLogs() {
+    dispatch(clearIncomingInteractionLogs());
   }
 
   return (
@@ -230,16 +326,6 @@ export default function DebugPanel() {
                 </button>
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(fastForwardToEviction())}>
                   Fast-fwd → Eviction
-                </button>
-              </div>
-
-              <div className="dbg-row">
-                <button
-                  className="dbg-btn dbg-btn--wide"
-                  disabled={!canSeedInteraction}
-                  onClick={handleSeedIncomingInteraction}
-                >
-                  Seed Incoming Interaction
                 </button>
               </div>
 
@@ -450,6 +536,67 @@ export default function DebugPanel() {
                   Reset Season
                 </button>
               </div>
+            </section>
+
+            {/* ── Incoming Interaction Debugging ── */}
+            <section className="dbg-section">
+              <h3 className="dbg-section__title">Incoming Interactions</h3>
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  disabled={!canSeedInteraction}
+                  onClick={handleSeedIncomingInteraction}
+                >
+                  Seed Interaction
+                </button>
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  disabled={!canSeedInteraction}
+                  onClick={handleSeedIncomingBatch}
+                >
+                  Seed Busy Inbox
+                </button>
+              </div>
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  disabled={!canSeedInteraction}
+                  onClick={handleScheduleBusyWeek}
+                >
+                  Queue Busy Week
+                </button>
+                <button className="dbg-btn dbg-btn--wide" onClick={handleAutoResolveIgnored}>
+                  Auto-resolve Ignored
+                </button>
+              </div>
+              <div className="dbg-row">
+                <button className="dbg-btn dbg-btn--wide" onClick={handleBoostTrust}>
+                  Boost Trust
+                </button>
+                <button className="dbg-btn dbg-btn--wide" onClick={handleBoostResentment}>
+                  Boost Resentment
+                </button>
+              </div>
+              <details className="dbg-logs">
+                <summary>Interaction Logs ({incomingLogs.length})</summary>
+                <div className="dbg-row">
+                  <button className="dbg-btn dbg-btn--wide" onClick={handleClearInteractionLogs}>
+                    Clear Logs
+                  </button>
+                </div>
+                <ul className="dbg-log-list">
+                  {incomingLogs.slice(-12).map((entry) => (
+                    <li key={entry.id} className="dbg-log">
+                      <span className="dbg-log__stage">{entry.stage}</span>
+                      <span className="dbg-log__reason">{entry.reason}</span>
+                      <span className="dbg-log__meta">
+                        {entry.actorId ?? 'unknown'}
+                        {entry.type ? ` · ${entry.type}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </section>
 
             {/* ── Finale Debug Controls ── */}

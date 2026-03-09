@@ -120,6 +120,61 @@ export const socialConfig = {
     randomVariance: 0.05,
   },
 
+  // ── Incoming Interaction Autonomy Tuning ─────────────────────────────────
+  incomingInteractionAutonomyTuning: {
+    /** Default personality factor for unlisted houseguests. */
+    defaultPersonalityFactor: 0.5,
+    /** Per-houseguest multipliers controlling outreach propensity. */
+    personalityFactors: {
+      finn: 0.3, // analytical, reserved
+      mimi: 0.6, // warm but shy
+      rae: 0.8, // assertive, high-contact
+      nova: 0.7, // social, extroverted
+      leo: 0.9, // high-energy strategist
+      zara: 0.7,
+      dante: 0.6,
+      priya: 0.7,
+      sam: 0.5,
+      jax: 0.8,
+      luna: 0.6,
+      max: 0.5,
+      ivy: 0.7,
+      omar: 0.6,
+      kai: 0.5,
+    } as Record<string, number>,
+    /** Default strategic urgency for phases not explicitly listed. */
+    defaultPhaseUrgency: 0.3,
+    /** Strategic urgency weights per phase. */
+    phaseUrgency: {
+      week_start: 0.5,
+      nominations: 0.9,
+      nomination_results: 0.8,
+      pov_results: 0.7,
+      pov_ceremony: 0.6,
+      pov_ceremony_results: 0.7,
+      live_vote: 0.95,
+      eviction_results: 0.85,
+      hoh_results: 0.8,
+      social_1: 0.4,
+      social_2: 0.4,
+    } as Record<string, number>,
+    /** Additional event pressure bonuses per phase. */
+    phaseEventPressure: {
+      nominations: 0.2,
+      live_vote: 0.3,
+      eviction_results: 0.2,
+      pov_results: 0.1,
+      hoh_results: 0.1,
+    } as Record<string, number>,
+    /** Affinity thresholds that drive interaction type selection. */
+    interactionTypeThresholds: {
+      highUrgency: { ally: 0.3, enemy: -0.3 },
+      povResults: { ally: 0.3, enemy: -0.3 },
+      hohEviction: { strongAlly: 0.5, mildAlly: 0.1, strongEnemy: -0.4 },
+      social: { strongAlly: 0.4, mildAlly: 0.1, strongEnemy: -0.4, mildEnemy: -0.1 },
+    },
+  },
+
   // ── Incoming Interaction Delivery ─────────────────────────────────────────
   incomingInteractionDeliveryConfig: {
     /** Maximum unresolved interactions visible in the inbox at once. */
@@ -146,6 +201,8 @@ export const socialConfig = {
     } as Record<IncomingInteractionType, IncomingInteractionPriority>,
     /** Drop low-priority items once they are overdue and the inbox is full. */
     lowPriorityDropAfterPhases: 3,
+    /** Maximum number of phases a scheduled interaction may wait before expiring. */
+    maxScheduledWaitPhases: 18,
     /** Maximum number of future delivery slots to scan when scheduling. */
     maxFutureSlots: 12,
     /** Dedupe rules for repetitive interactions. */
@@ -157,6 +214,14 @@ export const socialConfig = {
       /** Minimum number of weeks between any low-priority interactions per actor. */
       lowPriorityCooldownWeeks: 1,
     },
+  },
+
+  // ── Incoming Interaction Debugging ───────────────────────────────────────
+  incomingInteractionDebugConfig: {
+    /** Maximum number of interaction decision logs to retain in state. */
+    maxLogEntries: 250,
+    /** Enable structured console logging for incoming interaction lifecycle events. */
+    enableConsole: false,
   },
 
   // ── Social Memory ─────────────────────────────────────────────────────────

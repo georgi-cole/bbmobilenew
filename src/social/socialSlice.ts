@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type {
   IncomingInteraction,
+  IncomingInteractionDecisionLogEntry,
   IncomingInteractionResponseType,
   ScheduledIncomingInteraction,
   SocialActionLogEntry,
@@ -10,6 +11,7 @@ import type {
   SocialState,
 } from './types';
 import { SOCIAL_INITIAL_STATE } from './constants';
+import { socialConfig } from './socialConfig';
 import {
   appendSocialMemoryEvent,
   applySocialMemoryDelta,
@@ -84,6 +86,21 @@ const socialSlice = createSlice({
     /** Schedule an incoming interaction for a future delivery window. */
     scheduleIncomingInteraction(state, action: PayloadAction<ScheduledIncomingInteraction>) {
       state.scheduledIncomingInteractions.push(action.payload);
+    },
+    /** Record an incoming interaction decision log entry. */
+    recordIncomingInteractionDecision(
+      state,
+      action: PayloadAction<IncomingInteractionDecisionLogEntry>,
+    ) {
+      state.incomingInteractionLogs.push(action.payload);
+      const limit = socialConfig.incomingInteractionDebugConfig.maxLogEntries;
+      if (limit > 0 && state.incomingInteractionLogs.length > limit) {
+        state.incomingInteractionLogs.splice(0, state.incomingInteractionLogs.length - limit);
+      }
+    },
+    /** Clear incoming interaction decision logs. */
+    clearIncomingInteractionLogs(state) {
+      state.incomingInteractionLogs = [];
     },
     /**
      * Deliver scheduled interactions and update delivery counters in one reducer pass.
@@ -299,6 +316,8 @@ export const {
   recordSocialAction,
   pushIncomingInteraction,
   scheduleIncomingInteraction,
+  recordIncomingInteractionDecision,
+  clearIncomingInteractionLogs,
   applyScheduledIncomingInteractionDelivery,
   markIncomingInteractionRead,
   markAllIncomingInteractionsRead,
@@ -339,6 +358,8 @@ export const selectIncomingInboxOpen = (state: { social: SocialState }) =>
   state.social?.incomingInboxOpen ?? false;
 export const selectIncomingInteractions = (state: { social: SocialState }) =>
   state.social?.incomingInteractions ?? [];
+export const selectIncomingInteractionLogs = (state: { social: SocialState }) =>
+  state.social?.incomingInteractionLogs ?? [];
 export const selectScheduledIncomingInteractions = (state: { social: SocialState }) =>
   state.social?.scheduledIncomingInteractions ?? [];
 export const selectIncomingInteractionDeliveryState = (state: { social: SocialState }) =>
