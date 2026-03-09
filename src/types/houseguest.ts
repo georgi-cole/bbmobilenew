@@ -38,6 +38,7 @@ interface HouseguestProfileFields {
   story?: string;
   allies?: string[];
   enemies?: string[];
+  competitionProfile?: CompetitionSkillProfile;
 }
 
 // Houseguest enriched with live Player state — extends Player directly so
