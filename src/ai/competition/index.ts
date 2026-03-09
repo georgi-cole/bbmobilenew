@@ -69,14 +69,14 @@ export function simulateAiPerformance({
   if (game) {
     return simulateLegacyChallengeScore(game, seed);
   }
-  if (minigameKey !== 'tapRace') {
-    // Placeholder: non-registered minigames fall back to TapRace tuning for now.
-  }
-  return simulateTapRaceAI(
+  // PR1: keep legacy TapRace tuning; metadata lookup is here for later PRs.
+  const model = getMinigameAiModel(minigameKey);
+  const baseScore = simulateTapRaceAI(
     seed,
     'HARD',
     timeLimitSeconds ?? DEFAULT_TAPRACE_OPTIONS.timeLimit,
   );
+  return model.scoreDirection === 'lower-is-better' ? baseScore : baseScore;
 }
 
 function simulateLegacyChallengeScore(game: GameRegistryEntry, seed: number): number {
