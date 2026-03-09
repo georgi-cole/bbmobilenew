@@ -68,7 +68,7 @@ export function simulateAiPerformance({
   game,
 }: LegacyAiSimulationArgs): number {
   if (game) {
-    return simulateLegacyMetricScore(game, seed);
+    return simulateLegacyAiScore(game, seed);
   }
   // PR1: keep legacy TapRace tuning; metadata lookup is here for later PRs.
   const model = getMinigameAiModel(minigameKey);
@@ -88,7 +88,7 @@ export function simulateAiPerformance({
   return baseScore;
 }
 
-function simulateLegacyMetricScore(game: GameRegistryEntry, seed: number): number {
+function simulateLegacyAiScore(game: GameRegistryEntry, seed: number): number {
   const rng = mulberry32(seed >>> 0);
   const { metricKind, timeLimitMs, scoringParams } = game;
   switch (metricKind) {
