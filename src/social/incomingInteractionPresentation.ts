@@ -106,11 +106,65 @@ const DEFAULT_TONES_BY_TYPE: Partial<Record<IncomingInteractionType, IncomingInt
   snide_remark: 'Tense',
 };
 
-const RESPONSE_LABEL_FALLBACK = 'Resolved';
+// Social memory thresholds expressed as fractions of configured caps.
+const HIGH_GRATITUDE_THRESHOLD = 0.55; // Gratitude peaks sooner to surface warmth.
+const HIGH_RESENTMENT_THRESHOLD = 0.5; // Resentment triggers at a moderate level.
+const HIGH_NEGLECT_THRESHOLD = 0.6; // Neglect requires sustained neglect to surface.
+const TRUST_HIGH_THRESHOLD = 0.45; // Trust momentum must be strongly positive.
+const TRUST_LOW_THRESHOLD = 0.3; // Trust momentum dips below this when negative.
+
+// Affinity thresholds use the normalized [-1, 1] scale.
+const AFFINITY_TENSE_THRESHOLD = -0.3;
+const AFFINITY_GUARDED_THRESHOLD = -0.2;
+const AFFINITY_BITTER_THRESHOLD = -0.15;
+const AFFINITY_NEUTRAL_THRESHOLD = 0;
+const AFFINITY_TRUSTING_THRESHOLD = 0.45;
+
+const DEFAULT_RESOLVED_LABEL = 'Resolved';
 
 function formatResponseType(responseType: IncomingInteractionResponseType): string {
   const cleaned = responseType.replace(/_/g, ' ');
-  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
+  return cleaned
+    .split(' ')
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ');
+}
+
+function hasNegativeRelationshipIndicators(
+  affinity: number,
+  trustLow: boolean,
+  threshold: number,
+): boolean {
+  return affinity <= threshold || trustLow;
+}
+
+function detectBitterTone(highResentment: boolean, affinity: number): boolean {
+  return highResentment && affinity <= AFFINITY_BITTER_THRESHOLD;
+}
+
+function detectTenseTone(isSnideOrWarning: boolean, affinity: number, trustLow: boolean): boolean {
+  return (
+    isSnideOrWarning &&
+    hasNegativeRelationshipIndicators(affinity, trustLow, AFFINITY_TENSE_THRESHOLD)
+  );
+}
+
+function detectGuardedTone(isSnideOrWarning: boolean, affinity: number, trustLow: boolean): boolean {
+  return (
+    !isSnideOrWarning &&
+    hasNegativeRelationshipIndicators(affinity, trustLow, AFFINITY_GUARDED_THRESHOLD)
+  );
+}
+
+function detectWarmTone(highGratitude: boolean, trustHigh: boolean, affinity: number): boolean {
+  return highGratitude && trustHigh && affinity >= AFFINITY_NEUTRAL_THRESHOLD;
+}
+
+function detectTrustingTone(trustHigh: boolean, affinity: number): boolean {
+  return (
+    (trustHigh && affinity >= AFFINITY_NEUTRAL_THRESHOLD) ||
+    affinity >= AFFINITY_TRUSTING_THRESHOLD
+  );
 }
 
 export function getIncomingInteractionResponseOptions(
@@ -127,7 +181,7 @@ export function getIncomingInteractionResponseLabel(
   type: IncomingInteractionType,
   responseType?: IncomingInteractionResponseType,
 ): string {
-  if (!responseType) return RESPONSE_LABEL_FALLBACK;
+  if (!responseType) return DEFAULT_RESOLVED_LABEL;
   const options = RESPONSE_OPTIONS_BY_TYPE[type];
   const match = options.find((option) => option.responseType === responseType);
   return match?.label ?? formatResponseType(responseType);
@@ -156,24 +210,20 @@ export function getIncomingInteractionTone({
   const neglect = memoryEntry?.neglect ?? 0;
   const trustMomentum = memoryEntry?.trustMomentum ?? 0;
 
-  const highGratitude = gratitude >= caps.gratitude * 0.55;
-  const highResentment = resentment >= caps.resentment * 0.5;
-  const highNeglect = neglect >= caps.neglect * 0.6;
-  const trustHigh = trustMomentum >= caps.trustMomentum * 0.4;
-  const trustLow = trustMomentum <= -caps.trustMomentum * 0.35;
+  const highGratitude = gratitude >= caps.gratitude * HIGH_GRATITUDE_THRESHOLD;
+  const highResentment = resentment >= caps.resentment * HIGH_RESENTMENT_THRESHOLD;
+  const highNeglect = neglect >= caps.neglect * HIGH_NEGLECT_THRESHOLD;
+  const trustHigh = trustMomentum >= caps.trustMomentum * TRUST_HIGH_THRESHOLD;
+  const trustLow = trustMomentum <= -caps.trustMomentum * TRUST_LOW_THRESHOLD;
 
   if (highNeglect) return 'Feels ignored';
-  if (highResentment && affinity <= -0.15) return 'Bitter';
-  if (
-    (affinity <= -0.35 || trustLow) &&
-    (interaction.type === 'snide_remark' || interaction.type === 'warning')
-  ) {
-    return 'Tense';
-  }
-  if (affinity <= -0.3 || trustLow) return 'Guarded';
+  if (detectBitterTone(highResentment, affinity)) return 'Bitter';
+  const isSnideOrWarning = interaction.type === 'snide_remark' || interaction.type === 'warning';
+  if (detectTenseTone(isSnideOrWarning, affinity, trustLow)) return 'Tense';
+  if (detectGuardedTone(isSnideOrWarning, affinity, trustLow)) return 'Guarded';
   if (interaction.type === 'nomination_plea' && isUrgent) return 'Desperate';
-  if (highGratitude && trustHigh && affinity >= 0) return 'Warm';
-  if ((trustHigh && affinity >= 0) || affinity >= 0.45) return 'Trusting';
+  if (detectWarmTone(highGratitude, trustHigh, affinity)) return 'Warm';
+  if (detectTrustingTone(trustHigh, affinity)) return 'Trusting';
 
   return DEFAULT_TONES_BY_TYPE[interaction.type] ?? null;
 }
