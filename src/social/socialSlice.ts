@@ -1,6 +1,12 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { SocialActionLogEntry, SocialPhaseReport, SocialState } from './types';
+import type {
+  IncomingInteraction,
+  IncomingInteractionResponseType,
+  SocialActionLogEntry,
+  SocialPhaseReport,
+  SocialState,
+} from './types';
 import { SOCIAL_INITIAL_STATE } from './constants';
 
 const socialSlice = createSlice({
@@ -61,6 +67,70 @@ const socialSlice = createSlice({
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry);
     },
+    /** Add a new incoming interaction (newest-first). */
+    pushIncomingInteraction(state, action: PayloadAction<IncomingInteraction>) {
+      state.incomingInteractions.unshift(action.payload);
+    },
+    /** Mark a specific incoming interaction as read. */
+    markIncomingInteractionRead(state, action: PayloadAction<string>) {
+      const entry = state.incomingInteractions.find((interaction) => interaction.id === action.payload);
+      if (entry) {
+        entry.read = true;
+      }
+    },
+    /** Mark all incoming interactions as read. */
+    markAllIncomingInteractionsRead(state) {
+      state.incomingInteractions.forEach((interaction) => {
+        interaction.read = true;
+      });
+    },
+    /** Resolve an interaction with a response. */
+    resolveIncomingInteraction(
+      state,
+      action: PayloadAction<{
+        interactionId: string;
+        resolvedWith: IncomingInteractionResponseType;
+        resolvedAt?: number;
+      }>,
+    ) {
+      const { interactionId, resolvedWith, resolvedAt } = action.payload;
+      const entry = state.incomingInteractions.find((interaction) => interaction.id === interactionId);
+      if (!entry || entry.resolved) return;
+      entry.resolved = true;
+      entry.read = true;
+      entry.resolvedAt = resolvedAt ?? Date.now();
+      entry.resolvedWith = resolvedWith;
+    },
+    /** Convenience helper for dismissing an interaction. */
+    dismissIncomingInteraction(
+      state,
+      action: PayloadAction<{ interactionId: string; resolvedAt?: number }>,
+    ) {
+      const entry = state.incomingInteractions.find(
+        (interaction) => interaction.id === action.payload.interactionId,
+      );
+      if (!entry || entry.resolved) return;
+      entry.resolved = true;
+      entry.read = true;
+      entry.resolvedAt = action.payload.resolvedAt ?? Date.now();
+      entry.resolvedWith = 'dismiss';
+    },
+    /** Resolve expired interactions when the week transitions. */
+    resolveExpiredIncomingInteractionsForWeek(
+      state,
+      action: PayloadAction<{ week: number; resolvedAt?: number }>,
+    ) {
+      const { week, resolvedAt } = action.payload;
+      const resolvedTimestamp = resolvedAt ?? Date.now();
+      state.incomingInteractions.forEach((interaction) => {
+        if (!interaction.resolved && interaction.expiresAtWeek < week) {
+          interaction.resolved = true;
+          interaction.read = true;
+          interaction.resolvedAt = resolvedTimestamp;
+          interaction.resolvedWith = 'ignore';
+        }
+      });
+    },
     /** Update the affinity (and optionally tags) for a directed relationship. */
     updateRelationship(
       state,
@@ -99,6 +169,14 @@ const socialSlice = createSlice({
     closeSocialPanel(state) {
       state.panelOpen = false;
     },
+    /** Open the incoming interactions inbox panel. */
+    openIncomingInbox(state) {
+      state.incomingInboxOpen = true;
+    },
+    /** Close the incoming interactions inbox panel. */
+    closeIncomingInbox(state) {
+      state.incomingInboxOpen = false;
+    },
     /** Clear all session log entries (e.g. after exporting to Diary Room). */
     clearSessionLogs(state) {
       state.sessionLogs = [];
@@ -133,9 +211,17 @@ export const {
   setInfoBankEntry,
   applyInfoDelta,
   recordSocialAction,
+  pushIncomingInteraction,
+  markIncomingInteractionRead,
+  markAllIncomingInteractionsRead,
+  resolveIncomingInteraction,
+  dismissIncomingInteraction,
+  resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
   openSocialPanel,
   closeSocialPanel,
+  openIncomingInbox,
+  closeIncomingInbox,
   clearSessionLogs,
   snapshotWeekRelationships,
 } = socialSlice.actions;
@@ -157,3 +243,13 @@ export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false;
 export const selectWeekStartRelSnapshot = (state: { social: SocialState }) =>
   state.social?.weekStartRelSnapshot ?? {};
+export const selectIncomingInboxOpen = (state: { social: SocialState }) =>
+  state.social?.incomingInboxOpen ?? false;
+export const selectIncomingInteractions = (state: { social: SocialState }) =>
+  state.social?.incomingInteractions ?? [];
+export const selectUnreadIncomingInteractionCount = (state: { social: SocialState }) =>
+  selectIncomingInteractions(state).filter((interaction) => !interaction.read).length;
+export const selectPendingIncomingInteractionCount = (state: { social: SocialState }) =>
+  selectIncomingInteractions(state).filter((interaction) => !interaction.resolved).length;
+export const selectActiveIncomingInteractions = (state: { social: SocialState }) =>
+  selectIncomingInteractions(state).filter((interaction) => !interaction.resolved);

@@ -31,6 +31,7 @@ import {
   applyEnergyDelta,
   applyInfluenceDelta,
 } from './socialSlice';
+import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { seedWeekRelationships } from './weekSocialSeed';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
@@ -39,6 +40,7 @@ const PHASE_SET_ACTIONS = new Set(['game/setPhase', 'game/forcePhase']);
 
 interface GameState {
   phase: string;
+  week: number;
   hohId: string | null;
   povWinnerId: string | null;
   nomineeIds: string[];
@@ -54,6 +56,9 @@ type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknow
 
 /** Seed week-start background affinities, then snapshot relationships as baseline. */
 function handleWeekStart(api: MiddlewareAPI): void {
+  const state = api.getState() as StateWithGame;
+  const week = state.game?.week ?? 1;
+  api.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week));
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());
 }

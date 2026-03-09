@@ -13,7 +13,9 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   relationships: {},
   lastReport: null,
   sessionLogs: [],
+  incomingInteractions: [],
   influenceWeights: {},
   panelOpen: false,
   weekStartRelSnapshot: {},
+  incomingInboxOpen: false,
 };

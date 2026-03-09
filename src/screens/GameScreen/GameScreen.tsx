@@ -50,6 +50,7 @@ import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import type { ChatLine } from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
+import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox'
 import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
 import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
 import SpectatorView from '../../components/ui/SpectatorView'
@@ -1586,6 +1587,9 @@ export default function GameScreen() {
 
       {/* ── Social Phase Panel V2 (modal overlay skeleton) ───────────────── */}
       <SocialPanelV2 />
+
+      {/* ── Incoming interactions inbox ─────────────────────────────────── */}
+      <IncomingInteractionsInbox />
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}

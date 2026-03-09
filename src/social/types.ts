@@ -52,6 +52,42 @@ export interface SocialActionLogEntry {
   yieldsApplied?: { influence?: number; info?: number };
 }
 
+export type IncomingInteractionType =
+  | 'compliment'
+  | 'gossip'
+  | 'warning'
+  | 'alliance_proposal'
+  | 'deal_offer'
+  | 'nomination_plea'
+  | 'check_in'
+  | 'snide_remark'
+  | 'other';
+
+export type IncomingInteractionResponseType =
+  | 'positive'
+  | 'neutral'
+  | 'negative'
+  | 'accept'
+  | 'decline'
+  | 'dismiss'
+  | 'ignore';
+
+export interface IncomingInteraction {
+  id: string;
+  fromId: string;
+  type: IncomingInteractionType;
+  text: string;
+  payload?: Record<string, unknown>;
+  createdAt: number;
+  createdWeek: number;
+  expiresAtWeek: number;
+  read: boolean;
+  requiresResponse: boolean;
+  resolved: boolean;
+  resolvedAt?: number;
+  resolvedWith?: IncomingInteractionResponseType;
+}
+
 /** Redux-serialisable state subtree owned by the social module. */
 export interface SocialState {
   energyBank: SocialEnergyBank;
@@ -63,6 +99,8 @@ export interface SocialState {
   lastReport?: SocialPhaseReport | null;
   /** Append-only log of social actions executed this session. */
   sessionLogs: SocialActionLogEntry[];
+  /** Incoming social interactions awaiting the player. */
+  incomingInteractions: IncomingInteraction[];
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.
@@ -79,6 +117,8 @@ export interface SocialState {
    * the expanded PlayerCard.  Shape: actorId → targetId → affinity.
    */
   weekStartRelSnapshot: Record<string, Record<string, number>>;
+  /** Whether the incoming interactions inbox panel is open. */
+  incomingInboxOpen: boolean;
 }
 
 // ── Policy ────────────────────────────────────────────────────────────────

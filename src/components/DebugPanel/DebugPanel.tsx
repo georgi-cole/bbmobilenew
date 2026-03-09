@@ -16,9 +16,11 @@ import {
   fastForwardToEviction,
   startMinigame,
 } from '../../store/gameSlice';
+import { pushIncomingInteraction } from '../../social/socialSlice';
 import FinaleDebugControls from './FinaleControls.debug';
 import MinigameDebugControls from './MinigameDebugControls';
 import type { Phase } from '../../types';
+import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
 import './DebugPanel.css';
 
 const PHASES: Phase[] = [
@@ -45,6 +47,56 @@ const PHASES: Phase[] = [
   'jury',
 ];
 
+const INCOMING_TYPES: IncomingInteractionType[] = [
+  'compliment',
+  'gossip',
+  'warning',
+  'alliance_proposal',
+  'deal_offer',
+  'nomination_plea',
+  'check_in',
+  'snide_remark',
+  'other',
+];
+
+const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
+  compliment: ['Your speech was iconic tonight.', 'You handled that ceremony like a pro.'],
+  gossip: ['Everyone is whispering about the next targets.', 'There is a rumor about the veto.'],
+  warning: ['Be careful — eyes are on your alliances.', 'Watch out for the vote split tonight.'],
+  alliance_proposal: ['Want to lock in something solid?', 'Let’s ride this out together.'],
+  deal_offer: ['If you keep me safe, I owe you.', 'Let’s make a quiet side deal.'],
+  nomination_plea: ['Please don’t put me on the block.', 'I’ll do anything to stay safe.'],
+  check_in: ['How are you feeling about the week?', 'Checking in — you okay?'],
+  snide_remark: ['Nice move… if it actually works.', 'Bold choice. Hope it pays off.'],
+  other: ['We need to talk later.', 'Just wanted to say hey.'],
+};
+
+let incomingSeedCounter = 0;
+
+function pickRandom<T>(list: readonly T[]): T {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function buildIncomingInteraction(fromId: string, week: number): IncomingInteraction {
+  const type = pickRandom(INCOMING_TYPES);
+  const text = pickRandom(INCOMING_TEXT[type]);
+  const now = Date.now();
+  const canUseUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function';
+  const id = canUseUuid ? crypto.randomUUID() : `incoming-${now}-${incomingSeedCounter++}`;
+  return {
+    id,
+    fromId,
+    type,
+    text,
+    createdAt: now,
+    createdWeek: week,
+    expiresAtWeek: week,
+    read: false,
+    requiresResponse: true,
+    resolved: false,
+  };
+}
+
 export default function DebugPanel() {
   const [searchParams] = useSearchParams();
   const isDebug = searchParams.get('debug') === '1';
@@ -68,6 +120,8 @@ export default function DebugPanel() {
   const evicted = game.players.filter(
     (p) => p.status === 'evicted' || p.status === 'jury',
   );
+  const humanPlayer = game.players.find((p) => p.isUser);
+  const aiPlayers = alive.filter((p) => !p.isUser);
 
   const hohName = game.hohId
     ? game.players.find((p) => p.id === game.hohId)?.name ?? game.hohId
@@ -83,6 +137,15 @@ export default function DebugPanel() {
 
   // Players eligible to be evicted in Final4 (current nominees)
   const f4Nominees = game.players.filter((p) => game.nomineeIds.includes(p.id));
+  const canSeedInteraction = aiPlayers.length > 0 && !!humanPlayer;
+
+  function handleSeedIncomingInteraction() {
+    if (!canSeedInteraction || !humanPlayer) return;
+    const fromPlayer = pickRandom(aiPlayers);
+    dispatch(
+      pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)),
+    );
+  }
 
   return (
     <>
@@ -167,6 +230,16 @@ export default function DebugPanel() {
                 </button>
                 <button className="dbg-btn dbg-btn--wide" onClick={() => dispatch(fastForwardToEviction())}>
                   Fast-fwd → Eviction
+                </button>
+              </div>
+
+              <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  disabled={!canSeedInteraction}
+                  onClick={handleSeedIncomingInteraction}
+                >
+                  Seed Incoming Interaction
                 </button>
               </div>
 

@@ -1,6 +1,9 @@
 // Social module public API – re-exports types and constants for use by other modules.
 
 export type {
+  IncomingInteraction,
+  IncomingInteractionResponseType,
+  IncomingInteractionType,
   SocialEnergyBank,
   RelationshipEntry,
   RelationshipsMap,
@@ -14,6 +17,11 @@ export { DEFAULT_ENERGY, SOCIAL_INITIAL_STATE } from './constants';
 export { socialConfig } from './socialConfig';
 export { SocialEngine } from './SocialEngine';
 export {
+  autoResolveExpiredIncomingInteractionsForWeek,
+  getIncomingInteractionTypeLabel,
+  respondToIncomingInteraction,
+} from './incomingInteractions';
+export {
   engineReady,
   engineComplete,
   setLastReport,
@@ -21,12 +29,25 @@ export {
   setEnergyBankEntry,
   applyEnergyDelta,
   recordSocialAction,
+  pushIncomingInteraction,
+  markIncomingInteractionRead,
+  markAllIncomingInteractionsRead,
+  resolveIncomingInteraction,
+  dismissIncomingInteraction,
+  resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
+  openIncomingInbox,
+  closeIncomingInbox,
   selectSocialBudgets,
   selectEnergyBank,
   selectLastSocialReport,
   selectInfluenceWeights,
   selectSessionLogs,
+  selectIncomingInboxOpen,
+  selectIncomingInteractions,
+  selectUnreadIncomingInteractionCount,
+  selectPendingIncomingInteractionCount,
+  selectActiveIncomingInteractions,
 } from './socialSlice';
 export { socialMiddleware } from './socialMiddleware';
 export {

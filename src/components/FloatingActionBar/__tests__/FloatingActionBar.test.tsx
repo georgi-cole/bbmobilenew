@@ -13,8 +13,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import gameReducer from '../../../store/gameSlice';
-import socialReducer, { setEnergyBankEntry, applyEnergyDelta } from '../../../social/socialSlice';
+import socialReducer, {
+  setEnergyBankEntry,
+  applyEnergyDelta,
+  pushIncomingInteraction,
+} from '../../../social/socialSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 
@@ -33,11 +38,19 @@ function makeStore(hasHuman = true) {
   });
 }
 
-function renderFAB(store: ReturnType<typeof makeStore>) {
+function LocationDisplay() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
+
+function renderFAB(store: ReturnType<typeof makeStore>, initialEntry = '/game') {
   return render(
-    <Provider store={store}>
-      <FloatingActionBar />
-    </Provider>,
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Provider store={store}>
+        <FloatingActionBar />
+        <LocationDisplay />
+      </Provider>
+    </MemoryRouter>,
   );
 }
 
@@ -125,5 +138,50 @@ describe('FloatingActionBar – social button flash animation', () => {
 
     const btn = screen.getByRole('button', { name: /energy: 3/i });
     expect(btn.className).toContain('fab__side-btn--flash');
+  });
+});
+
+describe('FloatingActionBar – inbox badge', () => {
+  it('shows pending incoming interaction count on the inbox button', () => {
+    const store = makeStore();
+    act(() => {
+      store.dispatch(
+        pushIncomingInteraction({
+          id: 'incoming-1',
+          fromId: 'p2',
+          type: 'compliment',
+          text: 'Great move.',
+          createdAt: 10,
+          createdWeek: 1,
+          expiresAtWeek: 1,
+          read: false,
+          requiresResponse: true,
+          resolved: false,
+        }),
+      );
+    });
+    renderFAB(store);
+    expect(screen.getByText('1')).toBeDefined();
+    expect(screen.getByRole('button', { name: /inbox/i })).toBeDefined();
+  });
+});
+
+describe('FloatingActionBar – navigation buttons', () => {
+  it('navigates to rules when the Help button is clicked', async () => {
+    const store = makeStore();
+    renderFAB(store, '/game');
+    act(() => {
+      screen.getByRole('button', { name: 'Help' }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/rules');
+  });
+
+  it('navigates to the Diary Room when the DR button is clicked', () => {
+    const store = makeStore();
+    renderFAB(store, '/game');
+    act(() => {
+      screen.getByRole('button', { name: /Diary Room/i }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
   });
 });

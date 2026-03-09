@@ -37,6 +37,16 @@ export const socialConfig = {
     aggressiveSuccess: -8,
     aggressiveFailure: -2,
   },
+  /** Affinity delta map for incoming interaction responses (display scale). */
+  incomingInteractionAffinityDeltas: {
+    positive: 6,
+    neutral: 1,
+    negative: -8,
+    accept: 6,
+    decline: -8,
+    dismiss: -3,
+    ignore: -4,
+  },
   /**
    * Score delta magnitudes used exclusively by computeOutcomeScore / evaluateOutcome
    * to derive the quality label ('Good', 'Bad', etc.) in the [-1, +1] range.
