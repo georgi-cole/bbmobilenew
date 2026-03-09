@@ -84,7 +84,11 @@ export function decaySocialMemoryEntry(entry: SocialMemoryEntry): void {
 export function buildSocialMemoryDeltaForResponse(
   responseType: IncomingInteractionResponseType,
 ): SocialMemoryDelta {
-  return socialConfig.socialMemoryConfig.incomingInteractionDeltas[responseType] ?? {};
+  const deltas = socialConfig.socialMemoryConfig.incomingInteractionDeltas[responseType];
+  if (!deltas && socialConfig.verbose) {
+    console.warn(`[socialMemory] Missing incomingInteractionDeltas config for ${responseType}`);
+  }
+  return deltas ?? {};
 }
 
 export function buildSocialMemoryEvent(
@@ -130,5 +134,5 @@ export function computeSocialMemoryAffinityBias(entry?: SocialMemoryEntry): numb
   if (totalCap <= 0) return 0;
   const baseBias = (entry.gratitude - (entry.resentment + entry.neglect)) / totalCap;
   const trustBias = computeTrustMomentumNormalized(entry);
-  return baseBias * affinityBiasWeight + trustBias * trustMomentumBiasWeight;
+  return clampSignal(baseBias * affinityBiasWeight + trustBias * trustMomentumBiasWeight, 1, true);
 }
