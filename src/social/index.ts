@@ -22,6 +22,14 @@ export {
   respondToIncomingInteraction,
 } from './incomingInteractions';
 export {
+  scheduleIncomingInteractionsForPhase,
+  computeIncomingInteractionEngagementScore,
+  chooseIncomingInteractionType,
+  shouldEnqueueInteraction,
+} from './incomingInteractionAutonomy';
+export type { AutonomyContext, AutonomyPlayer, AutonomyStore } from './incomingInteractionAutonomy';
+export { normalizeAffinity } from './affinityUtils';
+export {
   engineReady,
   engineComplete,
   setLastReport,

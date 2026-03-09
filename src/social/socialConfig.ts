@@ -78,4 +78,39 @@ export const socialConfig = {
    * 4 actions per player, 30 ticks comfortably covers any realistic phase.
    */
   maxTicksPerPhase: 30,
+
+  // ── Incoming Interaction Autonomy ────────────────────────────────────────
+  /**
+   * Configuration for AI-driven incoming interaction scheduling.
+   *
+   * maxPerWeek      – advisory budget: target maximum interactions that can be
+   *                   generated across a full game week (used for planning; not
+   *                   strictly enforced per-week in the current implementation).
+   * maxActive       – hard global cap: the maximum number of unresolved
+   *                   interactions that may exist in the inbox at any one time.
+   *                   No new interactions are enqueued once this is reached.
+   * maxPerAI        – per-actor cap: an individual AI may have at most this many
+   *                   unresolved interactions pending with the player at once.
+   * cooldownTicks   – minimum number of game weeks that must pass after an AI
+   *                   enqueues an interaction before it may enqueue another
+   *                   (per-actor cooldown).
+   * scoreThreshold  – minimum computed engagement score required before an
+   *                   interaction is actually enqueued.
+   * weights         – relative weights used when computing the engagement score.
+   * randomVariance  – maximum ±fraction of random jitter added to each score.
+   */
+  incomingInteractionConfig: {
+    maxPerWeek: 6,
+    maxActive: 4,
+    maxPerAI: 2,
+    cooldownTicks: 2,
+    scoreThreshold: 0.15,
+    weights: {
+      relationshipIntensity: 0.25,
+      strategicUrgency: 0.5,
+      personality: 0.15,
+      eventPressure: 0.1,
+    },
+    randomVariance: 0.05,
+  },
 };
