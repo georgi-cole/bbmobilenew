@@ -108,6 +108,7 @@ export interface IncomingInteraction {
   requiresResponse: boolean;
   resolved: boolean;
   resolvedAt?: number;
+  resolvedWeek?: number;
   resolvedWith?: IncomingInteractionResponseType;
 }
 

@@ -134,20 +134,22 @@ const socialSlice = createSlice({
         interactionId: string;
         resolvedWith: IncomingInteractionResponseType;
         resolvedAt?: number;
+        resolvedWeek?: number;
       }>,
     ) {
-      const { interactionId, resolvedWith, resolvedAt } = action.payload;
+      const { interactionId, resolvedWith, resolvedAt, resolvedWeek } = action.payload;
       const entry = state.incomingInteractions.find((interaction) => interaction.id === interactionId);
       if (!entry || entry.resolved) return;
       entry.resolved = true;
       entry.read = true;
       entry.resolvedAt = resolvedAt ?? Date.now();
+      entry.resolvedWeek = resolvedWeek;
       entry.resolvedWith = resolvedWith;
     },
     /** Convenience helper for dismissing an interaction. */
     dismissIncomingInteraction(
       state,
-      action: PayloadAction<{ interactionId: string; resolvedAt?: number }>,
+      action: PayloadAction<{ interactionId: string; resolvedAt?: number; resolvedWeek?: number }>,
     ) {
       const entry = state.incomingInteractions.find(
         (interaction) => interaction.id === action.payload.interactionId,
@@ -156,6 +158,7 @@ const socialSlice = createSlice({
       entry.resolved = true;
       entry.read = true;
       entry.resolvedAt = action.payload.resolvedAt ?? Date.now();
+      entry.resolvedWeek = action.payload.resolvedWeek;
       entry.resolvedWith = 'dismiss';
     },
     /** Resolve expired interactions when the week transitions. */
@@ -170,6 +173,7 @@ const socialSlice = createSlice({
           interaction.resolved = true;
           interaction.read = true;
           interaction.resolvedAt = resolvedTimestamp;
+          interaction.resolvedWeek = week;
           interaction.resolvedWith = 'ignore';
         }
       });
