@@ -14,6 +14,7 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   lastReport: null,
   sessionLogs: [],
   incomingInteractions: [],
+  incomingInteractionLogs: [],
   scheduledIncomingInteractions: [],
   incomingInteractionDelivery: {
     lastDeliveryPhase: null,

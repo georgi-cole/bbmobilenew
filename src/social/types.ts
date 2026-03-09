@@ -95,6 +95,16 @@ export type IncomingInteractionResponseType =
 
 export type IncomingInteractionPriority = 'high' | 'medium' | 'low';
 
+export type IncomingInteractionDecisionStage =
+  | 'generation'
+  | 'scheduling'
+  | 'delivery'
+  | 'postponed'
+  | 'deduped'
+  | 'dropped'
+  | 'expiration'
+  | 'auto_resolution';
+
 export interface IncomingInteraction {
   id: string;
   fromId: string;
@@ -121,6 +131,22 @@ export interface ScheduledIncomingInteraction {
   deliveryReason?: string;
 }
 
+export interface IncomingInteractionDecisionLogEntry {
+  id: string;
+  stage: IncomingInteractionDecisionStage;
+  reason: string;
+  timestamp: number;
+  interactionId?: string;
+  actorId?: string;
+  type?: IncomingInteractionType;
+  priority?: IncomingInteractionPriority;
+  week?: number;
+  phase?: string;
+  scheduledForWeek?: number;
+  scheduledForPhase?: string;
+  detail?: string;
+}
+
 export interface IncomingInteractionDeliveryState {
   lastDeliveryPhase?: string | null;
   lastDeliveryWeek?: number | null;
@@ -140,6 +166,8 @@ export interface SocialState {
   sessionLogs: SocialActionLogEntry[];
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[];
+  /** Decision log entries for incoming interaction scheduling/debugging. */
+  incomingInteractionLogs: IncomingInteractionDecisionLogEntry[];
   /** Scheduled incoming interactions waiting for a delivery window. */
   scheduledIncomingInteractions: ScheduledIncomingInteraction[];
   /** Delivery counters for incoming interaction scheduling. */

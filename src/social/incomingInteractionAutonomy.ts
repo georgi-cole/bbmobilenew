@@ -43,9 +43,10 @@ import {
   assignDeliverySlot,
   buildDeliverySlotCounts,
   buildPendingIncomingInteractions,
+  getInteractionDedupeReason,
   getIncomingInteractionPriority,
-  shouldSkipDueToInteractionDedupe,
 } from './incomingInteractionScheduler';
+import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import type {
   IncomingInteraction,
   IncomingInteractionType,
@@ -91,78 +92,23 @@ export interface AutonomyStore {
   };
 }
 
-// ── Personality weights ───────────────────────────────────────────────────
-
-/**
- * Lightweight default personality multiplier map.
- * Values are in [0, 1] and represent how proactively an actor reaches out.
- * If the repo later adds explicit personality fields to houseguests, replace
- * this with a lookup into that data.
- *
- * Actors not listed here default to 0.5 (neutral).
- */
-const PERSONALITY_FACTOR: Record<string, number> = {
-  finn: 0.3, // analytical, reserved
-  mimi: 0.6, // warm but shy
-  rae: 0.8, // assertive, high-contact
-  nova: 0.7, // social, extroverted
-  leo: 0.9, // high-energy strategist
-  zara: 0.7,
-  dante: 0.6,
-  priya: 0.7,
-  sam: 0.5,
-  jax: 0.8,
-  luna: 0.6,
-  max: 0.5,
-  ivy: 0.7,
-  omar: 0.6,
-  kai: 0.5,
-};
-
 function getPersonalityFactor(actorId: string): number {
-  return PERSONALITY_FACTOR[actorId] ?? 0.5;
+  const tuning = socialConfig.incomingInteractionAutonomyTuning;
+  return tuning.personalityFactors[actorId] ?? tuning.defaultPersonalityFactor;
 }
 
 // ── Strategic urgency per phase ────────────────────────────────────────────
 
-/**
- * How strategically urgent each phase is for AI actors to reach out.
- * Phases not listed default to 0.3.
- */
-const PHASE_URGENCY: Record<string, number> = {
-  week_start: 0.5,
-  nominations: 0.9,
-  nomination_results: 0.8,
-  pov_results: 0.7,
-  pov_ceremony: 0.6,
-  pov_ceremony_results: 0.7,
-  live_vote: 0.95,
-  eviction_results: 0.85,
-  hoh_results: 0.8,
-  social_1: 0.4,
-  social_2: 0.4,
-};
-
 function getPhaseUrgency(phase: string): number {
-  return PHASE_URGENCY[phase] ?? 0.3;
+  const tuning = socialConfig.incomingInteractionAutonomyTuning;
+  return tuning.phaseUrgency[phase] ?? tuning.defaultPhaseUrgency;
 }
 
 // ── Event pressure ─────────────────────────────────────────────────────────
 
-/**
- * Additional event pressure bonus for particular phases.
- * This is a lighter signal that stacks on top of strategic urgency.
- */
-const PHASE_EVENT_PRESSURE: Record<string, number> = {
-  nominations: 0.2,
-  live_vote: 0.3,
-  eviction_results: 0.2,
-  pov_results: 0.1,
-  hoh_results: 0.1,
-};
-
 function getEventPressure(phase: string): number {
-  return PHASE_EVENT_PRESSURE[phase] ?? 0;
+  const tuning = socialConfig.incomingInteractionAutonomyTuning;
+  return tuning.phaseEventPressure[phase] ?? 0;
 }
 
 // ── Interaction type selection ─────────────────────────────────────────────
@@ -188,32 +134,33 @@ export function chooseIncomingInteractionType(
   const affinity = Math.max(-1, Math.min(1, baseAffinity + memoryBias));
 
   const phase = context.phase;
+  const { interactionTypeThresholds } = socialConfig.incomingInteractionAutonomyTuning;
 
   // High-urgency phases favour strategic interaction types
   if (phase === 'live_vote' || phase === 'nominations') {
-    if (affinity >= 0.3) return 'nomination_plea';
-    if (affinity <= -0.3) return 'snide_remark';
+    if (affinity >= interactionTypeThresholds.highUrgency.ally) return 'nomination_plea';
+    if (affinity <= interactionTypeThresholds.highUrgency.enemy) return 'snide_remark';
     return 'deal_offer';
   }
 
   if (phase === 'pov_results' || phase === 'pov_ceremony_results') {
-    if (affinity >= 0.3) return 'alliance_proposal';
-    if (affinity <= -0.3) return 'warning';
+    if (affinity >= interactionTypeThresholds.povResults.ally) return 'alliance_proposal';
+    if (affinity <= interactionTypeThresholds.povResults.enemy) return 'warning';
     return 'check_in';
   }
 
   if (phase === 'hoh_results' || phase === 'eviction_results') {
-    if (affinity >= 0.5) return 'alliance_proposal';
-    if (affinity >= 0.1) return 'compliment';
-    if (affinity <= -0.4) return 'snide_remark';
+    if (affinity >= interactionTypeThresholds.hohEviction.strongAlly) return 'alliance_proposal';
+    if (affinity >= interactionTypeThresholds.hohEviction.mildAlly) return 'compliment';
+    if (affinity <= interactionTypeThresholds.hohEviction.strongEnemy) return 'snide_remark';
     return 'gossip';
   }
 
   // Default / social phases
-  if (affinity >= 0.4) return 'compliment';
-  if (affinity >= 0.1) return 'check_in';
-  if (affinity <= -0.4) return 'snide_remark';
-  if (affinity <= -0.1) return 'gossip';
+  if (affinity >= interactionTypeThresholds.social.strongAlly) return 'compliment';
+  if (affinity >= interactionTypeThresholds.social.mildAlly) return 'check_in';
+  if (affinity <= interactionTypeThresholds.social.strongEnemy) return 'snide_remark';
+  if (affinity <= interactionTypeThresholds.social.mildEnemy) return 'gossip';
   return 'check_in';
 }
 
@@ -317,16 +264,25 @@ export function computeIncomingInteractionEngagementScore(
 
 // ── Eligibility and cap guards ─────────────────────────────────────────────
 
+export interface IncomingInteractionEnqueueDecision {
+  allowed: boolean;
+  reason: string;
+  score?: number;
+  globalActive?: number;
+  perAiActive?: number;
+  recencyPenalty?: number;
+}
+
 /**
- * Return true when the actor is eligible to enqueue an interaction right now.
+ * Return a decision object describing eligibility to enqueue an interaction.
  * This is a pure guard; it does not modify state.
  */
-export function shouldEnqueueInteraction(
+export function evaluateIncomingInteractionEnqueueDecision(
   actorId: string,
   playerId: string,
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[],
-): boolean {
+): IncomingInteractionEnqueueDecision {
   const cfg = socialConfig.incomingInteractionConfig;
 
   // ── Global active cap ───────────────────────────────────────────────────
@@ -337,7 +293,7 @@ export function shouldEnqueueInteraction(
         `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${cfg.maxActive})`,
       );
     }
-    return false;
+    return { allowed: false, reason: 'blocked_by_global_cap', globalActive };
   }
 
   // ── Per-AI active cap ───────────────────────────────────────────────────
@@ -350,7 +306,7 @@ export function shouldEnqueueInteraction(
         `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`,
       );
     }
-    return false;
+    return { allowed: false, reason: 'blocked_by_actor_cap', perAiActive };
   }
 
   // ── Per-AI cooldown ─────────────────────────────────────────────────────
@@ -364,7 +320,7 @@ export function shouldEnqueueInteraction(
     if (socialConfig.verbose) {
       console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`);
     }
-    return false;
+    return { allowed: false, reason: 'blocked_by_cooldown', recencyPenalty };
   }
 
   // ── Engagement score threshold ──────────────────────────────────────────
@@ -380,13 +336,31 @@ export function shouldEnqueueInteraction(
         `[autonomy] skip ${actorId}: score ${score.toFixed(3)} below threshold ${cfg.scoreThreshold}`,
       );
     }
-    return false;
+    return { allowed: false, reason: 'blocked_by_score_threshold', score };
   }
 
   if (socialConfig.verbose) {
     console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
   }
-  return true;
+  return { allowed: true, reason: 'eligible', score };
+}
+
+/**
+ * Return true when the actor is eligible to enqueue an interaction right now.
+ * This is a pure guard; it does not modify state.
+ */
+export function shouldEnqueueInteraction(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext,
+  pendingInteractions: IncomingInteraction[],
+): boolean {
+  return evaluateIncomingInteractionEnqueueDecision(
+    actorId,
+    playerId,
+    context,
+    pendingInteractions,
+  ).allowed;
 }
 
 // ── Interaction text generation ────────────────────────────────────────────
@@ -544,8 +518,23 @@ export function scheduleIncomingInteractionsForPhase(
   );
 
   for (const actor of aiActors) {
-    const eligible = shouldEnqueueInteraction(actor.id, playerId, context, pendingInteractions);
-    if (!eligible) continue;
+    const decision = evaluateIncomingInteractionEnqueueDecision(
+      actor.id,
+      playerId,
+      context,
+      pendingInteractions,
+    );
+    if (!decision.allowed) {
+      logIncomingInteractionDecision(store.dispatch, {
+        stage: 'generation',
+        reason: decision.reason,
+        actorId: actor.id,
+        week,
+        phase,
+        detail: decision.score !== undefined ? `score=${decision.score.toFixed(3)}` : undefined,
+      });
+      continue;
+    }
 
     const type = chooseIncomingInteractionType(actor.id, playerId, context);
     const text = generateInteractionText(type, context.random);
@@ -563,14 +552,34 @@ export function scheduleIncomingInteractionsForPhase(
     };
 
     const priority = getIncomingInteractionPriority(type);
-    if (
-      shouldSkipDueToInteractionDedupe({
-        interaction,
+    logIncomingInteractionDecision(store.dispatch, {
+      stage: 'generation',
+      reason: 'generated',
+      actorId: actor.id,
+      interactionId: interaction.id,
+      type: interaction.type,
+      priority,
+      week,
+      phase,
+      detail: decision.score !== undefined ? `score=${decision.score.toFixed(3)}` : undefined,
+    });
+    const dedupeReason = getInteractionDedupeReason({
+      interaction,
+      priority,
+      pendingInteractions,
+      week,
+    });
+    if (dedupeReason) {
+      logIncomingInteractionDecision(store.dispatch, {
+        stage: 'deduped',
+        reason: dedupeReason,
+        interactionId: interaction.id,
+        actorId: interaction.fromId,
+        type: interaction.type,
         priority,
-        pendingInteractions,
         week,
-      })
-    ) {
+        phase,
+      });
       continue;
     }
 
@@ -581,7 +590,40 @@ export function scheduleIncomingInteractionsForPhase(
       slotCounts,
       visibleActiveCount,
     });
-    if (!slot) continue;
+    if (!slot) {
+      const dropReason =
+        visibleActiveCount >= socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible
+          ? 'blocked_by_visible_cap'
+          : 'blocked_by_delivery_cap';
+      logIncomingInteractionDecision(store.dispatch, {
+        stage: 'dropped',
+        reason: dropReason,
+        interactionId: interaction.id,
+        actorId: interaction.fromId,
+        type: interaction.type,
+        priority,
+        week,
+        phase,
+      });
+      continue;
+    }
+
+    logIncomingInteractionDecision(store.dispatch, {
+      stage: 'scheduling',
+      reason:
+        slot.scheduledForWeek === week && slot.scheduledForPhase === phase
+          ? 'scheduled_for_current_phase'
+          : 'scheduled_for_future_phase',
+      interactionId: interaction.id,
+      actorId: interaction.fromId,
+      type: interaction.type,
+      priority,
+      week,
+      phase,
+      scheduledForWeek: slot.scheduledForWeek,
+      scheduledForPhase: slot.scheduledForPhase,
+      detail: slot.deliveryReason,
+    });
 
     store.dispatch(
       scheduleIncomingInteraction({

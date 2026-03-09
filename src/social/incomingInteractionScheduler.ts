@@ -1,6 +1,7 @@
 import { socialConfig } from './socialConfig';
 import { INCOMING_INTERACTION_PHASE_ORDER } from './incomingInteractionPhases';
 import { applyScheduledIncomingInteractionDelivery } from './socialSlice';
+import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -113,7 +114,7 @@ export function getIncomingInteractionPriority(
   return socialConfig.incomingInteractionDeliveryConfig.defaultPriorityByType[type] ?? 'medium';
 }
 
-export function shouldSkipDueToInteractionDedupe({
+export function getInteractionDedupeReason({
   interaction,
   priority,
   pendingInteractions,
@@ -123,13 +124,13 @@ export function shouldSkipDueToInteractionDedupe({
   priority: IncomingInteractionPriority;
   pendingInteractions: IncomingInteraction[];
   week: number;
-}): boolean {
+}): string | null {
   const { dedupe } = socialConfig.incomingInteractionDeliveryConfig;
   const allFromActor = pendingInteractions.filter((entry) => entry.fromId === interaction.fromId);
   const unresolvedFromActor = allFromActor.filter((entry) => !entry.resolved);
 
   if (dedupe.blockLowPriorityIfActorPending && priority === 'low' && unresolvedFromActor.length > 0) {
-    return true;
+    return 'deduped_actor_pending';
   }
 
   const sameType = allFromActor.find(
@@ -139,7 +140,7 @@ export function shouldSkipDueToInteractionDedupe({
       week - entry.createdWeek <= dedupe.sameTypeCooldownWeeks,
   );
   if (sameType) {
-    return true;
+    return 'deduped_similar_pending';
   }
 
   if (priority === 'low' && dedupe.lowPriorityCooldownWeeks > 0) {
@@ -157,11 +158,32 @@ export function shouldSkipDueToInteractionDedupe({
       week >= lastFromActor.createdWeek &&
       week - lastFromActor.createdWeek <= dedupe.lowPriorityCooldownWeeks
     ) {
-      return true;
+      return 'deduped_low_priority_cooldown';
     }
   }
 
-  return false;
+  return null;
+}
+
+export function shouldSkipDueToInteractionDedupe({
+  interaction,
+  priority,
+  pendingInteractions,
+  week,
+}: {
+  interaction: IncomingInteraction;
+  priority: IncomingInteractionPriority;
+  pendingInteractions: IncomingInteraction[];
+  week: number;
+}): boolean {
+  return (
+    getInteractionDedupeReason({
+      interaction,
+      priority,
+      pendingInteractions,
+      week,
+    }) !== null
+  );
 }
 
 export function assignDeliverySlot({
@@ -254,22 +276,55 @@ export function deliverScheduledIncomingInteractionsForPhase(
   const eligible: ScheduledIncomingInteraction[] = [];
   const remaining: ScheduledIncomingInteraction[] = [];
 
+  const logDecision = (
+    entry: ScheduledIncomingInteraction,
+    stage: 'delivery' | 'postponed' | 'dropped' | 'expiration',
+    reason: string,
+    detail?: string,
+  ) => {
+    logIncomingInteractionDecision(store.dispatch, {
+      stage,
+      reason,
+      interactionId: entry.interaction.id,
+      actorId: entry.interaction.fromId,
+      type: entry.interaction.type,
+      priority: entry.priority,
+      week,
+      phase,
+      scheduledForWeek: entry.scheduledForWeek,
+      scheduledForPhase: entry.scheduledForPhase,
+      detail,
+    });
+  };
+
   for (const entry of scheduled) {
     if (entry.interaction.expiresAtWeek < week) {
+      logDecision(entry, 'expiration', 'expired_before_delivery');
       continue;
     }
     const scheduledWeek = entry.scheduledForWeek ?? week;
     const scheduledPhase = entry.scheduledForPhase ?? phase;
+    const scheduledIndex = getDeliveryPhaseIndex(scheduledPhase);
+    if (scheduledIndex === null) {
+      logDecision(entry, 'expiration', 'invalid_scheduled_phase');
+      continue;
+    }
+    const overduePhases = computePhaseDistance(
+      { week: scheduledWeek, phase: scheduledPhase },
+      { week, phase },
+    );
+    if (
+      deliveryConfig.maxScheduledWaitPhases > 0 &&
+      overduePhases > deliveryConfig.maxScheduledWaitPhases
+    ) {
+      logDecision(entry, 'expiration', 'expired_before_delivery', `overduePhases=${overduePhases}`);
+      continue;
+    }
     if (scheduledWeek < week) {
       eligible.push(entry);
       continue;
     }
     if (scheduledWeek > week) {
-      remaining.push(entry);
-      continue;
-    }
-    const scheduledIndex = getDeliveryPhaseIndex(scheduledPhase);
-    if (scheduledIndex === null) {
       remaining.push(entry);
       continue;
     }
@@ -300,6 +355,7 @@ export function deliverScheduledIncomingInteractionsForPhase(
     );
 
     if (entry.priority === 'low' && (hasActiveFromActor || hasSameTypeVisible)) {
+      logDecision(entry, 'postponed', 'postponed_low_priority');
       remaining.push(entry);
       continue;
     }
@@ -316,13 +372,16 @@ export function deliverScheduledIncomingInteractionsForPhase(
         activeVisibleCount >= deliveryConfig.maxActiveVisible &&
         overduePhases >= deliveryConfig.lowPriorityDropAfterPhases
       ) {
+        logDecision(entry, 'dropped', 'dropped_low_priority_overdue');
         continue;
       }
+      logDecision(entry, 'postponed', 'blocked_by_visible_cap');
       remaining.push(entry);
       continue;
     }
 
     deliveries.push(entry);
+    logDecision(entry, 'delivery', 'phase_checkpoint', entry.deliveryReason);
     remainingSlots -= 1;
     activeVisibleCount += 1;
     remainingVisibleCapacity = Math.max(0, deliveryConfig.maxActiveVisible - activeVisibleCount);

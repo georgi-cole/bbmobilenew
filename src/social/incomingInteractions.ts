@@ -1,6 +1,7 @@
 import { addTvEvent } from '../store/gameSlice';
 import type { AppDispatch, RootState } from '../store/store';
 import { socialConfig } from './socialConfig';
+import { logIncomingInteractionDecision } from './incomingInteractionLogging';
 import {
   resolveExpiredIncomingInteractionsForWeek,
   resolveIncomingInteraction,
@@ -147,6 +148,15 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
     const ignoreDelta = getResponseDelta('ignore');
 
     interactions.forEach((interaction) => {
+      logIncomingInteractionDecision(dispatch, {
+        stage: 'auto_resolution',
+        reason: 'auto_resolved_ignored',
+        interactionId: interaction.id,
+        actorId: interaction.fromId,
+        type: interaction.type,
+        week,
+        detail: 'week_end',
+      });
       const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
       const fromName = fromPlayer?.name ?? interaction.fromId;
 

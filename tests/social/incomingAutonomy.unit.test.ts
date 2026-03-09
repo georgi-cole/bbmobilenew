@@ -10,15 +10,17 @@
  *  6. chooseIncomingInteractionType returns correct types per phase/affinity
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { normalizeAffinity } from '../../src/social/affinityUtils';
 import {
   computeIncomingInteractionEngagementScore,
   chooseIncomingInteractionType,
+  evaluateIncomingInteractionEnqueueDecision,
   shouldEnqueueInteraction,
 } from '../../src/social/incomingInteractionAutonomy';
 import type { AutonomyContext } from '../../src/social/incomingInteractionAutonomy';
 import type { IncomingInteraction } from '../../src/social/types';
+import { socialConfig } from '../../src/social/socialConfig';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -285,8 +287,8 @@ describe('shouldEnqueueInteraction', () => {
 
   it('returns false when global active cap is reached', () => {
     const ctx = makeContext({ phase: 'nominations' });
-    // maxActive = 4; create 4 unresolved interactions from different actors
-    const pending: IncomingInteraction[] = Array.from({ length: 4 }, (_, i) =>
+    const maxActive = socialConfig.incomingInteractionConfig.maxActive;
+    const pending: IncomingInteraction[] = Array.from({ length: maxActive }, (_, i) =>
       makeInteraction({ id: `i-${i}`, fromId: `other${i}`, resolved: false }),
     );
     expect(shouldEnqueueInteraction('actor1', 'user', ctx, pending)).toBe(false);
@@ -324,5 +326,37 @@ describe('shouldEnqueueInteraction', () => {
     const ctx = makeContext({ phase: 'week_end', relationships: {}, random: () => 0 });
     const score = computeIncomingInteractionEngagementScore('actor1', 'user', ctx);
     expect(score).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ── Decision reason generation ─────────────────────────────────────────────
+
+describe('incoming interaction decision reasons', () => {
+  const originalThreshold = socialConfig.incomingInteractionConfig.scoreThreshold;
+
+  afterEach(() => {
+    socialConfig.incomingInteractionConfig.scoreThreshold = originalThreshold;
+  });
+
+  it('reports blocked_by_global_cap when global cap is hit', () => {
+    const ctx = makeContext({ phase: 'nominations' });
+    const maxActive = socialConfig.incomingInteractionConfig.maxActive;
+    const pending: IncomingInteraction[] = Array.from({ length: maxActive }, (_, i) =>
+      makeInteraction({ id: `cap-${i}`, fromId: `other${i}`, resolved: false }),
+    );
+
+    const decision = evaluateIncomingInteractionEnqueueDecision('actor1', 'user', ctx, pending);
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('blocked_by_global_cap');
+  });
+
+  it('respects scoreThreshold tuning from socialConfig', () => {
+    socialConfig.incomingInteractionConfig.scoreThreshold = 0.99;
+
+    const ctx = makeContext({ phase: 'social_1', relationships: {} });
+    const decision = evaluateIncomingInteractionEnqueueDecision('actor1', 'user', ctx, []);
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('blocked_by_score_threshold');
   });
 });
