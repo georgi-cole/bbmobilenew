@@ -25,6 +25,6 @@ export function enrichPlayer(player: Player): EnrichedPlayer {
     story: profile?.story,
     allies: profile?.allies,
     enemies: profile?.enemies,
-    competitionProfile: profile?.competitionProfile,
+    competitionProfile: player.competitionProfile ?? profile?.competitionProfile,
   };
 }

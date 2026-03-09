@@ -4,7 +4,18 @@
 
 import type { Houseguest } from '../types/houseguest';
 import type { CompetitionSkillProfile } from '../ai/competition/types';
-import { getDefaultCompetitionProfile } from '../ai/competition';
+
+const DEFAULT_COMPETITION_PROFILE: CompetitionSkillProfile = {
+  overall: 50,
+  physical: 50,
+  mental: 50,
+  precision: 50,
+  nerve: 50,
+  consistency: 50,
+  clutch: 50,
+  chokeRisk: 50,
+  luck: 50,
+};
 
 const HOUSEGUESTS: Houseguest[] = [
   {
@@ -695,7 +706,7 @@ export default HOUSEGUESTS;
 
 export function getCompetitionProfile(playerId: string): CompetitionSkillProfile {
   const profile = getById(playerId)?.competitionProfile;
-  return profile ? { ...profile } : getDefaultCompetitionProfile();
+  return profile ? { ...profile } : { ...DEFAULT_COMPETITION_PROFILE };
 }
 
 export function getAll(): Houseguest[] {

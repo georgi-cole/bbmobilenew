@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getDefaultCompetitionProfile } from '../../../src/ai/competition';
 import { getAll, getCompetitionProfile } from '../../../src/data/houseguests';
 
