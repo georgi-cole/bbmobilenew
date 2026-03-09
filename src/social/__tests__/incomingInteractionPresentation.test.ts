@@ -88,4 +88,19 @@ describe('incomingInteractionPresentation', () => {
       }),
     ).toBe('Feels ignored');
   });
+
+  it('provides a default tone for check-ins without strong signals', () => {
+    const interaction = makeInteraction({ type: 'check_in' });
+    const relationships: RelationshipsMap = {};
+    const socialMemory: SocialMemoryMap = {};
+
+    expect(
+      getIncomingInteractionTone({
+        interaction,
+        relationships,
+        socialMemory,
+        humanId: 'user',
+      }),
+    ).toBe('Curious');
+  });
 });

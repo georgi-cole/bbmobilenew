@@ -113,16 +113,25 @@ function InteractionItem({
       ? 'New'
       : 'Read';
   const priorityLabel = PRIORITY_LABELS[priority];
+  const isUrgent = isExpiringThisWeek(interaction, currentWeek);
   const expiryLabel = showExpiry ? getExpiryLabel(interaction, currentWeek, priority) : null;
   const expiryClass = expiryLabel && priority === 'high' ? ' inbox-item__expiry--urgent' : '';
-  const responseOptions = getIncomingInteractionResponseOptions(interaction.type);
-  const tone = getIncomingInteractionTone({
-    interaction,
-    relationships,
-    socialMemory,
-    humanId,
-    isUrgent: isExpiringThisWeek(interaction, currentWeek),
-  });
+  const shouldShowActions = showActions && !interaction.resolved;
+  const responseOptions = useMemo(
+    () => (shouldShowActions ? getIncomingInteractionResponseOptions(interaction.type) : []),
+    [shouldShowActions, interaction.type],
+  );
+  const tone = useMemo(
+    () =>
+      getIncomingInteractionTone({
+        interaction,
+        relationships,
+        socialMemory,
+        humanId,
+        isUrgent,
+      }),
+    [interaction, relationships, socialMemory, humanId, isUrgent],
+  );
 
   return (
     <div
@@ -171,7 +180,7 @@ function InteractionItem({
 
       <p className="inbox-item__text">{interaction.text}</p>
 
-      {showActions && !interaction.resolved && (
+      {shouldShowActions && (
         <div className="inbox-item__actions">
           {responseOptions.map((option) => (
             <button
@@ -196,8 +205,8 @@ export default function IncomingInteractionsInbox() {
   const unreadCount = useAppSelector(selectUnreadIncomingInteractionCount);
   const players = useAppSelector((s) => s.game.players);
   const currentWeek = useAppSelector((s) => s.game.week ?? 1);
-  const relationships = useAppSelector((s) => s.social.relationships);
-  const socialMemory = useAppSelector((s) => s.social.socialMemory);
+  const relationships = useAppSelector((s) => s.social?.relationships ?? {});
+  const socialMemory = useAppSelector((s) => s.social?.socialMemory ?? {});
 
   const humanPlayer = players.find((player) => player.isUser);
 

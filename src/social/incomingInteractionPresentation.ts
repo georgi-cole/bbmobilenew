@@ -104,7 +104,11 @@ const DEFAULT_TONES_BY_TYPE: Partial<Record<IncomingInteractionType, IncomingInt
   deal_offer: 'Strategic',
   nomination_plea: 'Desperate',
   snide_remark: 'Tense',
+  check_in: 'Curious',
+  other: 'Curious',
 };
+
+const DEFAULT_TONE_FALLBACK: IncomingInteractionTone = 'Curious';
 
 // Social memory thresholds expressed as fractions of configured caps.
 const HIGH_GRATITUDE_THRESHOLD = 0.55; // Gratitude peaks sooner to surface warmth.
@@ -149,9 +153,9 @@ function detectTenseTone(isSnideOrWarning: boolean, affinity: number, trustLow: 
   );
 }
 
-function detectGuardedTone(isSnideOrWarning: boolean, affinity: number, trustLow: boolean): boolean {
+function detectGuardedTone(isNonSnideOrWarning: boolean, affinity: number, trustLow: boolean): boolean {
   return (
-    !isSnideOrWarning &&
+    isNonSnideOrWarning &&
     hasNegativeRelationshipIndicators(affinity, trustLow, AFFINITY_GUARDED_THRESHOLD)
   );
 }
@@ -199,7 +203,7 @@ export function getIncomingInteractionTone({
   socialMemory: SocialMemoryMap;
   humanId: string;
   isUrgent?: boolean;
-}): IncomingInteractionTone | null {
+}): IncomingInteractionTone {
   const relEntry = relationships[interaction.fromId]?.[humanId];
   const affinity = normalizeAffinity(relEntry?.affinity ?? 0);
   const memoryEntry = socialMemory[interaction.fromId]?.[humanId];
@@ -219,11 +223,12 @@ export function getIncomingInteractionTone({
   if (highNeglect) return 'Feels ignored';
   if (detectBitterTone(highResentment, affinity)) return 'Bitter';
   const isSnideOrWarning = interaction.type === 'snide_remark' || interaction.type === 'warning';
+  const isNonSnideOrWarning = !isSnideOrWarning;
   if (detectTenseTone(isSnideOrWarning, affinity, trustLow)) return 'Tense';
-  if (detectGuardedTone(isSnideOrWarning, affinity, trustLow)) return 'Guarded';
+  if (detectGuardedTone(isNonSnideOrWarning, affinity, trustLow)) return 'Guarded';
   if (interaction.type === 'nomination_plea' && isUrgent) return 'Desperate';
   if (detectWarmTone(highGratitude, trustHigh, affinity)) return 'Warm';
   if (detectTrustingTone(trustHigh, affinity)) return 'Trusting';
 
-  return DEFAULT_TONES_BY_TYPE[interaction.type] ?? null;
+  return DEFAULT_TONES_BY_TYPE[interaction.type] ?? DEFAULT_TONE_FALLBACK;
 }
