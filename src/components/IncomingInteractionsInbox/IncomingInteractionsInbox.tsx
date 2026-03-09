@@ -61,6 +61,9 @@ function getExpiryLabel(
 ): string | null {
   if (interaction.resolved) return null;
   if (isExpiringThisWeek(interaction, currentWeek)) {
+    if (!interaction.requiresResponse) {
+      return 'Expires this week';
+    }
     return priority === 'high' ? 'Urgent this week' : 'Needs response this week';
   }
   return null;
@@ -214,10 +217,18 @@ export default function IncomingInteractionsInbox() {
     () => sortedInteractions.filter((entry) => !entry.interaction.resolved),
     [sortedInteractions],
   );
+  const needsResponseInteractions = useMemo(
+    () => pendingInteractions.filter((entry) => entry.interaction.requiresResponse),
+    [pendingInteractions],
+  );
+  const updateInteractions = useMemo(
+    () => pendingInteractions.filter((entry) => !entry.interaction.requiresResponse),
+    [pendingInteractions],
+  );
   const resolvedInteractions = useMemo(
     () =>
       sortedInteractions.filter(
-        (entry) => entry.interaction.resolved && entry.interaction.expiresAtWeek >= currentWeek,
+        (entry) => entry.interaction.resolved && entry.interaction.resolvedWeek === currentWeek,
       ),
     [sortedInteractions, currentWeek],
   );
@@ -269,11 +280,13 @@ export default function IncomingInteractionsInbox() {
             <div className="inbox-sections">
               <section className="inbox-section" aria-label="Needs Response">
                 <h3 className="inbox-section__title">Needs Response</h3>
-                {pendingInteractions.length === 0 ? (
-                  <div className="inbox-empty inbox-empty--compact">No pending interactions.</div>
+                {needsResponseInteractions.length === 0 ? (
+                  <div className="inbox-empty inbox-empty--compact">
+                    No interactions need a response.
+                  </div>
                 ) : (
                   <div className="inbox-section__list" role="list">
-                    {pendingInteractions.map(({ interaction, priority }) => (
+                    {needsResponseInteractions.map(({ interaction, priority }) => (
                       <InteractionItem
                         key={interaction.id}
                         interaction={interaction}
@@ -290,6 +303,27 @@ export default function IncomingInteractionsInbox() {
                   </div>
                 )}
               </section>
+              {updateInteractions.length > 0 && (
+                <section className="inbox-section" aria-label="Updates">
+                  <h3 className="inbox-section__title inbox-section__title--updates">Updates</h3>
+                  <div className="inbox-section__list" role="list">
+                    {updateInteractions.map(({ interaction, priority }) => (
+                      <InteractionItem
+                        key={interaction.id}
+                        interaction={interaction}
+                        priority={priority}
+                        showActions
+                        showExpiry
+                        playerById={playerById}
+                        currentWeek={currentWeek}
+                        onRespond={(interactionId, responseType) =>
+                          dispatch(respondToIncomingInteraction({ interactionId, responseType }))
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
               {resolvedInteractions.length > 0 && (
                 <section className="inbox-section" aria-label="Resolved This Week">
                   <h3 className="inbox-section__title inbox-section__title--resolved">

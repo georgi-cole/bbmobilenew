@@ -80,7 +80,14 @@ export function respondToIncomingInteraction({
     const resolvedAt = Date.now();
     const currentWeek = state.game.week ?? 1;
 
-    dispatch(resolveIncomingInteraction({ interactionId, resolvedWith: responseType, resolvedAt }));
+    dispatch(
+      resolveIncomingInteraction({
+        interactionId,
+        resolvedWith: responseType,
+        resolvedAt,
+        resolvedWeek: currentWeek,
+      }),
+    );
 
     const delta = getResponseDelta(responseType);
     if (delta !== 0 && interaction.fromId !== humanPlayer.id) {

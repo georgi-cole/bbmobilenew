@@ -38,7 +38,7 @@ describe('IncomingInteractionsInbox', () => {
         createdWeek: 1,
         expiresAtWeek: 2,
         read: false,
-        requiresResponse: true,
+        requiresResponse: false,
         resolved: false,
       }),
     );
@@ -52,7 +52,7 @@ describe('IncomingInteractionsInbox', () => {
         createdWeek: 1,
         expiresAtWeek: 1,
         read: false,
-        requiresResponse: true,
+        requiresResponse: false,
         resolved: false,
       }),
     );
@@ -97,6 +97,7 @@ describe('IncomingInteractionsInbox', () => {
         requiresResponse: true,
         resolved: true,
         resolvedAt: 190,
+        resolvedWeek: 1,
         resolvedWith: 'positive',
       }),
     );
@@ -107,14 +108,18 @@ describe('IncomingInteractionsInbox', () => {
 
     const needsSection = screen.getByLabelText('Needs Response');
     const needsItems = within(needsSection).getAllByRole('listitem');
-    expect(needsItems).toHaveLength(4);
+    expect(needsItems).toHaveLength(2);
     expect(needsItems[0].textContent).toContain('High soon.');
     expect(needsItems[1].textContent).toContain('High later.');
-    expect(needsItems[2].textContent).toContain('Medium soon.');
-    expect(needsItems[3].textContent).toContain('Low later.');
 
     expect(within(needsSection).getByText('Urgent this week')).toBeInTheDocument();
-    expect(within(needsSection).getByText('Needs response this week')).toBeInTheDocument();
+
+    const updatesSection = screen.getByLabelText('Updates');
+    const updatesItems = within(updatesSection).getAllByRole('listitem');
+    expect(updatesItems).toHaveLength(2);
+    expect(updatesItems[0].textContent).toContain('Medium soon.');
+    expect(updatesItems[1].textContent).toContain('Low later.');
+    expect(within(updatesSection).getByText('Expires this week')).toBeInTheDocument();
 
     const resolvedSection = screen.getByLabelText('Resolved This Week');
     const resolvedItems = within(resolvedSection).getAllByRole('listitem');

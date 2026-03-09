@@ -65,12 +65,14 @@ describe('socialSlice incoming interactions', () => {
         interactionId: 'i-1',
         resolvedWith: 'positive',
         resolvedAt: 555,
+        resolvedWeek: 2,
       }),
     ) as SocialState;
     const entry = resolved.incomingInteractions[0];
     expect(entry?.resolved).toBe(true);
     expect(entry?.resolvedWith).toBe('positive');
     expect(entry?.resolvedAt).toBe(555);
+    expect(entry?.resolvedWeek).toBe(2);
     expect(entry?.read).toBe(true);
   });
 
@@ -102,6 +104,7 @@ describe('socialSlice incoming interactions', () => {
     expect(expired?.resolved).toBe(true);
     expect(expired?.resolvedWith).toBe('ignore');
     expect(expired?.resolvedAt).toBe(900);
+    expect(expired?.resolvedWeek).toBe(3);
     expect(active?.resolved).toBe(false);
   });
 
