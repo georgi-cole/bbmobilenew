@@ -91,9 +91,9 @@ export const socialConfig = {
    *                   No new interactions are enqueued once this is reached.
    * maxPerAI        – per-actor cap: an individual AI may have at most this many
    *                   unresolved interactions pending with the player at once.
-   * cooldownTicks   – minimum number of game-phase evaluations that must pass
-   *                   after an AI enqueues an interaction before it may enqueue
-   *                   another (per-actor cooldown).
+   * cooldownTicks   – minimum number of game weeks that must pass after an AI
+   *                   enqueues an interaction before it may enqueue another
+   *                   (per-actor cooldown).
    * scoreThreshold  – minimum computed engagement score required before an
    *                   interaction is actually enqueued.
    * weights         – relative weights used when computing the engagement score.

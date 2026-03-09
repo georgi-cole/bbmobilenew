@@ -9,7 +9,7 @@
  * scheduleIncomingInteractionsForPhase, and also tests the middleware integration.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase, advance } from '../../src/store/gameSlice';
 import socialReducer from '../../src/social/socialSlice';
@@ -171,6 +171,10 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
 describe('incomingInteractionAutonomy – middleware integration', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('week_start phase transition enqueues interactions via middleware', () => {

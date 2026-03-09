@@ -204,8 +204,10 @@ function computeRecencyPenalty(
   currentWeek: number,
   cooldownTicks: number,
 ): number {
+  // Use all interactions from this actor (resolved or not) so that responding
+  // to a message doesn't immediately reset the cooldown and allow re-spam.
   const lastFromActor = pendingInteractions
-    .filter((i) => i.fromId === actorId && !i.resolved)
+    .filter((i) => i.fromId === actorId)
     .sort((a, b) => b.createdAt - a.createdAt)[0];
 
   if (!lastFromActor) return 0;
@@ -294,9 +296,11 @@ export function shouldEnqueueInteraction(
   // ── Global active cap ───────────────────────────────────────────────────
   const globalActive = pendingInteractions.filter((i) => !i.resolved).length;
   if (globalActive >= cfg.maxActive) {
-    console.debug(
-      `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${cfg.maxActive})`,
-    );
+    if (socialConfig.verbose) {
+      console.debug(
+        `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${cfg.maxActive})`,
+      );
+    }
     return false;
   }
 
@@ -305,9 +309,11 @@ export function shouldEnqueueInteraction(
     (i) => i.fromId === actorId && !i.resolved,
   ).length;
   if (perAiActive >= cfg.maxPerAI) {
-    console.debug(
-      `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`,
-    );
+    if (socialConfig.verbose) {
+      console.debug(
+        `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`,
+      );
+    }
     return false;
   }
 
@@ -319,7 +325,9 @@ export function shouldEnqueueInteraction(
     cfg.cooldownTicks,
   );
   if (recencyPenalty >= 1) {
-    console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`);
+    if (socialConfig.verbose) {
+      console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`);
+    }
     return false;
   }
 
@@ -331,13 +339,17 @@ export function shouldEnqueueInteraction(
     pendingInteractions,
   );
   if (score < cfg.scoreThreshold) {
-    console.debug(
-      `[autonomy] skip ${actorId}: score ${score.toFixed(3)} below threshold ${cfg.scoreThreshold}`,
-    );
+    if (socialConfig.verbose) {
+      console.debug(
+        `[autonomy] skip ${actorId}: score ${score.toFixed(3)} below threshold ${cfg.scoreThreshold}`,
+      );
+    }
     return false;
   }
 
-  console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
+  if (socialConfig.verbose) {
+    console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
+  }
   return true;
 }
 
@@ -379,9 +391,12 @@ const TYPE_TEMPLATES: Record<IncomingInteractionType, string[]> = {
   other: ['We need to talk.'],
 };
 
-function generateInteractionText(type: IncomingInteractionType): string {
+function generateInteractionText(
+  type: IncomingInteractionType,
+  rng: () => number = Math.random,
+): string {
   const templates = TYPE_TEMPLATES[type];
-  return templates[Math.floor(Math.random() * templates.length)];
+  return templates[Math.floor(rng() * templates.length)];
 }
 
 // ── ID generator ───────────────────────────────────────────────────────────
@@ -397,12 +412,13 @@ function generateInteractionId(): string {
  * Phases during which the autonomy scheduler will evaluate and potentially
  * enqueue incoming interactions.  Guarded behind a set for O(1) lookup.
  */
-const ELIGIBLE_PHASES = new Set<string>([
+export const ELIGIBLE_PHASES = new Set<string>([
   'week_start',
   'nominations',
   'hoh_results',
   'pov_results',
   'live_vote',
+  'eviction_results',
 ]);
 
 /** Returns true for interaction types that expect an explicit player response. */
@@ -428,14 +444,18 @@ export function scheduleIncomingInteractionsForPhase(
   contextOverride?: Partial<AutonomyContext>,
 ): void {
   if (!ELIGIBLE_PHASES.has(phase)) {
-    console.debug(`[autonomy] phase '${phase}' is not an eligible scheduling phase – skipping`);
+    if (socialConfig.verbose) {
+      console.debug(`[autonomy] phase '${phase}' is not an eligible scheduling phase – skipping`);
+    }
     return;
   }
 
   const state = store.getState();
   const socialState = state.social;
   if (!socialState) {
-    console.debug('[autonomy] no social state – skipping');
+    if (socialConfig.verbose) {
+      console.debug('[autonomy] no social state – skipping');
+    }
     return;
   }
 
@@ -448,7 +468,9 @@ export function scheduleIncomingInteractionsForPhase(
 
   const playerEntry = players.find((p) => p.isUser);
   if (!playerEntry) {
-    console.debug('[autonomy] no player found – skipping');
+    if (socialConfig.verbose) {
+      console.debug('[autonomy] no player found – skipping');
+    }
     return;
   }
   const playerId = playerEntry.id;
@@ -481,7 +503,7 @@ export function scheduleIncomingInteractionsForPhase(
     if (!eligible) continue;
 
     const type = chooseIncomingInteractionType(actor.id, playerId, context);
-    const text = generateInteractionText(type);
+    const text = generateInteractionText(type, context.random);
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
       fromId: actor.id,
