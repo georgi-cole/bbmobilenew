@@ -78,6 +78,11 @@ export function simulateAiPerformance({
   );
   if (model.scoreDirection === 'lower-is-better') {
     // TODO(PR4): apply inversion once normalized scoring replaces legacy taps.
+    if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+      console.warn(
+        `[competition-ai] ${minigameKey} uses lower-is-better but still returns legacy tap scores.`,
+      );
+    }
   }
   return baseScore;
 }

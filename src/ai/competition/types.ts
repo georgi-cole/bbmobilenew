@@ -9,6 +9,7 @@ export type CompetitionCategory =
 export type ScoreDirection = 'higher-is-better' | 'lower-is-better';
 
 export interface CompetitionSkillProfile {
+  /** Optional aggregate rating; may be computed from the other skill fields. */
   overall?: number;
   physical: number;
   mental: number;
