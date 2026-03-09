@@ -19,7 +19,12 @@ import type { AutonomyContext } from '../../src/social/incomingInteractionAutono
 import {
   selectPendingIncomingInteractionCount,
   selectIncomingInteractions,
+  selectScheduledIncomingInteractions,
+  selectScheduledIncomingInteractionCount,
+  pushIncomingInteraction,
 } from '../../src/social/socialSlice';
+import { deliverScheduledIncomingInteractionsForPhase } from '../../src/social/incomingInteractionScheduler';
+import { socialConfig } from '../../src/social/socialConfig';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -49,7 +54,7 @@ function makeSeededRng(seed: number): () => number {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('incomingInteractionAutonomy – direct scheduling', () => {
-  it('scheduleIncomingInteractionsForPhase enqueues interactions for nominations phase', () => {
+  it('scheduleIncomingInteractionsForPhase schedules interactions for nominations phase', () => {
     const store = makeStore();
 
     // Inject a seeded RNG so the test is deterministic
@@ -68,11 +73,25 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       phase: 'nominations',
     });
 
-    const pending = selectPendingIncomingInteractionCount({ social: store.getState().social });
-    expect(pending).toBeGreaterThan(0);
+    const deliveredBefore = selectIncomingInteractions({ social: store.getState().social });
+    const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
+    expect(deliveredBefore.length + scheduled.length).toBeGreaterThan(0);
+
+    const scheduledForNow = scheduled.filter(
+      (entry) => entry.scheduledForWeek === 2 && entry.scheduledForPhase === 'nominations',
+    );
+    expect(scheduledForNow.length).toBeLessThanOrEqual(
+      socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
+    );
+
+    deliverScheduledIncomingInteractionsForPhase('nominations', store, { week: 2 });
+    const deliveredAfter = selectIncomingInteractions({ social: store.getState().social });
+    expect(deliveredAfter.length - deliveredBefore.length).toBeLessThanOrEqual(
+      socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
+    );
   });
 
-  it('interactions enqueued have correct fromId and type fields', () => {
+  it('interactions scheduled have correct fromId and type fields', () => {
     const store = makeStore();
 
     scheduleIncomingInteractionsForPhase('nominations', store, {
@@ -88,7 +107,9 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       phase: 'nominations',
     });
 
-    const interactions = selectIncomingInteractions({ social: store.getState().social });
+    const delivered = selectIncomingInteractions({ social: store.getState().social });
+    const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
+    const interactions = [...delivered, ...scheduled.map((entry) => entry.interaction)];
     expect(interactions.length).toBeGreaterThan(0);
     const first = interactions[0];
     expect(first.fromId).toBe('ai1');
@@ -113,10 +134,11 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
     });
 
     const pending = selectPendingIncomingInteractionCount({ social: store.getState().social });
-    expect(pending).toBe(0);
+    const scheduled = selectScheduledIncomingInteractionCount({ social: store.getState().social });
+    expect(pending + scheduled).toBe(0);
   });
 
-  it('respects global maxActive cap: never exceeds 4 unresolved interactions', () => {
+  it('respects global maxActive cap: never exceeds configured unresolved interactions', () => {
     const store = makeStore();
 
     const manyActors = Array.from({ length: 10 }, (_, i) => ({
@@ -139,7 +161,8 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
     });
 
     const pending = selectPendingIncomingInteractionCount({ social: store.getState().social });
-    expect(pending).toBeLessThanOrEqual(4);
+    const scheduled = selectScheduledIncomingInteractionCount({ social: store.getState().social });
+    expect(pending + scheduled).toBeLessThanOrEqual(socialConfig.incomingInteractionConfig.maxActive);
   });
 
   it('evicted and jury players are skipped', () => {
@@ -161,7 +184,78 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
     });
 
     const pending = selectPendingIncomingInteractionCount({ social: store.getState().social });
-    expect(pending).toBe(0);
+    const scheduled = selectScheduledIncomingInteractionCount({ social: store.getState().social });
+    expect(pending + scheduled).toBe(0);
+  });
+
+  it('skips low-priority scheduling when actor already has a pending interaction', () => {
+    const store = makeStore();
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'existing',
+        fromId: 'ai1',
+        type: 'compliment',
+        text: 'Old message.',
+        createdAt: 100,
+        createdWeek: 1,
+        expiresAtWeek: 3,
+        read: false,
+        requiresResponse: false,
+        resolved: false,
+      }),
+    );
+
+    scheduleIncomingInteractionsForPhase('hoh_results', store, {
+      random: makeSeededRng(17),
+      players: [
+        { id: 'user', status: 'active', isUser: true },
+        { id: 'ai1', status: 'active' },
+      ],
+      week: 3,
+      relationships: {
+        ai1: { user: { affinity: 20, tags: [] } },
+      },
+      phase: 'hoh_results',
+    });
+
+    const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
+    const ai1Scheduled = scheduled.filter((entry) => entry.interaction.fromId === 'ai1');
+    expect(ai1Scheduled).toHaveLength(0);
+  });
+
+  it('delivers at most the configured number per phase checkpoint', () => {
+    const store = makeStore();
+
+    const manyActors = Array.from({ length: 6 }, (_, i) => ({
+      id: `ai${i}`,
+      status: 'active',
+    }));
+    const players = [{ id: 'user', status: 'active', isUser: true }, ...manyActors];
+
+    const relationships: Record<string, Record<string, { affinity: number; tags: string[] }>> = {};
+    for (const actor of manyActors) {
+      relationships[actor.id] = { user: { affinity: 70, tags: [] } };
+    }
+
+    scheduleIncomingInteractionsForPhase('nominations', store, {
+      random: makeSeededRng(11),
+      players,
+      week: 1,
+      relationships,
+      phase: 'nominations',
+    });
+
+    const deliveredBefore = selectIncomingInteractions({ social: store.getState().social }).length;
+    expect(deliveredBefore).toBeLessThanOrEqual(
+      socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
+    );
+
+    deliverScheduledIncomingInteractionsForPhase('hoh_results', store);
+
+    const deliveredAfter = selectIncomingInteractions({ social: store.getState().social }).length;
+    expect(deliveredAfter - deliveredBefore).toBeLessThanOrEqual(
+      socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
+    );
   });
 });
 
@@ -188,6 +282,7 @@ describe('incomingInteractionAutonomy – middleware integration', () => {
     const socialState = store.getState().social;
     expect(socialState).toBeDefined();
     expect(Array.isArray(socialState.incomingInteractions)).toBe(true);
+    expect(Array.isArray(socialState.scheduledIncomingInteractions)).toBe(true);
   });
 
   it('nominations phase transition can enqueue interactions via middleware', () => {
@@ -200,7 +295,8 @@ describe('incomingInteractionAutonomy – middleware integration', () => {
     // With a real multi-player game state and nominations urgency, at least some
     // interactions may be enqueued. The count should not exceed maxActive.
     const pending = selectPendingIncomingInteractionCount({ social: socialState });
-    expect(pending).toBeLessThanOrEqual(4);
+    const scheduled = selectScheduledIncomingInteractionCount({ social: socialState });
+    expect(pending + scheduled).toBeLessThanOrEqual(socialConfig.incomingInteractionConfig.maxActive);
   });
 
   it('shouldEnqueueInteraction cap is consistent with dispatched count', () => {
@@ -226,13 +322,15 @@ describe('incomingInteractionAutonomy – middleware integration', () => {
     scheduleIncomingInteractionsForPhase('nominations', store, { ...ctx });
 
     const enqueued = selectIncomingInteractions({ social: store.getState().social });
+    const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
+    const all = [...enqueued, ...scheduled.map((entry) => entry.interaction)];
     // Every enqueued interaction should have fromId in the actor list
     const actorIds = new Set(['ai1', 'ai2', 'ai3']);
-    for (const interaction of enqueued) {
+    for (const interaction of all) {
       expect(actorIds.has(interaction.fromId)).toBe(true);
     }
     // shouldEnqueueInteraction would return false for any actor already at per-AI cap
-    const ai1Count = enqueued.filter((i) => i.fromId === 'ai1').length;
+    const ai1Count = all.filter((i) => i.fromId === 'ai1').length;
     expect(ai1Count).toBeLessThanOrEqual(2); // maxPerAI = 2
   });
 });

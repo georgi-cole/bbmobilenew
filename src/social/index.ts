@@ -2,11 +2,14 @@
 
 export type {
   IncomingInteraction,
+  IncomingInteractionPriority,
   IncomingInteractionResponseType,
   IncomingInteractionType,
+  IncomingInteractionDeliveryState,
   SocialEnergyBank,
   RelationshipEntry,
   RelationshipsMap,
+  ScheduledIncomingInteraction,
   SocialMemoryEntry,
   SocialMemoryEvent,
   SocialMemoryMap,
@@ -41,6 +44,8 @@ export {
   applyEnergyDelta,
   recordSocialAction,
   pushIncomingInteraction,
+  scheduleIncomingInteraction,
+  applyScheduledIncomingInteractionDelivery,
   markIncomingInteractionRead,
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
@@ -58,12 +63,19 @@ export {
   selectSessionLogs,
   selectIncomingInboxOpen,
   selectIncomingInteractions,
+  selectScheduledIncomingInteractions,
+  selectScheduledIncomingInteractionCount,
+  selectIncomingInteractionDeliveryState,
   selectUnreadIncomingInteractionCount,
   selectPendingIncomingInteractionCount,
   selectActiveIncomingInteractions,
   selectSocialMemory,
 } from './socialSlice';
 export { socialMiddleware } from './socialMiddleware';
+export {
+  deliverScheduledIncomingInteractionsForPhase,
+  getIncomingInteractionPriority,
+} from './incomingInteractionScheduler';
 export {
   chooseActionFor,
   chooseTargetsFor,

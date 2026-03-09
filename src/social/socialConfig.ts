@@ -1,3 +1,5 @@
+import type { IncomingInteractionPriority, IncomingInteractionType } from './types';
+
 /** Config for the Social Engine budget computation, adapted from BBMobile defaults. */
 export const socialConfig = {
   /** Target spend fraction range [min, max] applied to DEFAULT_ENERGY. */
@@ -86,9 +88,11 @@ export const socialConfig = {
    * maxPerWeek      – advisory budget: target maximum interactions that can be
    *                   generated across a full game week (used for planning; not
    *                   strictly enforced per-week in the current implementation).
-   * maxActive       – hard global cap: the maximum number of unresolved
-   *                   interactions that may exist in the inbox at any one time.
-   *                   No new interactions are enqueued once this is reached.
+    * maxActive       – hard global cap: the maximum number of unresolved
+    *                   interactions (visible + scheduled) that may exist at any
+    *                   one time. Typically set to ~2× maxActiveVisible (e.g.
+    *                   8 vs 4) so the scheduler can hold a small backlog while
+    *                   still spacing deliveries across phases.
    * maxPerAI        – per-actor cap: an individual AI may have at most this many
    *                   unresolved interactions pending with the player at once.
    * cooldownTicks   – minimum number of game weeks that must pass after an AI
@@ -101,7 +105,7 @@ export const socialConfig = {
    */
   incomingInteractionConfig: {
     maxPerWeek: 6,
-    maxActive: 4,
+    maxActive: 8,
     maxPerAI: 2,
     cooldownTicks: 2,
     scoreThreshold: 0.15,
@@ -114,6 +118,45 @@ export const socialConfig = {
       trustMomentum: 0.05,
     },
     randomVariance: 0.05,
+  },
+
+  // ── Incoming Interaction Delivery ─────────────────────────────────────────
+  incomingInteractionDeliveryConfig: {
+    /** Maximum unresolved interactions visible in the inbox at once. */
+    maxActiveVisible: 4,
+    /** Maximum interactions delivered per phase checkpoint. */
+    maxDeliveredPerPhase: 1,
+    /** Phase offsets applied when scheduling by priority. */
+    priorityOffsets: {
+      high: 0,
+      medium: 1,
+      low: 2,
+    } as Record<IncomingInteractionPriority, number>,
+    /** Default priority per interaction type. */
+    defaultPriorityByType: {
+      nomination_plea: 'high',
+      alliance_proposal: 'high',
+      deal_offer: 'high',
+      warning: 'medium',
+      gossip: 'medium',
+      check_in: 'medium',
+      compliment: 'low',
+      snide_remark: 'low',
+      other: 'medium',
+    } as Record<IncomingInteractionType, IncomingInteractionPriority>,
+    /** Drop low-priority items once they are overdue and the inbox is full. */
+    lowPriorityDropAfterPhases: 3,
+    /** Maximum number of future delivery slots to scan when scheduling. */
+    maxFutureSlots: 12,
+    /** Dedupe rules for repetitive interactions. */
+    dedupe: {
+      /** Skip low-priority items if the sender already has a pending interaction. */
+      blockLowPriorityIfActorPending: true,
+      /** Minimum number of weeks between identical interaction types per actor. */
+      sameTypeCooldownWeeks: 1,
+      /** Minimum number of weeks between any low-priority interactions per actor. */
+      lowPriorityCooldownWeeks: 1,
+    },
   },
 
   // ── Social Memory ─────────────────────────────────────────────────────────

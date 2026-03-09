@@ -10,8 +10,8 @@
  *   1. **Eligibility** – actor must not be evicted/jury, must not be the player
  *      themselves, must not be on per-AI cooldown, and must not have exceeded
  *      their per-AI active interaction cap.
- *   2. **Global cap** – the total number of unresolved interactions in the inbox
- *      must be below `incomingInteractionConfig.maxActive`.
+ *   2. **Global cap** – the total number of unresolved interactions (visible +
+ *      scheduled) must be below `incomingInteractionConfig.maxActive`.
  *   3. **Engagement score** – a weighted sum of:
  *        - relationship intensity (|normalized affinity|, weighted 0.25)
  *        - strategic urgency    (phase-based event pressure, weighted 0.5)
@@ -29,16 +29,29 @@
 
 import { normalizeAffinity } from './affinityUtils';
 import { socialConfig } from './socialConfig';
-import { pushIncomingInteraction } from './socialSlice';
+import { scheduleIncomingInteraction } from './socialSlice';
 import {
   computeSocialMemoryAffinityBias,
   computeSocialMemoryIntensity,
   computeTrustMomentumNormalized,
 } from './socialMemory';
+import {
+  INCOMING_INTERACTION_ELIGIBLE_PHASES,
+  INCOMING_INTERACTION_PHASE_ORDER,
+} from './incomingInteractionPhases';
+import {
+  assignDeliverySlot,
+  buildDeliverySlotCounts,
+  buildPendingIncomingInteractions,
+  getIncomingInteractionPriority,
+  shouldSkipDueToInteractionDedupe,
+} from './incomingInteractionScheduler';
 import type {
   IncomingInteraction,
   IncomingInteractionType,
+  IncomingInteractionDeliveryState,
   RelationshipsMap,
+  ScheduledIncomingInteraction,
   SocialMemoryMap,
 } from './types';
 
@@ -66,6 +79,8 @@ export interface AutonomyStore {
   getState: () => {
     social?: {
       incomingInteractions?: IncomingInteraction[];
+      scheduledIncomingInteractions?: ScheduledIncomingInteraction[];
+      incomingInteractionDelivery?: IncomingInteractionDeliveryState;
       relationships?: RelationshipsMap;
       socialMemory?: SocialMemoryMap;
     };
@@ -431,16 +446,11 @@ function generateInteractionId(): string {
 
 /**
  * Phases during which the autonomy scheduler will evaluate and potentially
- * enqueue incoming interactions.  Guarded behind a set for O(1) lookup.
+ * enqueue incoming interactions. Guarded behind a set for O(1) lookup.
  */
-export const ELIGIBLE_PHASES = new Set<string>([
-  'week_start',
-  'nominations',
-  'hoh_results',
-  'pov_results',
-  'live_vote',
-  'eviction_results',
-]);
+export { INCOMING_INTERACTION_PHASE_ORDER };
+
+export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES;
 
 /** Returns true for interaction types that expect an explicit player response. */
 function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean {
@@ -453,7 +463,7 @@ function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean
  * Evaluate all AI houseguests and enqueue incoming interactions for the player
  * as appropriate for the given phase.
  *
- * Side-effects: dispatches `pushIncomingInteraction` for each chosen actor.
+ * Side-effects: dispatches `scheduleIncomingInteraction` for each chosen actor.
  *
  * @param phase   The current game phase string.
  * @param store   A Redux-compatible store with `dispatch` and `getState`.
@@ -509,9 +519,20 @@ export function scheduleIncomingInteractionsForPhase(
 
   // Make a mutable local copy so we can track newly enqueued interactions within
   // this phase pass without mutating the frozen Redux state array.
-  const pendingInteractions: IncomingInteraction[] = [
-    ...(socialState.incomingInteractions ?? []),
-  ];
+  const scheduledQueue = socialState.scheduledIncomingInteractions ?? [];
+  const pendingInteractions: IncomingInteraction[] = buildPendingIncomingInteractions(
+    socialState.incomingInteractions ?? [],
+    scheduledQueue,
+  );
+  const deliveredThisPhase = socialState.incomingInteractionDelivery
+    ? socialState.incomingInteractionDelivery.lastDeliveryPhase === phase &&
+      socialState.incomingInteractionDelivery.lastDeliveryWeek === week
+      ? socialState.incomingInteractionDelivery.deliveredThisPhase
+      : 0
+    : 0;
+  const slotCounts = buildDeliverySlotCounts(scheduledQueue, phase, week, deliveredThisPhase);
+  const visibleActiveCount = (socialState.incomingInteractions ?? []).filter((i) => !i.resolved)
+    .length;
 
   // Evaluate each AI actor
   const aiActors = players.filter(
@@ -541,7 +562,37 @@ export function scheduleIncomingInteractionsForPhase(
       resolved: false,
     };
 
-    store.dispatch(pushIncomingInteraction(interaction));
+    const priority = getIncomingInteractionPriority(type);
+    if (
+      shouldSkipDueToInteractionDedupe({
+        interaction,
+        priority,
+        pendingInteractions,
+        week,
+      })
+    ) {
+      continue;
+    }
+
+    const slot = assignDeliverySlot({
+      phase,
+      week,
+      priority,
+      slotCounts,
+      visibleActiveCount,
+    });
+    if (!slot) continue;
+
+    store.dispatch(
+      scheduleIncomingInteraction({
+        interaction,
+        priority,
+        scheduledAt: Date.now(),
+        scheduledForWeek: slot.scheduledForWeek,
+        scheduledForPhase: slot.scheduledForPhase,
+        deliveryReason: slot.deliveryReason,
+      }),
+    );
 
     // Update our local snapshot so subsequent actors in this same pass see the
     // updated pending list (prevents over-filling within a single phase pass).
