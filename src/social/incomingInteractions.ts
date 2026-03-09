@@ -104,7 +104,7 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
   return (dispatch: AppDispatch, getState: () => RootState): void => {
     const state = getState();
     const interactions = state.social.incomingInteractions.filter(
-      (entry) => !entry.resolved && entry.expiresAtWeek <= week,
+      (entry) => !entry.resolved && entry.expiresAtWeek < week,
     );
     if (interactions.length === 0) return;
     const humanPlayer = state.game.players.find((player) => player.isUser);

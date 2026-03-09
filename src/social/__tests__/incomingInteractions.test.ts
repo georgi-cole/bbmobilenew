@@ -104,4 +104,18 @@ describe('socialSlice incoming interactions', () => {
     expect(expired?.resolvedAt).toBe(900);
     expect(active?.resolved).toBe(false);
   });
+
+  it('resolveExpiredIncomingInteractionsForWeek does not resolve boundary week', () => {
+    const initial = socialReducer(undefined, { type: 'init' }) as SocialState;
+    const seeded = reduce(
+      initial,
+      pushIncomingInteraction(makeInteraction({ id: 'i-boundary', expiresAtWeek: 3 })),
+    );
+    const updated = socialReducer(
+      seeded,
+      resolveExpiredIncomingInteractionsForWeek({ week: 3, resolvedAt: 1000 }),
+    ) as SocialState;
+    const boundary = updated.incomingInteractions.find((entry) => entry.id === 'i-boundary');
+    expect(boundary?.resolved).toBe(false);
+  });
 });
