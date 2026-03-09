@@ -44,6 +44,7 @@ export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
   return { ...DEFAULT_PROFILE };
 }
 
+/** Public fallback builder for minigames without explicit AI metadata yet. */
 export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
   return {
     ...FALLBACK_MODEL,
@@ -78,7 +79,7 @@ export function simulateAiPerformance({
   );
   if (model.scoreDirection === 'lower-is-better') {
     // TODO(PR4): apply inversion once normalized scoring replaces legacy taps.
-    if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+    if (import.meta.env.DEV) {
       console.warn(
         `[competition-ai] ${minigameKey} uses lower-is-better but still returns legacy tap scores.`,
       );

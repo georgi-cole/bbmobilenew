@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { getDefaultCompetitionProfile, getMinigameAiModel, simulateAiPerformance } from '../../../src/ai/competition';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  getDefaultCompetitionProfile,
+  getFallbackMinigameAiModel,
+  getMinigameAiModel,
+  registerMinigameAiModel,
+  simulateAiPerformance,
+} from '../../../src/ai/competition';
 import type { GameRegistryEntry } from '../../../src/minigames/registry';
 import { mulberry32 } from '../../../src/store/rng';
 
@@ -32,6 +38,32 @@ describe('competition AI foundation', () => {
       nerve: 1,
       luck: 1,
     });
+  });
+
+  it('returns a fallback model directly for explicit usage', () => {
+    const fallback = getFallbackMinigameAiModel('fallback-minigame');
+
+    expect(fallback.key).toBe('fallback-minigame');
+    expect(fallback.notes).toContain('Fallback');
+  });
+
+  it('warns when lower-is-better metadata is used with legacy tap scores', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    registerMinigameAiModel({
+      key: 'lower-better',
+      category: 'physical',
+      scoreDirection: 'lower-is-better',
+      volatility: 0.4,
+      weights: { physical: 1, mental: 1, precision: 1, nerve: 1, luck: 0.5 },
+    });
+
+    simulateAiPerformance({ minigameKey: 'lower-better', seed: 1, timeLimitSeconds: 10 });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[competition-ai] lower-better uses lower-is-better but still returns legacy tap scores.',
+    );
+    warnSpy.mockRestore();
   });
 });
 
