@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getDefaultCompetitionProfile, getMinigameAiModel } from '../../../src/ai/competition';
+import { getDefaultCompetitionProfile, getMinigameAiModel, simulateAiPerformance } from '../../../src/ai/competition';
+import type { GameRegistryEntry } from '../../../src/minigames/registry';
+import { mulberry32 } from '../../../src/store/rng';
 
 describe('competition AI foundation', () => {
   it('returns a default competition profile with baseline values', () => {
@@ -30,5 +32,76 @@ describe('competition AI foundation', () => {
       nerve: 1,
       luck: 1,
     });
+  });
+});
+
+describe('simulateAiPerformance legacy challenge scoring', () => {
+  const seed = 12345;
+
+  function makeGame(metricKind: GameRegistryEntry['metricKind'], overrides: Partial<GameRegistryEntry> = {}): GameRegistryEntry {
+    return {
+      key: `${metricKind}-test`,
+      title: 'Test Game',
+      description: 'Test game description',
+      instructions: [],
+      metricKind,
+      metricLabel: 'Score',
+      timeLimitMs: 10_000,
+      authoritative: false,
+      scoringAdapter: 'raw',
+      legacy: true,
+      weight: 1,
+      category: 'arcade',
+      retired: false,
+      ...overrides,
+    };
+  }
+
+  it('computes count metric scores deterministically', () => {
+    const game = makeGame('count', { timeLimitMs: 10_000 });
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(75 + Math.floor(rng() * 16));
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+  });
+
+  it('computes time metric scores deterministically', () => {
+    const game = makeGame('time', { timeLimitMs: 30_000, scoringParams: { targetMs: 1500, maxMs: 30_000 } });
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(1500 + rng() * (30_000 - 1500) * 0.5);
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+  });
+
+  it('computes accuracy metric scores deterministically', () => {
+    const game = makeGame('accuracy');
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(60 + rng() * 40);
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+  });
+
+  it('computes endurance metric scores deterministically', () => {
+    const game = makeGame('endurance');
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(10 + rng() * 50);
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+  });
+
+  it('computes hybrid metric scores deterministically', () => {
+    const game = makeGame('hybrid');
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(rng() * 100);
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+  });
+
+  it('computes points metric scores deterministically', () => {
+    const game = makeGame('points');
+    const rng = mulberry32(seed >>> 0);
+    const expected = Math.round(rng() * 100);
+
+    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
   });
 });
