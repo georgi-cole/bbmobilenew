@@ -148,11 +148,11 @@ export const startChallenge =
     const forceSeed = debugState.forceSeed;
     const gameSeed = forceSeed !== undefined ? forceSeed : seed;
 
-    let game: GameRegistryEntry;
+    let gameEntry: GameRegistryEntry;
     if (forceKey) {
       const found = getGame(forceKey);
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`);
-      game = found;
+      gameEntry = found;
     } else {
       // Consult the saved Comp Selection setting (if present).
       const compSel = state.settings?.gameUX?.compSelection;
@@ -163,10 +163,10 @@ export const startChallenge =
           const key = compSel?.selectedGameId;
           const found = key ? getGame(key) : undefined;
           if (found) {
-            game = found;
+            gameEntry = found;
           } else {
             // Unknown or missing key — fall back to random selection.
-            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
           }
           break;
         }
@@ -183,36 +183,36 @@ export const startChallenge =
               for (let i = 0; i < entry.weight; i++) weighted.push(entry);
             }
             const rng = mulberry32(gameSeed >>> 0);
-            game = weighted[Math.floor(rng() * weighted.length)];
+            gameEntry = weighted[Math.floor(rng() * weighted.length)];
           } else {
-            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
           }
           break;
         }
 
         case 'arcade-only':
-          game = pickRandomGame(gameSeed, { category: 'arcade', excludeKeys: opts.excludeKeys });
+          gameEntry = pickRandomGame(gameSeed, { category: 'arcade', excludeKeys: opts.excludeKeys });
           break;
 
         case 'trivia-only':
-          game = pickRandomGame(gameSeed, { category: 'trivia', excludeKeys: opts.excludeKeys });
+          gameEntry = pickRandomGame(gameSeed, { category: 'trivia', excludeKeys: opts.excludeKeys });
           break;
 
         case 'endurance-only':
-          game = pickRandomGame(gameSeed, { category: 'endurance', excludeKeys: opts.excludeKeys });
+          gameEntry = pickRandomGame(gameSeed, { category: 'endurance', excludeKeys: opts.excludeKeys });
           break;
 
         case 'logic-only':
-          game = pickRandomGame(gameSeed, { category: 'logic', excludeKeys: opts.excludeKeys });
+          gameEntry = pickRandomGame(gameSeed, { category: 'logic', excludeKeys: opts.excludeKeys });
           break;
 
         case 'retired': {
           const retiredPool = getPoolByFilter({ retired: true });
           if (retiredPool.length > 0) {
             const rng = mulberry32(gameSeed >>> 0);
-            game = retiredPool[Math.floor(rng() * retiredPool.length)];
+            gameEntry = retiredPool[Math.floor(rng() * retiredPool.length)];
           } else {
-            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
           }
           break;
         }
@@ -223,7 +223,7 @@ export const startChallenge =
           // (there is no 'none' or 'misc' category), so this mode falls back to
           // fully-random selection.  Future registry expansions that add uncategorised
           // entries should filter them here with getPoolByFilter.
-          game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
           break;
         }
 
@@ -240,17 +240,17 @@ export const startChallenge =
               for (let i = 0; i < entry.weight; i++) weighted.push(entry);
             }
             const rng = mulberry32(gameSeed >>> 0);
-            game = weighted[Math.floor(rng() * weighted.length)];
+            gameEntry = weighted[Math.floor(rng() * weighted.length)];
           } else {
             // Pool exhausted — fall back to unconstrained random.
-            game = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
           }
           break;
         }
 
         case 'random-games':
         default:
-          game = pickRandomGame(gameSeed, {
+          gameEntry = pickRandomGame(gameSeed, {
             category: opts.category,
             excludeKeys: opts.excludeKeys,
           });
@@ -259,7 +259,7 @@ export const startChallenge =
     }
 
     // Derive a per-challenge seed from the base seed + game key hash.
-    const challengeSeed = deriveSeed(gameSeed, game.key);
+    const challengeSeed = deriveSeed(gameSeed, gameEntry.key);
 
     // Derive a per-invocation seed so repeated challenges with the same base
     // seed (same week) still get varied question order / AI behaviour.
@@ -276,7 +276,7 @@ export const startChallenge =
     let aiSeed = perChallengeSeed;
     for (const pid of participants) {
       if (pid !== humanId) {
-        aiScores[pid] = simulateAiPerformance({ minigameKey: game.key, seed: aiSeed, game });
+        aiScores[pid] = simulateAiPerformance({ minigameKey: gameEntry.key, seed: aiSeed, game: gameEntry });
         aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     }
@@ -284,7 +284,7 @@ export const startChallenge =
     const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const pending: PendingChallenge = {
       id,
-      game,
+      game: gameEntry,
       seed: perChallengeSeed,
       participants,
       phase: 'rules',
@@ -293,7 +293,7 @@ export const startChallenge =
     };
 
     dispatch(setPendingChallenge(pending));
-    return game;
+    return gameEntry;
   };
 
 /**
