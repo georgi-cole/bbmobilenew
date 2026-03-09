@@ -110,7 +110,37 @@ export const socialConfig = {
       strategicUrgency: 0.5,
       personality: 0.15,
       eventPressure: 0.1,
+      memoryIntensity: 0.1,
+      trustMomentum: 0.05,
     },
     randomVariance: 0.05,
+  },
+
+  // ── Social Memory ─────────────────────────────────────────────────────────
+  socialMemoryConfig: {
+    caps: {
+      gratitude: 10,
+      resentment: 10,
+      neglect: 10,
+      trustMomentum: 6,
+    },
+    decayPerWeek: {
+      gratitude: 1,
+      resentment: 1,
+      neglect: 1,
+      trustMomentum: 2,
+    },
+    recentEventsLimit: 5,
+    affinityBiasWeight: 0.35,
+    trustMomentumBiasWeight: 0.2,
+    incomingInteractionDeltas: {
+      positive: { gratitude: 2, trustMomentum: 1 },
+      neutral: { trustMomentum: 0 },
+      negative: { resentment: 2, trustMomentum: -1 },
+      accept: { gratitude: 3, trustMomentum: 2 },
+      decline: { resentment: 2, trustMomentum: -1 },
+      dismiss: { resentment: 1, trustMomentum: -1 },
+      ignore: { neglect: 3, trustMomentum: -2 },
+    },
   },
 };

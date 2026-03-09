@@ -13,6 +13,27 @@ export interface RelationshipEntry {
 /** Full relationship graph: outer key = source player ID, inner key = target player ID. */
 export type RelationshipsMap = Record<string, Record<string, RelationshipEntry>>;
 
+export interface SocialMemoryEvent {
+  type: string;
+  actorId: string;
+  targetId: string;
+  week: number;
+  timestamp: number;
+  interactionType?: IncomingInteractionType;
+  responseType?: IncomingInteractionResponseType;
+}
+
+export interface SocialMemoryEntry {
+  gratitude: number;
+  resentment: number;
+  neglect: number;
+  trustMomentum: number;
+  recentEvents: SocialMemoryEvent[];
+}
+
+/** Directed social memory graph: actorId → targetId → memory entry. */
+export type SocialMemoryMap = Record<string, Record<string, SocialMemoryEntry>>;
+
 /** Snapshot of social activity produced at the end of a game phase. */
 export interface SocialPhaseReport {
   id: string;
@@ -101,6 +122,8 @@ export interface SocialState {
   sessionLogs: SocialActionLogEntry[];
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[];
+  /** Directed social memory entries keyed by actor → target. */
+  socialMemory: SocialMemoryMap;
   /**
    * Influence weights per actor and decision type: actorId → decisionType → (targetId → weight).
    * Populated by SocialInfluence.update dispatching social/influenceUpdated.

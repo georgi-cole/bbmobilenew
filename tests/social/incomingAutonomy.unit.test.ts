@@ -167,6 +167,29 @@ describe('computeIncomingInteractionEngagementScore', () => {
     expect(scoreHigh).toBeGreaterThan(scoreLow);
   });
 
+  it('memory intensity raises the score when strong gratitude exists', () => {
+    const ctxWithMemory = makeContext({
+      relationships: {},
+      socialMemory: {
+        actor1: {
+          user: {
+            gratitude: 10,
+            resentment: 0,
+            neglect: 0,
+            trustMomentum: 0,
+            recentEvents: [],
+          },
+        },
+      },
+    });
+    const ctxNoMemory = makeContext({ relationships: {} });
+
+    const scoreWithMemory = computeIncomingInteractionEngagementScore('actor1', 'user', ctxWithMemory);
+    const scoreNoMemory = computeIncomingInteractionEngagementScore('actor1', 'user', ctxNoMemory);
+
+    expect(scoreWithMemory).toBeGreaterThan(scoreNoMemory);
+  });
+
   it('live_vote urgency can push a neutral AI above scoreThreshold', () => {
     const ctx = makeContext({ phase: 'live_vote', relationships: {} });
     const score = computeIncomingInteractionEngagementScore('actor1', 'user', ctx);
@@ -230,6 +253,25 @@ describe('chooseIncomingInteractionType', () => {
       relationships: { actor1: { user: { affinity: 20, tags: [] } } },
     });
     expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('check_in');
+  });
+
+  it('uses negative memory bias to shift neutral affinity toward gossip', () => {
+    const ctx = makeContext({
+      phase: 'week_start',
+      relationships: {},
+      socialMemory: {
+        actor1: {
+          user: {
+            gratitude: 0,
+            resentment: 10,
+            neglect: 0,
+            trustMomentum: 0,
+            recentEvents: [],
+          },
+        },
+      },
+    });
+    expect(chooseIncomingInteractionType('actor1', 'user', ctx)).toBe('gossip');
   });
 });
 
