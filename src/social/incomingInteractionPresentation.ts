@@ -153,9 +153,9 @@ function detectTenseTone(isSnideOrWarning: boolean, affinity: number, trustLow: 
   );
 }
 
-function detectGuardedTone(isNonSnideOrWarning: boolean, affinity: number, trustLow: boolean): boolean {
+function detectGuardedTone(isGuardedEligible: boolean, affinity: number, trustLow: boolean): boolean {
   return (
-    isNonSnideOrWarning &&
+    isGuardedEligible &&
     hasNegativeRelationshipIndicators(affinity, trustLow, AFFINITY_GUARDED_THRESHOLD)
   );
 }
@@ -223,9 +223,9 @@ export function getIncomingInteractionTone({
   if (highNeglect) return 'Feels ignored';
   if (detectBitterTone(highResentment, affinity)) return 'Bitter';
   const isSnideOrWarning = interaction.type === 'snide_remark' || interaction.type === 'warning';
-  const isNonSnideOrWarning = !isSnideOrWarning;
   if (detectTenseTone(isSnideOrWarning, affinity, trustLow)) return 'Tense';
-  if (detectGuardedTone(isNonSnideOrWarning, affinity, trustLow)) return 'Guarded';
+  const isGuardedEligible = !isSnideOrWarning;
+  if (detectGuardedTone(isGuardedEligible, affinity, trustLow)) return 'Guarded';
   if (interaction.type === 'nomination_plea' && isUrgent) return 'Desperate';
   if (detectWarmTone(highGratitude, trustHigh, affinity)) return 'Warm';
   if (detectTrustingTone(trustHigh, affinity)) return 'Trusting';
