@@ -11,13 +11,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { setPhase, advance } from '../../src/store/gameSlice';
+import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import socialReducer from '../../src/social/socialSlice';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
-import {
-  scheduleIncomingInteractionsForPhase,
-  shouldEnqueueInteraction,
-} from '../../src/social/incomingInteractionAutonomy';
+import { scheduleIncomingInteractionsForPhase } from '../../src/social/incomingInteractionAutonomy';
 import type { AutonomyContext } from '../../src/social/incomingInteractionAutonomy';
 import {
   selectPendingIncomingInteractionCount,
