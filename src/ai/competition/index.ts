@@ -76,7 +76,10 @@ export function simulateAiPerformance({
     'HARD',
     timeLimitSeconds ?? DEFAULT_TAPRACE_OPTIONS.timeLimit,
   );
-  return model.scoreDirection === 'lower-is-better' ? baseScore : baseScore;
+  if (model.scoreDirection === 'lower-is-better') {
+    // TODO(PR4): apply inversion once normalized scoring replaces legacy taps.
+  }
+  return baseScore;
 }
 
 function simulateLegacyChallengeScore(game: GameRegistryEntry, seed: number): number {
