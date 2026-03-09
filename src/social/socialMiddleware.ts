@@ -32,6 +32,8 @@ import {
   applyInfluenceDelta,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
+import { scheduleIncomingInteractionsForPhase } from './incomingInteractionAutonomy';
+import type { AutonomyStore } from './incomingInteractionAutonomy';
 import { seedWeekRelationships } from './weekSocialSeed';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
@@ -61,6 +63,15 @@ function handleWeekStart(api: MiddlewareAPI): void {
   api.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week));
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());
+  scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore);
+}
+
+/**
+ * Schedule incoming interactions for phases that are eligible but not
+ * week_start (which is handled by handleWeekStart above).
+ */
+function handleAutonomyPhase(api: AutonomyStore, phase: string): void {
+  scheduleIncomingInteractionsForPhase(phase, api);
 }
 
 /**
@@ -133,6 +144,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     if (SOCIAL_PHASES.has(nextPhase) && prevPhase !== nextPhase) {
       SocialEngine.startPhase(nextPhase);
+    }
+
+    // Autonomy: schedule incoming interactions for eligible explicit phase sets.
+    if (nextPhase !== 'week_start' && prevPhase !== nextPhase) {
+      handleAutonomyPhase(api as unknown as AutonomyStore, nextPhase);
     }
 
     return result;
@@ -252,6 +268,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
       if (SOCIAL_PHASES.has(newPhase)) {
         SocialEngine.startPhase(newPhase);
+      }
+
+      // Autonomy: schedule incoming interactions on eligible phase transitions.
+      if (newPhase !== 'week_start') {
+        handleAutonomyPhase(api as unknown as AutonomyStore, newPhase);
       }
     }
 
