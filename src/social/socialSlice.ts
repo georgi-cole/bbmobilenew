@@ -4,10 +4,19 @@ import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
   SocialActionLogEntry,
+  SocialMemoryEvent,
   SocialPhaseReport,
   SocialState,
 } from './types';
 import { SOCIAL_INITIAL_STATE } from './constants';
+import {
+  appendSocialMemoryEvent,
+  applySocialMemoryDelta,
+  createSocialMemoryEntry,
+  decaySocialMemoryEntry,
+  hasSocialMemoryDelta,
+  type SocialMemoryDelta,
+} from './socialMemory';
 
 const socialSlice = createSlice({
   name: 'social',
@@ -161,6 +170,44 @@ const socialSlice = createSlice({
         state.relationships[source][target] = { affinity: delta, tags: tags ?? [] };
       }
     },
+    /** Apply delta updates to directed social memory entries. */
+    updateSocialMemory(
+      state,
+      action: PayloadAction<{
+        actorId: string;
+        targetId: string;
+        deltas?: SocialMemoryDelta;
+        event?: SocialMemoryEvent;
+      }>,
+    ) {
+      const { actorId, targetId, deltas, event } = action.payload;
+      if (!state.socialMemory[actorId]) {
+        state.socialMemory[actorId] = {};
+      }
+      let entry = state.socialMemory[actorId][targetId];
+      if (!entry) {
+        if (!event && !hasSocialMemoryDelta(deltas)) {
+          return;
+        }
+        entry = createSocialMemoryEntry();
+        state.socialMemory[actorId][targetId] = entry;
+      }
+
+      if (deltas) {
+        applySocialMemoryDelta(entry, deltas);
+      }
+      if (event) {
+        appendSocialMemoryEvent(entry, event);
+      }
+    },
+    /** Decay all social memory signals toward zero (called at week start). */
+    decaySocialMemory(state) {
+      Object.values(state.socialMemory).forEach((targets) => {
+        Object.values(targets).forEach((entry) => {
+          decaySocialMemoryEntry(entry);
+        });
+      });
+    },
     /** Manually open the social panel (e.g. via the FAB 💬 button). */
     openSocialPanel(state) {
       state.panelOpen = true;
@@ -218,6 +265,8 @@ export const {
   dismissIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
+  updateSocialMemory,
+  decaySocialMemory,
   openSocialPanel,
   closeSocialPanel,
   openIncomingInbox,
@@ -241,6 +290,8 @@ export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs'];
 export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false;
+export const selectSocialMemory = (state: { social: SocialState }) =>
+  state.social?.socialMemory ?? {};
 export const selectWeekStartRelSnapshot = (state: { social: SocialState }) =>
   state.social?.weekStartRelSnapshot ?? {};
 export const selectIncomingInboxOpen = (state: { social: SocialState }) =>

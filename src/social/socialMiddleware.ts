@@ -30,6 +30,7 @@ import {
   snapshotWeekRelationships,
   applyEnergyDelta,
   applyInfluenceDelta,
+  decaySocialMemory,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
@@ -60,6 +61,7 @@ type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknow
 function handleWeekStart(api: MiddlewareAPI): void {
   const state = api.getState() as StateWithGame;
   const week = state.game?.week ?? 1;
+  api.dispatch(decaySocialMemory());
   api.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week));
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());

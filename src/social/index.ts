@@ -7,6 +7,9 @@ export type {
   SocialEnergyBank,
   RelationshipEntry,
   RelationshipsMap,
+  SocialMemoryEntry,
+  SocialMemoryEvent,
+  SocialMemoryMap,
   SocialPhaseReport,
   SocialActionLogEntry,
   SocialState,
@@ -44,6 +47,8 @@ export {
   dismissIncomingInteraction,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
+  updateSocialMemory,
+  decaySocialMemory,
   openIncomingInbox,
   closeIncomingInbox,
   selectSocialBudgets,
@@ -56,6 +61,7 @@ export {
   selectUnreadIncomingInteractionCount,
   selectPendingIncomingInteractionCount,
   selectActiveIncomingInteractions,
+  selectSocialMemory,
 } from './socialSlice';
 export { socialMiddleware } from './socialMiddleware';
 export {

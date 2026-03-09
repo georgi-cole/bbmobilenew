@@ -5,7 +5,12 @@ import {
   resolveExpiredIncomingInteractionsForWeek,
   resolveIncomingInteraction,
   updateRelationship,
+  updateSocialMemory,
 } from './socialSlice';
+import {
+  buildSocialMemoryDeltaForResponse,
+  buildSocialMemoryEvent,
+} from './socialMemory';
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
@@ -73,6 +78,7 @@ export function respondToIncomingInteraction({
     const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
     const fromName = fromPlayer?.name ?? interaction.fromId;
     const resolvedAt = Date.now();
+    const currentWeek = state.game.week ?? 1;
 
     dispatch(resolveIncomingInteraction({ interactionId, resolvedWith: responseType, resolvedAt }));
 
@@ -84,6 +90,26 @@ export function respondToIncomingInteraction({
           target: humanPlayer.id,
           delta,
           actionSource: 'manual',
+        }),
+      );
+    }
+
+    if (interaction.fromId !== humanPlayer.id) {
+      const memoryDelta = buildSocialMemoryDeltaForResponse(responseType);
+      const memoryEvent = buildSocialMemoryEvent(
+        interaction,
+        responseType,
+        interaction.fromId,
+        humanPlayer.id,
+        currentWeek,
+        resolvedAt,
+      );
+      dispatch(
+        updateSocialMemory({
+          actorId: interaction.fromId,
+          targetId: humanPlayer.id,
+          deltas: memoryDelta,
+          event: memoryEvent,
         }),
       );
     }
@@ -124,6 +150,26 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
             target: humanPlayer.id,
             delta: ignoreDelta,
             actionSource: 'system',
+          }),
+        );
+      }
+
+      if (interaction.fromId !== humanPlayer.id) {
+        const memoryDelta = buildSocialMemoryDeltaForResponse('ignore');
+        const memoryEvent = buildSocialMemoryEvent(
+          interaction,
+          'ignore',
+          interaction.fromId,
+          humanPlayer.id,
+          week,
+          resolvedAt,
+        );
+        dispatch(
+          updateSocialMemory({
+            actorId: interaction.fromId,
+            targetId: humanPlayer.id,
+            deltas: memoryDelta,
+            event: memoryEvent,
           }),
         );
       }

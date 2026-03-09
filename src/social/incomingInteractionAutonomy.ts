@@ -30,7 +30,17 @@
 import { normalizeAffinity } from './affinityUtils';
 import { socialConfig } from './socialConfig';
 import { pushIncomingInteraction } from './socialSlice';
-import type { IncomingInteraction, IncomingInteractionType, RelationshipsMap } from './types';
+import {
+  computeSocialMemoryAffinityBias,
+  computeSocialMemoryIntensity,
+  computeTrustMomentumNormalized,
+} from './socialMemory';
+import type {
+  IncomingInteraction,
+  IncomingInteractionType,
+  RelationshipsMap,
+  SocialMemoryMap,
+} from './types';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +54,7 @@ export interface AutonomyContext {
   phase: string;
   week: number;
   relationships: RelationshipsMap;
+  socialMemory?: SocialMemoryMap;
   players: AutonomyPlayer[];
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
   random?: () => number;
@@ -56,6 +67,7 @@ export interface AutonomyStore {
     social?: {
       incomingInteractions?: IncomingInteraction[];
       relationships?: RelationshipsMap;
+      socialMemory?: SocialMemoryMap;
     };
     game?: {
       players?: AutonomyPlayer[];
@@ -155,7 +167,10 @@ export function chooseIncomingInteractionType(
   // Find the player entry – player is always 'user' in this codebase
   const playerId = context.players.find((p) => p.isUser)?.id ?? _playerId;
   const relEntry = actorRels[playerId];
-  const affinity = relEntry ? normalizeAffinity(relEntry.affinity) : 0;
+  const baseAffinity = relEntry ? normalizeAffinity(relEntry.affinity) : 0;
+  const memoryEntry = context.socialMemory?.[actorId]?.[playerId];
+  const memoryBias = computeSocialMemoryAffinityBias(memoryEntry);
+  const affinity = Math.max(-1, Math.min(1, baseAffinity + memoryBias));
 
   const phase = context.phase;
 
@@ -256,12 +271,18 @@ export function computeIncomingInteractionEngagementScore(
   // ── Event pressure ──────────────────────────────────────────────────────
   const eventPressure = getEventPressure(context.phase);
 
+  const memoryEntry = context.socialMemory?.[actorId]?.[playerId];
+  const memoryIntensity = computeSocialMemoryIntensity(memoryEntry);
+  const trustMomentum = computeTrustMomentumNormalized(memoryEntry);
+
   // ── Weighted sum ────────────────────────────────────────────────────────
   const baseScore =
     w.relationshipIntensity * relationshipIntensity +
     w.strategicUrgency * strategicUrgency +
     w.personality * personality +
-    w.eventPressure * eventPressure;
+    w.eventPressure * eventPressure +
+    (w.memoryIntensity ?? 0) * memoryIntensity +
+    (w.trustMomentum ?? 0) * trustMomentum;
 
   // ── Recency penalty ─────────────────────────────────────────────────────
   const recencyPenalty = computeRecencyPenalty(
@@ -465,6 +486,8 @@ export function scheduleIncomingInteractionsForPhase(
   const week: number = contextOverride?.week ?? (gameState?.week ?? 1);
   const relationships: RelationshipsMap =
     contextOverride?.relationships ?? socialState.relationships ?? {};
+  const socialMemory: SocialMemoryMap =
+    contextOverride?.socialMemory ?? socialState.socialMemory ?? {};
 
   const playerEntry = players.find((p) => p.isUser);
   if (!playerEntry) {
@@ -479,6 +502,7 @@ export function scheduleIncomingInteractionsForPhase(
     phase,
     week,
     relationships,
+    socialMemory,
     players,
     random: contextOverride?.random,
   };
