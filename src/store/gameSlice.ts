@@ -2,7 +2,7 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState, SpectatorActiveState } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
-import { simulateTapRaceAI } from './minigame';
+import { simulateAiPerformance } from '../ai/competition';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
@@ -2272,7 +2272,11 @@ export const startMinigame =
     opts.participants.forEach((id) => {
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
-        aiScores[id] = simulateTapRaceAI(aiSeed, 'HARD', opts.options.timeLimit);
+        aiScores[id] = simulateAiPerformance({
+          minigameKey: opts.key,
+          seed: aiSeed,
+          timeLimitSeconds: opts.options.timeLimit,
+        });
         aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     });

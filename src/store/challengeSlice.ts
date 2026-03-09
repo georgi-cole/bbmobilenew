@@ -8,50 +8,12 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
+import { simulateAiPerformance } from '../ai/competition';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
-
-// ─── AI Score Simulation ──────────────────────────────────────────────────────
-
-/**
- * Simulate a deterministic AI score appropriate for a given game's metric kind.
- * Scores are calibrated to produce plausible human-level performance so that
- * the challenge system's winner determination is meaningful.
- */
-function simulateAIScore(game: GameRegistryEntry, seed: number): number {
-  const rng = mulberry32(seed >>> 0);
-  const { metricKind, timeLimitMs, scoringParams } = game;
-  switch (metricKind) {
-    case 'count': {
-      // Tap-like count scaled to time limit (75–90 taps per 10 s)
-      const scale = timeLimitMs > 0 ? timeLimitMs / 10000 : 1;
-      return Math.round(75 * scale + Math.floor(rng() * 16 * scale));
-    }
-    case 'time': {
-      // Lower-is-better time; scatter between targetMs and ~50% of maxMs
-      const targetMs = scoringParams?.targetMs ?? 1000;
-      const maxMs = scoringParams?.maxMs ?? (timeLimitMs > 0 ? timeLimitMs : 60000);
-      return Math.round(targetMs + rng() * (maxMs - targetMs) * 0.5);
-    }
-    case 'accuracy': {
-      // Accuracy percentage 60–100
-      return Math.round(60 + rng() * 40);
-    }
-    case 'endurance': {
-      // Time survived in seconds 10–60
-      return Math.round(10 + rng() * 50);
-    }
-    case 'hybrid':
-    case 'points':
-    default: {
-      // Generic points 0–100
-      return Math.round(rng() * 100);
-    }
-  }
-}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -314,7 +276,7 @@ export const startChallenge =
     let aiSeed = perChallengeSeed;
     for (const pid of participants) {
       if (pid !== humanId) {
-        aiScores[pid] = simulateAIScore(game, aiSeed);
+        aiScores[pid] = simulateAiPerformance({ minigameKey: game.key, seed: aiSeed, game });
         aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     }
