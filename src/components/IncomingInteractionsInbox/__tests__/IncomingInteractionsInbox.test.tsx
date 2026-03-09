@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../../store/gameSlice';
@@ -24,16 +24,31 @@ function renderInbox(store: ReturnType<typeof makeStore>) {
 }
 
 describe('IncomingInteractionsInbox', () => {
-  it('renders interactions newest first and marks them read', async () => {
+  it('sorts, groups, and summarizes interactions while marking them read', async () => {
     const store = makeStore();
     store.dispatch(openIncomingInbox());
+    const otherId = store.getState().game.players.find((p) => !p.isUser)!.id;
     store.dispatch(
       pushIncomingInteraction({
-        id: 'interaction-1',
-        fromId: store.getState().game.players.find((p) => !p.isUser)!.id,
+        id: 'interaction-low-later',
+        fromId: otherId,
+        type: 'compliment',
+        text: 'Low later.',
+        createdAt: 120,
+        createdWeek: 1,
+        expiresAtWeek: 2,
+        read: false,
+        requiresResponse: true,
+        resolved: false,
+      }),
+    );
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'interaction-medium-soon',
+        fromId: otherId,
         type: 'gossip',
-        text: 'Old message.',
-        createdAt: 100,
+        text: 'Medium soon.',
+        createdAt: 140,
         createdWeek: 1,
         expiresAtWeek: 1,
         read: false,
@@ -43,24 +58,69 @@ describe('IncomingInteractionsInbox', () => {
     );
     store.dispatch(
       pushIncomingInteraction({
-        id: 'interaction-2',
-        fromId: store.getState().game.players.find((p) => !p.isUser)!.id,
-        type: 'compliment',
-        text: 'New message.',
-        createdAt: 200,
+        id: 'interaction-high-later',
+        fromId: otherId,
+        type: 'deal_offer',
+        text: 'High later.',
+        createdAt: 160,
+        createdWeek: 1,
+        expiresAtWeek: 2,
+        read: false,
+        requiresResponse: true,
+        resolved: false,
+      }),
+    );
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'interaction-high-soon',
+        fromId: otherId,
+        type: 'nomination_plea',
+        text: 'High soon.',
+        createdAt: 180,
         createdWeek: 1,
         expiresAtWeek: 1,
         read: false,
         requiresResponse: true,
         resolved: false,
+      }),
+    );
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'interaction-resolved',
+        fromId: otherId,
+        type: 'compliment',
+        text: 'Resolved note.',
+        createdAt: 190,
+        createdWeek: 1,
+        expiresAtWeek: 1,
+        read: true,
+        requiresResponse: true,
+        resolved: true,
+        resolvedAt: 190,
+        resolvedWith: 'positive',
       }),
     );
 
     renderInbox(store);
 
-    const items = await screen.findAllByRole('listitem');
-    expect(items[0].textContent).toContain('New message.');
-    expect(items[1].textContent).toContain('Old message.');
+    expect(screen.getByText('4 pending • 3 urgent')).toBeInTheDocument();
+
+    const needsSection = screen.getByLabelText('Needs Response');
+    const needsItems = within(needsSection).getAllByRole('listitem');
+    expect(needsItems).toHaveLength(4);
+    expect(needsItems[0].textContent).toContain('High soon.');
+    expect(needsItems[1].textContent).toContain('High later.');
+    expect(needsItems[2].textContent).toContain('Medium soon.');
+    expect(needsItems[3].textContent).toContain('Low later.');
+
+    expect(within(needsSection).getByText('Urgent this week')).toBeInTheDocument();
+    expect(within(needsSection).getByText('Needs response this week')).toBeInTheDocument();
+
+    const resolvedSection = screen.getByLabelText('Resolved This Week');
+    const resolvedItems = within(resolvedSection).getAllByRole('listitem');
+    expect(resolvedItems).toHaveLength(1);
+    expect(resolvedItems[0].textContent).toContain('Resolved note.');
+    expect(resolvedItems[0].className).toContain('inbox-item--resolved');
 
     await waitFor(() => {
       const state = store.getState().social.incomingInteractions;
