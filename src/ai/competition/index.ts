@@ -1,6 +1,7 @@
 import type { GameRegistryEntry } from '../../minigames/registry';
 import { DEFAULT_TAPRACE_OPTIONS, simulateTapRaceAI } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
+import { minigameAiRegistry } from './minigameAiRegistry';
 import type { CompetitionSkillProfile, CompetitionSkillWeights, MinigameAiModel } from './types';
 
 const DEFAULT_PROFILE: CompetitionSkillProfile = {
@@ -22,8 +23,6 @@ const DEFAULT_WEIGHTS: CompetitionSkillWeights = {
   nerve: 1,
   luck: 1,
 };
-
-const MINIGAME_AI_REGISTRY: Record<string, MinigameAiModel> = {};
 
 const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
   category: 'hybrid',
@@ -68,12 +67,12 @@ export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
 }
 
 export function getMinigameAiModel(key: string): MinigameAiModel {
-  const registered = MINIGAME_AI_REGISTRY[key];
+  const registered = minigameAiRegistry[key];
   return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
 }
 
 export function registerMinigameAiModel(model: MinigameAiModel): void {
-  MINIGAME_AI_REGISTRY[model.key] = cloneMinigameAiModel(model);
+  minigameAiRegistry[model.key] = cloneMinigameAiModel(model);
 }
 
 export function simulateTapRaceAiPerformance({
@@ -100,6 +99,7 @@ export function simulateTapRaceAiPerformance({
 }
 
 export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
+  getMinigameAiModel(game.key);
   return simulateLegacyAiScore(game, seed);
 }
 
