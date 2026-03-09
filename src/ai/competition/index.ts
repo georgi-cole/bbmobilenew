@@ -101,6 +101,7 @@ export function simulateTapRaceAiPerformance({
 
 export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
   // PR3: ensure metadata is retrievable alongside the legacy scoring path.
+  // TODO(PR4): use minigame metadata + competition profiles to drive AI outcomes.
   const model = getMinigameAiModel(game.key);
   void model;
   return simulateLegacyAiScore(game, seed);
