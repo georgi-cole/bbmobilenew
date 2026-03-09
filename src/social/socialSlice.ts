@@ -3,6 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
+  ScheduledIncomingInteraction,
   SocialActionLogEntry,
   SocialMemoryEvent,
   SocialPhaseReport,
@@ -79,6 +80,39 @@ const socialSlice = createSlice({
     /** Add a new incoming interaction (newest-first). */
     pushIncomingInteraction(state, action: PayloadAction<IncomingInteraction>) {
       state.incomingInteractions.unshift(action.payload);
+    },
+    /** Schedule an incoming interaction for a future delivery window. */
+    scheduleIncomingInteraction(state, action: PayloadAction<ScheduledIncomingInteraction>) {
+      state.scheduledIncomingInteractions.push(action.payload);
+    },
+    /**
+     * Deliver scheduled interactions and update delivery counters in one reducer pass.
+     * Any scheduled interactions not included in remainingScheduled are removed.
+     */
+    applyScheduledIncomingInteractionDelivery(
+      state,
+      action: PayloadAction<{
+        deliveries: ScheduledIncomingInteraction[];
+        remainingScheduled: ScheduledIncomingInteraction[];
+        phase: string;
+        week: number;
+      }>,
+    ) {
+      const { deliveries, remainingScheduled, phase, week } = action.payload;
+      state.scheduledIncomingInteractions = remainingScheduled;
+      if (deliveries.length > 0) {
+        const deliveredInteractions = deliveries.map((entry) => entry.interaction);
+        state.incomingInteractions = [...deliveredInteractions, ...state.incomingInteractions];
+      }
+
+      const deliveryState = state.incomingInteractionDelivery;
+      const samePhase =
+        deliveryState.lastDeliveryPhase === phase && deliveryState.lastDeliveryWeek === week;
+      state.incomingInteractionDelivery = {
+        lastDeliveryPhase: phase,
+        lastDeliveryWeek: week,
+        deliveredThisPhase: (samePhase ? deliveryState.deliveredThisPhase : 0) + deliveries.length,
+      };
     },
     /** Mark a specific incoming interaction as read. */
     markIncomingInteractionRead(state, action: PayloadAction<string>) {
@@ -260,6 +294,8 @@ export const {
   applyInfoDelta,
   recordSocialAction,
   pushIncomingInteraction,
+  scheduleIncomingInteraction,
+  applyScheduledIncomingInteractionDelivery,
   markIncomingInteractionRead,
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
@@ -299,9 +335,15 @@ export const selectIncomingInboxOpen = (state: { social: SocialState }) =>
   state.social?.incomingInboxOpen ?? false;
 export const selectIncomingInteractions = (state: { social: SocialState }) =>
   state.social?.incomingInteractions ?? [];
+export const selectScheduledIncomingInteractions = (state: { social: SocialState }) =>
+  state.social?.scheduledIncomingInteractions ?? [];
+export const selectIncomingInteractionDeliveryState = (state: { social: SocialState }) =>
+  state.social?.incomingInteractionDelivery;
 export const selectUnreadIncomingInteractionCount = (state: { social: SocialState }) =>
   selectIncomingInteractions(state).filter((interaction) => !interaction.read).length;
 export const selectPendingIncomingInteractionCount = (state: { social: SocialState }) =>
   selectIncomingInteractions(state).filter((interaction) => !interaction.resolved).length;
 export const selectActiveIncomingInteractions = (state: { social: SocialState }) =>
   selectIncomingInteractions(state).filter((interaction) => !interaction.resolved);
+export const selectScheduledIncomingInteractionCount = (state: { social: SocialState }) =>
+  selectScheduledIncomingInteractions(state).length;

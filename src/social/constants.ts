@@ -14,6 +14,12 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   lastReport: null,
   sessionLogs: [],
   incomingInteractions: [],
+  scheduledIncomingInteractions: [],
+  incomingInteractionDelivery: {
+    lastDeliveryPhase: null,
+    lastDeliveryWeek: null,
+    deliveredThisPhase: 0,
+  },
   socialMemory: {},
   influenceWeights: {},
   panelOpen: false,

@@ -93,6 +93,8 @@ export type IncomingInteractionResponseType =
   | 'dismiss'
   | 'ignore';
 
+export type IncomingInteractionPriority = 'high' | 'medium' | 'low';
+
 export interface IncomingInteraction {
   id: string;
   fromId: string;
@@ -109,6 +111,21 @@ export interface IncomingInteraction {
   resolvedWith?: IncomingInteractionResponseType;
 }
 
+export interface ScheduledIncomingInteraction {
+  interaction: IncomingInteraction;
+  scheduledForPhase?: string;
+  scheduledForWeek?: number;
+  priority: IncomingInteractionPriority;
+  scheduledAt: number;
+  deliveryReason?: string;
+}
+
+export interface IncomingInteractionDeliveryState {
+  lastDeliveryPhase?: string | null;
+  lastDeliveryWeek?: number | null;
+  deliveredThisPhase: number;
+}
+
 /** Redux-serialisable state subtree owned by the social module. */
 export interface SocialState {
   energyBank: SocialEnergyBank;
@@ -122,6 +139,10 @@ export interface SocialState {
   sessionLogs: SocialActionLogEntry[];
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[];
+  /** Scheduled incoming interactions waiting for a delivery window. */
+  scheduledIncomingInteractions: ScheduledIncomingInteraction[];
+  /** Delivery counters for incoming interaction scheduling. */
+  incomingInteractionDelivery: IncomingInteractionDeliveryState;
   /** Directed social memory entries keyed by actor → target. */
   socialMemory: SocialMemoryMap;
   /**

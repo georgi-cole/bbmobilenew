@@ -35,6 +35,7 @@ import {
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
 import type { AutonomyStore } from './incomingInteractionAutonomy';
+import { deliverScheduledIncomingInteractionsForPhase } from './incomingInteractionScheduler';
 import { seedWeekRelationships } from './weekSocialSeed';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
@@ -66,6 +67,9 @@ function handleWeekStart(api: MiddlewareAPI): void {
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());
   scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore);
+  deliverScheduledIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore, {
+    week,
+  });
 }
 
 /**
@@ -74,6 +78,7 @@ function handleWeekStart(api: MiddlewareAPI): void {
  */
 function handleAutonomyPhase(api: AutonomyStore, phase: string): void {
   scheduleIncomingInteractionsForPhase(phase, api);
+  deliverScheduledIncomingInteractionsForPhase(phase, api);
 }
 
 /**
