@@ -95,7 +95,7 @@ const socialSlice = createSlice({
       state.incomingInteractionLogs.push(action.payload);
       const limit = socialConfig.incomingInteractionDebugConfig.maxLogEntries;
       if (limit > 0 && state.incomingInteractionLogs.length > limit) {
-        state.incomingInteractionLogs.splice(0, state.incomingInteractionLogs.length - limit);
+        state.incomingInteractionLogs = state.incomingInteractionLogs.slice(-limit);
       }
     },
     /** Clear incoming interaction decision logs. */

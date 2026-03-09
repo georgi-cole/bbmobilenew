@@ -81,6 +81,8 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   other: ['We need to talk later.', 'Just wanted to say hey.'],
 };
 
+const INCOMING_BATCH_SIZE = 6;
+
 let incomingSeedCounter = 0;
 
 function pickRandom<T>(list: readonly T[]): T {
@@ -186,7 +188,7 @@ export default function DebugPanel() {
 
   function handleSeedIncomingBatch() {
     if (!canSeedInteraction || !humanPlayer) return;
-    const batchSize = Math.min(6, aiPlayers.length * 2);
+    const batchSize = Math.min(INCOMING_BATCH_SIZE, aiPlayers.length * 2);
     for (let i = 0; i < batchSize; i += 1) {
       const fromPlayer = pickRandom(aiPlayers);
       dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)));

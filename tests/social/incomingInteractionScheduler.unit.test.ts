@@ -47,9 +47,8 @@ function makeScheduledInteraction(
   };
 }
 
-const originalMaxWait = socialConfig.incomingInteractionDeliveryConfig.maxScheduledWaitPhases;
-
 describe('incomingInteractionScheduler decision logging', () => {
+  const originalMaxWait = socialConfig.incomingInteractionDeliveryConfig.maxScheduledWaitPhases;
   beforeEach(() => {
     socialConfig.incomingInteractionDeliveryConfig.maxScheduledWaitPhases = originalMaxWait;
   });

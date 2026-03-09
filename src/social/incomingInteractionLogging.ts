@@ -2,8 +2,6 @@ import { socialConfig } from './socialConfig';
 import { recordIncomingInteractionDecision } from './socialSlice';
 import type { IncomingInteractionDecisionLogEntry, IncomingInteractionDecisionStage } from './types';
 
-let logCounter = 0;
-
 const STAGE_LABELS: Record<IncomingInteractionDecisionStage, string> = {
   generation: 'Generated',
   scheduling: 'Scheduled',
@@ -18,8 +16,14 @@ const STAGE_LABELS: Record<IncomingInteractionDecisionStage, string> = {
 function buildIncomingInteractionLogEntry(
   entry: Omit<IncomingInteractionDecisionLogEntry, 'id' | 'timestamp'>,
 ): IncomingInteractionDecisionLogEntry {
+  const canUseUuid =
+    typeof globalThis !== 'undefined' &&
+    'crypto' in globalThis &&
+    typeof globalThis.crypto?.randomUUID === 'function';
   return {
-    id: `incoming-log-${Date.now()}-${++logCounter}`,
+    id: canUseUuid
+      ? globalThis.crypto.randomUUID()
+      : `incoming-log-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     timestamp: Date.now(),
     ...entry,
   };
