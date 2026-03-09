@@ -49,6 +49,9 @@ export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
 }
 
 function cloneMinigameAiModel(model: MinigameAiModel): MinigameAiModel {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(model);
+  }
   return {
     ...model,
     weights: { ...model.weights },
