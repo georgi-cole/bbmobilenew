@@ -1,4 +1,5 @@
 import { socialConfig } from './socialConfig';
+import { INCOMING_INTERACTION_PHASE_ORDER } from './incomingInteractionPhases';
 import { applyScheduledIncomingInteractionDelivery } from './socialSlice';
 import type {
   IncomingInteraction,
@@ -8,14 +9,7 @@ import type {
   ScheduledIncomingInteraction,
 } from './types';
 
-const DELIVERY_PHASE_ORDER = [
-  'week_start',
-  'nominations',
-  'hoh_results',
-  'pov_results',
-  'live_vote',
-  'eviction_results',
-] as const;
+const DELIVERY_PHASE_ORDER = INCOMING_INTERACTION_PHASE_ORDER;
 
 const PRIORITY_ORDER: Record<IncomingInteractionPriority, number> = {
   high: 0,
@@ -39,9 +33,15 @@ interface SchedulerStore {
   };
 }
 
-function getDeliveryPhaseIndex(phase: string): number {
+function getDeliveryPhaseIndex(phase: string): number | null {
   const idx = DELIVERY_PHASE_ORDER.indexOf(phase as DeliveryPhase);
-  return idx >= 0 ? idx : 0;
+  if (idx === -1) {
+    if (socialConfig.verbose) {
+      console.warn(`[incomingInteractions] unknown delivery phase '${phase}'`);
+    }
+    return null;
+  }
+  return idx;
 }
 
 function buildSlotKey(week: number, phase: string): string {
@@ -78,6 +78,7 @@ function computePhaseDistance(
   const total = DELIVERY_PHASE_ORDER.length;
   const fromIndex = getDeliveryPhaseIndex(from.phase);
   const toIndex = getDeliveryPhaseIndex(to.phase);
+  if (fromIndex === null || toIndex === null) return 0;
   return (to.week - from.week) * total + (toIndex - fromIndex);
 }
 
@@ -124,15 +125,14 @@ export function shouldSkipDueToInteractionDedupe({
   week: number;
 }): boolean {
   const { dedupe } = socialConfig.incomingInteractionDeliveryConfig;
-  const unresolvedFromActor = pendingInteractions.filter(
-    (entry) => entry.fromId === interaction.fromId && !entry.resolved,
-  );
+  const allFromActor = pendingInteractions.filter((entry) => entry.fromId === interaction.fromId);
+  const unresolvedFromActor = allFromActor.filter((entry) => !entry.resolved);
 
   if (dedupe.blockLowPriorityIfActorPending && priority === 'low' && unresolvedFromActor.length > 0) {
     return true;
   }
 
-  const sameType = unresolvedFromActor.find(
+  const sameType = allFromActor.find(
     (entry) =>
       entry.type === interaction.type &&
       week >= entry.createdWeek &&
@@ -143,7 +143,7 @@ export function shouldSkipDueToInteractionDedupe({
   }
 
   if (priority === 'low' && dedupe.lowPriorityCooldownWeeks > 0) {
-    const lastFromActor = unresolvedFromActor.reduce<IncomingInteraction | null>(
+    const lastFromActor = allFromActor.reduce<IncomingInteraction | null>(
       (latest, entry) => {
         if (!latest || entry.createdAt > latest.createdAt) {
           return entry;
@@ -179,6 +179,9 @@ export function assignDeliverySlot({
 }): { scheduledForWeek: number; scheduledForPhase: string; deliveryReason: string } | null {
   const deliveryConfig = socialConfig.incomingInteractionDeliveryConfig;
   const phaseIndex = getDeliveryPhaseIndex(phase);
+  if (phaseIndex === null) {
+    return null;
+  }
   let minOffset = deliveryConfig.priorityOffsets[priority] ?? 0;
   if (visibleActiveCount >= deliveryConfig.maxActiveVisible) {
     minOffset = Math.max(minOffset, 1);
@@ -232,6 +235,7 @@ export function deliverScheduledIncomingInteractionsForPhase(
   const deliveryConfig = socialConfig.incomingInteractionDeliveryConfig;
   const week = contextOverride?.week ?? (state.game?.week ?? 1);
   const phaseIndex = getDeliveryPhaseIndex(phase);
+  if (phaseIndex === null) return;
 
   const activeVisible = (socialState.incomingInteractions ?? []).filter((entry) => !entry.resolved);
   let activeVisibleCount = activeVisible.length;

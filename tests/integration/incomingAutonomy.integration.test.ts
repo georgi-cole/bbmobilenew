@@ -73,10 +73,20 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       phase: 'nominations',
     });
 
-    const delivered = selectIncomingInteractions({ social: store.getState().social });
+    const deliveredBefore = selectIncomingInteractions({ social: store.getState().social });
     const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
-    expect(delivered.length + scheduled.length).toBeGreaterThan(0);
-    expect(delivered.length).toBeLessThanOrEqual(
+    expect(deliveredBefore.length + scheduled.length).toBeGreaterThan(0);
+
+    const scheduledForNow = scheduled.filter(
+      (entry) => entry.scheduledForWeek === 2 && entry.scheduledForPhase === 'nominations',
+    );
+    expect(scheduledForNow.length).toBeLessThanOrEqual(
+      socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
+    );
+
+    deliverScheduledIncomingInteractionsForPhase('nominations', store, { week: 2 });
+    const deliveredAfter = selectIncomingInteractions({ social: store.getState().social });
+    expect(deliveredAfter.length - deliveredBefore.length).toBeLessThanOrEqual(
       socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
     );
   });

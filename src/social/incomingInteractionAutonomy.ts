@@ -36,6 +36,10 @@ import {
   computeTrustMomentumNormalized,
 } from './socialMemory';
 import {
+  INCOMING_INTERACTION_ELIGIBLE_PHASES,
+  INCOMING_INTERACTION_PHASE_ORDER,
+} from './incomingInteractionPhases';
+import {
   assignDeliverySlot,
   buildDeliverySlotCounts,
   buildPendingIncomingInteractions,
@@ -442,16 +446,11 @@ function generateInteractionId(): string {
 
 /**
  * Phases during which the autonomy scheduler will evaluate and potentially
- * enqueue incoming interactions.  Guarded behind a set for O(1) lookup.
+ * enqueue incoming interactions. Guarded behind a set for O(1) lookup.
  */
-export const ELIGIBLE_PHASES = new Set<string>([
-  'week_start',
-  'nominations',
-  'hoh_results',
-  'pov_results',
-  'live_vote',
-  'eviction_results',
-]);
+export { INCOMING_INTERACTION_PHASE_ORDER };
+
+export const ELIGIBLE_PHASES = INCOMING_INTERACTION_ELIGIBLE_PHASES;
 
 /** Returns true for interaction types that expect an explicit player response. */
 function interactionTypeRequiresResponse(type: IncomingInteractionType): boolean {
