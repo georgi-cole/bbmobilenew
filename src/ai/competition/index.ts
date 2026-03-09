@@ -69,7 +69,9 @@ export function simulateAiPerformance({
   if (game) {
     return simulateLegacyChallengeScore(game, seed);
   }
-  void minigameKey;
+  if (minigameKey !== 'tapRace') {
+    // Placeholder: non-registered minigames fall back to TapRace tuning for now.
+  }
   return simulateTapRaceAI(
     seed,
     'HARD',
