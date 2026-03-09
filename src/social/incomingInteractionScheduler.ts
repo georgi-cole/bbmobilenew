@@ -269,6 +269,10 @@ export function deliverScheduledIncomingInteractionsForPhase(
       continue;
     }
     const scheduledIndex = getDeliveryPhaseIndex(scheduledPhase);
+    if (scheduledIndex === null) {
+      remaining.push(entry);
+      continue;
+    }
     if (scheduledIndex <= phaseIndex) {
       eligible.push(entry);
     } else {
