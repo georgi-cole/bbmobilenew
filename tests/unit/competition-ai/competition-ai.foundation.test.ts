@@ -70,7 +70,10 @@ describe('competition AI foundation', () => {
 describe('simulateAiPerformance legacy challenge scoring', () => {
   const seed = 12345;
 
-  function makeGame(metricKind: GameRegistryEntry['metricKind'], overrides: Partial<GameRegistryEntry> = {}): GameRegistryEntry {
+  function makeTestGame(
+    metricKind: GameRegistryEntry['metricKind'],
+    overrides: Partial<GameRegistryEntry> = {},
+  ): GameRegistryEntry {
     return {
       key: `${metricKind}-test`,
       title: 'Test Game',
@@ -90,7 +93,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   }
 
   it('computes count metric scores deterministically', () => {
-    const game = makeGame('count', { timeLimitMs: 10_000 });
+    const game = makeTestGame('count', { timeLimitMs: 10_000 });
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(75 + Math.floor(rng() * 16));
 
@@ -98,7 +101,10 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   });
 
   it('computes time metric scores deterministically', () => {
-    const game = makeGame('time', { timeLimitMs: 30_000, scoringParams: { targetMs: 1500, maxMs: 30_000 } });
+    const game = makeTestGame('time', {
+      timeLimitMs: 30_000,
+      scoringParams: { targetMs: 1500, maxMs: 30_000 },
+    });
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(1500 + rng() * (30_000 - 1500) * 0.5);
 
@@ -106,7 +112,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   });
 
   it('computes accuracy metric scores deterministically', () => {
-    const game = makeGame('accuracy');
+    const game = makeTestGame('accuracy');
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(60 + rng() * 40);
 
@@ -114,7 +120,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   });
 
   it('computes endurance metric scores deterministically', () => {
-    const game = makeGame('endurance');
+    const game = makeTestGame('endurance');
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(10 + rng() * 50);
 
@@ -122,7 +128,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   });
 
   it('computes hybrid metric scores deterministically', () => {
-    const game = makeGame('hybrid');
+    const game = makeTestGame('hybrid');
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(rng() * 100);
 
@@ -130,7 +136,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
   });
 
   it('computes points metric scores deterministically', () => {
-    const game = makeGame('points');
+    const game = makeTestGame('points');
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(rng() * 100);
 
