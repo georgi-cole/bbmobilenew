@@ -48,6 +48,13 @@ export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
   return { ...DEFAULT_PROFILE };
 }
 
+function cloneMinigameAiModel(model: MinigameAiModel): MinigameAiModel {
+  return {
+    ...model,
+    weights: { ...model.weights },
+  };
+}
+
 /** Public fallback builder for minigames without explicit AI metadata yet. */
 export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
   return {
@@ -58,11 +65,12 @@ export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
 }
 
 export function getMinigameAiModel(key: string): MinigameAiModel {
-  return MINIGAME_AI_REGISTRY[key] ?? getFallbackMinigameAiModel(key);
+  const registered = MINIGAME_AI_REGISTRY[key];
+  return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
 }
 
 export function registerMinigameAiModel(model: MinigameAiModel): void {
-  MINIGAME_AI_REGISTRY[model.key] = model;
+  MINIGAME_AI_REGISTRY[model.key] = cloneMinigameAiModel(model);
 }
 
 export function simulateTapRaceAiPerformance({

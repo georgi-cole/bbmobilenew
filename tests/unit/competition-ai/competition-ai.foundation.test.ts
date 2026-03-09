@@ -50,6 +50,7 @@ describe('competition AI foundation', () => {
 
   it('warns when lower-is-better metadata is used with legacy tap scores', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const shouldWarn = import.meta.env.DEV;
 
     registerMinigameAiModel({
       key: 'lower-better',
@@ -61,9 +62,13 @@ describe('competition AI foundation', () => {
 
     simulateTapRaceAiPerformance({ minigameKey: 'lower-better', seed: 1, timeLimitSeconds: 10 });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[competition-ai] lower-better uses lower-is-better but still returns legacy tap scores.',
-    );
+    if (shouldWarn) {
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[competition-ai] lower-better uses lower-is-better but still returns legacy tap scores.',
+      );
+    } else {
+      expect(warnSpy).not.toHaveBeenCalled();
+    }
     warnSpy.mockRestore();
   });
 });
