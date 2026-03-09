@@ -27,6 +27,9 @@ export interface CompetitionSkillWeights {
   precision: number;
   nerve: number;
   luck?: number;
+  consistency?: number;
+  clutch?: number;
+  chokeRisk?: number;
 }
 
 export interface MinigameAiModel {

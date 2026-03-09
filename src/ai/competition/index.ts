@@ -33,11 +33,15 @@ const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
   notes: 'Fallback AI model (PR1 foundation). Replace with explicit metadata in PR3.',
 };
 
-export interface LegacyAiSimulationArgs {
+export interface TapRaceAiSimulationArgs {
   minigameKey: string;
   seed: number;
   timeLimitSeconds?: number;
-  game?: GameRegistryEntry;
+}
+
+export interface ChallengeAiSimulationArgs {
+  game: GameRegistryEntry;
+  seed: number;
 }
 
 export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
@@ -61,15 +65,11 @@ export function registerMinigameAiModel(model: MinigameAiModel): void {
   MINIGAME_AI_REGISTRY[model.key] = model;
 }
 
-export function simulateAiPerformance({
+export function simulateTapRaceAiPerformance({
   minigameKey,
   seed,
   timeLimitSeconds,
-  game,
-}: LegacyAiSimulationArgs): number {
-  if (game) {
-    return simulateLegacyAiScore(game, seed);
-  }
+}: TapRaceAiSimulationArgs): number {
   // PR1: keep legacy TapRace tuning; metadata lookup is here for later PRs.
   const model = getMinigameAiModel(minigameKey);
   const baseScore = simulateTapRaceAI(
@@ -86,6 +86,10 @@ export function simulateAiPerformance({
     }
   }
   return baseScore;
+}
+
+export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
+  return simulateLegacyAiScore(game, seed);
 }
 
 function simulateLegacyAiScore(game: GameRegistryEntry, seed: number): number {

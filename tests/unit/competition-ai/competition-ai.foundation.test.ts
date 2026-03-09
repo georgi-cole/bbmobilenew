@@ -4,7 +4,8 @@ import {
   getFallbackMinigameAiModel,
   getMinigameAiModel,
   registerMinigameAiModel,
-  simulateAiPerformance,
+  simulateChallengeAiScore,
+  simulateTapRaceAiPerformance,
 } from '../../../src/ai/competition';
 import type { GameRegistryEntry } from '../../../src/minigames/registry';
 import { mulberry32 } from '../../../src/store/rng';
@@ -58,7 +59,7 @@ describe('competition AI foundation', () => {
       weights: { physical: 1, mental: 1, precision: 1, nerve: 1, luck: 0.5 },
     });
 
-    simulateAiPerformance({ minigameKey: 'lower-better', seed: 1, timeLimitSeconds: 10 });
+    simulateTapRaceAiPerformance({ minigameKey: 'lower-better', seed: 1, timeLimitSeconds: 10 });
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[competition-ai] lower-better uses lower-is-better but still returns legacy tap scores.',
@@ -67,7 +68,7 @@ describe('competition AI foundation', () => {
   });
 });
 
-describe('simulateAiPerformance legacy challenge scoring', () => {
+describe('simulateChallengeAiScore legacy challenge scoring', () => {
   const seed = 12345;
 
   function makeTestGame(
@@ -97,7 +98,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(75 + Math.floor(rng() * 16));
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 
   it('computes time metric scores deterministically', () => {
@@ -108,7 +109,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(1500 + rng() * (30_000 - 1500) * 0.5);
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 
   it('computes accuracy metric scores deterministically', () => {
@@ -116,7 +117,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(60 + rng() * 40);
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 
   it('computes endurance metric scores deterministically', () => {
@@ -124,7 +125,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(10 + rng() * 50);
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 
   it('computes hybrid metric scores deterministically', () => {
@@ -132,7 +133,7 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(rng() * 100);
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 
   it('computes points metric scores deterministically', () => {
@@ -140,6 +141,6 @@ describe('simulateAiPerformance legacy challenge scoring', () => {
     const rng = mulberry32(seed >>> 0);
     const expected = Math.round(rng() * 100);
 
-    expect(simulateAiPerformance({ minigameKey: game.key, seed, game })).toBe(expected);
+    expect(simulateChallengeAiScore({ game, seed })).toBe(expected);
   });
 });

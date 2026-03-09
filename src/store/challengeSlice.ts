@@ -8,7 +8,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
-import { simulateAiPerformance } from '../ai/competition';
+import { simulateChallengeAiScore } from '../ai/competition';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -276,7 +276,7 @@ export const startChallenge =
     let aiSeed = perChallengeSeed;
     for (const pid of participants) {
       if (pid !== humanId) {
-        aiScores[pid] = simulateAiPerformance({ minigameKey: gameEntry.key, seed: aiSeed, game: gameEntry });
+        aiScores[pid] = simulateChallengeAiScore({ game: gameEntry, seed: aiSeed });
         aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     }
