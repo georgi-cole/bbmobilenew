@@ -3,6 +3,19 @@
 // Single source of truth for static houseguest profile fields.
 
 import type { Houseguest } from '../types/houseguest';
+import type { CompetitionSkillProfile } from '../ai/competition/types';
+
+const DEFAULT_COMPETITION_PROFILE: CompetitionSkillProfile = {
+  overall: 50,
+  physical: 50,
+  mental: 50,
+  precision: 50,
+  nerve: 50,
+  consistency: 50,
+  clutch: 50,
+  chokeRisk: 50,
+  luck: 50,
+};
 
 const HOUSEGUESTS: Houseguest[] = [
   {
@@ -24,6 +37,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: 'Can read nautical charts faster than most captains',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 65,
+      mental: 70,
+      precision: 78,
+      nerve: 68,
+      consistency: 82,
+      clutch: 70,
+      chokeRisk: 20,
+      luck: 35,
+    },
     story: `Finn grew up on the rugged coast of Finland, where the sea was both playground and teacher. As a child, he watched massive cargo ships glide through the harbor and dreamed of designing vessels that could brave any storm. After years of rigorous study and countless sleepless nights, he became one of Europe's most sought-after marine architects. But success came at a cost—his marriage crumbled under the weight of his ambition, and his teenage daughter barely speaks to him anymore. Now, standing at a crossroads in his life, Finn sees Big Brother as a chance to prove he's more than just blueprints and calculations. He's here to show the world—and himself—that he can navigate the unpredictable waters of human connection with the same skill he brings to designing ships. Will his analytical mind be his greatest asset or his downfall in the ultimate social experiment?`,
   },
   {
@@ -45,6 +68,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 40,
+      mental: 60,
+      precision: 88,
+      nerve: 55,
+      consistency: 58,
+      clutch: 52,
+      chokeRisk: 35,
+      luck: 55,
+    },
     story: `In the neon-lit streets of Tokyo, Mimi's violin echoes through subway stations and tiny venues, captivating strangers with haunting melodies. Raised by a strict mother who demanded perfection, Mimi rebelled against classical convention to forge her own path as an indie musician. But freedom came with a price—she's barely scraping by, performing for tips and living in a cramped apartment with three roommates. Her dream of recording an album feels impossibly far away. When the opportunity to enter Big Brother presented itself, Mimi saw it as her ticket to exposure and the prize money that could change everything. Sweet and seemingly naive, she hides a fierce competitive streak beneath her gentle exterior. In a house full of strangers, will her music be her salvation or will the pressure break her into a thousand discordant notes?`,
   },
   {
@@ -66,6 +99,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 80,
+      mental: 75,
+      precision: 65,
+      nerve: 82,
+      consistency: 72,
+      clutch: 78,
+      chokeRisk: 18,
+      luck: 40,
+    },
     story: `Rae Kimathi didn't climb to the top of corporate Kenya by being nice. As an Operations Director for one of East Africa's largest logistics companies, she's known for her ruthless efficiency and unwavering standards. She grew up in Nairobi's Kibera slum, where she learned that survival meant being tougher than everyone around you. Through scholarships and sheer determination, she earned her MBA and transformed herself into a powerhouse executive. But behind the polished suits and commanding presence lies a woman haunted by the choices she's made—relationships sacrificed, friendships abandoned, family disappointed by her constant absence. Her black belt in karate isn't just for fitness; it's a reminder that she knows how to fight. In Big Brother, Rae sees a strategic battlefield where she can apply her corporate warfare tactics. But can someone who's spent a lifetime building walls learn to let them down?`,
   },
   {
@@ -87,6 +130,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 50,
+      mental: 70,
+      precision: 65,
+      nerve: 40,
+      consistency: 55,
+      clutch: 45,
+      chokeRisk: 60,
+      luck: 50,
+    },
     story: `Nova Chen's life looks perfect from the outside—working for a prestigious LA production company, attending red carpet events, rubbing shoulders with celebrities. But behind the glamorous facade is a young woman drowning in imposter syndrome and crushing student debt. Born to immigrant parents who sacrificed everything for her education, Nova feels the weight of their expectations crushing her daily. She writes sci-fi stories late at night, tales of alternate realities where she's brave enough to chase her real dreams instead of playing it safe. Her apartment walls are covered with rejection letters from publishers and film studios, each one a reminder that creativity alone isn't enough in Hollywood. Big Brother represents something terrifying and exhilarating: a chance to step into the spotlight and prove she's more than someone else's assistant. But when the cameras are always rolling, can she hide the cracks in her carefully constructed persona?`,
   },
   {
@@ -108,6 +161,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 45,
+      mental: 85,
+      precision: 68,
+      nerve: 60,
+      consistency: 75,
+      clutch: 62,
+      chokeRisk: 28,
+      luck: 45,
+    },
     story: `Kai Park speaks five languages fluently, but he's forgotten how to communicate what truly matters. As an AI Product Strategist for a major tech company in Seoul, he's helped shape algorithms that influence millions of lives. Yet his own life feels strangely hollow—relationships fail because he approaches them like optimization problems, friendships fade because he's always working, and his family wonders what happened to the curious boy who used to ask endless questions about everything. His polyglot abilities came from years of forcing himself to connect across cultures, but somewhere along the way, he lost the ability to connect with himself. Big Brother is his radical experiment: can someone who spends all day analyzing patterns in artificial intelligence learn to understand the unpredictable nature of human emotion? In a house full of strangers, his greatest challenge won't be competitions or strategy—it will be learning to be vulnerable.`,
   },
   {
@@ -129,6 +192,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 38,
+      mental: 92,
+      precision: 70,
+      nerve: 72,
+      consistency: 84,
+      clutch: 65,
+      chokeRisk: 22,
+      luck: 40,
+    },
     story: `Zed Okonkwo sees patterns where others see chaos. As Lagos's youngest national chess champion at 16, he learned to think ten moves ahead. Now, as a Data Systems Analyst for a multinational corporation, he applies that same strategic thinking to complex data problems. But his brilliance comes with a cost—he struggles to turn off his analytical brain, constantly calculating probabilities and outcomes in every social interaction. His romantic relationships have failed because partners feel like they're dating a computer rather than a person. His friends have learned to tolerate his blunt observations, though they've stopped inviting him to parties. Big Brother represents the ultimate puzzle: a game where the pieces are people and the rules are constantly shifting. Zed believes he can strategize his way to victory, but he's about to discover that human emotions don't follow logical patterns. In a house where feelings matter more than facts, can a chess master learn to play from the heart?`,
   },
   {
@@ -150,6 +223,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 35,
+      mental: 88,
+      precision: 82,
+      nerve: 65,
+      consistency: 78,
+      clutch: 60,
+      chokeRisk: 25,
+      luck: 42,
+    },
     story: `Ivy Richter analyzes human behavior for a living, yet she can't understand her own. As a UX Research Specialist in Berlin's booming tech scene, she spends her days studying how people interact with interfaces, conducting user tests, and presenting insights to design teams. She solves puzzles obsessively—crosswords at breakfast, logic games at lunch, escape rooms on weekends—anything to keep her restless mind occupied. But no puzzle has prepared her for the mystery of why she feels so disconnected from everyone around her. She watches others form easy friendships and wonders what social algorithm she's missing. Her PhD was supposed to give her answers, but instead it gave her more questions. Big Brother is her most dangerous experiment yet: putting herself under the microscope instead of observing others. In a house where she can't hide behind research protocols and data, will she finally understand what makes people tick—including herself?`,
   },
   {
@@ -171,6 +254,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 78,
+      mental: 55,
+      precision: 50,
+      nerve: 38,
+      consistency: 60,
+      clutch: 50,
+      chokeRisk: 65,
+      luck: 45,
+    },
     story: `Ash Morgan can start a fire with nothing but sticks and survive a week in the wilderness with just a knife, but he can't survive five minutes in a crowded room without feeling his chest tighten. As an Outdoor Survival Instructor in the Australian outback, he's taught hundreds of people how to face their fears in nature. But his own anxiety disorder is a secret he guards fiercely, masked by morning meditation and carefully maintained calm. The irony isn't lost on him—he's most at peace when he's most alone. His ex-girlfriend called him emotionally unavailable; his parents worry he's wasting his potential hiding in the bush. Big Brother is either the worst decision he's ever made or the bravest. Trapped in a house with strangers, cameras always watching, nowhere to escape—it's his personal hell and his ultimate challenge. Can a man who finds peace in solitude learn to find it in connection? Or will the pressure of constant surveillance break the calm facade he's spent years perfecting?`,
   },
   {
@@ -192,6 +285,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 60,
+      mental: 55,
+      precision: 65,
+      nerve: 80,
+      consistency: 58,
+      clutch: 82,
+      chokeRisk: 18,
+      luck: 50,
+    },
     story: `Lux Moreau's runway career ended at 22 when she spoke out about the industry's toxic culture—and became instantly unemployable as a model. Now she works behind the scenes as a Fashion Creative Producer, her former colleagues pretending not to recognize her at shows. Paris fashion week is bittersweet; she still loves the artistry but hates the artifice. Her bisexuality was weaponized by tabloids during her modeling days, every relationship scrutinized and sensationalized. She learned to deflect with elegance, turning pain into poise. But beneath the sophisticated exterior is a 24-year-old still healing from being chewed up and spit out by an industry she once worshipped. Big Brother offers a strange kind of freedom—a chance to be watched on her own terms, to control her narrative instead of letting others write it. In a house full of cameras, the former model knows how to work every angle. But can she be authentic when she's spent years learning to be whoever others wanted her to be?`,
   },
   {
@@ -213,6 +316,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 55,
+      mental: 60,
+      precision: 58,
+      nerve: 62,
+      consistency: 50,
+      clutch: 68,
+      chokeRisk: 32,
+      luck: 55,
+    },
     story: `Remy Bouchard can sell anything to anyone—it's his gift and his curse. As a Brand Strategist in Montreal's competitive marketing scene, he's made millions for clients by understanding exactly what people want to hear. His jazz saxophone performances at underground clubs show a different side—creative, passionate, authentic. But which is the real Remy? Even he doesn't know anymore. He's worn so many masks for so long that his own reflection feels like a stranger. His last relationship ended when his girlfriend said she felt like she was dating a commercial, not a person. His childhood friends barely recognize the polished professional he's become. Big Brother represents his biggest brand challenge yet: marketing himself while actually being himself. In a game where everyone is performing for the cameras, can a professional performer remember how to be genuine? Or will he charm his way to the end only to realize he's won as someone else entirely?`,
   },
   {
@@ -234,6 +347,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 48,
+      mental: 78,
+      precision: 64,
+      nerve: 50,
+      consistency: 80,
+      clutch: 55,
+      chokeRisk: 40,
+      luck: 38,
+    },
     story: `Blue Rivers documents everything in his daily journal—every conversation, every observation, every fleeting thought. As a Systems Engineer in New York's financial district, he designs infrastructure that processes billions of dollars, but he processes his own life through thousands of journal pages. His name came from his mother, a former jazz singer who died when he was twelve, leaving him with nothing but a nickname and a tendency to observe life rather than live it. His journals are filled with detailed accounts of parties he attended but didn't enjoy, relationships he analyzed but didn't feel, moments he recorded but didn't experience. His therapist calls it avoidance; Blue calls it processing. Big Brother is his strangest entry yet—a game where observation is survival, where quiet watching might actually be an asset. But in a house designed to force interaction, will the observer finally step out of the margins and into his own story? Or will he leave with just another journal full of everyone else's moments?`,
   },
   {
@@ -255,6 +378,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 92,
+      mental: 55,
+      precision: 60,
+      nerve: 85,
+      consistency: 80,
+      clutch: 88,
+      chokeRisk: 12,
+      luck: 45,
+    },
     story: `Jax Silva's body is a temple he built from ruins. As a Performance Coach in Rio, he pushes athletes to their absolute limits because he knows exactly what those limits feel like. His Ironman finishes aren't just accomplishments—they're middle fingers to the overweight, bullied teenager he used to be. Every sunrise workout, every punishing training session, every competition is war against his former self. But the war never ends. Despite his transformed physique and successful coaching business, he still sees the fat kid in the mirror. His relationships fail because partners grow tired of competing with his obsession. His family worries that he's replaced one extreme with another. Big Brother is his ultimate test: stripped of his routine, his gym, his control, can he prove his strength comes from within rather than from the weights he lifts? In a game of endurance, the Ironman thinks he has every advantage. But when the competition is social rather than physical, will pushing his limits finally break him?`,
   },
   {
@@ -276,6 +409,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 40,
+      mental: 50,
+      precision: 52,
+      nerve: 45,
+      consistency: 44,
+      clutch: 38,
+      chokeRisk: 55,
+      luck: 58,
+    },
     story: `Echo Holloway's apartment is a museum of sound. As an Audio Archivist in London, she preserves dying audio formats—vinyl records, cassette tapes, reel-to-reels—rescuing voices from obsolescence. Her collection of vintage radios numbers over 200, each one lovingly restored. Friends call her quirky; her mother calls her eccentric; her ex-boyfriend called her impossible to reach. She lives in the past because the present feels too loud, too fast, too demanding. At 22, she already feels like a relic—disconnected from her peers who live for instant gratification and social media. Big Brother is her contradiction: someone who preserves silence entering a house that never sleeps, someone who fears irrelevance choosing to be recorded for posterity. In a game designed for extroverts, the quiet archivist must decide whether to amplify her voice or let others drown her out. Can someone who finds meaning in echoes of the past learn to be present in the moment?`,
   },
   {
@@ -297,6 +440,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 50,
+      mental: 72,
+      precision: 62,
+      nerve: 55,
+      consistency: 65,
+      clutch: 58,
+      chokeRisk: 35,
+      luck: 48,
+    },
     story: `Vee Nkosi brews the perfect cup of coffee—Ethiopian pour-over, South African rooibos, Colombian cold brew—each one a meditation, a moment of control in a life that often feels chaotic. As a Strategy Intern at a Cape Town consulting firm, she's brilliantly good at solving other people's problems while her own pile up like unopened mail. Her craft coffee obsession started as a pandemic hobby and became an escape hatch from expectations she can't meet. Peace and strategy, her dual mantras, feel increasingly contradictory. Her parents invested everything in her education; her siblings look up to her; her friends think she has it all figured out. But Vee feels like a fraud playing dress-up in someone else's life. Big Brother is her pressure test: can she strategize her way through the game while maintaining her inner peace? Or will the conflict between her image and her reality finally boil over like an unwatched espresso machine?`,
   },
   {
@@ -318,6 +471,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 52,
+      mental: 58,
+      precision: 80,
+      nerve: 60,
+      consistency: 55,
+      clutch: 62,
+      chokeRisk: 30,
+      luck: 50,
+    },
     story: `Sol Martinez chases sunsets across Madrid's rooftops, his camera always ready for that perfect golden hour shot. As a Media Editor for a local production company, he spends his days in dark editing suites but lives for the moments when natural light transforms the ordinary into art. His Instagram feed is a testament to his obsession—hundreds of sunset photos, each one slightly different, none quite capturing what he sees in his mind. Friends joke that he's part vampire, sleeping through mornings and coming alive at dusk. But his sunset addiction isn't really about photography—it's about chasing beauty in a world that often feels ugly and unfair. He grew up watching his father's construction business fail, his family's dreams evaporating like morning fog. Now he documents endings obsessively, trying to prove they can be beautiful. Big Brother is his longest night: trapped indoors, unable to chase his golden hours, forced to find light in other people instead of in the sky. Can someone who stays golden by staying distant learn to shine in close proximity?`,
   },
   {
@@ -339,6 +502,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 40,
+      mental: 90,
+      precision: 78,
+      nerve: 70,
+      consistency: 80,
+      clutch: 68,
+      chokeRisk: 20,
+      luck: 45,
+    },
     story: `Quinn Murphy's poker face is legendary—she once won an underground Dublin tournament without showing a single tell. As a Behavioral Analyst for a cybersecurity firm, she reads people for a living, identifying social engineering threats and training employees to spot deception. She's brilliant at detecting lies in others but has built her entire life on one big lie: that she's mysterious by choice rather than by necessity. The truth is she doesn't know how to be genuine anymore. Years of analyzing everyone's behavior have made her hyperaware of her own, turning every interaction into a performance. Her ex called her emotionally unavailable; her best friend said talking to her feels like being studied. Both were right. Big Brother is her ultimate gambit: can she out-analyze everyone else while they're trying to out-analyze her? In a house full of people trying to read each other, the professional behavior analyst should have every advantage. But what happens when staying mysterious means staying alone?`,
   },
   {
@@ -360,6 +533,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 45,
+      mental: 60,
+      precision: 78,
+      nerve: 48,
+      consistency: 64,
+      clutch: 50,
+      chokeRisk: 45,
+      luck: 55,
+    },
     story: `Aria Colombo's hands move across harp strings like water flowing over stones—fluid, inevitable, beautiful. At Rome's prestigious conservatory, she studies classical music while struggling to pay rent by performing at weddings and tourist hotels. Her philosophy of harmony first extends beyond music; she mediates every conflict, smooths every rough edge, sacrifices her own comfort for group peace. But people-pleasing isn't the same as harmony—it's just silence wearing a pleasant mask. She learned young that keeping quiet kept her safe; her parents' explosive fights taught her that raising her voice meant everything falling apart. Now at 23, she's so good at being agreeable that she's lost track of what she actually wants. Big Brother is her crescendo: a game where conflict is inevitable, where harmony must be earned rather than enforced. In a house designed to create drama, can someone who's spent her life avoiding it finally learn that real harmony includes discord? Or will her need to keep the peace make her everyone's pawn?`,
   },
   {
@@ -381,6 +564,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 58,
+      mental: 72,
+      precision: 82,
+      nerve: 65,
+      consistency: 85,
+      clutch: 60,
+      chokeRisk: 25,
+      luck: 35,
+    },
     story: `Dex Andersson's apartment contains exactly 47 objects—he's counted and recounted. As an Industrial Designer in Stockholm's minimalist design scene, his mantra "less is more" has become "less is everything." Every possession must earn its place; every surface must breathe. His designs win awards for their elegant simplicity, but colleagues whisper that his minimalism has become an obsession. His relationship ended when his girlfriend moved out, exhausted by his need to eliminate anything that didn't serve a clear purpose—including, it seemed, emotional messiness. His family visits have stopped because his apartment feels more like a gallery than a home. Big Brother is his nightmare: maximum people, maximum stuff, maximum chaos in minimal space. But maybe that's exactly what he needs. In a house cluttered with personalities and possessions, can a man who's stripped everything away learn that life's meaning isn't found in what you remove, but in what you keep?`,
   },
   {
@@ -402,6 +595,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 50,
+      mental: 55,
+      precision: 60,
+      nerve: 52,
+      consistency: 35,
+      clutch: 58,
+      chokeRisk: 45,
+      luck: 75,
+    },
     story: `Rune Solberg's poetry blog has 200,000 followers who hang on his every verse, yet he's never felt more invisible. As a Digital Poet in Oslo's underground arts scene, he transforms personal pain into universal truth, three lines at a time. His coming out at 18 inspired his first viral poem; his father's rejection inspired his second. Now at 32, he mines his trauma for content, performing his heartbreak for strangers who comment "so brave" and "feeling this." But authenticity has become performance, and he's forgotten how to create with soul rather than for clicks. His last boyfriend left because dating a poet meant every fight became material, every intimate moment potential content. Big Brother is his most dangerous poem yet—a reality show about reality, performance about performance. In a house where everyone's performing, can a professional performer remember why he started creating in the first place? Or will he leave with nothing but new material and the same emptiness?`,
   },
   {
@@ -423,6 +626,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: '',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 82,
+      mental: 50,
+      precision: 55,
+      nerve: 62,
+      consistency: 78,
+      clutch: 70,
+      chokeRisk: 25,
+      luck: 40,
+    },
     story: `Bea Papadopoulos runs marathons with a smile that never fades, even when her body screams to stop. As a Marathon Trainee in Athens, she's determined to qualify for international competitions while working three part-time jobs to fund her training. Everyone loves Bea—how could they not? She's relentlessly cheerful, endlessly optimistic, always available to help. But toxic positivity is still toxic, and beneath her sunny exterior is someone who's forgotten that it's okay to not be okay. She learned early that being sad made people uncomfortable, that tears were burdens, that struggling was selfish. So she runs—from feelings, from problems, from anything that might dim her sparkle. Her mantra "stay cheerful" has become a prison sentence. Big Brother is her longest run yet: 24/7 in a house with no escape route, no finish line to cross. When you can't outrun your emotions anymore, when the mask of cheerfulness starts to crack, what's underneath? Bea is about to find out.`,
   },
   {
@@ -444,6 +657,16 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: "Once made the mayor's wallet disappear during a street performance",
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 55,
+      mental: 58,
+      precision: 72,
+      nerve: 60,
+      consistency: 40,
+      clutch: 55,
+      chokeRisk: 50,
+      luck: 80,
+    },
     story: `Nico Ferreira makes things disappear—coins, cards, occasionally his responsibilities. As an Illusion Entertainer in Lisbon's tourist districts, he performs sleight-of-hand magic for crowds while avoiding anything that feels too real. His weekend magic shows pay just enough to fund his playful pranks and avoid commitment to anything serious. Friends find him charming; his family finds him frustrating; his ex-girlfriends find him exhausting. He's 28 going on 18, and everyone's starting to notice. His pranks are getting desperate—switching his brother's sugar with salt, hiding his roommate's keys, photoshopping fake screenshots to spark drama. The line between playful and problematic has blurred, but Nico won't acknowledge it. Big Brother is either his ultimate stage or his reckoning. In a house where pranks have consequences and charm has limits, can the magician finally grow up? Or will he try to prank his way out of every serious situation until there's nothing left to disappear into?`,
   },
   {
@@ -465,11 +688,26 @@ const HOUSEGUESTS: Houseguest[] = [
     funFact: 'Designed a community garden that won a sustainability award',
     allies: [],
     enemies: [],
+    competitionProfile: {
+      physical: 62,
+      mental: 78,
+      precision: 68,
+      nerve: 70,
+      consistency: 72,
+      clutch: 66,
+      chokeRisk: 22,
+      luck: 45,
+    },
     story: `Kian Rossi walks through Milan's streets seeing not what is, but what could be. As an Urban Planner, he dreams of transforming concrete jungles into vibrant, sustainable communities where people thrive. Raised in a working-class neighborhood that was gentrified out of existence, Kian's passion for inclusive urban design is personal. He fights daily battles with developers who see only profit margins, not communities. His idealism has cost him promotions and made him enemies in city hall, but he refuses to compromise his vision. Big Brother is his chance to prove that collaboration and strategic thinking can build something better than cutthroat competition ever could. In a game about alliances and territory, the urban planner will try to design a path to victory that leaves no one behind.`,
   },
 ];
 
 export default HOUSEGUESTS;
+
+export function getCompetitionProfile(playerId: string): CompetitionSkillProfile {
+  const profile = getById(playerId)?.competitionProfile;
+  return profile ? { ...profile } : { ...DEFAULT_COMPETITION_PROFILE };
+}
 
 export function getAll(): Houseguest[] {
   return HOUSEGUESTS.slice();
