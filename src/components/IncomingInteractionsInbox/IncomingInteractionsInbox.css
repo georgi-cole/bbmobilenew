@@ -219,6 +219,15 @@
   color: rgba(148, 163, 184, 0.8);
 }
 
+.inbox-item__tone {
+  font-size: 0.62rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: rgba(226, 232, 240, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
 .inbox-item__expiry {
   font-size: 0.62rem;
   padding: 0.1rem 0.35rem;

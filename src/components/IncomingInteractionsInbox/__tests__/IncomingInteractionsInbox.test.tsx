@@ -6,6 +6,8 @@ import gameReducer from '../../../store/gameSlice';
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
+  updateRelationship,
+  updateSocialMemory,
 } from '../../../social/socialSlice';
 import IncomingInteractionsInbox from '../IncomingInteractionsInbox';
 
@@ -23,11 +25,25 @@ function renderInbox(store: ReturnType<typeof makeStore>) {
   );
 }
 
+function getNonUserPlayer(store: ReturnType<typeof makeStore>) {
+  const player = store.getState().game.players.find((p) => !p.isUser);
+  if (!player) {
+    throw new Error('Expected a non-user player for test setup.');
+  }
+  return player;
+}
+
 describe('IncomingInteractionsInbox', () => {
+  it('creates a store with a non-user player', () => {
+    const store = makeStore();
+    const player = getNonUserPlayer(store);
+    expect(player.isUser).not.toBe(true);
+  });
+
   it('sorts, groups, and summarizes interactions while marking them read', async () => {
     const store = makeStore();
     store.dispatch(openIncomingInbox());
-    const otherId = store.getState().game.players.find((p) => !p.isUser)!.id;
+    const otherId = getNonUserPlayer(store).id;
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-low-later',
@@ -136,10 +152,11 @@ describe('IncomingInteractionsInbox', () => {
   it('responds to an interaction from the inbox', () => {
     const store = makeStore();
     store.dispatch(openIncomingInbox());
+    const otherPlayer = getNonUserPlayer(store);
     store.dispatch(
       pushIncomingInteraction({
         id: 'interaction-3',
-        fromId: store.getState().game.players.find((p) => !p.isUser)!.id,
+        fromId: otherPlayer.id,
         type: 'warning',
         text: 'Careful this week.',
         createdAt: 300,
@@ -153,11 +170,50 @@ describe('IncomingInteractionsInbox', () => {
 
     renderInbox(store);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Positive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thank' }));
 
     const entry = store.getState().social.incomingInteractions.find((i) => i.id === 'interaction-3');
     expect(entry?.resolved).toBe(true);
     expect(entry?.resolvedWith).toBe('positive');
     expect(store.getState().game.tvFeed[0]?.text).toMatch(/encouraged/i);
+  });
+
+  it('renders contextual responses and tone labels', () => {
+    const store = makeStore();
+    store.dispatch(openIncomingInbox());
+    const otherId = getNonUserPlayer(store).id;
+    store.dispatch(
+      updateRelationship({
+        source: otherId,
+        target: 'user',
+        delta: -60,
+      }),
+    );
+    store.dispatch(
+      updateSocialMemory({
+        actorId: otherId,
+        targetId: 'user',
+        deltas: { resentment: 8 },
+      }),
+    );
+    store.dispatch(
+      pushIncomingInteraction({
+        id: 'interaction-tone',
+        fromId: otherId,
+        type: 'snide_remark',
+        text: 'Tone check.',
+        createdAt: 420,
+        createdWeek: 1,
+        expiresAtWeek: 1,
+        read: false,
+        requiresResponse: true,
+        resolved: false,
+      }),
+    );
+
+    renderInbox(store);
+
+    expect(screen.getByRole('button', { name: 'Fire back' })).toBeInTheDocument();
+    expect(screen.getByText(/Bitter/)).toBeInTheDocument();
   });
 });
