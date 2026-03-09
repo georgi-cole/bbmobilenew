@@ -10,7 +10,7 @@
  *  6. chooseIncomingInteractionType returns correct types per phase/affinity
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { normalizeAffinity } from '../../src/social/affinityUtils';
 import {
   computeIncomingInteractionEngagementScore,
@@ -332,6 +332,12 @@ describe('shouldEnqueueInteraction', () => {
 // ── Decision reason generation ─────────────────────────────────────────────
 
 describe('incoming interaction decision reasons', () => {
+  const originalThreshold = socialConfig.incomingInteractionConfig.scoreThreshold;
+
+  afterEach(() => {
+    socialConfig.incomingInteractionConfig.scoreThreshold = originalThreshold;
+  });
+
   it('reports blocked_by_global_cap when global cap is hit', () => {
     const ctx = makeContext({ phase: 'nominations' });
     const maxActive = socialConfig.incomingInteractionConfig.maxActive;
@@ -345,7 +351,6 @@ describe('incoming interaction decision reasons', () => {
   });
 
   it('respects scoreThreshold tuning from socialConfig', () => {
-    const originalThreshold = socialConfig.incomingInteractionConfig.scoreThreshold;
     socialConfig.incomingInteractionConfig.scoreThreshold = 0.99;
 
     const ctx = makeContext({ phase: 'social_1', relationships: {} });
@@ -353,7 +358,5 @@ describe('incoming interaction decision reasons', () => {
 
     expect(decision.allowed).toBe(false);
     expect(decision.reason).toBe('blocked_by_score_threshold');
-
-    socialConfig.incomingInteractionConfig.scoreThreshold = originalThreshold;
   });
 });

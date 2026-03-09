@@ -92,8 +92,11 @@ const socialSlice = createSlice({
       state,
       action: PayloadAction<IncomingInteractionDecisionLogEntry>,
     ) {
-      state.incomingInteractionLogs.push(action.payload);
       const limit = socialConfig.incomingInteractionDebugConfig.maxLogEntries;
+      if (limit <= 0) {
+        return;
+      }
+      state.incomingInteractionLogs.push(action.payload);
       if (limit > 0 && state.incomingInteractionLogs.length > limit) {
         state.incomingInteractionLogs = state.incomingInteractionLogs.slice(-limit);
       }

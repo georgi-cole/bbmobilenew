@@ -304,6 +304,11 @@ export function deliverScheduledIncomingInteractionsForPhase(
     }
     const scheduledWeek = entry.scheduledForWeek ?? week;
     const scheduledPhase = entry.scheduledForPhase ?? phase;
+    const scheduledIndex = getDeliveryPhaseIndex(scheduledPhase);
+    if (scheduledIndex === null) {
+      logDecision(entry, 'expiration', 'invalid_scheduled_phase');
+      continue;
+    }
     const overduePhases = computePhaseDistance(
       { week: scheduledWeek, phase: scheduledPhase },
       { week, phase },
@@ -320,11 +325,6 @@ export function deliverScheduledIncomingInteractionsForPhase(
       continue;
     }
     if (scheduledWeek > week) {
-      remaining.push(entry);
-      continue;
-    }
-    const scheduledIndex = getDeliveryPhaseIndex(scheduledPhase);
-    if (scheduledIndex === null) {
       remaining.push(entry);
       continue;
     }

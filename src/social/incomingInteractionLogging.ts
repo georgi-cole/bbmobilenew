@@ -3,7 +3,7 @@ import { recordIncomingInteractionDecision } from './socialSlice';
 import type { IncomingInteractionDecisionLogEntry, IncomingInteractionDecisionStage } from './types';
 
 const STAGE_LABELS: Record<IncomingInteractionDecisionStage, string> = {
-  generation: 'Generated',
+  generation: 'Generation',
   scheduling: 'Scheduled',
   delivery: 'Delivered',
   postponed: 'Postponed',
