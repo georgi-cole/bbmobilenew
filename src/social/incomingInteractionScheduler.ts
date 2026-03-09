@@ -134,15 +134,29 @@ export function shouldSkipDueToInteractionDedupe({
 
   const sameType = unresolvedFromActor.find(
     (entry) =>
-      entry.type === interaction.type && Math.abs(week - entry.createdWeek) <= dedupe.sameTypeCooldownWeeks,
+      entry.type === interaction.type &&
+      week >= entry.createdWeek &&
+      week - entry.createdWeek <= dedupe.sameTypeCooldownWeeks,
   );
   if (sameType) {
     return true;
   }
 
   if (priority === 'low' && dedupe.lowPriorityCooldownWeeks > 0) {
-    const lastFromActor = unresolvedFromActor.sort((a, b) => b.createdAt - a.createdAt)[0];
-    if (lastFromActor && Math.abs(week - lastFromActor.createdWeek) <= dedupe.lowPriorityCooldownWeeks) {
+    const lastFromActor = unresolvedFromActor.reduce<IncomingInteraction | null>(
+      (latest, entry) => {
+        if (!latest || entry.createdAt > latest.createdAt) {
+          return entry;
+        }
+        return latest;
+      },
+      null,
+    );
+    if (
+      lastFromActor &&
+      week >= lastFromActor.createdWeek &&
+      week - lastFromActor.createdWeek <= dedupe.lowPriorityCooldownWeeks
+    ) {
       return true;
     }
   }

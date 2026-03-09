@@ -90,8 +90,9 @@ export const socialConfig = {
    *                   strictly enforced per-week in the current implementation).
     * maxActive       – hard global cap: the maximum number of unresolved
     *                   interactions (visible + scheduled) that may exist at any
-    *                   one time. No new interactions are enqueued once this is
-    *                   reached.
+    *                   one time. Set higher than maxActiveVisible so the
+    *                   scheduler can hold a small backlog while still spacing
+    *                   deliveries across phases.
    * maxPerAI        – per-actor cap: an individual AI may have at most this many
    *                   unresolved interactions pending with the player at once.
    * cooldownTicks   – minimum number of game weeks that must pass after an AI
