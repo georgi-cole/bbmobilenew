@@ -71,6 +71,7 @@ export function getMinigameAiModel(key: string): MinigameAiModel {
   return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
 }
 
+/** Register or override metadata for a minigame at runtime (tests + future tooling). */
 export function registerMinigameAiModel(model: MinigameAiModel): void {
   minigameAiRegistry[model.key] = cloneMinigameAiModel(model);
 }
@@ -99,7 +100,9 @@ export function simulateTapRaceAiPerformance({
 }
 
 export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
-  getMinigameAiModel(game.key);
+  // PR3: ensure metadata is retrievable alongside the legacy scoring path.
+  const model = getMinigameAiModel(game.key);
+  void model;
   return simulateLegacyAiScore(game, seed);
 }
 
