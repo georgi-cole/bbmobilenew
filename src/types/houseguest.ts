@@ -1,3 +1,4 @@
+import type { CompetitionSkillProfile } from '../ai/competition/types';
 import type { Player } from './index';
 
 // Houseguest static profile type (canonical dataset from houseguests.ts)
@@ -21,6 +22,8 @@ export interface Houseguest {
   allies: string[];
   enemies: string[];
   story: string;
+  /** Optional competition skill profile for AI simulations. */
+  competitionProfile?: CompetitionSkillProfile;
 }
 
 // Static profile fields that enrich a live Player object

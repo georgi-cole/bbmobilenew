@@ -3,6 +3,7 @@
 // Add new fields here; consumers only break if they depend on removed fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { CompetitionSkillProfile } from '../ai/competition/types';
 import type { SocialState } from '../social/types';
 import type { ActivityChannel, ActivitySource } from '../services/activityService';
 import type { SeasonArchive } from '../store/seasonArchive';
@@ -24,6 +25,8 @@ export interface Player {
   avatar: string;
   status: PlayerStatus;
   isUser?: boolean;
+  /** Optional competition skill profile for AI simulations. */
+  competitionProfile?: CompetitionSkillProfile;
   stats?: {
     hohWins: number;
     povWins: number;
