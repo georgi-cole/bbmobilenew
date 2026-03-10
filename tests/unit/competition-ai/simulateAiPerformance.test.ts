@@ -32,14 +32,14 @@ describe('simulateAiPerformance', () => {
   it('returns deterministic results for identical inputs', () => {
     const scoreA = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 42,
       playerId: 'player-1',
       profile: BASE_PROFILE,
     });
     const scoreB = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 42,
       playerId: 'player-1',
       profile: BASE_PROFILE,
@@ -69,14 +69,14 @@ describe('simulateAiPerformance', () => {
     const playerId = 'player-strong';
     const strongScore = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 1337,
       playerId,
       profile: strongProfile,
     });
     const weakScore = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 1337,
       playerId,
       profile: weakProfile,
@@ -112,14 +112,14 @@ describe('simulateAiPerformance', () => {
 
     const physicalScore = simulateAiPerformance({
       minigameKey: physicalGame.key,
-      minigame: physicalGame,
+      minigameModel: physicalGame,
       seed: 2024,
       playerId: 'player-1',
       profile,
     });
     const mentalScore = simulateAiPerformance({
       minigameKey: mentalGame.key,
-      minigame: mentalGame,
+      minigameModel: mentalGame,
       seed: 2024,
       playerId: 'player-1',
       profile,
@@ -149,14 +149,14 @@ describe('simulateAiPerformance', () => {
 
     const strongScore = simulateAiPerformance({
       minigameKey: lowerBetterGame.key,
-      minigame: lowerBetterGame,
+      minigameModel: lowerBetterGame,
       seed: 88,
       playerId: 'player-2',
       profile: strongProfile,
     });
     const weakScore = simulateAiPerformance({
       minigameKey: lowerBetterGame.key,
-      minigame: lowerBetterGame,
+      minigameModel: lowerBetterGame,
       seed: 88,
       playerId: 'player-2',
       profile: weakProfile,
@@ -180,14 +180,14 @@ describe('simulateAiPerformance', () => {
   it('uses the default profile when none is provided', () => {
     const scoreWithDefault = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 314,
       playerId: 'player-default',
       profile: getDefaultCompetitionProfile(),
     });
     const scoreWithUndefined = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
-      minigame: PRECISION_GAME,
+      minigameModel: PRECISION_GAME,
       seed: 314,
       playerId: 'player-default',
       profile: undefined,

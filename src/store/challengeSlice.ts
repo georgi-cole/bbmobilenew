@@ -285,7 +285,7 @@ export const startChallenge =
         const player = gameState?.players?.find((p) => p.id === pid);
         aiScores[pid] = simulateAiPerformance({
           minigameKey: gameEntry.key,
-          minigame: minigameModel,
+          minigameModel,
           seed: perChallengeSeed,
           playerId: pid,
           participantIndex: index,

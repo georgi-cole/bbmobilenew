@@ -2274,7 +2274,7 @@ export const startMinigame =
       if (p && !p.isUser) {
         aiScores[id] = simulateAiPerformance({
           minigameKey: opts.key,
-          minigame: model,
+          minigameModel: model,
           seed: opts.seed,
           playerId: id,
           participantIndex: index,

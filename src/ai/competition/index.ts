@@ -71,7 +71,7 @@ export interface SimulateAiPerformanceArgs {
   playerId?: string;
   participantIndex?: number;
   profile?: CompetitionSkillProfile;
-  minigame?: MinigameAiModel;
+  minigameModel?: MinigameAiModel;
   options?: {
     timeLimitSeconds?: number;
     timeLimitMs?: number;
@@ -280,10 +280,10 @@ export function simulateAiPerformance({
   playerId,
   participantIndex,
   profile,
-  minigame,
+  minigameModel,
   options,
 }: SimulateAiPerformanceArgs): number {
-  const model = minigame ?? getMinigameAiModel(minigameKey);
+  const model = minigameModel ?? getMinigameAiModel(minigameKey);
   const resolvedProfile = profile ?? getDefaultCompetitionProfile();
   const weights = model.weights ?? DEFAULT_WEIGHTS;
 
@@ -331,7 +331,7 @@ export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationAr
   const timeLimitMs = game.timeLimitMs > 0 ? game.timeLimitMs : undefined;
   return simulateAiPerformance({
     minigameKey: game.key,
-    minigame: getMinigameAiModelForGame(game),
+    minigameModel: getMinigameAiModelForGame(game),
     seed,
     participantIndex: 0,
     options: {
