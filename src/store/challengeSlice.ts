@@ -14,6 +14,7 @@ import {
   getMinigameAiModelForGame,
   simulateAiPerformance,
 } from '../ai/competition';
+import { selectNextCompetitionGame } from '../ai/competition/scheduling';
 import { applyCompetitionSeasonUpdate } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
@@ -154,6 +155,24 @@ export const startChallenge =
     const forceSeed = debugState.forceSeed;
     const gameSeed = forceSeed !== undefined ? forceSeed : seed;
 
+    const recentGameKeys = (state.challenge?.history ?? []).map((run) => run.gameKey);
+    const aliveCount = (state.game?.players ?? []).filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury',
+    ).length;
+    const lateSeasonBias = aliveCount > 0 && aliveCount <= 6;
+    const selectFromPool = (pool: GameRegistryEntry[]) =>
+      selectNextCompetitionGame({
+        seed: gameSeed,
+        games: pool,
+        recentGameKeys,
+        lateSeasonBias,
+      });
+    const pickFromRegistry = (category?: GameCategory, excludeKeys?: string[]) => {
+      const pool = getPoolByFilter({ retired: false, category, excludeKeys });
+      if (pool.length > 0) return selectFromPool(pool);
+      return pickRandomGame(gameSeed, { category, excludeKeys });
+    };
+
     let gameEntry: GameRegistryEntry;
     if (forceKey) {
       const found = getGame(forceKey);
@@ -172,7 +191,7 @@ export const startChallenge =
             gameEntry = found;
           } else {
             // Unknown or missing key — fall back to random selection.
-            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
           break;
         }
@@ -183,42 +202,35 @@ export const startChallenge =
             .map((k) => getGame(k))
             .filter((g): g is GameRegistryEntry => g !== undefined && !g.retired);
           if (pool.length > 0) {
-            // Weighted deterministic pick from the user-curated pool.
-            const weighted: GameRegistryEntry[] = [];
-            for (const entry of pool) {
-              for (let i = 0; i < entry.weight; i++) weighted.push(entry);
-            }
-            const rng = mulberry32(gameSeed >>> 0);
-            gameEntry = weighted[Math.floor(rng() * weighted.length)];
+            gameEntry = selectFromPool(pool);
           } else {
-            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
           break;
         }
 
         case 'arcade-only':
-          gameEntry = pickRandomGame(gameSeed, { category: 'arcade', excludeKeys: opts.excludeKeys });
+          gameEntry = pickFromRegistry('arcade', opts.excludeKeys);
           break;
 
         case 'trivia-only':
-          gameEntry = pickRandomGame(gameSeed, { category: 'trivia', excludeKeys: opts.excludeKeys });
+          gameEntry = pickFromRegistry('trivia', opts.excludeKeys);
           break;
 
         case 'endurance-only':
-          gameEntry = pickRandomGame(gameSeed, { category: 'endurance', excludeKeys: opts.excludeKeys });
+          gameEntry = pickFromRegistry('endurance', opts.excludeKeys);
           break;
 
         case 'logic-only':
-          gameEntry = pickRandomGame(gameSeed, { category: 'logic', excludeKeys: opts.excludeKeys });
+          gameEntry = pickFromRegistry('logic', opts.excludeKeys);
           break;
 
         case 'retired': {
           const retiredPool = getPoolByFilter({ retired: true });
           if (retiredPool.length > 0) {
-            const rng = mulberry32(gameSeed >>> 0);
-            gameEntry = retiredPool[Math.floor(rng() * retiredPool.length)];
+            gameEntry = selectFromPool(retiredPool);
           } else {
-            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
           break;
         }
@@ -229,7 +241,7 @@ export const startChallenge =
           // (there is no 'none' or 'misc' category), so this mode falls back to
           // fully-random selection.  Future registry expansions that add uncategorised
           // entries should filter them here with getPoolByFilter.
-          gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
         }
 
@@ -241,25 +253,17 @@ export const startChallenge =
           const exclude = [...recentKeys, ...(opts.excludeKeys ?? [])];
           const uniquePool = getPoolByFilter({ retired: false, category: opts.category, excludeKeys: exclude });
           if (uniquePool.length > 0) {
-            const weighted: GameRegistryEntry[] = [];
-            for (const entry of uniquePool) {
-              for (let i = 0; i < entry.weight; i++) weighted.push(entry);
-            }
-            const rng = mulberry32(gameSeed >>> 0);
-            gameEntry = weighted[Math.floor(rng() * weighted.length)];
+            gameEntry = selectFromPool(uniquePool);
           } else {
             // Pool exhausted — fall back to unconstrained random.
-            gameEntry = pickRandomGame(gameSeed, { category: opts.category, excludeKeys: opts.excludeKeys });
+            gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           }
           break;
         }
 
         case 'random-games':
         default:
-          gameEntry = pickRandomGame(gameSeed, {
-            category: opts.category,
-            excludeKeys: opts.excludeKeys,
-          });
+          gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
       }
     }
