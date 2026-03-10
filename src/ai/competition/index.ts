@@ -129,8 +129,8 @@ function resolveScoreRange(
   const hasMin = typeof model.minScore === 'number';
   const hasMax = typeof model.maxScore === 'number';
 
-  let minScore = hasMin ? model.minScore! : 0;
-  let maxScore = hasMax ? model.maxScore! : DEFAULT_SCORE_MAX;
+  let minScore = model.minScore ?? 0;
+  let maxScore = model.maxScore ?? DEFAULT_SCORE_MAX;
 
   if (!hasMax && timeLimitSeconds && model.scoreDirection === 'higher-is-better') {
     maxScore = Math.max(

@@ -66,18 +66,19 @@ describe('simulateAiPerformance', () => {
       nerve: 20,
     };
 
+    const playerId = 'player-strong';
     const strongScore = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
       minigame: PRECISION_GAME,
       seed: 1337,
-      playerId: 'player-strong',
+      playerId,
       profile: strongProfile,
     });
     const weakScore = simulateAiPerformance({
       minigameKey: PRECISION_GAME.key,
       minigame: PRECISION_GAME,
       seed: 1337,
-      playerId: 'player-strong',
+      playerId,
       profile: weakProfile,
     });
 
