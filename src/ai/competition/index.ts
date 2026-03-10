@@ -24,6 +24,10 @@ const DEFAULT_WEIGHTS: CompetitionSkillWeights = {
   luck: 1,
 };
 
+const MINIGAME_AI_REGISTRY: Record<string, MinigameAiModel> = Object.fromEntries(
+  Object.entries(minigameAiRegistry).map(([key, model]) => [key, cloneMinigameAiModel(model)]),
+);
+
 const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
   category: 'hybrid',
   scoreDirection: 'higher-is-better',
@@ -67,13 +71,13 @@ export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
 }
 
 export function getMinigameAiModel(key: string): MinigameAiModel {
-  const registered = minigameAiRegistry[key];
+  const registered = MINIGAME_AI_REGISTRY[key];
   return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
 }
 
 /** Register or override metadata for a minigame at runtime (tests + future tooling). */
 export function registerMinigameAiModel(model: MinigameAiModel): void {
-  minigameAiRegistry[model.key] = cloneMinigameAiModel(model);
+  MINIGAME_AI_REGISTRY[model.key] = cloneMinigameAiModel(model);
 }
 
 export function simulateTapRaceAiPerformance({
