@@ -204,6 +204,19 @@ function computeWeightedSkill(
   return clamp(weightedTotal / (weightSum * 100), 0, 1);
 }
 
+function mapPerformanceToScore(
+  scoreDirection: MinigameAiModel['scoreDirection'],
+  minScore: number,
+  maxScore: number,
+  performance: number,
+): number {
+  const span = maxScore - minScore;
+  if (scoreDirection === 'lower-is-better') {
+    return maxScore - performance * span;
+  }
+  return minScore + performance * span;
+}
+
 export function simulateAiPerformance({
   minigameKey,
   seed,
@@ -228,11 +241,7 @@ export function simulateAiPerformance({
   const performance = clamp(expectedSkill + deviation, 0, 1);
 
   const { minScore, maxScore } = resolveScoreRange(model, options);
-  const span = maxScore - minScore;
-  const rawScore =
-    model.scoreDirection === 'lower-is-better'
-      ? maxScore - performance * span
-      : minScore + performance * span;
+  const rawScore = mapPerformanceToScore(model.scoreDirection, minScore, maxScore, performance);
 
   return Math.round(rawScore);
 }
