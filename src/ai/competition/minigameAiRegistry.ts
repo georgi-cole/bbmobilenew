@@ -1,6 +1,7 @@
 import type { CompetitionSkillWeights, MinigameAiModel } from './types';
 
 const VOLATILITY_ENDURANCE = 0.2;
+const VOLATILITY_ENDURANCE_BALANCE = 0.25;
 const VOLATILITY_PHYSICAL = 0.3;
 const VOLATILITY_PUZZLE = 0.35;
 const VOLATILITY_PRECISION = 0.4;
@@ -78,6 +79,22 @@ const WEIGHTS_HYBRID: CompetitionSkillWeights = {
   precision: 0.25,
   nerve: 0.1,
   luck: 0.05,
+};
+
+const WEIGHTS_TETRIS: CompetitionSkillWeights = {
+  physical: 0.1,
+  mental: 0.4,
+  precision: 0.4,
+  nerve: 0.1,
+  luck: 0,
+};
+
+const WEIGHTS_MEMORY_SPEED: CompetitionSkillWeights = {
+  physical: 0,
+  mental: 0.4,
+  precision: 0.4,
+  nerve: 0.2,
+  luck: 0,
 };
 
 export const minigameAiRegistry: Record<string, MinigameAiModel> = {
@@ -169,14 +186,14 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     key: 'pressurePlank',
     category: 'endurance',
     scoreDirection: 'higher-is-better',
-    volatility: 0.25,
+    volatility: VOLATILITY_ENDURANCE_BALANCE,
     weights: WEIGHTS_ENDURANCE_BALANCE,
   },
   rainBarrelBalance: {
     key: 'rainBarrelBalance',
     category: 'endurance',
     scoreDirection: 'higher-is-better',
-    volatility: 0.25,
+    volatility: VOLATILITY_ENDURANCE_BALANCE,
     weights: WEIGHTS_ENDURANCE_BALANCE,
   },
   memoryZipline: {
@@ -275,13 +292,7 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     category: 'precision',
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PUZZLE,
-    weights: {
-      physical: 0.1,
-      mental: 0.4,
-      precision: 0.4,
-      nerve: 0.1,
-      luck: 0,
-    },
+    weights: WEIGHTS_TETRIS,
   },
   travelingDots: {
     key: 'travelingDots',
@@ -316,13 +327,7 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     category: 'precision',
     scoreDirection: 'lower-is-better',
     volatility: VOLATILITY_PRECISION,
-    weights: {
-      physical: 0,
-      mental: 0.4,
-      precision: 0.4,
-      nerve: 0.2,
-      luck: 0,
-    },
+    weights: WEIGHTS_MEMORY_SPEED,
   },
   dontGoOver: {
     key: 'dontGoOver',
