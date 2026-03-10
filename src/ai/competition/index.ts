@@ -93,19 +93,19 @@ function applyScoringParamsToModel(
   let maxScore = model.maxScore;
 
   if (game.scoringAdapter === 'lowerBetter' || game.scoringAdapter === 'timeToPoints') {
-    if (minScore == null && typeof params.targetMs === 'number') {
+    if (minScore === undefined && typeof params.targetMs === 'number') {
       minScore = params.targetMs;
     }
-    if (maxScore == null && typeof params.maxMs === 'number') {
+    if (maxScore === undefined && typeof params.maxMs === 'number') {
       maxScore = params.maxMs;
     }
   }
 
   if (game.scoringAdapter === 'raw') {
-    if (minScore == null && typeof params.minRaw === 'number') {
+    if (minScore === undefined && typeof params.minRaw === 'number') {
       minScore = params.minRaw;
     }
-    if (maxScore == null && typeof params.maxRaw === 'number') {
+    if (maxScore === undefined && typeof params.maxRaw === 'number') {
       maxScore = params.maxRaw;
     }
   }
