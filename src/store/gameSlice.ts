@@ -191,8 +191,12 @@ function applyCompetitionSeasonUpdateToState(
   );
 }
 
+function getAlivePlayers(state: GameState): Player[] {
+  return state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+}
+
 function resolveCompetitionParticipants(state: GameState): string[] {
-  const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  const alive = getAlivePlayers(state);
   if (state.phase === 'hoh_comp' && state.prevHohId) {
     const eligible = alive.filter((p) => p.id !== state.prevHohId);
     return (eligible.length > 0 ? eligible : alive).map((p) => p.id);
@@ -467,9 +471,7 @@ const gameSlice = createSlice({
       // ── Auto-advance phase based on context ──────────────────────────────
       // Apply the winner inline so minigameResult is never left set in state,
       // which would risk being consumed by a later advance() call.
-      const alive = state.players.filter(
-        (p) => p.status !== 'evicted' && p.status !== 'jury',
-      );
+      const alive = getAlivePlayers(state);
       if (state.phase === 'hoh_comp') {
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
@@ -515,7 +517,7 @@ const gameSlice = createSlice({
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state);
       const hasScores = scores !== undefined;
       const resolvedScores = scores ?? buildFallbackScores(resolvedParticipants, winnerId);
-      // includePlacementBonuses takes precedence; otherwise use scores as the heuristic.
+      // includePlacementBonuses takes precedence; scores imply we have ranking info.
       const usePlacementBonuses = includePlacementBonuses ?? hasScores;
       let appliedWinner = false;
       if (state.phase === 'hoh_comp') {

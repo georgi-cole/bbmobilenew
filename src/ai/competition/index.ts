@@ -273,10 +273,10 @@ export function updateCompetitionSeasonStateByPlayerId(
   } = update;
   const participantSet = new Set(participants);
   // When placement bonuses are disabled we treat scores as neutral (all zero).
-  const scoresByPlayerId = scores ?? {};
+  const scoresOrDefault = scores ?? {};
   const ranked = includePlacementBonuses
     ? participants
-      .map((id) => ({ id, score: scoresByPlayerId[id] ?? 0 }))
+      .map((id) => ({ id, score: scoresOrDefault[id] ?? 0 }))
       .sort((a, b) => b.score - a.score)
     : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
