@@ -272,10 +272,10 @@ export function updateCompetitionSeasonStateByPlayerId(
     includePlacementBonuses = true,
   } = update;
   const participantSet = new Set(participants);
-  const resolvedScores = scores ?? {};
+  const scoresByPlayerId = scores ?? {};
   const ranked = includePlacementBonuses
     ? participants
-      .map((id) => ({ id, score: resolvedScores[id] ?? 0 }))
+      .map((id) => ({ id, score: scoresByPlayerId[id] ?? 0 }))
       .sort((a, b) => b.score - a.score)
     : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
