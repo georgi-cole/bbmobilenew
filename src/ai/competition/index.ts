@@ -130,6 +130,7 @@ export interface CompetitionSeasonModifiers {
 export interface CompetitionSeasonUpdateInput {
   playerIds: string[];
   participants: string[];
+  /** Optional scores for placement bonuses; omit when only the winner is known. */
   scores?: Record<string, number>;
   winnerId?: string;
   /** When false, only winner boosts + fatigue are applied (no placement bonuses). */
