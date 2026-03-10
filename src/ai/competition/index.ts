@@ -105,10 +105,10 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function hashString(value: string): number {
-  let hash = 0x811c9dc5 >>> 0;
+  let hash = 0x811c9dc5 >>> 0; // FNV-1a 32-bit offset basis
   for (let i = 0; i < value.length; i++) {
     hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
+    hash = Math.imul(hash, 0x01000193) >>> 0; // FNV-1a 32-bit prime
   }
   return hash;
 }
