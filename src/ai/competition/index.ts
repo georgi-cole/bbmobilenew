@@ -55,6 +55,9 @@ export interface TapRaceAiSimulationArgs {
   minigameKey: string;
   seed: number;
   timeLimitSeconds?: number;
+  playerId?: string;
+  participantIndex?: number;
+  profile?: CompetitionSkillProfile;
 }
 
 export interface ChallengeAiSimulationArgs {
@@ -244,6 +247,7 @@ export function simulateAiPerformance({
   const weights = model.weights ?? DEFAULT_WEIGHTS;
 
   const expectedSkill = computeWeightedSkill(resolvedProfile, weights);
+  // Use player IDs (or participant index) so each AI gets a stable, independent roll.
   const offset =
     typeof playerId === 'string' && playerId.length > 0
       ? hashString(playerId)
@@ -264,6 +268,9 @@ export function simulateTapRaceAiPerformance({
   minigameKey,
   seed,
   timeLimitSeconds,
+  playerId,
+  participantIndex,
+  profile,
 }: TapRaceAiSimulationArgs): number {
   const timeLimit =
     typeof timeLimitSeconds === 'number'
@@ -272,7 +279,9 @@ export function simulateTapRaceAiPerformance({
   return simulateAiPerformance({
     minigameKey,
     seed,
-    participantIndex: 0,
+    playerId,
+    participantIndex,
+    profile,
     options: { timeLimitSeconds: timeLimit },
   });
 }
