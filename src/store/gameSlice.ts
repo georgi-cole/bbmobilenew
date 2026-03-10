@@ -199,7 +199,11 @@ function resolveCompetitionParticipants(state: GameState): string[] {
   const alive = getAlivePlayers(state);
   if (state.phase === 'hoh_comp' && state.prevHohId) {
     const eligible = alive.filter((p) => p.id !== state.prevHohId);
-    return (eligible.length > 0 ? eligible : alive).map((p) => p.id);
+    if (eligible.length > 0) {
+      return eligible.map((p) => p.id);
+    }
+    // Edge case: only the outgoing HOH remains alive; allow them for updates.
+    return alive.map((p) => p.id);
   }
   return alive.map((p) => p.id);
 }

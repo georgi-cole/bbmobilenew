@@ -272,7 +272,7 @@ export function updateCompetitionSeasonStateByPlayerId(
     includePlacementBonuses = true,
   } = update;
   const participantSet = new Set(participants);
-  // When placement bonuses are disabled we treat scores as neutral (all zero).
+  // When placement bonuses are disabled we ignore scores for placement (default to zero).
   const scoresOrDefault = scores ?? {};
   const ranked = includePlacementBonuses
     ? participants
