@@ -72,6 +72,7 @@ const BASELINE_SKILL_KEYS: Array<keyof CompetitionSkillProfile> = [
   'luck',
 ];
 const CLOSE_MARGIN_DEFAULT = 50;
+const ARCHETYPE_DIFFERENTIATION_THRESHOLD = 5;
 const CATEGORY_BASELINE: Record<CompetitionCategory, CategoryCompetitionTelemetry> = {
   physical: { category: 'physical', runs: 0, winsByPlayer: {}, winsByArchetype: {}, consecutiveRepeats: 0 },
   mental: { category: 'mental', runs: 0, winsByPlayer: {}, winsByArchetype: {}, consecutiveRepeats: 0 },
@@ -104,15 +105,17 @@ export function summarizeCompetitionTelemetry(
 
   for (const run of orderedRuns) {
     const scores = collectScores(run);
-    const participants = run.participants.length > 0 ? run.participants : Object.keys(scores);
-    const winnerId = run.winnerId || participants[0] || '';
-    const ranked = [...participants].sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0));
-    const winnerScore = scores[winnerId] ?? scores[ranked[0]] ?? 0;
+    const participantList = run.participants.length > 0 ? run.participants : Object.keys(scores);
+    const ranked = [...participantList].sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0));
+    const derivedWinnerId = ranked[0] ?? participantList[0] ?? '';
+    const winnerId = run.winnerId || derivedWinnerId;
+    const winnerScore = scores[winnerId] ?? scores[derivedWinnerId] ?? 0;
     const highestScore = scores[ranked[0]] ?? 0;
     const secondScore = scores[ranked[1]] ?? highestScore;
     const margin = Math.max(0, highestScore - secondScore);
-    const averageScore = participants.length > 0
-      ? participants.reduce((sum, id) => sum + (scores[id] ?? 0), 0) / participants.length
+    const scoredParticipants = participantList.filter((id) => scores[id] !== undefined);
+    const averageScore = scoredParticipants.length > 0
+      ? scoredParticipants.reduce((sum, id) => sum + (scores[id] ?? 0), 0) / scoredParticipants.length
       : 0;
 
     totalMargin += margin;
@@ -328,7 +331,10 @@ function getPlayerArchetype(
   const profile = profiles?.[playerId];
   if (!profile) return null;
 
-  const enduranceScore = (profile.physical + profile.nerve + profile.consistency) / 3;
+  // Endurance archetype blends physical strength, steadiness (nerve), and repeatability.
+  const enduranceSkills = [profile.physical, profile.nerve, profile.consistency];
+  const enduranceScore =
+    enduranceSkills.reduce((sum, value) => sum + value, 0) / enduranceSkills.length;
   const scores: Record<CompetitionCategory, number> = {
     physical: profile.physical,
     mental: profile.mental,
@@ -341,7 +347,8 @@ function getPlayerArchetype(
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   if (sorted.length < 2) return 'hybrid';
   const [topCategory, topScore] = sorted[0];
-  const [, runnerUp] = sorted[1];
-  if (topScore - runnerUp <= 5) return 'hybrid';
+  const runnerUp = sorted[1]?.[1];
+  if (runnerUp === undefined) return 'hybrid';
+  if (topScore - runnerUp <= ARCHETYPE_DIFFERENTIATION_THRESHOLD) return 'hybrid';
   return topCategory as CompetitionCategory;
 }

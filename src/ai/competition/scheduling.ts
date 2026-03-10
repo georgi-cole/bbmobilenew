@@ -39,9 +39,18 @@ export function selectNextCompetitionGame({
     throw new Error('[competitionScheduler] No games available for selection');
   }
 
+  const categoryCache = new Map<string, CompetitionCategory>();
+  const getCategory = (key: string) => {
+    const cached = categoryCache.get(key);
+    if (cached) return cached;
+    const category = getMinigameAiModel(key).category;
+    categoryCache.set(key, category);
+    return category;
+  };
+
   const recentCategories = recentGameKeys
     .slice(0, recentWindow)
-    .map((key) => getMinigameAiModel(key).category);
+    .map((key) => getCategory(key));
   const categoryCounts = countCategories(recentCategories);
   const overusedCategories = new Set(
     Object.entries(categoryCounts)
@@ -50,15 +59,14 @@ export function selectNextCompetitionGame({
   );
 
   const filteredPool = games.filter(
-    (game) => !overusedCategories.has(getMinigameAiModel(game.key).category),
+    (game) => !overusedCategories.has(getCategory(game.key)),
   );
   const pool = filteredPool.length > 0 ? filteredPool : games;
 
   const weightedPool = pool.map((game) => {
-    const category = getMinigameAiModel(game.key).category;
+    const category = getCategory(game.key);
     const count = categoryCounts[category] ?? 0;
-    const recencyMultiplier =
-      count === 0 ? RECENT_WEIGHT_BONUS : count === 1 ? RECENT_WEIGHT_PENALTY : REPEAT_WEIGHT_PENALTY;
+    const recencyMultiplier = getRecencyMultiplier(count);
     const lateSeasonMultiplier = lateSeasonBias ? LATE_SEASON_BIAS[category] ?? 1 : 1;
     const weight = Math.max(0.1, game.weight) * recencyMultiplier * lateSeasonMultiplier;
     return { game, weight };
@@ -81,7 +89,7 @@ function weightedPick(
   let cumulative = 0;
   for (const entry of entries) {
     cumulative += entry.weight;
-    if (roll <= cumulative) return entry.game;
+    if (roll < cumulative) return entry.game;
   }
 
   return entries[entries.length - 1].game;
@@ -102,4 +110,10 @@ function countCategories(categories: CompetitionCategory[]): Record<CompetitionC
       hybrid: 0,
     },
   );
+}
+
+function getRecencyMultiplier(recentCount: number): number {
+  if (recentCount <= 0) return RECENT_WEIGHT_BONUS;
+  if (recentCount === 1) return RECENT_WEIGHT_PENALTY;
+  return REPEAT_WEIGHT_PENALTY;
 }

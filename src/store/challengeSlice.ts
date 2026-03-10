@@ -15,7 +15,7 @@ import {
   simulateAiPerformance,
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
-import { applyCompetitionSeasonUpdate } from './gameSlice';
+import { applyCompetitionSeasonUpdate, selectAlivePlayers } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -74,6 +74,10 @@ const initialState: ChallengeState = {
   nextNonce: 1,
   debug: {},
 };
+
+const LATE_SEASON_PLAYER_THRESHOLD = 6;
+// Keep a modest history buffer in case the scheduler window expands.
+const RECENT_HISTORY_LIMIT = 10;
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
@@ -155,16 +159,18 @@ export const startChallenge =
     const forceSeed = debugState.forceSeed;
     const gameSeed = forceSeed !== undefined ? forceSeed : seed;
 
-    const recentGameKeys = (state.challenge?.history ?? []).map((run) => run.gameKey);
-    const aliveCount = (state.game?.players ?? []).filter(
-      (player) => player.status !== 'evicted' && player.status !== 'jury',
-    ).length;
-    const lateSeasonBias = aliveCount > 0 && aliveCount <= 6;
+    const historyGameKeys = (state.challenge?.history ?? [])
+      .slice(0, RECENT_HISTORY_LIMIT)
+      .map((run) => run.gameKey);
+    // Late-season bias is based on active competitors (jury members no longer play comps).
+    const activeCompetitorCount = selectAlivePlayers(state).length;
+    const lateSeasonBias =
+      activeCompetitorCount > 0 && activeCompetitorCount <= LATE_SEASON_PLAYER_THRESHOLD;
     const selectFromPool = (pool: GameRegistryEntry[]) =>
       selectNextCompetitionGame({
         seed: gameSeed,
         games: pool,
-        recentGameKeys,
+        recentGameKeys: historyGameKeys,
         lateSeasonBias,
       });
     const pickFromRegistry = (category?: GameCategory, excludeKeys?: string[]) => {
