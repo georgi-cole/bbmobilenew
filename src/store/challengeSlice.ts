@@ -244,9 +244,10 @@ export const startChallenge =
         case 'misc': {
           // "Misc" — intended for games with no category or multiple categories.
           // The registry currently assigns a single GameCategory to every entry
-          // (there is no 'none' or 'misc' category), so this mode falls back to
-          // fully-random selection.  Future registry expansions that add uncategorised
-          // entries should filter them here with getPoolByFilter.
+          // (there is no 'none' or 'misc' category), so this mode currently falls
+          // back to the standard scheduler-based selection via pickFromRegistry.
+          // Future registry expansions that add uncategorised entries should filter
+          // them here with getPoolByFilter instead of using the scheduler.
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys);
           break;
         }
