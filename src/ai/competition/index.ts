@@ -1,6 +1,7 @@
 import type { GameRegistryEntry } from '../../minigames/registry';
 import { DEFAULT_TAPRACE_OPTIONS, simulateTapRaceAI } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
+import { minigameAiRegistry } from './minigameAiRegistry';
 import type { CompetitionSkillProfile, CompetitionSkillWeights, MinigameAiModel } from './types';
 
 const DEFAULT_PROFILE: CompetitionSkillProfile = {
@@ -23,7 +24,9 @@ const DEFAULT_WEIGHTS: CompetitionSkillWeights = {
   luck: 1,
 };
 
-const MINIGAME_AI_REGISTRY: Record<string, MinigameAiModel> = {};
+const MINIGAME_AI_REGISTRY: Record<string, MinigameAiModel> = Object.fromEntries(
+  Object.entries(minigameAiRegistry).map(([key, model]) => [key, cloneMinigameAiModel(model)]),
+);
 
 const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
   category: 'hybrid',
@@ -72,6 +75,7 @@ export function getMinigameAiModel(key: string): MinigameAiModel {
   return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
 }
 
+/** Register or override metadata for a minigame at runtime (tests + future tooling). */
 export function registerMinigameAiModel(model: MinigameAiModel): void {
   MINIGAME_AI_REGISTRY[model.key] = cloneMinigameAiModel(model);
 }
@@ -100,6 +104,9 @@ export function simulateTapRaceAiPerformance({
 }
 
 export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
+  // PR3: ensure metadata is retrievable alongside the legacy scoring path.
+  // TODO(PR4): use minigame metadata + competition profiles to drive AI outcomes.
+  getMinigameAiModel(game.key);
   return simulateLegacyAiScore(game, seed);
 }
 

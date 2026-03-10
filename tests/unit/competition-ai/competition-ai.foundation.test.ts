@@ -7,7 +7,8 @@ import {
   simulateChallengeAiScore,
   simulateTapRaceAiPerformance,
 } from '../../../src/ai/competition';
-import type { GameRegistryEntry } from '../../../src/minigames/registry';
+import { getAllGames, type GameRegistryEntry } from '../../../src/minigames/registry';
+import { minigameAiRegistry } from '../../../src/ai/competition/minigameAiRegistry';
 import { mulberry32 } from '../../../src/store/rng';
 
 describe('competition AI foundation', () => {
@@ -70,6 +71,14 @@ describe('competition AI foundation', () => {
       expect(warnSpy).not.toHaveBeenCalled();
     }
     warnSpy.mockRestore();
+  });
+
+  it('registers AI metadata for every minigame in the registry', () => {
+    const missingKeys = getAllGames()
+      .map((game) => game.key)
+      .filter((key) => minigameAiRegistry[key] === undefined);
+
+    expect(missingKeys).toEqual([]);
   });
 });
 
