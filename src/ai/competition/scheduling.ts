@@ -6,7 +6,17 @@ import type { CompetitionCategory } from './types';
 export interface CompetitionScheduleInput {
   seed: number;
   games: GameRegistryEntry[];
+  /**
+   * Keys of previously played games, ordered from most recent to least recent.
+   *
+   * The scheduler only considers the first `recentWindow` entries, so callers
+   * must put the most recent games at the start of this array.
+   */
   recentGameKeys?: string[];
+  /**
+   * Number of most recent games (from `recentGameKeys`, starting at index 0)
+   * to consider when applying recency penalties/bonuses.
+   */
   recentWindow?: number;
   maxCategoryRepeats?: number;
   lateSeasonBias?: boolean;
