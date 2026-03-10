@@ -2,7 +2,15 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState, SpectatorActiveState } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
-import { getDefaultCompetitionProfile, getMinigameAiModel, simulateAiPerformance } from '../ai/competition';
+import {
+  getCompetitionSeasonState,
+  getDefaultCompetitionProfile,
+  getDefaultCompetitionSeasonState,
+  getMinigameAiModel,
+  simulateAiPerformance,
+  updateCompetitionSeasonStateByPlayerId,
+  type CompetitionSeasonUpdateInput,
+} from '../ai/competition';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
@@ -76,6 +84,12 @@ function buildInitialPlayers(): Player[] {
   return [buildUserPlayer(), ...pickHouseguests(rosterSize)];
 }
 
+function buildInitialCompetitionSeasonState(players: Player[]): Record<string, ReturnType<typeof getDefaultCompetitionSeasonState>> {
+  return Object.fromEntries(players.map((player) => [player.id, getDefaultCompetitionSeasonState()]));
+}
+
+const initialPlayers = buildInitialPlayers();
+
 const initialState: GameState = {
   season: 1,
   week: 1,
@@ -104,7 +118,8 @@ const initialState: GameState = {
   voteResults: null,
   evictionSplashId: null,
   pendingEviction: null,
-  players: buildInitialPlayers(),
+  players: initialPlayers,
+  competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(initialPlayers),
   tvFeed: [
     { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
@@ -154,6 +169,19 @@ function incrementTimesNominated(state: GameState, playerId: string) {
     if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
     p.stats.timesNominated += 1;
   }
+}
+
+type CompetitionSeasonUpdatePayload = Omit<CompetitionSeasonUpdateInput, 'playerIds'>;
+
+function applyCompetitionSeasonUpdateToState(
+  state: GameState,
+  payload: CompetitionSeasonUpdatePayload,
+) {
+  const playerIds = state.players.map((player) => player.id);
+  state.competitionSeasonStateByPlayerId = updateCompetitionSeasonStateByPlayerId(
+    state.competitionSeasonStateByPlayerId,
+    { playerIds, ...payload },
+  );
 }
 
 /**
@@ -406,6 +434,12 @@ const gameSlice = createSlice({
         }
       }
 
+      applyCompetitionSeasonUpdateToState(state, {
+        participants: session.participants,
+        scores,
+        winnerId,
+      });
+
       state.pendingMinigame = null;
 
       // ── Auto-advance phase based on context ──────────────────────────────
@@ -468,6 +502,17 @@ const gameSlice = createSlice({
         console.log('[gameSlice] applyMinigameWinner: applying POV winner', winnerId);
         state.phase = applyPovWinner(state, winnerId, alive);
       }
+    },
+
+    /**
+     * Apply competition season-state updates after a deterministic competition result.
+     * Used by the challenge flow to keep modifiers in sync with minigame outcomes.
+     */
+    applyCompetitionSeasonUpdate(
+      state,
+      action: PayloadAction<CompetitionSeasonUpdatePayload>,
+    ) {
+      applyCompetitionSeasonUpdateToState(state, action.payload);
     },
 
     /**
@@ -1384,6 +1429,7 @@ const gameSlice = createSlice({
      */
     replacePlayers(state, action: PayloadAction<Player[]>) {
       state.players = action.payload;
+      state.competitionSeasonStateByPlayerId = buildInitialCompetitionSeasonState(action.payload);
     },
     /** Reset game state with a fresh random roster (debug only). */
     resetGame(state, action: PayloadAction<SeasonArchive[] | undefined>) {
@@ -1431,6 +1477,7 @@ const gameSlice = createSlice({
         evictionSplashId: null,
         pendingEviction: null,
         players: freshPlayers,
+        competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
         tvFeed: [
           {
             id: 'e0',
@@ -2130,6 +2177,7 @@ export const {
   completeMinigame,
   skipMinigame,
   applyMinigameWinner,
+  applyCompetitionSeasonUpdate,
   applyF3MinigameWinner,
   updateGamePRs,
   advance,
@@ -2279,6 +2327,7 @@ export const startMinigame =
           playerId: id,
           participantIndex: index,
           profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+          seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
           options: { timeLimitSeconds: opts.options.timeLimit },
         });
       }
@@ -2303,6 +2352,7 @@ export const startMinigame =
       // minigameResult that could later be consumed by an unrelated advance().
       const winnerId = determineWinner(opts.participants, aiScores);
       const result: MinigameResult = { seedUsed: opts.seed, scores: aiScores, winnerId };
+      dispatch(applyCompetitionSeasonUpdate({ participants: opts.participants, scores: aiScores, winnerId }));
       return result;
     }
 

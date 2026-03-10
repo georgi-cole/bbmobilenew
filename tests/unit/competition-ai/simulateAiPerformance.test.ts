@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  getDefaultCompetitionSeasonState,
   getDefaultCompetitionProfile,
   simulateAiPerformance,
   type CompetitionSkillProfile,
@@ -28,6 +29,12 @@ const PRECISION_GAME: MinigameAiModel = {
   weights: { physical: 0, mental: 0, precision: 1, nerve: 0, luck: 0 },
 };
 
+const STABLE_PRECISION_GAME: MinigameAiModel = {
+  ...PRECISION_GAME,
+  key: 'stable-precision-game',
+  volatility: 0,
+};
+
 describe('simulateAiPerformance', () => {
   it('returns deterministic results for identical inputs', () => {
     const scoreA = simulateAiPerformance({
@@ -43,6 +50,28 @@ describe('simulateAiPerformance', () => {
       seed: 42,
       playerId: 'player-1',
       profile: BASE_PROFILE,
+    });
+
+    expect(scoreA).toBe(scoreB);
+  });
+
+  it('remains deterministic with identical season state', () => {
+    const seasonState = { form: 2, confidence: -1, fatigue: 1 };
+    const scoreA = simulateAiPerformance({
+      minigameKey: PRECISION_GAME.key,
+      minigameModel: PRECISION_GAME,
+      seed: 42,
+      playerId: 'player-1',
+      profile: BASE_PROFILE,
+      seasonState,
+    });
+    const scoreB = simulateAiPerformance({
+      minigameKey: PRECISION_GAME.key,
+      minigameModel: PRECISION_GAME,
+      seed: 42,
+      playerId: 'player-1',
+      profile: BASE_PROFILE,
+      seasonState,
     });
 
     expect(scoreA).toBe(scoreB);
@@ -194,5 +223,83 @@ describe('simulateAiPerformance', () => {
     });
 
     expect(scoreWithDefault).toBe(scoreWithUndefined);
+  });
+
+  it('uses neutral season modifiers when none are provided', () => {
+    const scoreWithDefault = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 800,
+      playerId: 'player-default',
+      profile: BASE_PROFILE,
+      seasonState: getDefaultCompetitionSeasonState(),
+    });
+    const scoreWithUndefined = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 800,
+      playerId: 'player-default',
+      profile: BASE_PROFILE,
+      seasonState: undefined,
+    });
+
+    expect(scoreWithDefault).toBe(scoreWithUndefined);
+  });
+
+  it('nudges performance upward with positive season form/confidence', () => {
+    const neutralScore = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 901,
+      playerId: 'player-boost',
+      profile: BASE_PROFILE,
+      seasonState: { form: 0, confidence: 0, fatigue: 0 },
+    });
+    const boostedScore = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 901,
+      playerId: 'player-boost',
+      profile: BASE_PROFILE,
+      seasonState: { form: 5, confidence: 3, fatigue: 0 },
+    });
+
+    expect(boostedScore).toBeGreaterThan(neutralScore);
+  });
+
+  it('nudges performance downward with higher fatigue', () => {
+    const neutralScore = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 902,
+      playerId: 'player-fatigue',
+      profile: BASE_PROFILE,
+      seasonState: { form: 0, confidence: 0, fatigue: 0 },
+    });
+    const fatiguedScore = simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 902,
+      playerId: 'player-fatigue',
+      profile: BASE_PROFILE,
+      seasonState: { form: 0, confidence: 0, fatigue: 5 },
+    });
+
+    expect(fatiguedScore).toBeLessThan(neutralScore);
+  });
+
+  it('does not mutate the base competition profile', () => {
+    const profile = { ...BASE_PROFILE, precision: 60 };
+    const snapshot = { ...profile };
+    simulateAiPerformance({
+      minigameKey: STABLE_PRECISION_GAME.key,
+      minigameModel: STABLE_PRECISION_GAME,
+      seed: 777,
+      playerId: 'player-safe',
+      profile,
+      seasonState: { form: 3, confidence: 1, fatigue: 2 },
+    });
+
+    expect(profile).toEqual(snapshot);
   });
 });

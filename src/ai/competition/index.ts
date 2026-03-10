@@ -2,7 +2,12 @@ import type { GameRegistryEntry } from '../../minigames/registry';
 import { DEFAULT_TAPRACE_OPTIONS } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
 import { minigameAiRegistry } from './minigameAiRegistry';
-import type { CompetitionSkillProfile, CompetitionSkillWeights, MinigameAiModel } from './types';
+import type {
+  CompetitionSeasonState,
+  CompetitionSkillProfile,
+  CompetitionSkillWeights,
+  MinigameAiModel,
+} from './types';
 
 const DEFAULT_PROFILE: CompetitionSkillProfile = {
   overall: 50,
@@ -23,6 +28,42 @@ const DEFAULT_WEIGHTS: CompetitionSkillWeights = {
   nerve: 1,
   luck: 1,
 };
+
+const DEFAULT_SEASON_STATE: CompetitionSeasonState = {
+  form: 0,
+  confidence: 0,
+  fatigue: 0,
+};
+
+const SEASON_STATE_BOUNDS = {
+  form: { min: -5, max: 5 },
+  confidence: { min: -3, max: 3 },
+  fatigue: { min: 0, max: 5 },
+} as const;
+
+const SEASON_MODIFIER_WEIGHTS = {
+  form: 0.01,
+  confidence: 0.008,
+  fatigue: 0.01,
+} as const;
+
+const SEASON_DECAY = {
+  form: 0.5,
+  confidence: 0.5,
+  fatigueRecovery: 0.5,
+  fatigueGain: 0.75,
+} as const;
+
+const SEASON_OUTCOME_BONUSES = {
+  winForm: 1,
+  winConfidence: 0.5,
+  topForm: 0.25,
+  topConfidence: 0.25,
+  bottomForm: 0.5,
+  bottomConfidence: 0.25,
+} as const;
+
+const SEASON_BAND_RATIO = 0.3;
 
 const MINIGAME_AI_REGISTRY: Record<string, MinigameAiModel> = Object.fromEntries(
   Object.entries(minigameAiRegistry).map(([key, model]) => [key, cloneMinigameAiModel(model)]),
@@ -72,14 +113,70 @@ export interface SimulateAiPerformanceArgs {
   participantIndex?: number;
   profile?: CompetitionSkillProfile;
   minigameModel?: MinigameAiModel;
+  seasonState?: CompetitionSeasonState;
   options?: {
     timeLimitSeconds?: number;
     timeLimitMs?: number;
   };
 }
 
+export interface CompetitionSeasonModifiers {
+  formAdjustment: number;
+  confidenceAdjustment: number;
+  fatigueAdjustment: number;
+  totalAdjustment: number;
+}
+
+export interface CompetitionSeasonUpdateInput {
+  playerIds: string[];
+  participants: string[];
+  scores: Record<string, number>;
+  winnerId?: string;
+}
+
 export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
   return { ...DEFAULT_PROFILE };
+}
+
+export function getDefaultCompetitionSeasonState(): CompetitionSeasonState {
+  return { ...DEFAULT_SEASON_STATE };
+}
+
+export function clampCompetitionSeasonState(
+  state: CompetitionSeasonState,
+): CompetitionSeasonState {
+  return {
+    form: clamp(state.form, SEASON_STATE_BOUNDS.form.min, SEASON_STATE_BOUNDS.form.max),
+    confidence: clamp(
+      state.confidence,
+      SEASON_STATE_BOUNDS.confidence.min,
+      SEASON_STATE_BOUNDS.confidence.max,
+    ),
+    fatigue: clamp(state.fatigue, SEASON_STATE_BOUNDS.fatigue.min, SEASON_STATE_BOUNDS.fatigue.max),
+  };
+}
+
+export function getCompetitionSeasonState(
+  seasonStateByPlayerId: Record<string, CompetitionSeasonState> | undefined,
+  playerId: string,
+): CompetitionSeasonState {
+  const state = seasonStateByPlayerId?.[playerId];
+  return clampCompetitionSeasonState(state ?? DEFAULT_SEASON_STATE);
+}
+
+export function getCompetitionSeasonModifiers(
+  seasonState: CompetitionSeasonState,
+): CompetitionSeasonModifiers {
+  const clamped = clampCompetitionSeasonState(seasonState);
+  const formAdjustment = clamped.form * SEASON_MODIFIER_WEIGHTS.form;
+  const confidenceAdjustment = clamped.confidence * SEASON_MODIFIER_WEIGHTS.confidence;
+  const fatigueAdjustment = clamped.fatigue * SEASON_MODIFIER_WEIGHTS.fatigue;
+  return {
+    formAdjustment,
+    confidenceAdjustment,
+    fatigueAdjustment,
+    totalAdjustment: formAdjustment + confidenceAdjustment - fatigueAdjustment,
+  };
 }
 
 function applyScoringParamsToModel(
@@ -153,6 +250,60 @@ export function registerMinigameAiModel(model: MinigameAiModel): void {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function driftTowardZero(value: number, step: number): number {
+  if (value > 0) return Math.max(0, value - step);
+  if (value < 0) return Math.min(0, value + step);
+  return 0;
+}
+
+export function updateCompetitionSeasonStateByPlayerId(
+  seasonStateByPlayerId: Record<string, CompetitionSeasonState> | undefined,
+  update: CompetitionSeasonUpdateInput,
+): Record<string, CompetitionSeasonState> {
+  const { playerIds, participants, scores, winnerId } = update;
+  const participantSet = new Set(participants);
+  const ranked = participants
+    .map((id) => ({ id, score: scores[id] ?? 0 }))
+    .sort((a, b) => b.score - a.score);
+  const resolvedWinnerId = winnerId ?? ranked[0]?.id;
+  const bandSize =
+    ranked.length > 0 ? Math.max(1, Math.ceil(ranked.length * SEASON_BAND_RATIO)) : 0;
+  const rankById = new Map(ranked.map((entry, index) => [entry.id, index]));
+
+  const next: Record<string, CompetitionSeasonState> = {};
+  for (const playerId of playerIds) {
+    const current = getCompetitionSeasonState(seasonStateByPlayerId, playerId);
+    let form = driftTowardZero(current.form, SEASON_DECAY.form);
+    let confidence = driftTowardZero(current.confidence, SEASON_DECAY.confidence);
+    let fatigue = current.fatigue;
+
+    if (participantSet.has(playerId)) {
+      fatigue += SEASON_DECAY.fatigueGain;
+      if (playerId === resolvedWinnerId) {
+        form += SEASON_OUTCOME_BONUSES.winForm;
+        confidence += SEASON_OUTCOME_BONUSES.winConfidence;
+      } else {
+        const rankIndex = rankById.get(playerId);
+        if (rankIndex !== undefined && bandSize > 0) {
+          if (rankIndex < bandSize) {
+            form += SEASON_OUTCOME_BONUSES.topForm;
+            confidence += SEASON_OUTCOME_BONUSES.topConfidence;
+          } else if (rankIndex >= ranked.length - bandSize) {
+            form -= SEASON_OUTCOME_BONUSES.bottomForm;
+            confidence -= SEASON_OUTCOME_BONUSES.bottomConfidence;
+          }
+        }
+      }
+    } else {
+      fatigue -= SEASON_DECAY.fatigueRecovery;
+    }
+
+    next[playerId] = clampCompetitionSeasonState({ form, confidence, fatigue });
+  }
+
+  return next;
 }
 
 function hashString(value: string): number {
@@ -281,6 +432,7 @@ export function simulateAiPerformance({
   participantIndex,
   profile,
   minigameModel,
+  seasonState,
   options,
 }: SimulateAiPerformanceArgs): number {
   const model = minigameModel ?? getMinigameAiModel(minigameKey);
@@ -288,6 +440,7 @@ export function simulateAiPerformance({
   const weights = model.weights ?? DEFAULT_WEIGHTS;
 
   const expectedSkill = computeWeightedSkill(resolvedProfile, weights);
+  const seasonAdjustment = getCompetitionSeasonModifiers(seasonState ?? DEFAULT_SEASON_STATE);
   // Use player IDs (or participant index) so each AI gets a stable, independent roll.
   const offset =
     typeof playerId === 'string' && playerId.length > 0
@@ -297,7 +450,7 @@ export function simulateAiPerformance({
   const volatility = clamp(model.volatility ?? 0.5, 0, 1);
   // Triangular distribution in [-1, 1] centered at 0 (Irwin-Hall n=2 shifted).
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
-  const performance = clamp(expectedSkill + deviation, 0, 1);
+  const performance = clamp(expectedSkill + deviation + seasonAdjustment.totalAdjustment, 0, 1);
 
   const { minScore, maxScore } = resolveScoreRange(model, options);
   const rawScore = mapPerformanceToScore(model.scoreDirection, minScore, maxScore, performance);
@@ -345,6 +498,7 @@ export type {
   AiParticipantSnapshot,
   AiSimulationContext,
   CompetitionCategory,
+  CompetitionSeasonState,
   CompetitionSkillProfile,
   CompetitionSkillWeights,
   MinigameAiModel,
