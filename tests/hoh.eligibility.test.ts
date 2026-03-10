@@ -161,7 +161,7 @@ describe('HOH eligibility — prevHohId tracking', () => {
       seed: 42,
     });
     // Simulate MinigameHost declaring p2 as winner (p1 was excluded from participants)
-    store.dispatch(applyMinigameWinner('p2'));
+    store.dispatch(applyMinigameWinner({ winnerId: 'p2' }));
     const state = store.getState().game;
     expect(state.phase).toBe('hoh_results');
     expect(state.hohId).toBe('p2');

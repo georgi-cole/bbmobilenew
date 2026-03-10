@@ -1491,6 +1491,8 @@ export default function CastleRescueGame({
               borderRadius: 8,
               // Prevent default touch scroll/zoom gestures on the game canvas.
               touchAction: 'none',
+              // When the end overlay is visible, ensure the canvas doesn't swallow taps.
+              pointerEvents: phase === 'complete' ? 'none' : 'auto',
             }}
             tabIndex={0}
             aria-label="Castle Rescue platformer game"
