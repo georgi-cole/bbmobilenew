@@ -515,7 +515,7 @@ const gameSlice = createSlice({
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state);
       const hasScores = scores !== undefined;
       const resolvedScores = scores ?? buildFallbackScores(resolvedParticipants, winnerId);
-      // Default to placement bonuses only when scores are supplied (or explicitly forced).
+      // includePlacementBonuses takes precedence; otherwise use scores as the heuristic.
       const usePlacementBonuses = includePlacementBonuses ?? hasScores;
       let appliedWinner = false;
       if (state.phase === 'hoh_comp') {

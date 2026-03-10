@@ -280,6 +280,7 @@ export function updateCompetitionSeasonStateByPlayerId(
       .sort((a, b) => b.score - a.score)
     : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
+  const hasWinner = typeof resolvedWinnerId === 'string' && resolvedWinnerId.length > 0;
   const bandSize =
     includePlacementBonuses && ranked.length > 0
       ? Math.max(1, Math.ceil(ranked.length * SEASON_BAND_RATIO))
@@ -297,7 +298,7 @@ export function updateCompetitionSeasonStateByPlayerId(
 
     if (participantSet.has(playerId)) {
       fatigue += SEASON_DECAY.fatigueGain;
-      if (playerId === resolvedWinnerId) {
+      if (hasWinner && playerId === resolvedWinnerId) {
         form += SEASON_OUTCOME_BONUSES.winForm;
         confidence += SEASON_OUTCOME_BONUSES.winConfidence;
       } else if (includePlacementBonuses) {
