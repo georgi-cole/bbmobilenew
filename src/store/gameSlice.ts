@@ -521,7 +521,7 @@ const gameSlice = createSlice({
       const resolvedScores = scores ?? buildFallbackScores(resolvedParticipants, winnerId);
       // includePlacementBonuses takes precedence; scores imply we have ranking info.
       const usePlacementBonuses = includePlacementBonuses ?? hasScores;
-      let appliedWinner = false;
+      let winnerWasApplied = false;
       if (state.phase === 'hoh_comp') {
         // Idempotency: if hohId already set the winner was already applied.
         if (state.hohId) {
@@ -531,7 +531,7 @@ const gameSlice = createSlice({
         console.log('[gameSlice] applyMinigameWinner: applying HOH winner', winnerId);
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
-        appliedWinner = true;
+        winnerWasApplied = true;
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.
         if (state.povWinnerId) {
@@ -540,10 +540,10 @@ const gameSlice = createSlice({
         }
         console.log('[gameSlice] applyMinigameWinner: applying POV winner', winnerId);
         state.phase = applyPovWinner(state, winnerId, alive);
-        appliedWinner = true;
+        winnerWasApplied = true;
       }
 
-      if (!skipSeasonUpdate && appliedWinner && resolvedParticipants.length > 0) {
+      if (!skipSeasonUpdate && winnerWasApplied && resolvedParticipants.length > 0) {
         applyCompetitionSeasonUpdateToState(state, {
           participants: resolvedParticipants,
           scores: resolvedScores,

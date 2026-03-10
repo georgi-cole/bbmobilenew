@@ -281,8 +281,11 @@ export function updateCompetitionSeasonStateByPlayerId(
       .sort((a, b) => b.score - a.score)
     : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
-  // Guard against empty-string IDs if a caller passes malformed data.
-  const hasWinner = typeof resolvedWinnerId === 'string' && resolvedWinnerId.length > 0;
+  // Guard against empty-string or non-participant IDs if a caller passes malformed data.
+  const hasWinner =
+    typeof resolvedWinnerId === 'string' &&
+    resolvedWinnerId.length > 0 &&
+    participantSet.has(resolvedWinnerId);
   const bandSize =
     includePlacementBonuses && ranked.length > 0
       ? Math.max(1, Math.ceil(ranked.length * SEASON_BAND_RATIO))
