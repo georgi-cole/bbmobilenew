@@ -511,9 +511,7 @@ const gameSlice = createSlice({
         includePlacementBonuses,
         skipSeasonUpdate,
       } = action.payload;
-      const alive = state.players.filter(
-        (p) => p.status !== 'evicted' && p.status !== 'jury',
-      );
+      const alive = getAlivePlayers(state);
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state);
       const hasScores = scores !== undefined;
       const resolvedScores = scores ?? buildFallbackScores(resolvedParticipants, winnerId);

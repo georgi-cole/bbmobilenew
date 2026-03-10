@@ -280,6 +280,7 @@ export function updateCompetitionSeasonStateByPlayerId(
       .sort((a, b) => b.score - a.score)
     : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
+  // Guard against empty-string IDs if a caller passes malformed data.
   const hasWinner = typeof resolvedWinnerId === 'string' && resolvedWinnerId.length > 0;
   const bandSize =
     includePlacementBonuses && ranked.length > 0
