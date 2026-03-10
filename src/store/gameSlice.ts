@@ -197,15 +197,16 @@ function getAlivePlayers(state: GameState): Player[] {
 
 function resolveCompetitionParticipants(state: GameState): string[] {
   const alive = getAlivePlayers(state);
+  const aliveIds = alive.map((p) => p.id);
   if (state.phase === 'hoh_comp' && state.prevHohId) {
     const eligible = alive.filter((p) => p.id !== state.prevHohId);
     if (eligible.length > 0) {
       return eligible.map((p) => p.id);
     }
     // Edge case: only the outgoing HOH remains alive; allow them for updates.
-    return alive.map((p) => p.id);
+    return aliveIds;
   }
-  return alive.map((p) => p.id);
+  return aliveIds;
 }
 
 function buildFallbackScores(participants: string[], winnerId: string): Record<string, number> {
