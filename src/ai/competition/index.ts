@@ -39,6 +39,8 @@ const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
 const DEFAULT_SCORE_MAX = 100;
 const DEFAULT_TIME_BASE_SECONDS = 10;
 const LOWER_BETTER_MIN_RATIO = 0.2;
+const MIN_SCORE_FLOOR = 1;
+const DEFAULT_LOWER_BETTER_MIN = 5;
 const VOLATILITY_SCALE = 0.35;
 
 export interface TapRaceAiSimulationArgs {
@@ -153,9 +155,9 @@ function resolveScoreRange(
           ? timeLimitSeconds
           : undefined;
     if (typeof basis === 'number') {
-      minScore = Math.max(1, Math.round(basis * LOWER_BETTER_MIN_RATIO));
+      minScore = Math.max(MIN_SCORE_FLOOR, Math.round(basis * LOWER_BETTER_MIN_RATIO));
     } else {
-      minScore = 5;
+      minScore = DEFAULT_LOWER_BETTER_MIN;
     }
   }
 
@@ -237,6 +239,7 @@ export function simulateAiPerformance({
       : participantIndex ?? 0;
   const rng = mulberry32(((seed >>> 0) ^ offset) >>> 0);
   const volatility = clamp(model.volatility ?? 0.5, 0, 1);
+  // Triangular distribution centered at 0: encourages closer-to-expected results.
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
   const performance = clamp(expectedSkill + deviation, 0, 1);
 
