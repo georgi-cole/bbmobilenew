@@ -55,5 +55,5 @@ export const resolveHoldTheWallOutcome =
     // Mark as resolved before dispatching so any synchronous re-render
     // triggered by applyMinigameWinner sees outcomeResolved = true.
     dispatch(markHoldTheWallOutcomeResolved());
-    dispatch(applyMinigameWinner(winnerId));
+    dispatch(applyMinigameWinner({ winnerId }));
   };

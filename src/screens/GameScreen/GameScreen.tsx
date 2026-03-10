@@ -1384,7 +1384,7 @@ export default function GameScreen() {
                 (!isHohComp && game.povWinnerId === finalWinnerId);
 
               if (!winnerAlreadyApplied) {
-                dispatch(applyMinigameWinner(finalWinnerId));
+                dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
               }
 
               // QuickCrown popup intentionally disabled to avoid race/mislabel issues.
@@ -1401,7 +1401,7 @@ export default function GameScreen() {
 
             if (!winnerPlayer || !sourceDomRect) {
               // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
-              dispatch(applyMinigameWinner(finalWinnerId));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
@@ -1412,7 +1412,8 @@ export default function GameScreen() {
               badgeStart: 'center',
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
-            pendingWinnerDispatchRef.current = () => dispatch(applyMinigameWinner(finalWinnerId));
+            pendingWinnerDispatchRef.current = () =>
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
             setPendingWinnerCeremony({
               tiles,
               caption: `${winnerPlayer.name} wins ${winLabel}!`,

@@ -130,8 +130,10 @@ export interface CompetitionSeasonModifiers {
 export interface CompetitionSeasonUpdateInput {
   playerIds: string[];
   participants: string[];
-  scores: Record<string, number>;
+  scores?: Record<string, number>;
   winnerId?: string;
+  /** When false, only winner boosts + fatigue are applied (no placement bonuses). */
+  includePlacementBonuses?: boolean;
 }
 
 export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
@@ -262,15 +264,28 @@ export function updateCompetitionSeasonStateByPlayerId(
   seasonStateByPlayerId: Record<string, CompetitionSeasonState> | undefined,
   update: CompetitionSeasonUpdateInput,
 ): Record<string, CompetitionSeasonState> {
-  const { playerIds, participants, scores, winnerId } = update;
+  const {
+    playerIds,
+    participants,
+    scores,
+    winnerId,
+    includePlacementBonuses = true,
+  } = update;
   const participantSet = new Set(participants);
-  const ranked = participants
-    .map((id) => ({ id, score: scores[id] ?? 0 }))
-    .sort((a, b) => b.score - a.score);
+  const resolvedScores = scores ?? {};
+  const ranked = includePlacementBonuses
+    ? participants
+      .map((id) => ({ id, score: resolvedScores[id] ?? 0 }))
+      .sort((a, b) => b.score - a.score)
+    : [];
   const resolvedWinnerId = winnerId ?? ranked[0]?.id;
   const bandSize =
-    ranked.length > 0 ? Math.max(1, Math.ceil(ranked.length * SEASON_BAND_RATIO)) : 0;
-  const rankById = new Map(ranked.map((entry, index) => [entry.id, index]));
+    includePlacementBonuses && ranked.length > 0
+      ? Math.max(1, Math.ceil(ranked.length * SEASON_BAND_RATIO))
+      : 0;
+  const rankById = includePlacementBonuses
+    ? new Map(ranked.map((entry, index) => [entry.id, index]))
+    : new Map();
 
   const next: Record<string, CompetitionSeasonState> = {};
   for (const playerId of playerIds) {
@@ -284,7 +299,7 @@ export function updateCompetitionSeasonStateByPlayerId(
       if (playerId === resolvedWinnerId) {
         form += SEASON_OUTCOME_BONUSES.winForm;
         confidence += SEASON_OUTCOME_BONUSES.winConfidence;
-      } else {
+      } else if (includePlacementBonuses) {
         const rankIndex = rankById.get(playerId);
         if (rankIndex !== undefined && bandSize > 0) {
           if (rankIndex < bandSize) {
