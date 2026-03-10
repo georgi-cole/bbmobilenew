@@ -8,7 +8,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
-import { simulateChallengeAiScore } from '../ai/competition';
+import {
+  getDefaultCompetitionProfile,
+  getMinigameAiModelForGame,
+  simulateAiPerformance,
+} from '../ai/competition';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -271,15 +275,28 @@ export const startChallenge =
     dispatch(incrementNonce());
 
     // Pre-compute AI scores for all non-human participants.
-    const humanId = getState().game?.players?.find((p) => p.isUser)?.id;
+    const gameState = getState().game;
+    const humanId = gameState?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
-    let aiSeed = perChallengeSeed;
-    for (const pid of participants) {
+    const minigameModel = getMinigameAiModelForGame(gameEntry);
+    const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
+    participants.forEach((pid, index) => {
       if (pid !== humanId) {
-        aiScores[pid] = simulateChallengeAiScore({ game: gameEntry, seed: aiSeed });
-        aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
+        const player = gameState?.players?.find((p) => p.id === pid);
+        aiScores[pid] = simulateAiPerformance({
+          minigameKey: gameEntry.key,
+          minigameModel,
+          seed: perChallengeSeed,
+          playerId: pid,
+          participantIndex: index,
+          profile: player?.competitionProfile ?? getDefaultCompetitionProfile(),
+          options: {
+            timeLimitMs,
+            timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
+          },
+        });
       }
-    }
+    });
 
     const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const pending: PendingChallenge = {

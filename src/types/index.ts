@@ -48,7 +48,7 @@ export interface Player {
 
 // ─── Minigame types ───────────────────────────────────────────────────────────
 
-/** Authoritative result of a completed minigame. Scores are raw tap counts. */
+/** Authoritative result of a completed minigame. Scores are raw minigame values. */
 export interface MinigameResult {
   seedUsed: number;
   /** Raw scores keyed by player ID. Higher = better for TapRace. */
