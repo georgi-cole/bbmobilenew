@@ -59,10 +59,14 @@ describe('competition AI foundation', () => {
     if (!game || !game.scoringParams) {
       throw new Error('flashFlood game metadata missing scoring params');
     }
+    const { targetMs, maxMs } = game.scoringParams;
+    if (typeof targetMs !== 'number' || typeof maxMs !== 'number') {
+      throw new Error('flashFlood scoring params missing targetMs/maxMs');
+    }
 
     const score = simulateChallengeAiScore({ game, seed: 321 });
-    expect(score).toBeGreaterThanOrEqual(game.scoringParams.targetMs ?? 0);
-    expect(score).toBeLessThanOrEqual(game.scoringParams.maxMs ?? game.timeLimitMs);
+    expect(score).toBeGreaterThanOrEqual(targetMs);
+    expect(score).toBeLessThanOrEqual(maxMs);
   });
 
   it('uses raw scoring params to bound challenge scores', () => {
@@ -70,9 +74,13 @@ describe('competition AI foundation', () => {
     if (!game || !game.scoringParams) {
       throw new Error('castleRescue game metadata missing scoring params');
     }
+    const { minRaw, maxRaw } = game.scoringParams;
+    if (typeof minRaw !== 'number' || typeof maxRaw !== 'number') {
+      throw new Error('castleRescue scoring params missing minRaw/maxRaw');
+    }
 
     const score = simulateChallengeAiScore({ game, seed: 654 });
-    expect(score).toBeGreaterThanOrEqual(game.scoringParams.minRaw ?? 0);
-    expect(score).toBeLessThanOrEqual(game.scoringParams.maxRaw ?? 0);
+    expect(score).toBeGreaterThanOrEqual(minRaw);
+    expect(score).toBeLessThanOrEqual(maxRaw);
   });
 });
