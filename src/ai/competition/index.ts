@@ -41,6 +41,14 @@ const DEFAULT_TIME_BASE_SECONDS = 10;
 const LOWER_BETTER_MIN_RATIO = 0.2;
 const MIN_SCORE_FLOOR = 1;
 const DEFAULT_LOWER_BETTER_MIN = 5;
+const BASELINE_SKILL_KEYS: Array<keyof CompetitionSkillProfile> = [
+  'physical',
+  'mental',
+  'precision',
+  'nerve',
+  'luck',
+];
+const PARTICIPANT_HASH_PREFIX = 'participant';
 const VOLATILITY_SCALE = 0.35;
 
 export interface TapRaceAiSimulationArgs {
@@ -111,6 +119,15 @@ function hashString(value: string): number {
     hash = Math.imul(hash, 0x01000193) >>> 0; // FNV-1a 32-bit prime
   }
   return hash;
+}
+
+function averageBaselineSkill(profile: CompetitionSkillProfile): number {
+  const total = BASELINE_SKILL_KEYS.reduce((sum, key) => sum + (profile[key] ?? 0), 0);
+  return total / BASELINE_SKILL_KEYS.length;
+}
+
+function hashParticipantIndex(participantIndex?: number): number {
+  return hashString(`${PARTICIPANT_HASH_PREFIX}:${participantIndex ?? 0}`);
 }
 
 function resolveTimeLimitSeconds(options?: SimulateAiPerformanceArgs['options']): number | undefined {
@@ -193,14 +210,7 @@ function computeWeightedSkill(
   }
 
   if (weightSum <= 0) {
-    const fallback =
-      profile.overall ??
-      (profile.physical +
-        profile.mental +
-        profile.precision +
-        profile.nerve +
-        profile.luck) /
-        5;
+    const fallback = profile.overall ?? averageBaselineSkill(profile);
     return clamp(fallback / 100, 0, 1);
   }
 
@@ -237,7 +247,7 @@ export function simulateAiPerformance({
   const offset =
     typeof playerId === 'string' && playerId.length > 0
       ? hashString(playerId)
-      : hashString(`participant:${participantIndex ?? 0}`);
+      : hashParticipantIndex(participantIndex);
   const rng = mulberry32(((seed >>> 0) ^ offset) >>> 0);
   const volatility = clamp(model.volatility ?? 0.5, 0, 1);
   // Triangular distribution centered at 0: encourages closer-to-expected results.
