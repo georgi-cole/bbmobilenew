@@ -172,6 +172,7 @@ function computeWeightedSkill(
   profile: CompetitionSkillProfile,
   weights: CompetitionSkillWeights,
 ): number {
+  // 'overall' is reserved as a fallback when no explicit weights are provided.
   const entries: Array<[keyof CompetitionSkillProfile, number | undefined]> = [
     ['physical', weights.physical],
     ['mental', weights.mental],
@@ -236,7 +237,7 @@ export function simulateAiPerformance({
   const offset =
     typeof playerId === 'string' && playerId.length > 0
       ? hashString(playerId)
-      : participantIndex ?? 0;
+      : hashString(`participant:${participantIndex ?? 0}`);
   const rng = mulberry32(((seed >>> 0) ^ offset) >>> 0);
   const volatility = clamp(model.volatility ?? 0.5, 0, 1);
   // Triangular distribution centered at 0: encourages closer-to-expected results.
