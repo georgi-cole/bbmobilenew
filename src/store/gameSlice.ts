@@ -209,6 +209,7 @@ function resolveCompetitionParticipants(state: GameState): string[] {
 }
 
 function buildFallbackScores(participants: string[], winnerId: string): Record<string, number> {
+  // Assumes winnerId is one of the participants; otherwise all scores stay at 0.
   return Object.fromEntries(
     participants.map((id) => [id, id === winnerId ? 1 : 0]),
   );
