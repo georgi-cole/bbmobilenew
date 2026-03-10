@@ -82,6 +82,41 @@ export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
   return { ...DEFAULT_PROFILE };
 }
 
+function applyScoringParamsToModel(
+  game: GameRegistryEntry,
+  model: MinigameAiModel,
+): MinigameAiModel {
+  const params = game.scoringParams;
+  if (!params) return model;
+
+  let minScore = model.minScore;
+  let maxScore = model.maxScore;
+
+  if (game.scoringAdapter === 'lowerBetter' || game.scoringAdapter === 'timeToPoints') {
+    if (minScore == null && typeof params.targetMs === 'number') {
+      minScore = params.targetMs;
+    }
+    if (maxScore == null && typeof params.maxMs === 'number') {
+      maxScore = params.maxMs;
+    }
+  }
+
+  if (game.scoringAdapter === 'raw') {
+    if (minScore == null && typeof params.minRaw === 'number') {
+      minScore = params.minRaw;
+    }
+    if (maxScore == null && typeof params.maxRaw === 'number') {
+      maxScore = params.maxRaw;
+    }
+  }
+
+  if (minScore === model.minScore && maxScore === model.maxScore) {
+    return model;
+  }
+
+  return { ...model, minScore, maxScore };
+}
+
 function cloneMinigameAiModel(model: MinigameAiModel): MinigameAiModel {
   if (typeof structuredClone === 'function') {
     return structuredClone(model);
@@ -104,6 +139,11 @@ export function getFallbackMinigameAiModel(key: string): MinigameAiModel {
 export function getMinigameAiModel(key: string): MinigameAiModel {
   const registered = MINIGAME_AI_REGISTRY[key];
   return registered ? cloneMinigameAiModel(registered) : getFallbackMinigameAiModel(key);
+}
+
+export function getMinigameAiModelForGame(game: GameRegistryEntry): MinigameAiModel {
+  const baseModel = getMinigameAiModel(game.key);
+  return applyScoringParamsToModel(game, baseModel);
 }
 
 /** Register or override metadata for a minigame at runtime (tests + future tooling). */
@@ -291,6 +331,7 @@ export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationAr
   const timeLimitMs = game.timeLimitMs > 0 ? game.timeLimitMs : undefined;
   return simulateAiPerformance({
     minigameKey: game.key,
+    minigame: getMinigameAiModelForGame(game),
     seed,
     participantIndex: 0,
     options: {

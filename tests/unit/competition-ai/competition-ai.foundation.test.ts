@@ -3,8 +3,9 @@ import {
   getDefaultCompetitionProfile,
   getFallbackMinigameAiModel,
   getMinigameAiModel,
+  simulateChallengeAiScore,
 } from '../../../src/ai/competition';
-import { getAllGames } from '../../../src/minigames/registry';
+import { getAllGames, getGame } from '../../../src/minigames/registry';
 import { minigameAiRegistry } from '../../../src/ai/competition/minigameAiRegistry';
 
 describe('competition AI foundation', () => {
@@ -51,5 +52,27 @@ describe('competition AI foundation', () => {
       .filter((key) => minigameAiRegistry[key] === undefined);
 
     expect(missingKeys).toEqual([]);
+  });
+
+  it('uses lower-better scoring params to bound challenge scores', () => {
+    const game = getGame('flashFlood');
+    if (!game || !game.scoringParams) {
+      throw new Error('flashFlood game metadata missing scoring params');
+    }
+
+    const score = simulateChallengeAiScore({ game, seed: 321 });
+    expect(score).toBeGreaterThanOrEqual(game.scoringParams.targetMs ?? 0);
+    expect(score).toBeLessThanOrEqual(game.scoringParams.maxMs ?? game.timeLimitMs);
+  });
+
+  it('uses raw scoring params to bound challenge scores', () => {
+    const game = getGame('castleRescue');
+    if (!game || !game.scoringParams) {
+      throw new Error('castleRescue game metadata missing scoring params');
+    }
+
+    const score = simulateChallengeAiScore({ game, seed: 654 });
+    expect(score).toBeGreaterThanOrEqual(game.scoringParams.minRaw ?? 0);
+    expect(score).toBeLessThanOrEqual(game.scoringParams.maxRaw ?? 0);
   });
 });

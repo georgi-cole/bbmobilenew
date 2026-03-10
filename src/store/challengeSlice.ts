@@ -8,7 +8,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
-import { getDefaultCompetitionProfile, getMinigameAiModel, simulateAiPerformance } from '../ai/competition';
+import {
+  getDefaultCompetitionProfile,
+  getMinigameAiModelForGame,
+  simulateAiPerformance,
+} from '../ai/competition';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -274,7 +278,7 @@ export const startChallenge =
     const gameState = getState().game;
     const humanId = gameState?.players?.find((p) => p.isUser)?.id;
     const aiScores: Record<string, number> = {};
-    const minigameModel = getMinigameAiModel(gameEntry.key);
+    const minigameModel = getMinigameAiModelForGame(gameEntry);
     const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined;
     participants.forEach((pid, index) => {
       if (pid !== humanId) {
