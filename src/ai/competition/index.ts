@@ -207,6 +207,7 @@ function computeWeightedSkill(
   let weightedTotal = 0;
   let weightSum = 0;
   for (const [key, weight] of entries) {
+    // Skip undefined or zero weights to intentionally exclude a skill from the mix.
     if (weight == null || weight === 0) continue;
     weightedTotal += (profile[key] ?? 0) * weight;
     weightSum += weight;
@@ -254,7 +255,7 @@ export function simulateAiPerformance({
       : hashParticipantIndex(participantIndex);
   const rng = mulberry32(((seed >>> 0) ^ offset) >>> 0);
   const volatility = clamp(model.volatility ?? 0.5, 0, 1);
-  // Triangular distribution centered at 0: encourages closer-to-expected results.
+  // Triangular distribution in [-1, 1] centered at 0 (Irwin-Hall n=2 shifted).
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
   const performance = clamp(expectedSkill + deviation, 0, 1);
 
