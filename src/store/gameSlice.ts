@@ -2,7 +2,7 @@ import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolki
 import type { RootState, AppDispatch } from './store';
 import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState, SpectatorActiveState } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
-import { simulateTapRaceAiPerformance } from '../ai/competition';
+import { getDefaultCompetitionProfile, getMinigameAiModel, simulateAiPerformance } from '../ai/competition';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
@@ -2268,16 +2268,19 @@ export const startMinigame =
     const state = getState().game;
     // Pre-compute AI scores, respecting the configured timeLimit
     const aiScores: Record<string, number> = {};
-    let aiSeed = opts.seed;
-    opts.participants.forEach((id) => {
+    const model = getMinigameAiModel(opts.key);
+    opts.participants.forEach((id, index) => {
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
-        aiScores[id] = simulateTapRaceAiPerformance({
+        aiScores[id] = simulateAiPerformance({
           minigameKey: opts.key,
-          seed: aiSeed,
-          timeLimitSeconds: opts.options.timeLimit,
+          minigame: model,
+          seed: opts.seed,
+          playerId: id,
+          participantIndex: index,
+          profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+          options: { timeLimitSeconds: opts.options.timeLimit },
         });
-        aiSeed = (mulberry32(aiSeed)() * 0x100000000) >>> 0;
       }
     });
 

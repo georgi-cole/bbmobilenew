@@ -1,5 +1,5 @@
 import type { GameRegistryEntry } from '../../minigames/registry';
-import { DEFAULT_TAPRACE_OPTIONS, simulateTapRaceAI } from '../../store/minigame';
+import { DEFAULT_TAPRACE_OPTIONS } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
 import { minigameAiRegistry } from './minigameAiRegistry';
 import type { CompetitionSkillProfile, CompetitionSkillWeights, MinigameAiModel } from './types';
@@ -36,6 +36,11 @@ const FALLBACK_MODEL: Omit<MinigameAiModel, 'key'> = {
   notes: 'Fallback AI model (PR1 foundation). Replace with explicit metadata in PR3.',
 };
 
+const DEFAULT_SCORE_MAX = 100;
+const DEFAULT_TIME_BASE_SECONDS = 10;
+const LOWER_BETTER_MIN_RATIO = 0.2;
+const VOLATILITY_SCALE = 0.35;
+
 export interface TapRaceAiSimulationArgs {
   minigameKey: string;
   seed: number;
@@ -45,6 +50,19 @@ export interface TapRaceAiSimulationArgs {
 export interface ChallengeAiSimulationArgs {
   game: GameRegistryEntry;
   seed: number;
+}
+
+export interface SimulateAiPerformanceArgs {
+  minigameKey: string;
+  seed: number;
+  playerId?: string;
+  participantIndex?: number;
+  profile?: CompetitionSkillProfile;
+  minigame?: MinigameAiModel;
+  options?: {
+    timeLimitSeconds?: number;
+    timeLimitMs?: number;
+  };
 }
 
 export function getDefaultCompetitionProfile(): CompetitionSkillProfile {
@@ -80,66 +98,173 @@ export function registerMinigameAiModel(model: MinigameAiModel): void {
   MINIGAME_AI_REGISTRY[model.key] = cloneMinigameAiModel(model);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function hashString(value: string): number {
+  let hash = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+function resolveTimeLimitSeconds(options?: SimulateAiPerformanceArgs['options']): number | undefined {
+  if (!options) return undefined;
+  if (typeof options.timeLimitSeconds === 'number') return options.timeLimitSeconds;
+  if (typeof options.timeLimitMs === 'number') return options.timeLimitMs / 1000;
+  return undefined;
+}
+
+function resolveScoreRange(
+  model: MinigameAiModel,
+  options?: SimulateAiPerformanceArgs['options'],
+): { minScore: number; maxScore: number } {
+  const timeLimitMs = options?.timeLimitMs;
+  const timeLimitSeconds = resolveTimeLimitSeconds(options);
+  const hasMin = typeof model.minScore === 'number';
+  const hasMax = typeof model.maxScore === 'number';
+
+  let minScore = hasMin ? model.minScore! : 0;
+  let maxScore = hasMax ? model.maxScore! : DEFAULT_SCORE_MAX;
+
+  if (!hasMax && timeLimitSeconds && model.scoreDirection === 'higher-is-better') {
+    maxScore = Math.max(
+      1,
+      Math.round(DEFAULT_SCORE_MAX * (timeLimitSeconds / DEFAULT_TIME_BASE_SECONDS)),
+    );
+  }
+
+  if (!hasMax && model.scoreDirection === 'lower-is-better') {
+    if (typeof timeLimitMs === 'number' && timeLimitMs > 0) {
+      maxScore = timeLimitMs;
+    } else if (typeof timeLimitSeconds === 'number' && timeLimitSeconds > 0) {
+      maxScore = timeLimitSeconds;
+    }
+  }
+
+  if (!hasMin && model.scoreDirection === 'lower-is-better') {
+    const basis =
+      typeof timeLimitMs === 'number' && timeLimitMs > 0
+        ? timeLimitMs
+        : typeof timeLimitSeconds === 'number' && timeLimitSeconds > 0
+          ? timeLimitSeconds
+          : undefined;
+    if (typeof basis === 'number') {
+      minScore = Math.max(1, Math.round(basis * LOWER_BETTER_MIN_RATIO));
+    } else {
+      minScore = 5;
+    }
+  }
+
+  if (maxScore <= minScore) {
+    maxScore = minScore + 1;
+  }
+
+  return { minScore, maxScore };
+}
+
+function computeWeightedSkill(
+  profile: CompetitionSkillProfile,
+  weights: CompetitionSkillWeights,
+): number {
+  const entries: Array<[keyof CompetitionSkillProfile, number | undefined]> = [
+    ['physical', weights.physical],
+    ['mental', weights.mental],
+    ['precision', weights.precision],
+    ['nerve', weights.nerve],
+    ['luck', weights.luck],
+    ['consistency', weights.consistency],
+    ['clutch', weights.clutch],
+    ['chokeRisk', weights.chokeRisk],
+  ];
+
+  let weightedTotal = 0;
+  let weightSum = 0;
+  for (const [key, weight] of entries) {
+    if (weight == null || weight === 0) continue;
+    weightedTotal += (profile[key] ?? 0) * weight;
+    weightSum += weight;
+  }
+
+  if (weightSum <= 0) {
+    const fallback =
+      profile.overall ??
+      (profile.physical +
+        profile.mental +
+        profile.precision +
+        profile.nerve +
+        profile.luck) /
+        5;
+    return clamp(fallback / 100, 0, 1);
+  }
+
+  return clamp(weightedTotal / (weightSum * 100), 0, 1);
+}
+
+export function simulateAiPerformance({
+  minigameKey,
+  seed,
+  playerId,
+  participantIndex,
+  profile,
+  minigame,
+  options,
+}: SimulateAiPerformanceArgs): number {
+  const model = minigame ?? getMinigameAiModel(minigameKey);
+  const resolvedProfile = profile ?? getDefaultCompetitionProfile();
+  const weights = model.weights ?? DEFAULT_WEIGHTS;
+
+  const expectedSkill = computeWeightedSkill(resolvedProfile, weights);
+  const offset =
+    typeof playerId === 'string' && playerId.length > 0
+      ? hashString(playerId)
+      : participantIndex ?? 0;
+  const rng = mulberry32(((seed >>> 0) ^ offset) >>> 0);
+  const volatility = clamp(model.volatility ?? 0.5, 0, 1);
+  const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
+  const performance = clamp(expectedSkill + deviation, 0, 1);
+
+  const { minScore, maxScore } = resolveScoreRange(model, options);
+  const span = maxScore - minScore;
+  const rawScore =
+    model.scoreDirection === 'lower-is-better'
+      ? maxScore - performance * span
+      : minScore + performance * span;
+
+  return Math.round(rawScore);
+}
+
 export function simulateTapRaceAiPerformance({
   minigameKey,
   seed,
   timeLimitSeconds,
 }: TapRaceAiSimulationArgs): number {
-  // PR1: keep legacy TapRace tuning; metadata lookup is here for later PRs.
-  const model = getMinigameAiModel(minigameKey);
-  const baseScore = simulateTapRaceAI(
+  const timeLimit =
+    typeof timeLimitSeconds === 'number'
+      ? timeLimitSeconds
+      : DEFAULT_TAPRACE_OPTIONS.timeLimit;
+  return simulateAiPerformance({
+    minigameKey,
     seed,
-    'HARD',
-    timeLimitSeconds ?? DEFAULT_TAPRACE_OPTIONS.timeLimit,
-  );
-  if (model.scoreDirection === 'lower-is-better') {
-    // TODO(PR4): apply inversion once normalized scoring replaces legacy taps.
-    if (import.meta.env.DEV) {
-      console.warn(
-        `[competition-ai] ${minigameKey} uses lower-is-better but still returns legacy tap scores.`,
-      );
-    }
-  }
-  return baseScore;
+    participantIndex: 0,
+    options: { timeLimitSeconds: timeLimit },
+  });
 }
 
 export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationArgs): number {
-  // PR3: ensure metadata is retrievable alongside the legacy scoring path.
-  // TODO(PR4): use minigame metadata + competition profiles to drive AI outcomes.
-  getMinigameAiModel(game.key);
-  return simulateLegacyAiScore(game, seed);
-}
-
-function simulateLegacyAiScore(game: GameRegistryEntry, seed: number): number {
-  const rng = mulberry32(seed >>> 0);
-  const { metricKind, timeLimitMs, scoringParams } = game;
-  switch (metricKind) {
-    case 'count': {
-      // Tap-like count scaled to time limit (75–90 taps per 10 s)
-      const scale = timeLimitMs > 0 ? timeLimitMs / 10000 : 1;
-      return Math.round(75 * scale + Math.floor(rng() * 16 * scale));
-    }
-    case 'time': {
-      // Lower-is-better time; scatter between targetMs and ~50% of maxMs
-      const targetMs = scoringParams?.targetMs ?? 1000;
-      const maxMs = scoringParams?.maxMs ?? (timeLimitMs > 0 ? timeLimitMs : 60000);
-      return Math.round(targetMs + rng() * (maxMs - targetMs) * 0.5);
-    }
-    case 'accuracy': {
-      // Accuracy percentage 60–100
-      return Math.round(60 + rng() * 40);
-    }
-    case 'endurance': {
-      // Time survived in seconds 10–60
-      return Math.round(10 + rng() * 50);
-    }
-    case 'hybrid':
-    case 'points':
-    default: {
-      // Generic points 0–100
-      return Math.round(rng() * 100);
-    }
-  }
+  const timeLimitMs = game.timeLimitMs > 0 ? game.timeLimitMs : undefined;
+  return simulateAiPerformance({
+    minigameKey: game.key,
+    seed,
+    participantIndex: 0,
+    options: {
+      timeLimitMs,
+      timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
+    },
+  });
 }
 
 export type {
