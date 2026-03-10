@@ -9,10 +9,12 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32 } from './rng';
 import {
+  getCompetitionSeasonState,
   getDefaultCompetitionProfile,
   getMinigameAiModelForGame,
   simulateAiPerformance,
 } from '../ai/competition';
+import { applyCompetitionSeasonUpdate } from './gameSlice';
 import { pickRandomGame, getGame, getPoolByFilter } from '../minigames/registry';
 import type { GameRegistryEntry, GameCategory } from '../minigames/registry';
 import { computeScores } from '../minigames/scoring';
@@ -290,6 +292,10 @@ export const startChallenge =
           playerId: pid,
           participantIndex: index,
           profile: player?.competitionProfile ?? getDefaultCompetitionProfile(),
+          seasonState: getCompetitionSeasonState(
+            gameState?.competitionSeasonStateByPlayerId,
+            pid,
+          ),
           options: {
             timeLimitMs,
             timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
@@ -352,6 +358,13 @@ export const completeChallenge =
     };
 
     dispatch(recordRun(run));
+    dispatch(
+      applyCompetitionSeasonUpdate({
+        participants,
+        scores: canonicalScores,
+        winnerId,
+      }),
+    );
     dispatch(setPendingChallenge(null));
 
     return winnerId;

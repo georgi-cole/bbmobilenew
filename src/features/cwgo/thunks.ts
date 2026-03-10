@@ -57,5 +57,5 @@ export const resolveCompetitionOutcome =
 
     // applyMinigameWinner uses the current game phase (hoh_comp → applyHohWinner,
     // pov_comp → applyPovWinner) to apply the appropriate winner effect.
-    dispatch(applyMinigameWinner(champ));
+    dispatch(applyMinigameWinner({ winnerId: champ }));
   };

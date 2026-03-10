@@ -52,5 +52,5 @@ export const resolveFamousFiguresOutcome =
     }
 
     dispatch(markFamousFiguresOutcomeResolved());
-    dispatch(applyMinigameWinner(winnerId));
+    dispatch(applyMinigameWinner({ winnerId }));
   };

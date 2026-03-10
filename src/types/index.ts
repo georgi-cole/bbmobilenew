@@ -3,7 +3,7 @@
 // Add new fields here; consumers only break if they depend on removed fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { CompetitionSkillProfile } from '../ai/competition/types';
+import type { CompetitionSeasonState, CompetitionSkillProfile } from '../ai/competition/types';
 import type { SocialState } from '../social/types';
 import type { ActivityChannel, ActivitySource } from '../services/activityService';
 import type { SeasonArchive } from '../store/seasonArchive';
@@ -249,6 +249,11 @@ export interface GameState {
   week: number;
   phase: Phase;
   players: Player[];
+  /**
+   * Temporary per-season competition modifiers keyed by player ID.
+   * Uses neutral defaults when missing to keep simulations safe.
+   */
+  competitionSeasonStateByPlayerId?: Record<string, CompetitionSeasonState>;
   tvFeed: TvEvent[];
   isLive: boolean;
   /** Mulberry32 seed – advances on each outcome computation for reproducibility. */

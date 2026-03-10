@@ -83,7 +83,7 @@ idle ──startHoldTheWall──▶ active ──(one player remains)──▶ 
 - `dropPlayer` automatically transitions `status → complete` and sets `winnerId` when `participantIds.length - droppedIds.length === 1`.
 
 ### Prize awarding
-`resolveHoldTheWallOutcome` (thunk) is dispatched once `status === complete`. It validates the current game phase matches the `prizeType` (`hoh_comp` for HOH, `pov_comp` for POV) and calls `applyMinigameWinner(winnerId)`. The `outcomeResolved` flag prevents double dispatch even if the component re-renders.
+`resolveHoldTheWallOutcome` (thunk) is dispatched once `status === complete`. It validates the current game phase matches the `prizeType` (`hoh_comp` for HOH, `pov_comp` for POV) and calls `applyMinigameWinner({ winnerId })`. The `outcomeResolved` flag prevents double dispatch even if the component re-renders.
 
 ---
 
@@ -359,4 +359,3 @@ participant area:
 - On mobile the wall takes up most of the screen, giving players a large tap target to hold.
 - The `EffectsOverlay` sits above the wall with `pointer-events: none` so visual effects
   never block the hold interaction.
-

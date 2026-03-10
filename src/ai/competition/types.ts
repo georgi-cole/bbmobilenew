@@ -21,6 +21,15 @@ export interface CompetitionSkillProfile {
   luck: number;
 }
 
+export interface CompetitionSeasonState {
+  /** Recent performance momentum (small temporary nudges). */
+  form: number;
+  /** Short-term belief/steadiness from recent outcomes. */
+  confidence: number;
+  /** Light wear from repeated competition participation. */
+  fatigue: number;
+}
+
 export interface CompetitionSkillWeights {
   physical: number;
   mental: number;
