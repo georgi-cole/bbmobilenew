@@ -148,4 +148,10 @@ describe('CastleRescueGame — Continue / Play Again button', () => {
     const btn = screen.getByRole('button', { name: /continue|play again/i });
     expect(btn.style.pointerEvents).toBe('auto');
   });
+
+  it('disables canvas pointer events when the end overlay is visible', async () => {
+    await renderCompleted(vi.fn());
+    const canvas = screen.getByLabelText('Castle Rescue platformer game');
+    expect(canvas).toHaveStyle({ pointerEvents: 'none' });
+  });
 });
