@@ -79,39 +79,41 @@ export default function HomeHub() {
       {preloading && <AssetPreloaderOverlay />}
 
       <div className="homehub-shell">
-        {/* Dynamic background layer */}
-        <div
-          className="homehub-intro-bg"
-          style={bgUrl ? { backgroundImage: `url("${bgUrl}")` } : undefined}
-          aria-hidden="true"
-        />
+        <div className="homehub-frame">
+          {/* Dynamic background layer */}
+          <div
+            className="homehub-intro-bg"
+            style={bgUrl ? { backgroundImage: `url("${bgUrl}")` } : undefined}
+            aria-hidden="true"
+          />
 
-        {/* Foreground content — buttons hidden until background has loaded
-            to avoid showing the UI over an empty/transparent background. */}
-        <div className="homehub-content home-hub">
-          {/* Hero / icon area (no branding text — logo is shown in the splash) */}
-          <div className="home-hub__hero" aria-hidden="true" />
+          {/* Foreground content — buttons hidden until background has loaded
+              to avoid showing the UI over an empty/transparent background. */}
+          <div className="homehub-content home-hub">
+            {/* Hero / icon area (no branding text — logo is shown in the splash) */}
+            <div className="home-hub__hero" aria-hidden="true" />
 
-          {/* Button stack: only rendered once background is ready AND splash has dismissed,
-              to prevent accidental clicks through the pointer-events: none splash overlay. */}
-          {splashDone && bgLoaded && (
-            <nav className="home-hub__buttons" aria-label="Main menu">
-              {HUB_BUTTONS.map(({ to, label, variant }) => (
-                <button
-                  key={to}
-                  className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && splashDone ? ' shimmer' : ''}`}
-                  onClick={to === '/game' ? handlePlay : () => navigate(to)}
-                  type="button"
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          )}
+            {/* Button stack: only rendered once background is ready AND splash has dismissed,
+                to prevent accidental clicks through the pointer-events: none splash overlay. */}
+            {splashDone && bgLoaded && (
+              <nav className="home-hub__buttons" aria-label="Main menu">
+                {HUB_BUTTONS.map(({ to, label, variant }) => (
+                  <button
+                    key={to}
+                    className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && splashDone ? ' shimmer' : ''}`}
+                    onClick={to === '/game' ? handlePlay : () => navigate(to)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+          {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}
+          <div id="intro-hub" />
         </div>
       </div>
-      {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}
-      <div id="intro-hub" />
     </>
   );
 }
