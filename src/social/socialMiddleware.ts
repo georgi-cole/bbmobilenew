@@ -32,6 +32,7 @@ import {
   applyInfluenceDelta,
   decaySocialMemory,
   drainEvictedPlayerSocial,
+  setEnergyBankEntry,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
@@ -349,9 +350,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── Battle Back win: restore initial social resources for returning player ─
+  // ── Battle Back win: restore energy for the user player who returns ─────
   // When the user wins the Battle Back, they re-enter the house as an active
-  // player, so their social resources should be restored to their starting values.
+  // player. Energy is reset to DEFAULT_ENERGY using a direct set (not an
+  // additive delta) so the value is always exactly DEFAULT_ENERGY regardless
+  // of any residual energy the player may carry.
   if (type === 'game/completeBattleBack') {
     const prevState = api.getState() as StateWithGame;
     const winnerId = (action as { payload: string }).payload;
@@ -360,7 +363,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const result = next(action);
 
     if (winner?.isUser) {
-      api.dispatch(applyEnergyDelta({ playerId: winnerId, delta: DEFAULT_ENERGY }));
+      api.dispatch(setEnergyBankEntry({ playerId: winnerId, value: DEFAULT_ENERGY }));
     }
 
     return result;

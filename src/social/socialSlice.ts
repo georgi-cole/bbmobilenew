@@ -216,6 +216,13 @@ const socialSlice = createSlice({
 
       // Clear all scheduled incoming interactions.
       state.scheduledIncomingInteractions = [];
+
+      // Ensure social UI panels are fully closed for an evicted player.
+      // Without this, the inbox or social panel could remain visible if open
+      // at the moment of eviction, and panelOpen=true would cause the panel to
+      // reopen on the next FAB press without the user deliberately reopening it.
+      state.panelOpen = false;
+      state.incomingInboxOpen = false;
     },
     /** Resolve expired interactions when the week transitions. */
     resolveExpiredIncomingInteractionsForWeek(

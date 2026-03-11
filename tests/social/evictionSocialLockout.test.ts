@@ -15,7 +15,6 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   finalizePendingEviction,
   selfEvict,
-  activateBattleBack,
   completeBattleBack,
 } from '../../src/store/gameSlice';
 import socialReducer, {
@@ -228,7 +227,20 @@ describe('finalizePendingEviction — scheduled interaction clearing', () => {
   });
 });
 
-// ── 4. selfEvict also drains social resources ────────────────────────────────
+// ── 3b. finalizePendingEviction closes open social UI panels ─────────────────
+
+describe('finalizePendingEviction — social UI panel state', () => {
+  it('closes the social panel and inbox when the user is evicted', () => {
+    const store = makeStore();
+    // Simulate both panels being open at the time of eviction.
+    store.dispatch({ type: 'social/openSocialPanel' });
+    store.dispatch({ type: 'social/openIncomingInbox' });
+    store.dispatch(finalizePendingEviction('user'));
+    const state = store.getState() as { social: { panelOpen: boolean; incomingInboxOpen: boolean } };
+    expect(state.social.panelOpen).toBe(false);
+    expect(state.social.incomingInboxOpen).toBe(false);
+  });
+});
 
 describe('selfEvict — social resource drain', () => {
   it('zeroes energy bank for the self-evicted user', () => {
@@ -395,8 +407,9 @@ describe('completeBattleBack — social resource restoration', () => {
       } as never,
     });
 
-    // User starts with 0 energy (was drained on eviction).
-    store.dispatch(setEnergyBankEntry({ playerId: 'user', value: 0 }));
+    // User has residual energy (e.g. from before eviction not fully zeroed out);
+    // the restoration must set energy to exactly DEFAULT_ENERGY, not add to it.
+    store.dispatch(setEnergyBankEntry({ playerId: 'user', value: 2 }));
     store.dispatch(completeBattleBack('user'));
 
     const state = store.getState() as { social: { energyBank: Record<string, number> } };
