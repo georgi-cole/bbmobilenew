@@ -50,6 +50,7 @@ export {
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
   dismissIncomingInteraction,
+  drainEvictedPlayerSocial,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
   updateSocialMemory,

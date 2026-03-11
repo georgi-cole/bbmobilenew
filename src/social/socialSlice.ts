@@ -181,6 +181,49 @@ const socialSlice = createSlice({
       entry.resolvedWeek = action.payload.resolvedWeek;
       entry.resolvedWith = 'dismiss';
     },
+    /**
+     * Drain all social resources for a player who has been evicted.
+     *
+     * - Zeroes out energy, influence, and info banks.
+     * - Dismisses all unresolved incoming interactions.
+     * - Clears all scheduled incoming interactions.
+     *
+     * Called by socialMiddleware when `game/finalizePendingEviction` or
+     * `game/selfEvict` targets the user player.
+     */
+    drainEvictedPlayerSocial(
+      state,
+      action: PayloadAction<{ playerId: string; week?: number; timestamp?: number }>,
+    ) {
+      const { playerId, week, timestamp } = action.payload;
+      const now = timestamp ?? Date.now();
+
+      // Zero out all resource banks.
+      state.energyBank[playerId] = 0;
+      state.influenceBank[playerId] = 0;
+      state.infoBank[playerId] = 0;
+
+      // Dismiss all unresolved incoming interactions.
+      for (const interaction of state.incomingInteractions) {
+        if (!interaction.resolved) {
+          interaction.resolved = true;
+          interaction.read = true;
+          interaction.resolvedAt = now;
+          interaction.resolvedWeek = week;
+          interaction.resolvedWith = 'dismiss';
+        }
+      }
+
+      // Clear all scheduled incoming interactions.
+      state.scheduledIncomingInteractions = [];
+
+      // Ensure social UI panels are fully closed for an evicted player.
+      // Without this, the inbox or social panel could remain visible if open
+      // at the moment of eviction, and panelOpen=true would cause the panel to
+      // reopen on the next FAB press without the user deliberately reopening it.
+      state.panelOpen = false;
+      state.incomingInboxOpen = false;
+    },
     /** Resolve expired interactions when the week transitions. */
     resolveExpiredIncomingInteractionsForWeek(
       state,
@@ -326,6 +369,7 @@ export const {
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
   dismissIncomingInteraction,
+  drainEvictedPlayerSocial,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
   updateSocialMemory,

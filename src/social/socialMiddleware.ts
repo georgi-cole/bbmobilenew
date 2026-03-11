@@ -31,12 +31,15 @@ import {
   applyEnergyDelta,
   applyInfluenceDelta,
   decaySocialMemory,
+  drainEvictedPlayerSocial,
+  setEnergyBankEntry,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
 import type { AutonomyStore } from './incomingInteractionAutonomy';
 import { deliverScheduledIncomingInteractionsForPhase } from './incomingInteractionScheduler';
 import { seedWeekRelationships } from './weekSocialSeed';
+import { DEFAULT_ENERGY } from './constants';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
 
@@ -326,6 +329,43 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, -3);
       }
     }
+    return result;
+  }
+
+  // ── Eviction: drain social resources for the evicted user player ─────────
+  // Handles both normal evictions (finalizePendingEviction) and self-evictions.
+  if (type === 'game/finalizePendingEviction' || type === 'game/selfEvict') {
+    const prevState = api.getState() as StateWithGame;
+    const evicteeId = (action as unknown as { payload: string }).payload;
+    const evictee = (prevState.game?.players ?? []).find((p) => p.id === evicteeId);
+    const week = prevState.game?.week;
+
+    const result = next(action);
+
+    // Only drain for the human/user player — AI players manage their own state.
+    if (evictee?.isUser) {
+      api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId, week }));
+    }
+
+    return result;
+  }
+
+  // ── Battle Back win: restore energy for the user player who returns ─────
+  // When the user wins the Battle Back, they re-enter the house as an active
+  // player. Energy is reset to DEFAULT_ENERGY using a direct set (not an
+  // additive delta) so the value is always exactly DEFAULT_ENERGY regardless
+  // of any residual energy the player may carry.
+  if (type === 'game/completeBattleBack') {
+    const prevState = api.getState() as StateWithGame;
+    const winnerId = (action as unknown as { payload: string }).payload;
+    const winner = (prevState.game?.players ?? []).find((p) => p.id === winnerId);
+
+    const result = next(action);
+
+    if (winner?.isUser) {
+      api.dispatch(setEnergyBankEntry({ playerId: winnerId, value: DEFAULT_ENERGY }));
+    }
+
     return result;
   }
 

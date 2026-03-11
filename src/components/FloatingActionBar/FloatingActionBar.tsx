@@ -12,6 +12,7 @@ import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectUnreadDrCount,
+  selectHumanIsActive,
 } from '../../store/selectors';
 import './FloatingActionBar.css';
 
@@ -34,6 +35,7 @@ export default function FloatingActionBar() {
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
+  const humanIsActive = useAppSelector(selectHumanIsActive);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
 
@@ -67,6 +69,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
           title={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
+          disabled={!humanIsActive}
           onClick={() => dispatch(openSocialPanel())}
         >
           💬
@@ -124,6 +127,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label={`Inbox${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
           title="Inbox"
+          disabled={!humanIsActive}
           onClick={() => dispatch(openIncomingInbox())}
         >
           📥
