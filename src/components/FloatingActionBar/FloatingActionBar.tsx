@@ -12,6 +12,7 @@ import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectUnreadDrCount,
+  selectHumanIsActive,
 } from '../../store/selectors';
 import './FloatingActionBar.css';
 
@@ -34,17 +35,12 @@ export default function FloatingActionBar() {
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const drCount = useAppSelector(selectUnreadDrCount);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
+  const humanIsActive = useAppSelector(selectHumanIsActive);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
 
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
-
-  // Disable social interactions when the human player is no longer in the house
-  // (evicted or in jury). Resources are drained on eviction; once the player
-  // returns via Battle Back their status reverts to 'active'.
-  const humanIsActive =
-    !!humanPlayer && humanPlayer.status !== 'evicted' && humanPlayer.status !== 'jury';
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);

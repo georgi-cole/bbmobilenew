@@ -337,12 +337,13 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const prevState = api.getState() as StateWithGame;
     const evicteeId = (action as { payload: string }).payload;
     const evictee = (prevState.game?.players ?? []).find((p) => p.id === evicteeId);
+    const week = prevState.game?.week;
 
     const result = next(action);
 
     // Only drain for the human/user player — AI players manage their own state.
     if (evictee?.isUser) {
-      api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId }));
+      api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId, week }));
     }
 
     return result;

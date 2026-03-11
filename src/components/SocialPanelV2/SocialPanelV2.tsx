@@ -11,6 +11,7 @@ import {
   clearSessionLogs,
 } from '../../social/socialSlice';
 import { addTvEvent } from '../../store/gameSlice';
+import { selectHumanIsActive } from '../../store/selectors';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import { TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
 import { buildDrSessionSummary } from '../../services/activityService';
@@ -44,6 +45,7 @@ export default function SocialPanelV2() {
   const influenceBank = useAppSelector(selectInfluenceBank);
   const infoBank = useAppSelector(selectInfoBank);
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
+  const humanIsActive = useAppSelector(selectHumanIsActive);
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
@@ -53,8 +55,6 @@ export default function SocialPanelV2() {
   // Panel opens exclusively when the FAB dispatches openSocialPanel()
   // AND the human player is active (not evicted or in jury — they are no
   // longer in the house and cannot participate in social interactions).
-  const humanIsActive =
-    !!humanPlayer && humanPlayer.status !== 'evicted' && humanPlayer.status !== 'jury';
   const open = humanIsActive && socialPanelOpen;
 
   function handleClose() {

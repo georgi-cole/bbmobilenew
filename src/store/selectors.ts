@@ -57,3 +57,16 @@ export const selectCurrentNomineesCount = (state: RootState): number =>
 export const selectPendingActionsCount = (state: RootState): number =>
   selectCurrentNomineesCount(state);
 
+/**
+ * True when the human/user player exists and is active in the house
+ * (status === 'active'). Returns false if they are evicted, in jury,
+ * or if no user player is found.
+ *
+ * Used to gate social interaction UI elements (social panel, inbox button)
+ * so evicted players cannot initiate or receive social interactions.
+ */
+export const selectHumanIsActive = (state: RootState): boolean => {
+  const humanPlayer = state.game?.players?.find((p) => p.isUser);
+  return humanPlayer?.status === 'active';
+};
+

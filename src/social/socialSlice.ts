@@ -193,9 +193,9 @@ const socialSlice = createSlice({
      */
     drainEvictedPlayerSocial(
       state,
-      action: PayloadAction<{ playerId: string; timestamp?: number }>,
+      action: PayloadAction<{ playerId: string; week?: number; timestamp?: number }>,
     ) {
-      const { playerId, timestamp } = action.payload;
+      const { playerId, week, timestamp } = action.payload;
       const now = timestamp ?? Date.now();
 
       // Zero out all resource banks.
@@ -204,14 +204,15 @@ const socialSlice = createSlice({
       state.infoBank[playerId] = 0;
 
       // Dismiss all unresolved incoming interactions.
-      state.incomingInteractions.forEach((interaction) => {
+      for (const interaction of state.incomingInteractions) {
         if (!interaction.resolved) {
           interaction.resolved = true;
           interaction.read = true;
           interaction.resolvedAt = now;
+          interaction.resolvedWeek = week;
           interaction.resolvedWith = 'dismiss';
         }
-      });
+      }
 
       // Clear all scheduled incoming interactions.
       state.scheduledIncomingInteractions = [];
