@@ -1147,9 +1147,28 @@ export default function GameScreen() {
     }
     if (juryTransitionStage !== 'idle') return
     if (juryTransitionSeenKey === juryTransitionKey) return
+
+    const noAnimations =
+      typeof document !== 'undefined' &&
+      !!document.body &&
+      document.body.classList.contains('no-animations')
+
     setJuryTransitionSeenKey(juryTransitionKey)
+
+    if (noAnimations) {
+      // In no-animations mode, skip announcement/cinematic overlays entirely
+      // and immediately complete the jury transition so the game does not pause.
+      if (game.phase !== 'week_end') {
+        setJuryTransitionStage('idle')
+        return
+      }
+      setJuryTransitionStage('idle')
+      dispatch(advance())
+      return
+    }
+
     setJuryTransitionStage('announcement')
-  }, [juryTransitionKey, juryTransitionSeenKey, juryTransitionStage])
+  }, [juryTransitionKey, juryTransitionSeenKey, juryTransitionStage, game.phase, dispatch])
 
   const handleStartJuryCinematic = useCallback(() => {
     setShowSpyJuryToast(false)
