@@ -11,13 +11,15 @@
  *      - Human HOH: TvDecisionModal to choose evictee.
  *      - AI HOH: deterministic auto-pick (seeded RNG, same as advance() AI path).
  *   4. Eviction announcement ChatOverlay.
- *   5. `finalizeFinal3Decision` is dispatched with { hohWinnerId, evicteeId }.
- *   6. `advance()` is dispatched so the game proceeds to the jury phase.
+ *   5. Eviction cinematic — SpotlightEvictionOverlay plays for the evictee.
+ *   6. `finalizeFinal3Decision` is dispatched with { hohWinnerId, evicteeId }.
+ *   7. `advance()` is dispatched so the game proceeds to the jury phase.
  *
  * Dev log tag: [Final3Ceremony]
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
@@ -27,6 +29,7 @@ import { mulberry32, seededPick } from '../../store/rng';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils';
 import ChatOverlay from '../ChatOverlay/ChatOverlay';
 import TvDecisionModal from '../TvDecisionModal/TvDecisionModal';
+import SpotlightEvictionOverlay from '../Eviction/SpotlightEvictionOverlay';
 import type { ChatLine } from '../ChatOverlay/ChatOverlay';
 import type { Player } from '../../types';
 import './Final3Ceremony.css';
@@ -38,7 +41,12 @@ type CeremonyStage =
   | 'pleas'
   | 'decision'
   | 'announcement'
+  | 'eviction_splash'
   | 'done';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const DEV_SKIP = import.meta.env.DEV || import.meta.env.CI === 'true';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +64,8 @@ export default function Final3Ceremony() {
   const [pleaLines, setPleaLines] = useState<ChatLine[]>([]);
   const [announceLines, setAnnounceLines] = useState<ChatLine[]>([]);
   const [evicteeId, setEvicteeId] = useState<string | null>(null);
+
+  const evicteePlayer = evicteeId ? (game.players.find((p) => p.id === evicteeId) ?? null) : null;
 
   // ── Build plea lines when entering the plea stage ─────────────────────────
 
@@ -173,12 +183,22 @@ export default function Final3Ceremony() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.players]);
 
-  // ── Announcement complete → finalize ─────────────────────────────────────
+  // ── Announcement complete → eviction cinematic ───────────────────────────
 
   const handleAnnounceComplete = useCallback(() => {
+    if (!evicteeId) return;
+    if (import.meta.env.DEV) {
+      console.log('[Final3Ceremony] announcement complete → eviction_splash', { evicteeId });
+    }
+    setStage('eviction_splash');
+  }, [evicteeId]);
+
+  // ── Eviction cinematic complete → finalize ────────────────────────────────
+
+  const handleEvictionSplashDone = useCallback(() => {
     if (!hohId || !evicteeId) return;
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] ceremony complete → finalizeFinal3Decision + advance', { hohId, evicteeId });
+      console.log('[Final3Ceremony] eviction splash done → finalizeFinal3Decision + advance', { hohId, evicteeId });
     }
     dispatch(finalizeFinal3Decision({ hohWinnerId: hohId, evicteeId }));
     dispatch(advance());
@@ -239,6 +259,19 @@ export default function Final3Ceremony() {
           ariaLabel="Final 3 eviction announcement"
         />
       )}
+
+      {/* Eviction cinematic */}
+      <AnimatePresence>
+        {stage === 'eviction_splash' && evicteePlayer && (
+          <SpotlightEvictionOverlay
+            key={evicteePlayer.id}
+            evictee={evicteePlayer}
+            layoutId={`avatar-tile-${evicteePlayer.id}`}
+            onDone={handleEvictionSplashDone}
+            devSkip={DEV_SKIP}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

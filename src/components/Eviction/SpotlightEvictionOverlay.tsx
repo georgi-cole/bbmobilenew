@@ -38,9 +38,10 @@ interface Props {
   evictee: Player;
   /**
    * Framer Motion layoutId matching the AvatarTile's avatarWrap.
-   * Required for the shared-layout match-cut animation.
+   * When provided, enables the shared-layout match-cut animation.
+   * When omitted, the portrait still animates but without a hero match-cut.
    */
-  layoutId: string;
+  layoutId?: string;
   /** Called once the choreography completes (before the reverse animation). */
   onDone: () => void;
   /** When true, renders the Skip button regardless of DEV mode (e.g. CI). */
