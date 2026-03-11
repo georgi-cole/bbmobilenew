@@ -89,6 +89,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 
 // Timing constants mirrored from the component for assertion purposes.
 const DONE_AT = 5400;
+const RETURN_DONE_AT = 1900;
 
 describe('SpotlightEvictionOverlay – cinematic timing', () => {
   beforeEach(() => {
@@ -110,6 +111,20 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
       />,
     );
     expect(screen.getByRole('dialog', { name: /Alice has been evicted/i })).toBeTruthy();
+  });
+
+  it('renders the return aria-label when variant is return', () => {
+    const onDone = vi.fn();
+    const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+    render(
+      <SpotlightEvictionOverlay
+        evictee={evictee}
+        layoutId="avatar-tile-p2"
+        onDone={onDone}
+        variant="return"
+      />,
+    );
+    expect(screen.getByRole('dialog', { name: /Alice has returned/i })).toBeTruthy();
   });
 
   it('does NOT fire onDone before DONE_AT ms', async () => {
@@ -140,6 +155,25 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
     );
 
     await act(async () => { vi.advanceTimersByTime(DONE_AT + 50); });
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onDone at or after RETURN_DONE_AT ms for return variant', async () => {
+    const onDone = vi.fn();
+    const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+    render(
+      <SpotlightEvictionOverlay
+        evictee={evictee}
+        layoutId="avatar-tile-p2"
+        onDone={onDone}
+        variant="return"
+      />,
+    );
+
+    await act(async () => { vi.advanceTimersByTime(RETURN_DONE_AT - 50); });
+    expect(onDone).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(100); });
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 

@@ -389,6 +389,7 @@ export default function GameScreen() {
     // that players whose p.status is already 'nominated' (AI-committed nominees)
     // don't have that status leak through when parts is empty.
     const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
+    const isReturning = battleBackReturnId === p.id
     return {
       id: p.id,
       name: p.name,
@@ -399,7 +400,7 @@ export default function GameScreen() {
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
       layoutId: `avatar-tile-${p.id}`,
-      isEvicting: showEvictionSplash && pendingEvictionPlayer?.id === p.id,
+      isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || isReturning,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -1018,6 +1019,7 @@ export default function GameScreen() {
 
 
   const battleBack = game.battleBack
+  const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
@@ -1034,6 +1036,12 @@ export default function GameScreen() {
     const candidateIds = battleBackCandidates.map((p) => p.id);
     return simulateBattleBackCompetition(candidateIds, game.seed).winnerId;
   }, [showBattleBack, battleBackCandidates, game.seed]);
+
+  const battleBackReturnPlayer = useMemo(
+    () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
+    [battleBackReturnId, game.players],
+  )
+  const showBattleBackReturn = !!battleBackReturnPlayer
 
   const battleBackVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
@@ -1052,9 +1060,16 @@ export default function GameScreen() {
   const handleBattleBackComplete = useCallback(() => {
     if (battleBackWinnerId) {
       dispatch(completeBattleBack(battleBackWinnerId))
+      setBattleBackReturnId(battleBackWinnerId)
+    } else {
+      dispatch(advance())
     }
-    dispatch(advance())
   }, [dispatch, battleBackWinnerId])
+
+  const handleBattleBackReturnDone = useCallback(() => {
+    setBattleBackReturnId(null)
+    dispatch(advance())
+  }, [dispatch])
 
   // ── Public's Favorite Player twist ───────────────────────────────────────
   // Shown after the jury finale: FinalFaceoff dismisses itself and this
@@ -1123,6 +1138,7 @@ export default function GameScreen() {
     showFinal3Ceremony ||
     showVoteResults ||
     showEvictionSplash ||
+    showBattleBackReturn ||
     showBattleBack ||
     // Also block while the twist is pending TV announcement (active but overlay not yet open).
     (game.battleBack?.active === true && game.battleBack?.competitionActive !== true) ||
@@ -1554,6 +1570,20 @@ export default function GameScreen() {
             onDone={handleEvictionSplashDone}
             layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
             devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Battle Back return animation (reverse eviction) ─────────────────── */}
+      <AnimatePresence>
+        {showBattleBackReturn && battleBackReturnPlayer && (
+          <SpotlightEvictionOverlay
+            key={`${battleBackReturnPlayer.id}-return`}
+            evictee={battleBackReturnPlayer}
+            onDone={handleBattleBackReturnDone}
+            layoutId={`avatar-tile-${battleBackReturnPlayer.id}`}
+            devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+            variant="return"
           />
         )}
       </AnimatePresence>

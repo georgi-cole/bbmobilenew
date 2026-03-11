@@ -1107,7 +1107,7 @@ const gameSlice = createSlice({
         text: `🔥 TWIST: The Jury Return / Battle Back is here! Jurors will compete for a chance to return! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
-        major: 'twist',
+        major: 'battle_back',
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },

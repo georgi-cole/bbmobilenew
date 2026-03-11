@@ -58,6 +58,7 @@ const MAJOR_KEYS = new Set([
   'final3_announcement',
   'final_hoh',
   'jury',
+  'battle_back',
   'twist',
 ]);
 
@@ -70,6 +71,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final HOH begins.',      isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
+  battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: 4500 },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
 };
 

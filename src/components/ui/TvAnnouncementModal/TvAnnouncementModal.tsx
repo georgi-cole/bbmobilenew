@@ -66,6 +66,12 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Jury Phase',
     body: 'The jury — made up of the last evicted houseguests — casts their votes to award the grand prize. Each juror votes for the finalist they believe most deserves to win based on game play, social game, and competition performance. The finalist with the most jury votes is crowned the winner of Big Brother.',
   },
+  battle_back: {
+    icon: '🔥',
+    label: 'BATTLE BACK',
+    category: 'Twist',
+    body: 'A Battle Back twist has been activated. Recently evicted houseguests will face off in a special competition for a chance to re-enter the Big Brother house. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
+  },
   twist: {
     icon: '🌀',
     label: 'TWIST',
