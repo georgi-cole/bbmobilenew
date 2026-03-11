@@ -266,6 +266,7 @@ export default function Final3Ceremony() {
           <SpotlightEvictionOverlay
             key={evicteePlayer.id}
             evictee={evicteePlayer}
+            layoutId={`avatar-tile-${evicteePlayer.id}`}
             onDone={handleEvictionSplashDone}
             devSkip={DEV_SKIP}
           />
