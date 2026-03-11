@@ -336,7 +336,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   // Handles both normal evictions (finalizePendingEviction) and self-evictions.
   if (type === 'game/finalizePendingEviction' || type === 'game/selfEvict') {
     const prevState = api.getState() as StateWithGame;
-    const evicteeId = (action as { payload: string }).payload;
+    const evicteeId = (action as unknown as { payload: string }).payload;
     const evictee = (prevState.game?.players ?? []).find((p) => p.id === evicteeId);
     const week = prevState.game?.week;
 
@@ -357,7 +357,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   // of any residual energy the player may carry.
   if (type === 'game/completeBattleBack') {
     const prevState = api.getState() as StateWithGame;
-    const winnerId = (action as { payload: string }).payload;
+    const winnerId = (action as unknown as { payload: string }).payload;
     const winner = (prevState.game?.players ?? []).find((p) => p.id === winnerId);
 
     const result = next(action);
