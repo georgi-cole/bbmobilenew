@@ -66,6 +66,20 @@ import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/Public
 import { selectSettings } from '../../store/settingsSlice'
 import './GameScreen.css'
 
+type JuryTransitionStage = 'idle' | 'announcement' | 'cinematic'
+
+const JURY_CINEMATIC_DURATION_MS = 4500
+const JURY_CINEMATIC_STEP_MS = 520
+const JURY_TEXT_ROTATE_MS = 1100
+const JURY_EMOJI_LAYER = ['👁️', '⚖️', '🎭', '🕯️', '👑']
+const JURY_TEXT_FRAGMENTS = [
+  'Betrayal remembered',
+  'Loyalty questioned',
+  'Moves will be judged',
+  'Only one can win',
+  'The jury is watching',
+]
+
 /**
  * GameScreen — main gameplay view.
  *
@@ -97,6 +111,14 @@ export default function GameScreen() {
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
 
   const humanPlayer = game.players.find((p) => p.isUser)
+  const juryPlayers = useMemo(
+    () => game.players.filter((p) => p.status === 'jury'),
+    [game.players],
+  )
+  const finalists = useMemo(
+    () => game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
+    [game.players],
+  )
 
   // Combine compile-time flag with runtime cfg override.
   // game.cfg?.enableSpectatorReact defaults to true when omitted.
@@ -1105,6 +1127,112 @@ export default function GameScreen() {
     game.awaitingFinal3Plea === true &&
     game.phase === 'final3_decision' &&
     !!game.hohId
+
+  const [juryTransitionStage, setJuryTransitionStage] = useState<JuryTransitionStage>('idle')
+  const [juryTransitionSeenKey, setJuryTransitionSeenKey] = useState('')
+  const [juryCinematicJurorIndex, setJuryCinematicJurorIndex] = useState(0)
+  const [juryCinematicTextIndex, setJuryCinematicTextIndex] = useState(0)
+  const [showSpyJuryToast, setShowSpyJuryToast] = useState(false)
+
+  const juryTransitionKey = useMemo(() => {
+    if (game.phase !== 'week_end') return ''
+    if (finalists.length !== 2 || juryPlayers.length === 0) return ''
+    return `week-${game.week}-${finalists.map((p) => p.id).sort().join('-')}`
+  }, [game.phase, game.week, finalists, juryPlayers.length])
+
+  useEffect(() => {
+    if (!juryTransitionKey) {
+      setJuryTransitionStage('idle')
+      return
+    }
+    if (juryTransitionStage !== 'idle') return
+    if (juryTransitionSeenKey === juryTransitionKey) return
+
+    const noAnimations =
+      typeof document !== 'undefined' &&
+      !!document.body &&
+      document.body.classList.contains('no-animations')
+
+    setJuryTransitionSeenKey(juryTransitionKey)
+
+    if (noAnimations) {
+      // In no-animations mode, skip announcement/cinematic overlays entirely
+      // and immediately complete the jury transition so the game does not pause.
+      if (game.phase !== 'week_end') {
+        setJuryTransitionStage('idle')
+        return
+      }
+      setJuryTransitionStage('idle')
+      dispatch(advance())
+      return
+    }
+
+    setJuryTransitionStage('announcement')
+  }, [juryTransitionKey, juryTransitionSeenKey, juryTransitionStage, game.phase, dispatch])
+
+  const handleStartJuryCinematic = useCallback(() => {
+    setShowSpyJuryToast(false)
+    setJuryCinematicJurorIndex(0)
+    setJuryCinematicTextIndex(0)
+    setJuryTransitionStage('cinematic')
+  }, [])
+
+  const completeJuryTransition = useCallback(() => {
+    if (game.phase !== 'week_end') {
+      setJuryTransitionStage('idle')
+      return
+    }
+    setJuryTransitionStage('idle')
+    dispatch(advance())
+  }, [dispatch, game.phase])
+
+  useEffect(() => {
+    if (juryTransitionStage !== 'cinematic') return
+    if (juryPlayers.length === 0) {
+      completeJuryTransition()
+      return
+    }
+    const jurorTimer = window.setInterval(() => {
+      setJuryCinematicJurorIndex((prev) => (prev + 1) % juryPlayers.length)
+    }, JURY_CINEMATIC_STEP_MS)
+    const textTimer = window.setInterval(() => {
+      setJuryCinematicTextIndex((prev) => (prev + 1) % JURY_TEXT_FRAGMENTS.length)
+    }, JURY_TEXT_ROTATE_MS)
+    const doneTimer = window.setTimeout(() => {
+      completeJuryTransition()
+    }, JURY_CINEMATIC_DURATION_MS)
+    return () => {
+      window.clearInterval(jurorTimer)
+      window.clearInterval(textTimer)
+      window.clearTimeout(doneTimer)
+    }
+  }, [completeJuryTransition, juryPlayers.length, juryTransitionStage])
+
+  useEffect(() => {
+    if (juryTransitionStage !== 'announcement') return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        handleStartJuryCinematic()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleStartJuryCinematic, juryTransitionStage])
+
+  useEffect(() => {
+    if (!showSpyJuryToast) return
+    const id = window.setTimeout(() => setShowSpyJuryToast(false), 1800)
+    return () => window.clearTimeout(id)
+  }, [showSpyJuryToast])
+
+  const handleSpyJury = useCallback(() => {
+    if (import.meta.env.DEV) {
+      console.log('[jury-phase] Spy Jury tapped — Jury House module coming soon')
+    }
+    setShowSpyJuryToast(true)
+  }, [])
+
   const awaitingHumanDecision =
     showOutgoingHohWarning ||
     showReplacementModal ||
@@ -1121,6 +1249,7 @@ export default function GameScreen() {
     showTieBreakModal ||
     showFinal3Modal ||
     showFinal3Ceremony ||
+    juryTransitionStage !== 'idle' ||
     showVoteResults ||
     showEvictionSplash ||
     showBattleBack ||
@@ -1309,6 +1438,104 @@ export default function GameScreen() {
 
       {/* ── Final 3 Ceremony (AI HOH: coronation → pleas → eviction) ────── */}
       {showFinal3Ceremony && <Final3Ceremony />}
+
+      {/* ── Jury phase transition: announcement modal → cinematic intro ───── */}
+      {juryTransitionStage === 'announcement' && (
+        <div
+          className="jury-phase-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="jury-phase-title"
+          onClick={handleStartJuryCinematic}
+        >
+          <div className="jury-phase-modal__card" onClick={(event) => event.stopPropagation()}>
+            <header className="jury-phase-modal__header">
+              <h2 className="jury-phase-modal__title" id="jury-phase-title">
+                The Jury Phase Begins
+              </h2>
+              <p className="jury-phase-modal__body">
+                Only two finalists remain. The evicted houseguests will now decide who deserves to
+                win the season.
+              </p>
+            </header>
+
+            <div className="jury-phase-modal__actions">
+              <button
+                className="jury-phase-modal__spy-btn"
+                type="button"
+                onClick={handleSpyJury}
+              >
+                Spy Jury
+              </button>
+              <button
+                className="jury-phase-modal__dismiss"
+                type="button"
+                onClick={handleStartJuryCinematic}
+              >
+                Tap to dismiss
+              </button>
+            </div>
+
+            {showSpyJuryToast && (
+              <p className="jury-phase-modal__toast" role="status" aria-live="polite">
+                Jury House coming soon.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {juryTransitionStage === 'cinematic' && (
+        <div
+          className="jury-cinematic"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Jury phase cinematic intro"
+        >
+          <div className="jury-cinematic__vignette" aria-hidden="true" />
+          <p className="jury-cinematic__fragment">{JURY_TEXT_FRAGMENTS[juryCinematicTextIndex]}</p>
+
+          <div className="jury-cinematic__jurors">
+            {juryPlayers.map((juror, index) => {
+              const isActive = index === juryCinematicJurorIndex
+              return (
+                <div
+                  key={juror.id}
+                  className={`jury-cinematic__juror${isActive ? ' jury-cinematic__juror--active' : ''}`}
+                >
+                  <span className="jury-cinematic__spotlight" aria-hidden="true" />
+                  <div className="jury-cinematic__avatar" aria-label={juror.name}>
+                    {resolveAvatar(juror)}
+                  </div>
+                  <span className="jury-cinematic__name">{juror.name}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="jury-cinematic__emoji-layer" aria-hidden="true">
+            {JURY_EMOJI_LAYER.map((emoji, index) => (
+              <span
+                key={`${emoji}-${index}`}
+                className="jury-cinematic__emoji"
+                style={{ animationDelay: `${index * 220}ms` }}
+              >
+                {emoji}
+              </span>
+            ))}
+          </div>
+
+          <p className="jury-cinematic__final-line">The jury will decide.</p>
+
+          <button
+            className="jury-cinematic__skip"
+            type="button"
+            onClick={completeJuryTransition}
+          >
+            Skip intro
+          </button>
+        </div>
+      )}
 
       {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}
       {showMinigameHost && pendingChallenge && (
