@@ -81,6 +81,10 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
  */
 function extractMajorKey(ev: TvEvent): string | null {
   const key = ev.meta?.major ?? ev.major ?? null;
+  const hasBattleBackCopy = ev.type === 'twist' && /battle back/i.test(ev.text);
+
+  // Legacy Battle Back events may still be tagged as a generic twist (or missing a major).
+  if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back';
   if (!key) return null;
   return MAJOR_KEYS.has(key) ? key : null;
 }

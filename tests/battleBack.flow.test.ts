@@ -100,13 +100,13 @@ describe('activateBattleBack', () => {
     expect(bb!.winnerId).toBeNull();
   });
 
-  it('pushes a twist TV event with major:twist', () => {
+  it('pushes a twist TV event with major:battle_back', () => {
     const store = makeStore();
     store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
     const events = store.getState().game.tvFeed;
     const battleBackEvent = events.find((e) => e.type === 'twist' && /Battle Back/i.test(e.text));
     expect(battleBackEvent).toBeDefined();
-    expect((battleBackEvent as TvEvent)?.major).toBe('twist');
+    expect((battleBackEvent as TvEvent)?.major).toBe('battle_back');
   });
 });
 
