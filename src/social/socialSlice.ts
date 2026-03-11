@@ -181,6 +181,41 @@ const socialSlice = createSlice({
       entry.resolvedWeek = action.payload.resolvedWeek;
       entry.resolvedWith = 'dismiss';
     },
+    /**
+     * Drain all social resources for a player who has been evicted.
+     *
+     * - Zeroes out energy, influence, and info banks.
+     * - Dismisses all unresolved incoming interactions.
+     * - Clears all scheduled incoming interactions.
+     *
+     * Called by socialMiddleware when `game/finalizePendingEviction` or
+     * `game/selfEvict` targets the user player.
+     */
+    drainEvictedPlayerSocial(
+      state,
+      action: PayloadAction<{ playerId: string; timestamp?: number }>,
+    ) {
+      const { playerId, timestamp } = action.payload;
+      const now = timestamp ?? Date.now();
+
+      // Zero out all resource banks.
+      state.energyBank[playerId] = 0;
+      state.influenceBank[playerId] = 0;
+      state.infoBank[playerId] = 0;
+
+      // Dismiss all unresolved incoming interactions.
+      state.incomingInteractions.forEach((interaction) => {
+        if (!interaction.resolved) {
+          interaction.resolved = true;
+          interaction.read = true;
+          interaction.resolvedAt = now;
+          interaction.resolvedWith = 'dismiss';
+        }
+      });
+
+      // Clear all scheduled incoming interactions.
+      state.scheduledIncomingInteractions = [];
+    },
     /** Resolve expired interactions when the week transitions. */
     resolveExpiredIncomingInteractionsForWeek(
       state,
@@ -326,6 +361,7 @@ export const {
   markAllIncomingInteractionsRead,
   resolveIncomingInteraction,
   dismissIncomingInteraction,
+  drainEvictedPlayerSocial,
   resolveExpiredIncomingInteractionsForWeek,
   updateRelationship,
   updateSocialMemory,

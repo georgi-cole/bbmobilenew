@@ -31,12 +31,14 @@ import {
   applyEnergyDelta,
   applyInfluenceDelta,
   decaySocialMemory,
+  drainEvictedPlayerSocial,
 } from './socialSlice';
 import { autoResolveExpiredIncomingInteractionsForWeek } from './incomingInteractions';
 import { scheduleIncomingInteractionsForPhase, ELIGIBLE_PHASES } from './incomingInteractionAutonomy';
 import type { AutonomyStore } from './incomingInteractionAutonomy';
 import { deliverScheduledIncomingInteractionsForPhase } from './incomingInteractionScheduler';
 import { seedWeekRelationships } from './weekSocialSeed';
+import { DEFAULT_ENERGY } from './constants';
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2']);
 
@@ -326,6 +328,40 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         grantEnergy(api as unknown as MiddlewareAPI, payload.source, -3);
       }
     }
+    return result;
+  }
+
+  // ── Eviction: drain social resources for the evicted user player ─────────
+  // Handles both normal evictions (finalizePendingEviction) and self-evictions.
+  if (type === 'game/finalizePendingEviction' || type === 'game/selfEvict') {
+    const prevState = api.getState() as StateWithGame;
+    const evicteeId = (action as { payload: string }).payload;
+    const evictee = (prevState.game?.players ?? []).find((p) => p.id === evicteeId);
+
+    const result = next(action);
+
+    // Only drain for the human/user player — AI players manage their own state.
+    if (evictee?.isUser) {
+      api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId }));
+    }
+
+    return result;
+  }
+
+  // ── Battle Back win: restore initial social resources for returning player ─
+  // When the user wins the Battle Back, they re-enter the house as an active
+  // player, so their social resources should be restored to their starting values.
+  if (type === 'game/completeBattleBack') {
+    const prevState = api.getState() as StateWithGame;
+    const winnerId = (action as { payload: string }).payload;
+    const winner = (prevState.game?.players ?? []).find((p) => p.id === winnerId);
+
+    const result = next(action);
+
+    if (winner?.isUser) {
+      api.dispatch(applyEnergyDelta({ playerId: winnerId, delta: DEFAULT_ENERGY }));
+    }
+
     return result;
   }
 

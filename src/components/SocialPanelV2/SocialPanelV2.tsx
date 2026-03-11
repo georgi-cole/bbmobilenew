@@ -50,8 +50,12 @@ export default function SocialPanelV2() {
 
   const humanPlayer = game.players.find((p) => p.isUser);
 
-  // Panel opens exclusively when the FAB dispatches openSocialPanel().
-  const open = !!humanPlayer && socialPanelOpen;
+  // Panel opens exclusively when the FAB dispatches openSocialPanel()
+  // AND the human player is active (not evicted or in jury — they are no
+  // longer in the house and cannot participate in social interactions).
+  const humanIsActive =
+    !!humanPlayer && humanPlayer.status !== 'evicted' && humanPlayer.status !== 'jury';
+  const open = humanIsActive && socialPanelOpen;
 
   function handleClose() {
     if (!humanPlayer) {

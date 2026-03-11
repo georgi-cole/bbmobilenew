@@ -40,6 +40,12 @@ export default function FloatingActionBar() {
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
 
+  // Disable social interactions when the human player is no longer in the house
+  // (evicted or in jury). Resources are drained on eviction; once the player
+  // returns via Battle Back their status reverts to 'active'.
+  const humanIsActive =
+    !!humanPlayer && humanPlayer.status !== 'evicted' && humanPlayer.status !== 'jury';
+
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
   const prevEnergyRef = useRef(humanEnergy);
@@ -67,6 +73,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
           title={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
+          disabled={!humanIsActive}
           onClick={() => dispatch(openSocialPanel())}
         >
           💬
@@ -124,6 +131,7 @@ export default function FloatingActionBar() {
           type="button"
           aria-label={`Inbox${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
           title="Inbox"
+          disabled={!humanIsActive}
           onClick={() => dispatch(openIncomingInbox())}
         >
           📥

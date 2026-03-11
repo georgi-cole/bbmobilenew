@@ -480,6 +480,18 @@ export function scheduleIncomingInteractionsForPhase(
     }
     return;
   }
+
+  // Skip scheduling if the user has been evicted or is in jury —
+  // they are no longer in the house and should not receive new interactions.
+  if (playerEntry.status === 'evicted' || playerEntry.status === 'jury') {
+    if (socialConfig.verbose) {
+      console.debug(
+        `[autonomy] player '${playerEntry.id}' is ${playerEntry.status} – skipping incoming interactions`,
+      );
+    }
+    return;
+  }
+
   const playerId = playerEntry.id;
 
   const context: AutonomyContext = {
