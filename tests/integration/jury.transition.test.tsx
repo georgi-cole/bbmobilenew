@@ -111,6 +111,26 @@ describe('Jury phase transition', () => {
     expect(screen.getByText(/Jury House coming soon/i)).toBeTruthy()
   })
 
+  it('auto-advances to jury phase when animations are disabled (body.no-animations)', async () => {
+    const store = makeStore()
+    document.body.classList.add('no-animations')
+
+    try {
+      renderGameScreen(store)
+      await act(async () => {})
+
+      expect(store.getState().game.phase).toBe('jury')
+      expect(
+        screen.queryByRole('dialog', { name: /The Jury Phase Begins/i }),
+      ).toBeNull()
+      expect(
+        screen.queryByRole('dialog', { name: /Jury phase cinematic intro/i }),
+      ).toBeNull()
+    } finally {
+      document.body.classList.remove('no-animations')
+    }
+  })
+
   it('starts cinematic (jury_cinematic phase) on dismiss and transitions into jury voting automatically', async () => {
     const store = makeStore()
     renderGameScreen(store)
