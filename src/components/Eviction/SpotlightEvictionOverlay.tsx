@@ -200,7 +200,6 @@ export default function SpotlightEvictionOverlay({
       className={`seo${isReturn ? ' seo--return' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label={isReturn ? `${evictee.name} has returned` : `${evictee.name} has been evicted`}
       aria-label={
         isReturn
           ? `${evictee.name} has returned to the house`

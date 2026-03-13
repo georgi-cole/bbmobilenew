@@ -136,7 +136,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('renders the return aria-label when variant is return', () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -181,7 +181,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('fires onDone at or after RETURN_DONE_AT ms for return variant', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
