@@ -1082,7 +1082,7 @@ export default function GameScreen() {
 
     dispatch(dismissBattleBack())
     dispatch(advance())
-  }, [dispatch, battleBackWinnerId, storeRef])
+  }, [dispatch, battleBackWinnerId])
 
   const handleBattleBackReturnDone = useCallback(() => {
     setBattleBackReturnId(null)
