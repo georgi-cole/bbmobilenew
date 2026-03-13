@@ -91,6 +91,9 @@ export default function GameScreen() {
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
   const storeRef = useRef(store)
+  useEffect(() => {
+    storeRef.current = store
+  }, [store])
   const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
@@ -1079,7 +1082,7 @@ export default function GameScreen() {
 
     dispatch(dismissBattleBack())
     dispatch(advance())
-  }, [dispatch, battleBackWinnerId])
+  }, [dispatch, battleBackWinnerId, storeRef])
 
   const handleBattleBackReturnDone = useCallback(() => {
     setBattleBackReturnId(null)
