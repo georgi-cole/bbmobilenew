@@ -31,7 +31,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 12,
-    phase: 'week_end',
+    phase: 'jury_announcement',
     seed: 77,
     hohId: 'user',
     prevHohId: null,
@@ -91,11 +91,12 @@ describe('Jury phase transition', () => {
     vi.useRealTimers()
   })
 
-  it('shows the jury phase announcement modal at week_end when only two finalists remain', async () => {
+  it('shows the jury phase announcement modal when phase is jury_announcement', async () => {
     const store = makeStore()
     renderGameScreen(store)
     await act(async () => {})
 
+    expect(store.getState().game.phase).toBe('jury_announcement')
     expect(screen.getByRole('dialog', { name: /The Jury Phase Begins/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Spy Jury/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Tap to dismiss/i })).toBeTruthy()
@@ -110,12 +111,13 @@ describe('Jury phase transition', () => {
     expect(screen.getByText(/Jury House coming soon/i)).toBeTruthy()
   })
 
-  it('starts cinematic on dismiss and transitions into jury voting automatically', async () => {
+  it('starts cinematic (jury_cinematic phase) on dismiss and transitions into jury voting automatically', async () => {
     const store = makeStore()
     renderGameScreen(store)
     await act(async () => {})
 
     fireEvent.click(screen.getByRole('button', { name: /Tap to dismiss/i }))
+    expect(store.getState().game.phase).toBe('jury_cinematic')
     expect(screen.getByRole('dialog', { name: /Jury phase cinematic intro/i })).toBeTruthy()
 
     await act(async () => {

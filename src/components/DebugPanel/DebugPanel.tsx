@@ -54,6 +54,8 @@ const PHASES: Phase[] = [
   'final3_comp2',
   'final3_comp3',
   'final3_decision',
+  'jury_announcement',
+  'jury_cinematic',
   'jury',
 ];
 

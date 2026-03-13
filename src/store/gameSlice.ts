@@ -1862,14 +1862,27 @@ const gameSlice = createSlice({
       // Guard: jury is a terminal phase — advance() is a no-op once reached.
       if (state.phase === 'jury') return;
 
+      // Guard: jury_announcement → jury_cinematic (user dismissed the modal).
+      if (state.phase === 'jury_announcement') {
+        state.phase = 'jury_cinematic';
+        return;
+      }
+
+      // Guard: jury_cinematic → jury (cinematic complete or skipped).
+      if (state.phase === 'jury_cinematic') {
+        state.phase = 'jury';
+        return;
+      }
+
       // Guard: at week_end with ≤2 players alive the Final 2 is set.
-      // Transition directly to jury instead of cycling back to week_start.
+      // Transition to jury_announcement so the UI can show the modal/cinematic
+      // before entering jury voting.
       if (state.phase === 'week_end') {
         const aliveAtEnd = state.players.filter(
           (p) => p.status !== 'evicted' && p.status !== 'jury',
         );
         if (aliveAtEnd.length <= 2) {
-          state.phase = 'jury';
+          state.phase = 'jury_announcement';
           return;
         }
       }
