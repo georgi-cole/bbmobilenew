@@ -99,7 +99,7 @@ function buildInitialCompetitionSeasonState(players: Player[]): Record<string, R
 }
 
 const initialPlayers = buildInitialPlayers();
-const FINALE_INTERVIEW_VARIANT_COUNT = 3;
+export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 
 const initialState: GameState = {
   season: 1,
