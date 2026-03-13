@@ -51,6 +51,8 @@ export interface ChatOverlayProps {
   onComplete?: () => void;
   /** Accessible label for the dialog */
   ariaLabel?: string;
+  /** Label for the completion button once all lines are revealed. */
+  completeLabel?: string;
 }
 
 /** Base delay between lines (ms). Divided by typingSpeed. */
@@ -113,6 +115,7 @@ export default function ChatOverlay({
   onLineReveal,
   onComplete,
   ariaLabel,
+  completeLabel = 'Continue →',
 }: ChatOverlayProps) {
   const [revealedCount, setRevealedCount] = useState(0);
   const [showTyping, setShowTyping] = useState(false);
@@ -292,7 +295,7 @@ export default function ChatOverlay({
               className="chat-overlay__done"
               onClick={handleDismiss}
             >
-              Continue →
+              {completeLabel}
             </button>
           )}
         </div>

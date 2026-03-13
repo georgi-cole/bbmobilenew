@@ -1,0 +1,221 @@
+.season-finale {
+  position: fixed;
+  inset: 0;
+  z-index: 7050;
+}
+
+.season-finale--winner {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(255, 224, 130, 0.28), transparent 38%),
+    linear-gradient(180deg, rgba(13, 10, 28, 0.95), rgba(4, 4, 12, 0.98));
+}
+
+.season-finale__confetti,
+.season-finale__confetti--reverse {
+  position: absolute;
+  inset: -10%;
+  background-image:
+    radial-gradient(circle, rgba(255, 215, 0, 0.95) 0 4px, transparent 4.5px),
+    radial-gradient(circle, rgba(255, 99, 132, 0.85) 0 4px, transparent 4.5px),
+    radial-gradient(circle, rgba(99, 102, 241, 0.8) 0 4px, transparent 4.5px),
+    radial-gradient(circle, rgba(34, 197, 94, 0.8) 0 4px, transparent 4.5px);
+  background-size: 180px 180px, 220px 220px, 200px 200px, 240px 240px;
+  background-position: 10% 0%, 80% 20%, 30% 70%, 70% 90%;
+  opacity: 0.48;
+  animation: season-finale-confetti 15s linear infinite;
+  pointer-events: none;
+}
+
+.season-finale__confetti--reverse {
+  opacity: 0.32;
+  transform: scaleX(-1);
+  animation-direction: reverse;
+  animation-duration: 19s;
+}
+
+.season-finale__winner-card {
+  position: relative;
+  z-index: 1;
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 2rem 1.4rem 1.5rem;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 231, 160, 0.55);
+  background:
+    linear-gradient(180deg, rgba(255, 245, 205, 0.16), rgba(255, 199, 39, 0.08)),
+    rgba(16, 11, 30, 0.94);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.48),
+    0 0 80px rgba(255, 204, 51, 0.16);
+  text-align: center;
+  overflow: hidden;
+}
+
+.season-finale__winner-card::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 27px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.season-finale__eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ffefb0;
+}
+
+.season-finale__winner-spotlight {
+  position: absolute;
+  inset: 4.2rem auto auto 50%;
+  width: 16rem;
+  height: 16rem;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 228, 138, 0.45) 0%, rgba(255, 228, 138, 0.1) 42%, transparent 74%);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.season-finale__winner-portrait {
+  position: relative;
+  z-index: 1;
+  width: 8.75rem;
+  height: 8.75rem;
+  margin: 0 auto 1rem;
+  padding: 0.35rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff6cc, #f59e0b, #fef08a);
+  box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.1), 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.season-finale__winner-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(17, 24, 39, 0.7);
+}
+
+.season-finale__winner-copy h2 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.05;
+  color: #fffbea;
+}
+
+.season-finale__winner-copy p {
+  margin: 0.6rem auto 0;
+  max-width: 22rem;
+  color: rgba(255, 251, 234, 0.84);
+}
+
+.season-finale__trophy-wrap {
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.season-finale__trophy {
+  display: inline-block;
+  font-size: 2rem;
+  filter: drop-shadow(0 0 18px rgba(255, 212, 59, 0.45));
+  animation: season-finale-trophy-spin 10s linear infinite;
+}
+
+.season-finale__button {
+  margin-top: 1.35rem;
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 0.9rem 1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #221400;
+  background: linear-gradient(135deg, #ffe38a, #fbbf24);
+  box-shadow: 0 12px 30px rgba(251, 191, 36, 0.26);
+}
+
+.season-finale--lights-off {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: transparent;
+}
+
+.season-finale__lights-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 214, 102, 0.22), transparent 18%),
+    linear-gradient(180deg, rgba(10, 10, 18, 0.04), rgba(2, 2, 8, 0.98));
+  opacity: 0;
+}
+
+.season-finale--lights-off-active .season-finale__lights-overlay {
+  animation: season-finale-lights-off 2.4s ease forwards;
+}
+
+.season-finale__lights-copy {
+  position: relative;
+  z-index: 1;
+  padding: 1.5rem;
+  text-align: center;
+  color: rgba(255, 250, 240, 0.96);
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.season-finale__lights-kicker {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.season-finale__lights-copy h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.season-finale__lights-copy p:last-child {
+  margin: 0.7rem auto 0;
+  max-width: 18rem;
+  opacity: 0.88;
+}
+
+@keyframes season-finale-confetti {
+  0% {
+    transform: translateY(-2%) rotate(0deg);
+  }
+  100% {
+    transform: translateY(6%) rotate(5deg);
+  }
+}
+
+@keyframes season-finale-trophy-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes season-finale-lights-off {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+  }
+}

@@ -230,6 +230,26 @@ export interface FavoritePlayerState {
   awardAmount: number;
 }
 
+export type FinalePhase =
+  | 'winnerCinematic'
+  | 'winnerInterview'
+  | 'publicFavoriteSetup'
+  | 'publicFavoriteFlow'
+  | 'goodbyeSequence'
+  | 'lightsOffTransition'
+  | 'seasonComplete';
+
+export interface SeasonFinaleState {
+  phase: FinalePhase;
+  winnerId: string;
+  publicFavoriteWinnerId?: string;
+  interviewIndex: number;
+  goodbyeIndex: number;
+  isChatOpen: boolean;
+  isLightsOffAnimating: boolean;
+  publicFavoriteEnabled: boolean;
+}
+
 // ─── Game history (immutable event log) ──────────────────────────────────────
 
 /**
@@ -399,6 +419,8 @@ export interface GameState {
    * Feature-gated via settings.sim.enableFavoritePlayer.
    */
   favoritePlayer?: FavoritePlayerState;
+  /** Explicit post-jury finale state machine controlling the end-of-season flow. */
+  seasonFinale?: SeasonFinaleState | null;
   /**
    * Immutable history log of major game events (twists, special votes, etc.).
    * Append-only; used for post-season display and debugging.

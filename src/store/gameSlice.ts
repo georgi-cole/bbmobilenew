@@ -1,6 +1,16 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
-import type { GameState, Player, Phase, TvEvent, MinigameResult, MinigameSession, BattleBackState, SpectatorActiveState } from '../types';
+import type {
+  GameState,
+  Player,
+  Phase,
+  TvEvent,
+  MinigameResult,
+  MinigameSession,
+  BattleBackState,
+  SpectatorActiveState,
+  SeasonFinaleState,
+} from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import {
   getCompetitionSeasonState,
@@ -89,6 +99,7 @@ function buildInitialCompetitionSeasonState(players: Player[]): Record<string, R
 }
 
 const initialPlayers = buildInitialPlayers();
+export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 
 const initialState: GameState = {
   season: 1,
@@ -126,6 +137,7 @@ const initialState: GameState = {
   isLive: false,
   seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
   spectatorActive: null,
+  seasonFinale: null,
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -1464,6 +1476,83 @@ const gameSlice = createSlice({
         'game',
       );
     },
+    startWinnerCinematic(
+      state,
+      action: PayloadAction<{
+        winnerId: string;
+        seed: number;
+        publicFavoriteEnabled: boolean;
+      }>,
+    ) {
+      const { winnerId, seed, publicFavoriteEnabled } = action.payload;
+      const interviewIndex = seed % FINALE_INTERVIEW_VARIANT_COUNT;
+      const nextFinaleState: SeasonFinaleState = {
+        phase: 'winnerCinematic',
+        winnerId,
+        interviewIndex,
+        goodbyeIndex: 0,
+        isChatOpen: false,
+        isLightsOffAnimating: false,
+        publicFavoriteEnabled,
+      };
+      state.seasonFinale = nextFinaleState;
+    },
+    startWinnerInterview(state) {
+      if (state.seasonFinale?.phase !== 'winnerCinematic') return;
+      state.seasonFinale.phase = 'winnerInterview';
+      state.seasonFinale.isChatOpen = true;
+    },
+    advanceInterview(state) {
+      if (state.seasonFinale?.phase !== 'winnerInterview') return;
+      if (state.seasonFinale.publicFavoriteEnabled) {
+        state.seasonFinale.phase = 'publicFavoriteSetup';
+        state.seasonFinale.isChatOpen = true;
+        return;
+      }
+      state.seasonFinale.phase = 'goodbyeSequence';
+      state.seasonFinale.goodbyeIndex = 0;
+      state.seasonFinale.isChatOpen = true;
+    },
+    startPublicFavorite(state) {
+      if (state.seasonFinale?.phase !== 'publicFavoriteSetup') return;
+      state.seasonFinale.phase = 'publicFavoriteFlow';
+      state.seasonFinale.isChatOpen = false;
+    },
+    resumeAfterPublicFavorite(state, action: PayloadAction<{ winnerId?: string }>) {
+      if (state.seasonFinale?.phase !== 'publicFavoriteFlow') return;
+      state.seasonFinale.phase = 'goodbyeSequence';
+      state.seasonFinale.publicFavoriteWinnerId = action.payload.winnerId;
+      state.seasonFinale.goodbyeIndex = 0;
+      state.seasonFinale.isChatOpen = true;
+    },
+    startGoodbyeSequence(state) {
+      if (
+        state.seasonFinale?.phase !== 'winnerInterview' &&
+        state.seasonFinale?.phase !== 'publicFavoriteFlow' &&
+        state.seasonFinale?.phase !== 'publicFavoriteSetup'
+      ) {
+        return;
+      }
+      state.seasonFinale.phase = 'goodbyeSequence';
+      state.seasonFinale.goodbyeIndex = 0;
+      state.seasonFinale.isChatOpen = true;
+    },
+    advanceGoodbyeSequence(state, action: PayloadAction<number>) {
+      if (state.seasonFinale?.phase !== 'goodbyeSequence') return;
+      state.seasonFinale.goodbyeIndex = Math.max(state.seasonFinale.goodbyeIndex, action.payload);
+    },
+    startLightsOff(state) {
+      if (state.seasonFinale?.phase !== 'goodbyeSequence') return;
+      state.seasonFinale.phase = 'lightsOffTransition';
+      state.seasonFinale.isChatOpen = false;
+      state.seasonFinale.isLightsOffAnimating = true;
+    },
+    completeFinale(state) {
+      if (state.seasonFinale?.phase !== 'lightsOffTransition') return;
+      state.seasonFinale.phase = 'seasonComplete';
+      state.seasonFinale.isLightsOffAnimating = false;
+      state.seasonFinale.isChatOpen = false;
+    },
 
     /** Clear any blocking human-decision flags (replacementNeeded, awaitingFinal3Eviction, etc.)
      * that could prevent the Continue button from appearing (debug only).
@@ -1588,6 +1677,7 @@ const gameSlice = createSlice({
         state.pendingEviction != null ||
         state.battleBack?.active ||
         state.favoritePlayer?.active ||
+        (state.seasonFinale != null && state.seasonFinale.phase !== 'seasonComplete') ||
         state.spectatorActive
       ) {
         return;
@@ -2285,6 +2375,15 @@ export const {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizeGame,
+  startWinnerCinematic,
+  startWinnerInterview,
+  advanceInterview,
+  startPublicFavorite,
+  resumeAfterPublicFavorite,
+  startGoodbyeSequence,
+  advanceGoodbyeSequence,
+  startLightsOff,
+  completeFinale,
   activateBattleBack,
   completeBattleBack,
   dismissBattleBack,

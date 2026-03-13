@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
@@ -31,6 +30,7 @@ import {
   resolveFavoritePlayerWinner,
   awardFavoritePrize,
   openFavoritePlayerVoting,
+  resumeAfterPublicFavorite,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -96,7 +96,6 @@ export default function GameScreen() {
   useEffect(() => {
     storeRef.current = store
   }, [store])
-  const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const settings = useAppSelector(selectSettings)
@@ -1076,7 +1075,6 @@ export default function GameScreen() {
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Battle Back completion before showing the return overlay. storeRef is intentionally
   // omitted from deps because refs are stable and shouldn't re-create this callback.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleBattleBackComplete = useCallback(() => {
     if (!battleBackWinnerId) {
       dispatch(dismissBattleBack())
@@ -1102,8 +1100,9 @@ export default function GameScreen() {
   }, [dispatch])
 
   // ── Public's Favorite Player twist ───────────────────────────────────────
-  // Shown after the jury finale: FinalFaceoff dismisses itself and this
-  // component handles the TV announcement (via TvZone) → voting overlay.
+  // Shown during the explicit season finale flow: the finale controller
+  // yields to the existing TV announcement + voting overlay, then resumes the
+  // finale sequence once the winner reveal is dismissed.
   const favoritePlayer = game.favoritePlayer;
   const showFavoriteVoting =
     favoritePlayer?.active === true && favoritePlayer.votingStarted === true;
@@ -1119,8 +1118,8 @@ export default function GameScreen() {
   const handleFavoriteComplete = useCallback((winnerId: string) => {
     dispatch(resolveFavoritePlayerWinner(winnerId));
     dispatch(awardFavoritePrize());
-    navigate('/game-over');
-  }, [dispatch, navigate]);
+    dispatch(resumeAfterPublicFavorite({ winnerId }));
+  }, [dispatch]);
   // Shown when a HOH or POV competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
   const pendingMinigame = game.pendingMinigame
