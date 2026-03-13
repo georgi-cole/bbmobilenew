@@ -92,13 +92,14 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
   // ── Mount / unmount: register overlay player in store ─────────────────────
   // Ensures AvatarTile hides itself (isEvicting) for this player while the
   // overlay is active, preventing a duplicated fullscreen match-cut tile.
+  // The owning component (GameScreen or Final3Ceremony) explicitly clears this
+  // flag in their onDone handlers; this cleanup is a safety net for the case
+  // where the component unmounts unexpectedly (e.g. navigation away mid-cinematic).
   useEffect(() => {
     console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId });
     dispatch(setEvictionOverlay(evictee.id));
     return () => {
       console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
-      // Safety-net: clear flag on unmount in case onDone didn't fire
-      // (e.g. component unmounted before sequence completed).
       dispatch(setEvictionOverlay(null));
     };
   // evictee.id and layoutId are stable for the lifetime of this overlay instance

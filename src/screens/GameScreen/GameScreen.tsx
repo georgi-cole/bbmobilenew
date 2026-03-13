@@ -10,6 +10,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   finalizePendingEviction,
+  setEvictionOverlay,
   selectAlivePlayers,
   selectF3Part3PredictedWinnerId,
   selectF3Part2PredictedWinnerId,
@@ -1024,6 +1025,8 @@ export default function GameScreen() {
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
+    // Clear the overlay flag so AvatarTile returns to normal after the cinematic.
+    dispatch(setEvictionOverlay(null))
     // Capture the phase before dispatch since finalizePendingEviction may change it.
     const isFinal4 = game.phase === 'final4_eviction'
     dispatch(finalizePendingEviction(evicteeId))
