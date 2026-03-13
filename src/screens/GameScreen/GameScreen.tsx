@@ -66,21 +66,10 @@ import type { Player } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
+import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
-
-const JURY_CINEMATIC_DURATION_MS = 4500
-const JURY_CINEMATIC_STEP_MS = 520
-const JURY_TEXT_ROTATE_MS = 1100
-const JURY_EMOJI_LAYER = ['👁️', '⚖️', '🎭', '🕯️', '👑']
-const JURY_TEXT_FRAGMENTS = [
-  'Betrayal remembered',
-  'Loyalty questioned',
-  'Moves will be judged',
-  'Only one can win',
-  'The jury is watching',
-]
 
 /**
  * GameScreen — main gameplay view.
@@ -1162,13 +1151,13 @@ export default function GameScreen() {
     game.phase === 'final3_decision' &&
     !!game.hohId
 
-  const [juryCinematicJurorIndex, setJuryCinematicJurorIndex] = useState(0)
-  const [juryCinematicTextIndex, setJuryCinematicTextIndex] = useState(0)
-  const [showSpyJuryToast, setShowSpyJuryToast] = useState(false)
-
-  // ── Jury transition: no-animations fast-path ──────────────────────────────
-  // When the body has the no-animations class, skip the announcement and
-  // cinematic overlays and immediately advance through each intermediate phase.
+  // ── Jury reveal overlay ───────────────────────────────────────────────────
+  // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
+  // and prefers-reduced-motion fast-paths are handled inside the component).
+  // The no-animations fast-path below advances both jury_announcement and
+  // jury_cinematic directly — bypassing the overlay — when body.no-animations
+  // is set, and also guards jury_cinematic if it is entered directly (e.g.
+  // after a store rehydration).
   useEffect(() => {
     const noAnimations =
       typeof document !== 'undefined' &&
@@ -1180,63 +1169,19 @@ export default function GameScreen() {
     }
   }, [game.phase, dispatch])
 
-  const handleStartJuryCinematic = useCallback(() => {
-    setShowSpyJuryToast(false)
-    setJuryCinematicJurorIndex(0)
-    setJuryCinematicTextIndex(0)
-    dispatch(advance())
-  }, [dispatch])
-
-  const completeJuryTransition = useCallback(() => {
-    if (game.phase !== 'jury_cinematic') return
-    dispatch(advance())
+  /** Advance jury_announcement → jury_cinematic → jury in one step. No-op in any other phase. */
+  const handleEnterJuryVote = useCallback(() => {
+    if (game.phase !== 'jury_announcement' && game.phase !== 'jury_cinematic') return
+    if (game.phase === 'jury_announcement') {
+      dispatch(advance()) // jury_announcement → jury_cinematic
+    }
+    dispatch(advance())   // jury_cinematic → jury
   }, [dispatch, game.phase])
-
-  useEffect(() => {
-    if (game.phase !== 'jury_cinematic') return
-    if (juryPlayers.length === 0) {
-      completeJuryTransition()
-      return
-    }
-    const jurorTimer = window.setInterval(() => {
-      setJuryCinematicJurorIndex((prev) => (prev + 1) % juryPlayers.length)
-    }, JURY_CINEMATIC_STEP_MS)
-    const textTimer = window.setInterval(() => {
-      setJuryCinematicTextIndex((prev) => (prev + 1) % JURY_TEXT_FRAGMENTS.length)
-    }, JURY_TEXT_ROTATE_MS)
-    const doneTimer = window.setTimeout(() => {
-      completeJuryTransition()
-    }, JURY_CINEMATIC_DURATION_MS)
-    return () => {
-      window.clearInterval(jurorTimer)
-      window.clearInterval(textTimer)
-      window.clearTimeout(doneTimer)
-    }
-  }, [completeJuryTransition, juryPlayers.length, game.phase])
-
-  useEffect(() => {
-    if (game.phase !== 'jury_announcement') return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        handleStartJuryCinematic()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleStartJuryCinematic, game.phase])
-
-  useEffect(() => {
-    if (!showSpyJuryToast) return
-    const id = window.setTimeout(() => setShowSpyJuryToast(false), 1800)
-    return () => window.clearTimeout(id)
-  }, [showSpyJuryToast])
 
   const handleSpyJury = useCallback(() => {
     if (import.meta.env.DEV) {
       console.log('[jury-phase] Spy Jury tapped — Jury House module coming soon')
     }
-    setShowSpyJuryToast(true)
   }, [])
 
   const awaitingHumanDecision =
@@ -1446,103 +1391,13 @@ export default function GameScreen() {
       {/* ── Final 3 Ceremony (AI HOH: coronation → pleas → eviction) ────── */}
       {showFinal3Ceremony && <Final3Ceremony />}
 
-      {/* ── Jury phase transition: announcement modal → cinematic intro ───── */}
-      {game.phase === 'jury_announcement' && (
-        <div
-          className="jury-phase-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="jury-phase-title"
-          onClick={handleStartJuryCinematic}
-        >
-          <div className="jury-phase-modal__card" onClick={(event) => event.stopPropagation()}>
-            <header className="jury-phase-modal__header">
-              <h2 className="jury-phase-modal__title" id="jury-phase-title">
-                The Jury Phase Begins
-              </h2>
-              <p className="jury-phase-modal__body">
-                Only two finalists remain. The evicted houseguests will now decide who deserves to
-                win the season.
-              </p>
-            </header>
-
-            <div className="jury-phase-modal__actions">
-              <button
-                className="jury-phase-modal__spy-btn"
-                type="button"
-                onClick={handleSpyJury}
-              >
-                Spy Jury
-              </button>
-              <button
-                className="jury-phase-modal__dismiss"
-                type="button"
-                onClick={handleStartJuryCinematic}
-              >
-                Tap to dismiss
-              </button>
-            </div>
-
-            {showSpyJuryToast && (
-              <p className="jury-phase-modal__toast" role="status" aria-live="polite">
-                Jury House coming soon.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {game.phase === 'jury_cinematic' && (
-        <div
-          className="jury-cinematic"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Jury phase cinematic intro"
-        >
-          <div className="jury-cinematic__vignette" aria-hidden="true" />
-          <p className="jury-cinematic__fragment">{JURY_TEXT_FRAGMENTS[juryCinematicTextIndex]}</p>
-
-          <div className="jury-cinematic__jurors">
-            {juryPlayers.map((juror, index) => {
-              const isActive = index === juryCinematicJurorIndex
-              return (
-                <div
-                  key={juror.id}
-                  className={`jury-cinematic__juror${isActive ? ' jury-cinematic__juror--active' : ''}`}
-                >
-                  <span className="jury-cinematic__spotlight" aria-hidden="true" />
-                  <div className="jury-cinematic__avatar" aria-label={juror.name}>
-                    {resolveAvatar(juror)}
-                  </div>
-                  <span className="jury-cinematic__name">{juror.name}</span>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="jury-cinematic__emoji-layer" aria-hidden="true">
-            {JURY_EMOJI_LAYER.map((emoji, index) => (
-              <span
-                key={`${emoji}-${index}`}
-                className="jury-cinematic__emoji"
-                style={{ animationDelay: `${index * 220}ms` }}
-              >
-                {emoji}
-              </span>
-            ))}
-          </div>
-
-          <p className="jury-cinematic__final-line">The jury will decide.</p>
-
-          <button
-            className="jury-cinematic__skip"
-            type="button"
-            onClick={completeJuryTransition}
-          >
-            Skip intro
-          </button>
-        </div>
-      )}
+      {/* ── Jury phase reveal: cinematic full-screen overlay ──────────────── */}
+      <JuryPhaseRevealOverlay
+        open={game.phase === 'jury_announcement'}
+        jurors={juryPlayers}
+        onEnterVote={handleEnterJuryVote}
+        onSpyJury={handleSpyJury}
+      />
 
       {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}
       {showMinigameHost && pendingChallenge && (

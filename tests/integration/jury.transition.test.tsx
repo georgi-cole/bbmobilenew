@@ -91,24 +91,31 @@ describe('Jury phase transition', () => {
     vi.useRealTimers()
   })
 
-  it('shows the jury phase announcement modal when phase is jury_announcement', async () => {
+  it('shows the cinematic overlay when phase is jury_announcement', async () => {
     const store = makeStore()
     renderGameScreen(store)
     await act(async () => {})
 
     expect(store.getState().game.phase).toBe('jury_announcement')
-    expect(screen.getByRole('dialog', { name: /The Jury Phase Begins/i })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /The Jury Takes Control/i })).toBeTruthy()
+  })
+
+  it('shows the Skip button during the animation sequence', async () => {
+    const store = makeStore()
+    renderGameScreen(store)
+    await act(async () => {})
+
+    expect(screen.getByRole('button', { name: /Skip sequence/i })).toBeTruthy()
+  })
+
+  it('reveals Enter Jury Vote and Spy Jury after skipping the sequence', async () => {
+    const store = makeStore()
+    renderGameScreen(store)
+    await act(async () => {})
+
+    fireEvent.click(screen.getByRole('button', { name: /Skip sequence/i }))
+    expect(screen.getByRole('button', { name: /Enter Jury Vote/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Spy Jury/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Tap to dismiss/i })).toBeTruthy()
-  })
-
-  it('shows a non-blocking placeholder toast when Spy Jury is tapped', async () => {
-    const store = makeStore()
-    renderGameScreen(store)
-    await act(async () => {})
-
-    fireEvent.click(screen.getByRole('button', { name: /Spy Jury/i }))
-    expect(screen.getByText(/Jury House coming soon/i)).toBeTruthy()
   })
 
   it('auto-advances to jury phase when animations are disabled (body.no-animations)', async () => {
@@ -121,49 +128,22 @@ describe('Jury phase transition', () => {
 
       expect(store.getState().game.phase).toBe('jury')
       expect(
-        screen.queryByRole('dialog', { name: /The Jury Phase Begins/i }),
-      ).toBeNull()
-      expect(
-        screen.queryByRole('dialog', { name: /Jury phase cinematic intro/i }),
+        screen.queryByRole('dialog', { name: /The Jury Takes Control/i }),
       ).toBeNull()
     } finally {
       document.body.classList.remove('no-animations')
     }
   })
 
-  it('auto-advances to jury phase when animations are disabled (body.no-animations)', async () => {
-    const store = makeStore()
-    document.body.classList.add('no-animations')
-
-    try {
-      renderGameScreen(store)
-      await act(async () => {})
-
-      expect(store.getState().game.phase).toBe('jury')
-      expect(
-        screen.queryByRole('dialog', { name: /The Jury Phase Begins/i }),
-      ).toBeNull()
-      expect(
-        screen.queryByRole('dialog', { name: /Jury phase cinematic intro/i }),
-      ).toBeNull()
-    } finally {
-      document.body.classList.remove('no-animations')
-    }
-  })
-
-  it('starts cinematic (jury_cinematic phase) on dismiss and transitions into jury voting automatically', async () => {
+  it('transitions to jury phase when Enter Jury Vote is clicked after skip', async () => {
     const store = makeStore()
     renderGameScreen(store)
     await act(async () => {})
 
-    fireEvent.click(screen.getByRole('button', { name: /Tap to dismiss/i }))
-    expect(store.getState().game.phase).toBe('jury_cinematic')
-    expect(screen.getByRole('dialog', { name: /Jury phase cinematic intro/i })).toBeTruthy()
-
-    await act(async () => {
-      vi.advanceTimersByTime(4600)
-    })
+    fireEvent.click(screen.getByRole('button', { name: /Skip sequence/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Enter Jury Vote/i }))
 
     expect(store.getState().game.phase).toBe('jury')
   })
 })
+
