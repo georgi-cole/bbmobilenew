@@ -211,7 +211,7 @@ export default function Final3Ceremony() {
     setStage('done');
   }, [dispatch, hohId, evicteeId]);
 
-  // ── Cleanup: clear the overlay flag if we ever leave eviction_splash ──────
+  // ── Cleanup: clear the overlay flag on unmount (safety net) ───────────────
 
   useEffect(() => {
     return () => {
