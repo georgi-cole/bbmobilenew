@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import { useAppDispatch } from '../../store/hooks';
-import { setEvictionOverlay } from '../../store/gameSlice';
+import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice';
 import './SpotlightEvictionOverlay.css';
 
 // ── Timing constants (ms, relative to component mount) ────────────────────
@@ -24,6 +24,11 @@ const LOWER_THIRD_AT  = 2100;  // lower-third slides in
 const HOLD_START      = 3000;  // expansion done; suspense hold begins
 const DONE_AT         = 5400;  // onDone fires; AnimatePresence triggers reverse (400 ms)
 
+// Return (reverse) sequence: start at hold, then rewind to spotlight and done.
+const RETURN_CLEAR_AT     = 900;
+const RETURN_SPOTLIGHT_AT = 1300;
+const RETURN_DONE_AT      = 1900;
+
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
 
@@ -34,6 +39,7 @@ const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
 const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] };
 
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
+type OverlayVariant = 'eviction' | 'return';
 
 interface Props {
   /** Player being evicted. */
@@ -48,6 +54,8 @@ interface Props {
   onDone: () => void;
   /** When true, renders the Skip button regardless of DEV mode (e.g. CI). */
   devSkip?: boolean;
+  /** When set to "return", the animation runs in reverse for Battle Back returns. */
+  variant?: OverlayVariant;
 }
 
 /**
@@ -65,16 +73,23 @@ interface Props {
  * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
  * Dev-only Skip button appears when import.meta.env.DEV is true.
  */
-export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, devSkip }: Props) {
+export default function SpotlightEvictionOverlay({
+  evictee,
+  layoutId,
+  onDone,
+  devSkip,
+  variant = 'eviction',
+}: Props) {
   const dispatch = useAppDispatch();
   const [candidates] = useState(() => resolveAvatarCandidates(evictee));
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
 
-  const [phase, setPhase] = useState<Phase>('spotlight');
-  const [showLiveBug, setShowLiveBug] = useState(false);
-  const [showLowerThird, setShowLowerThird] = useState(false);
-  const [desaturated, setDesaturated] = useState(false);
+  const isReturn = variant === 'return';
+  const [phase, setPhase] = useState<Phase>(isReturn ? 'holding' : 'spotlight');
+  const [showLiveBug, setShowLiveBug] = useState(isReturn);
+  const [showLowerThird, setShowLowerThird] = useState(isReturn);
+  const [desaturated, setDesaturated] = useState(isReturn);
 
   const firedRef = useRef(false);
 
@@ -95,18 +110,20 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
   // The owning component (GameScreen or Final3Ceremony) explicitly clears this
   // flag in their onDone handlers; this cleanup is a safety net for the case
   // where the component unmounts unexpectedly (e.g. navigation away mid-cinematic).
+  // clearEvictionOverlay is used (not setEvictionOverlay(null)) so a stale unmount
+  // cannot clear a subsequently-mounted overlay for a different player.
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId });
+      console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId, variant });
     }
     dispatch(setEvictionOverlay(evictee.id));
     return () => {
       if (import.meta.env.DEV) {
         console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
       }
-      dispatch(setEvictionOverlay(null));
+      dispatch(clearEvictionOverlay(evictee.id));
     };
-  // evictee.id and layoutId are stable for the lifetime of this overlay instance
+  // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,8 +138,22 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
       // Simplified: skip transitions, jump straight to holding state then done
       setPhase('holding');
       setShowLowerThird(true);
+      setShowLiveBug(true);
       setDesaturated(true);
       timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done (reduced-motion)'); }, REDUCED_DONE_AT));
+      return () => timers.forEach(clearTimeout);
+    }
+
+    if (isReturn) {
+      dbg('mount – return holding');
+      timers.push(setTimeout(() => {
+        setShowLowerThird(false);
+        setShowLiveBug(false);
+        dbg('return lower-third out');
+      }, RETURN_CLEAR_AT));
+      timers.push(setTimeout(() => { setDesaturated(false); dbg('return resaturate'); }, RETURN_CLEAR_AT));
+      timers.push(setTimeout(() => { setPhase('spotlight'); dbg('return spotlight'); }, RETURN_SPOTLIGHT_AT));
+      timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done (return)'); }, RETURN_DONE_AT));
       return () => timers.forEach(clearTimeout);
     }
 
@@ -142,7 +173,7 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
     timers.push(setTimeout(() => { setPhase('done'); fire(); dbg('done'); }, DONE_AT));
 
     return () => timers.forEach(clearTimeout);
-  // fire is stable (guarded by firedRef); prefersReducedMotion is read once on mount
+  // fire is stable (guarded by firedRef); prefersReducedMotion/isReturn read once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -162,12 +193,14 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
   const isDev = import.meta.env.DEV || devSkip;
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
+  const labelText = isReturn ? 'RETURNED' : 'EVICTED';
+
   return (
     <div
       className="seo"
       role="dialog"
       aria-modal="true"
-      aria-label={`${evictee.name} has been evicted`}
+      aria-label={isReturn ? `${evictee.name} has returned` : `${evictee.name} has been evicted`}
     >
       {/* Dim overlay — fades in immediately */}
       <motion.div
@@ -246,7 +279,7 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
         <div className="seo__scanlines" aria-hidden="true" />
       </motion.div>
 
-      {/* EVICTED lower-third — slides up from bottom */}
+      {/* Lower-third — slides up from bottom; label changes for return variant */}
       <AnimatePresence>
         {showLowerThird && (
           <motion.div
@@ -256,13 +289,13 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
             exit={{ y: '110%', opacity: 0 }}
             transition={noMotion ?? { duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
           >
-            <p className="seo__label">EVICTED</p>
+            <p className="seo__label">{labelText}</p>
             <h1 className="seo__name">{evictee.name}</h1>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* EVICTED stamp with impact bounce */}
+      {/* Stamp with impact bounce; label changes for return variant */}
       <AnimatePresence>
         {showLowerThird && (
           <motion.div
@@ -275,7 +308,7 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
             }
             aria-hidden="true"
           >
-            EVICTED
+            {labelText}
           </motion.div>
         )}
       </AnimatePresence>

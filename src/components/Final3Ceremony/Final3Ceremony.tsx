@@ -25,6 +25,7 @@ import {
   advance,
   finalizeFinal3Decision,
   setEvictionOverlay,
+  clearEvictionOverlay,
 } from '../../store/gameSlice';
 import { mulberry32, seededPick } from '../../store/rng';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils';
@@ -214,12 +215,13 @@ export default function Final3Ceremony() {
   // ── Cleanup: clear the overlay flag on unmount (safety net) ───────────────
 
   useEffect(() => {
+    // Capture evicteeId at effect registration time so the cleanup can reference
+    // it without stale closure issues. clearEvictionOverlay is a no-op if the
+    // store flag has already been set to a different player by a subsequent overlay.
     return () => {
-      // On unmount (component done or game state forces out), ensure the flag
-      // is not left dangling in the store.
-      dispatch(setEvictionOverlay(null));
+      dispatch(clearEvictionOverlay(evicteeId ?? ''));
     };
-  // dispatch is stable across renders
+  // dispatch is stable; evicteeId is intentionally captured at mount time
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

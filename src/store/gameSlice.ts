@@ -953,6 +953,17 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Clear the eviction overlay flag only if it still refers to the given player.
+     * Safe to call from unmount cleanup: if a new overlay has already mounted for
+     * a different player, this action is a no-op and does not disturb that overlay.
+     */
+    clearEvictionOverlay(state, action: PayloadAction<string>) {
+      if (state.evictionOverlayPlayerId === action.payload) {
+        state.evictionOverlayPlayerId = null;
+      }
+    },
+
+    /**
      * Commit the deferred eviction after the cinematic overlay completes.
      *
      * Sets the evictee's status to 'evicted' or 'jury', removes them from
@@ -2254,6 +2265,7 @@ export const {
   dismissVoteResults,
   dismissEvictionSplash,
   setEvictionOverlay,
+  clearEvictionOverlay,
   finalizePendingEviction,
   selfEvict,
   aiReplacementRendered,
