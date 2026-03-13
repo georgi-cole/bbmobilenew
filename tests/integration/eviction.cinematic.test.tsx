@@ -8,7 +8,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -37,9 +36,7 @@ vi.mock('../../src/components/ui/TvZone', () => ({
 
 vi.mock('../../src/components/ui/SpectatorView', () => ({
   default: ({ onDone }: { onDone?: () => void }) => {
-    useEffect(() => {
-      lastSpectatorOnDone = onDone ?? null;
-    }, [onDone]);
+    lastSpectatorOnDone = onDone ?? null;
     return <div data-testid="spectator-view" />;
   },
 }));
