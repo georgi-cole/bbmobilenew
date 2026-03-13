@@ -1065,6 +1065,7 @@ export default function GameScreen() {
     return () => clearTimeout(id);
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
+  // storeRef is synced via useEffect; exclude it from deps to keep this callback stable.
   const handleBattleBackComplete = useCallback(() => {
     if (!battleBackWinnerId) {
       dispatch(dismissBattleBack())
