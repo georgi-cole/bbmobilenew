@@ -1063,6 +1063,7 @@ export default function GameScreen() {
 
   const handleBattleBackComplete = useCallback(() => {
     if (!battleBackWinnerId) {
+      dispatch(dismissBattleBack())
       dispatch(advance())
       return
     }
@@ -1602,7 +1603,7 @@ export default function GameScreen() {
       </AnimatePresence>
 
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && battleBackWinnerId && (
+      {showBattleBack && battleBackCandidates.length > 0 && (
         <SpectatorView
           key={battleBackCandidates.map((p) => p.id).join('-') + '-bb'}
           competitorIds={battleBackCandidates.map((p) => p.id)}
