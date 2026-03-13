@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
   finalizeFinal3Decision,
+  setEvictionOverlay,
 } from '../../store/gameSlice';
 import { mulberry32, seededPick } from '../../store/rng';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils';
@@ -190,8 +191,11 @@ export default function Final3Ceremony() {
     if (import.meta.env.DEV) {
       console.log('[Final3Ceremony] announcement complete → eviction_splash', { evicteeId });
     }
+    // Mark the overlay player so AvatarTile hides itself (isEvicting) and the
+    // match-cut doesn't show a duplicate fullscreen tile before the overlay.
+    dispatch(setEvictionOverlay(evicteeId));
     setStage('eviction_splash');
-  }, [evicteeId]);
+  }, [dispatch, evicteeId]);
 
   // ── Eviction cinematic complete → finalize ────────────────────────────────
 
@@ -200,10 +204,24 @@ export default function Final3Ceremony() {
     if (import.meta.env.DEV) {
       console.log('[Final3Ceremony] eviction splash done → finalizeFinal3Decision + advance', { hohId, evicteeId });
     }
+    // Clear the overlay flag before finalizing so AvatarTile returns to normal.
+    dispatch(setEvictionOverlay(null));
     dispatch(finalizeFinal3Decision({ hohWinnerId: hohId, evicteeId }));
     dispatch(advance());
     setStage('done');
   }, [dispatch, hohId, evicteeId]);
+
+  // ── Cleanup: clear the overlay flag if we ever leave eviction_splash ──────
+
+  useEffect(() => {
+    return () => {
+      // On unmount (component done or game state forces out), ensure the flag
+      // is not left dangling in the store.
+      dispatch(setEvictionOverlay(null));
+    };
+  // dispatch is stable across renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

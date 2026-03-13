@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { useAppDispatch } from '../../store/hooks';
+import { setEvictionOverlay } from '../../store/gameSlice';
 import './SpotlightEvictionOverlay.css';
 
 // ── Timing constants (ms, relative to component mount) ────────────────────
@@ -64,6 +66,7 @@ interface Props {
  * Dev-only Skip button appears when import.meta.env.DEV is true.
  */
 export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, devSkip }: Props) {
+  const dispatch = useAppDispatch();
   const [candidates] = useState(() => resolveAvatarCandidates(evictee));
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
@@ -86,6 +89,22 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
     onDone();
   }, [onDone]);
 
+  // ── Mount / unmount: register overlay player in store ─────────────────────
+  // Ensures AvatarTile hides itself (isEvicting) for this player while the
+  // overlay is active, preventing a duplicated fullscreen match-cut tile.
+  useEffect(() => {
+    console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId });
+    dispatch(setEvictionOverlay(evictee.id));
+    return () => {
+      console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
+      // Safety-net: clear flag on unmount in case onDone didn't fire
+      // (e.g. component unmounted before sequence completed).
+      dispatch(setEvictionOverlay(null));
+    };
+  // evictee.id and layoutId are stable for the lifetime of this overlay instance
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const t0 = Date.now();
@@ -105,7 +124,11 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
     // Full cinematic sequence
     dbg('mount – spotlight phase');
     timers.push(setTimeout(() => { setShowLiveBug(true); dbg('LIVE bug'); }, LIVE_BUG_AT));
-    timers.push(setTimeout(() => { setPhase('expanding'); dbg('expanding'); }, EXPAND_START));
+    timers.push(setTimeout(() => {
+      setPhase('expanding');
+      dbg('expanding');
+      console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', { evicteeId: evictee.id, layoutId });
+    }, EXPAND_START));
     timers.push(setTimeout(() => { setDesaturated(true); dbg('desaturate + vignette'); }, DESAT_AT));
     timers.push(setTimeout(() => { setShowLowerThird(true); dbg('lower-third'); }, LOWER_THIRD_AT));
     timers.push(setTimeout(() => { setPhase('holding'); dbg('holding'); }, HOLD_START));

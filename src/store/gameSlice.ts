@@ -942,6 +942,17 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Set or clear the player currently shown in a fullscreen eviction overlay.
+     * Pass the player's id to mark overlay active; pass null to clear.
+     * Used by SpotlightEvictionOverlay (on mount/unmount) and Final3Ceremony
+     * (on eviction_splash enter/exit) so AvatarTile can hide itself (isEvicting)
+     * during the match-cut, preventing the duplicated fullscreen avatar start.
+     */
+    setEvictionOverlay(state, action: PayloadAction<string | null>) {
+      state.evictionOverlayPlayerId = action.payload;
+    },
+
+    /**
      * Commit the deferred eviction after the cinematic overlay completes.
      *
      * Sets the evictee's status to 'evicted' or 'jury', removes them from
@@ -2242,6 +2253,7 @@ export const {
   submitTieBreak,
   dismissVoteResults,
   dismissEvictionSplash,
+  setEvictionOverlay,
   finalizePendingEviction,
   selfEvict,
   aiReplacementRendered,

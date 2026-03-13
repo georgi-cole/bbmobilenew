@@ -420,6 +420,15 @@ export interface GameState {
    */
   pendingEviction?: { evicteeId: string; evictionMessage: string } | null;
   /**
+   * ID of the player currently shown in a fullscreen eviction overlay
+   * (SpotlightEvictionOverlay).  Set when any eviction overlay mounts and
+   * cleared (`null`) when it completes.  Allows AvatarTile to hide itself
+   * (`isEvicting`) during both the pendingEviction path and local overlay-
+   * driven paths (e.g. Final3Ceremony), preventing a duplicated match-cut.
+   * Cleared by `setEvictionOverlay(null)`.
+   */
+  evictionOverlayPlayerId?: string | null;
+  /**
    * Social module state subtree. Managed by the social module; optional so
    * that tests and legacy code that don't set it up continue to work.
    */
