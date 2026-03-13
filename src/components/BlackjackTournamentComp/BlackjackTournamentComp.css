@@ -1,0 +1,404 @@
+/* ─── Blackjack Tournament Component Styles ───────────────────────────────── */
+
+.bjt-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem 1rem;
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  color: #f0e6d3;
+  font-family: inherit;
+  box-sizing: border-box;
+  gap: 1rem;
+  text-align: center;
+}
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+
+.bjt-title {
+  font-size: clamp(1.25rem, 4vw, 1.8rem);
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.bjt-title--winner {
+  color: #ffd700;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+}
+
+.bjt-subtitle {
+  font-size: 1rem;
+  color: #b8d4e0;
+  margin: 0 0 0.5rem;
+}
+
+.bjt-loading {
+  color: #b8d4e0;
+  font-style: italic;
+}
+
+/* ─── Avatars ─────────────────────────────────────────────────────────────── */
+
+.bjt-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background: #2c5364;
+  flex-shrink: 0;
+}
+
+.bjt-avatar--sm { width: 2.5rem; height: 2.5rem; }
+.bjt-avatar--inline { width: 1.8rem; height: 1.8rem; vertical-align: middle; }
+.bjt-avatar--lg { width: 4rem; height: 4rem; }
+.bjt-avatar--xl { width: 6rem; height: 6rem; margin: 0.5rem auto; }
+
+/* ─── Status badges ───────────────────────────────────────────────────────── */
+
+.bjt-badge {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.bjt-you-badge {
+  font-size: 0.7rem;
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.bjt-winner-badge {
+  display: block;
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* ─── Spinner / Spin phase ────────────────────────────────────────────────── */
+
+.bjt-spin {
+  gap: 0.75rem;
+}
+
+.bjt-spinner {
+  position: relative;
+  width: min(320px, 90vw);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+}
+
+.bjt-spinner-track {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.bjt-spinner-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background 0.12s, transform 0.12s;
+  opacity: 0.5;
+}
+
+.bjt-spinner-slot--active {
+  background: rgba(255, 215, 0, 0.18);
+  opacity: 1;
+  transform: scale(1.03);
+}
+
+.bjt-spinner-pointer {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #ffd700;
+  pointer-events: none;
+}
+
+.bjt-spinner-highlight {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #ffd700;
+  font-weight: 600;
+  text-align: center;
+}
+
+.bjt-remaining {
+  font-size: 0.85rem;
+  color: #b8d4e0;
+  margin: 0;
+}
+
+/* ─── Pick-opponent phase ─────────────────────────────────────────────────── */
+
+.bjt-players-remaining {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.bjt-eliminated-list {
+  font-size: 0.78rem;
+  color: #e87070;
+  font-style: italic;
+}
+
+.bjt-opponent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.bjt-opponent-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: #f0e6d3;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  min-width: 5rem;
+}
+
+.bjt-opponent-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.18);
+  border-color: #ffd700;
+  transform: translateY(-2px);
+}
+
+.bjt-opponent-btn--disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ─── Duel arena ──────────────────────────────────────────────────────────── */
+
+.bjt-duel-arena {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 600px;
+}
+
+.bjt-vs {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffd700;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.bjt-duelist {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  min-width: 7rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.bjt-duelist--active {
+  border-color: #ffd700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+}
+
+.bjt-duelist--bust {
+  border-color: #e87070;
+  opacity: 0.8;
+}
+
+.bjt-duelist--winner {
+  border-color: #4ade80;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.35);
+}
+
+.bjt-duelist--loser {
+  border-color: #e87070;
+  opacity: 0.7;
+}
+
+.bjt-duelist-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────────────── */
+
+.bjt-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.bjt-card {
+  background: #fff;
+  color: #1a1a2e;
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 1.6rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.bjt-card--red {
+  color: #c0392b;
+}
+
+.bjt-hand-total {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f0e6d3;
+  margin-left: 0.25rem;
+}
+
+/* ─── Duel controls ───────────────────────────────────────────────────────── */
+
+.bjt-turn-label {
+  font-size: 0.95rem;
+  color: #ffd700;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.bjt-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.bjt-btn {
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.15s;
+}
+
+.bjt-btn:active {
+  transform: scale(0.96);
+}
+
+.bjt-btn--hit {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.bjt-btn--hit:hover {
+  background: #c0392b;
+}
+
+.bjt-btn--stand {
+  background: #27ae60;
+  color: #fff;
+}
+
+.bjt-btn--stand:hover {
+  background: #219a52;
+}
+
+.bjt-spectator-note {
+  font-size: 0.85rem;
+  color: #b8d4e0;
+  font-style: italic;
+}
+
+/* ─── Result phase ────────────────────────────────────────────────────────── */
+
+.bjt-result {
+  gap: 0.75rem;
+}
+
+.bjt-eliminated-msg {
+  color: #e87070;
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0.25rem 0;
+}
+
+.bjt-remaining-msg {
+  font-size: 0.85rem;
+  color: #b8d4e0;
+}
+
+/* ─── Complete phase ──────────────────────────────────────────────────────── */
+
+.bjt-complete {
+  gap: 0.75rem;
+}
+
+.bjt-crown {
+  font-size: 3.5rem;
+  animation: bjt-bounce 0.6s ease infinite alternate;
+  will-change: transform;
+}
+
+@keyframes bjt-bounce {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-8px); }
+}
+
+.bjt-prize-label {
+  font-size: 1rem;
+  color: #ffd700;
+  font-weight: 600;
+  margin: 0.1rem 0;
+}
+
+.bjt-elim-order {
+  font-size: 0.78rem;
+  color: #b8d4e0;
+  font-style: italic;
+  max-width: 32rem;
+  margin: 0.25rem auto 0;
+}
+
+/* ─── no-animations override ─────────────────────────────────────────────── */
+
+body.no-animations .bjt-crown {
+  animation: none;
+}
+
+body.no-animations .bjt-spinner-slot {
+  transition: none;
+}
+
+body.no-animations .bjt-opponent-btn {
+  transition: none;
+}
