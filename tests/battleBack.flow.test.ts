@@ -100,13 +100,13 @@ describe('activateBattleBack', () => {
     expect(bb!.winnerId).toBeNull();
   });
 
-  it('pushes a twist TV event with major:twist', () => {
+  it('pushes a twist TV event with major:battle_back', () => {
     const store = makeStore();
     store.dispatch(activateBattleBack({ candidates: ['p1'], week: 4 }));
     const events = store.getState().game.tvFeed;
     const battleBackEvent = events.find((e) => e.type === 'twist' && /Battle Back/i.test(e.text));
     expect(battleBackEvent).toBeDefined();
-    expect((battleBackEvent as TvEvent)?.major).toBe('twist');
+    expect((battleBackEvent as TvEvent)?.major).toBe('battle_back');
   });
 });
 
@@ -219,8 +219,8 @@ describe('advance() blocked while battleBack.active', () => {
     // battleBack.active is now false → advance() should run
     store.dispatch(advance());
     // week_end with 2 alive (p0 active + p1 back active = 2... but actually
-    // p0=active, p1=active, p2=jury → alive=2 → should transition to jury phase
-    expect(store.getState().game.phase).toBe('jury');
+    // p0=active, p1=active, p2=jury → alive=2 → should transition to jury_announcement phase
+    expect(store.getState().game.phase).toBe('jury_announcement');
   });
 });
 

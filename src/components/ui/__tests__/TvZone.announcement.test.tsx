@@ -102,6 +102,46 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Live Eviction/i })).toBeDefined();
   });
 
+  it('applies the Battle Back styling when the major key is battle_back', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-bb',
+            text: 'Battle Back begins.',
+            major: 'battle_back',
+          }),
+        ),
+      );
+    });
+
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back/i });
+    expect(overlay.className).toContain('tv-announcement--battle-back');
+  });
+
+  it('falls back to Battle Back styling when a twist event mentions Battle Back without a major key', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-bb-fallback',
+            text: 'Battle Back begins! Evicted houseguests compete for a second chance.',
+            type: 'twist',
+          }),
+        ),
+      );
+    });
+
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Battle Back/i });
+    expect(overlay.className).toContain('tv-announcement--battle-back');
+  });
+
   it('does NOT show the overlay for events without a recognised major key', () => {
     const store = makeStore();
     renderTvZone(store);

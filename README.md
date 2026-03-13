@@ -111,6 +111,7 @@ triggers an overlay:
 | `final3_announcement` | manual |
 | `final_hoh` | manual |
 | `jury` | manual |
+| `battle_back` | 4.5 s |
 | `twist` | 4.5 s |
 
 > **Note:** The correct key for the Final 3 announcement is `final3_announcement`.

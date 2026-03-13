@@ -115,6 +115,10 @@ export type Phase =
   | 'final3_comp3_minigame'
   /** Final HOH evicts one of the 2 remaining houseguests directly (no vote). */
   | 'final3_decision'
+  /** Intermediate: announcement modal shown before the jury cinematic intro. */
+  | 'jury_announcement'
+  /** Intermediate: cinematic juror intro sequence before jury voting begins. */
+  | 'jury_cinematic'
   /** Jury phase: the Final 2 faces the jury for votes; finale overlay active. */
   | 'jury';
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -24,6 +25,7 @@ import {
   aiReplacementRendered,
   advance,
   completeBattleBack,
+  dismissBattleBack,
   tryActivateBattleBack,
   openBattleBackCompetition,
   resolveFavoritePlayerWinner,
@@ -65,9 +67,8 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
+import type { RootState } from '../../store/store'
 import './GameScreen.css'
-
-type JuryTransitionStage = 'idle' | 'announcement' | 'cinematic'
 
 const JURY_CINEMATIC_DURATION_MS = 4500
 const JURY_CINEMATIC_STEP_MS = 520
@@ -101,6 +102,11 @@ const JURY_TEXT_FRAGMENTS = [
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
+  const store = useStore<RootState>()
+  const storeRef = useRef(store)
+  useEffect(() => {
+    storeRef.current = store
+  }, [store])
   const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
@@ -114,10 +120,6 @@ export default function GameScreen() {
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
     () => game.players.filter((p) => p.status === 'jury'),
-    [game.players],
-  )
-  const finalists = useMemo(
-    () => game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
     [game.players],
   )
 
@@ -412,6 +414,7 @@ export default function GameScreen() {
     // that players whose p.status is already 'nominated' (AI-committed nominees)
     // don't have that status leak through when parts is empty.
     const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
+    const isReturning = battleBackReturnId === p.id
     return {
       id: p.id,
       name: p.name,
@@ -423,6 +426,7 @@ export default function GameScreen() {
       showPermanentBadge: !isAnimatingNominee,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || game.evictionOverlayPlayerId === p.id,
+      isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || isReturning,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -1043,6 +1047,7 @@ export default function GameScreen() {
 
 
   const battleBack = game.battleBack
+  const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
@@ -1060,6 +1065,12 @@ export default function GameScreen() {
     return simulateBattleBackCompetition(candidateIds, game.seed).winnerId;
   }, [showBattleBack, battleBackCandidates, game.seed]);
 
+  const battleBackReturnPlayer = useMemo(
+    () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
+    [battleBackReturnId, game.players],
+  )
+  const showBattleBackReturn = !!battleBackReturnPlayer
+
   const battleBackVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
     const rng = mulberry32(((game.seed ^ 0xdeadbeef) >>> 0));
@@ -1074,12 +1085,33 @@ export default function GameScreen() {
     return () => clearTimeout(id);
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
+  // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
+  // Battle Back completion before showing the return overlay. storeRef is intentionally
+  // omitted from deps because refs are stable and shouldn't re-create this callback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleBattleBackComplete = useCallback(() => {
-    if (battleBackWinnerId) {
-      dispatch(completeBattleBack(battleBackWinnerId))
+    if (!battleBackWinnerId) {
+      dispatch(dismissBattleBack())
+      dispatch(advance())
+      return
     }
+
+    dispatch(completeBattleBack(battleBackWinnerId))
+    const updatedBattleBack = storeRef.current.getState().game.battleBack
+
+    if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === battleBackWinnerId) {
+      setBattleBackReturnId(battleBackWinnerId)
+      return
+    }
+
+    dispatch(dismissBattleBack())
     dispatch(advance())
   }, [dispatch, battleBackWinnerId])
+
+  const handleBattleBackReturnDone = useCallback(() => {
+    setBattleBackReturnId(null)
+    dispatch(advance())
+  }, [dispatch])
 
   // ── Public's Favorite Player twist ───────────────────────────────────────
   // Shown after the jury finale: FinalFaceoff dismisses itself and this
@@ -1131,66 +1163,38 @@ export default function GameScreen() {
     game.phase === 'final3_decision' &&
     !!game.hohId
 
-  const [juryTransitionStage, setJuryTransitionStage] = useState<JuryTransitionStage>('idle')
-  const [juryTransitionSeenKey, setJuryTransitionSeenKey] = useState('')
   const [juryCinematicJurorIndex, setJuryCinematicJurorIndex] = useState(0)
   const [juryCinematicTextIndex, setJuryCinematicTextIndex] = useState(0)
   const [showSpyJuryToast, setShowSpyJuryToast] = useState(false)
 
-  const juryTransitionKey = useMemo(() => {
-    if (game.phase !== 'week_end') return ''
-    if (finalists.length !== 2 || juryPlayers.length === 0) return ''
-    return `week-${game.week}-${finalists.map((p) => p.id).sort().join('-')}`
-  }, [game.phase, game.week, finalists, juryPlayers.length])
-
+  // ── Jury transition: no-animations fast-path ──────────────────────────────
+  // When the body has the no-animations class, skip the announcement and
+  // cinematic overlays and immediately advance through each intermediate phase.
   useEffect(() => {
-    if (!juryTransitionKey) {
-      setJuryTransitionStage('idle')
-      return
-    }
-    if (juryTransitionStage !== 'idle') return
-    if (juryTransitionSeenKey === juryTransitionKey) return
-
     const noAnimations =
       typeof document !== 'undefined' &&
       !!document.body &&
       document.body.classList.contains('no-animations')
-
-    setJuryTransitionSeenKey(juryTransitionKey)
-
-    if (noAnimations) {
-      // In no-animations mode, skip announcement/cinematic overlays entirely
-      // and immediately complete the jury transition so the game does not pause.
-      if (game.phase !== 'week_end') {
-        setJuryTransitionStage('idle')
-        return
-      }
-      setJuryTransitionStage('idle')
+    if (!noAnimations) return
+    if (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') {
       dispatch(advance())
-      return
     }
-
-    setJuryTransitionStage('announcement')
-  }, [juryTransitionKey, juryTransitionSeenKey, juryTransitionStage, game.phase, dispatch])
+  }, [game.phase, dispatch])
 
   const handleStartJuryCinematic = useCallback(() => {
     setShowSpyJuryToast(false)
     setJuryCinematicJurorIndex(0)
     setJuryCinematicTextIndex(0)
-    setJuryTransitionStage('cinematic')
-  }, [])
+    dispatch(advance())
+  }, [dispatch])
 
   const completeJuryTransition = useCallback(() => {
-    if (game.phase !== 'week_end') {
-      setJuryTransitionStage('idle')
-      return
-    }
-    setJuryTransitionStage('idle')
+    if (game.phase !== 'jury_cinematic') return
     dispatch(advance())
   }, [dispatch, game.phase])
 
   useEffect(() => {
-    if (juryTransitionStage !== 'cinematic') return
+    if (game.phase !== 'jury_cinematic') return
     if (juryPlayers.length === 0) {
       completeJuryTransition()
       return
@@ -1209,10 +1213,10 @@ export default function GameScreen() {
       window.clearInterval(textTimer)
       window.clearTimeout(doneTimer)
     }
-  }, [completeJuryTransition, juryPlayers.length, juryTransitionStage])
+  }, [completeJuryTransition, juryPlayers.length, game.phase])
 
   useEffect(() => {
-    if (juryTransitionStage !== 'announcement') return
+    if (game.phase !== 'jury_announcement') return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -1221,7 +1225,7 @@ export default function GameScreen() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleStartJuryCinematic, juryTransitionStage])
+  }, [handleStartJuryCinematic, game.phase])
 
   useEffect(() => {
     if (!showSpyJuryToast) return
@@ -1252,9 +1256,10 @@ export default function GameScreen() {
     showTieBreakModal ||
     showFinal3Modal ||
     showFinal3Ceremony ||
-    juryTransitionStage !== 'idle' ||
+    (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
     showVoteResults ||
     showEvictionSplash ||
+    showBattleBackReturn ||
     showBattleBack ||
     // Also block while the twist is pending TV announcement (active but overlay not yet open).
     (game.battleBack?.active === true && game.battleBack?.competitionActive !== true) ||
@@ -1443,7 +1448,7 @@ export default function GameScreen() {
       {showFinal3Ceremony && <Final3Ceremony />}
 
       {/* ── Jury phase transition: announcement modal → cinematic intro ───── */}
-      {juryTransitionStage === 'announcement' && (
+      {game.phase === 'jury_announcement' && (
         <div
           className="jury-phase-modal"
           role="dialog"
@@ -1488,7 +1493,7 @@ export default function GameScreen() {
         </div>
       )}
 
-      {juryTransitionStage === 'cinematic' && (
+      {game.phase === 'jury_cinematic' && (
         <div
           className="jury-cinematic"
           role="dialog"
@@ -1788,8 +1793,22 @@ export default function GameScreen() {
         )}
       </AnimatePresence>
 
+      {/* ── Battle Back return animation (reverse eviction) ─────────────────── */}
+      <AnimatePresence>
+        {showBattleBackReturn && battleBackReturnPlayer && (
+          <SpotlightEvictionOverlay
+            key={`${battleBackReturnPlayer.id}-return`}
+            evictee={battleBackReturnPlayer}
+            onDone={handleBattleBackReturnDone}
+            layoutId={`avatar-tile-${battleBackReturnPlayer.id}`}
+            devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+            variant="return"
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && battleBackWinnerId && (
+      {showBattleBack && battleBackCandidates.length > 0 && (
         <SpectatorView
           key={battleBackCandidates.map((p) => p.id).join('-') + '-bb'}
           competitorIds={battleBackCandidates.map((p) => p.id)}

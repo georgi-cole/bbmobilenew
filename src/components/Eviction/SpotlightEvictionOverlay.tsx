@@ -197,15 +197,20 @@ export default function SpotlightEvictionOverlay({
 
   return (
     <div
-      className="seo"
+      className={`seo${isReturn ? ' seo--return' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={isReturn ? `${evictee.name} has returned` : `${evictee.name} has been evicted`}
+      aria-label={
+        isReturn
+          ? `${evictee.name} has returned to the house`
+          : `${evictee.name} has been evicted`
+      }
     >
       {/* Dim overlay — fades in immediately */}
       <motion.div
         className="seo__dim"
-        initial={{ opacity: 0 }}
+        initial={isReturn ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={noMotion ?? { duration: 0.2 }}
@@ -229,7 +234,7 @@ export default function SpotlightEvictionOverlay({
         {showLiveBug && (
           <motion.div
             className="seo__live-bug"
-            initial={{ opacity: 0, scale: 0.7 }}
+            initial={isReturn ? false : { opacity: 0, scale: 0.7 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}
             transition={noMotion ?? { duration: 0.18, ease: 'easeOut' }}
@@ -270,7 +275,7 @@ export default function SpotlightEvictionOverlay({
         {/* Vignette — settles as image desaturates */}
         <motion.div
           className="seo__vignette"
-          initial={{ opacity: 0 }}
+          initial={isReturn ? false : { opacity: 0 }}
           animate={{ opacity: desaturated ? 1 : 0 }}
           transition={noMotion ?? { duration: 0.35 }}
         />
@@ -284,7 +289,7 @@ export default function SpotlightEvictionOverlay({
         {showLowerThird && (
           <motion.div
             className="seo__lower-third"
-            initial={{ y: '110%', opacity: 0 }}
+            initial={isReturn ? false : { y: '110%', opacity: 0 }}
             animate={{ y: '0%', opacity: 1 }}
             exit={{ y: '110%', opacity: 0 }}
             transition={noMotion ?? { duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
@@ -300,7 +305,7 @@ export default function SpotlightEvictionOverlay({
         {showLowerThird && (
           <motion.div
             className="seo__stamp"
-            initial={{ scale: 2.4, opacity: 0, rotate: -14 }}
+            initial={isReturn ? false : { scale: 2.4, opacity: 0, rotate: -14 }}
             animate={{ scale: 1, opacity: 1, rotate: -12 }}
             exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
             transition={
