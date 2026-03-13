@@ -26,4 +26,7 @@ dist-ssr
 # Server environment secrets
 server/.env
 screenshots/
+!docs/screenshots/
+!docs/screenshots/glass-bridge/
+!docs/screenshots/glass-bridge/*.png
 *.bak
