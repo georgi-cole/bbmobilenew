@@ -1,0 +1,736 @@
+/* ─── GlassBridgeComp ──────────────────────────────────────────────────────── */
+
+.glass-bridge {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 40%, #0d0d1d 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  font-family: inherit;
+  color: #fff;
+}
+
+/* ── HUD ───────────────────────────────────────────────────────────────────── */
+
+.gb-hud {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(100, 180, 255, 0.18);
+}
+
+.gb-hud-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7ecbff;
+}
+
+.gb-hud-timer {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.gb-hud-timer.gb-timer-warning {
+  color: #ff8c42;
+  animation: gb-pulse 0.8s ease-in-out infinite;
+}
+
+.gb-hud-timer.gb-timer-critical {
+  color: #ff3a3a;
+  animation: gb-pulse 0.4s ease-in-out infinite;
+}
+
+.gb-hud-turn {
+  font-size: 0.75rem;
+  color: #aac8ff;
+}
+
+/* ── Order selection ───────────────────────────────────────────────────────── */
+
+.gb-order-selection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.gb-order-selection h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #7ecbff;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+.gb-order-selection p {
+  font-size: 0.85rem;
+  color: #aac8ff;
+  text-align: center;
+}
+
+.gb-number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.gb-number-btn {
+  aspect-ratio: 1;
+  border: 2px solid rgba(126, 203, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(30, 60, 120, 0.4);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.gb-number-btn:hover:not(:disabled) {
+  background: rgba(60, 120, 220, 0.55);
+  border-color: #7ecbff;
+  transform: scale(1.06);
+}
+
+.gb-number-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gb-number-btn.gb-number-taken {
+  background: rgba(80, 0, 0, 0.4);
+  border-color: rgba(255, 80, 80, 0.3);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.gb-number-btn.gb-number-mine {
+  background: rgba(30, 180, 90, 0.4);
+  border-color: #3aff8a;
+  color: #3aff8a;
+}
+
+.gb-order-waiting-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.gb-order-waiting-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gb-order-waiting-item.gb-waiting-done {
+  background: rgba(30, 180, 90, 0.1);
+  color: #3aff8a;
+}
+
+/* ── Order reveal ──────────────────────────────────────────────────────────── */
+
+.gb-order-reveal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+.gb-order-reveal h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #7ecbff;
+  text-align: center;
+}
+
+.gb-reveal-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gb-reveal-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(30, 60, 120, 0.35);
+  border: 1px solid rgba(126, 203, 255, 0.2);
+  opacity: 0;
+  animation: gb-reveal-slide 0.35s ease forwards;
+}
+
+.gb-reveal-item.gb-reveal-you {
+  border-color: #3aff8a;
+  background: rgba(30, 180, 90, 0.15);
+}
+
+.gb-reveal-pos {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #7ecbff;
+  width: 1.4rem;
+  text-align: center;
+}
+
+.gb-reveal-name {
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.gb-btn-primary {
+  margin-top: 0.5rem;
+  padding: 0.65rem 2.2rem;
+  border-radius: 24px;
+  border: none;
+  background: linear-gradient(135deg, #3a7bd5, #7ecbff);
+  color: #0a0a1a;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.gb-btn-primary:hover {
+  opacity: 0.88;
+  transform: scale(1.03);
+}
+
+/* ── Bridge / playing area ─────────────────────────────────────────────────── */
+
+.gb-playing {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+.gb-bridge-container {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0.5rem 0;
+}
+
+/* Void on sides of the bridge */
+.gb-bridge-container::before,
+.gb-bridge-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: radial-gradient(ellipse at center, rgba(10, 10, 50, 0.0) 0%, rgba(5, 5, 30, 0.7) 100%);
+  pointer-events: none;
+}
+
+.gb-bridge-container::before { right: 100%; }
+.gb-bridge-container::after  { left: 100%; }
+
+/* ── Row ────────────────────────────────────────────────────────────────────── */
+
+.gb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.25rem 0;
+  position: relative;
+}
+
+.gb-row-label {
+  width: 1.8rem;
+  text-align: right;
+  font-size: 0.65rem;
+  color: rgba(170, 200, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.gb-tiles {
+  display: flex;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+/* ── Tile ────────────────────────────────────────────────────────────────────── */
+
+.gb-tile {
+  flex: 1;
+  height: 52px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(126, 203, 255, 0.35);
+  background: linear-gradient(135deg, rgba(100, 180, 255, 0.12) 0%, rgba(60, 120, 220, 0.08) 100%);
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+/* Glass shimmer effect */
+.gb-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+  border-radius: 4px 4px 0 0;
+}
+
+.gb-tile.gb-tile-active {
+  border-color: #7ecbff;
+  background: linear-gradient(135deg, rgba(100, 180, 255, 0.22) 0%, rgba(60, 120, 220, 0.14) 100%);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(126, 203, 255, 0.25);
+}
+
+.gb-tile.gb-tile-active:hover {
+  border-color: #fff;
+  background: linear-gradient(135deg, rgba(150, 210, 255, 0.32) 0%, rgba(100, 160, 255, 0.22) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(126, 203, 255, 0.35);
+}
+
+.gb-tile.gb-tile-broken {
+  border-color: rgba(255, 60, 60, 0.35);
+  background: rgba(60, 0, 0, 0.3);
+  cursor: not-allowed;
+}
+
+.gb-tile.gb-tile-broken::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    /* crack lines */
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      rgba(255, 60, 60, 0.12) 6px,
+      rgba(255, 60, 60, 0.12) 7px
+    );
+  border-radius: 4px;
+}
+
+.gb-tile.gb-tile-shatter {
+  animation: gb-shatter 0.4s ease forwards;
+}
+
+.gb-tile-label {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(170, 210, 255, 0.55);
+  pointer-events: none;
+}
+
+.gb-tile.gb-tile-active .gb-tile-label {
+  color: rgba(200, 230, 255, 0.75);
+}
+
+.gb-tile.gb-tile-broken .gb-tile-label {
+  color: rgba(255, 100, 100, 0.4);
+}
+
+/* ── Player markers on the bridge ────────────────────────────────────────────── */
+
+.gb-row-players {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 2rem;
+  min-width: 2rem;
+}
+
+.gb-player-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  overflow: hidden;
+  background: rgba(30, 30, 80, 0.6);
+  transition: transform 0.2s;
+}
+
+.gb-player-marker.gb-player-active {
+  border-color: #7ecbff;
+  box-shadow: 0 0 8px rgba(126, 203, 255, 0.5);
+  transform: scale(1.15);
+}
+
+.gb-player-marker.gb-player-you {
+  border-color: #3aff8a;
+}
+
+/* ── Player list sidebar ────────────────────────────────────────────────────── */
+
+.gb-player-list {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.gb-player-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(30, 30, 80, 0.35);
+  transition: background 0.2s;
+}
+
+.gb-player-entry.gb-active-turn {
+  background: rgba(60, 120, 220, 0.3);
+  border: 1px solid rgba(126, 203, 255, 0.35);
+}
+
+.gb-player-entry.gb-entry-eliminated {
+  opacity: 0.4;
+}
+
+.gb-player-entry.gb-entry-finished {
+  background: rgba(30, 180, 90, 0.15);
+}
+
+.gb-player-avatar {
+  font-size: 1.1rem;
+  width: 1.6rem;
+  text-align: center;
+}
+
+.gb-player-name {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gb-player-progress {
+  font-size: 0.7rem;
+  color: #7ecbff;
+  font-variant-numeric: tabular-nums;
+}
+
+.gb-player-status-icon {
+  font-size: 0.8rem;
+  width: 1.2rem;
+  text-align: center;
+}
+
+/* ── Controls ────────────────────────────────────────────────────────────────── */
+
+.gb-controls {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  position: sticky;
+  bottom: 0;
+  background: rgba(10, 10, 30, 0.85);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(100, 180, 255, 0.15);
+}
+
+.gb-control-btn {
+  flex: 1;
+  padding: 0.85rem 0;
+  border-radius: 12px;
+  border: 2px solid rgba(126, 203, 255, 0.4);
+  background: rgba(30, 60, 120, 0.4);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.gb-control-btn:hover:not(:disabled) {
+  background: rgba(60, 120, 220, 0.55);
+  border-color: #7ecbff;
+  transform: translateY(-1px);
+}
+
+.gb-control-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.gb-control-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.gb-control-btn span {
+  font-size: 0.6rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(170, 210, 255, 0.7);
+}
+
+/* ── Spectator modal ─────────────────────────────────────────────────────────── */
+
+.gb-spectator-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gb-fadein 0.3s ease;
+}
+
+.gb-spectator-card {
+  background: linear-gradient(135deg, #1a0a2e 0%, #0a0a1a 100%);
+  border: 1px solid rgba(255, 60, 60, 0.4);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  width: 90%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 0 40px rgba(255, 60, 60, 0.2);
+}
+
+.gb-spectator-card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ff6060;
+  text-align: center;
+}
+
+.gb-spectator-card p {
+  font-size: 0.85rem;
+  color: #aac8ff;
+  text-align: center;
+}
+
+.gb-spectator-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.gb-spectator-actions button {
+  flex: 1;
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.gb-spectator-actions button:hover {
+  opacity: 0.85;
+}
+
+.gb-btn-watch {
+  background: rgba(60, 120, 220, 0.6);
+  color: #fff;
+  border: 1px solid rgba(126, 203, 255, 0.5) !important;
+}
+
+.gb-btn-skip {
+  background: rgba(80, 40, 0, 0.5);
+  color: #ff8c42;
+  border: 1px solid rgba(255, 140, 66, 0.4) !important;
+}
+
+/* ── Elimination overlay ────────────────────────────────────────────────────── */
+
+.gb-elimination-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: rgba(255, 30, 30, 0.18);
+  animation: gb-elim-flash 0.5s ease forwards;
+}
+
+/* ── Complete screen ──────────────────────────────────────────────────────── */
+
+.gb-complete {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 2rem 1.5rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.gb-complete h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #7ecbff;
+  text-align: center;
+}
+
+.gb-winner-badge {
+  font-size: 3rem;
+}
+
+.gb-winner-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #3aff8a;
+}
+
+.gb-placement-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gb-placement-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(30, 30, 80, 0.35);
+  font-size: 0.85rem;
+}
+
+.gb-placement-item:first-child {
+  background: rgba(30, 180, 90, 0.15);
+  border: 1px solid rgba(58, 255, 138, 0.25);
+}
+
+.gb-placement-rank {
+  width: 1.8rem;
+  font-weight: 700;
+  color: #7ecbff;
+  text-align: center;
+}
+
+.gb-placement-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.gb-placement-detail {
+  font-size: 0.72rem;
+  color: rgba(170, 210, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+
+@keyframes gb-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes gb-reveal-slide {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes gb-shatter {
+  0%   { transform: scale(1);     opacity: 1; }
+  30%  { transform: scale(1.08);  opacity: 0.9; }
+  100% { transform: scale(0.6) translateY(20px); opacity: 0; }
+}
+
+@keyframes gb-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+@keyframes gb-elim-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes gb-player-fall {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  60%  { transform: translateY(20px) scale(0.85); opacity: 0.7; }
+  100% { transform: translateY(60px) scale(0.4); opacity: 0; }
+}
+
+.gb-player-falling {
+  animation: gb-player-fall 0.55s ease-in forwards;
+}
+
+/* ── no-animations override ────────────────────────────────────────────────── */
+body.no-animations .gb-tile,
+body.no-animations .gb-tile.gb-tile-shatter,
+body.no-animations .gb-player-falling,
+body.no-animations .gb-elimination-flash,
+body.no-animations .gb-spectator-modal,
+body.no-animations .gb-reveal-item {
+  animation: none !important;
+  transition: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}

@@ -18,6 +18,7 @@ import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
+import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -33,6 +34,7 @@ export const store = configureStore({
     holdTheWall: holdTheWallReducer,
     biographyBlitz: biographyBlitzReducer,
     famousFigures: famousFiguresReducer,
+    glassBridge: glassBridgeReducer,
   },
   preloadedState: {
     settings: loadSettings(),

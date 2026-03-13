@@ -846,6 +846,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
+
+  glass_bridge_brutal: {
+    key: 'glass_bridge_brutal',
+    title: 'Glass Bridge — Brutal Mode',
+    description:
+      'Cross a bridge of paired glass tiles one row at a time. One wrong step and you fall. Broken tiles persist — use them to your advantage.',
+    instructions: [
+      'Players cross a bridge of glass tiles row by row.',
+      'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
+      'Choose wrong and the tile shatters — you are eliminated.',
+      'Broken tiles from previous players remain visible — use them as clues.',
+      'Everyone starts from the beginning; turn order is determined by a number draw.',
+      'The player who crosses fastest — or reaches the furthest row — wins.',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'GlassBridge',
+    legacy: false,
+    weight: 1,
+    category: 'endurance',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
