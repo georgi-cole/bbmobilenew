@@ -1066,7 +1066,8 @@ export default function GameScreen() {
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
-  // Battle Back completion before showing the return overlay, and keep this callback stable.
+  // Battle Back completion before showing the return overlay. storeRef is intentionally
+  // omitted from deps because refs are stable and shouldn't re-create this callback.
   const handleBattleBackComplete = useCallback(() => {
     if (!battleBackWinnerId) {
       dispatch(dismissBattleBack())
