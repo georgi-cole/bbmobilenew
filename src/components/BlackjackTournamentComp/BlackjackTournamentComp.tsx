@@ -158,7 +158,10 @@ export default function BlackjackTournamentComp({
     clearTimer(resultTimerRef);
     clearTimer(winnerTimerRef);
     clearTimer(spectatorTimerRef);
-    if (spinnerIntervalRef.current !== null) { window.clearInterval(spinnerIntervalRef.current); spinnerIntervalRef.current = null; }
+    if (spinnerIntervalRef.current !== null) {
+      window.clearInterval(spinnerIntervalRef.current);
+      spinnerIntervalRef.current = null;
+    }
   }
 
   const isHuman = useCallback(
@@ -384,7 +387,7 @@ export default function BlackjackTournamentComp({
     const opponents = bt.remainingPlayerIds.filter((id) => id !== controllerId);
 
     return (
-      <div className="bjt-container bjt-pick" role="main">
+      <div className="bjt-container bjt-pick" role="region" aria-label="Opponent selection">
         <div className="bjt-players-remaining" role="status" aria-live="polite">
           <span className="bjt-badge">{bt.remainingPlayerIds.length} remaining</span>
           {bt.eliminatedPlayerIds.length > 0 && (
@@ -446,7 +449,7 @@ export default function BlackjackTournamentComp({
     const activeName = activeId ? getName(activeId) : '';
 
     return (
-      <div className="bjt-container bjt-duel" role="main">
+      <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
         <h2 className="bjt-title">⚔️ Duel: {cName} vs {oName}</h2>
 
         <div className="bjt-duel-arena" aria-label="Blackjack duel arena">

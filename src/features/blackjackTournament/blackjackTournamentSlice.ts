@@ -22,7 +22,9 @@
  *  - Last player remaining wins the competition.
  *
  * Tiebreaker & both-bust resolution:
- *  - Deterministic seeded coin flip derived from (seed, duelIndex, playerIds).
+ *  - Deterministic seeded coin flip derived from (masterSeed, duelIndex,
+ *    controllerId, opponentId) — so different matchups produce independent
+ *    flip results even within the same duel index.
  *  - Documented here to avoid ambiguity: the coin flip is the canonical rule.
  *
  * Seeded RNG:
@@ -31,7 +33,9 @@
  *    duel-specific seed (seed XOR duelIndex * DUEL_SEED_MULT).
  *  - AI hit/stand decisions use a separate key (seed, duelIndex, playerId,
  *    decisionIndex) to avoid entanglement with card draw order.
- *  - Tiebreakers use a fixed offset (TIEBREAK_RNG_OFFSET) within the duel RNG.
+ *  - Tiebreakers use rngAt(flipSeed, TIEBREAK_RNG_OFFSET) where flipSeed
+ *    incorporates (masterSeed, duelIndex, controllerId, opponentId) so that
+ *    different matchups produce independent flip results.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
@@ -53,7 +57,7 @@ export type DuelTurn = 'controller' | 'opponent' | 'finished';
 export interface BlackjackDuelState {
   controllerId: string;
   opponentId: string;
-  /** Card values (1=Ace, 2–9=face, 10–13=10). */
+  /** Card values: 1=Ace, 2–9=pip value, 10–13=10/J/Q/K (all count as 10). */
   controllerCards: number[];
   opponentCards: number[];
   controllerStood: boolean;
@@ -62,8 +66,7 @@ export interface BlackjackDuelState {
   opponentBust: boolean;
   /** Whose turn it is to act next (or 'finished' when both are done). */
   duelTurn: DuelTurn;
-  /** Number of RNG calls consumed by card deals for this duel. Used as the
-   *  tiebreaker offset so the coin flip comes after all cards are drawn. */
+  /** Running count of RNG calls consumed by card deals for this duel. */
   rngCallCount: number;
 }
 
@@ -197,14 +200,17 @@ export function cardSuit(cardIndex: number): string {
  *  3. Different totals → higher total wins.
  *  4. Equal totals → seeded coin flip.
  *
- * The coin flip is always derived from the same duel seed to keep it
- * independent of the number of cards drawn.
+ * The coin flip seed incorporates controllerId and opponentId (via FNV-1a
+ * hashes) so that different matchups produce independent results even within
+ * the same duel index.
  */
 export function resolveDuelOutcome(
   controllerCards: number[],
   opponentCards: number[],
   masterSeed: number,
   duelIndex: number,
+  controllerId = '',
+  opponentId = '',
 ): 'controller' | 'opponent' {
   const cTotal = computeTotal(controllerCards);
   const oTotal = computeTotal(opponentCards);
@@ -219,8 +225,14 @@ export function resolveDuelOutcome(
   } else if (!oBust) {
     return 'opponent';
   }
-  // Both bust OR exact tie → coin flip
-  const flipVal = rngAt(duelCardSeed(masterSeed, duelIndex), TIEBREAK_RNG_OFFSET);
+  // Both bust OR exact tie → coin flip keyed on (masterSeed, duelIndex,
+  // controllerId, opponentId) for matchup-independent determinism.
+  const flipSeed =
+    (duelCardSeed(masterSeed, duelIndex) ^
+      fnv1a32(controllerId) ^
+      (fnv1a32(opponentId) * 0x9e3779b9)) >>>
+    0;
+  const flipVal = rngAt(flipSeed, TIEBREAK_RNG_OFFSET);
   return flipVal < 0.5 ? 'controller' : 'opponent';
 }
 
@@ -475,6 +487,8 @@ const blackjackTournamentSlice = createSlice({
         duel.opponentCards,
         state.seed,
         state.duelIndex,
+        duel.controllerId,
+        duel.opponentId,
       );
 
       state.duelWinnerId = winnerSide === 'controller' ? duel.controllerId : duel.opponentId;

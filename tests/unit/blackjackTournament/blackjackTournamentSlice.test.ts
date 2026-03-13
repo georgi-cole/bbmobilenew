@@ -155,14 +155,14 @@ describe('resolveDuelOutcome', () => {
     expect(['controller', 'opponent']).toContain(r1);
   });
 
-  it('different seeds produce possibly different tie results', () => {
-    // With different seeds/duelIndexes, coin flips can differ
+  it('different seeds produce both outcomes across different seeds', () => {
     const results = new Set<string>();
     for (let seed = 0; seed < 20; seed++) {
       results.add(resolveDuelOutcome([10, 9], [10, 9], seed, 0));
     }
-    // Should see both outcomes across different seeds
-    expect(results.size).toBeGreaterThanOrEqual(1);
+    // Both 'controller' and 'opponent' should appear across 20 different seeds.
+    expect(results).toContain('controller');
+    expect(results).toContain('opponent');
   });
 
   it('blackjack (21) beats 20', () => {
@@ -253,8 +253,8 @@ describe('aiPickOpponent', () => {
       const p = aiPickOpponent(42, i, 'a', remaining);
       if (p) picks.add(p);
     }
-    // Should pick multiple different opponents across 20 duels
-    expect(picks.size).toBeGreaterThanOrEqual(1);
+    // Must pick more than one distinct opponent across 20 different duel indices.
+    expect(picks.size).toBeGreaterThan(1);
   });
 });
 
