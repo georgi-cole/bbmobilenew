@@ -106,6 +106,11 @@ function makeStore(overrides: Partial<GameState> = {}) {
 const DONE_AT = 5400;
 const RETURN_DONE_AT = 1900;
 
+// Helper: wrap SpotlightEvictionOverlay in a Provider so useAppDispatch works.
+function renderOverlay(ui: JSX.Element) {
+  return render(<Provider store={makeStore()}>{ui}</Provider>);
+}
+
 describe('SpotlightEvictionOverlay – cinematic timing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -118,7 +123,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('renders the evictee name in the aria-label', () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -131,7 +136,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('renders the return aria-label when variant is return', () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -145,7 +150,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('does NOT fire onDone before DONE_AT ms', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -161,7 +166,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('fires onDone at or after DONE_AT ms', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -176,7 +181,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('fires onDone at or after RETURN_DONE_AT ms for return variant', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -195,7 +200,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
   it('fires onDone only once even if fire() is called multiple times (guard)', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"
@@ -224,7 +229,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
 
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
-    render(
+    renderOverlay(
       <SpotlightEvictionOverlay
         evictee={evictee}
         layoutId="avatar-tile-p2"

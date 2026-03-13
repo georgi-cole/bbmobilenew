@@ -24,6 +24,8 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
   finalizeFinal3Decision,
+  setEvictionOverlay,
+  clearEvictionOverlay,
 } from '../../store/gameSlice';
 import { mulberry32, seededPick } from '../../store/rng';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils';
@@ -190,8 +192,11 @@ export default function Final3Ceremony() {
     if (import.meta.env.DEV) {
       console.log('[Final3Ceremony] announcement complete → eviction_splash', { evicteeId });
     }
+    // Mark the overlay player so AvatarTile hides itself (isEvicting) and the
+    // match-cut doesn't show a duplicate fullscreen tile before the overlay.
+    dispatch(setEvictionOverlay(evicteeId));
     setStage('eviction_splash');
-  }, [evicteeId]);
+  }, [dispatch, evicteeId]);
 
   // ── Eviction cinematic complete → finalize ────────────────────────────────
 
@@ -200,10 +205,25 @@ export default function Final3Ceremony() {
     if (import.meta.env.DEV) {
       console.log('[Final3Ceremony] eviction splash done → finalizeFinal3Decision + advance', { hohId, evicteeId });
     }
+    // Clear the overlay flag before finalizing so AvatarTile returns to normal.
+    dispatch(setEvictionOverlay(null));
     dispatch(finalizeFinal3Decision({ hohWinnerId: hohId, evicteeId }));
     dispatch(advance());
     setStage('done');
   }, [dispatch, hohId, evicteeId]);
+
+  // ── Cleanup: clear the overlay flag on unmount (safety net) ───────────────
+
+  useEffect(() => {
+    // Capture evicteeId at effect registration time so the cleanup can reference
+    // it without stale closure issues. clearEvictionOverlay is a no-op if the
+    // store flag has already been set to a different player by a subsequent overlay.
+    return () => {
+      dispatch(clearEvictionOverlay(evicteeId ?? ''));
+    };
+  // dispatch is stable; evicteeId is intentionally captured at mount time
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

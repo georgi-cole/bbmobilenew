@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { useAppDispatch } from '../../store/hooks';
+import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice';
 import './SpotlightEvictionOverlay.css';
 
 // ── Timing constants (ms, relative to component mount) ────────────────────
@@ -78,6 +80,7 @@ export default function SpotlightEvictionOverlay({
   devSkip,
   variant = 'eviction',
 }: Props) {
+  const dispatch = useAppDispatch();
   const [candidates] = useState(() => resolveAvatarCandidates(evictee));
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
@@ -100,6 +103,29 @@ export default function SpotlightEvictionOverlay({
     firedRef.current = true;
     onDone();
   }, [onDone]);
+
+  // ── Mount / unmount: register overlay player in store ─────────────────────
+  // Ensures AvatarTile hides itself (isEvicting) for this player while the
+  // overlay is active, preventing a duplicated fullscreen match-cut tile.
+  // The owning component (GameScreen or Final3Ceremony) explicitly clears this
+  // flag in their onDone handlers; this cleanup is a safety net for the case
+  // where the component unmounts unexpectedly (e.g. navigation away mid-cinematic).
+  // clearEvictionOverlay is used (not setEvictionOverlay(null)) so a stale unmount
+  // cannot clear a subsequently-mounted overlay for a different player.
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId, variant });
+    }
+    dispatch(setEvictionOverlay(evictee.id));
+    return () => {
+      if (import.meta.env.DEV) {
+        console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
+      }
+      dispatch(clearEvictionOverlay(evictee.id));
+    };
+  // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -134,7 +160,13 @@ export default function SpotlightEvictionOverlay({
     // Full cinematic sequence
     dbg('mount – spotlight phase');
     timers.push(setTimeout(() => { setShowLiveBug(true); dbg('LIVE bug'); }, LIVE_BUG_AT));
-    timers.push(setTimeout(() => { setPhase('expanding'); dbg('expanding'); }, EXPAND_START));
+    timers.push(setTimeout(() => {
+      setPhase('expanding');
+      dbg('expanding');
+      if (import.meta.env.DEV) {
+        console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', { evicteeId: evictee.id, layoutId });
+      }
+    }, EXPAND_START));
     timers.push(setTimeout(() => { setDesaturated(true); dbg('desaturate + vignette'); }, DESAT_AT));
     timers.push(setTimeout(() => { setShowLowerThird(true); dbg('lower-third'); }, LOWER_THIRD_AT));
     timers.push(setTimeout(() => { setPhase('holding'); dbg('holding'); }, HOLD_START));
@@ -251,7 +283,7 @@ export default function SpotlightEvictionOverlay({
         <div className="seo__scanlines" aria-hidden="true" />
       </motion.div>
 
-      {/* EVICTED lower-third — slides up from bottom */}
+      {/* Lower-third — slides up from bottom; label changes for return variant */}
       <AnimatePresence>
         {showLowerThird && (
           <motion.div
@@ -267,7 +299,7 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* EVICTED stamp with impact bounce */}
+      {/* Stamp with impact bounce; label changes for return variant */}
       <AnimatePresence>
         {showLowerThird && (
           <motion.div
