@@ -69,8 +69,6 @@ import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
-type JuryTransitionStage = 'idle' | 'announcement' | 'cinematic'
-
 const JURY_CINEMATIC_DURATION_MS = 4500
 const JURY_CINEMATIC_STEP_MS = 520
 const JURY_TEXT_ROTATE_MS = 1100
@@ -121,10 +119,6 @@ export default function GameScreen() {
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
     () => game.players.filter((p) => p.status === 'jury'),
-    [game.players],
-  )
-  const finalists = useMemo(
-    () => game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury'),
     [game.players],
   )
 
@@ -1165,66 +1159,38 @@ export default function GameScreen() {
     game.phase === 'final3_decision' &&
     !!game.hohId
 
-  const [juryTransitionStage, setJuryTransitionStage] = useState<JuryTransitionStage>('idle')
-  const [juryTransitionSeenKey, setJuryTransitionSeenKey] = useState('')
   const [juryCinematicJurorIndex, setJuryCinematicJurorIndex] = useState(0)
   const [juryCinematicTextIndex, setJuryCinematicTextIndex] = useState(0)
   const [showSpyJuryToast, setShowSpyJuryToast] = useState(false)
 
-  const juryTransitionKey = useMemo(() => {
-    if (game.phase !== 'week_end') return ''
-    if (finalists.length !== 2 || juryPlayers.length === 0) return ''
-    return `week-${game.week}-${finalists.map((p) => p.id).sort().join('-')}`
-  }, [game.phase, game.week, finalists, juryPlayers.length])
-
+  // ── Jury transition: no-animations fast-path ──────────────────────────────
+  // When the body has the no-animations class, skip the announcement and
+  // cinematic overlays and immediately advance through each intermediate phase.
   useEffect(() => {
-    if (!juryTransitionKey) {
-      setJuryTransitionStage('idle')
-      return
-    }
-    if (juryTransitionStage !== 'idle') return
-    if (juryTransitionSeenKey === juryTransitionKey) return
-
     const noAnimations =
       typeof document !== 'undefined' &&
       !!document.body &&
       document.body.classList.contains('no-animations')
-
-    setJuryTransitionSeenKey(juryTransitionKey)
-
-    if (noAnimations) {
-      // In no-animations mode, skip announcement/cinematic overlays entirely
-      // and immediately complete the jury transition so the game does not pause.
-      if (game.phase !== 'week_end') {
-        setJuryTransitionStage('idle')
-        return
-      }
-      setJuryTransitionStage('idle')
+    if (!noAnimations) return
+    if (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') {
       dispatch(advance())
-      return
     }
-
-    setJuryTransitionStage('announcement')
-  }, [juryTransitionKey, juryTransitionSeenKey, juryTransitionStage, game.phase, dispatch])
+  }, [game.phase, dispatch])
 
   const handleStartJuryCinematic = useCallback(() => {
     setShowSpyJuryToast(false)
     setJuryCinematicJurorIndex(0)
     setJuryCinematicTextIndex(0)
-    setJuryTransitionStage('cinematic')
-  }, [])
+    dispatch(advance())
+  }, [dispatch])
 
   const completeJuryTransition = useCallback(() => {
-    if (game.phase !== 'week_end') {
-      setJuryTransitionStage('idle')
-      return
-    }
-    setJuryTransitionStage('idle')
+    if (game.phase !== 'jury_cinematic') return
     dispatch(advance())
   }, [dispatch, game.phase])
 
   useEffect(() => {
-    if (juryTransitionStage !== 'cinematic') return
+    if (game.phase !== 'jury_cinematic') return
     if (juryPlayers.length === 0) {
       completeJuryTransition()
       return
@@ -1243,10 +1209,10 @@ export default function GameScreen() {
       window.clearInterval(textTimer)
       window.clearTimeout(doneTimer)
     }
-  }, [completeJuryTransition, juryPlayers.length, juryTransitionStage])
+  }, [completeJuryTransition, juryPlayers.length, game.phase])
 
   useEffect(() => {
-    if (juryTransitionStage !== 'announcement') return
+    if (game.phase !== 'jury_announcement') return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -1255,7 +1221,7 @@ export default function GameScreen() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleStartJuryCinematic, juryTransitionStage])
+  }, [handleStartJuryCinematic, game.phase])
 
   useEffect(() => {
     if (!showSpyJuryToast) return
@@ -1286,7 +1252,7 @@ export default function GameScreen() {
     showTieBreakModal ||
     showFinal3Modal ||
     showFinal3Ceremony ||
-    juryTransitionStage !== 'idle' ||
+    (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
     showVoteResults ||
     showEvictionSplash ||
     showBattleBackReturn ||
@@ -1478,7 +1444,7 @@ export default function GameScreen() {
       {showFinal3Ceremony && <Final3Ceremony />}
 
       {/* ── Jury phase transition: announcement modal → cinematic intro ───── */}
-      {juryTransitionStage === 'announcement' && (
+      {game.phase === 'jury_announcement' && (
         <div
           className="jury-phase-modal"
           role="dialog"
@@ -1523,7 +1489,7 @@ export default function GameScreen() {
         </div>
       )}
 
-      {juryTransitionStage === 'cinematic' && (
+      {game.phase === 'jury_cinematic' && (
         <div
           className="jury-cinematic"
           role="dialog"

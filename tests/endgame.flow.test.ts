@@ -3,7 +3,8 @@
  *
  * Validates that:
  *  1. After the Final 3 eviction (setting phase to 'week_end') advance()
- *     transitions directly to 'jury' and never re-enters the weekly cycle.
+ *     transitions through 'jury_announcement' → 'jury_cinematic' → 'jury'
+ *     and never re-enters the weekly cycle.
  *  2. advance() is a no-op while in 'jury' phase.
  *  3. A deterministic simulation from a 5-player state reaches 'jury' without
  *     an infinite loop.
@@ -97,8 +98,8 @@ describe('advance() — jury terminal guard', () => {
   });
 });
 
-describe('advance() — week_end → jury transition', () => {
-  it('transitions to "jury" when exactly 2 alive players are at week_end', () => {
+describe('advance() — week_end → jury_announcement → jury_cinematic → jury transition', () => {
+  it('transitions to "jury_announcement" when exactly 2 alive players are at week_end', () => {
     const players: Player[] = [
       { id: 'p0', name: 'Alice', avatar: '👩', status: 'active', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
@@ -113,11 +114,16 @@ describe('advance() — week_end → jury transition', () => {
     const store = makeStore({ phase: 'week_end', players });
 
     store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_announcement');
 
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_cinematic');
+
+    store.dispatch(advance());
     expect(store.getState().game.phase).toBe('jury');
   });
 
-  it('transitions to "jury" when fewer than 2 alive players (defensive)', () => {
+  it('transitions to "jury_announcement" when fewer than 2 alive players (defensive)', () => {
     const players: Player[] = [
       { id: 'p0', name: 'Alice', avatar: '👩', status: 'active', isUser: true },
       ...Array.from({ length: 11 }, (_, i) => ({
@@ -131,7 +137,12 @@ describe('advance() — week_end → jury transition', () => {
     const store = makeStore({ phase: 'week_end', players });
 
     store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_announcement');
 
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_cinematic');
+
+    store.dispatch(advance());
     expect(store.getState().game.phase).toBe('jury');
   });
 
@@ -183,7 +194,15 @@ describe('finalizeFinal3Eviction() + advance() — no infinite loop', () => {
     store.dispatch(finalizeFinal3Eviction('p1'));
     expect(store.getState().game.phase).toBe('week_end');
 
-    // advance() from week_end with 2 alive → must go to jury, never week_start
+    // advance() from week_end with 2 alive → must go to jury_announcement, never week_start
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_announcement');
+
+    // advance() again → jury_cinematic
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_cinematic');
+
+    // advance() again → jury
     store.dispatch(advance());
     expect(store.getState().game.phase).toBe('jury');
 
@@ -881,7 +900,7 @@ describe('Regression — eviction never drops alive count below 2', () => {
     expect(p1?.status).not.toBe('jury');
   });
 
-  it('week_end with 2 alive transitions to jury, never back to week_start', () => {
+  it('week_end with 2 alive transitions to jury_announcement → jury_cinematic → jury, never back to week_start', () => {
     const players: Player[] = [
       { id: 'p0', name: 'Alice', avatar: '👩', status: 'active', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
@@ -915,6 +934,10 @@ describe('Regression — eviction never drops alive count below 2', () => {
       },
     });
 
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_announcement');
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('jury_cinematic');
     store.dispatch(advance());
     expect(store.getState().game.phase).toBe('jury');
     // Further advance() calls are no-ops

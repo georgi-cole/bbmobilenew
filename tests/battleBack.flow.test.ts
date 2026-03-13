@@ -219,8 +219,8 @@ describe('advance() blocked while battleBack.active', () => {
     // battleBack.active is now false → advance() should run
     store.dispatch(advance());
     // week_end with 2 alive (p0 active + p1 back active = 2... but actually
-    // p0=active, p1=active, p2=jury → alive=2 → should transition to jury phase
-    expect(store.getState().game.phase).toBe('jury');
+    // p0=active, p1=active, p2=jury → alive=2 → should transition to jury_announcement phase
+    expect(store.getState().game.phase).toBe('jury_announcement');
   });
 });
 
