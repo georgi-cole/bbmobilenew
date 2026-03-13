@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -23,6 +24,7 @@ import {
   aiReplacementRendered,
   advance,
   completeBattleBack,
+  dismissBattleBack,
   tryActivateBattleBack,
   openBattleBackCompetition,
   resolveFavoritePlayerWinner,
@@ -64,6 +66,7 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
+import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
 type JuryTransitionStage = 'idle' | 'announcement' | 'cinematic'
@@ -100,6 +103,11 @@ const JURY_TEXT_FRAGMENTS = [
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
+  const store = useStore<RootState>()
+  const storeRef = useRef(store)
+  useEffect(() => {
+    storeRef.current = store
+  }, [store])
   const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
@@ -411,6 +419,7 @@ export default function GameScreen() {
     // that players whose p.status is already 'nominated' (AI-committed nominees)
     // don't have that status leak through when parts is empty.
     const statuses = parts.length > 0 ? parts.join('+') : (isAnimatingNominee ? 'active' : (p.status ?? 'active'))
+    const isReturning = battleBackReturnId === p.id
     return {
       id: p.id,
       name: p.name,
@@ -421,7 +430,7 @@ export default function GameScreen() {
       isYou: p.isUser,
       showPermanentBadge: !isAnimatingNominee,
       layoutId: `avatar-tile-${p.id}`,
-      isEvicting: showEvictionSplash && pendingEvictionPlayer?.id === p.id,
+      isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || isReturning,
       onClick: () => handleAvatarSelect(p),
     }
   }
@@ -1040,6 +1049,7 @@ export default function GameScreen() {
 
 
   const battleBack = game.battleBack
+  const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
   // Only show the full-screen overlay once competitionActive is true.
   // When battleBack.active && !competitionActive, the TV filler shows the
   // twist announcement; the overlay opens ~5 s later via the effect below.
@@ -1057,6 +1067,12 @@ export default function GameScreen() {
     return simulateBattleBackCompetition(candidateIds, game.seed).winnerId;
   }, [showBattleBack, battleBackCandidates, game.seed]);
 
+  const battleBackReturnPlayer = useMemo(
+    () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
+    [battleBackReturnId, game.players],
+  )
+  const showBattleBackReturn = !!battleBackReturnPlayer
+
   const battleBackVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze'];
     const rng = mulberry32(((game.seed ^ 0xdeadbeef) >>> 0));
@@ -1071,12 +1087,33 @@ export default function GameScreen() {
     return () => clearTimeout(id);
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
+  // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
+  // Battle Back completion before showing the return overlay. storeRef is intentionally
+  // omitted from deps because refs are stable and shouldn't re-create this callback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleBattleBackComplete = useCallback(() => {
-    if (battleBackWinnerId) {
-      dispatch(completeBattleBack(battleBackWinnerId))
+    if (!battleBackWinnerId) {
+      dispatch(dismissBattleBack())
+      dispatch(advance())
+      return
     }
+
+    dispatch(completeBattleBack(battleBackWinnerId))
+    const updatedBattleBack = storeRef.current.getState().game.battleBack
+
+    if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === battleBackWinnerId) {
+      setBattleBackReturnId(battleBackWinnerId)
+      return
+    }
+
+    dispatch(dismissBattleBack())
     dispatch(advance())
   }, [dispatch, battleBackWinnerId])
+
+  const handleBattleBackReturnDone = useCallback(() => {
+    setBattleBackReturnId(null)
+    dispatch(advance())
+  }, [dispatch])
 
   // ── Public's Favorite Player twist ───────────────────────────────────────
   // Shown after the jury finale: FinalFaceoff dismisses itself and this
@@ -1252,6 +1289,7 @@ export default function GameScreen() {
     juryTransitionStage !== 'idle' ||
     showVoteResults ||
     showEvictionSplash ||
+    showBattleBackReturn ||
     showBattleBack ||
     // Also block while the twist is pending TV announcement (active but overlay not yet open).
     (game.battleBack?.active === true && game.battleBack?.competitionActive !== true) ||
@@ -1785,8 +1823,22 @@ export default function GameScreen() {
         )}
       </AnimatePresence>
 
+      {/* ── Battle Back return animation (reverse eviction) ─────────────────── */}
+      <AnimatePresence>
+        {showBattleBackReturn && battleBackReturnPlayer && (
+          <SpotlightEvictionOverlay
+            key={`${battleBackReturnPlayer.id}-return`}
+            evictee={battleBackReturnPlayer}
+            onDone={handleBattleBackReturnDone}
+            layoutId={`avatar-tile-${battleBackReturnPlayer.id}`}
+            devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+            variant="return"
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Battle Back / Jury Return twist overlay ──────────────────────── */}
-      {showBattleBack && battleBackCandidates.length > 0 && battleBackWinnerId && (
+      {showBattleBack && battleBackCandidates.length > 0 && (
         <SpectatorView
           key={battleBackCandidates.map((p) => p.id).join('-') + '-bb'}
           competitorIds={battleBackCandidates.map((p) => p.id)}

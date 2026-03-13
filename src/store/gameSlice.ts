@@ -1080,7 +1080,7 @@ const gameSlice = createSlice({
     /**
      * Activate the Battle Back twist after an eligible eviction.
      * Sets `battleBack.active = true` (blocks advance()) and pushes a TV event
-     * with `major: 'twist'` so the TV filler shows an announcement.
+     * with `major: 'battle_back'` so the TV filler shows an announcement.
      * The full-screen competition overlay is NOT shown yet — it only opens after
      * `openBattleBackCompetition` is dispatched (triggered by GameScreen once the
      * TV announcement has been seen, ~5 s after activation).
@@ -1100,14 +1100,14 @@ const gameSlice = createSlice({
       };
       state.battleBack = bb;
       state.twistActive = true;
-      // Push event WITH major: 'twist' so TvZone shows the TvAnnouncementOverlay.
+      // Push event WITH major: 'battle_back' so TvZone shows the TvAnnouncementOverlay.
       const ts = Date.now();
       const event = {
         id: `${state.phase}-w${state.week}-${ts}-bb`,
         text: `🔥 TWIST: The Jury Return / Battle Back is here! Jurors will compete for a chance to return! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
-        major: 'twist',
+        major: 'battle_back',
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },

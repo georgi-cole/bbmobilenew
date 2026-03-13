@@ -22,12 +22,27 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
+let lastSpectatorOnDone: (() => void) | null = null;
+let mockBattleBackWinnerId: string | undefined = 'p2';
+const getMockBattleBackWinnerId = () => mockBattleBackWinnerId;
+
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: () => <div data-testid="tv-zone" />,
+}));
+
+vi.mock('../../src/components/ui/SpectatorView', () => ({
+  default: ({ onDone }: { onDone?: () => void }) => {
+    lastSpectatorOnDone = onDone ?? null;
+    return <div data-testid="spectator-view" />;
+  },
+}));
+
+vi.mock('../../src/features/twists/battleBackCompetition', () => ({
+  simulateBattleBackCompetition: () => ({ winnerId: getMockBattleBackWinnerId() }),
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -89,6 +104,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 
 // Timing constants mirrored from the component for assertion purposes.
 const DONE_AT = 5400;
+const RETURN_DONE_AT = 1900;
 
 describe('SpotlightEvictionOverlay – cinematic timing', () => {
   beforeEach(() => {
@@ -110,6 +126,20 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
       />,
     );
     expect(screen.getByRole('dialog', { name: /Alice has been evicted/i })).toBeTruthy();
+  });
+
+  it('renders the return aria-label when variant is return', () => {
+    const onDone = vi.fn();
+    const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+    render(
+      <SpotlightEvictionOverlay
+        evictee={evictee}
+        layoutId="avatar-tile-p2"
+        onDone={onDone}
+        variant="return"
+      />,
+    );
+    expect(screen.getByRole('dialog', { name: /Alice has returned/i })).toBeTruthy();
   });
 
   it('does NOT fire onDone before DONE_AT ms', async () => {
@@ -140,6 +170,25 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
     );
 
     await act(async () => { vi.advanceTimersByTime(DONE_AT + 50); });
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onDone at or after RETURN_DONE_AT ms for return variant', async () => {
+    const onDone = vi.fn();
+    const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+    render(
+      <SpotlightEvictionOverlay
+        evictee={evictee}
+        layoutId="avatar-tile-p2"
+        onDone={onDone}
+        variant="return"
+      />,
+    );
+
+    await act(async () => { vi.advanceTimersByTime(RETURN_DONE_AT - 50); });
+    expect(onDone).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(100); });
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
@@ -262,5 +311,98 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
 
     // tvFeed must contain the eviction message.
     expect(store.getState().game.tvFeed.some((e) => e.text.includes('Alice'))).toBe(true);
+  });
+});
+
+describe('GameScreen – Battle Back completion guards', () => {
+  beforeEach(() => {
+    lastSpectatorOnDone = null;
+    mockBattleBackWinnerId = 'p2';
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, width: 60, height: 80,
+      top: 0, left: 0, bottom: 80, right: 60,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('dismisses the twist and advances when there is no winner id', async () => {
+    mockBattleBackWinnerId = undefined;
+    const players = makePlayers(6);
+    players[1].status = 'jury';
+    players[2].status = 'jury';
+    const store = makeStore({
+      phase: 'eviction_results',
+      twistActive: true,
+      battleBack: {
+        used: false,
+        active: true,
+        competitionActive: true,
+        weekDecided: 4,
+        candidates: ['p1', 'p2'],
+        winnerId: null,
+      },
+      players,
+    });
+    const dispatchSpy = vi.spyOn(store, 'dispatch');
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await act(async () => {});
+
+    dispatchSpy.mockClear();
+    expect(typeof lastSpectatorOnDone).toBe('function');
+
+    await act(async () => { lastSpectatorOnDone?.(); });
+
+    expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/dismissBattleBack')).toBe(true);
+    expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/advance')).toBe(true);
+    expect(store.getState().game.battleBack?.active).toBe(false);
+  });
+
+  it('dismisses and advances when Battle Back completion fails validation', async () => {
+    const players = makePlayers(6);
+    players[1].status = 'active';
+    players[2].status = 'active';
+    const store = makeStore({
+      phase: 'eviction_results',
+      twistActive: true,
+      battleBack: {
+        used: false,
+        active: true,
+        competitionActive: true,
+        weekDecided: 4,
+        candidates: ['p1', 'p2'],
+        winnerId: null,
+      },
+      players,
+    });
+    const dispatchSpy = vi.spyOn(store, 'dispatch');
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await act(async () => {});
+
+    dispatchSpy.mockClear();
+    expect(typeof lastSpectatorOnDone).toBe('function');
+
+    await act(async () => { lastSpectatorOnDone?.(); });
+
+    expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/dismissBattleBack')).toBe(true);
+    expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/advance')).toBe(true);
+    expect(store.getState().game.battleBack?.active).toBe(false);
   });
 });

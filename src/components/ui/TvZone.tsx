@@ -58,6 +58,7 @@ const MAJOR_KEYS = new Set([
   'final3_announcement',
   'final_hoh',
   'jury',
+  'battle_back',
   'twist',
 ]);
 
@@ -70,15 +71,21 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final HOH begins.',      isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
+  battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: 4500 },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
 };
 
 /**
- * Extract the major key from a TvEvent using only explicit meta.major or ev.major
- * fields — text heuristics are intentionally removed to prevent scrambled popups.
+ * Extract the major key from a TvEvent using explicit meta.major or ev.major
+ * fields. Battle Back is the one allowed text heuristic fallback (legacy twist
+ * events without a major key can still trigger the Battle Back announcement).
  */
 function extractMajorKey(ev: TvEvent): string | null {
   const key = ev.meta?.major ?? ev.major ?? null;
+  const hasBattleBackCopy = ev.type === 'twist' && /battle back/i.test(ev.text);
+
+  // Legacy Battle Back events may still be tagged as a generic twist (or missing a major).
+  if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back';
   if (!key) return null;
   return MAJOR_KEYS.has(key) ? key : null;
 }
