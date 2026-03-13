@@ -25,6 +25,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 let lastSpectatorOnDone: (() => void) | null = null;
 let mockBattleBackWinnerId: string | undefined = 'p2';
+const getMockBattleBackWinnerId = () => mockBattleBackWinnerId;
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
@@ -44,7 +45,7 @@ vi.mock('../../src/components/ui/SpectatorView', () => ({
 }));
 
 vi.mock('../../src/features/twists/battleBackCompetition', () => ({
-  simulateBattleBackCompetition: () => ({ winnerId: mockBattleBackWinnerId }),
+  simulateBattleBackCompetition: () => ({ winnerId: getMockBattleBackWinnerId() }),
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────

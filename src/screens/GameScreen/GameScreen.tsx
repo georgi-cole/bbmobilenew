@@ -90,6 +90,7 @@ import './GameScreen.css'
 export default function GameScreen() {
   const dispatch = useAppDispatch()
   const store = useStore<RootState>()
+  const getState = store.getState
   const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
@@ -1069,7 +1070,7 @@ export default function GameScreen() {
     }
 
     dispatch(completeBattleBack(battleBackWinnerId))
-    const updatedBattleBack = store.getState().game.battleBack
+    const updatedBattleBack = getState().game.battleBack
 
     if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === battleBackWinnerId) {
       setBattleBackReturnId(battleBackWinnerId)
@@ -1078,7 +1079,7 @@ export default function GameScreen() {
 
     dispatch(dismissBattleBack())
     dispatch(advance())
-  }, [dispatch, store, battleBackWinnerId])
+  }, [dispatch, getState, battleBackWinnerId])
 
   const handleBattleBackReturnDone = useCallback(() => {
     setBattleBackReturnId(null)
