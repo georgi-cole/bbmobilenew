@@ -229,10 +229,10 @@ export default function SeasonFinaleOverlay() {
           lines={goodbyeLines}
           header={{
             title: 'Final Goodbyes ✨',
-            subtitle: `${Math.min(finale.goodbyeIndex + 1, goodbyeLines.length)} / ${goodbyeLines.length} farewell beats`,
+            subtitle: `${Math.min(finale.goodbyeIndex, goodbyeLines.length)} / ${goodbyeLines.length} farewell beats`,
           }}
           ariaLabel="Final goodbye sequence"
-          onLineReveal={(_, index) => dispatch(advanceGoodbyeSequence(index))}
+          onLineReveal={(_, index) => dispatch(advanceGoodbyeSequence(index + 1))}
           onComplete={() => dispatch(startLightsOff())}
           completeLabel="Lights Off"
         />
