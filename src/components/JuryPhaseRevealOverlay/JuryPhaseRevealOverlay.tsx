@@ -31,7 +31,7 @@ const OPENING_LINE_ANIMATION_MS = 1450
 /** Gap between opening-line animation end and the first juror igniting. */
 const OPENING_LINE_FADE_MS = 300
 /** Delay between each juror avatar igniting (staggered). */
-const JUROR_STAGGER_MS = 150
+const JUROR_STAGGER_MS = 220
 /** Hold time after all jurors are lit before the title card rises. */
 const JURORS_HOLD_MS = 700
 /** Duration of the title card rise animation (matches CSS). */
@@ -283,14 +283,25 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
 // ── JurorAvatar helper ────────────────────────────────────────────────────────
 /**
  * Renders a juror's circular portrait.
- * Supports emoji avatars, image URLs (with fallback chain), and
- * initials as a last resort — preserving the staggered ignition effect.
+ *
+ * Priority:
+ *  1. Real portrait image (local avatars/Name.png via resolveAvatarCandidates)
+ *  2. Styled initials or emoji (when all local image paths fail / aren't available)
+ *
+ * Dicebear is intentionally excluded from the fallback chain so the cinematic
+ * never shows pixel-art avatars — only genuine photos or clean initials.
  */
 function JurorAvatar({ player }: { player: Player }) {
   const [candidateIdx, setCandidateIdx] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
 
-  const candidates = resolveAvatarCandidates(player)
+  // Build the candidate list, excluding external Dicebear SVGs so the
+  // cinematic never shows pixel-art dice avatars — only genuine photos or
+  // clean styled initials/emoji circles.
+  const candidates = resolveAvatarCandidates(player).filter(
+    (c) => !c.startsWith('https://api.dicebear.com'),
+  )
+
   const src = candidates[candidateIdx] ?? ''
   const fallback = isEmoji(player.avatar ?? '')
     ? (player.avatar ?? '')
@@ -300,14 +311,6 @@ function JurorAvatar({ player }: { player: Player }) {
     return (
       <div className="jpro__avatar jpro__avatar--fallback" aria-hidden="true">
         {fallback}
-      </div>
-    )
-  }
-
-  if (isEmoji(src)) {
-    return (
-      <div className="jpro__avatar" aria-hidden="true">
-        {src}
       </div>
     )
   }
