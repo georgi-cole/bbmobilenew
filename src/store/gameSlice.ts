@@ -1463,7 +1463,7 @@ const gameSlice = createSlice({
       }>,
     ) {
       const { winnerId, seed, publicFavoriteEnabled } = action.payload;
-      const interviewIndex = Math.abs(seed) % FINALE_INTERVIEW_VARIANT_COUNT;
+      const interviewIndex = seed % FINALE_INTERVIEW_VARIANT_COUNT;
       const nextFinaleState: SeasonFinaleState = {
         phase: 'winnerCinematic',
         winnerId,

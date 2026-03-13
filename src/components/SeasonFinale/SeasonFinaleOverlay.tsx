@@ -57,7 +57,7 @@ const GOODBYE_BANK = [
 ];
 
 function buildInterviewLines(winner: Player, interviewIndex: number): ChatLine[] {
-  const script = INTERVIEW_BANKS[interviewIndex % INTERVIEW_BANKS.length] ?? INTERVIEW_BANKS[0];
+  const script = INTERVIEW_BANKS[interviewIndex];
   return script.flatMap(([question, answer], pairIndex) => ([
     {
       id: `interview-host-${pairIndex}`,
@@ -95,7 +95,7 @@ function buildGoodbyeLines(players: Player[], season: number): ChatLine[] {
 
   const playerLines = players.map((player, index) => ({
     id: `goodbye-${player.id}`,
-    role: player.id === 'user' ? 'host' : 'guest',
+    role: 'guest',
     player,
     text: GOODBYE_BANK[(index + season) % GOODBYE_BANK.length],
   }));

@@ -68,7 +68,7 @@ describe('seasonFinale state machine', () => {
 
     store.dispatch(startWinnerCinematic({
       winnerId: 'winner',
-      seed: 11,
+      seed: 2,
       publicFavoriteEnabled: true,
     }));
 
