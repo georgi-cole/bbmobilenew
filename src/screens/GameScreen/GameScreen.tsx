@@ -1068,6 +1068,7 @@ export default function GameScreen() {
   // storeRef is synced via useEffect; we read the latest state after dispatch to confirm the
   // Battle Back completion before showing the return overlay. storeRef is intentionally
   // omitted from deps because refs are stable and shouldn't re-create this callback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleBattleBackComplete = useCallback(() => {
     if (!battleBackWinnerId) {
       dispatch(dismissBattleBack())
