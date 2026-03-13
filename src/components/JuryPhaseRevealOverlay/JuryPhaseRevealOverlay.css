@@ -139,7 +139,8 @@
 }
 
 .jpro__opening-line--visible {
-  /* Duration matches OPENING_LINE_VISIBLE_MS + fade in/out buffer */
+  /* Duration matches OPENING_LINE_ANIMATION_MS — the class is kept applied for
+     the full keyframe run so the fade-out portion completes without interruption. */
   animation: juryOpeningLineFade 1450ms ease both;
 }
 
@@ -405,4 +406,20 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* ── Instant / skip mode ─────────────────────────────────────────────────── */
+/*
+ * Applied via the `.jpro--instant` class on the root element when the user
+ * taps Skip. Zeros all child animation/transition durations so the final
+ * assembled state appears immediately without any CSS animations playing.
+ */
+.jpro--instant .jpro__juror--lit,
+.jpro--instant .jpro__card,
+.jpro--instant .jpro__card-shimmer,
+.jpro--instant .jpro__actions {
+  animation: none !important;
+  transition: none !important;
+  opacity: 1 !important;
+  transform: none !important;
 }

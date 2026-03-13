@@ -1151,8 +1151,10 @@ export default function GameScreen() {
   // ── Jury reveal overlay ───────────────────────────────────────────────────
   // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
   // and prefers-reduced-motion fast-paths are handled inside the component).
-  // The no-animations fast-path below still guards the jury_cinematic phase in
-  // case it is ever entered directly (e.g. after a store rehydration).
+  // The no-animations fast-path below advances both jury_announcement and
+  // jury_cinematic directly — bypassing the overlay — when body.no-animations
+  // is set, and also guards jury_cinematic if it is entered directly (e.g.
+  // after a store rehydration).
   useEffect(() => {
     const noAnimations =
       typeof document !== 'undefined' &&
@@ -1164,8 +1166,9 @@ export default function GameScreen() {
     }
   }, [game.phase, dispatch])
 
-  /** Advance from jury_announcement → jury_cinematic → jury in one step. */
+  /** Advance jury_announcement → jury_cinematic → jury in one step. No-op in any other phase. */
   const handleEnterJuryVote = useCallback(() => {
+    if (game.phase !== 'jury_announcement' && game.phase !== 'jury_cinematic') return
     if (game.phase === 'jury_announcement') {
       dispatch(advance()) // jury_announcement → jury_cinematic
     }

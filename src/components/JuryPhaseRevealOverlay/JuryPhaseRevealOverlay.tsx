@@ -22,9 +22,13 @@ import './JuryPhaseRevealOverlay.css'
 // ── Timing constants (ms) ─────────────────────────────────────────────────────
 /** How long after mount before the opening line appears. */
 const BACKDROP_SETTLE_MS = 400
-/** How long the opening line stays fully visible. */
-const OPENING_LINE_VISIBLE_MS = 1000
-/** Gap between opening-line fade-out and the first juror igniting. */
+/**
+ * Total duration of the opening-line animation (must match the CSS
+ * `juryOpeningLineFade` keyframe duration so the class is held for the
+ * full fade-in → hold → fade-out sequence before being removed).
+ */
+const OPENING_LINE_ANIMATION_MS = 1450
+/** Gap between opening-line animation end and the first juror igniting. */
 const OPENING_LINE_FADE_MS = 300
 /** Delay between each juror avatar igniting (staggered). */
 const JUROR_STAGGER_MS = 150
@@ -57,6 +61,12 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
   const [visibleJurorCount, setVisibleJurorCount] = useState(0)
   const [showOpeningLine, setShowOpeningLine] = useState(false)
   const [showSpyHint, setShowSpyHint] = useState(false)
+  /**
+   * When true, the root element gains `.jpro--instant` which zeroes all
+   * child animation durations. Set by the Skip button so the final assembled
+   * state appears without any CSS transitions playing.
+   */
+  const [instant, setInstant] = useState(false)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const prefersReducedMotion =
@@ -78,6 +88,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
   const skipToFinal = useCallback(
     (jurorCount: number) => {
       clearTimers()
+      setInstant(true)
       setShowOpeningLine(false)
       setVisibleJurorCount(jurorCount)
       setStage('actions')
@@ -102,8 +113,10 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
     if (!open) {
       clearTimers()
       setStage('idle')
+      setInstant(false)
       setVisibleJurorCount(0)
       setShowOpeningLine(false)
+      setShowSpyHint(false)
       return
     }
 
@@ -119,21 +132,25 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
     }
 
     // Stage 1: backdrop
+    setInstant(false)
     setStage('backdrop')
     setVisibleJurorCount(0)
     setShowOpeningLine(false)
 
-    // Stage 2: opening line
+    // Stage 2: opening line — add class at BACKDROP_SETTLE_MS, remove only
+    // after the full 1450ms animation completes so the fade-out plays fully.
     push(() => {
       setStage('opening_line')
       setShowOpeningLine(true)
     }, BACKDROP_SETTLE_MS)
 
-    // Fade out opening line
-    push(() => setShowOpeningLine(false), BACKDROP_SETTLE_MS + OPENING_LINE_VISIBLE_MS)
+    push(
+      () => setShowOpeningLine(false),
+      BACKDROP_SETTLE_MS + OPENING_LINE_ANIMATION_MS,
+    )
 
     // Stage 3: jurors ignite one-by-one
-    const jurorsStart = BACKDROP_SETTLE_MS + OPENING_LINE_VISIBLE_MS + OPENING_LINE_FADE_MS
+    const jurorsStart = BACKDROP_SETTLE_MS + OPENING_LINE_ANIMATION_MS + OPENING_LINE_FADE_MS
     push(() => setStage('jurors'), jurorsStart)
     for (let i = 0; i < jurors.length; i++) {
       push(() => setVisibleJurorCount(i + 1), jurorsStart + i * JUROR_STAGGER_MS)
@@ -162,7 +179,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
 
   return (
     <div
-      className="jpro"
+      className={`jpro${instant ? ' jpro--instant' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label="The Jury Takes Control"
