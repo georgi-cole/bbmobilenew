@@ -74,6 +74,15 @@ function displayName(id: string, participants?: Array<{ id: string; name: string
   return hg?.name ?? id;
 }
 
+/** Returns true if the card should render in red (hearts/diamonds suit by index). */
+function isRedCard(card: number, cardIndex: number): boolean {
+  // Ace (1) always renders in red; for other cards, even suit indices (♥, ♦) are red.
+  // Suit is determined by card position index mod 4: 0=♠(black), 1=♥(red), 2=♦(red), 3=♣(black).
+  if (card === 1) return true;
+  const suit = cardIndex % 4;
+  return suit === 1 || suit === 2;
+}
+
 /** Card display helper — renders rank + suit in a small chip. */
 function renderCards(cards: number[], bust: boolean, stood: boolean): React.ReactNode {
   return (
@@ -81,7 +90,7 @@ function renderCards(cards: number[], bust: boolean, stood: boolean): React.Reac
       {cards.map((c, i) => (
         <span
           key={i}
-          className={`bjt-card ${c === 1 || (c >= 10 && (i % 4 === 1 || i % 4 === 3)) ? 'bjt-card--red' : ''}`}
+          className={`bjt-card ${isRedCard(c, i) ? 'bjt-card--red' : ''}`}
           aria-hidden="true"
         >
           {cardRank(c)}
@@ -135,13 +144,20 @@ export default function BlackjackTournamentComp({
   const [spinnerIdx, setSpinnerIdx] = useState(0);
   const spinnerIntervalRef = useRef<number | null>(null);
 
+  function clearTimer(ref: React.MutableRefObject<number | null>) {
+    if (ref.current !== null) {
+      window.clearTimeout(ref.current);
+      ref.current = null;
+    }
+  }
+
   function clearAllTimers() {
-    if (spinTimerRef.current !== null) { window.clearTimeout(spinTimerRef.current); spinTimerRef.current = null; }
-    if (aiPickTimerRef.current !== null) { window.clearTimeout(aiPickTimerRef.current); aiPickTimerRef.current = null; }
-    if (aiActionTimerRef.current !== null) { window.clearTimeout(aiActionTimerRef.current); aiActionTimerRef.current = null; }
-    if (resultTimerRef.current !== null) { window.clearTimeout(resultTimerRef.current); resultTimerRef.current = null; }
-    if (winnerTimerRef.current !== null) { window.clearTimeout(winnerTimerRef.current); winnerTimerRef.current = null; }
-    if (spectatorTimerRef.current !== null) { window.clearTimeout(spectatorTimerRef.current); spectatorTimerRef.current = null; }
+    clearTimer(spinTimerRef);
+    clearTimer(aiPickTimerRef);
+    clearTimer(aiActionTimerRef);
+    clearTimer(resultTimerRef);
+    clearTimer(winnerTimerRef);
+    clearTimer(spectatorTimerRef);
     if (spinnerIntervalRef.current !== null) { window.clearInterval(spinnerIntervalRef.current); spinnerIntervalRef.current = null; }
   }
 
@@ -197,12 +213,7 @@ export default function BlackjackTournamentComp({
     winnerTimerRef.current = window.setTimeout(() => {
       onComplete?.();
     }, WINNER_AUTO_ADVANCE_MS);
-    return () => {
-      if (winnerTimerRef.current !== null) {
-        window.clearTimeout(winnerTimerRef.current);
-        winnerTimerRef.current = null;
-      }
-    };
+    return () => { clearTimer(winnerTimerRef); };
   }, [bt.phase, onComplete]);
 
   // ── 4. Spin phase: run spinner animation then resolve ─────────────────────
@@ -229,10 +240,7 @@ export default function BlackjackTournamentComp({
         window.clearInterval(spinnerIntervalRef.current);
         spinnerIntervalRef.current = null;
       }
-      if (spinTimerRef.current !== null) {
-        window.clearTimeout(spinTimerRef.current);
-        spinTimerRef.current = null;
-      }
+      clearTimer(spinTimerRef);
     };
   }, [bt.phase, bt.remainingPlayerIds.length, dispatch]);
 
@@ -246,12 +254,7 @@ export default function BlackjackTournamentComp({
       aiPickTimerRef.current = window.setTimeout(() => {
         dispatch(pickOpponent({ opponentId: bt.selectedOpponentId! }));
       }, 600);
-      return () => {
-        if (aiPickTimerRef.current !== null) {
-          window.clearTimeout(aiPickTimerRef.current);
-          aiPickTimerRef.current = null;
-        }
-      };
+      return () => { clearTimer(aiPickTimerRef); };
     }
 
     // AI controller: auto-pick after delay.
@@ -265,12 +268,7 @@ export default function BlackjackTournamentComp({
         );
         if (chosen) dispatch(pickOpponent({ opponentId: chosen }));
       }, AI_PICK_DELAY_MS);
-      return () => {
-        if (aiPickTimerRef.current !== null) {
-          window.clearTimeout(aiPickTimerRef.current);
-          aiPickTimerRef.current = null;
-        }
-      };
+      return () => { clearTimer(aiPickTimerRef); };
     }
   }, [
     bt.phase,
@@ -293,12 +291,7 @@ export default function BlackjackTournamentComp({
       aiActionTimerRef.current = window.setTimeout(() => {
         dispatch(resolveDuel());
       }, 300);
-      return () => {
-        if (aiActionTimerRef.current !== null) {
-          window.clearTimeout(aiActionTimerRef.current);
-          aiActionTimerRef.current = null;
-        }
-      };
+      return () => { clearTimer(aiActionTimerRef); };
     }
 
     const activeId = duel.duelTurn === 'controller' ? duel.controllerId : duel.opponentId;
@@ -321,12 +314,7 @@ export default function BlackjackTournamentComp({
       }
     }, delay);
 
-    return () => {
-      if (aiActionTimerRef.current !== null) {
-        window.clearTimeout(aiActionTimerRef.current);
-        aiActionTimerRef.current = null;
-      }
-    };
+    return () => { clearTimer(aiActionTimerRef); };
   }, [
     bt.phase,
     bt.currentDuel,
@@ -344,12 +332,7 @@ export default function BlackjackTournamentComp({
     resultTimerRef.current = window.setTimeout(() => {
       dispatch(advanceFromDuelResult());
     }, delay);
-    return () => {
-      if (resultTimerRef.current !== null) {
-        window.clearTimeout(resultTimerRef.current);
-        resultTimerRef.current = null;
-      }
-    };
+    return () => { clearTimer(resultTimerRef); };
   }, [bt.phase, bt.isSpectating, dispatch]);
 
   // ─── Render ──────────────────────────────────────────────────────────────

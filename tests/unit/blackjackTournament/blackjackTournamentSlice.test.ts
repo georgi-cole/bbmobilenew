@@ -449,34 +449,18 @@ describe('hitCurrentPlayer / standCurrentPlayer', () => {
   });
 
   it('standing both players sets duelTurn to finished', () => {
+    // With 2 initial cards, bust is impossible (max total is 21), so
+    // duelTurn always starts at 'controller'. Use seed 42 for determinism.
     const store = reachDuel(42);
-    // Ensure we start at controller turn; retry seeds if needed
-    let attempts = 0;
-    let found = false;
-    while (attempts++ < 30 && !found) {
-      const s = getState(store);
-      if (s.phase === 'duel' && s.currentDuel?.duelTurn === 'controller') {
-        found = true;
-        break;
-      }
-      // Re-init with a different seed if needed
-      if (attempts < 30) {
-        store.dispatch(resetBlackjackTournament());
-        initStore(store, ['alice', 'bob'], attempts * 17);
-        store.dispatch(resolveSpinner());
-        const ns = getState(store);
-        const opp = ns.remainingPlayerIds.find((id) => id !== ns.controllingPlayerId)!;
-        store.dispatch(pickOpponent({ opponentId: opp }));
-      }
-    }
-    if (!found) return; // edge case: skip if couldn't get controller turn
+    const duel = getState(store).currentDuel!;
+    expect(duel.duelTurn).toBe('controller');
 
     store.dispatch(standCurrentPlayer()); // controller stands
     const mid = getState(store).currentDuel!;
-    if (mid.duelTurn === 'opponent') {
-      store.dispatch(standCurrentPlayer()); // opponent stands
-      expect(getState(store).currentDuel!.duelTurn).toBe('finished');
-    }
+    expect(mid.duelTurn).toBe('opponent');
+
+    store.dispatch(standCurrentPlayer()); // opponent stands
+    expect(getState(store).currentDuel!.duelTurn).toBe('finished');
   });
 
   it('is no-op in wrong phase', () => {

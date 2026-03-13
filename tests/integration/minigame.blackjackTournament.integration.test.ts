@@ -24,7 +24,6 @@ import blackjackTournamentReducer, {
   advanceFromDuelResult,
   markBlackjackTournamentOutcomeResolved,
 } from '../../src/features/blackjackTournament/blackjackTournamentSlice';
-import type { BlackjackTournamentState } from '../../src/features/blackjackTournament/blackjackTournamentSlice';
 import { resolveBlackjackTournamentOutcome } from '../../src/features/blackjackTournament/thunks';
 import { getGame } from '../../src/minigames/registry';
 import { minigameAiRegistry } from '../../src/ai/competition/minigameAiRegistry';
