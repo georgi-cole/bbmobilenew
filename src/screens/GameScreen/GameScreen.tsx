@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -23,6 +24,7 @@ import {
   aiReplacementRendered,
   advance,
   completeBattleBack,
+  dismissBattleBack,
   tryActivateBattleBack,
   openBattleBackCompetition,
   resolveFavoritePlayerWinner,
@@ -64,6 +66,7 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import { selectSettings } from '../../store/settingsSlice'
+import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
 /**
@@ -86,6 +89,7 @@ import './GameScreen.css'
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
+  const store = useStore<RootState>()
   const navigate = useNavigate()
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
@@ -1058,13 +1062,22 @@ export default function GameScreen() {
   }, [dispatch, battleBack?.active, battleBack?.competitionActive]);
 
   const handleBattleBackComplete = useCallback(() => {
-    if (battleBackWinnerId) {
-      dispatch(completeBattleBack(battleBackWinnerId))
-      setBattleBackReturnId(battleBackWinnerId)
-    } else {
+    if (!battleBackWinnerId) {
       dispatch(advance())
+      return
     }
-  }, [dispatch, battleBackWinnerId])
+
+    dispatch(completeBattleBack(battleBackWinnerId))
+    const updatedBattleBack = store.getState().game.battleBack
+
+    if (updatedBattleBack?.active === false && updatedBattleBack.winnerId === battleBackWinnerId) {
+      setBattleBackReturnId(battleBackWinnerId)
+      return
+    }
+
+    dispatch(dismissBattleBack())
+    dispatch(advance())
+  }, [dispatch, store, battleBackWinnerId])
 
   const handleBattleBackReturnDone = useCallback(() => {
     setBattleBackReturnId(null)

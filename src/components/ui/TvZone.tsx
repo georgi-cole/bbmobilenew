@@ -76,8 +76,9 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
 };
 
 /**
- * Extract the major key from a TvEvent using only explicit meta.major or ev.major
- * fields — text heuristics are intentionally removed to prevent scrambled popups.
+ * Extract the major key from a TvEvent using explicit meta.major or ev.major
+ * fields. Battle Back is the one allowed text heuristic fallback (legacy twist
+ * events without a major key can still trigger the Battle Back announcement).
  */
 function extractMajorKey(ev: TvEvent): string | null {
   const key = ev.meta?.major ?? ev.major ?? null;
