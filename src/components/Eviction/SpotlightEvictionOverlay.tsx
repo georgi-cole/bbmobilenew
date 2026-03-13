@@ -96,10 +96,14 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
   // flag in their onDone handlers; this cleanup is a safety net for the case
   // where the component unmounts unexpectedly (e.g. navigation away mid-cinematic).
   useEffect(() => {
-    console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId });
+    if (import.meta.env.DEV) {
+      console.debug('[SpotlightEvictionOverlay] mount', { evicteeId: evictee.id, layoutId });
+    }
     dispatch(setEvictionOverlay(evictee.id));
     return () => {
-      console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
+      if (import.meta.env.DEV) {
+        console.debug('[SpotlightEvictionOverlay] unmount', { evicteeId: evictee.id });
+      }
       dispatch(setEvictionOverlay(null));
     };
   // evictee.id and layoutId are stable for the lifetime of this overlay instance
@@ -128,7 +132,9 @@ export default function SpotlightEvictionOverlay({ evictee, layoutId, onDone, de
     timers.push(setTimeout(() => {
       setPhase('expanding');
       dbg('expanding');
-      console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', { evicteeId: evictee.id, layoutId });
+      if (import.meta.env.DEV) {
+        console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', { evicteeId: evictee.id, layoutId });
+      }
     }, EXPAND_START));
     timers.push(setTimeout(() => { setDesaturated(true); dbg('desaturate + vignette'); }, DESAT_AT));
     timers.push(setTimeout(() => { setShowLowerThird(true); dbg('lower-third'); }, LOWER_THIRD_AT));
