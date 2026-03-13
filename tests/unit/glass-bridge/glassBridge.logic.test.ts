@@ -31,6 +31,7 @@ import glassBridgeReducer, {
   finaliseOrderSelection,
   startPlaying,
   resolveStep,
+  advanceTurn,
   expireTimer,
   completeGame,
   setHumanSpectating,
@@ -421,6 +422,24 @@ describe('glassBridgeSlice — expireTimer', () => {
     }
     expect(gb.timerExpired).toBe(true);
   });
+
+  it('is idempotent — dispatching twice does not duplicate eliminationOrder', () => {
+    const store = startGame(['a', 'b'], 42);
+    completeOrderPhase(store, 42);
+
+    store.dispatch(expireTimer());
+    store.dispatch(expireTimer());
+
+    const gb = store.getState().glassBridge;
+    // Each player should appear at most once in eliminationOrder.
+    const counts: Record<string, number> = {};
+    for (const pid of gb.eliminationOrder) {
+      counts[pid] = (counts[pid] ?? 0) + 1;
+    }
+    for (const count of Object.values(counts)) {
+      expect(count).toBe(1);
+    }
+  });
 });
 
 describe('glassBridgeSlice — spectator', () => {
@@ -475,6 +494,20 @@ describe('glassBridgeSlice — recordNumberChoice', () => {
     store.dispatch(recordNumberChoice({ playerId: 'a', number: 1 }));
     store.dispatch(recordNumberChoice({ playerId: 'b', number: 1 }));
     expect(store.getState().glassBridge.chosenNumbers['b']).toBeUndefined();
+  });
+
+  it('rejects an unknown playerId not in participants', () => {
+    const store = startGame(['a', 'b'], 42);
+    store.dispatch(recordNumberChoice({ playerId: 'nobody', number: 1 }));
+    expect(store.getState().glassBridge.chosenNumbers['nobody']).toBeUndefined();
+  });
+
+  it('prevents a player from overwriting their own pick', () => {
+    const store = startGame(['a', 'b'], 42);
+    store.dispatch(recordNumberChoice({ playerId: 'a', number: 1 }));
+    store.dispatch(recordNumberChoice({ playerId: 'a', number: 2 }));
+    // First pick stays; second is ignored.
+    expect(store.getState().glassBridge.chosenNumbers['a']).toBe(1);
   });
 });
 
@@ -563,8 +596,8 @@ describe('Full deterministic simulation', () => {
         if (!activeId) break;
         const prog = gb.progress[activeId];
         if (!prog || prog.eliminated || prog.finishTimeMs !== undefined) {
-          // Advance to next.
-          store.dispatch(resolveStep({ chosenSide: 'left', now: T0 + safetyCounter * 100 }));
+          // Player is already done — advance turn index directly without processing a step.
+          store.dispatch(advanceTurn());
           gb = store.getState().glassBridge;
           continue;
         }

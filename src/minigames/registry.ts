@@ -862,7 +862,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     ],
     metricKind: 'accuracy',
     metricLabel: 'Placement',
-    timeLimitMs: 0,
+    timeLimitMs: 120_000,
     authoritative: true,
     scoringAdapter: 'authoritative',
     implementation: 'react',

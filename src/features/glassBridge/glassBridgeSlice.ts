@@ -18,7 +18,7 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
-import type { CompetitionSkillProfile } from '../../types/index';
+import type { CompetitionSkillProfile } from '../../ai/competition/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -365,9 +365,14 @@ const glassBridgeSlice = createSlice({
     ) {
       if (state.phase !== 'order_selection') return;
       const { playerId, number } = action.payload;
-      // Validate: number must be in range and not already taken.
+      // Validate: playerId must be a known participant.
+      if (!state.participants.some(p => p.id === playerId)) return;
+      // Validate: number must be in range.
       const n = state.participants.length;
       if (number < 1 || number > n) return;
+      // Prevent overwriting an existing pick.
+      if (state.chosenNumbers[playerId] !== undefined) return;
+      // Prevent picking a number already taken by another participant.
       const alreadyTaken = Object.values(state.chosenNumbers).includes(number);
       if (alreadyTaken) return;
       state.chosenNumbers[playerId] = number;
@@ -436,9 +441,23 @@ const glassBridgeSlice = createSlice({
 
       const elapsed = state.challengeStartTimeMs !== null ? now - state.challengeStartTimeMs : 0;
 
-      // Check global timer.
+      // If the global timer has already expired, do not process any more steps.
+      // The component's timer effect is responsible for dispatching expireTimer()/completeGame().
+      if (state.timerExpired) return;
+
+      // Check if the timer just expired at this moment.
       if (state.globalTimeLimitMs > 0 && elapsed >= state.globalTimeLimitMs) {
+        // Mark expired and eliminate remaining players; do not resolve the step.
         state.timerExpired = true;
+        for (const p of Object.values(state.progress)) {
+          if (!p.eliminated && p.finishTimeMs === undefined) {
+            p.eliminated = true;
+            if (!state.eliminationOrder.includes(p.playerId)) {
+              state.eliminationOrder.push(p.playerId);
+            }
+          }
+        }
+        return;
       }
 
       const rowIdx = state.currentPlayerRow - 1; // 0-based
@@ -484,6 +503,8 @@ const glassBridgeSlice = createSlice({
 
     /** Mark the global timer as expired; ongoing actions should stop. */
     expireTimer(state) {
+      // Idempotency guard — avoid duplicating entries in eliminationOrder.
+      if (state.timerExpired) return;
       state.timerExpired = true;
       // Eliminate any unfinished players.
       for (const p of Object.values(state.progress)) {

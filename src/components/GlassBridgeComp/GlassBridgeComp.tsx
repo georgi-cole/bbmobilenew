@@ -30,6 +30,7 @@ import {
   finaliseOrderSelection,
   startPlaying,
   resolveStep,
+  expireTimer,
   completeGame,
   setHumanSpectating,
   resetGlassBridge,
@@ -281,6 +282,8 @@ export default function GlassBridgeComp({
       setTimerDisplay(remaining);
 
       if (remaining <= 0 && !gb.timerExpired) {
+        // Expire timer first (eliminates unfinished players) then finalise rankings.
+        dispatch(expireTimer());
         dispatch(completeGame());
       }
     }
@@ -343,11 +346,11 @@ export default function GlassBridgeComp({
         window.setTimeout(() => {
           setShatteringTile(null);
           dispatch(resolveStep({ chosenSide, now }));
-          checkComplete();
+          // Game-over detection is handled by effect #7 which watches gb state.
         }, SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS);
       } else {
         dispatch(resolveStep({ chosenSide, now }));
-        checkComplete();
+        // Game-over detection is handled by effect #7 which watches gb state.
       }
     }, delay);
 
@@ -359,17 +362,6 @@ export default function GlassBridgeComp({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId]);
-
-  function checkComplete() {
-    // Small defer to let the state update propagate.
-    window.setTimeout(() => {
-      const currentActiveId = selectActivePlayerId(gb);
-      // If we've gone past all players, complete.
-      if (!currentActiveId || selectIsGameOver(gb)) {
-        dispatch(completeGame());
-      }
-    }, 0);
-  }
 
   // ── 7. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
@@ -392,6 +384,8 @@ export default function GlassBridgeComp({
     if (gb.phase !== 'complete') return;
     if (autoAdvanceRef.current !== null) return;
     autoAdvanceRef.current = window.setTimeout(() => {
+      // Ensure outcome is applied (idempotent) before MinigameHost unmounts.
+      dispatch(resolveGlassBridgeOutcome());
       onComplete?.();
     }, COMPLETE_AUTO_ADVANCE_MS);
     return () => {
@@ -400,7 +394,7 @@ export default function GlassBridgeComp({
         autoAdvanceRef.current = null;
       }
     };
-  }, [gb.phase, onComplete]);
+  }, [gb.phase, onComplete, dispatch]);
 
   // ── 10. Human eliminated → show spectator modal ───────────────────────────
   useEffect(() => {
@@ -459,7 +453,9 @@ export default function GlassBridgeComp({
 
   const handleSkipToResult = useCallback(() => {
     setShowSpectatorModal(false);
+    // Ensure the game state is complete and outcome resolved before navigating away.
     dispatch(completeGame());
+    dispatch(resolveGlassBridgeOutcome());
     onComplete?.();
   }, [dispatch, onComplete]);
 
@@ -776,7 +772,11 @@ export default function GlassBridgeComp({
 
           <button
             className="gb-btn-primary"
-            onClick={() => onComplete?.()}
+            onClick={() => {
+              // Ensure outcome is applied before MinigameHost unmounts this component.
+              dispatch(resolveGlassBridgeOutcome());
+              onComplete?.();
+            }}
             aria-label="Continue"
           >
             Continue
