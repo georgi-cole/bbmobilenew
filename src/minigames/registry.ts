@@ -852,7 +852,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'blackjackTournament',
     title: 'Blackjack Tournament',
     description:
-      'Blackjack duel tournament. Closest to 21 without busting wins.'
+      'Blackjack duel tournament. Closest to 21 without busting wins.',
     instructions: [
       'By a random draw selection, the first players chooses the pair to duel',
       'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
