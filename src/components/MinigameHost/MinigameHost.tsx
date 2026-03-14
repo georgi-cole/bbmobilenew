@@ -247,6 +247,11 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as 'HOH' | 'POV' | undefined}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
             if (game.implementation === 'react' && game.reactComponentKey === 'BlackjackTournament') {
               return (
                 <BlackjackTournamentComp

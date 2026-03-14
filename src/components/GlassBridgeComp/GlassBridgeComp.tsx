@@ -704,13 +704,18 @@ export default function GlassBridgeComp({
                           onClick={canActivate ? () => handleHumanStep(side) : undefined}
                           role={canActivate ? 'button' : undefined}
                           tabIndex={canActivate ? 0 : undefined}
-                          onKeyDown={
-                            canActivate
-                              ? e => {
-                                  if (e.key === 'Enter' || e.key === ' ') handleHumanStep(side);
-                                }
-                              : undefined
-                          }
+                           onKeyDown={
+                             canActivate
+                               ? e => {
+                                   if (e.key === 'Enter' || e.key === ' ') {
+                                     if (e.key === ' ') {
+                                       e.preventDefault();
+                                     }
+                                     handleHumanStep(side);
+                                   }
+                                 }
+                               : undefined
+                           }
                           aria-label={`${side} tile${isBroken ? ' (broken)' : ''}${canActivate ? ' — step here' : ''}`}
                           aria-disabled={isBroken || !canActivate}
                         >
