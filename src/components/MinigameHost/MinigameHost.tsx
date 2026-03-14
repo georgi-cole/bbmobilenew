@@ -249,6 +249,11 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as SilentSaboteurPrizeType}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
             if (game.implementation === 'react' && game.reactComponentKey === 'GlassBridge') {
               return (
                 <GlassBridgeComp
