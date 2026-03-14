@@ -343,4 +343,11 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_HYBRID,
     weights: WEIGHTS_HYBRID,
   },
+  blackjackTournament: {
+    key: 'blackjackTournament',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: WEIGHTS_LUCK,
+  },
 };

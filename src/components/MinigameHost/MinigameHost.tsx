@@ -23,6 +23,8 @@ import BiographyBlitzComp from '../BiographyBlitzComp/biography_blitz_game';
 import type { BiographyBlitzCompetitionType } from '../../features/biographyBlitz/biography_blitz_logic';
 import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
+import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
+import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -235,6 +237,17 @@ export default function MinigameHost({
                   seed={seed}
                   onComplete={handleReactComplete}
                   skipWinnerAnimation={true}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'BlackjackTournament') {
+              return (
+                <BlackjackTournamentComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as BlackjackTournamentCompetitionType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
                 />
               );
             }
