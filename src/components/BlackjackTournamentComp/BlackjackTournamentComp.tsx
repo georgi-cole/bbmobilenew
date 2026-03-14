@@ -32,6 +32,7 @@ import {
   advanceFromDuelResult,
   resetBlackjackTournament,
   computeTotal,
+  computeSpinnerWinnerIndex,
   cardRank,
   cardSuit,
   aiPickFighters,
@@ -205,6 +206,8 @@ export default function BlackjackTournamentComp({
   // Spinner display state (locally animated).
   const [spinnerIdx, setSpinnerIdx] = useState(0);
   const spinnerIntervalRef = useRef<number | null>(null);
+  /** Pre-computed winner index (from same seed as reducer) so animation lands on the correct slot. */
+  const spinnerWinnerIdxRef = useRef<number>(0);
 
   // Spin phase: fast-spin vs slow-down phase.
   const [spinFast, setSpinFast] = useState(true);
@@ -298,14 +301,13 @@ export default function BlackjackTournamentComp({
     setSpinFast(true);
     setSpinRevealed(false);
 
+    // Pre-compute the winner index using the same formula as the reducer, so
+    // the spinner animation always stops on the player Redux will choose.
+    spinnerWinnerIdxRef.current = computeSpinnerWinnerIndex(bt.seed, len);
+
     // Animate spinner by cycling through player indices.
     spinnerIntervalRef.current = window.setInterval(() => {
-      setSpinnerIdx((i) => {
-        const next = (i + 1) % len;
-        // Keep ref in sync so timeout callbacks see the latest index.
-        spinnerIdxRef.current = next;
-        return next;
-      });
+      setSpinnerIdx((i) => (i + 1) % len);
     }, 180);
 
     // After SPIN_SLOW_AT_FRACTION of spin duration, slow down visually.
@@ -319,11 +321,13 @@ export default function BlackjackTournamentComp({
         window.clearInterval(spinnerIntervalRef.current);
         spinnerIntervalRef.current = null;
       }
+      // Snap to the correct (pre-computed) winner slot so the highlighted
+      // player always matches what Redux will store as controllingPlayerId.
+      setSpinnerIdx(spinnerWinnerIdxRef.current);
       setSpinRevealed(true);
       revealTimerRef.current = window.setTimeout(() => {
         setSpinRevealed(false);
-        const selectedIndex = spinnerIdxRef.current;
-        dispatch(resolveSpinner(selectedIndex));
+        dispatch(resolveSpinner());
       }, 900);
     }, SPIN_DURATION_MS);
 
@@ -336,7 +340,7 @@ export default function BlackjackTournamentComp({
       clearTimer(spinTimerRef);
       clearTimer(revealTimerRef);
     };
-  }, [bt.phase, bt.remainingPlayerIds.length, dispatch]);
+  }, [bt.phase, bt.remainingPlayerIds.length, bt.seed, dispatch]);
 
   // ── 3. Pick-opponent phase ────────────────────────────────────────────────
   useEffect(() => {

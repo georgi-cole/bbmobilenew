@@ -199,6 +199,19 @@ export function cardRank(card: number): string {
   return RANKS[card] ?? String(card);
 }
 
+/**
+ * Compute the spinner winner index (0-based) from the master seed and player
+ * count. Exported so the UI can pre-compute the winning slot and animate
+ * toward it, keeping the visual result in sync with the Redux state.
+ *
+ * This uses the same formula as `resolveSpinner` in the reducer, so the
+ * component can snap the animation to the correct slot before dispatching.
+ */
+export function computeSpinnerWinnerIndex(seed: number, numPlayers: number): number {
+  if (numPlayers <= 0) return 0;
+  return Math.floor(rngAt(seed, 0) * numPlayers);
+}
+
 /** Suit symbol for display (assigned by card index mod 4, purely cosmetic). */
 export function cardSuit(cardIndex: number): string {
   return ['♠', '♥', '♦', '♣'][cardIndex % 4];
