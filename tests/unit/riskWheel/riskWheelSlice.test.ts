@@ -860,7 +860,7 @@ describe('resolveAllAiTurns', () => {
   }
 
   it('resolves all consecutive AI turns from awaiting_spin', () => {
-    // Players: human='a', AI='b', AI='c'
+    // Players: AI='a', AI='b', AI='c' (no human)
     const store = makeStore();
     init(store, ['a', 'b', 'c'], 42, 'HOH', null); // no human (all AI)
     // All in awaiting_spin; resolveAllAiTurns should run all three
