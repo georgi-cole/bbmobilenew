@@ -274,6 +274,10 @@ describe('SPOTLIGHT_SKIP and shouldSkipSpotlight', () => {
     expect(SPOTLIGHT_SKIP.has('blackjackTournament')).toBe(true);
   });
 
+  it('SPOTLIGHT_SKIP includes silentSaboteur', () => {
+    expect(SPOTLIGHT_SKIP.has('silentSaboteur')).toBe(true);
+  });
+
   it('shouldSkipSpotlight returns true for all skip keys', () => {
     for (const key of SPOTLIGHT_SKIP) {
       expect(shouldSkipSpotlight(key)).toBe(true);
@@ -284,10 +288,13 @@ describe('SPOTLIGHT_SKIP and shouldSkipSpotlight', () => {
     expect(shouldSkipSpotlight('blackjackTournament')).toBe(true);
   });
 
+  it('shouldSkipSpotlight returns true for silentSaboteur', () => {
+    expect(shouldSkipSpotlight('silentSaboteur')).toBe(true);
+  });
+
   it('shouldSkipSpotlight returns false for minigames that use the spotlight', () => {
     expect(shouldSkipSpotlight('tapRace')).toBe(false);
     expect(shouldSkipSpotlight('castleRescue')).toBe(false);
-    expect(shouldSkipSpotlight('silentSaboteur')).toBe(false);
     expect(shouldSkipSpotlight('')).toBe(false);
   });
 });

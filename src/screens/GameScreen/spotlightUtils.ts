@@ -12,6 +12,7 @@ export const SPOTLIGHT_SKIP = new Set([
   'biographyBlitz',
   'glass_bridge_brutal',
   'blackjackTournament',
+  'silentSaboteur',
 ]);
 
 /** Returns true when the given minigame key should bypass SpotlightAnimation. */
