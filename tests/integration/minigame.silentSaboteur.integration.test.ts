@@ -19,6 +19,7 @@ import silentSaboteurReducer, {
   advanceIntro,
   selectVictim,
   submitVote,
+  endVotingPhase,
   advanceReveal,
   startNextRound,
   submitJuryVote,
@@ -81,10 +82,15 @@ function runAiRound(store: TestStore) {
   const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
   store.dispatch(selectVictim({ victimId: victim }));
 
-  // All players vote
-  const votes = buildAiVotes(seed, round, activeIds, activeIds);
+  // All players vote — victim excluded from valid suspect targets
+  const votes = buildAiVotes(seed, round, activeIds, activeIds, victim);
   for (const [voterId, accusedId] of Object.entries(votes)) {
     store.dispatch(submitVote({ voterId, accusedId }));
+  }
+
+  // If not all votes triggered auto-advance (abstentions), end voting phase
+  if (ss(store).phase === 'voting') {
+    store.dispatch(endVotingPhase());
   }
 }
 

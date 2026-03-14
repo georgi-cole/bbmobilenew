@@ -727,3 +727,358 @@ body.no-animations .ss-confetti-piece {
     text-align: left;
   }
 }
+
+/* ── Countdown timer — mm:ss format ──────────────────────────────────────── */
+
+.ss-countdown--warning .ss-countdown__fill {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  animation: ss-pulse 0.8s infinite alternate ease-in-out;
+}
+
+.ss-countdown__value--warning {
+  color: #fca5a5;
+  animation: ss-pulse 0.8s infinite alternate ease-in-out;
+}
+
+.ss-countdown--compact {
+  min-width: 80px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  gap: 0.15rem;
+}
+
+.ss-countdown--compact .ss-countdown__row {
+  justify-content: flex-end;
+}
+
+.ss-countdown--compact .ss-countdown__value {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+/* ── Victim row (in voting panel) ────────────────────────────────────────── */
+
+.ss-victim-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(127, 29, 29, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.ss-victim-row__label { opacity: 0.75; }
+.ss-victim-row__name { font-weight: 700; color: #fca5a5; }
+.ss-victim-row__tag {
+  font-size: 0.72rem;
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* ── Reveal eliminated line ──────────────────────────────────────────────── */
+
+.ss-reveal-eliminated {
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  margin-top: 0.25rem;
+}
+
+/* ── Social Map ──────────────────────────────────────────────────────────── */
+
+.ss-btn--social-map {
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.7), rgba(67, 56, 202, 0.7));
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  color: #bfdbfe;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.65rem 1.1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.18s;
+}
+
+.ss-btn--social-map:hover,
+.ss-btn--social-map:focus-visible {
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.9), rgba(67, 56, 202, 0.9));
+  outline: 2px solid #60a5fa;
+}
+
+.ss-btn--secondary {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.ss-btn--sm {
+  min-height: 38px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.ss-social-map-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0;
+}
+
+@media (min-width: 480px) {
+  .ss-social-map-backdrop {
+    align-items: center;
+    padding: 1rem;
+  }
+}
+
+.ss-social-map {
+  background: linear-gradient(180deg, #0e1225 0%, #141830 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: 1.25rem 1.1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: ss-fade-in 0.25s ease both;
+}
+
+@media (min-width: 480px) {
+  .ss-social-map {
+    border-radius: 20px;
+    max-height: 85dvh;
+  }
+}
+
+.ss-social-map__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.ss-social-map__header-left {
+  flex: 1;
+}
+
+.ss-social-map__header-right {
+  flex-shrink: 0;
+}
+
+.ss-social-map__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #e0e7ff;
+}
+
+.ss-social-map__subtitle {
+  font-size: 0.85rem;
+  opacity: 0.82;
+  margin: 0.15rem 0 0;
+}
+
+.ss-social-map__close {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.ss-social-map__victim-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(127, 29, 29, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.ss-victim-avatar--lg {
+  width: 52px;
+  height: 52px;
+  font-size: 1.4rem;
+}
+
+.ss-victim-avatar--sm {
+  width: 34px;
+  height: 34px;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.ss-social-map__victim-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.ss-social-map__victim-hint {
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin: 0.15rem 0 0;
+}
+
+/* Mini graph */
+.ss-social-map__graph {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ss-social-map__graph-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ss-social-map__graph-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  position: relative;
+}
+
+.ss-social-map__graph-line {
+  width: 2px;
+  height: 18px;
+  border-left: 2px dashed;
+  opacity: 0.6;
+}
+
+.ss-social-map__graph-label {
+  font-size: 0.7rem;
+  opacity: 0.82;
+  max-width: 60px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Suspect cards */
+.ss-social-map__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ss-social-map__card {
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ss-social-map__card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.ss-social-map__card-identity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ss-social-map__card-name {
+  font-size: 0.97rem;
+  font-weight: 700;
+}
+
+.ss-social-map__card-rel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ss-social-map__card-strength {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.ss-social-map__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ss-social-map__dot--active {
+  /* color set inline */
+}
+
+.ss-social-map__card-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.ss-social-map__trait {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+  font-weight: 600;
+}
+
+.ss-social-map__card-hint {
+  font-size: 0.83rem;
+  opacity: 0.82;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.ss-social-map__close-btn {
+  margin-top: 0.5rem;
+}
+
+body.no-animations .ss-social-map {
+  animation: none;
+}
