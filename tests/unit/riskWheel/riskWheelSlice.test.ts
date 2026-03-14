@@ -919,17 +919,23 @@ describe('resolveAllAiTurns', () => {
 
   it('resolves from awaiting_decision for AI player', () => {
     // Set up scenario where an AI is at awaiting_decision
-    const seed = findPointsSeed();
+    // Choose a seed where the first spin does not land on BANKRUPT, SKIP, or 666,
+    // which would otherwise send us directly to turn_complete or six_six_six.
+    let seed = 0;
+    while (['devil', 'bankrupt', 'skip'].includes(WHEEL_SECTORS[pickSectorIndex(seed, 0)].type)) {
+      seed++;
+    }
     const store = makeStore();
     init(store, ['b', 'c'], seed, 'HOH', null); // all AI
-    store.dispatch(performSpin()); // should be awaiting_decision
+    store.dispatch(performSpin()); // should be awaiting_decision for the active AI
     const s0 = getState(store);
-    if (s0.phase === 'awaiting_decision') {
-      store.dispatch(resolveAllAiTurns());
-      // Should finish both AI turns and reach round_summary
-      const s1 = getState(store);
-      expect(['round_summary', 'awaiting_spin']).toContain(s1.phase);
-    }
+    expect(s0.phase).toBe('awaiting_decision');
+
+    store.dispatch(resolveAllAiTurns());
+    // Should finish both AI turns and reach round_summary
+    const s1 = getState(store);
+    expect(s1.phase).toBe('round_summary');
+    expect(s1.playersCompletedThisRound).toHaveLength(2);
   });
 
   it('is idempotent when already at round_summary', () => {
