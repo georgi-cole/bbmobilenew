@@ -320,7 +320,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'The saboteur secretly targets a victim.',
       'All players vote for who they think is the saboteur.',
       'If the group does not guess correctly, the victim is eliminated',
-      'In case of a tie, the victim's vote counts',
+      'In case of a tie, the victim decides',
       'Final 2: eliminated players must guess the last saboteur.',
       'If they guess correctly the victim is the winner, if not the saboteur wins.',
     ],
@@ -852,7 +852,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'blackjackTournament',
     title: 'Blackjack Tournament',
     description:
-      'Blackjack duel tournament. Closest to 21 without busting wins.'
+      'Blackjack duel tournament. Closest to 21 without busting wins.',
     instructions: [
       'By a random draw selection, the first players chooses the pair to duel',
       'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
@@ -867,6 +867,35 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     scoringAdapter: 'authoritative',
     implementation: 'react',
     reactComponentKey: 'BlackjackTournament',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
+  riskWheel: {
+    key: 'riskWheel',
+    title: 'Risk Wheel',
+    description:
+      'A Wheel-of-Fortune–style multi-round elimination contest. Spin for points, risk it all, or go bankrupt — and watch out for 666!',
+    instructions: [
+      'Players compete over 3 rounds. All scores reset each round.',
+      'Each player gets up to 3 spins per round.',
+      'After spin 1 or 2 you may Stop & Bank your score, or Spin Again.',
+      'After spin 3 your score is automatically banked.',
+      'BANKRUPT resets your score to 0 and ends your turn.',
+      'SKIP ends your turn immediately — you keep whatever you have.',
+      '666 randomly adds or subtracts 666 points (50/50) then continues.',
+      'After each round the lowest-scoring players are eliminated.',
+      'After Round 3 the highest scorer wins!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'RiskWheel',
     legacy: false,
     weight: 1,
     category: 'arcade',

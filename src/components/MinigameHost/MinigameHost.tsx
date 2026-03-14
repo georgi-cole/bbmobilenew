@@ -28,6 +28,8 @@ import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/sile
 import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
 import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
+import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
+import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -271,6 +273,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as BlackjackTournamentCompetitionType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'RiskWheel') {
+              return (
+                <RiskWheelComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as RiskWheelCompetitionType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />

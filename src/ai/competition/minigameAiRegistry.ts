@@ -372,4 +372,11 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_LUCK,
     weights: WEIGHTS_LUCK,
   },
+  riskWheel: {
+    key: 'riskWheel',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: WEIGHTS_LUCK,
+  },
 };
