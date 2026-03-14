@@ -33,8 +33,29 @@ import { mulberry32, seededPickN } from '../../store/rng';
 
 /** XOR salt separating AI-decision RNG from spin RNG to avoid entanglement. */
 const AI_DECISION_RNG_SALT = 0xdeadbeef;
+const AI_PERSONALITY_SALT = 0x9e3779b9;
+const AI_ROUND_SALT = 0x85ebca6b;
+const AI_DECISION_INDEX_SALT = 0xc2b2ae35;
+const AI_NOISE_CHANNEL = 0;
+const AI_THRESHOLD_CHANNEL = 1;
+export const MAX_ROUNDS = 3;
+export const MAX_SPINS_PER_TURN = 3;
+const MAX_SCORE_REFERENCE = 1000;
+const AI_NOISE_MAGNITUDE = 0.15;
+// Personality is the anchor so AI behavior stays distinct per player.
+const AI_BASE_RISK_WEIGHT = 0.35;
+// Current round score strongly affects appetite for another spin.
+const AI_SCORE_FACTOR_WEIGHT = 0.25;
+// Relative leaderboard position adds desperation when falling behind.
+const AI_POSITION_FACTOR_WEIGHT = 0.20;
+// Extra spins remaining make continued risk-taking slightly easier to justify.
+const AI_SPIN_FACTOR_WEIGHT = 0.10;
+// Late-game/survival pressure nudges trailing AIs toward bolder decisions.
+const AI_PRESSURE_FACTOR_WEIGHT = 0.10;
+const AI_LAST_SPIN_BANK_BIAS_WEIGHT = 0.25;
 
 export type RiskWheelCompetitionType = 'HOH' | 'POV';
+export type RiskWheelAiPersonality = 'cautious' | 'balanced' | 'risky';
 
 export type RiskWheelPhase =
   | 'idle'
@@ -102,6 +123,10 @@ export interface RiskWheelState {
   rngCallCount: number;
   /** Separate counter for AI decision RNG. */
   aiDecisionCallCount: number;
+  /** Persistent personality assignment for each AI player. */
+  aiPersonalities: Record<string, RiskWheelAiPersonality>;
+  /** Per-player counter tracking the number of AI decisions made, used as an index for deterministic RNG seeding. */
+  aiDecisionCounts: Record<string, number>;
 
   /** Guard: outcome thunk only fires once. */
   outcomeResolved: boolean;
@@ -141,6 +166,36 @@ function rngAt(seed: number, count: number): number {
   for (let i = 0; i < count; i++) rng();
   return rng();
 }
+
+/**
+ * Clamp a numeric value to the range [0, 1].
+ * Returns 0 for values less than 0, 1 for values greater than 1,
+ * and the value itself for values already in [0, 1].
+ */
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Compute a 32-bit FNV-1a hash for stable string → uint32 conversion.
+ *
+ * @param s Input string to hash.
+ * @returns Stable unsigned 32-bit hash of the input string.
+ */
+export function fnv1a32(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+const AI_PERSONALITY_BASE_RISK: Record<RiskWheelAiPersonality, number> = {
+  cautious: 0.25,
+  balanced: 0.5,
+  risky: 0.75,
+};
 
 /**
  * Pick a sector index from the wheel using the sequential RNG counter.
@@ -232,24 +287,164 @@ export function computeEliminatedPlayers(
 }
 
 /**
- * Determine the AI's decision after a spin (stop or spin again).
- *
- * Heuristic:
- *   score ≤ 0        → spin (always)
- *   score < 200      → spin (always)
- *   score ≥ 500      → stop (always)
- *   200 ≤ score < 500 → 50 % chance to stop (seeded)
+ * Assign a persistent risk personality to an AI player at game start.
  */
-export function aiShouldStop(
+export function assignAiPersonality(
   seed: number,
-  aiDecisionCallCount: number,
-  score: number,
-): boolean {
-  if (score <= 0) return false;
-  if (score < 200) return false;
-  if (score >= 500) return true;
-  // Moderate range: 50 % seeded coin flip
-  return rngAt(seed ^ AI_DECISION_RNG_SALT, aiDecisionCallCount) < 0.5;
+  playerId: string,
+): RiskWheelAiPersonality {
+  const mixedSeed = ((seed >>> 0) ^ fnv1a32(playerId) ^ AI_PERSONALITY_SALT) >>> 0;
+  const roll = mulberry32(mixedSeed)();
+  if (roll < 1 / 3) return 'cautious';
+  if (roll < 2 / 3) return 'balanced';
+  return 'risky';
+}
+
+/**
+ * Deterministic per-player AI RNG for decision-making.
+ * Different channels provide independent draws for noise and threshold rolls.
+ */
+export function aiDecisionRng(
+  seed: number,
+  round: number,
+  playerId: string,
+  decisionIndex: number,
+  channel: number,
+): number {
+  const mixedSeed = (
+    (seed >>> 0) ^
+    fnv1a32(playerId) ^
+    Math.imul(round + 1, AI_ROUND_SALT) ^
+    Math.imul(decisionIndex + 1, AI_DECISION_INDEX_SALT) ^
+    Math.imul(channel + 1, AI_DECISION_RNG_SALT)
+  ) >>> 0;
+  return mulberry32(mixedSeed)();
+}
+
+/**
+ * Compute the player's relative round position as a 0–1 factor.
+ * Leaders map to 0, the bottom player maps to 1, and middle players are linear.
+ */
+export function computePositionFactor(
+  playerId: string,
+  activePlayerIds: string[],
+  roundScores: Record<string, number>,
+): number {
+  if (activePlayerIds.length <= 1) return 0;
+  const score = roundScores[playerId] ?? 0;
+  let higherCount = 0;
+  for (const otherId of activePlayerIds) {
+    if ((roundScores[otherId] ?? 0) > score) higherCount += 1;
+  }
+  return higherCount / (activePlayerIds.length - 1);
+}
+
+/**
+ * Compute late-game survival pressure from both shrinking player counts and
+ * round progression. Returns a 0–1 value where larger means more desperation.
+ */
+export function computePressureFactor(
+  round: number,
+  playersRemaining: number,
+  initialPlayerCount: number,
+): number {
+  if (initialPlayerCount <= 0) return 0;
+  const survivalProgress = 1 - (playersRemaining / initialPlayerCount);
+  const roundProgress = (round - 1) / (MAX_ROUNDS - 1);
+  return clamp01((survivalProgress + roundProgress) / 2);
+}
+
+/**
+ * Full deterministic decision context for a Risk Wheel AI turn.
+ * `decisionIndex` is the per-player count of prior AI decisions and is used
+ * to vary seeded RNG across repeated decisions for the same player.
+ * `initialPlayerCount` is retained so pressure can be measured relative to
+ * the original field size even after eliminations.
+ */
+export interface RiskWheelAiDecisionContext {
+  seed: number;
+  round: number;
+  playerId: string;
+  personality: RiskWheelAiPersonality;
+  currentScore: number;
+  activePlayerIds: string[];
+  roundScores: Record<string, number>;
+  spinsRemaining: number;
+  initialPlayerCount: number;
+  decisionIndex: number;
+}
+
+function computeLastSpinBankBias(spinsRemaining: number, currentScore: number): number {
+  if (spinsRemaining !== 1) return 0;
+  return clamp01(currentScore / MAX_SCORE_REFERENCE);
+}
+
+/**
+ * Compute a dynamic 0–1 risk-desire score for an AI player.
+ * Higher values mean a stronger desire to spin again.
+ */
+export function computeAiRiskDesire({
+  seed,
+  round,
+  playerId,
+  personality,
+  currentScore,
+  activePlayerIds,
+  roundScores,
+  spinsRemaining,
+  initialPlayerCount,
+  decisionIndex,
+}: RiskWheelAiDecisionContext): number {
+  const baseRisk = AI_PERSONALITY_BASE_RISK[personality];
+  const scoreFactor = clamp01(1 - (currentScore / MAX_SCORE_REFERENCE));
+  const positionFactor = computePositionFactor(playerId, activePlayerIds, roundScores);
+  const spinFactor = clamp01(spinsRemaining / MAX_SPINS_PER_TURN);
+  const pressureFactor = computePressureFactor(round, activePlayerIds.length, initialPlayerCount);
+  const noise =
+    (aiDecisionRng(seed, round, playerId, decisionIndex, AI_NOISE_CHANNEL) - 0.5) *
+    2 *
+    AI_NOISE_MAGNITUDE;
+
+  let risk = (
+    AI_BASE_RISK_WEIGHT * baseRisk +
+    AI_SCORE_FACTOR_WEIGHT * scoreFactor +
+    AI_POSITION_FACTOR_WEIGHT * positionFactor +
+    AI_SPIN_FACTOR_WEIGHT * spinFactor +
+    AI_PRESSURE_FACTOR_WEIGHT * pressureFactor +
+    noise
+  );
+
+  // Final spin remaining + good bank → strong tendency to stop, but not absolute.
+  const lastSpinBankBias = computeLastSpinBankBias(spinsRemaining, currentScore);
+  risk -= AI_LAST_SPIN_BANK_BIAS_WEIGHT * lastSpinBankBias;
+
+  return clamp01(risk);
+}
+
+/**
+ * Determine whether the AI should spin again.
+ * The decision is deterministic for the same inputs but varied per player/round.
+ */
+export function aiShouldSpinAgain(context: RiskWheelAiDecisionContext): boolean {
+  if (context.spinsRemaining <= 0) return false;
+  if (context.currentScore <= 0) return true;
+
+  const risk = computeAiRiskDesire(context);
+  const threshold = aiDecisionRng(
+    context.seed,
+    context.round,
+    context.playerId,
+    context.decisionIndex,
+    AI_THRESHOLD_CHANNEL,
+  );
+  return risk > threshold;
+}
+
+/**
+ * Backwards-compatible convenience wrapper returning whether the AI should stop.
+ */
+export function aiShouldStop(context: RiskWheelAiDecisionContext): boolean {
+  return !aiShouldSpinAgain(context);
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -274,6 +469,8 @@ const initialState: RiskWheelState = {
   seed: 0,
   rngCallCount: 0,
   aiDecisionCallCount: 0,
+  aiPersonalities: {},
+  aiDecisionCounts: {},
   outcomeResolved: false,
 };
 
@@ -301,7 +498,7 @@ function applySector(
     state.phase = 'turn_complete';
   } else if (sector.type === 'zero') {
     // No change; decide based on spin count
-    if (state.currentSpinCount >= 3) {
+    if (state.currentSpinCount >= MAX_SPINS_PER_TURN) {
       state.phase = 'turn_complete';
     } else {
       state.phase = 'awaiting_decision';
@@ -316,7 +513,7 @@ function applySector(
     state.phase = 'six_six_six';
   } else if (sector.type === 'points') {
     state.roundScores[currentId] = (state.roundScores[currentId] ?? 0) + (sector.value ?? 0);
-    if (state.currentSpinCount >= 3) {
+    if (state.currentSpinCount >= MAX_SPINS_PER_TURN) {
       state.phase = 'turn_complete';
     } else {
       state.phase = 'awaiting_decision';
@@ -406,6 +603,8 @@ const riskWheelSlice = createSlice({
       state.winnerId = null;
       state.rngCallCount = 0;
       state.aiDecisionCallCount = 0;
+      state.aiPersonalities = {};
+      state.aiDecisionCounts = {};
       state.outcomeResolved = false;
 
       state.competitionType = competitionType;
@@ -424,6 +623,10 @@ const riskWheelSlice = createSlice({
       // Initialise round scores to 0
       for (const id of participantIds) {
         state.roundScores[id] = 0;
+        state.aiDecisionCounts[id] = 0;
+        if (id !== humanPlayerId) {
+          state.aiPersonalities[id] = assignAiPersonality(state.seed, id);
+        }
       }
 
       state.round = 1;
@@ -459,7 +662,7 @@ const riskWheelSlice = createSlice({
      */
     advanceFrom666(state) {
       if (state.phase !== 'six_six_six') return;
-      if (state.currentSpinCount >= 3) {
+      if (state.currentSpinCount >= MAX_SPINS_PER_TURN) {
         state.phase = 'turn_complete';
       } else {
         state.phase = 'awaiting_decision';
@@ -492,8 +695,21 @@ const riskWheelSlice = createSlice({
       if (currentId === state.humanPlayerId) return; // safety guard
 
       const score = state.roundScores[currentId] ?? 0;
-      const stop = aiShouldStop(state.seed, state.aiDecisionCallCount, score);
+      const decisionIndex = state.aiDecisionCounts[currentId] ?? 0;
+      const stop = aiShouldStop({
+        seed: state.seed,
+        round: state.round,
+        playerId: currentId,
+        personality: state.aiPersonalities[currentId] ?? 'balanced',
+        currentScore: score,
+        activePlayerIds: state.activePlayerIds,
+        roundScores: state.roundScores,
+        spinsRemaining: Math.max(0, MAX_SPINS_PER_TURN - state.currentSpinCount),
+        initialPlayerCount: state.initialPlayerCount,
+        decisionIndex,
+      });
       state.aiDecisionCallCount += 1;
+      state.aiDecisionCounts[currentId] = decisionIndex + 1;
 
       if (stop) {
         state.phase = 'turn_complete';
@@ -524,7 +740,7 @@ const riskWheelSlice = createSlice({
         }
       }
 
-      if (state.round >= 3 || state.activePlayerIds.length <= 1) {
+      if (state.round >= MAX_ROUNDS || state.activePlayerIds.length <= 1) {
         // Game over
         if (state.activePlayerIds.length === 1) {
           state.winnerId = state.activePlayerIds[0];

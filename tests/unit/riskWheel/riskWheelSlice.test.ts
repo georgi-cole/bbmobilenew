@@ -22,10 +22,17 @@ import reducer, {
   advanceFromRoundSummary,
   computeEliminationCount,
   computeEliminatedPlayers,
+  assignAiPersonality,
+  aiDecisionRng,
+  computeAiRiskDesire,
+  computePositionFactor,
+  computePressureFactor,
+  aiShouldSpinAgain,
   aiShouldStop,
   resolve666Effect,
   pickSectorIndex,
   WHEEL_SECTORS,
+  type RiskWheelAiPersonality,
   type RiskWheelState,
 } from '../../../src/features/riskWheel/riskWheelSlice';
 
@@ -186,39 +193,229 @@ describe('resolve666Effect', () => {
   });
 });
 
-// ─── aiShouldStop ─────────────────────────────────────────────────────────────
+// ─── Dynamic AI helpers ───────────────────────────────────────────────────────
 
-describe('aiShouldStop', () => {
-  it('always returns false when score ≤ 0', () => {
-    expect(aiShouldStop(42, 0, 0)).toBe(false);
-    expect(aiShouldStop(42, 0, -100)).toBe(false);
-    expect(aiShouldStop(42, 0, -1)).toBe(false);
+describe('assignAiPersonality', () => {
+  it('is deterministic for the same seed and player id', () => {
+    expect(assignAiPersonality(42, 'alex')).toBe(assignAiPersonality(42, 'alex'));
   });
 
-  it('always returns false when score < 200', () => {
-    expect(aiShouldStop(42, 0, 1)).toBe(false);
-    expect(aiShouldStop(42, 0, 199)).toBe(false);
-  });
-
-  it('always returns true when score >= 500', () => {
-    expect(aiShouldStop(42, 0, 500)).toBe(true);
-    expect(aiShouldStop(42, 0, 1000)).toBe(true);
-    expect(aiShouldStop(42, 0, 750)).toBe(true);
-  });
-
-  it('returns a mix for moderate scores (200-499)', () => {
-    const stops = new Set<boolean>();
-    for (let i = 0; i < 50; i++) {
-      stops.add(aiShouldStop(42 + i, i, 300));
+  it('produces all supported personalities across many players', () => {
+    const results = new Set<RiskWheelAiPersonality>();
+    for (let i = 0; i < 200; i++) {
+      results.add(assignAiPersonality(77, `player_${i}`));
     }
-    expect(stops.has(true)).toBe(true);
-    expect(stops.has(false)).toBe(true);
+    expect(results).toEqual(new Set(['cautious', 'balanced', 'risky']));
+  });
+});
+
+describe('aiDecisionRng', () => {
+  it('is deterministic for the same inputs', () => {
+    expect(aiDecisionRng(42, 2, 'alex', 1, 0)).toBe(aiDecisionRng(42, 2, 'alex', 1, 0));
   });
 
-  it('is deterministic: same seed + callCount → same result', () => {
-    const r1 = aiShouldStop(999, 5, 300);
-    const r2 = aiShouldStop(999, 5, 300);
-    expect(r1).toBe(r2);
+  it('differs for different players/channels/decision indices', () => {
+    const a = aiDecisionRng(42, 2, 'alex', 1, 0);
+    const b = aiDecisionRng(42, 2, 'blair', 1, 0);
+    const c = aiDecisionRng(42, 2, 'alex', 2, 0);
+    const d = aiDecisionRng(42, 2, 'alex', 1, 1);
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(c);
+    expect(a).not.toBe(d);
+  });
+});
+
+describe('computePositionFactor', () => {
+  it('returns 0 for the leading player and 1 for the bottom player', () => {
+    const scores = { a: 500, b: 300, c: 100 };
+    expect(computePositionFactor('a', ['a', 'b', 'c'], scores)).toBe(0);
+    expect(computePositionFactor('c', ['a', 'b', 'c'], scores)).toBe(1);
+  });
+
+  it('returns 0.5 for the middle-ranked player in a 3-player field', () => {
+    const scores = { a: 500, b: 300, c: 100 };
+    expect(computePositionFactor('b', ['a', 'b', 'c'], scores)).toBe(0.5);
+  });
+});
+
+describe('computePressureFactor', () => {
+  it('increases later in the game', () => {
+    const early = computePressureFactor(1, 6, 6);
+    const late = computePressureFactor(3, 2, 6);
+    expect(late).toBeGreaterThan(early);
+  });
+
+  it('returns 0 when initial player count is not positive', () => {
+    expect(computePressureFactor(1, 0, 0)).toBe(0);
+  });
+
+  it('stays within bounds', () => {
+    expect(computePressureFactor(1, 6, 6)).toBeGreaterThanOrEqual(0);
+    expect(computePressureFactor(1, 6, 6)).toBeLessThanOrEqual(1);
+    expect(computePressureFactor(3, 1, 6)).toBeLessThanOrEqual(1);
+  });
+
+  it('becomes very high with one player left in round 3', () => {
+    expect(computePressureFactor(3, 1, 6)).toBeGreaterThan(0.9);
+  });
+});
+
+describe('computeAiRiskDesire', () => {
+  const activePlayerIds = ['a', 'b', 'c'];
+  const roundScores = { a: 500, b: 150, c: -100 };
+
+  it('returns a clamped 0–1 value', () => {
+    const risk = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'b',
+      personality: 'balanced',
+      currentScore: 150,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    expect(risk).toBeGreaterThanOrEqual(0);
+    expect(risk).toBeLessThanOrEqual(1);
+  });
+
+  it('gives riskier personalities a higher base desire', () => {
+    const cautious = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'b',
+      personality: 'cautious',
+      currentScore: 150,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    const risky = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'b',
+      personality: 'risky',
+      currentScore: 150,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    expect(risky).toBeGreaterThan(cautious);
+  });
+
+  it('increases when the player is near the bottom', () => {
+    const leaderRisk = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'a',
+      personality: 'balanced',
+      currentScore: 500,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    const bottomRisk = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'c',
+      personality: 'balanced',
+      currentScore: -100,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    expect(bottomRisk).toBeGreaterThan(leaderRisk);
+  });
+
+  it('reduces risk on the last spin when banking a high score', () => {
+    const early = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'a',
+      personality: 'balanced',
+      currentScore: 800,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 2,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    const lastSpin = computeAiRiskDesire({
+      seed: 42,
+      round: 2,
+      playerId: 'a',
+      personality: 'balanced',
+      currentScore: 800,
+      activePlayerIds,
+      roundScores,
+      spinsRemaining: 1,
+      initialPlayerCount: 6,
+      decisionIndex: 0,
+    });
+    expect(lastSpin).toBeLessThan(early);
+  });
+});
+
+describe('dynamic AI decisions', () => {
+  const baseContext = {
+    seed: 42,
+    round: 2,
+    playerId: 'b',
+    personality: 'balanced' as RiskWheelAiPersonality,
+    activePlayerIds: ['a', 'b', 'c'],
+    roundScores: { a: 500, b: 150, c: -100 },
+    initialPlayerCount: 6,
+  };
+
+  it('always spins when score is non-positive and spins remain', () => {
+    expect(aiShouldSpinAgain({
+      ...baseContext,
+      currentScore: 0,
+      spinsRemaining: 2,
+      decisionIndex: 0,
+    })).toBe(true);
+    expect(aiShouldStop({
+      ...baseContext,
+      currentScore: -10,
+      spinsRemaining: 2,
+      decisionIndex: 1,
+    })).toBe(false);
+  });
+
+  it('is deterministic for the same full context', () => {
+    const ctx = {
+      ...baseContext,
+      currentScore: 275,
+      spinsRemaining: 2,
+      decisionIndex: 3,
+    };
+    expect(aiShouldSpinAgain(ctx)).toBe(aiShouldSpinAgain(ctx));
+    expect(aiShouldStop(ctx)).toBe(aiShouldStop(ctx));
+  });
+
+  it('varies across seeds and decision indices', () => {
+    const outcomes = new Set<boolean>();
+    for (let i = 0; i < 40; i++) {
+      outcomes.add(aiShouldSpinAgain({
+        ...baseContext,
+        seed: 100 + i,
+        currentScore: 275,
+        spinsRemaining: 2,
+        decisionIndex: i,
+      }));
+    }
+    expect(outcomes.has(true)).toBe(true);
+    expect(outcomes.has(false)).toBe(true);
   });
 });
 
@@ -250,6 +447,16 @@ describe('initRiskWheel', () => {
     const s = getState(store);
     expect(s.allPlayerIds).toEqual(['x', 'y', 'z']);
     expect(s.rngCallCount).toBe(0);
+  });
+
+  it('assigns persistent personalities to AI players only', () => {
+    const store = makeStore();
+    init(store, ['human', 'bot1', 'bot2'], 42, 'HOH', 'human');
+    const s = getState(store);
+    expect(s.aiPersonalities.human).toBeUndefined();
+    expect(s.aiPersonalities.bot1).toBeTruthy();
+    expect(s.aiPersonalities.bot2).toBeTruthy();
+    expect(s.aiPersonalities.bot1).toBe(assignAiPersonality(42, 'bot1'));
   });
 });
 
@@ -612,8 +819,10 @@ describe('aiDecide', () => {
     init(store, ['a', 'b'], seed, 'HOH', null); // no human
     store.dispatch(performSpin());
     const before = getState(store).aiDecisionCallCount;
+    const perPlayerBefore = getState(store).aiDecisionCounts.a;
     store.dispatch(aiDecide());
     expect(getState(store).aiDecisionCallCount).toBe(before + 1);
+    expect(getState(store).aiDecisionCounts.a).toBe(perPlayerBefore + 1);
   });
 
   it('does nothing when current player is human', () => {
