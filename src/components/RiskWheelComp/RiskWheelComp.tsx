@@ -193,18 +193,23 @@ export default function RiskWheelComp({
   useEffect(() => {
     if (!rw || spinning) return;
     const { phase } = rw;
+    let t2: ReturnType<typeof setTimeout> | undefined;
 
     if (phase === 'awaiting_spin' && !isHumanTurn) {
       const t = setTimeout(() => {
         setSpinning(true);
         const dur = animDelay(900);
-        const t2 = setTimeout(() => {
+        t2 = setTimeout(() => {
           dispatch(performSpin());
           setSpinning(false);
         }, dur);
-        return () => clearTimeout(t2);
       }, animDelay(AI_ACTION_DELAY_MS));
-      return () => clearTimeout(t);
+      return () => {
+        clearTimeout(t);
+        if (t2 !== undefined) {
+          clearTimeout(t2);
+        }
+      };
     }
 
     if (phase === 'six_six_six') {
