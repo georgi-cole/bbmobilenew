@@ -1428,7 +1428,11 @@ export default function GameScreen() {
             // prizeType was recorded at challenge-start and is reliable even
             // after the phase advances (feature thunks can transition
             // hoh_comp → hoh_results before this callback fires).
-            const capturedPrizeType = pendingChallenge.prizeType ?? 'HOH';
+            // For backward compatibility with older saves where prizeType may be
+            // missing, fall back to deriving from the current game.phase using
+            // the same logic as MinigameHost gameOptions.
+            const capturedPrizeType =
+              pendingChallenge.prizeType ?? (game.phase === 'pov_comp' ? 'POV' : 'HOH');
 
             // Build raw results for all challenge participants using pre-computed
             // AI scores (appropriate for the selected game's metric kind).
