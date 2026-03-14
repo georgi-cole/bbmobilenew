@@ -63,7 +63,7 @@
     input.type = 'number';
     input.placeholder = 'How many dots?';
     input.min = '0';
-    input.max = '100';
+    input.max = '150';
     input.style.cssText = 'width:180px;padding:10px;font-size:1.1rem;text-align:center;background:#1d2734;color:#e3ecf5;border:1px solid #2c3a4d;border-radius:5px;';
     
     // Submit button
@@ -79,47 +79,45 @@
     });
     
     // Submit handler
-    submitBtn.addEventListener('click', () => {
-      submitBtn.disabled = true;
-      input.disabled = true;
-      
-      const guess = parseInt(input.value) || 0;
-      const difference = Math.abs(dotCount - guess);
-      
-      // Calculate raw score: perfect = 100, decreases with difference
-      // Each dot off reduces score by 4 points
-      const rawScore = Math.max(0, 100 - (difference * 4));
-      const maxScore = 100;
-      
-      // Determine if player succeeded (legacy threshold for backward compatibility)
-      const playerSucceeded = rawScore >= 60;
-      
-      // Apply new centralized outcome logic in competition mode
-      let finalScore = rawScore;
-      if(g.GameUtils && g.GameUtils.evaluateOutcome && !debugMode && competitionMode){
-        const outcome = g.GameUtils.evaluateOutcome(rawScore, maxScore, {
-          usedSkip: false,
-          failed: !playerSucceeded,
-          cheated: false
-        });
-        
-        finalScore = outcome.finalScore;
-        
-        // If player succeeded but didn't win, coerce to loss band for consistent UX
-        if(rawScore >= 60 && !outcome.didWin && !g.cfg?.debugAlwaysWin){
-          finalScore = g.GameUtils.coerceSuccessToLossScore(finalScore);
-          console.log('[EstimationGame] Win probability applied: success forced to loss, score:', finalScore);
-        }
-        
-        if(outcome.didWin){
-          console.log('[EstimationGame] Player won! Reasons:', outcome.reasons.join('; '));
-        } else {
-          console.log('[EstimationGame] Player lost. Reasons:', outcome.reasons.join('; '));
-        }
-      }
-      
-      onComplete(finalScore);
+submitBtn.addEventListener('click', () => {
+  submitBtn.disabled = true;
+  input.disabled = true;
+
+  const guess = parseInt(input.value) || 0;
+  const difference = Math.abs(dotCount - guess);
+
+  // Raw score strictly bounded 0–100
+  const rawScore = Math.max(0, Math.min(100, 100 - (difference * 4)));
+  const maxScore = 100;
+
+  // Determine if player succeeded
+  const playerSucceeded = rawScore >= 60;
+
+  let finalScore = rawScore;
+
+  if (g.GameUtils && g.GameUtils.evaluateOutcome && !debugMode && competitionMode) {
+    const outcome = g.GameUtils.evaluateOutcome(rawScore, maxScore, {
+      usedSkip: false,
+      failed: !playerSucceeded,
+      cheated: false
     });
+
+    finalScore = outcome.finalScore;
+
+    // 🚨 HARD CLAMP — protects against AI or logic producing nonsense
+    finalScore = Math.max(0, Math.min(100, finalScore));
+
+    if (rawScore >= 60 && !outcome.didWin && !g.cfg?.debugAlwaysWin) {
+      finalScore = g.GameUtils.coerceSuccessToLossScore(finalScore);
+      finalScore = Math.max(0, Math.min(100, finalScore)); // clamp again
+    }
+  }
+
+  // Final safety clamp (covers debug or legacy paths)
+  finalScore = Math.max(0, Math.min(100, finalScore));
+
+  onComplete(finalScore);
+});
     
     // Assemble UI
     wrapper.appendChild(title);
