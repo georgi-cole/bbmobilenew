@@ -3,18 +3,23 @@
  *
  * Verifies the UI-only Final-2 state machine introduced in SilentSaboteurComp:
  *
- *   FINAL2_INTRO  →(button)→  FINAL2_VOTING  →(jury votes)→  FINAL2_VERDICT_LOCKED
+ *   FINAL2_INTRO  →(button)→  FINAL2_VOTING  →(timer)→  FINAL2_VERDICT_LOCKED
  *   →(button)→  FINAL2_REVEAL  →(delay + button)→  FINAL2_WINNER  →(button)→  onComplete
  *
  * Uses React Testing Library with jsdom and fake timers.
- * All participants are AI (no human) so no manual vote interaction is required.
  * `no-animations` body class ensures timer delays collapse to 0 / 50 ms.
+ *
+ * Test setup: PARTICIPANTS = [user(human), ava(AI), bex(AI)] with seed=42.
+ * With this seed the saboteur in round 1 is `ava`, so `user` (first
+ * non-saboteur) is chosen as victim, gets eliminated, and becomes the sole
+ * jury member.  Because humanIsJuror=true the slice does NOT auto-resolve
+ * final2_jury in _startFinal2, which means the Redux phase settles at
+ * 'final2_jury' and the component can drive the cinematic stages manually.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import silentSaboteurReducer, {
@@ -49,32 +54,41 @@ function ss(store: TestStore): SilentSaboteurState {
   return store.getState().silentSaboteur;
 }
 
-// 3 all-AI participants so the game reliably reaches final2_jury after 1 round.
+/**
+ * Participants for seed=42: 'ava' is the round-1 saboteur, so 'user' (first
+ * non-saboteur) is chosen as victim → eliminated → jury member.
+ * Having a human jury member (humanIsJuror=true) prevents the slice from
+ * auto-resolving the final2_jury phase, keeping the game in 'final2_jury'.
+ */
 const PARTICIPANTS = [
+  { id: 'user', name: 'User', isHuman: true, precomputedScore: 0, previousPR: null },
   { id: 'ava', name: 'Ava', isHuman: false, precomputedScore: 0, previousPR: null },
   { id: 'bex', name: 'Bex', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'cal', name: 'Cal', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 const IDS = PARTICIPANTS.map((p) => p.id);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Advance the store manually through intro + round(s) until final2_jury.
- * Uses direct Redux dispatches so we don't rely on component timers
- * to reach the phase under test (keeping the test deterministic).
+ * Advance the store through intro + rounds until reaching final2_jury.
+ * When choosing the round victim, prefers the human player so they become
+ * the jury member and prevent the slice from auto-resolving final2_jury.
  */
 function advanceToFinal2Jury(store: TestStore) {
   if (ss(store).phase === 'intro') store.dispatch(advanceIntro());
 
-  // Advance through rounds until we reach final2_jury or complete
   let iterations = 0;
   while (ss(store).phase !== 'final2_jury' && ss(store).phase !== 'complete' && iterations < 20) {
     iterations++;
     const phase = ss(store).phase;
     if (phase === 'select_victim') {
       const s = ss(store);
-      const victimId = s.activeIds.find((id) => id !== s.saboteurId)!;
+      // Prefer the human as victim → they become juror → prevents slice auto-resolve
+      const humanId = s.humanPlayerId;
+      const victimId =
+        humanId && s.activeIds.includes(humanId) && humanId !== s.saboteurId
+          ? humanId
+          : s.activeIds.find((id) => id !== s.saboteurId)!;
       store.dispatch(selectVictim({ victimId }));
     } else if (phase === 'voting') {
       store.dispatch(endVotingPhase());
@@ -103,6 +117,10 @@ function renderComp(store: TestStore, onComplete?: () => void, standalone = true
   );
 }
 
+function clickButton(testId: string) {
+  act(() => { fireEvent.click(screen.getByTestId(testId)); });
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SilentSaboteur Final-2 Cinematic Flow', () => {
@@ -120,12 +138,11 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     const store = makeStore();
     renderComp(store);
 
-    // Let the component initialize (init effect fires)
+    // Component init fires initSilentSaboteur; advanceToFinal2Jury drives to final2_jury
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return; // guard for edge-case paths
+    expect(ss(store).phase).toBe('final2_jury');
 
     expect(screen.getByTestId('ss-final2-intro')).toBeInTheDocument();
     expect(screen.getByTestId('ss-final2-proceed-btn')).toBeInTheDocument();
@@ -135,16 +152,14 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
   it('clicking "Proceed to Jury Decision" transitions from FINAL2_INTRO to FINAL2_VOTING', async () => {
     const store = makeStore();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderComp(store);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    clickButton('ss-final2-proceed-btn');
 
     expect(screen.getByTestId('ss-final2-voting')).toBeInTheDocument();
     expect(screen.queryByTestId('ss-final2-intro')).not.toBeInTheDocument();
@@ -152,16 +167,14 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
   it('FINAL2_VOTING does not show victim, saboteur, or suspect role labels', async () => {
     const store = makeStore();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderComp(store);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    clickButton('ss-final2-proceed-btn');
 
     const votingPanel = screen.getByTestId('ss-final2-voting');
     // None of the role-revealing labels should appear in voting
@@ -172,20 +185,19 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
   it('transitions to FINAL2_VERDICT_LOCKED after jury votes (no auto-advance to winner screen)', async () => {
     const store = makeStore();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderComp(store);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    // Proceed to voting — AI jury auto-vote effect fires immediately (no-animations)
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    // Proceed to voting; the 50ms human juror fallback timer then fires
+    clickButton('ss-final2-proceed-btn');
+    // Advance past the 50ms human juror timeout (no-animations delay)
     await act(async () => { vi.advanceTimersByTime(200); });
 
-    if (ss(store).phase !== 'winner') return; // no jury edge case
+    expect(ss(store).phase).toBe('winner');
 
     // Should be at VERDICT_LOCKED, NOT at the winner screen
     expect(screen.getByTestId('ss-final2-verdict-locked')).toBeInTheDocument();
@@ -195,21 +207,19 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
   it('clicking "Reveal the Truth" shows the reveal screen with accused highlighted', async () => {
     const store = makeStore();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderComp(store);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    clickButton('ss-final2-proceed-btn');
     await act(async () => { vi.advanceTimersByTime(200); });
 
-    if (ss(store).phase !== 'winner') return;
+    expect(ss(store).phase).toBe('winner');
 
-    await user.click(screen.getByTestId('ss-final2-reveal-btn'));
+    clickButton('ss-final2-reveal-btn');
 
     expect(screen.getByTestId('ss-final2-reveal')).toBeInTheDocument();
     // Continue button is NOT visible before the reveal delay fires
@@ -226,23 +236,21 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
   it('clicking Continue on FINAL2_REVEAL transitions to FINAL2_WINNER', async () => {
     const store = makeStore();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderComp(store);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    clickButton('ss-final2-proceed-btn');
     await act(async () => { vi.advanceTimersByTime(200); });
 
-    if (ss(store).phase !== 'winner') return;
+    expect(ss(store).phase).toBe('winner');
 
-    await user.click(screen.getByTestId('ss-final2-reveal-btn'));
+    clickButton('ss-final2-reveal-btn');
     await act(async () => { vi.advanceTimersByTime(50); });
-    await user.click(screen.getByTestId('ss-final2-reveal-continue-btn'));
+    clickButton('ss-final2-reveal-continue-btn');
 
     expect(screen.getByTestId('ss-final2-winner')).toBeInTheDocument();
     expect(screen.getByTestId('ss-final2-winner-continue-btn')).toBeInTheDocument();
@@ -252,28 +260,26 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
   it('clicking Continue on FINAL2_WINNER calls onComplete and resolves the outcome', async () => {
     const store = makeStore();
     const onComplete = vi.fn();
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
     renderComp(store, onComplete, false);
 
     await act(async () => { vi.advanceTimersByTime(0); });
     await act(async () => { advanceToFinal2Jury(store); });
-    await act(async () => { vi.advanceTimersByTime(100); });
 
-    if (ss(store).phase !== 'final2_jury') return;
+    expect(ss(store).phase).toBe('final2_jury');
 
-    await user.click(screen.getByTestId('ss-final2-proceed-btn'));
+    clickButton('ss-final2-proceed-btn');
     await act(async () => { vi.advanceTimersByTime(200); });
 
-    if (ss(store).phase !== 'winner') return;
+    expect(ss(store).phase).toBe('winner');
 
-    await user.click(screen.getByTestId('ss-final2-reveal-btn'));
+    clickButton('ss-final2-reveal-btn');
     await act(async () => { vi.advanceTimersByTime(50); });
-    await user.click(screen.getByTestId('ss-final2-reveal-continue-btn'));
+    clickButton('ss-final2-reveal-continue-btn');
     await act(async () => { vi.advanceTimersByTime(50); });
 
     // Click the final Continue on FINAL2_WINNER
-    await user.click(screen.getByTestId('ss-final2-winner-continue-btn'));
+    clickButton('ss-final2-winner-continue-btn');
     await act(async () => { vi.advanceTimersByTime(100); });
 
     // onComplete should have been called exactly once
