@@ -186,6 +186,10 @@ export default function BlackjackTournamentComp({
   const dispatch = useAppDispatch();
   const bt = useAppSelector((s: RootState) => s.blackjackTournament);
 
+  // Pre-computed card lengths used as stable dep-array values (avoid optional-chain in deps).
+  const controllerCardCount = bt.currentDuel?.controllerCards.length ?? 0;
+  const opponentCardCount = bt.currentDuel?.opponentCards.length ?? 0;
+
   // Stable refs for timer cleanup.
   const spinTimerRef = useRef<number | null>(null);
   const aiPickTimerRef = useRef<number | null>(null);
@@ -440,9 +444,9 @@ export default function BlackjackTournamentComp({
     }
     prevControllerCountRef.current = cc;
     prevOpponentCountRef.current = oc;
-  }, [bt.currentDuel?.controllerCards.length, bt.currentDuel?.opponentCards.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  // ^ deps intentionally limited to lengths: we only want to fire when a card is added,
-  //   not on every duel state change. prevCountRefs track previous values safely.
+  }, [controllerCardCount, opponentCardCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ^ deps limited to card lengths: effect only fires when a card is added.
+  //   prevCountRefs safely track previous values without stale-closure issues.
 
   // Reset card refs when a new duel starts.
   useEffect(() => {

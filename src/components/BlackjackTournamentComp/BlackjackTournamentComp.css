@@ -526,6 +526,9 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* Pseudo-element confetti is purely decorative. The parent element carries
+   aria-hidden="true" in the TSX, so screen readers skip the entire subtree
+   including these ::before/::after nodes. */
 .bjt-result-confetti {
   position: absolute;
   inset: 0;
@@ -666,11 +669,18 @@
   border-top: 1px solid rgba(255, 215, 0, 0.2);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  /* Thin scrollbar: visible enough for scrollability affordance but unobtrusive */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 215, 0, 0.4) transparent;
 }
 
 .bjt-roster::-webkit-scrollbar {
-  display: none;
+  height: 3px;
+}
+
+.bjt-roster::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.4);
+  border-radius: 2px;
 }
 
 .bjt-roster-item {
