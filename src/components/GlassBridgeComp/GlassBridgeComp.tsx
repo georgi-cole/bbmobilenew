@@ -13,7 +13,7 @@
  *
  * Human flow:
  *   - Pick a number during order selection.
- *   - During your turn: tap LEFT or RIGHT button to step.
+ *   - During your turn: tap the highlighted tile in the active row to step.
  *   - If eliminated: spectator modal offers "Continue Watching" or "Skip to Result".
  *
  * AI flow:
@@ -39,7 +39,6 @@ import {
   selectActivePlayerId,
   selectIsGameOver,
   type TileSide,
-  type GlassBridgePlayerProgress,
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
 import { mulberry32 } from '../../store/rng';
@@ -62,6 +61,8 @@ const AI_STEP_JITTER_MS = 800;
 const SHATTER_ANIM_MS = 400;
 /** Pause after shatter before advancing turn. */
 const POST_SHATTER_DELAY_MS = 300;
+/** Suspense pause after selecting a tile before the outcome resolves. */
+const STEP_SUSPENSE_DELAY_MS = 260;
 /** Auto-advance on complete screen (ms). */
 const COMPLETE_AUTO_ADVANCE_MS = 3_000;
 
@@ -136,11 +137,18 @@ export default function GlassBridgeComp({
   // ── Local UI state ────────────────────────────────────────────────────────
   const [showSpectatorModal, setShowSpectatorModal] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
+  const [pendingStep, setPendingStep] = useState<{
+    actorId: string;
+    rowIdx: number;
+    side: TileSide;
+    isBreak: boolean;
+  } | null>(null);
   const [shatteringTile, setShatteringTile] = useState<{
     rowIdx: number;
     side: TileSide;
   } | null>(null);
   const [showEliminationFlash, setShowEliminationFlash] = useState(false);
+  const [showScreenShake, setShowScreenShake] = useState(false);
   const [timerDisplay, setTimerDisplay] = useState<number>(gb.globalTimeLimitMs);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -148,6 +156,9 @@ export default function GlassBridgeComp({
   const aiStepTimerRef = useRef<number | null>(null);
   const autoAdvanceRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
+  const pendingStepRef = useRef<number | null>(null);
+  const shatterResolveRef = useRef<number | null>(null);
+  const flashResetRef = useRef<number | null>(null);
   const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
@@ -170,6 +181,18 @@ export default function GlassBridgeComp({
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
+    if (pendingStepRef.current !== null) {
+      window.clearTimeout(pendingStepRef.current);
+      pendingStepRef.current = null;
+    }
+    if (shatterResolveRef.current !== null) {
+      window.clearTimeout(shatterResolveRef.current);
+      shatterResolveRef.current = null;
+    }
+    if (flashResetRef.current !== null) {
+      window.clearTimeout(flashResetRef.current);
+      flashResetRef.current = null;
+    }
   }
 
   // ── 1. Initialize on mount ────────────────────────────────────────────────
@@ -189,7 +212,6 @@ export default function GlassBridgeComp({
       clearAllTimers();
       dispatch(resetGlassBridge());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   // ── 2. Order selection: AI auto-picks ────────────────────────────────────
@@ -281,7 +303,7 @@ export default function GlassBridgeComp({
       const remaining = Math.max(0, gb.globalTimeLimitMs - elapsed);
       setTimerDisplay(remaining);
 
-      if (remaining <= 0 && !gb.timerExpired) {
+      if (remaining <= 0 && !gb.timerExpired && !pendingStep) {
         // Expire timer first (eliminates unfinished players) then finalise rankings.
         dispatch(expireTimer());
         dispatch(completeGame());
@@ -296,7 +318,7 @@ export default function GlassBridgeComp({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gb.phase, gb.challengeStartTimeMs]);
+  }, [gb.phase, gb.challengeStartTimeMs, gb.timerExpired, pendingStep, dispatch]);
 
   // ── 6. AI step automation ──────────────────────────────────────────────────
   useEffect(() => {
@@ -309,6 +331,7 @@ export default function GlassBridgeComp({
     if (isHumanTurn) return; // human controls their own steps
 
     if (gb.timerExpired) return;
+    if (pendingStep) return;
 
     // Check if already done.
     const progress = gb.progress[activeId];
@@ -339,19 +362,34 @@ export default function GlassBridgeComp({
       // Check if it's a wrong choice (for animation).
       const isBreak = chosenSide !== row.safeSide;
 
-      if (isBreak) {
-        setShatteringTile({ rowIdx, side: chosenSide });
-        setShowEliminationFlash(true);
-        window.setTimeout(() => setShowEliminationFlash(false), 500);
-        window.setTimeout(() => {
-          setShatteringTile(null);
-          dispatch(resolveStep({ chosenSide, now }));
-          // Game-over detection is handled by effect #7 which watches gb state.
-        }, SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS);
-      } else {
+      const noAnimations =
+        typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+      const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
+      const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
+
+      setPendingStep({ actorId: activeId, rowIdx, side: chosenSide, isBreak });
+      pendingStepRef.current = window.setTimeout(() => {
+        if (isBreak) {
+          setShatteringTile({ rowIdx, side: chosenSide });
+          setShowEliminationFlash(true);
+          setShowScreenShake(true);
+          flashResetRef.current = window.setTimeout(() => {
+            setShowEliminationFlash(false);
+            setShowScreenShake(false);
+          }, noAnimations ? 0 : 500);
+          shatterResolveRef.current = window.setTimeout(() => {
+            setShatteringTile(null);
+            setPendingStep(null);
+            dispatch(resolveStep({ chosenSide, now }));
+            // Game-over detection is handled by effect #7 which watches gb state.
+          }, shatterDelay);
+          return;
+        }
+
+        setPendingStep(null);
         dispatch(resolveStep({ chosenSide, now }));
         // Game-over detection is handled by effect #7 which watches gb state.
-      }
+      }, suspenseDelay);
     }, delay);
 
     return () => {
@@ -360,8 +398,7 @@ export default function GlassBridgeComp({
         aiStepTimerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId]);
+  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch]);
 
   // ── 7. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
@@ -421,6 +458,7 @@ export default function GlassBridgeComp({
       if (!humanId) return;
       if (gb.phase !== 'playing') return;
       if (gb.timerExpired) return;
+      if (pendingStep) return;
 
       const activeId = selectActivePlayerId(gb);
       if (activeId !== humanId) return;
@@ -430,20 +468,35 @@ export default function GlassBridgeComp({
       const row = gb.rows[rowIdx];
 
       const isBreak = side !== row.safeSide;
+      const chosenAt = Date.now();
+      const noAnimations =
+        typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+      const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
+      const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
 
-      if (isBreak) {
-        setShatteringTile({ rowIdx, side });
-        setShowEliminationFlash(true);
-        window.setTimeout(() => setShowEliminationFlash(false), 500);
-        window.setTimeout(() => {
-          setShatteringTile(null);
-          dispatch(resolveStep({ chosenSide: side, now: Date.now() }));
-        }, SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS);
-      } else {
-        dispatch(resolveStep({ chosenSide: side, now: Date.now() }));
-      }
+      setPendingStep({ actorId: humanId, rowIdx, side, isBreak });
+      pendingStepRef.current = window.setTimeout(() => {
+        if (isBreak) {
+          setShatteringTile({ rowIdx, side });
+          setShowEliminationFlash(true);
+          setShowScreenShake(true);
+          flashResetRef.current = window.setTimeout(() => {
+            setShowEliminationFlash(false);
+            setShowScreenShake(false);
+          }, noAnimations ? 0 : 500);
+          shatterResolveRef.current = window.setTimeout(() => {
+            setShatteringTile(null);
+            setPendingStep(null);
+            dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
+          }, shatterDelay);
+          return;
+        }
+
+        setPendingStep(null);
+        dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
+      }, suspenseDelay);
     },
-    [humanId, gb, dispatch],
+    [humanId, gb, dispatch, pendingStep],
   );
 
   const handleContinueWatching = useCallback(() => {
@@ -465,6 +518,7 @@ export default function GlassBridgeComp({
   const isHumanTurn = activeId === humanId && !gb.humanSpectating;
   const humanProgress = humanId ? gb.progress[humanId] : null;
   const isHumanEliminated = !!humanProgress?.eliminated;
+  const pendingActorId = pendingStep?.actorId ?? null;
 
   const timerClass =
     timerDisplay <= 10_000
@@ -476,7 +530,11 @@ export default function GlassBridgeComp({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="glass-bridge" role="main" aria-label="Glass Bridge — Brutal Mode">
+    <div
+      className={`glass-bridge${gb.phase === 'playing' ? ' gb-phase-playing' : ''}${showScreenShake ? ' gb-screen-shake' : ''}`}
+      role="main"
+      aria-label="Glass Bridge — Brutal Mode"
+    >
       {/* HUD */}
       {(gb.phase === 'playing' || gb.phase === 'complete') && (
         <div className="gb-hud" role="banner">
@@ -557,7 +615,7 @@ export default function GlassBridgeComp({
               return (
                 <div
                   key={playerId}
-                  className={`gb-reveal-item${isYou ? ' gb-reveal-you' : ''}`}
+                  className={`gb-reveal-item${isYou ? ' gb-reveal-you gb-reveal-spotlight' : ''}`}
                   role="listitem"
                   style={{ animationDelay: `${idx * 0.05}s` }}
                 >
@@ -575,11 +633,19 @@ export default function GlassBridgeComp({
       {/* ── Playing ── */}
       {gb.phase === 'playing' && (
         <div className="gb-playing">
+          <div className="gb-active-banner" aria-live="polite">
+            {isHumanTurn && !pendingStep
+              ? 'Tap a highlighted tile to step.'
+              : activeId
+                ? `${getName(activeId)} is on the bridge`
+                : 'Bridge awaiting next player'}
+          </div>
           {/* Bridge */}
           <div className="gb-bridge-container" role="region" aria-label="Glass bridge">
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
+              const depthScale = Math.max(0.82, 1 - rowIdx * 0.015);
 
               // Find players on this row (those who have reached exactly this row and are active).
               const playersOnRow = gb.turnOrder.filter(pid => {
@@ -594,22 +660,32 @@ export default function GlassBridgeComp({
               });
 
               return (
-                <div key={rowIdx} className="gb-row">
+                <div
+                  key={rowIdx}
+                  className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}`}
+                  style={{ transform: `scale(${depthScale})`, opacity: isCurrentRow ? 1 : Math.max(0.46, 1 - rowIdx * 0.03) }}
+                >
                   <span className="gb-row-label">{rowNum}</span>
                   <div className="gb-tiles">
                     {(['left', 'right'] as TileSide[]).map(side => {
                       const isBroken = side === 'left' ? row.leftBroken : row.rightBroken;
                       const isShatterAnim =
                         shatteringTile?.rowIdx === rowIdx && shatteringTile?.side === side;
+                      const isPendingTile =
+                        pendingStep?.rowIdx === rowIdx && pendingStep?.side === side;
                       const canActivate =
                         isHumanTurn &&
                         isCurrentRow &&
-                        !isBroken;
+                        !isBroken &&
+                        !pendingStep;
 
                       let tileClass = 'gb-tile';
                       if (isBroken || isShatterAnim) tileClass += ' gb-tile-broken';
                       if (isShatterAnim) tileClass += ' gb-tile-shatter';
                       if (canActivate && !isBroken) tileClass += ' gb-tile-active';
+                      if (isCurrentRow) tileClass += ' gb-tile-current-row';
+                      if (!isCurrentRow) tileClass += ' gb-tile-inactive';
+                      if (isPendingTile) tileClass += ' gb-tile-selected';
 
                       return (
                         <div
@@ -639,7 +715,7 @@ export default function GlassBridgeComp({
                     {playersOnRow.map(pid => (
                       <div
                         key={pid}
-                        className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}`}
+                        className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}${pendingActorId === pid && shatteringTile ? ' gb-player-falling' : ''}`}
                         title={getName(pid)}
                       >
                         <img
@@ -671,6 +747,7 @@ export default function GlassBridgeComp({
               let statusIcon = '';
               let entryClass = 'gb-player-entry';
               if (isActive) entryClass += ' gb-active-turn';
+              if (!isActive && activeId) entryClass += ' gb-entry-muted';
               if (p.eliminated) {
                 entryClass += ' gb-entry-eliminated';
                 statusIcon = '💀';
@@ -709,27 +786,9 @@ export default function GlassBridgeComp({
             })}
           </div>
 
-          {/* Human controls — only shown during human's turn */}
           {isHumanTurn && !isHumanEliminated && (
-            <div className="gb-controls" role="group" aria-label="Step controls">
-              <button
-                className="gb-control-btn"
-                onClick={() => handleHumanStep('left')}
-                disabled={gb.rows[gb.currentPlayerRow - 1]?.leftBroken}
-                aria-label="Step left"
-              >
-                ◀
-                <span>LEFT</span>
-              </button>
-              <button
-                className="gb-control-btn"
-                onClick={() => handleHumanStep('right')}
-                disabled={gb.rows[gb.currentPlayerRow - 1]?.rightBroken}
-                aria-label="Step right"
-              >
-                ▶
-                <span>RIGHT</span>
-              </button>
+            <div className="gb-step-hint" aria-live="polite">
+              Choose directly on the bridge.
             </div>
           )}
         </div>
@@ -738,13 +797,18 @@ export default function GlassBridgeComp({
       {/* ── Complete ── */}
       {gb.phase === 'complete' && (
         <div className="gb-complete">
-          <h2>Bridge Complete</h2>
-          <div className="gb-winner-badge">🏆</div>
-          {gb.winnerId && (
-            <div className="gb-winner-name">
-              {gb.winnerId === humanId ? 'You win!' : `${getName(gb.winnerId)} wins!`}
+          <div className="gb-complete-hero">
+            <h2>Bridge Complete</h2>
+            <div className="gb-winner-badge">🏆</div>
+            {gb.winnerId && (
+              <div className="gb-winner-name">
+                {gb.winnerId === humanId ? 'You win!' : `${getName(gb.winnerId)} wins!`}
+              </div>
+            )}
+            <div className="gb-complete-subtitle">
+              Finishers are ranked by time. Everyone else is ranked by progress.
             </div>
-          )}
+          </div>
 
           <div className="gb-placement-list" role="list" aria-label="Final placements">
             {gb.placements.map((pid, idx) => {
@@ -793,6 +857,7 @@ export default function GlassBridgeComp({
           aria-label="Eliminated"
         >
           <div className="gb-spectator-card">
+            <div className="gb-spectator-icon" aria-hidden="true">💀</div>
             <h2>You have been eliminated.</h2>
             <p>You can continue watching the remaining players cross the bridge.</p>
             <div className="gb-spectator-actions">
@@ -821,15 +886,4 @@ export default function GlassBridgeComp({
       )}
     </div>
   );
-}
-
-// ─── Placement detail helper (exported for tests) ─────────────────────────────
-
-export function formatPlacementDetail(
-  p: GlassBridgePlayerProgress,
-  rowsCount: number,
-): string {
-  if (p.finishTimeMs !== undefined) return `Finished ${formatElapsed(p.finishTimeMs)}`;
-  if (p.furthestRowReached > 0) return `Row ${p.furthestRowReached} / ${rowsCount}`;
-  return 'Row 0';
 }
