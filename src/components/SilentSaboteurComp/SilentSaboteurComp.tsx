@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store/store';
 import {
@@ -402,6 +403,8 @@ export default function SilentSaboteurComp({
   const [final2Stage, setFinal2Stage] = useState<Final2Stage | null>(null);
   /** True after the 1.5-second reveal delay has elapsed in FINAL2_REVEAL. */
   const [final2RevealDone, setFinal2RevealDone] = useState(false);
+  /** Locks manual Final-2 CTA clicks until the stage changes. */
+  const [final2ActionLocked, setFinal2ActionLocked] = useState(false);
   /**
    * Captured finalist IDs at the moment the game enters final2_jury.
    * Persists through the winner/complete transition when activeIds may differ.
@@ -783,6 +786,11 @@ export default function SilentSaboteurComp({
     return () => clearTimeout(t);
   }, [final2Stage, animationsDisabled]);
 
+  // Final-2 CTA buttons are single-fire per stage. Unlock once the stage changes.
+  useEffect(() => {
+    setFinal2ActionLocked(false);
+  }, [final2Stage]);
+
   // winner: human-controlled continue; AI-only auto-advances after a hold.
   // Final-2 cinematic: always skip auto-advance — manual button required.
   useEffect(() => {
@@ -866,16 +874,22 @@ export default function SilentSaboteurComp({
   // ── Final-2 cinematic handlers ─────────────────────────────────────────────
 
   const handleFinal2ProceedToVoting = useCallback(() => {
+    if (final2ActionLocked) return;
+    setFinal2ActionLocked(true);
     setFinal2Stage('FINAL2_VOTING');
-  }, []);
+  }, [final2ActionLocked]);
 
   const handleFinal2RevealTruth = useCallback(() => {
+    if (final2ActionLocked) return;
+    setFinal2ActionLocked(true);
     setFinal2Stage('FINAL2_REVEAL');
-  }, []);
+  }, [final2ActionLocked]);
 
   const handleFinal2RevealContinue = useCallback(() => {
+    if (final2ActionLocked) return;
+    setFinal2ActionLocked(true);
     setFinal2Stage('FINAL2_WINNER');
-  }, []);
+  }, [final2ActionLocked]);
 
   /**
    * Final step of the Final-2 cinematic.
@@ -890,6 +904,8 @@ export default function SilentSaboteurComp({
    * version.  This is safe for useCallback (no risk of double-fires unlike useEffect).
    */
   const handleFinal2WinnerContinue = useCallback(() => {
+    if (final2ActionLocked) return;
+    setFinal2ActionLocked(true);
     isFinal2CinematicActiveRef.current = false;
     if (pendingCompletionRef.current) {
       pendingCompletionRef.current = false;
@@ -897,7 +913,7 @@ export default function SilentSaboteurComp({
     } else {
       dispatch(advanceWinner());
     }
-  }, [dispatch, onComplete]);
+  }, [dispatch, final2ActionLocked, onComplete]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render (early-exit guard after all hooks)
@@ -1189,14 +1205,17 @@ export default function SilentSaboteurComp({
           <p className="ss-hint hint-small">
             {eliminatedIds.length} jury member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
           </p>
-          <button
-            className="ss-btn ss-action-btn"
-            onClick={handleFinal2ProceedToVoting}
-            aria-label="Proceed to Jury Decision"
-            data-testid="ss-final2-proceed-btn"
-          >
-            Proceed to Jury Decision
-          </button>
+          <ActionFooter>
+            <button
+              className="ss-btn ss-action-btn"
+              onClick={handleFinal2ProceedToVoting}
+              aria-label="Proceed to Jury Decision"
+              data-testid="ss-final2-proceed-btn"
+              disabled={final2ActionLocked}
+            >
+              Proceed to Jury Decision
+            </button>
+          </ActionFooter>
         </div>
       )}
 
@@ -1282,14 +1301,17 @@ export default function SilentSaboteurComp({
             finalistIds={final2FinalistIdsRef.current}
             getName={getName}
           />
-          <button
-            className="ss-btn ss-action-btn ss-action-btn--reveal"
-            onClick={handleFinal2RevealTruth}
-            aria-label="Reveal the Truth"
-            data-testid="ss-final2-reveal-btn"
-          >
-            Reveal the Truth
-          </button>
+          <ActionFooter>
+            <button
+              className="ss-btn ss-action-btn ss-action-btn--reveal"
+              onClick={handleFinal2RevealTruth}
+              aria-label="Reveal the Truth"
+              data-testid="ss-final2-reveal-btn"
+              disabled={final2ActionLocked}
+            >
+              Reveal the Truth
+            </button>
+          </ActionFooter>
         </div>
       )}
 
@@ -1334,14 +1356,17 @@ export default function SilentSaboteurComp({
                   <strong>{getName(winnerId ?? '')}</strong> wins!
                 </p>
               )}
-              <button
-                className="ss-btn ss-action-btn"
-                onClick={handleFinal2RevealContinue}
-                aria-label="Continue"
-                data-testid="ss-final2-reveal-continue-btn"
-              >
-                Continue
-              </button>
+              <ActionFooter>
+                <button
+                  className="ss-btn ss-action-btn"
+                  onClick={handleFinal2RevealContinue}
+                  aria-label="Continue"
+                  data-testid="ss-final2-reveal-continue-btn"
+                  disabled={final2ActionLocked}
+                >
+                  Continue
+                </button>
+              </ActionFooter>
             </>
           )}
         </div>
@@ -1362,14 +1387,17 @@ export default function SilentSaboteurComp({
           {humanPlayerId === winnerId && (
             <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>
           )}
-          <button
-            className="ss-btn ss-action-btn"
-            onClick={handleFinal2WinnerContinue}
-            aria-label="Continue"
-            data-testid="ss-final2-winner-continue-btn"
-          >
-            Continue
-          </button>
+          <ActionFooter>
+            <button
+              className="ss-btn ss-action-btn"
+              onClick={handleFinal2WinnerContinue}
+              aria-label="Continue"
+              data-testid="ss-final2-winner-continue-btn"
+              disabled={final2ActionLocked}
+            >
+              Continue
+            </button>
+          </ActionFooter>
         </div>
       )}
 
@@ -1559,6 +1587,10 @@ function VoteRevealSequence({
 }
 
 // ─── Final-2 Cinematic Sub-components ─────────────────────────────────────────
+
+function ActionFooter({ children }: { children: ReactNode }) {
+  return <div className="ss-action-footer">{children}</div>;
+}
 
 /**
  * Displays both finalists with muted (grayscale/dim) treatment and a lock icon.

@@ -183,6 +183,21 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(votingPanel.textContent).not.toMatch(/\bSuspect\b/);
   });
 
+  it('does not show any Continue-style cinematic CTA during active FINAL2_VOTING', async () => {
+    const store = makeStore();
+    renderComp(store);
+
+    await act(async () => { vi.advanceTimersByTime(0); });
+    await act(async () => { advanceToFinal2Jury(store); });
+
+    clickButton('ss-final2-proceed-btn');
+
+    expect(screen.getByTestId('ss-final2-voting')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reveal the Truth' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Proceed to Jury Decision' })).not.toBeInTheDocument();
+  });
+
   it('transitions to FINAL2_VERDICT_LOCKED after jury votes (no auto-advance to winner screen)', async () => {
     const store = makeStore();
     renderComp(store);
@@ -286,5 +301,30 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
     // The outcome should be resolved in the store
     expect(ss(store).outcomeResolved).toBe(true);
+  });
+
+  it('ignores repeated clicks on the FINAL2_WINNER Continue button', async () => {
+    const store = makeStore();
+    const onComplete = vi.fn();
+
+    renderComp(store, onComplete, false);
+
+    await act(async () => { vi.advanceTimersByTime(0); });
+    await act(async () => { advanceToFinal2Jury(store); });
+
+    clickButton('ss-final2-proceed-btn');
+    await act(async () => { vi.advanceTimersByTime(200); });
+    clickButton('ss-final2-reveal-btn');
+    await act(async () => { vi.advanceTimersByTime(50); });
+    clickButton('ss-final2-reveal-continue-btn');
+    await act(async () => { vi.advanceTimersByTime(50); });
+
+    const winnerContinue = screen.getByTestId('ss-final2-winner-continue-btn');
+    await act(async () => {
+      fireEvent.click(winnerContinue);
+      fireEvent.click(winnerContinue);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

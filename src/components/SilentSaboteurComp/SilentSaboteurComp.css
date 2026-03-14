@@ -1207,10 +1207,29 @@ body.no-animations .ss-social-map {
   gap: 0.5rem;
 }
 
+.ss-action-footer {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.85rem;
+  padding-bottom: max(0.15rem, env(safe-area-inset-bottom));
+  position: sticky;
+  bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(23, 25, 42, 0) 0%, rgba(23, 25, 42, 0.92) 38%, rgba(23, 25, 42, 0.98) 100%);
+  z-index: 1;
+}
+
 .ss-action-btn:hover:not(:disabled),
 .ss-action-btn:focus-visible:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 12px 32px rgba(99, 102, 241, 0.52);
+}
+
+.ss-action-btn:disabled {
+  cursor: default;
+  opacity: 0.68;
+  transform: none;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.25);
 }
 
 .ss-action-btn:focus-visible {
@@ -1253,5 +1272,9 @@ body.no-animations .ss-final2-finalist--saboteur {
     min-height: 52px;
     font-size: 0.98rem;
     padding: 0.9rem 1.25rem;
+  }
+
+  .ss-action-footer {
+    padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
   }
 }
