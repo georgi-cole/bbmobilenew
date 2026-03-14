@@ -31,6 +31,9 @@ import { mulberry32, seededPickN } from '../../store/rng';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** XOR salt separating AI-decision RNG from spin RNG to avoid entanglement. */
+const AI_DECISION_RNG_SALT = 0xdeadbeef;
+
 export type RiskWheelCompetitionType = 'HOH' | 'POV';
 
 export type RiskWheelPhase =
@@ -118,9 +121,10 @@ export const WHEEL_SECTORS: WheelSector[] = [
   { type: 'points', value: 750,  label: '750'  },
   { type: 'points', value: 1000, label: '1000' },
   // Neutral
-  { type: 'zero',  label: '0'        },
-  { type: 'skip',  label: 'SKIP'     },
-  { type: 'points', value: 3, label: '3.14'    },
+  { type: 'zero',  label: '0'     },
+  { type: 'skip',  label: 'SKIP'  },
+  // 3.14 is a deliberate joke: label shows π but awards 3 pts (funny low value).
+  { type: 'points', value: 3, label: '3.14' },
   // Negative
   { type: 'points', value: -100, label: '-100' },
   { type: 'points', value: -200, label: '-200' },
@@ -245,7 +249,7 @@ export function aiShouldStop(
   if (score < 200) return false;
   if (score >= 500) return true;
   // Moderate range: 50 % seeded coin flip
-  return rngAt(seed ^ 0xdeadbeef, aiDecisionCallCount) < 0.5;
+  return rngAt(seed ^ AI_DECISION_RNG_SALT, aiDecisionCallCount) < 0.5;
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────

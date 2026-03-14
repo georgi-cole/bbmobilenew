@@ -4,7 +4,7 @@
  * Covers:
  *  - Elimination counts for each special player count rule
  *  - Tie-breaking at elimination cutoff
- *  - 666 add/subtract behaviour
+ *  - 666 add/subtract behavior
  *  - AI stop/spin decisions
  *  - Round progression and winner selection
  *  - Full state-machine flow
