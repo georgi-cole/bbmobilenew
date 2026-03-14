@@ -299,6 +299,17 @@ export default function RiskWheelComp({
   }, [rw?.phase, isHumanTurn]);
 
   // ── Spin helper ──────────────────────────────────────────────────────────
+  const spinTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (spinTimeoutRef.current !== null) {
+        clearTimeout(spinTimeoutRef.current);
+        spinTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const performHumanSpin = useCallback((fromDecision: boolean) => {
     if (!rw || spinning) return;
     if (fromDecision) {
@@ -322,13 +333,21 @@ export default function RiskWheelComp({
     setWheelAngle(targetAngle);
     wheelAngleRef.current = targetAngle;
 
+    // Clear any pending spin timeout before scheduling a new one
+    if (spinTimeoutRef.current !== null) {
+      clearTimeout(spinTimeoutRef.current);
+      spinTimeoutRef.current = null;
+    }
+
     // Dispatch the actual spin after the animation completes (+100ms buffer)
     const spinDur = animDelay(SPIN_DURATION_MS) + 100;
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       dispatch(performSpin());
       setSpinning(false);
       setWheelTransitioning(false);
+      spinTimeoutRef.current = null;
     }, spinDur);
+    spinTimeoutRef.current = timeoutId;
   }, [dispatch, rw, isHumanTurn, spinning]);
 
   const handleHumanSpin = useCallback(() => performHumanSpin(false), [performHumanSpin]);
