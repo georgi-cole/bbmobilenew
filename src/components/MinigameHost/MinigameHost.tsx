@@ -25,6 +25,9 @@ import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
 import SilentSaboteurComp from '../SilentSaboteurComp/SilentSaboteurComp';
 import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/silentSaboteurSlice';
+import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
+import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
+import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -246,6 +249,23 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as SilentSaboteurPrizeType}
+            if (game.implementation === 'react' && game.reactComponentKey === 'GlassBridge') {
+              return (
+                <GlassBridgeComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' | undefined}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'BlackjackTournament') {
+              return (
+                <BlackjackTournamentComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as BlackjackTournamentCompetitionType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />

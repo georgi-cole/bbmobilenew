@@ -18,7 +18,12 @@ import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
+<<<<<<< copilot/add-silent-saboteur-minigame
 import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlice';
+=======
+import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
+import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
+>>>>>>> main
 
 export const store = configureStore({
   reducer: {
@@ -34,7 +39,12 @@ export const store = configureStore({
     holdTheWall: holdTheWallReducer,
     biographyBlitz: biographyBlitzReducer,
     famousFigures: famousFiguresReducer,
+<<<<<<< copilot/add-silent-saboteur-minigame
     silentSaboteur: silentSaboteurReducer,
+=======
+    glassBridge: glassBridgeReducer,
+    blackjackTournament: blackjackTournamentReducer,
+>>>>>>> main
   },
   preloadedState: {
     settings: loadSettings(),

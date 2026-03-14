@@ -848,6 +848,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  blackjackTournament: {
+    key: 'blackjackTournament',
+    title: 'Blackjack Tournament',
+    description:
+      'Last-player-standing blackjack duel tournament. A spinner picks the first controller, who challenges any remaining opponent. Closest to 21 without busting wins the duel; loser is eliminated. Play continues until one champion remains.',
+    instructions: [
+      'A wheel spins to pick the first controlling player.',
+      'The controller challenges any remaining opponent to a blackjack duel.',
+      'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
+      'Closest to 21 without going over wins. Bust (over 21) = elimination.',
+      'The duel winner stays in control and picks the next opponent.',
+      'Last player standing wins the competition!',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'BlackjackTournament',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   castleRescue: {
     key: 'castleRescue',
     title: 'Castle Rescue',
@@ -871,6 +897,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 1,
     category: 'logic',
+    retired: false,
+  },
+
+  glass_bridge_brutal: {
+    key: 'glass_bridge_brutal',
+    title: 'Glass Bridge — Brutal Mode',
+    description:
+      'Cross a bridge of paired glass tiles one row at a time. One wrong step and you fall. Broken tiles persist — use them to your advantage.',
+    instructions: [
+      'Players cross a bridge of glass tiles row by row.',
+      'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
+      'Choose wrong and the tile shatters — you are eliminated.',
+      'Broken tiles from previous players remain visible — use them as clues.',
+      'Everyone starts from the beginning; turn order is determined by a number draw.',
+      'The player who crosses fastest — or reaches the furthest row — wins.',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 120_000,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'GlassBridge',
+    legacy: false,
+    weight: 1,
+    category: 'endurance',
     retired: false,
   },
 };
