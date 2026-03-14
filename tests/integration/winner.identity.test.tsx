@@ -133,6 +133,37 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
   );
 }
 
+function installSpectatorSimulationMock() {
+  const capturedInitialWinnerIds: Array<string | null | undefined> = [];
+  vi.doMock('../../src/components/ui/SpectatorView/progressEngine', () => ({
+    useSpectatorSimulation: ({
+      competitorIds,
+      initialWinnerId,
+    }: {
+      competitorIds: string[];
+      initialWinnerId?: string | null;
+    }) => {
+      capturedInitialWinnerIds.push(initialWinnerId);
+      return {
+        state: {
+          competitors: competitorIds.map((id) => ({
+            id,
+            score: id === initialWinnerId ? 100 : 0,
+            isWinner: id === initialWinnerId,
+          })),
+          phase: 'revealed' as const,
+          authoritativeWinnerId: initialWinnerId ?? null,
+          simPct: 100,
+          sequenceComplete: true,
+        },
+        setAuthoritativeWinner: vi.fn(),
+        skip: vi.fn(),
+      };
+    },
+  }));
+  return capturedInitialWinnerIds;
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('winner identity — feature-thunk winner takes precedence over score-based winner', () => {
@@ -287,6 +318,8 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
 
 describe('SpectatorView — winner precedence after the fix', () => {
   afterEach(() => {
+    vi.resetModules();
+    vi.doUnmock('../../src/components/ui/SpectatorView/progressEngine');
     vi.restoreAllMocks();
     // Clean up any window.game mock
     if ((window as unknown as Record<string, unknown>).game) {
@@ -295,7 +328,10 @@ describe('SpectatorView — winner precedence after the fix', () => {
   });
 
   it('resolvedExpectedWinner beats windowAuthWinner and reduxWinner', async () => {
-    // Dynamically import so mocks above do not interfere.
+    vi.resetModules();
+    const capturedInitialWinnerIds = installSpectatorSimulationMock();
+
+    // Dynamically import after the hook mock is installed.
     const { default: SpectatorView } = await import(
       '../../src/components/ui/SpectatorView/SpectatorView'
     );
@@ -306,11 +342,6 @@ describe('SpectatorView — winner precedence after the fix', () => {
     (window as unknown as Record<string, unknown>).game = {
       __authoritativeWinner: { playerId: 'p3' },
     };
-
-    const onDone = vi.fn();
-
-    // body.no-animations → fast-path / immediate onDone in SpectatorView
-    document.body.classList.add('no-animations');
 
     const { unmount } = render(
       <Provider
@@ -340,22 +371,23 @@ describe('SpectatorView — winner precedence after the fix', () => {
       >
         <SpectatorView
           competitorIds={competitorIds}
-          expectedWinnerId="p1"  // should win; highest priority
-          onDone={onDone}
+          expectedWinnerId="p1" // should win; highest priority
         />
       </Provider>,
     );
 
-    // SpectatorView should reveal p1 (expectedWinnerId) — not p2 (redux) or p3 (window).
-    // In no-animations mode, onDone is called synchronously with the resolved winnerId.
-    expect(onDone).toHaveBeenCalledTimes(1);
-    expect(onDone).toHaveBeenCalledWith('p1');
+    // SpectatorView should prefer the explicit expected winner over the
+    // legacy window global and Redux fallback, and pass that winner into the
+    // simulation hook as the authoritative initial winner.
+    expect(capturedInitialWinnerIds).toEqual(['p1']);
 
     unmount();
-    document.body.classList.remove('no-animations');
   });
 
   it('windowAuthWinner reads playerId from an object-shaped __authoritativeWinner', async () => {
+    vi.resetModules();
+    const capturedInitialWinnerIds = installSpectatorSimulationMock();
+
     const { default: SpectatorView } = await import(
       '../../src/components/ui/SpectatorView/SpectatorView'
     );
@@ -364,11 +396,6 @@ describe('SpectatorView — winner precedence after the fix', () => {
     (window as unknown as Record<string, unknown>).game = {
       __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'hoh', timestamp: 0 },
     };
-
-    const onDone = vi.fn();
-
-    // body.no-animations → fast-path / immediate onDone in SpectatorView
-    document.body.classList.add('no-animations');
 
     const store = configureStore({
       reducer: {
@@ -397,7 +424,6 @@ describe('SpectatorView — winner precedence after the fix', () => {
       <Provider store={store}>
         <SpectatorView
           competitorIds={competitorIds}
-          onDone={onDone}
         />
       </Provider>,
     );
@@ -405,22 +431,8 @@ describe('SpectatorView — winner precedence after the fix', () => {
     await act(async () => {});
     unmount();
 
-    document.body.classList.remove('no-animations');
-
-    // Assert that SpectatorView completed and invoked onDone.
-    expect(onDone).toHaveBeenCalled();
-
-    // If onDone receives a payload with a winner identifier, assert it matches
-    // the playerId from the object-shaped __authoritativeWinner.
-    const onDoneMock = onDone as unknown as { mock: { calls: unknown[][] } };
-    const firstCall = onDoneMock.mock.calls[0] ?? [];
-    const firstArg = firstCall[0] as any;
-    if (firstArg && typeof firstArg === 'object') {
-      if ('winnerId' in firstArg) {
-        expect(firstArg.winnerId).toBe('p1');
-      } else if ('playerId' in firstArg) {
-        expect(firstArg.playerId).toBe('p1');
-      }
-    }
+    // The object-shaped legacy global should resolve to its playerId and be
+    // passed through as the authoritative initial winner.
+    expect(capturedInitialWinnerIds).toEqual(['p1']);
   });
 });
