@@ -130,9 +130,14 @@ export interface GlassBridgeState {
 const DEFAULT_ROWS_COUNT = 16;
 const DEFAULT_TIME_LIMIT_MS = 120_000;
 
-/** Default accuracy when AI observes one broken tile and infers the safe side.
- *  Overridden by the player's `nerve` skill if a profile is available. */
-const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.93;
+/**
+ * Default accuracy when AI observes one broken tile and infers the safe side.
+ * Overridden by the player's `nerve` skill if a profile is available.
+ *
+ * 99%   → AI usually chooses the logically safe tile.
+ * 1%    → "slip accident" — AI steps onto the broken tile despite knowing better.
+ */
+const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.99;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -199,16 +204,16 @@ export function aiDecideStep(
     // Right tile is logically safe.
     const accuracy = deriveAiObviousSafeAccuracy(profile);
     if (rng() < accuracy) return 'right';
-    // Accuracy check failed — AI ignores inference and guesses randomly.
-    return rng() < 0.5 ? 'left' : 'right';
+    // Slip accident (0.1%) — AI loses footing and steps onto the broken tile.
+    return 'left';
   }
 
   if (rightBroken) {
     // Left tile is logically safe.
     const accuracy = deriveAiObviousSafeAccuracy(profile);
     if (rng() < accuracy) return 'left';
-    // Accuracy check failed — AI ignores inference and guesses randomly.
-    return rng() < 0.5 ? 'left' : 'right';
+    // Slip accident (0.1%) — AI loses footing and steps onto the broken tile.
+    return 'right';
   }
 
   // No information — pure 50/50 guess.
