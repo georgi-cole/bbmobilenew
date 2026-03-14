@@ -246,6 +246,10 @@ export default function RiskWheelComp({
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const { startWheelSound, stopWheelSound } = useWheelOfLuck();
+  // Stable ref so the unmount cleanup can call stopWheelSound without it
+  // needing to be in the effect's dependency array.
+  const stopWheelSoundRef = useRef(stopWheelSound);
+  useEffect(() => { stopWheelSoundRef.current = stopWheelSound; }, [stopWheelSound]);
 
   // Wheel rotation state
   const [wheelAngle, setWheelAngle] = useState(0);
@@ -334,6 +338,8 @@ export default function RiskWheelComp({
         clearTimeout(spinTimeoutRef.current);
         spinTimeoutRef.current = null;
       }
+      // Stop any looping spin audio if the component unmounts mid-spin.
+      stopWheelSoundRef.current();
     };
   }, []);
 
