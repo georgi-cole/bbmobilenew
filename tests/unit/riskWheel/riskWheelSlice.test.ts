@@ -540,47 +540,43 @@ describe('advanceFrom666', () => {
     expect(getState(store).phase).toBe('awaiting_decision');
   });
 
+  const MAX_SEED_SEARCH = 100000;
+
+  function findSeedForThirdSpinDevilSeed(): number {
+    for (let s2 = 0; s2 < MAX_SEED_SEARCH; s2++) {
+      const firstSector = WHEEL_SECTORS[pickSectorIndex(s2, 0)];
+        const secondSector = WHEEL_SECTORS[pickSectorIndex(s2, 1)];
+        const thirdSector = WHEEL_SECTORS[pickSectorIndex(s2, 2)];
+        if (
+          (firstSector.type === 'points' || firstSector.type === 'zero') &&
+          (secondSector.type === 'points' || secondSector.type === 'zero') &&
+          thirdSector.type === 'devil'
+        ) {
+          return s2;
+        }
+      }
+      throw new Error(
+        `Could not find seed producing two non-terminating spins followed by devil within ${MAX_SEED_SEARCH} attempts`,
+      );
+  }
+
   it('moves to turn_complete when on third spin', () => {
-    // Get a 666 on the first available spin after two normal spins
-    // Instead, directly test the transition at spinCount >= 3
-    const store = makeStore();
-    // Find seed for 666 first spin
-    let seed = 0;
-    while (WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'devil') seed++;
-    init(store, ['a', 'b'], seed);
-    // Manually set currentSpinCount to 2 before spinning
-    // We can't do that directly, so let's find a seed with 666 on a later call count
-    // Instead verify via 3 spins where last is 666
-    // Use a different approach: find seed where pickSectorIndex(seed,2) = devil
-    let s2 = 1000;
-    while (WHEEL_SECTORS[pickSectorIndex(s2, 2)].type !== 'devil') s2++;
-    // Also ensure first two spins don't end the turn (no bankrupt/skip after spins 1,2)
-    // This is complex; just test the direct reducer transition
+    const seed = findSeedForThirdSpinDevilSeed();
     const testStore = makeStore();
-    init(testStore, ['a', 'b'], s2);
-    // Force to awaiting_decision after two non-terminating spins
-    const firstSector = WHEEL_SECTORS[pickSectorIndex(s2, 0)];
-    const secondSector = WHEEL_SECTORS[pickSectorIndex(s2, 1)];
-    const thirdSector = WHEEL_SECTORS[pickSectorIndex(s2, 2)];
-    if (
-      (firstSector.type === 'points' || firstSector.type === 'zero') &&
-      (secondSector.type === 'points' || secondSector.type === 'zero') &&
-      thirdSector.type === 'devil'
-    ) {
-      testStore.dispatch(performSpin()); // spin 1
-      testStore.dispatch(playerSpinAgain()); // → awaiting_spin
-      testStore.dispatch(performSpin()); // spin 2
-      testStore.dispatch(playerSpinAgain()); // → awaiting_spin
-      testStore.dispatch(performSpin()); // spin 3 → six_six_six
-      const state = getState(testStore);
-      expect(state.phase).toBe('six_six_six');
-      expect(state.currentSpinCount).toBe(3);
-      testStore.dispatch(advanceFrom666());
-      expect(getState(testStore).phase).toBe('turn_complete');
-    } else {
-      // Seed search didn't yield expected path — just skip via marker
-      expect(true).toBe(true);
-    }
+    init(testStore, ['a', 'b'], seed);
+
+    testStore.dispatch(performSpin()); // spin 1
+    testStore.dispatch(playerSpinAgain()); // → awaiting_spin
+    testStore.dispatch(performSpin()); // spin 2
+    testStore.dispatch(playerSpinAgain()); // → awaiting_spin
+    testStore.dispatch(performSpin()); // spin 3 → six_six_six
+
+    const stateAfterThirdSpin = getState(testStore);
+    expect(stateAfterThirdSpin.phase).toBe('six_six_six');
+    expect(stateAfterThirdSpin.currentSpinCount).toBe(3);
+
+    testStore.dispatch(advanceFrom666());
+    expect(getState(testStore).phase).toBe('turn_complete');
   });
 });
 
