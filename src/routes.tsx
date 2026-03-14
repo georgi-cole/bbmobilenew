@@ -53,6 +53,11 @@ const FamousFiguresTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/FamousFiguresTestPage/FamousFiguresTestPage'))
   : null;
 
+// Dev-only Silent Saboteur test page.
+const SilentSaboteurTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/SilentSaboteurTestPage/SilentSaboteurTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -85,6 +90,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && FamousFiguresTestPage != null
         ? [{ path: 'ff-test', element: <Suspense fallback={null}><FamousFiguresTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && SilentSaboteurTestPage != null
+        ? [{ path: 'ss-test', element: <Suspense fallback={null}><SilentSaboteurTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },

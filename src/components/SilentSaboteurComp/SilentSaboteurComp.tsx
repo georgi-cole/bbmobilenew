@@ -54,6 +54,7 @@ interface Props {
   prizeType: SilentSaboteurPrizeType;
   seed: number;
   onComplete?: () => void;
+  standalone?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ export default function SilentSaboteurComp({
   prizeType,
   seed,
   onComplete,
+  standalone = false,
 }: Props) {
   const dispatch = useDispatch<AppDispatch>();
   const ss = useSelector(
@@ -234,9 +236,11 @@ export default function SilentSaboteurComp({
   // complete: dispatch outcome + notify parent
   useEffect(() => {
     if (phase !== 'complete') return;
-    dispatch(resolveSilentSaboteurOutcome());
+    if (!standalone) {
+      dispatch(resolveSilentSaboteurOutcome());
+    }
     onComplete?.();
-  }, [phase, dispatch, onComplete]);
+  }, [phase, dispatch, onComplete, standalone]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render helpers
