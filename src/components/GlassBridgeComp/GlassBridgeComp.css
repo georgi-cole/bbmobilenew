@@ -954,7 +954,62 @@ body.no-animations .gb-player-marker.gb-player-landing {
   transform: none !important;
 }
 
-@media (max-width: 420px) {
+/* ── LED bridge accent rails ──────────────────────────────────────────────── */
+
+.gb-led-rail {
+  position: absolute;
+  top: 1rem;
+  bottom: 0.5rem;
+  width: 2px;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 1px;
+}
+
+.gb-led-rail-left {
+  left: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 60, 140, 0.08) 8%,
+    rgba(255, 60, 140, 0.50) 25%,
+    rgba(220, 60, 160, 0.58) 50%,
+    rgba(255, 60, 140, 0.50) 75%,
+    rgba(255, 60, 140, 0.08) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 5px 1px rgba(255, 60, 140, 0.20);
+  animation: gb-led-breathe 4.8s ease-in-out infinite;
+}
+
+.gb-led-rail-right {
+  right: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(40, 160, 255, 0.08) 8%,
+    rgba(40, 160, 255, 0.50) 25%,
+    rgba(60, 140, 255, 0.58) 50%,
+    rgba(40, 160, 255, 0.50) 75%,
+    rgba(40, 160, 255, 0.08) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 5px 1px rgba(40, 160, 255, 0.20);
+  animation: gb-led-breathe 4.8s ease-in-out infinite 1.6s;
+}
+
+@keyframes gb-led-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1; }
+}
+
+/* no-animations override */
+body.no-animations .gb-led-rail {
+  animation: none !important;
+  opacity: 0.7 !important;
+}
+
+
   .gb-spectator-actions {
     flex-direction: column;
   }
