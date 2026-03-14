@@ -21,7 +21,6 @@ import {
   WHEEL_SECTORS,
   computeEliminationCount,
   type RiskWheelCompetitionType,
-  type RiskWheelState,
 } from '../../features/riskWheel/riskWheelSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import './RiskWheelComp.css';
@@ -149,7 +148,7 @@ export default function RiskWheelComp({
   standalone = false,
 }: Props) {
   const dispatch = useDispatch<AppDispatch>();
-  const rw = useSelector((s: RootState) => (s as RootState & { riskWheel: RiskWheelState }).riskWheel);
+  const rw = useSelector((s: RootState) => s.riskWheel);
 
   const [spinning, setSpinning] = useState(false);
   const isInitialisedRef = useRef(false);
