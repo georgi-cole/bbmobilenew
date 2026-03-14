@@ -117,8 +117,12 @@ export interface RiskWheelState {
   /** Final winner id (set when phase === 'complete'). */
   winnerId: string | null;
 
-  /** Master seed for all RNG. */
-  seed: number;
+  /**
+   * Master seed for all RNG.
+   * Optional so the slice is usable without a caller-supplied seed;
+   * when omitted from `initRiskWheel`, a random seed is generated internally.
+   */
+  seed?: number;
   /** Sequential counter driving the main spin RNG. */
   rngCallCount: number;
   /** Separate counter for AI decision RNG. */
@@ -130,6 +134,12 @@ export interface RiskWheelState {
 
   /** Guard: outcome thunk only fires once. */
   outcomeResolved: boolean;
+
+  /**
+   * Final round scores keyed by playerId, snapshotted when phase reaches 'complete'.
+   * Persists after round scores are reset so callers can read the final standings.
+   */
+  finalScores?: Record<string, number>;
 }
 
 // ─── Wheel sectors ────────────────────────────────────────────────────────────
@@ -466,12 +476,13 @@ const initialState: RiskWheelState = {
   last666Effect: null,
   eliminatedThisRound: [],
   winnerId: null,
-  seed: 0,
+  seed: undefined,
   rngCallCount: 0,
   aiDecisionCallCount: 0,
   aiPersonalities: {},
   aiDecisionCounts: {},
   outcomeResolved: false,
+  finalScores: undefined,
 };
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -505,7 +516,7 @@ function applySector(
     }
   } else if (sector.type === 'devil') {
     // Consume next RNG call for the 666 effect
-    const effect = resolve666Effect(state.seed, state.rngCallCount);
+    const effect = resolve666Effect(state.seed ?? 0, state.rngCallCount);
     state.rngCallCount += 1;
     state.last666Effect = effect;
     state.roundScores[currentId] =
@@ -549,7 +560,7 @@ function advancePlayerOrRound(state: RiskWheelState): void {
       state.round,
       state.activePlayerIds.length,
     );
-    const tieBreakSeed = (state.seed ^ (state.round * 0xabcdef12)) >>> 0;
+    const tieBreakSeed = ((state.seed ?? 0) ^ (state.round * 0xabcdef12)) >>> 0;
     state.eliminatedThisRound = computeEliminatedPlayers(
       state.activePlayerIds,
       state.roundScores,
@@ -579,7 +590,8 @@ const riskWheelSlice = createSlice({
       action: PayloadAction<{
         participantIds: string[];
         competitionType: RiskWheelCompetitionType;
-        seed: number;
+        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
+        seed?: number;
         humanPlayerId: string | null;
       }>,
     ) {
@@ -606,9 +618,11 @@ const riskWheelSlice = createSlice({
       state.aiPersonalities = {};
       state.aiDecisionCounts = {};
       state.outcomeResolved = false;
+      state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      state.seed = seed >>> 0;
+      // Use the caller-supplied seed when provided; fall back to a random value.
+      state.seed = (seed !== undefined ? seed : Math.floor(Math.random() * 0x100000000)) >>> 0;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
@@ -641,7 +655,7 @@ const riskWheelSlice = createSlice({
     performSpin(state) {
       if (state.phase !== 'awaiting_spin') return;
 
-      const sectorIndex = pickSectorIndex(state.seed, state.rngCallCount);
+      const sectorIndex = pickSectorIndex(state.seed ?? 0, state.rngCallCount);
       applySector(state, sectorIndex, 1);
     },
 
@@ -697,7 +711,7 @@ const riskWheelSlice = createSlice({
       const score = state.roundScores[currentId] ?? 0;
       const decisionIndex = state.aiDecisionCounts[currentId] ?? 0;
       const stop = aiShouldStop({
-        seed: state.seed,
+        seed: state.seed ?? 0,
         round: state.round,
         playerId: currentId,
         personality: state.aiPersonalities[currentId] ?? 'balanced',
@@ -746,7 +760,7 @@ const riskWheelSlice = createSlice({
 
         if (phase === 'awaiting_spin') {
           // AI spins synchronously
-          const sectorIndex = pickSectorIndex(state.seed, state.rngCallCount);
+          const sectorIndex = pickSectorIndex(state.seed ?? 0, state.rngCallCount);
           applySector(state, sectorIndex, 1);
           // If 666 landed, immediately skip the animation phase for AI
           if (state.phase === 'six_six_six') {
@@ -760,7 +774,7 @@ const riskWheelSlice = createSlice({
           const score = state.roundScores[currentId] ?? 0;
           const decisionIndex = state.aiDecisionCounts[currentId] ?? 0;
           const stop = aiShouldStop({
-            seed: state.seed,
+            seed: state.seed ?? 0,
             round: state.round,
             playerId: currentId,
             personality: state.aiPersonalities[currentId] ?? 'balanced',
@@ -815,6 +829,8 @@ const riskWheelSlice = createSlice({
         } else {
           state.winnerId = null;
         }
+        // Snapshot final scores before transitioning so callers can read them.
+        state.finalScores = { ...state.roundScores };
         state.phase = 'complete';
         return;
       }
