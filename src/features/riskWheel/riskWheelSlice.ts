@@ -5,12 +5,12 @@
  *
  *   idle
  *    └─ initRiskWheel ─────────────────────────────────────→ awaiting_spin
- *         └─ performSpin ──────────────────────────────────→ spin_result
+ *         └─ performSpin ──────────────────────────────────→ six_six_six | awaiting_decision | turn_complete
  *              │ (666 landed)
  *              └─ (phase = six_six_six, effect computed)
  *                   └─ advanceFrom666 ────────────────────→ awaiting_decision | turn_complete
  *              │ (normal result)
- *              └─ advanceFromSpinResult ─────────────────→ awaiting_decision | turn_complete
+ *              └─ (phase = awaiting_decision | turn_complete)
  *                   └─ (decision phase, human only)
  *                        └─ playerStop ───────────────────→ turn_complete
  *                        └─ playerSpinAgain ──────────────→ awaiting_spin
