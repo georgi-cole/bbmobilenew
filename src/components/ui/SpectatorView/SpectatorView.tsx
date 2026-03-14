@@ -127,6 +127,23 @@ const FLOATER_CONFIG = [
   { left: '92%', delay: '0.3s',  dur: '6.4s' },
 ];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Extract a player ID string from window.game.__authoritativeWinner.
+ * The value may be a plain string or an object with a `playerId` field (e.g.
+ * the shape written by legacy hold-wall.js code).  Returns null for any
+ * unrecognised shape.
+ */
+function extractAuthoritativeWinnerId(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'playerId' in value) {
+    const id = (value as { playerId: unknown }).playerId;
+    return typeof id === 'string' ? id : null;
+  }
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SpectatorView({
@@ -187,20 +204,22 @@ export default function SpectatorView({
   // ── Resolve authoritative winner from multiple sources ────────────────────
 
   // Synchronous check at mount time only — window.game.__authoritativeWinner
-  // is a legacy mutable global. Validated against competitorIds so a stale or
-  // unrelated winner ID is ignored.
+  // is a legacy mutable global set by hold-wall.js.  It may be an object with
+  // a `playerId` field (Hold the Wall) or a plain string.  Validated against
+  // competitorIds so a stale or unrelated winner ID is ignored.
   const windowAuthWinner = useMemo<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const w = window.game?.__authoritativeWinner;
-    if (w && competitorIds.includes(w)) return w;
-    return null;
+    const winnerId = extractAuthoritativeWinnerId(w);
+    return winnerId && competitorIds.includes(winnerId) ? winnerId : null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once at mount — this is synchronous detection only
 
   // hohId from Redux store — may be set before or after mount
   const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
 
-  // expectedWinnerId takes priority; falls back to initialWinnerId then other sources.
+  // expectedWinnerId (highest priority — pre-computed before the overlay opens);
+  // falls back to initialWinnerId, then window global, then Redux hohId.
   const resolvedExpectedWinner =
     propExpectedWinnerId && competitorIds.includes(propExpectedWinnerId)
       ? propExpectedWinnerId
@@ -208,7 +227,7 @@ export default function SpectatorView({
       ? propInitialWinnerId
       : null;
 
-  const initialWinner = windowAuthWinner ?? reduxWinner ?? resolvedExpectedWinner ?? null;
+  const initialWinner = resolvedExpectedWinner ?? windowAuthWinner ?? reduxWinner ?? null;
 
   // ── Simulation hook ───────────────────────────────────────────────────────
 

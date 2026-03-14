@@ -1421,71 +1421,65 @@ export default function GameScreen() {
             };
           })}
           onDone={(rawValue) => {
+            // Capture challenge fields now — completeChallenge() will clear
+            // pendingChallenge from Redux, but this closure still holds it.
+            const capturedParticipants = pendingChallenge.participants;
+            const capturedGameKey = pendingChallenge.game.key;
+            // prizeType was recorded at challenge-start and is reliable even
+            // after the phase advances (feature thunks can transition
+            // hoh_comp → hoh_results before this callback fires).
+            const capturedPrizeType = pendingChallenge.prizeType ?? 'HOH';
+
             // Build raw results for all challenge participants using pre-computed
             // AI scores (appropriate for the selected game's metric kind).
-            const rawResults = pendingChallenge.participants.map((id) => ({
+            const rawResults = capturedParticipants.map((id) => ({
               playerId: id,
               rawValue:
                 id === humanPlayer?.id
                   ? rawValue
                   : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
-            const winnerId = dispatch(completeChallenge(rawResults)) as string | null;
+            const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null;
             // Record per-game personal records for all participants.
             dispatch(updateGamePRs({
-              gameKey: pendingChallenge.game.key,
+              gameKey: capturedGameKey,
               scores: Object.fromEntries(
                 rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
               ),
               lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
             }));
-            const finalWinnerId = winnerId ?? pendingChallenge.participants[0];
 
             // ── Final 3 minigame completion ──────────────────────────────────
             // Apply the winner to the Final 3 part (no ceremony overlay for F3 parts).
             if (isF3MinigamePhase) {
-              dispatch(applyF3MinigameWinner(finalWinnerId));
+              dispatch(applyF3MinigameWinner(scoreWinnerId ?? capturedParticipants[0]));
               return;
             }
 
             // ── HOH / POV completion (ceremony overlay) ──────────────────────
-            // Show the CeremonyOverlay cutout before committing the winner to the store.
-            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
-            const sourceDomRect = getTileRect(finalWinnerId);
-            const isHohComp = game.phase === 'hoh_comp';
+            // Use prize type captured at challenge-start; game.phase may have
+            // already advanced if a feature thunk (e.g. resolveHoldTheWallOutcome,
+            // resolveGlassBridgeOutcome) applied the winner synchronously before
+            // this callback fires.
+            const isHohComp = capturedPrizeType === 'HOH';
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
 
-            // ── dontGoOver / holdWall / famousFigures / biographyBlitz / glass_bridge_brutal / silentSaboteur: skip SpotlightAnimation ──
-            let skipSpotlightAnimation = false;
-            const gameKey = pendingChallenge.game.key;
-            if (gameKey === 'dontGoOver' || gameKey === 'holdWall' || gameKey === 'famousFigures' || gameKey === 'biographyBlitz' || gameKey === 'glass_bridge_brutal' || gameKey === 'silentSaboteur') {
-              // Don't start the heavy SpotlightAnimation for these games — it's brittle and
-              // causes race/measurement issues. Instead, ensure the winner is applied and
-              // show the lightweight QuickCrown. Do this asynchronously to avoid
-              // interfering with MinigameHost teardown.
-              console.log('SKIP_SPOTLIGHT_FOR_MINIGAME', { gameKey, winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' });
+            // Prefer the canonical winner already committed to the store by the
+            // game's feature thunk.  storeRef gives the live Redux state — not
+            // the React-render closure — so same-event dispatches (e.g. the
+            // "Claim Prize" button that calls resolveCompetitionOutcome() and
+            // onComplete() in the same handler) are also captured correctly.
+            const liveState = storeRef.current.getState();
+            const featureAppliedWinner = isHohComp
+              ? liveState.game.hohId
+              : liveState.game.povWinnerId;
+            const finalWinnerId = (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner))
+              ? featureAppliedWinner
+              : (scoreWinnerId ?? capturedParticipants[0]);
 
-              // If the winner isn't yet reflected in the game state, apply it now.
-              const winnerAlreadyApplied =
-                (isHohComp && game.hohId === finalWinnerId) ||
-                (!isHohComp && game.povWinnerId === finalWinnerId);
-
-              if (!winnerAlreadyApplied) {
-                dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
-              }
-
-              // QuickCrown popup intentionally disabled to avoid race/mislabel issues.
-
-              // Mark that we must skip the SpotlightAnimation below.
-              skipSpotlightAnimation = true;
-            }
-
-            if (skipSpotlightAnimation) {
-              // We've already applied the winner and shown a lightweight effect; do not
-              // create the heavy ceremony overlay for these minigames.
-              return;
-            }
+            const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
+            const sourceDomRect = getTileRect(finalWinnerId);
 
             if (!winnerPlayer || !sourceDomRect) {
               // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
@@ -1529,8 +1523,6 @@ export default function GameScreen() {
           measureA={pendingWinnerCeremony.measureA}
         />
       )}
-
-      {/* QuickCrown banner removed for dontGoOver to prevent misleading winner popup. */}
 
       {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
       {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
