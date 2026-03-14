@@ -414,7 +414,6 @@ export default function GlassBridgeComp({
     if (totalChosen < total) return;
     // All players have picked — finalize via the one-shot guard.
     tryFinalizeOrderSelectionRef.current();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.phase, gb.chosenNumbers, gb.participants.length, humanId]);
 
   // ── 4. Order reveal animation ─────────────────────────────────────────────

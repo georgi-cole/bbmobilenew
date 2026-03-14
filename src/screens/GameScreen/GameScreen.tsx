@@ -70,7 +70,6 @@ import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/Jury
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
-import { shouldSkipSpotlight } from './spotlightUtils'
 
 /**
  * GameScreen — main gameplay view.
