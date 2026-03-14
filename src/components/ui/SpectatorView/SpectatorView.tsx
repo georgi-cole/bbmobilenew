@@ -204,9 +204,9 @@ export default function SpectatorView({
   // ── Resolve authoritative winner from multiple sources ────────────────────
 
   // Synchronous check at mount time only — window.game.__authoritativeWinner
-  // is a legacy mutable global set by hold-wall.js.  It may be an object with
-  // a `playerId` field (Hold the Wall) or a plain string.  Validated against
-  // competitorIds so a stale or unrelated winner ID is ignored.
+  // is a legacy, optional mutable global from older builds/integrations. It may
+  // be an object with a `playerId` field (Hold the Wall) or a plain string.
+  // Validated against competitorIds so a stale or unrelated winner ID is ignored.
   const windowAuthWinner = useMemo<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const w = window.game?.__authoritativeWinner;
