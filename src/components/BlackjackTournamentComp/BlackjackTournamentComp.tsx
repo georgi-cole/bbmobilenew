@@ -300,7 +300,12 @@ export default function BlackjackTournamentComp({
 
     // Animate spinner by cycling through player indices.
     spinnerIntervalRef.current = window.setInterval(() => {
-      setSpinnerIdx((i) => (i + 1) % len);
+      setSpinnerIdx((i) => {
+        const next = (i + 1) % len;
+        // Keep ref in sync so timeout callbacks see the latest index.
+        spinnerIdxRef.current = next;
+        return next;
+      });
     }, 180);
 
     // After SPIN_SLOW_AT_FRACTION of spin duration, slow down visually.
@@ -317,7 +322,8 @@ export default function BlackjackTournamentComp({
       setSpinRevealed(true);
       revealTimerRef.current = window.setTimeout(() => {
         setSpinRevealed(false);
-        dispatch(resolveSpinner());
+        const selectedIndex = spinnerIdxRef.current;
+        dispatch(resolveSpinner(selectedIndex));
       }, 900);
     }, SPIN_DURATION_MS);
 
