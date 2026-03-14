@@ -844,9 +844,11 @@ describe('aiDecide', () => {
 
 describe('resolveAllAiTurns', () => {
   /**
-   * Helper: run one full round with a human as first player (player 'a'),
-   * using the human player's actions manually, then call resolveAllAiTurns.
-   * Verifies AI turns resolve without stalling.
+   * Helper: find a seed such that the first sector selected
+   * (spin index 0) is a positive points sector.
+   *
+   * Used so tests can initialize the wheel with a deterministic
+   * seed that guarantees the first spin yields positive points.
    */
   function findPointsSeed(): number {
     let seed = 0;
