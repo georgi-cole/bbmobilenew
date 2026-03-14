@@ -81,6 +81,11 @@ function getName(id: string, participants: MinigameParticipant[] | undefined): s
   return participants?.find((p) => p.id === id)?.name ?? id;
 }
 
+/** Format a numeric score with a leading '+' for non-negative values. */
+function formatScore(score: number): string {
+  return `${score >= 0 ? '+' : ''}${score}`;
+}
+
 // ─── Sector colour palette ────────────────────────────────────────────────────
 
 const SECTOR_COLORS: string[] = [
@@ -197,7 +202,7 @@ function ScoreDisplay({ score, animating }: { score: number; animating?: boolean
   const colour = score < 0 ? '#ef4444' : score === 0 ? '#9ca3af' : '#34d399';
   return (
     <span className={cls} style={{ color: colour }}>
-      {score >= 0 ? '+' : ''}{score}
+      {formatScore(score)}
     </span>
   );
 }
@@ -237,6 +242,8 @@ export default function RiskWheelComp({
         humanPlayerId: participants?.find((p) => p.isHuman)?.id ?? null,
       }),
     );
+  // Only run once on mount; participantIds/prizeType/seed are stable for the
+  // lifetime of this game session and dispatch is a stable Redux reference.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -244,12 +251,14 @@ export default function RiskWheelComp({
   useEffect(() => {
     if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone) return;
     dispatch(markRiskWheelOutcomeResolved());
+  // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rw?.phase, rw?.outcomeResolved]);
 
   useEffect(() => {
     if (!rw || rw.phase !== 'complete' || !rw.outcomeResolved || standalone) return;
     onCompleteRef.current?.();
+  // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rw?.outcomeResolved]);
 
@@ -347,7 +356,7 @@ export default function RiskWheelComp({
       <div className="rw-root rw-winner-screen">
         <div className="rw-winner-confetti" aria-hidden="true">
           {['🎉','✨','🏆','⭐','🎊','✨','🎉'].map((e, i) => (
-            <span key={i} className="rw-confetti-piece" style={{ '--ci': i } as React.CSSProperties}>{e}</span>
+            <span key={i} className="rw-confetti-piece">{e}</span>
           ))}
         </div>
         <div className="rw-winner-crown" aria-hidden="true">🏆</div>
@@ -386,7 +395,7 @@ export default function RiskWheelComp({
                 <span className="rw-summary-rank">#{rank + 1}</span>
                 <span className="rw-summary-name">{getName(id, participants)}</span>
                 <span className={`rw-summary-score${score < 0 ? ' rw-summary-score--neg' : ''}`}>
-                  {score >= 0 ? '+' : ''}{score}
+                  {formatScore(score)}
                 </span>
                 {isOut && <span className="rw-summary-badge rw-summary-badge--out" aria-label="Eliminated">🚪 OUT</span>}
                 {!isOut && rank === 0 && <span className="rw-summary-badge rw-summary-badge--top">⭐ TOP</span>}
@@ -525,7 +534,7 @@ export default function RiskWheelComp({
                 aria-label={`Stop and bank ${currentScore} points`}
               >
                 🏦 Stop &amp; Bank{' '}
-                <span className="rw-bank-score">{currentScore >= 0 ? '+' : ''}{currentScore}</span>
+                <span className="rw-bank-score">{formatScore(currentScore)}</span>
               </button>
             </>
           )}
@@ -554,7 +563,7 @@ export default function RiskWheelComp({
                 <span key={id} className={`rw-mini-score-chip${isElim ? ' rw-mini-score-chip--out' : ''}`}>
                   <span className="rw-mini-score-name">{getName(id, participants)}</span>
                   <span className={`rw-mini-score-val${sc < 0 ? ' neg' : ''}`}>
-                    {sc >= 0 ? '+' : ''}{sc}
+                    {formatScore(sc)}
                   </span>
                 </span>
               );
