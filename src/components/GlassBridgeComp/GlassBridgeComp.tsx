@@ -34,7 +34,6 @@ import {
   completeGame,
   setHumanSpectating,
   resetGlassBridge,
-  buildAiNumberChoices,
   aiDecideStep,
   selectActivePlayerId,
   selectIsGameOver,
@@ -185,9 +184,9 @@ export default function GlassBridgeComp({
   const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
 
   // ── Order-selection AI pick queue refs (sequential pacing) ───────────────
-  /** Pre-computed AI number choices for this game, dispatched one by one. */
-  const aiOrderPickQueueRef = useRef<Array<{ playerId: string; number: number }>>([]);
-  /** Index of the next pick to dispatch from aiOrderPickQueueRef. */
+  /** AI player IDs queued to pick, in participant order (numbers computed lazily). */
+  const aiOrderPickQueueRef = useRef<string[]>([]);
+  /** Index of the next AI to dispatch from aiOrderPickQueueRef. */
   const aiOrderPickIndexRef = useRef(0);
   /** Timer handle for the next scheduled AI order pick. */
   const aiOrderTimerRef = useRef<number | null>(null);
@@ -195,6 +194,12 @@ export default function GlassBridgeComp({
   const humanChosenForOrderRef = useRef(false);
   /** Stable function ref used by the acceleration effect. */
   const pickNextOrderFnRef = useRef<() => void>(() => {});
+  /** One-shot guard: prevents duplicate finaliseOrderSelection calls. */
+  const orderSelectionFinalizedRef = useRef(false);
+  /** Live mirror of gb.chosenNumbers so AI timer callbacks read current state. */
+  const currentChosenNumbersRef = useRef<Record<string, number>>(gb.chosenNumbers);
+  /** Stable ref to the tryFinalizeOrderSelection helper (set by effect #2). */
+  const tryFinalizeOrderSelectionRef = useRef<() => void>(() => {});
   /** Tracks newly-finished players to trigger landing animation. */
   const prevFinishersRef = useRef<Set<string>>(new Set());
 
@@ -261,6 +266,11 @@ export default function GlassBridgeComp({
     };
   }, [dispatch]);
 
+  // ── 1b. Keep currentChosenNumbersRef in sync (used by AI timer callbacks). ─
+  useEffect(() => {
+    currentChosenNumbersRef.current = gb.chosenNumbers;
+  }, [gb.chosenNumbers]);
+
   // ── 2. Order selection: AI auto-picks (sequential, human-like pacing) ────
   useEffect(() => {
     if (gb.phase !== 'order_selection') {
@@ -268,39 +278,63 @@ export default function GlassBridgeComp({
       aiOrderPickQueueRef.current = [];
       aiOrderPickIndexRef.current = 0;
       humanChosenForOrderRef.current = false;
+      orderSelectionFinalizedRef.current = false;
       return;
     }
 
-    // Pre-compute all AI picks deterministically (same seed + 100 sub-seed).
+    // Seeded RNG for AI order picks (sub-seed 100 keeps it isolated from bridge layout).
     const aiRng = mulberry32(seed + 100);
-    const aiChoices = buildAiNumberChoices(
-      gb.participants.map(p => p.id),
-      humanId,
-      gb.chosenNumbers,
-      aiRng,
-    );
-
-    aiOrderPickQueueRef.current = Object.entries(aiChoices).map(
-      ([playerId, number]) => ({ playerId, number }),
-    );
+    // Queue stores AI player IDs only; the actual number is picked lazily at
+    // timer-fire time from the live available pool to avoid conflicts when the
+    // human picks first.
+    aiOrderPickQueueRef.current = gb.participants
+      .filter(p => p.id !== humanId)
+      .map(p => p.id);
     aiOrderPickIndexRef.current = 0;
+    orderSelectionFinalizedRef.current = false;
     // If no human or human already chose (e.g. AI-only game), start in fast mode.
     humanChosenForOrderRef.current = humanId
       ? gb.chosenNumbers[humanId] !== undefined
       : true;
 
+    // Total participant count is fixed for this game session.
+    const totalParticipants = gb.participants.length;
+
+    /**
+     * Check if all players have picked and finalize exactly once.
+     * Reads live state via currentChosenNumbersRef so it's always current.
+     */
+    function tryFinalizeOrderSelection() {
+      if (orderSelectionFinalizedRef.current) return;
+      const chosen = currentChosenNumbersRef.current;
+      const pickedCount = Object.keys(chosen).length;
+      if (pickedCount < totalParticipants) return;
+      // Verify uniqueness (guard against any slice-level rejection edge case).
+      const values = Object.values(chosen);
+      if (new Set(values).size !== values.length) return;
+      // All valid picks present — finalize exactly once.
+      orderSelectionFinalizedRef.current = true;
+      if (aiOrderTimerRef.current !== null) {
+        window.clearTimeout(aiOrderTimerRef.current);
+        aiOrderTimerRef.current = null;
+      }
+      revealTimerRef.current = window.setTimeout(() => {
+        dispatch(finaliseOrderSelection());
+      }, ORDER_REVEAL_DELAY_MS);
+    }
+
+    // Store stable reference so effect 2b can also trigger the finalize check.
+    tryFinalizeOrderSelectionRef.current = tryFinalizeOrderSelection;
+
     // Dispatch one pick at a time with a delay so each AI player appears to
     // "think" before choosing. Remaining AI speed up once the human picks.
     function pickNext() {
-      const queue = aiOrderPickQueueRef.current;
-      if (aiOrderPickIndexRef.current >= queue.length) {
-        // All AI have picked. For AI-only games, finalise right away (effect #3
-        // handles the human-present case).
-        if (!humanId) {
-          revealTimerRef.current = window.setTimeout(() => {
-            dispatch(finaliseOrderSelection());
-          }, ORDER_REVEAL_DELAY_MS);
-        }
+      // Guard: stop the chain if the phase has already been finalized.
+      if (orderSelectionFinalizedRef.current) return;
+
+      if (aiOrderPickIndexRef.current >= aiOrderPickQueueRef.current.length) {
+        // All AI have attempted picks — check if we can finalize now.
+        tryFinalizeOrderSelection();
         return;
       }
 
@@ -308,11 +342,27 @@ export default function GlassBridgeComp({
       const delay = fast ? ORDER_AI_PICK_FAST_MS : ORDER_AI_PICK_SLOW_MS;
 
       aiOrderTimerRef.current = window.setTimeout(() => {
-        aiOrderTimerRef.current = null;
-        const pick = aiOrderPickQueueRef.current[aiOrderPickIndexRef.current++];
-        if (pick) {
-          dispatch(recordNumberChoice({ playerId: pick.playerId, number: pick.number }));
+        // Guard: if already finalized (e.g. human picked last), skip.
+        if (orderSelectionFinalizedRef.current) {
+          aiOrderTimerRef.current = null;
+          return;
         }
+
+        aiOrderTimerRef.current = null;
+        const playerId = aiOrderPickQueueRef.current[aiOrderPickIndexRef.current++];
+        if (playerId) {
+          // Re-read LIVE available numbers at fire time to avoid conflict with
+          // any number the human may have already chosen.
+          const chosen = currentChosenNumbersRef.current;
+          const takenNums = new Set(Object.values(chosen));
+          const available = Array.from({ length: totalParticipants }, (_, i) => i + 1)
+            .filter(n => !takenNums.has(n));
+          if (available.length > 0) {
+            const idx = Math.floor(aiRng() * available.length);
+            dispatch(recordNumberChoice({ playerId, number: available[idx] }));
+          }
+        }
+        // Continue the chain; tryFinalizeOrderSelection is called when queue exhausted.
         pickNext();
       }, delay);
     }
@@ -345,25 +395,25 @@ export default function GlassBridgeComp({
       window.clearTimeout(aiOrderTimerRef.current);
       aiOrderTimerRef.current = null;
       pickNextOrderFnRef.current();
+    } else {
+      // No timer is running (e.g. all AIs already picked before the human).
+      // Just run the finalize check — effect #3 will also catch this, but
+      // calling it here ensures we never miss the completion moment.
+      tryFinalizeOrderSelectionRef.current();
     }
   }, [gb.chosenNumbers, gb.phase, humanId]);
 
   // ── 3. When all numbers chosen (including human), finalise ───────────────
   useEffect(() => {
     if (gb.phase !== 'order_selection') return;
-    if (!humanId) return; // handled above
+    if (!humanId) return; // AI-only handled by pickNext
+    // Guard: don't schedule if already finalizing.
+    if (orderSelectionFinalizedRef.current) return;
     const totalChosen = Object.keys(gb.chosenNumbers).length;
     const total = gb.participants.length;
     if (totalChosen < total) return;
-    revealTimerRef.current = window.setTimeout(() => {
-      dispatch(finaliseOrderSelection());
-    }, ORDER_REVEAL_DELAY_MS);
-    return () => {
-      if (revealTimerRef.current !== null) {
-        window.clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = null;
-      }
-    };
+    // All players have picked — finalize via the one-shot guard.
+    tryFinalizeOrderSelectionRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.phase, gb.chosenNumbers, gb.participants.length, humanId]);
 
@@ -783,6 +833,9 @@ export default function GlassBridgeComp({
           </div>
           {/* Bridge */}
           <div className="gb-bridge-container" role="region" aria-label="Glass bridge">
+            {/* LED accent rails — decorative outer edge lighting */}
+            <div className="gb-led-rail gb-led-rail-left" aria-hidden="true" />
+            <div className="gb-led-rail gb-led-rail-right" aria-hidden="true" />
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;

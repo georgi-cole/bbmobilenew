@@ -18,7 +18,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import blackjackTournamentReducer, {
   initBlackjackTournament,
   resolveSpinner,
-  pickOpponent,
+  selectPair,
   standCurrentPlayer,
   resolveDuel,
   advanceFromDuelResult,
@@ -69,15 +69,30 @@ function runOneDuelHeadless(store: ReturnType<typeof makeIntegrationStore>): voi
 
   const s2 = store.getState().blackjackTournament;
   if (s2.phase === 'pick_opponent') {
-    const ctrl = s2.controllingPlayerId!;
-    const opp = s2.remainingPlayerIds.find((id) => id !== ctrl)!;
-    store.dispatch(pickOpponent({ opponentId: opp }));
+    const aId = s2.fighterAId ?? s2.remainingPlayerIds[0];
+    const bId = s2.fighterBId ?? s2.remainingPlayerIds.find((id) => id !== aId)!;
+    store.dispatch(selectPair({ fighterAId: aId, fighterBId: bId }));
   }
 
-  store.dispatch(standCurrentPlayer()); // controller stands
-  store.dispatch(standCurrentPlayer()); // opponent stands
+  // Stand both fighters (handles tie rematches via loop).
+  let safety = 200;
+  while (store.getState().blackjackTournament.phase === 'duel' && safety-- > 0) {
+    const ds = store.getState().blackjackTournament.currentDuel!;
+    if (ds.duelTurn === 'finished') break;
+    store.dispatch(standCurrentPlayer());
+  }
   store.dispatch(resolveDuel());
-  store.dispatch(advanceFromDuelResult());
+
+  // Handle tie rematches.
+  while (store.getState().blackjackTournament.phase === 'duel_result' && safety-- > 0) {
+    store.dispatch(advanceFromDuelResult());
+    if (store.getState().blackjackTournament.phase === 'duel') {
+      const rd = store.getState().blackjackTournament.currentDuel!;
+      if (rd.duelTurn !== 'finished') store.dispatch(standCurrentPlayer());
+      if (store.getState().blackjackTournament.currentDuel?.duelTurn !== 'finished') store.dispatch(standCurrentPlayer());
+      store.dispatch(resolveDuel());
+    }
+  }
 }
 
 // ─── Registry wiring ──────────────────────────────────────────────────────────
@@ -252,7 +267,7 @@ describe('Determinism — same seed produces same winner', () => {
         humanPlayerId: null,
       }),
     );
-    let safety = 50;
+    let safety = 500;
     while (store.getState().blackjackTournament.phase !== 'complete' && safety-- > 0) {
       runOneDuelHeadless(store);
     }
