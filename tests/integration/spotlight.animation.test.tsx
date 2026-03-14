@@ -259,40 +259,31 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
 });
 
 // ── SPOTLIGHT_SKIP / shouldSkipSpotlight unit tests ───────────────────────
+//
+// The skip set was cleared when the root-cause winner-identity mismatch was
+// fixed (GameScreen now reads the canonical winner from the live Redux store).
+// Tests below verify the set is empty and that shouldSkipSpotlight returns
+// false for all previously-skipped games.
 
 describe('SPOTLIGHT_SKIP and shouldSkipSpotlight', () => {
-  it('SPOTLIGHT_SKIP is a Set containing all legacy skip keys', () => {
+  it('SPOTLIGHT_SKIP is an empty Set — no games require skipping after the mismatch fix', () => {
     expect(SPOTLIGHT_SKIP).toBeInstanceOf(Set);
-    expect(SPOTLIGHT_SKIP.has('dontGoOver')).toBe(true);
-    expect(SPOTLIGHT_SKIP.has('holdWall')).toBe(true);
-    expect(SPOTLIGHT_SKIP.has('famousFigures')).toBe(true);
-    expect(SPOTLIGHT_SKIP.has('biographyBlitz')).toBe(true);
-    expect(SPOTLIGHT_SKIP.has('glass_bridge_brutal')).toBe(true);
+    expect(SPOTLIGHT_SKIP.size).toBe(0);
   });
 
-  it('SPOTLIGHT_SKIP includes blackjackTournament', () => {
-    expect(SPOTLIGHT_SKIP.has('blackjackTournament')).toBe(true);
+  it.each([
+    'dontGoOver',
+    'holdWall',
+    'famousFigures',
+    'biographyBlitz',
+    'glass_bridge_brutal',
+    'blackjackTournament',
+    'silentSaboteur',
+  ])('shouldSkipSpotlight(%s) returns false — game is no longer in the skip list', (key) => {
+    expect(shouldSkipSpotlight(key)).toBe(false);
   });
 
-  it('SPOTLIGHT_SKIP includes silentSaboteur', () => {
-    expect(SPOTLIGHT_SKIP.has('silentSaboteur')).toBe(true);
-  });
-
-  it('shouldSkipSpotlight returns true for all skip keys', () => {
-    for (const key of SPOTLIGHT_SKIP) {
-      expect(shouldSkipSpotlight(key)).toBe(true);
-    }
-  });
-
-  it('shouldSkipSpotlight returns true for blackjackTournament', () => {
-    expect(shouldSkipSpotlight('blackjackTournament')).toBe(true);
-  });
-
-  it('shouldSkipSpotlight returns true for silentSaboteur', () => {
-    expect(shouldSkipSpotlight('silentSaboteur')).toBe(true);
-  });
-
-  it('shouldSkipSpotlight returns false for minigames that use the spotlight', () => {
+  it('shouldSkipSpotlight returns false for minigames that never needed skipping', () => {
     expect(shouldSkipSpotlight('tapRace')).toBe(false);
     expect(shouldSkipSpotlight('castleRescue')).toBe(false);
     expect(shouldSkipSpotlight('')).toBe(false);
