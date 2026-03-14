@@ -367,9 +367,15 @@
   color: #ffd700;
   align-self: center;
   flex-shrink: 0;
+  flex: 0 0 auto;
   letter-spacing: 0.04em;
   animation: bjt-vs-pulse 1.2s ease-in-out infinite;
   text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+}
+
+.bjt-vs--small {
+  font-size: 1.4rem;
+  padding: 0 0.5rem;
 }
 
 .bjt-duelist {
@@ -381,7 +387,9 @@
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.85rem;
   padding: 1rem 1.1rem;
-  min-width: 9rem;
+  /* Equal fixed width so both fighter cards are symmetrical */
+  flex: 0 0 clamp(9rem, 42%, 13rem);
+  box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -752,6 +760,154 @@
   line-height: 1;
 }
 
+/* ─── Fast-forward button ─────────────────────────────────────────────────── */
+
+.bjt-btn--ff {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.05em;
+  align-self: flex-end;
+  margin-bottom: 0.25rem;
+}
+
+.bjt-btn--ff:hover {
+  background: rgba(255, 215, 0, 0.15);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.bjt-btn--ff-active {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  border-color: #ffd700;
+}
+
+/* ─── Continue button (winner screen) ────────────────────────────────────── */
+
+.bjt-btn--continue {
+  background: #ffd700;
+  color: #0b0f1a;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.85rem 2.5rem;
+  border-radius: 0.7rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  position: relative;
+  z-index: 2;
+}
+
+.bjt-btn--continue:hover {
+  background: #ffe840;
+  box-shadow: 0 4px 24px rgba(255, 215, 0, 0.6);
+}
+
+.bjt-btn--continue:active {
+  transform: scale(0.97);
+}
+
+/* ─── Confirm duel button ─────────────────────────────────────────────────── */
+
+.bjt-btn--confirm {
+  background: #ff3b3b;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.75rem 2rem;
+  border-radius: 0.65rem;
+  margin-top: 0.75rem;
+  box-shadow: 0 4px 12px rgba(255, 59, 59, 0.4);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.bjt-btn--confirm:hover {
+  background: #e02020;
+  box-shadow: 0 4px 20px rgba(255, 59, 59, 0.6);
+}
+
+/* ─── Fighter slots (pair selection) ─────────────────────────────────────── */
+
+.bjt-fighter-slots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.bjt-fighter-slot {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 0.65rem;
+  padding: 0.5rem 1.1rem;
+  min-width: 7rem;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.bjt-fighter-slot--filled {
+  border-style: solid;
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.bjt-slot-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.bjt-slot-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.bjt-slot-empty {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+}
+
+/* ─── Opponent buttons: selected states ──────────────────────────────────── */
+
+.bjt-opponent-btn--selected-a {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  background: rgba(255, 215, 0, 0.1) !important;
+}
+
+.bjt-opponent-btn--selected-b {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.1) !important;
+}
+
+/* ─── Tie message ─────────────────────────────────────────────────────────── */
+
+.bjt-tie-msg {
+  color: #ffd700;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0.75rem;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
 /* ─── no-animations overrides ─────────────────────────────────────────────── */
 
 body.no-animations .bjt-crown,
@@ -771,8 +927,7 @@ body.no-animations .bjt-result-confetti::after,
 body.no-animations .bjt-confetti::before,
 body.no-animations .bjt-confetti::after,
 body.no-animations .bjt-confetti--reverse::before,
-body.no-animations .bjt-confetti--reverse::after,
-body.no-animations .bjt-spotlight {
+body.no-animations .bjt-confetti--reverse::after {
   animation: none;
   transition: none;
 }

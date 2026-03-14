@@ -25,7 +25,7 @@ import type { RootState } from '../../store/store';
 import {
   initBlackjackTournament,
   resolveSpinner,
-  pickOpponent,
+  selectPair,
   hitCurrentPlayer,
   standCurrentPlayer,
   resolveDuel,
@@ -34,7 +34,7 @@ import {
   computeTotal,
   cardRank,
   cardSuit,
-  aiPickOpponent,
+  aiPickFighters,
   aiShouldHit,
   aiDecisionRng,
 } from '../../features/blackjackTournament/blackjackTournamentSlice';
@@ -46,16 +46,16 @@ import './BlackjackTournamentComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
+/** Base timer for slow pacing: duel result hold, etc. (ms). */
+const TIMER_SLOW_MS = 2_200;
+/** Base timer for normal pacing: AI pick delay, AI action delay, etc. (ms). */
+const TIMER_NORMAL_MS = 1_400;
+/** Base timer for fast AI actions (ms). */
+const TIMER_AI_ACTION_MS = 1_000;
 /** Duration of the spinner animation (ms). */
-const SPIN_DURATION_MS = 2_400;
-/** Pause on duel result before advancing (ms). */
-const RESULT_HOLD_MS = 2_200;
-/** Delay before AI auto-picks opponent (ms). */
-const AI_PICK_DELAY_MS = 1_400;
-/** Delay between successive AI hit/stand decisions (ms). */
-const AI_ACTION_DELAY_MS = 900;
-/** Auto-advance delay after winner screen (ms). */
-const WINNER_AUTO_ADVANCE_MS = 2_500;
+const SPIN_DURATION_MS = 2_800;
+/** Fast-forward speed multiplier applied to all timers for one round. */
+const FAST_FORWARD_MULT = 2.5;
 /** Spectator auto-advance delay per AI action (ms). */
 const SPECTATOR_ADVANCE_MS = 600;
 
@@ -187,19 +187,18 @@ export default function BlackjackTournamentComp({
   const bt = useAppSelector((s: RootState) => s.blackjackTournament);
 
   // Pre-computed card lengths used as stable dep-array values (avoid optional-chain in deps).
-  const controllerCardCount = bt.currentDuel?.controllerCards.length ?? 0;
-  const opponentCardCount = bt.currentDuel?.opponentCards.length ?? 0;
+  const fighterACardCount = bt.currentDuel?.fighterACards.length ?? 0;
+  const fighterBCardCount = bt.currentDuel?.fighterBCards.length ?? 0;
 
   // Stable refs for timer cleanup.
   const spinTimerRef = useRef<number | null>(null);
   const aiPickTimerRef = useRef<number | null>(null);
   const aiActionTimerRef = useRef<number | null>(null);
   const resultTimerRef = useRef<number | null>(null);
-  const winnerTimerRef = useRef<number | null>(null);
   const spectatorTimerRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
-  const highlightControllerTimerRef = useRef<number | null>(null);
-  const highlightOpponentTimerRef = useRef<number | null>(null);
+  const highlightFighterATimerRef = useRef<number | null>(null);
+  const highlightFighterBTimerRef = useRef<number | null>(null);
 
   // Spinner display state (locally animated).
   const [spinnerIdx, setSpinnerIdx] = useState(0);
@@ -211,10 +210,17 @@ export default function BlackjackTournamentComp({
   const [spinRevealed, setSpinRevealed] = useState(false);
 
   // Card animation: track last count to detect new cards.
-  const prevControllerCountRef = useRef(0);
-  const prevOpponentCountRef = useRef(0);
-  const [highlightControllerCard, setHighlightControllerCard] = useState<number | null>(null);
-  const [highlightOpponentCard, setHighlightOpponentCard] = useState<number | null>(null);
+  const prevFighterACountRef = useRef(0);
+  const prevFighterBCountRef = useRef(0);
+  const [highlightFighterACard, setHighlightFighterACard] = useState<number | null>(null);
+  const [highlightFighterBCard, setHighlightFighterBCard] = useState<number | null>(null);
+
+  // Fast-forward: multiplier applied to all timers for the current duel round.
+  const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
+
+  // Human pair selection state (local — not yet committed to Redux).
+  const [localFighterAId, setLocalFighterAId] = useState<string | null>(null);
+  const [localFighterBId, setLocalFighterBId] = useState<string | null>(null);
 
   function clearTimer(ref: React.MutableRefObject<number | null>) {
     if (ref.current !== null) {
@@ -228,15 +234,19 @@ export default function BlackjackTournamentComp({
     clearTimer(aiPickTimerRef);
     clearTimer(aiActionTimerRef);
     clearTimer(resultTimerRef);
-    clearTimer(winnerTimerRef);
     clearTimer(spectatorTimerRef);
     clearTimer(revealTimerRef);
-    clearTimer(highlightControllerTimerRef);
-    clearTimer(highlightOpponentTimerRef);
+    clearTimer(highlightFighterATimerRef);
+    clearTimer(highlightFighterBTimerRef);
     if (spinnerIntervalRef.current !== null) {
       window.clearInterval(spinnerIntervalRef.current);
       spinnerIntervalRef.current = null;
     }
+  }
+
+  /** Apply the speed multiplier to a base delay (returns shorter delay when faster). */
+  function applySpeed(baseMs: number): number {
+    return Math.round(baseMs / speedMultiplier);
   }
 
   const isHuman = useCallback(
@@ -277,24 +287,7 @@ export default function BlackjackTournamentComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
-  // ── 2. Resolve outcome when complete ──────────────────────────────────────
-  useEffect(() => {
-    if (bt.phase === 'complete' && !bt.outcomeResolved) {
-      dispatch(resolveBlackjackTournamentOutcome());
-    }
-  }, [bt.phase, bt.outcomeResolved, dispatch]);
-
-  // ── 3. Auto-advance winner screen ─────────────────────────────────────────
-  useEffect(() => {
-    if (bt.phase !== 'complete') return;
-    if (winnerTimerRef.current !== null) return;
-    winnerTimerRef.current = window.setTimeout(() => {
-      onComplete?.();
-    }, WINNER_AUTO_ADVANCE_MS);
-    return () => { clearTimer(winnerTimerRef); };
-  }, [bt.phase, onComplete]);
-
-  // ── 4. Spin phase: run spinner animation then resolve ─────────────────────
+  // ── 2. Spin phase: run spinner animation then resolve ─────────────────────
   useEffect(() => {
     if (bt.phase !== 'spin') return;
     const len = bt.remainingPlayerIds.length;
@@ -308,10 +301,11 @@ export default function BlackjackTournamentComp({
       setSpinnerIdx((i) => (i + 1) % len);
     }, 180);
 
-    // After 1600ms, slow down.
+    // After 60% of spin duration, slow down.
+    const slowAt = Math.round(SPIN_DURATION_MS * 0.6);
     const slowTimer = window.setTimeout(() => {
       setSpinFast(false);
-    }, 1_600);
+    }, slowAt);
 
     spinTimerRef.current = window.setTimeout(() => {
       if (spinnerIntervalRef.current !== null) {
@@ -322,7 +316,7 @@ export default function BlackjackTournamentComp({
       revealTimerRef.current = window.setTimeout(() => {
         setSpinRevealed(false);
         dispatch(resolveSpinner());
-      }, 800);
+      }, 900);
     }, SPIN_DURATION_MS);
 
     return () => {
@@ -336,58 +330,64 @@ export default function BlackjackTournamentComp({
     };
   }, [bt.phase, bt.remainingPlayerIds.length, dispatch]);
 
-  // ── 5. Pick-opponent phase ────────────────────────────────────────────────
+  // ── 3. Pick-opponent phase ────────────────────────────────────────────────
   useEffect(() => {
     if (bt.phase !== 'pick_opponent') return;
     if (!bt.controllingPlayerId) return;
 
-    // If only one opponent remains, auto-select immediately.
-    if (bt.selectedOpponentId !== null) {
+    // Both fighters auto-selected (only 2 players remain): fast-path into duel.
+    if (bt.fighterAId !== null && bt.fighterBId !== null) {
       aiPickTimerRef.current = window.setTimeout(() => {
-        dispatch(pickOpponent({ opponentId: bt.selectedOpponentId! }));
-      }, 600);
+        dispatch(selectPair({ fighterAId: bt.fighterAId!, fighterBId: bt.fighterBId! }));
+      }, applySpeed(600));
       return () => { clearTimer(aiPickTimerRef); };
     }
 
-    // AI controller: auto-pick after delay.
+    // AI controller: auto-pick fighters after delay.
     if (!isHuman(bt.controllingPlayerId)) {
       aiPickTimerRef.current = window.setTimeout(() => {
-        const chosen = aiPickOpponent(
+        const fighters = aiPickFighters(
           bt.seed,
           bt.duelIndex,
           bt.controllingPlayerId!,
           bt.remainingPlayerIds,
         );
-        if (chosen) dispatch(pickOpponent({ opponentId: chosen }));
-      }, AI_PICK_DELAY_MS);
+        if (fighters) dispatch(selectPair(fighters));
+      }, applySpeed(TIMER_NORMAL_MS));
       return () => { clearTimer(aiPickTimerRef); };
     }
+
+    // Human controller: reset local selection state for this pick phase.
+    setLocalFighterAId(null);
+    setLocalFighterBId(null);
   }, [
     bt.phase,
     bt.controllingPlayerId,
-    bt.selectedOpponentId,
+    bt.fighterAId,
+    bt.fighterBId,
     bt.duelIndex,
     bt.remainingPlayerIds,
     bt.seed,
     dispatch,
     isHuman,
-  ]);
+    // applySpeed is stable within a render — intentionally omitted
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── 6. Duel phase: AI auto-act and duel resolution ────────────────────────
+  // ── 4. Duel phase: AI auto-act and duel resolution ────────────────────────
   useEffect(() => {
     if (bt.phase !== 'duel' || !bt.currentDuel) return;
     const duel = bt.currentDuel;
 
     if (duel.duelTurn === 'finished') {
-      // Both players done; resolve the duel.
+      // Both fighters done; resolve the duel.
       aiActionTimerRef.current = window.setTimeout(() => {
         dispatch(resolveDuel());
       }, 300);
       return () => { clearTimer(aiActionTimerRef); };
     }
 
-    const activeId = duel.duelTurn === 'controller' ? duel.controllerId : duel.opponentId;
-    const activeCards = duel.duelTurn === 'controller' ? duel.controllerCards : duel.opponentCards;
+    const activeId = duel.duelTurn === 'fighterA' ? duel.fighterAId : duel.fighterBId;
+    const activeCards = duel.duelTurn === 'fighterA' ? duel.fighterACards : duel.fighterBCards;
     const decisionIndex = activeCards.length - 2; // 0 for first decision
 
     // Human active player: wait for button press, no timer needed.
@@ -397,7 +397,7 @@ export default function BlackjackTournamentComp({
     const rngVal = aiDecisionRng(bt.seed, bt.duelIndex, activeId, decisionIndex);
     const shouldHit = aiShouldHit(computeTotal(activeCards), rngVal);
 
-    const delay = bt.isSpectating ? SPECTATOR_ADVANCE_MS : AI_ACTION_DELAY_MS;
+    const delay = bt.isSpectating ? SPECTATOR_ADVANCE_MS : applySpeed(TIMER_AI_ACTION_MS);
     aiActionTimerRef.current = window.setTimeout(() => {
       if (shouldHit) {
         dispatch(hitCurrentPlayer());
@@ -415,44 +415,47 @@ export default function BlackjackTournamentComp({
     bt.isSpectating,
     dispatch,
     isHuman,
-  ]);
+    speedMultiplier,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── 7. Duel result phase: hold then advance ───────────────────────────────
+  // ── 5. Duel result phase: hold then advance; reset speed multiplier ────────
   useEffect(() => {
     if (bt.phase !== 'duel_result') return;
-    const delay = bt.isSpectating ? SPECTATOR_ADVANCE_MS : RESULT_HOLD_MS;
+    const delay = bt.isSpectating ? SPECTATOR_ADVANCE_MS : applySpeed(TIMER_SLOW_MS);
     resultTimerRef.current = window.setTimeout(() => {
+      // Reset fast-forward after each duel round completes.
+      setSpeedMultiplier(1.0);
       dispatch(advanceFromDuelResult());
     }, delay);
     return () => { clearTimer(resultTimerRef); };
-  }, [bt.phase, bt.isSpectating, dispatch]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bt.phase, bt.isSpectating, dispatch, speedMultiplier]);
 
-  // ── 8. Card highlight: detect new cards in duel ───────────────────────────
+  // ── 6. Card highlight: detect new cards in duel ───────────────────────────
   useEffect(() => {
     if (!bt.currentDuel) return;
-    const cc = bt.currentDuel.controllerCards.length;
-    const oc = bt.currentDuel.opponentCards.length;
-    if (cc > prevControllerCountRef.current) {
-      setHighlightControllerCard(cc - 1);
-      clearTimer(highlightControllerTimerRef);
-      highlightControllerTimerRef.current = window.setTimeout(() => setHighlightControllerCard(null), 400);
+    const ac = bt.currentDuel.fighterACards.length;
+    const bc = bt.currentDuel.fighterBCards.length;
+    if (ac > prevFighterACountRef.current) {
+      setHighlightFighterACard(ac - 1);
+      clearTimer(highlightFighterATimerRef);
+      highlightFighterATimerRef.current = window.setTimeout(() => setHighlightFighterACard(null), 400);
     }
-    if (oc > prevOpponentCountRef.current) {
-      setHighlightOpponentCard(oc - 1);
-      clearTimer(highlightOpponentTimerRef);
-      highlightOpponentTimerRef.current = window.setTimeout(() => setHighlightOpponentCard(null), 400);
+    if (bc > prevFighterBCountRef.current) {
+      setHighlightFighterBCard(bc - 1);
+      clearTimer(highlightFighterBTimerRef);
+      highlightFighterBTimerRef.current = window.setTimeout(() => setHighlightFighterBCard(null), 400);
     }
-    prevControllerCountRef.current = cc;
-    prevOpponentCountRef.current = oc;
-  }, [controllerCardCount, opponentCardCount]); // eslint-disable-line react-hooks/exhaustive-deps
+    prevFighterACountRef.current = ac;
+    prevFighterBCountRef.current = bc;
+  }, [fighterACardCount, fighterBCardCount]); // eslint-disable-line react-hooks/exhaustive-deps
   // ^ deps limited to card lengths: effect only fires when a card is added.
-  //   prevCountRefs safely track previous values without stale-closure issues.
 
   // Reset card refs when a new duel starts.
   useEffect(() => {
-    prevControllerCountRef.current = 0;
-    prevOpponentCountRef.current = 0;
-  }, [bt.duelIndex]);
+    prevFighterACountRef.current = 0;
+    prevFighterBCountRef.current = 0;
+  }, [bt.duelIndex, bt.rematchCount]);
 
   // ─── Derived roster data ──────────────────────────────────────────────────
 
@@ -537,10 +540,30 @@ export default function BlackjackTournamentComp({
   if (phase === 'pick_opponent') {
     const controllerId = bt.controllingPlayerId ?? '';
     const humanIsController = isHuman(controllerId);
-    const opponents = bt.remainingPlayerIds.filter((id) => id !== controllerId);
+    const availablePlayers = bt.remainingPlayerIds;
+
+    // Human controller pair selection handlers.
+    function handlePlayerClick(id: string) {
+      if (!humanIsController) return;
+      if (id === localFighterAId) {
+        setLocalFighterAId(null);
+        return;
+      }
+      if (id === localFighterBId) {
+        setLocalFighterBId(null);
+        return;
+      }
+      if (localFighterAId === null) {
+        setLocalFighterAId(id);
+      } else if (localFighterBId === null) {
+        setLocalFighterBId(id);
+      }
+    }
+
+    const canConfirm = humanIsController && localFighterAId !== null && localFighterBId !== null;
 
     return (
-      <div className="bjt-container bjt-pick" role="region" aria-label="Opponent selection">
+      <div className="bjt-container bjt-pick" role="region" aria-label="Fighter selection">
         <div className="bjt-players-remaining" role="status" aria-live="polite">
           <span className="bjt-badge">{bt.remainingPlayerIds.length} remaining</span>
           {bt.eliminatedPlayerIds.length > 0 && (
@@ -568,33 +591,81 @@ export default function BlackjackTournamentComp({
         </div>
 
         <p className="bjt-pick-instruction">
-          {humanIsController ? '⚔️ Choose your prey:' : '🔍 Choosing an opponent…'}
+          {humanIsController
+            ? '⚔️ Pick the next two players to duel:'
+            : '🔍 Choosing two players to duel…'}
         </p>
 
+        {/* Fighter selection slots (shown for human controller) */}
+        {humanIsController && (
+          <div className="bjt-fighter-slots">
+            <div className={`bjt-fighter-slot ${localFighterAId ? 'bjt-fighter-slot--filled' : ''}`}>
+              <span className="bjt-slot-label">Fighter A</span>
+              {localFighterAId ? (
+                <span className="bjt-slot-name">{getName(localFighterAId)}</span>
+              ) : (
+                <span className="bjt-slot-empty">— pick below —</span>
+              )}
+            </div>
+            <div className="bjt-vs bjt-vs--small" aria-hidden="true">VS</div>
+            <div className={`bjt-fighter-slot ${localFighterBId ? 'bjt-fighter-slot--filled' : ''}`}>
+              <span className="bjt-slot-label">Fighter B</span>
+              {localFighterBId ? (
+                <span className="bjt-slot-name">{getName(localFighterBId)}</span>
+              ) : (
+                <span className="bjt-slot-empty">— pick below —</span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="bjt-opponent-grid" role="list">
-          {opponents.map((id) => (
-            <button
-              key={id}
-              className={`bjt-opponent-btn ${!humanIsController ? 'bjt-opponent-btn--disabled' : ''}`}
-              onClick={() => {
-                if (humanIsController) dispatch(pickOpponent({ opponentId: id }));
-              }}
-              disabled={!humanIsController}
-              aria-label={`Challenge ${getName(id)}`}
-              role="listitem"
-            >
-              <img
-                src={avatarForId(id)}
-                alt={getName(id)}
-                className="bjt-avatar bjt-avatar--lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = getDicebear(id);
-                }}
-              />
-              <span className="bjt-duelist-name">{getName(id)}</span>
-            </button>
-          ))}
+          {availablePlayers.map((id) => {
+            const isA = id === localFighterAId;
+            const isB = id === localFighterBId;
+            const slotLabel = isA ? ' (A)' : isB ? ' (B)' : '';
+            const btnClass = [
+              'bjt-opponent-btn',
+              !humanIsController ? 'bjt-opponent-btn--disabled' : '',
+              isA ? 'bjt-opponent-btn--selected-a' : '',
+              isB ? 'bjt-opponent-btn--selected-b' : '',
+            ].filter(Boolean).join(' ');
+            return (
+              <button
+                key={id}
+                className={btnClass}
+                onClick={() => handlePlayerClick(id)}
+                disabled={!humanIsController}
+                aria-label={`Select ${getName(id)}${slotLabel}`}
+                role="listitem"
+              >
+                <img
+                  src={avatarForId(id)}
+                  alt={getName(id)}
+                  className="bjt-avatar bjt-avatar--lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = getDicebear(id);
+                  }}
+                />
+                <span className="bjt-duelist-name">
+                  {getName(id)}{slotLabel}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        {canConfirm && (
+          <button
+            className="bjt-btn bjt-btn--confirm"
+            onClick={() => {
+              dispatch(selectPair({ fighterAId: localFighterAId!, fighterBId: localFighterBId! }));
+            }}
+            aria-label="Confirm duel pair and start"
+          >
+            ⚔️ Start Duel
+          </button>
+        )}
 
         <RosterBar
           allIds={allParticipantIds}
@@ -610,80 +681,90 @@ export default function BlackjackTournamentComp({
   // ── Duel phase ────────────────────────────────────────────────────────────
   if (phase === 'duel' && bt.currentDuel) {
     const duel = bt.currentDuel;
-    const cName = getName(duel.controllerId);
-    const oName = getName(duel.opponentId);
-    const humanInDuel = isHuman(duel.controllerId) || isHuman(duel.opponentId);
+    const aName = getName(duel.fighterAId);
+    const bName = getName(duel.fighterBId);
+    const humanInDuel = isHuman(duel.fighterAId) || isHuman(duel.fighterBId);
     const humanTurn =
-      (duel.duelTurn === 'controller' && isHuman(duel.controllerId)) ||
-      (duel.duelTurn === 'opponent' && isHuman(duel.opponentId));
+      (duel.duelTurn === 'fighterA' && isHuman(duel.fighterAId)) ||
+      (duel.duelTurn === 'fighterB' && isHuman(duel.fighterBId));
 
     const activeId =
-      duel.duelTurn === 'controller'
-        ? duel.controllerId
-        : duel.duelTurn === 'opponent'
-          ? duel.opponentId
+      duel.duelTurn === 'fighterA'
+        ? duel.fighterAId
+        : duel.duelTurn === 'fighterB'
+          ? duel.fighterBId
           : null;
     const activeName = activeId ? getName(activeId) : '';
 
     return (
       <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
-        <h2 className="bjt-title">⚔️ Duel: {cName} vs {oName}</h2>
+        <h2 className="bjt-title">⚔️ Duel: {aName} vs {bName}</h2>
+
+        {/* Fast-forward button */}
+        <button
+          className={`bjt-btn bjt-btn--ff ${speedMultiplier > 1 ? 'bjt-btn--ff-active' : ''}`}
+          onClick={() => setSpeedMultiplier(speedMultiplier > 1 ? 1.0 : FAST_FORWARD_MULT)}
+          aria-label={speedMultiplier > 1 ? 'Normal speed' : 'Fast-forward this round'}
+          title={speedMultiplier > 1 ? 'Normal speed' : 'Fast-forward this round'}
+        >
+          {speedMultiplier > 1 ? '▶' : '»'}
+        </button>
 
         <div className="bjt-duel-arena" aria-label="Blackjack duel arena">
-          {/* Controller */}
+          {/* Fighter A */}
           <div
             className={[
               'bjt-duelist',
-              duel.duelTurn === 'controller' && !duel.controllerStood && !duel.controllerBust
+              duel.duelTurn === 'fighterA' && !duel.fighterAStood && !duel.fighterABust
                 ? 'bjt-duelist--active'
                 : '',
-              duel.controllerBust ? 'bjt-duelist--bust' : '',
+              duel.fighterABust ? 'bjt-duelist--bust' : '',
             ]
               .filter(Boolean)
               .join(' ')}
           >
             <img
-              src={avatarForId(duel.controllerId)}
-              alt={cName}
+              src={avatarForId(duel.fighterAId)}
+              alt={aName}
               className="bjt-avatar bjt-avatar--lg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = getDicebear(duel.controllerId);
+                (e.target as HTMLImageElement).src = getDicebear(duel.fighterAId);
               }}
             />
             <div className="bjt-duelist-name">
-              {cName}
-              {isHuman(duel.controllerId) && <span className="bjt-you-badge"> (you)</span>}
+              {aName}
+              {isHuman(duel.fighterAId) && <span className="bjt-you-badge"> (you)</span>}
             </div>
-            {renderCards(duel.controllerCards, duel.controllerBust, duel.controllerStood, highlightControllerCard)}
+            {renderCards(duel.fighterACards, duel.fighterABust, duel.fighterAStood, highlightFighterACard)}
           </div>
 
           <div className="bjt-vs" aria-hidden="true">VS</div>
 
-          {/* Opponent */}
+          {/* Fighter B */}
           <div
             className={[
               'bjt-duelist',
-              duel.duelTurn === 'opponent' && !duel.opponentStood && !duel.opponentBust
+              duel.duelTurn === 'fighterB' && !duel.fighterBStood && !duel.fighterBBust
                 ? 'bjt-duelist--active'
                 : '',
-              duel.opponentBust ? 'bjt-duelist--bust' : '',
+              duel.fighterBBust ? 'bjt-duelist--bust' : '',
             ]
               .filter(Boolean)
               .join(' ')}
           >
             <img
-              src={avatarForId(duel.opponentId)}
-              alt={oName}
+              src={avatarForId(duel.fighterBId)}
+              alt={bName}
               className="bjt-avatar bjt-avatar--lg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = getDicebear(duel.opponentId);
+                (e.target as HTMLImageElement).src = getDicebear(duel.fighterBId);
               }}
             />
             <div className="bjt-duelist-name">
-              {oName}
-              {isHuman(duel.opponentId) && <span className="bjt-you-badge"> (you)</span>}
+              {bName}
+              {isHuman(duel.fighterBId) && <span className="bjt-you-badge"> (you)</span>}
             </div>
-            {renderCards(duel.opponentCards, duel.opponentBust, duel.opponentStood, highlightOpponentCard)}
+            {renderCards(duel.fighterBCards, duel.fighterBBust, duel.fighterBStood, highlightFighterBCard)}
           </div>
         </div>
 
@@ -721,7 +802,7 @@ export default function BlackjackTournamentComp({
         <RosterBar
           allIds={allParticipantIds}
           eliminatedIds={bt.eliminatedPlayerIds}
-          controllingId={duel.controllerId}
+          controllingId={bt.controllingPlayerId}
           humanId={bt.humanPlayerId}
           getName={getName}
         />
@@ -732,6 +813,41 @@ export default function BlackjackTournamentComp({
   // ── Duel result phase ─────────────────────────────────────────────────────
   if (phase === 'duel_result' && bt.currentDuel) {
     const duel = bt.currentDuel;
+
+    if (bt.isDuelTie) {
+      return (
+        <div className="bjt-container bjt-result" role="status" aria-live="assertive">
+          <h2 className="bjt-title">🤝 Tie — Rematch!</h2>
+          <p className="bjt-tie-msg">
+            {getName(duel.fighterAId)} and {getName(duel.fighterBId)} tied!
+            Rematching…
+          </p>
+          <div className="bjt-duel-arena">
+            <div className="bjt-duelist">
+              <img src={avatarForId(duel.fighterAId)} alt={getName(duel.fighterAId)} className="bjt-avatar bjt-avatar--lg"
+                onError={(e) => { (e.target as HTMLImageElement).src = getDicebear(duel.fighterAId); }} />
+              <div className="bjt-duelist-name">{getName(duel.fighterAId)}</div>
+              {renderCards(duel.fighterACards, duel.fighterABust, duel.fighterAStood, null)}
+            </div>
+            <div className="bjt-vs" aria-hidden="true">VS</div>
+            <div className="bjt-duelist">
+              <img src={avatarForId(duel.fighterBId)} alt={getName(duel.fighterBId)} className="bjt-avatar bjt-avatar--lg"
+                onError={(e) => { (e.target as HTMLImageElement).src = getDicebear(duel.fighterBId); }} />
+              <div className="bjt-duelist-name">{getName(duel.fighterBId)}</div>
+              {renderCards(duel.fighterBCards, duel.fighterBBust, duel.fighterBStood, null)}
+            </div>
+          </div>
+          <RosterBar
+            allIds={allParticipantIds}
+            eliminatedIds={bt.eliminatedPlayerIds}
+            controllingId={bt.controllingPlayerId}
+            humanId={bt.humanPlayerId}
+            getName={getName}
+          />
+        </div>
+      );
+    }
+
     const winnerName = bt.duelWinnerId ? getName(bt.duelWinnerId) : '';
     const loserName = bt.duelLoserId ? getName(bt.duelLoserId) : '';
 
@@ -741,19 +857,19 @@ export default function BlackjackTournamentComp({
         <h2 className="bjt-title">🏆 {winnerName} wins the duel!</h2>
         <div className="bjt-duel-arena">
           <div
-            className={`bjt-duelist ${bt.duelWinnerId === duel.controllerId ? 'bjt-duelist--winner' : 'bjt-duelist--loser'}`}
+            className={`bjt-duelist ${bt.duelWinnerId === duel.fighterAId ? 'bjt-duelist--winner' : 'bjt-duelist--loser'}`}
           >
             <img
-              src={avatarForId(duel.controllerId)}
-              alt={getName(duel.controllerId)}
+              src={avatarForId(duel.fighterAId)}
+              alt={getName(duel.fighterAId)}
               className="bjt-avatar bjt-avatar--lg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = getDicebear(duel.controllerId);
+                (e.target as HTMLImageElement).src = getDicebear(duel.fighterAId);
               }}
             />
-            <div className="bjt-duelist-name">{getName(duel.controllerId)}</div>
-            {renderCards(duel.controllerCards, duel.controllerBust, duel.controllerStood, null)}
-            {bt.duelWinnerId === duel.controllerId && (
+            <div className="bjt-duelist-name">{getName(duel.fighterAId)}</div>
+            {renderCards(duel.fighterACards, duel.fighterABust, duel.fighterAStood, null)}
+            {bt.duelWinnerId === duel.fighterAId && (
               <span className="bjt-winner-badge">✓ Wins</span>
             )}
           </div>
@@ -761,19 +877,19 @@ export default function BlackjackTournamentComp({
           <div className="bjt-vs" aria-hidden="true">VS</div>
 
           <div
-            className={`bjt-duelist ${bt.duelWinnerId === duel.opponentId ? 'bjt-duelist--winner' : 'bjt-duelist--loser'}`}
+            className={`bjt-duelist ${bt.duelWinnerId === duel.fighterBId ? 'bjt-duelist--winner' : 'bjt-duelist--loser'}`}
           >
             <img
-              src={avatarForId(duel.opponentId)}
-              alt={getName(duel.opponentId)}
+              src={avatarForId(duel.fighterBId)}
+              alt={getName(duel.fighterBId)}
               className="bjt-avatar bjt-avatar--lg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = getDicebear(duel.opponentId);
+                (e.target as HTMLImageElement).src = getDicebear(duel.fighterBId);
               }}
             />
-            <div className="bjt-duelist-name">{getName(duel.opponentId)}</div>
-            {renderCards(duel.opponentCards, duel.opponentBust, duel.opponentStood, null)}
-            {bt.duelWinnerId === duel.opponentId && (
+            <div className="bjt-duelist-name">{getName(duel.fighterBId)}</div>
+            {renderCards(duel.fighterBCards, duel.fighterBBust, duel.fighterBStood, null)}
+            {bt.duelWinnerId === duel.fighterBId && (
               <span className="bjt-winner-badge">✓ Wins</span>
             )}
           </div>
@@ -814,7 +930,6 @@ export default function BlackjackTournamentComp({
 
         {bt.winnerId && (
           <div className="bjt-winner-avatar-wrap">
-            <div className="bjt-spotlight" aria-hidden="true" />
             <img
               src={avatarForId(bt.winnerId)}
               alt={winnerName}
@@ -841,6 +956,20 @@ export default function BlackjackTournamentComp({
             getName={getName}
           />
         )}
+
+        {/* Manual Continue: gates both outcome resolution and onComplete callback. */}
+        <button
+          className="bjt-btn bjt-btn--continue"
+          onClick={() => {
+            if (!bt.outcomeResolved) {
+              dispatch(resolveBlackjackTournamentOutcome());
+            }
+            onComplete?.();
+          }}
+          aria-label="Continue"
+        >
+          Continue →
+        </button>
       </div>
     );
   }
