@@ -357,5 +357,11 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       nerve: 0.35,
       luck: 0.05,
     },
+  blackjackTournament: {
+    key: 'blackjackTournament',
+    category: 'luck',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_LUCK,
+    weights: WEIGHTS_LUCK,
   },
 };

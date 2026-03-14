@@ -821,6 +821,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  blackjackTournament: {
+    key: 'blackjackTournament',
+    title: 'Blackjack Tournament',
+    description:
+      'Last-player-standing blackjack duel tournament. A spinner picks the first controller, who challenges any remaining opponent. Closest to 21 without busting wins the duel; loser is eliminated. Play continues until one champion remains.',
+    instructions: [
+      'A wheel spins to pick the first controlling player.',
+      'The controller challenges any remaining opponent to a blackjack duel.',
+      'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
+      'Closest to 21 without going over wins. Bust (over 21) = elimination.',
+      'The duel winner stays in control and picks the next opponent.',
+      'Last player standing wins the competition!',
+    ],
+    metricKind: 'accuracy',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'BlackjackTournament',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   castleRescue: {
     key: 'castleRescue',
     title: 'Castle Rescue',

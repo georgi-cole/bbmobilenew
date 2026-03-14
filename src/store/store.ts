@@ -19,6 +19,7 @@ import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
+import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -35,6 +36,7 @@ export const store = configureStore({
     biographyBlitz: biographyBlitzReducer,
     famousFigures: famousFiguresReducer,
     glassBridge: glassBridgeReducer,
+    blackjackTournament: blackjackTournamentReducer,
   },
   preloadedState: {
     settings: loadSettings(),
