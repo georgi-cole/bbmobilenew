@@ -50,11 +50,12 @@
 }
 
 /* ─── Playing ────────────────────────────────────────────────────────────── */
-/* The playing area takes the full screen and clips any overflowing game content */
+/* The playing area takes the full screen; allow game content to scroll. */
 .minigame-host-playing {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Results overlay ────────────────────────────────────────────────────── */

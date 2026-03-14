@@ -268,16 +268,16 @@ describe('resolveFinal2', () => {
     expect(outcome.reason).toBe('jury_incorrect');
   });
 
-  it('tied jury + tiebreak accuses saboteur → victim wins', () => {
+  it('tied jury → saboteur wins (deterministic)', () => {
     const votes = { j1: 'sam', j2: 'pat' }; // 1-1 tie
-    const outcome = resolveFinal2(votes, 'sam', 'pat', 'sam');
-    expect(outcome.winnerId).toBe('pat');
+    const outcome = resolveFinal2(votes, 'sam', 'pat');
+    expect(outcome.winnerId).toBe('sam');
     expect(outcome.reason).toBe('jury_tie');
   });
 
-  it('tied jury + tiebreak accuses victim → saboteur wins', () => {
+  it('tied jury + tiebreak arg provided → saboteur still wins (tiebreak ignored)', () => {
     const votes = { j1: 'sam', j2: 'pat' }; // 1-1 tie
-    const outcome = resolveFinal2(votes, 'sam', 'pat', 'pat');
+    const outcome = resolveFinal2(votes, 'sam', 'pat', 'sam');
     expect(outcome.winnerId).toBe('sam');
     expect(outcome.reason).toBe('jury_tie');
   });

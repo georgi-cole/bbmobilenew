@@ -27,7 +27,6 @@ import {
   advanceReveal,
   startNextRound,
   submitJuryVote,
-  submitFinal2TieBreak,
   advanceWinner,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import { resolveSilentSaboteurOutcome } from '../../features/silentSaboteur/thunks';
@@ -47,6 +46,8 @@ const SILENT_SABOTEUR_TIMINGS = {
   INTRO_MS: 7500,
   /** AI saboteur action delay (natural feel). */
   AI_ACTION_MS: 1200,
+  /** Suspense hold for "saboteur is choosing" screen (auto-advance, no Continue button). */
+  SELECT_VICTIM_SUSPENSE_MS: 3600,
   /** Human saboteur timeout fallback. */
   SELECT_VICTIM_TIMEOUT_MS: 10_000,
   /** Voting phase shared timer — 120 seconds. */
@@ -456,11 +457,11 @@ export default function SilentSaboteurComp({
     if (phase !== 'select_victim' || !saboteurId) return;
 
     if (!isHumanSaboteur) {
-      // AI saboteur: auto-pick after brief delay
+      // AI saboteur: auto-pick after suspense hold (gives user time to read the screen)
       const t = setTimeout(() => {
         const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
         dispatch(selectVictim({ victimId: victim }));
-      }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS);
+      }, SILENT_SABOTEUR_TIMINGS.SELECT_VICTIM_SUSPENSE_MS);
       return () => clearTimeout(t);
     }
 
@@ -734,14 +735,6 @@ export default function SilentSaboteurComp({
     [dispatch, humanPlayerId, juryVotes],
   );
 
-  const handleTieBreak = useCallback(
-    (accusedId: string) => {
-      if (!humanPlayerId || humanPlayerId !== final2VictimId) return;
-      dispatch(submitFinal2TieBreak({ victimId: humanPlayerId, accusedId }));
-    },
-    [dispatch, humanPlayerId, final2VictimId],
-  );
-
   const handleWinnerContinue = useCallback(() => {
     if (majorBeatActionLocked) return;
     setMajorBeatActionLocked(true);
@@ -838,14 +831,12 @@ export default function SilentSaboteurComp({
         <div className="ss-phase-card ss-cinematic">
           {phase === 'select_saboteur' && (
             <>
-              <p className="ss-phase-eyebrow">Hidden role assignment in progress</p>
               <p className="ss-phase-label">🔍 Selecting tonight&apos;s saboteur…</p>
             </>
           )}
 
           {phase === 'select_victim' && (
             <>
-              <p className="ss-phase-eyebrow">Silent decision</p>
               <p className="ss-phase-label">
                 {isHumanSaboteur
                   ? '💣 You are the saboteur.'
@@ -887,7 +878,6 @@ export default function SilentSaboteurComp({
 
       {phase === 'voting' && victimId && bombRevealVisible && (
         <div className="ss-phase-card ss-phase-card--bomb ss-cinematic" data-testid="ss-bomb-reveal">
-          <p className="ss-phase-eyebrow">Bomb reveal</p>
           <h2 className="ss-reveal-title">💣 A bomb has been planted!</h2>
           <VictimNotice
             playerId={victimId}
@@ -995,7 +985,6 @@ export default function SilentSaboteurComp({
         >
           {revealStage === 'votes' ? (
             <>
-              <p className="ss-phase-eyebrow">Vote reveal sequence</p>
               <h2 className="ss-phase-label">⚖️ The votes are coming in…</h2>
               <VoteRevealSequence
                 entries={revealVoteEntries}
@@ -1009,7 +998,6 @@ export default function SilentSaboteurComp({
             </>
           ) : revealStage === 'accusationResult' ? (
             <>
-              <p className="ss-phase-eyebrow">Accusation result</p>
               <h2 className="ss-reveal-title">
                 {revealInfo.reason === 'saboteur_caught'
                   ? '🕵️ The saboteur has been exposed!'
@@ -1054,9 +1042,6 @@ export default function SilentSaboteurComp({
             </>
           ) : (
             <>
-              <p className="ss-phase-eyebrow">
-                {revealInfo.reason === 'saboteur_caught' ? 'Saboteur caught' : 'Bomb detonated'}
-              </p>
               <h2 className="ss-reveal-title">
                 ❌ {getName(revealInfo.eliminatedId)} has been eliminated.
               </h2>
@@ -1092,7 +1077,6 @@ export default function SilentSaboteurComp({
 
       {phase === 'round_transition' && (
         <div className="ss-phase-card ss-cinematic">
-          <p className="ss-phase-eyebrow">Aftermath</p>
           <p className="ss-phase-label">⏳ {activeIds.length} players remain…</p>
           <p className="ss-hint">The lights dim. The next sabotage is already brewing.</p>
           <PlayerList activeIds={activeIds} getName={getName} />
@@ -1115,7 +1099,6 @@ export default function SilentSaboteurComp({
           any role information (no victim/suspect labels). */}
       {phase === 'final2_jury' && final2Stage === null && (
         <div className="ss-phase-card ss-final2 ss-cinematic">
-          <p className="ss-phase-eyebrow">🏁 Final 2</p>
           <h2 className="ss-phase-label">Two finalists remain.</h2>
           <p className="ss-hint">One of them is the last saboteur.</p>
           <p className="ss-hint hint-small">Preparing the jury finale…</p>
@@ -1131,7 +1114,6 @@ export default function SilentSaboteurComp({
             ))}
           </div>
           <div className="ss-trophy" aria-hidden="true">🏆</div>
-          <p className="ss-phase-eyebrow">Winner reveal</p>
           <h2 className="ss-winner-name">{getName(winnerId)}</h2>
           <p className="ss-winner-label">wins Silent Saboteur!</p>
           {humanPlayerId === winnerId && <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>}
@@ -1154,7 +1136,6 @@ export default function SilentSaboteurComp({
       {/* FINAL2_INTRO: Two finalists introduced, no role info revealed. */}
       {final2Stage === 'FINAL2_INTRO' && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
-          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Deduction Finale</p>
           <h2 className="ss-phase-label">The Final Confrontation</h2>
           <p className="ss-hint">
             Two players remain. One planted the bomb. The eliminated jury will decide.
@@ -1183,7 +1164,6 @@ export default function SilentSaboteurComp({
       {/* FINAL2_VOTING: Jury votes. No victim/saboteur labels visible. */}
       {final2Stage === 'FINAL2_VOTING' && final2SaboteurId && final2VictimId && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
-          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Phase</p>
           <h2 className="ss-phase-label">Who planted the bomb?</h2>
           <Final2FinalistsMuted
             finalistIds={final2FinalistIdsRef.current}
@@ -1216,32 +1196,6 @@ export default function SilentSaboteurComp({
               ))}
             </ul>
           )}
-          {/* Human finalist tiebreak — shown when jury tied and human is in Final-2 */}
-          {humanPlayerId !== null && final2FinalistIdsRef.current.includes(humanPlayerId) && (() => {
-            const allV = Object.values(juryVotes);
-            const total = allV.length;
-            const sabV = allV.filter((v) => v === final2SaboteurId).length;
-            const isTied = total > 0 && sabV * 2 === total;
-            if (!isTied) return null;
-            return (
-              <>
-                <div className="ss-alert">⚠️ Jury is tied. A finalist must cast the deciding vote.</div>
-                <ul className="ss-button-list" role="list">
-                  {final2FinalistIdsRef.current.map((id) => (
-                    <li key={id}>
-                      <button
-                        className="ss-btn ss-btn--vote"
-                        onClick={() => handleTieBreak(id)}
-                        aria-label={`Vote for ${getName(id)} (tiebreaker)`}
-                      >
-                        <span className="ss-btn__main">🫵 {getName(id)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            );
-          })()}
           <ProgressMeter
             label="Jury Votes"
             participantIds={eliminatedIds}
@@ -1255,7 +1209,6 @@ export default function SilentSaboteurComp({
       {/* FINAL2_VERDICT_LOCKED: All jury votes in; awaiting reveal. */}
       {final2Stage === 'FINAL2_VERDICT_LOCKED' && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-verdict-locked">
-          <p className="ss-phase-eyebrow">⚖️ Verdict Locked</p>
           <h2 className="ss-phase-label">The jury has spoken.</h2>
           <p className="ss-hint">The votes are sealed. The truth is about to be revealed.</p>
           <Final2FinalistsMuted
@@ -1279,7 +1232,6 @@ export default function SilentSaboteurComp({
       {/* FINAL2_REVEAL: Accused highlighted → saboteur unmasked after 1.5s. */}
       {final2Stage === 'FINAL2_REVEAL' && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-reveal">
-          <p className="ss-phase-eyebrow">🔍 The Truth Revealed</p>
           {!final2RevealDone ? (
             <>
               <h2 className="ss-phase-label">The jury accused…</h2>
@@ -1342,7 +1294,6 @@ export default function SilentSaboteurComp({
             ))}
           </div>
           <div className="ss-trophy" aria-hidden="true">🏆</div>
-          <p className="ss-phase-eyebrow">Winner reveal</p>
           <h2 className="ss-winner-name">{getName(winnerId)}</h2>
           <p className="ss-winner-label">wins Silent Saboteur!</p>
           {humanPlayerId === winnerId && (
@@ -1364,7 +1315,6 @@ export default function SilentSaboteurComp({
 
       {phase === 'complete' && (
         <div className="ss-phase-card ss-cinematic">
-          <p className="ss-phase-eyebrow">Competition complete</p>
           <p className="ss-phase-label">✅ Silent Saboteur has ended.</p>
         </div>
       )}
