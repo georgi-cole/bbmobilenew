@@ -6,36 +6,36 @@
  *   idle
  *    └─ initBlackjackTournament ──────────────────────────────→ spin
  *         └─ resolveSpinner ────────────────────────────────→ pick_opponent
- *              └─ pickOpponent ─────────────────────────────→ duel
+ *              └─ selectPair ───────────────────────────────→ duel
  *                   └─ (hit/stand until both players done)
  *                   └─ resolveDuel ──────────────────────→ duel_result
- *                        └─ advanceFromDuelResult ──→ pick_opponent  (≥2 remaining)
- *                                                  └─→ complete      (1 remaining)
+ *                        └─ advanceFromDuelResult ──→ duel       (tie — rematch same pair)
+ *                                                 └─→ pick_opponent  (≥2 remaining)
+ *                                                 └─→ complete      (1 remaining)
  *
  * Rules:
  *  - A spinner randomly selects the first controlling player.
- *  - The controlling player picks any non-eliminated opponent.
- *  - Both players receive two cards and alternately hit or stand.
+ *  - The controlling player picks ANY two non-eliminated players (fighterA and
+ *    fighterB). The controller may include themselves or pick two others.
+ *  - Both fighters receive two cards and alternately hit or stand.
  *  - Closest to 21 without going over wins. Bust (>21) = loss.
- *  - Both bust → seeded coin flip. Exact tie → seeded coin flip.
- *  - Loser is eliminated; winner stays in control and picks next opponent.
+ *  - Exact tie (equal totals) or both-bust → TIE: rematch same pair.
+ *  - After a decisive duel, loser is eliminated; duel winner becomes next controller.
  *  - Last player remaining wins the competition.
  *
- * Tiebreaker & both-bust resolution:
- *  - Deterministic seeded coin flip derived from (masterSeed, duelIndex,
- *    controllerId, opponentId) — so different matchups produce independent
- *    flip results even within the same duel index.
- *  - Documented here to avoid ambiguity: the coin flip is the canonical rule.
+ * Tie / rematch:
+ *  - resolveDuelOutcome now returns 'fighterA' | 'fighterB' | 'tie'.
+ *  - On tie, advanceFromDuelResult re-deals cards for the same pair and
+ *    transitions back to 'duel'. No elimination occurs.
+ *  - A defensive rematch cap (REMATCH_CAP = 100) prevents infinite loops:
+ *    if reached a deterministic seeded coin flip resolves the match.
  *
  * Seeded RNG:
  *  - All random values use mulberry32 from src/store/rng.ts.
  *  - Card deals use a sequential counter (duel.rngCallCount) derived from the
- *    duel-specific seed (seed XOR duelIndex * DUEL_SEED_MULT).
+ *    duel-specific seed (masterSeed XOR (duelIndex + 1) * DUEL_SEED_MULT XOR (rematchRound + 1) * REMATCH_SEED_MULT).
  *  - AI hit/stand decisions use a separate key (seed, duelIndex, playerId,
  *    decisionIndex) to avoid entanglement with card draw order.
- *  - Tiebreakers use rngAt(flipSeed, TIEBREAK_RNG_OFFSET) where flipSeed
- *    incorporates (masterSeed, duelIndex, controllerId, opponentId) so that
- *    different matchups produce independent flip results.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
@@ -52,18 +52,18 @@ export type BlackjackTournamentPhase =
   | 'duel_result'
   | 'complete';
 
-export type DuelTurn = 'controller' | 'opponent' | 'finished';
+export type DuelTurn = 'fighterA' | 'fighterB' | 'finished';
 
 export interface BlackjackDuelState {
-  controllerId: string;
-  opponentId: string;
+  fighterAId: string;
+  fighterBId: string;
   /** Card values: 1=Ace, 2–9=pip value, 10–13=10/J/Q/K (all count as 10). */
-  controllerCards: number[];
-  opponentCards: number[];
-  controllerStood: boolean;
-  opponentStood: boolean;
-  controllerBust: boolean;
-  opponentBust: boolean;
+  fighterACards: number[];
+  fighterBCards: number[];
+  fighterAStood: boolean;
+  fighterBStood: boolean;
+  fighterABust: boolean;
+  fighterBBust: boolean;
   /** Whose turn it is to act next (or 'finished' when both are done). */
   duelTurn: DuelTurn;
   /** Running count of RNG calls consumed by card deals for this duel. */
@@ -82,17 +82,23 @@ export interface BlackjackTournamentState {
   /** True once the human has been eliminated (spectator mode). */
   isSpectating: boolean;
 
-  /** Player who currently holds tournament control. */
+  /** Player who currently holds tournament control (picks the fighters). */
   controllingPlayerId: string | null;
-  /** Opponent selected for the current duel. */
-  selectedOpponentId: string | null;
+  /** First selected fighter for the upcoming or current duel. */
+  fighterAId: string | null;
+  /** Second selected fighter for the upcoming or current duel. */
+  fighterBId: string | null;
 
   currentDuel: BlackjackDuelState | null;
   /** Winner of the most recently completed duel (set in duel_result phase). */
   duelWinnerId: string | null;
   /** Loser of the most recently completed duel. */
   duelLoserId: string | null;
-  /** Running count of completed duels. Used to derive per-duel RNG seeds. */
+  /** True when the last duel ended in a tie — rematch required. */
+  isDuelTie: boolean;
+  /** Running count of rematches for the current duel pair (resets on new pair). */
+  rematchCount: number;
+  /** Running count of completed decisive duels. Used to derive per-duel RNG seeds. */
   duelIndex: number;
 
   /** Set when phase === 'complete'. */
@@ -107,10 +113,14 @@ export interface BlackjackTournamentState {
 
 /** Multiplier used to derive per-duel seed from the master seed. */
 const DUEL_SEED_MULT = 0x9e3779b9;
-/** XOR offset used to separate card-deal RNG from tiebreaker RNG. */
-const TIEBREAK_RNG_OFFSET = 64;
+/** Multiplier used to vary rematch seeds so re-dealt cards differ from the tie round. */
+const REMATCH_SEED_MULT = 0xbabecafe;
 /** XOR offset separating AI-decision RNG from card-deal RNG. */
 const AI_DECISION_RNG_MASK = 0xdeadbeef;
+/** XOR offset used for rematch-cap coin flip. */
+const REMATCH_CAP_RNG_OFFSET = 128;
+/** Maximum number of rematches before forcing a deterministic fallback winner. */
+export const REMATCH_CAP = 100;
 
 /** AI stands on this total or higher (standard soft-17 rule). */
 export const AI_STAND_THRESHOLD = 17;
@@ -128,14 +138,19 @@ function rngAt(seed: number, count: number): number {
   return rng();
 }
 
-/** Derive the card-deal seed for duel number `duelIndex`. */
-function duelCardSeed(masterSeed: number, duelIndex: number): number {
-  return ((masterSeed >>> 0) ^ (((duelIndex + 1) * DUEL_SEED_MULT) >>> 0)) >>> 0;
+/** Derive the card-deal seed for duel number `duelIndex` and `rematchRound`. */
+function duelCardSeed(masterSeed: number, duelIndex: number, rematchRound = 0): number {
+  return (
+    ((masterSeed >>> 0) ^
+      (((duelIndex + 1) * DUEL_SEED_MULT) >>> 0) ^
+      (((rematchRound + 1) * REMATCH_SEED_MULT) >>> 0)) >>>
+    0
+  );
 }
 
 /** Draw card N (0-indexed by rngCallCount) from a given duel. */
-function dealDuelCard(masterSeed: number, duelIndex: number, callCount: number): number {
-  return Math.floor(rngAt(duelCardSeed(masterSeed, duelIndex), callCount) * 13) + 1;
+function dealDuelCard(masterSeed: number, duelIndex: number, callCount: number, rematchRound = 0): number {
+  return Math.floor(rngAt(duelCardSeed(masterSeed, duelIndex, rematchRound), callCount) * 13) + 1;
 }
 
 /** FNV-1a 32-bit hash for stable string → uint32. */
@@ -184,6 +199,19 @@ export function cardRank(card: number): string {
   return RANKS[card] ?? String(card);
 }
 
+/**
+ * Compute the spinner winner index (0-based) from the master seed and player
+ * count. Exported so the UI can pre-compute the winning slot and animate
+ * toward it, keeping the visual result in sync with the Redux state.
+ *
+ * This uses the same formula as `resolveSpinner` in the reducer, so the
+ * component can snap the animation to the correct slot before dispatching.
+ */
+export function computeSpinnerWinnerIndex(seed: number, numPlayers: number): number {
+  if (numPlayers <= 0) return 0;
+  return Math.floor(rngAt(seed, 0) * numPlayers);
+}
+
 /** Suit symbol for display (assigned by card index mod 4, purely cosmetic). */
 export function cardSuit(cardIndex: number): string {
   return ['♠', '♥', '♦', '♣'][cardIndex % 4];
@@ -195,45 +223,49 @@ export function cardSuit(cardIndex: number): string {
  * Determine the winner of a blackjack duel.
  *
  * Resolution order:
- *  1. Both bust → seeded coin flip.
+ *  1. Both bust → tie (rematch).
  *  2. One bust  → non-busted player wins.
  *  3. Different totals → higher total wins.
- *  4. Equal totals → seeded coin flip.
+ *  4. Equal totals → tie (rematch).
  *
- * The coin flip seed incorporates controllerId and opponentId (via FNV-1a
- * hashes) so that different matchups produce independent results even within
- * the same duel index.
+ * Returning 'tie' signals to the orchestration layer that a rematch is required.
+ * A deterministic fallback winner is applied only when the REMATCH_CAP is reached.
  */
 export function resolveDuelOutcome(
-  controllerCards: number[],
-  opponentCards: number[],
+  fighterACards: number[],
+  fighterBCards: number[],
+): 'fighterA' | 'fighterB' | 'tie' {
+  const aTotal = computeTotal(fighterACards);
+  const bTotal = computeTotal(fighterBCards);
+  const aBust = aTotal > 21;
+  const bBust = bTotal > 21;
+
+  if (aBust && bBust) return 'tie';   // Both bust → rematch
+  if (aBust) return 'fighterB';
+  if (bBust) return 'fighterA';
+  if (aTotal > bTotal) return 'fighterA';
+  if (bTotal > aTotal) return 'fighterB';
+  return 'tie';                        // Equal totals → rematch
+}
+
+/**
+ * Deterministic fallback winner used when the rematch cap is reached.
+ * Seeded coin flip keyed on (masterSeed, duelIndex, fighterAId, fighterBId, rematchCount).
+ */
+function rematchCapWinner(
   masterSeed: number,
   duelIndex: number,
-  controllerId = '',
-  opponentId = '',
-): 'controller' | 'opponent' {
-  const cTotal = computeTotal(controllerCards);
-  const oTotal = computeTotal(opponentCards);
-  const cBust = cTotal > 21;
-  const oBust = oTotal > 21;
-
-  if (!cBust && !oBust) {
-    if (cTotal !== oTotal) return cTotal > oTotal ? 'controller' : 'opponent';
-    // Exact tie → coin flip
-  } else if (!cBust) {
-    return 'controller';
-  } else if (!oBust) {
-    return 'opponent';
-  }
-  // Both bust OR exact tie → coin flip keyed on (masterSeed, duelIndex,
-  // controllerId, opponentId) for matchup-independent determinism.
+  fighterAId: string,
+  fighterBId: string,
+  rematchCount: number,
+): 'fighterA' | 'fighterB' {
   const flipSeed =
-    (duelCardSeed(masterSeed, duelIndex) ^
-      fnv1a32(controllerId) ^
-      (fnv1a32(opponentId) * 0x9e3779b9)) >>>
+    (duelCardSeed(masterSeed, duelIndex, rematchCount) ^
+      fnv1a32(fighterAId) ^
+      (fnv1a32(fighterBId) * 0x9e3779b9)) >>>
     0;
-  const flipVal = rngAt(flipSeed, TIEBREAK_RNG_OFFSET);
-  return flipVal < 0.5 ? 'controller' : 'opponent';
+  const flipVal = rngAt(flipSeed, REMATCH_CAP_RNG_OFFSET);
+  return flipVal < 0.5 ? 'fighterA' : 'fighterB';
 }
 
 // ─── AI helpers (exported for tests) ─────────────────────────────────────────
@@ -274,23 +306,27 @@ export function aiDecisionRng(
 }
 
 /**
- * AI selects an opponent from the remaining player pool.
- * Uses uniform random selection with a keyed seed to keep it deterministic
- * and independent of duel card state.
+ * AI picks two fighters for the controlling player.
+ * By default the controller includes themselves as fighterA and picks a random
+ * opponent as fighterB — preserving the same competitive dynamic as before
+ * while conforming to the new two-slot selection model.
+ * Returns null when no valid pair can be formed.
  */
-export function aiPickOpponent(
+export function aiPickFighters(
   masterSeed: number,
   duelIndex: number,
   controllingPlayerId: string,
   remainingPlayerIds: string[],
-): string | null {
-  const candidates = remainingPlayerIds.filter((id) => id !== controllingPlayerId);
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
+): { fighterAId: string; fighterBId: string } | null {
+  const opponents = remainingPlayerIds.filter((id) => id !== controllingPlayerId);
+  if (opponents.length === 0) return null;
+  const fighterAId = controllingPlayerId;
+  if (opponents.length === 1) return { fighterAId, fighterBId: opponents[0] };
   const idHash = fnv1a32(controllingPlayerId);
   const s = ((masterSeed >>> 0) ^ (((duelIndex + 1) * DUEL_SEED_MULT) >>> 0) ^ idHash ^ 0xcafebabe) >>> 0;
   const rng = mulberry32(s);
-  return candidates[Math.floor(rng() * candidates.length)];
+  const fighterBId = opponents[Math.floor(rng() * opponents.length)];
+  return { fighterAId, fighterBId };
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -307,11 +343,14 @@ const initialState: BlackjackTournamentState = {
   isSpectating: false,
 
   controllingPlayerId: null,
-  selectedOpponentId: null,
+  fighterAId: null,
+  fighterBId: null,
 
   currentDuel: null,
   duelWinnerId: null,
   duelLoserId: null,
+  isDuelTie: false,
+  rematchCount: 0,
   duelIndex: 0,
 
   winnerId: null,
@@ -319,6 +358,68 @@ const initialState: BlackjackTournamentState = {
   seed: 0,
   outcomeResolved: false,
 };
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Auto-populate fighterAId/fighterBId when only two players remain so
+ * the UI can fast-path directly into the duel without manual selection.
+ */
+function autoSetFighters(
+  state: BlackjackTournamentState,
+): void {
+  const controller = state.controllingPlayerId;
+  const others = state.remainingPlayerIds.filter((id) => id !== controller);
+  if (others.length === 1 && controller) {
+    state.fighterAId = controller;
+    state.fighterBId = others[0];
+  } else {
+    state.fighterAId = null;
+    state.fighterBId = null;
+  }
+}
+
+/**
+ * Deal a fresh set of starting cards for fighterA and fighterB and
+ * initialise (or reset) the currentDuel state.
+ */
+function dealDuelCards(
+  state: BlackjackTournamentState,
+  fighterAId: string,
+  fighterBId: string,
+): void {
+  const rematch = state.rematchCount;
+  let rngCount = 0;
+  const a1 = dealDuelCard(state.seed, state.duelIndex, rngCount++, rematch);
+  const a2 = dealDuelCard(state.seed, state.duelIndex, rngCount++, rematch);
+  const b1 = dealDuelCard(state.seed, state.duelIndex, rngCount++, rematch);
+  const b2 = dealDuelCard(state.seed, state.duelIndex, rngCount++, rematch);
+
+  const fighterACards = [a1, a2];
+  const fighterBCards = [b1, b2];
+  const fighterABust = computeTotal(fighterACards) > 21;
+  const fighterBBust = computeTotal(fighterBCards) > 21;
+
+  // Fighter A goes first; skip to B or finish if already bust.
+  const duelTurn: DuelTurn = fighterABust
+    ? fighterBBust
+      ? 'finished'
+      : 'fighterB'
+    : 'fighterA';
+
+  state.currentDuel = {
+    fighterAId,
+    fighterBId,
+    fighterACards,
+    fighterBCards,
+    fighterAStood: false,
+    fighterBStood: false,
+    fighterABust,
+    fighterBBust,
+    duelTurn,
+    rngCallCount: rngCount,
+  };
+}
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
@@ -347,10 +448,13 @@ const blackjackTournamentSlice = createSlice({
       state.humanPlayerId = humanPlayerId;
       state.isSpectating = false;
       state.controllingPlayerId = null;
-      state.selectedOpponentId = null;
+      state.fighterAId = null;
+      state.fighterBId = null;
       state.currentDuel = null;
       state.duelWinnerId = null;
       state.duelLoserId = null;
+      state.isDuelTie = false;
+      state.rematchCount = 0;
       state.duelIndex = 0;
       state.winnerId = null;
       state.seed = seed;
@@ -367,142 +471,155 @@ const blackjackTournamentSlice = createSlice({
     /**
      * Resolve the spinner animation: pick a random controller from remaining
      * players and advance to pick_opponent.
-     * If only one opponent is available, auto-populate selectedOpponentId so
-     * the UI can fast-path directly into the duel.
+     * When only 2 players remain, auto-populate fighterAId/fighterBId so the
+     * UI can fast-path directly into the duel.
      */
     resolveSpinner(state) {
       if (state.phase !== 'spin') return;
       const idx = Math.floor(rngAt(state.seed, 0) * state.remainingPlayerIds.length);
       state.controllingPlayerId = state.remainingPlayerIds[idx] ?? state.remainingPlayerIds[0];
-
-      const opponents = state.remainingPlayerIds.filter((id) => id !== state.controllingPlayerId);
-      state.selectedOpponentId = opponents.length === 1 ? opponents[0] : null;
+      state.rematchCount = 0;
+      autoSetFighters(state);
       state.phase = 'pick_opponent';
     },
 
     /**
-     * Controller picks an opponent.
-     * Validates the pick (must be in remainingPlayerIds, must not be self),
+     * Controller selects two fighters for the duel.
+     * Validates the pair (both must be in remainingPlayerIds, must be distinct),
      * initialises the duel with 2 starting cards each, and advances to 'duel'.
+     * The controller is NOT required to be one of the fighters.
      */
-    pickOpponent(state, action: PayloadAction<{ opponentId: string }>) {
+    selectPair(state, action: PayloadAction<{ fighterAId: string; fighterBId: string }>) {
       if (state.phase !== 'pick_opponent') return;
       if (!state.controllingPlayerId) return;
-      const { opponentId } = action.payload;
-      if (!state.remainingPlayerIds.includes(opponentId)) return;
-      if (opponentId === state.controllingPlayerId) return;
+      const { fighterAId, fighterBId } = action.payload;
+      if (!state.remainingPlayerIds.includes(fighterAId)) return;
+      if (!state.remainingPlayerIds.includes(fighterBId)) return;
+      if (fighterAId === fighterBId) return;
 
-      state.selectedOpponentId = opponentId;
-
-      // Deal 2 cards to each player (sequential draws from the duel RNG).
-      let rngCount = 0;
-      const c1 = dealDuelCard(state.seed, state.duelIndex, rngCount++);
-      const c2 = dealDuelCard(state.seed, state.duelIndex, rngCount++);
-      const o1 = dealDuelCard(state.seed, state.duelIndex, rngCount++);
-      const o2 = dealDuelCard(state.seed, state.duelIndex, rngCount++);
-
-      const controllerCards = [c1, c2];
-      const opponentCards = [o1, o2];
-      const controllerBust = computeTotal(controllerCards) > 21;
-      const opponentBust = computeTotal(opponentCards) > 21;
-
-      // Determine starting turn (controller goes first; if already busted skip to opponent).
-      const duelTurn: DuelTurn = controllerBust
-        ? opponentBust
-          ? 'finished'
-          : 'opponent'
-        : 'controller';
-
-      state.currentDuel = {
-        controllerId: state.controllingPlayerId,
-        opponentId,
-        controllerCards,
-        opponentCards,
-        controllerStood: false,
-        opponentStood: false,
-        controllerBust,
-        opponentBust,
-        duelTurn,
-        rngCallCount: rngCount,
-      };
+      state.fighterAId = fighterAId;
+      state.fighterBId = fighterBId;
+      state.rematchCount = 0;
+      dealDuelCards(state, fighterAId, fighterBId);
       state.phase = 'duel';
     },
 
     /**
-     * Active player takes a card (hit).
-     * Advances the duel turn when the player busts.
+     * Active fighter takes a card (hit).
+     * Advances the duel turn when the fighter busts.
      */
     hitCurrentPlayer(state) {
       if (state.phase !== 'duel' || !state.currentDuel) return;
       const duel = state.currentDuel;
       if (duel.duelTurn === 'finished') return;
 
-      const card = dealDuelCard(state.seed, state.duelIndex, duel.rngCallCount);
+      const card = dealDuelCard(state.seed, state.duelIndex, duel.rngCallCount, state.rematchCount);
       duel.rngCallCount++;
 
-      if (duel.duelTurn === 'controller') {
-        duel.controllerCards.push(card);
-        if (computeTotal(duel.controllerCards) > 21) {
-          duel.controllerBust = true;
-          duel.duelTurn = duel.opponentStood || duel.opponentBust ? 'finished' : 'opponent';
+      if (duel.duelTurn === 'fighterA') {
+        duel.fighterACards.push(card);
+        if (computeTotal(duel.fighterACards) > 21) {
+          duel.fighterABust = true;
+          duel.duelTurn = duel.fighterBStood || duel.fighterBBust ? 'finished' : 'fighterB';
         }
       } else {
-        duel.opponentCards.push(card);
-        if (computeTotal(duel.opponentCards) > 21) {
-          duel.opponentBust = true;
-          duel.duelTurn = duel.controllerStood || duel.controllerBust ? 'finished' : 'controller';
+        duel.fighterBCards.push(card);
+        if (computeTotal(duel.fighterBCards) > 21) {
+          duel.fighterBBust = true;
+          duel.duelTurn = duel.fighterAStood || duel.fighterABust ? 'finished' : 'fighterA';
         }
       }
     },
 
     /**
-     * Active player stands (takes no more cards).
-     * Switches turn to the other player or marks the duel as finished.
+     * Active fighter stands (takes no more cards).
+     * Switches turn to the other fighter or marks the duel as finished.
      */
     standCurrentPlayer(state) {
       if (state.phase !== 'duel' || !state.currentDuel) return;
       const duel = state.currentDuel;
       if (duel.duelTurn === 'finished') return;
 
-      if (duel.duelTurn === 'controller') {
-        duel.controllerStood = true;
-        duel.duelTurn = duel.opponentStood || duel.opponentBust ? 'finished' : 'opponent';
+      if (duel.duelTurn === 'fighterA') {
+        duel.fighterAStood = true;
+        duel.duelTurn = duel.fighterBStood || duel.fighterBBust ? 'finished' : 'fighterB';
       } else {
-        duel.opponentStood = true;
-        duel.duelTurn = duel.controllerStood || duel.controllerBust ? 'finished' : 'controller';
+        duel.fighterBStood = true;
+        duel.duelTurn = duel.fighterAStood || duel.fighterABust ? 'finished' : 'fighterA';
       }
     },
 
     /**
      * Resolve the duel once duelTurn === 'finished'.
-     * Sets duelWinnerId/duelLoserId and transitions to 'duel_result'.
+     * - Decisive result: sets duelWinnerId/duelLoserId and transitions to 'duel_result'.
+     * - Tie (equal totals or both bust): sets isDuelTie=true and transitions to
+     *   'duel_result' so the UI can display a "Tie — Rematch!" beat before rematching.
      */
     resolveDuel(state) {
       if (state.phase !== 'duel' || !state.currentDuel) return;
       if (state.currentDuel.duelTurn !== 'finished') return;
 
       const duel = state.currentDuel;
-      const winnerSide = resolveDuelOutcome(
-        duel.controllerCards,
-        duel.opponentCards,
-        state.seed,
-        state.duelIndex,
-        duel.controllerId,
-        duel.opponentId,
-      );
+      const outcome = resolveDuelOutcome(duel.fighterACards, duel.fighterBCards);
 
-      state.duelWinnerId = winnerSide === 'controller' ? duel.controllerId : duel.opponentId;
-      state.duelLoserId = winnerSide === 'controller' ? duel.opponentId : duel.controllerId;
+      if (outcome === 'tie') {
+        // Apply rematch-cap fallback if we've exceeded the limit.
+        if (state.rematchCount >= REMATCH_CAP) {
+          const fallback = rematchCapWinner(
+            state.seed,
+            state.duelIndex,
+            duel.fighterAId,
+            duel.fighterBId,
+            state.rematchCount,
+          );
+          state.duelWinnerId = fallback === 'fighterA' ? duel.fighterAId : duel.fighterBId;
+          state.duelLoserId = fallback === 'fighterA' ? duel.fighterBId : duel.fighterAId;
+          state.isDuelTie = false;
+        } else {
+          state.duelWinnerId = null;
+          state.duelLoserId = null;
+          state.isDuelTie = true;
+        }
+      } else {
+        state.duelWinnerId = outcome === 'fighterA' ? duel.fighterAId : duel.fighterBId;
+        state.duelLoserId = outcome === 'fighterA' ? duel.fighterBId : duel.fighterAId;
+        state.isDuelTie = false;
+      }
       state.phase = 'duel_result';
     },
 
     /**
-     * Eliminate the loser, update remainingPlayerIds, and transition:
-     *  - ≥2 remaining → pick_opponent (winner stays in control)
-     *  - 1 remaining  → complete
+     * Advance after the duel result is shown.
+     *
+     * Tie path:
+     *  - Increment rematchCount.
+     *  - Re-deal cards for the same fighter pair.
+     *  - Transition back to 'duel'.
+     *  - No elimination.
+     *
+     * Decisive path:
+     *  - Eliminate loser, update remainingPlayerIds.
+     *  - Set winner as new controllingPlayerId.
+     *  - Increment duelIndex.
+     *  - Transition to 'pick_opponent' (≥2 remain) or 'complete' (1 remains).
      */
     advanceFromDuelResult(state) {
-      if (state.phase !== 'duel_result' || !state.duelLoserId) return;
+      if (state.phase !== 'duel_result') return;
+
+      if (state.isDuelTie) {
+        // Rematch: re-deal cards for the same pair.
+        state.rematchCount++;
+        const aId = state.fighterAId!;
+        const bId = state.fighterBId!;
+        dealDuelCards(state, aId, bId);
+        state.isDuelTie = false;
+        state.duelWinnerId = null;
+        state.duelLoserId = null;
+        state.phase = 'duel';
+        return;
+      }
+
+      if (!state.duelLoserId) return;
 
       const loser = state.duelLoserId;
       state.remainingPlayerIds = state.remainingPlayerIds.filter((id) => id !== loser);
@@ -513,19 +630,17 @@ const blackjackTournamentSlice = createSlice({
       }
 
       state.controllingPlayerId = state.duelWinnerId;
-      state.selectedOpponentId = null;
+      state.fighterAId = null;
+      state.fighterBId = null;
       state.currentDuel = null;
+      state.rematchCount = 0;
       state.duelIndex++;
 
       if (state.remainingPlayerIds.length <= 1) {
         state.winnerId = state.remainingPlayerIds[0] ?? null;
         state.phase = 'complete';
       } else {
-        const opponents = state.remainingPlayerIds.filter(
-          (id) => id !== state.controllingPlayerId,
-        );
-        // Auto-populate when only one opponent remains.
-        state.selectedOpponentId = opponents.length === 1 ? opponents[0] : null;
+        autoSetFighters(state);
         state.phase = 'pick_opponent';
       }
     },
@@ -543,7 +658,7 @@ const blackjackTournamentSlice = createSlice({
 export const {
   initBlackjackTournament,
   resolveSpinner,
-  pickOpponent,
+  selectPair,
   hitCurrentPlayer,
   standCurrentPlayer,
   resolveDuel,

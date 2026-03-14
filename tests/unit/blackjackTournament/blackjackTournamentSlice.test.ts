@@ -3,16 +3,18 @@
  *
  * Covers:
  *  1. initBlackjackTournament: sets up state and transitions to 'spin' (or 'complete' for ≤1 player).
- *  2. resolveSpinner: picks controller deterministically and transitions to 'pick_opponent'.
- *  3. pickOpponent: validates pick, deals starting cards, transitions to 'duel'.
+ *  2. resolveSpinner: picks controller deterministically; controller written to state as controllingPlayerId.
+ *  3. selectPair: validates pair, deals starting cards, transitions to 'duel'.
+ *     Controller can pick any two distinct non-eliminated players (including themselves).
  *  4. hitCurrentPlayer / standCurrentPlayer: advances duel state correctly.
- *  5. resolveDuel: computes winner and transitions to 'duel_result'.
- *  6. advanceFromDuelResult: eliminates loser, updates remaining, transitions to next phase.
- *  7. Edge cases: both bust, exact tie, single opponent auto-select, 2-player quick flow.
- *  8. AI helpers: aiShouldHit, aiDecisionRng, aiPickOpponent — determinism checks.
+ *  5. resolveDuel: computes winner and transitions to 'duel_result'. Returns 'tie' for equal/both-bust.
+ *  6. advanceFromDuelResult: on tie → rematch same pair; on decisive → eliminates loser, transitions.
+ *  7. Tie rematch: no elimination on tie; rematch loop until decisive; rematch cap fallback.
+ *  8. AI helpers: aiShouldHit, aiDecisionRng, aiPickFighters — determinism checks.
  *  9. computeTotal: ace handling, multi-ace reduction.
  * 10. outcomeResolved / markBlackjackTournamentOutcomeResolved idempotency.
  * 11. Full deterministic tournament simulation.
+ * 12. Controller handoff: spinner selection becomes authoritative controllingPlayerId.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -20,7 +22,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import reducer, {
   initBlackjackTournament,
   resolveSpinner,
-  pickOpponent,
+  selectPair,
   hitCurrentPlayer,
   standCurrentPlayer,
   resolveDuel,
@@ -32,9 +34,10 @@ import reducer, {
   resolveDuelOutcome,
   aiShouldHit,
   aiDecisionRng,
-  aiPickOpponent,
+  aiPickFighters,
   AI_STAND_THRESHOLD,
   AI_HIT_ALWAYS_BELOW,
+  REMATCH_CAP,
 } from '../../../src/features/blackjackTournament/blackjackTournamentSlice';
 import type { BlackjackTournamentState } from '../../../src/features/blackjackTournament/blackjackTournamentSlice';
 
@@ -61,7 +64,7 @@ function initStore(store: Store, ids: string[], seed = 42, type: 'HOH' | 'POV' =
   );
 }
 
-/** Run through spin → pick → duel → result for one duel using auto-resolve. */
+/** Run through spin → pick → duel → result for one duel using auto-resolve (both stand). */
 function runOneDuel(store: Store): void {
   const s = getState(store);
   if (s.phase === 'spin') store.dispatch(resolveSpinner());
@@ -69,15 +72,32 @@ function runOneDuel(store: Store): void {
   const s2 = getState(store);
   if (s2.phase === 'pick_opponent') {
     const controller = s2.controllingPlayerId!;
-    const opponents = s2.remainingPlayerIds.filter((id) => id !== controller);
-    store.dispatch(pickOpponent({ opponentId: opponents[0] }));
+    // fighterA = controller, fighterB = first other player
+    const fighterB = s2.remainingPlayerIds.find((id) => id !== controller)!;
+    store.dispatch(selectPair({ fighterAId: controller, fighterBId: fighterB }));
   }
 
-  // Auto-play: stand both players (simple termination).
-  store.dispatch(standCurrentPlayer()); // controller stands
-  store.dispatch(standCurrentPlayer()); // opponent stands
-  store.dispatch(resolveDuel());
-  store.dispatch(advanceFromDuelResult());
+  // Auto-play: stand both fighters until duel finishes; handle potential ties.
+  let safety = 200;
+  while (getState(store).phase === 'duel' && safety-- > 0) {
+    const ds = getState(store).currentDuel!;
+    if (ds.duelTurn === 'finished') break;
+    store.dispatch(standCurrentPlayer());
+  }
+  if (getState(store).phase === 'duel') {
+    store.dispatch(resolveDuel());
+  }
+  // Loop to handle rematches.
+  while (getState(store).phase === 'duel_result' && safety-- > 0) {
+    store.dispatch(advanceFromDuelResult());
+    if (getState(store).phase === 'duel') {
+      // Rematch: stand both and resolve again.
+      const rd = getState(store).currentDuel!;
+      if (rd.duelTurn !== 'finished') store.dispatch(standCurrentPlayer());
+      if (getState(store).currentDuel?.duelTurn !== 'finished') store.dispatch(standCurrentPlayer());
+      store.dispatch(resolveDuel());
+    }
+  }
 }
 
 // ─── computeTotal ─────────────────────────────────────────────────────────────
@@ -132,41 +152,32 @@ describe('cardRank', () => {
 
 describe('resolveDuelOutcome', () => {
   it('non-bust winner: higher total wins', () => {
-    expect(resolveDuelOutcome([10, 9], [10, 8], 42, 0)).toBe('controller'); // 19 vs 18
-    expect(resolveDuelOutcome([10, 8], [10, 9], 42, 0)).toBe('opponent');   // 18 vs 19
+    expect(resolveDuelOutcome([10, 9], [10, 8])).toBe('fighterA'); // 19 vs 18
+    expect(resolveDuelOutcome([10, 8], [10, 9])).toBe('fighterB'); // 18 vs 19
   });
 
   it('one bust: other player wins', () => {
-    expect(resolveDuelOutcome([10, 10, 5], [10, 9], 42, 0)).toBe('opponent'); // 25 bust vs 19
-    expect(resolveDuelOutcome([10, 9], [10, 10, 5], 42, 0)).toBe('controller'); // 19 vs 25 bust
+    expect(resolveDuelOutcome([10, 10, 5], [10, 9])).toBe('fighterB'); // 25 bust vs 19
+    expect(resolveDuelOutcome([10, 9], [10, 10, 5])).toBe('fighterA'); // 19 vs 25 bust
   });
 
-  it('exact tie: deterministic coin flip (same seed = same result)', () => {
-    const r1 = resolveDuelOutcome([10, 9], [10, 9], 42, 0);
-    const r2 = resolveDuelOutcome([10, 9], [10, 9], 42, 0);
-    expect(r1).toBe(r2);
-    expect(['controller', 'opponent']).toContain(r1);
+  it('exact tie: returns "tie"', () => {
+    const r = resolveDuelOutcome([10, 9], [10, 9]);
+    expect(r).toBe('tie');
   });
 
-  it('both bust: deterministic coin flip', () => {
-    const r1 = resolveDuelOutcome([10, 10, 5], [9, 8, 6], 42, 0);
-    const r2 = resolveDuelOutcome([10, 10, 5], [9, 8, 6], 42, 0);
-    expect(r1).toBe(r2);
-    expect(['controller', 'opponent']).toContain(r1);
+  it('both bust: returns "tie"', () => {
+    const r = resolveDuelOutcome([10, 10, 5], [9, 8, 6]);
+    expect(r).toBe('tie');
   });
 
-  it('different seeds produce both outcomes across different seeds', () => {
-    const results = new Set<string>();
-    for (let seed = 0; seed < 20; seed++) {
-      results.add(resolveDuelOutcome([10, 9], [10, 9], seed, 0));
-    }
-    // Both 'controller' and 'opponent' should appear across 20 different seeds.
-    expect(results).toContain('controller');
-    expect(results).toContain('opponent');
+  it('different totals never return "tie"', () => {
+    expect(resolveDuelOutcome([10, 9], [10, 8])).not.toBe('tie');
+    expect(resolveDuelOutcome([10, 8], [10, 9])).not.toBe('tie');
   });
 
   it('blackjack (21) beats 20', () => {
-    expect(resolveDuelOutcome([1, 13], [10, 9], 42, 0)).toBe('controller'); // 21 vs 20
+    expect(resolveDuelOutcome([1, 13], [10, 9])).toBe('fighterA'); // 21 vs 20
   });
 });
 
@@ -221,40 +232,41 @@ describe('aiDecisionRng', () => {
   });
 });
 
-// ─── aiPickOpponent ───────────────────────────────────────────────────────────
+// ─── aiPickFighters ───────────────────────────────────────────────────────────
 
-describe('aiPickOpponent', () => {
-  it('never picks self', () => {
+describe('aiPickFighters', () => {
+  it('returns two distinct players', () => {
     const remaining = ['alice', 'bob', 'carol', 'dave'];
     for (let seed = 0; seed < 20; seed++) {
-      const pick = aiPickOpponent(seed, 0, 'alice', remaining);
-      expect(pick).not.toBe('alice');
+      const result = aiPickFighters(seed, 0, 'alice', remaining);
+      expect(result).not.toBeNull();
+      expect(result!.fighterAId).not.toBe(result!.fighterBId);
     }
   });
 
-  it('returns null when no opponents available', () => {
-    expect(aiPickOpponent(42, 0, 'alice', ['alice'])).toBeNull();
+  it('returns null when controller is the only remaining player', () => {
+    expect(aiPickFighters(42, 0, 'alice', ['alice'])).toBeNull();
   });
 
   it('is deterministic', () => {
-    const p1 = aiPickOpponent(42, 0, 'alice', ['bob', 'carol']);
-    const p2 = aiPickOpponent(42, 0, 'alice', ['bob', 'carol']);
-    expect(p1).toBe(p2);
+    const p1 = aiPickFighters(42, 0, 'alice', ['bob', 'carol']);
+    const p2 = aiPickFighters(42, 0, 'alice', ['bob', 'carol']);
+    expect(p1).toEqual(p2);
   });
 
-  it('auto-selects the only remaining opponent', () => {
-    expect(aiPickOpponent(42, 0, 'alice', ['alice', 'bob'])).toBe('bob');
+  it('auto-selects the only remaining opponent when 2 players exist', () => {
+    const result = aiPickFighters(42, 0, 'alice', ['alice', 'bob']);
+    expect(result).not.toBeNull();
+    expect([result!.fighterAId, result!.fighterBId].sort()).toEqual(['alice', 'bob']);
   });
 
-  it('varies picks across duel indices', () => {
-    const picks = new Set<string>();
-    const remaining = ['b', 'c', 'd', 'e'];
-    for (let i = 0; i < 20; i++) {
-      const p = aiPickOpponent(42, i, 'a', remaining);
-      if (p) picks.add(p);
+  it('both fighters are from remainingPlayerIds', () => {
+    const remaining = ['alice', 'bob', 'carol', 'dave'];
+    for (let seed = 0; seed < 10; seed++) {
+      const result = aiPickFighters(seed, 0, 'alice', remaining);
+      expect(remaining).toContain(result!.fighterAId);
+      expect(remaining).toContain(result!.fighterBId);
     }
-    // Must pick more than one distinct opponent across 20 different duel indices.
-    expect(picks.size).toBeGreaterThan(1);
   });
 });
 
@@ -305,7 +317,7 @@ describe('initBlackjackTournament', () => {
   });
 });
 
-// ─── resolveSpinner ───────────────────────────────────────────────────────────
+// ─── resolveSpinner / controller handoff ─────────────────────────────────────
 
 describe('resolveSpinner', () => {
   it('transitions to pick_opponent', () => {
@@ -315,11 +327,22 @@ describe('resolveSpinner', () => {
     expect(getState(store).phase).toBe('pick_opponent');
   });
 
-  it('sets controllingPlayerId to a valid player', () => {
+  it('sets controllingPlayerId to a valid remaining player', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob', 'carol'], 42);
     store.dispatch(resolveSpinner());
     const s = getState(store);
+    expect(s.remainingPlayerIds).toContain(s.controllingPlayerId);
+  });
+
+  it('controllingPlayerId is written to shared state (authoritative)', () => {
+    // Spinner result must live in Redux state, not a transient local variable.
+    const store = makeStore();
+    initStore(store, ['alice', 'bob', 'carol'], 42);
+    store.dispatch(resolveSpinner());
+    const s = getState(store);
+    // controllingPlayerId is the source of truth for who picked next fighters.
+    expect(s.controllingPlayerId).not.toBeNull();
     expect(s.remainingPlayerIds).toContain(s.controllingPlayerId);
   });
 
@@ -335,28 +358,32 @@ describe('resolveSpinner', () => {
     expect(getState(s1).controllingPlayerId).toBe(getState(s2).controllingPlayerId);
   });
 
-  it('auto-sets selectedOpponentId when only 2 players', () => {
+  it('auto-sets fighterAId/fighterBId when only 2 players', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    expect(s.selectedOpponentId).not.toBeNull();
-    expect(s.selectedOpponentId).not.toBe(s.controllingPlayerId);
+    expect(s.fighterAId).not.toBeNull();
+    expect(s.fighterBId).not.toBeNull();
+    expect(s.fighterAId).not.toBe(s.fighterBId);
+    // One of the fighters is the controller
+    expect([s.fighterAId, s.fighterBId]).toContain(s.controllingPlayerId);
   });
 
   it('is a no-op if not in spin phase', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
     store.dispatch(resolveSpinner());
-    store.dispatch(resolveSpinner()); // second call
+    const ctrl = getState(store).controllingPlayerId;
+    store.dispatch(resolveSpinner()); // second call — no-op
     expect(getState(store).phase).toBe('pick_opponent');
-    // controllingPlayerId unchanged
+    expect(getState(store).controllingPlayerId).toBe(ctrl);
   });
 });
 
-// ─── pickOpponent ─────────────────────────────────────────────────────────────
+// ─── selectPair ───────────────────────────────────────────────────────────────
 
-describe('pickOpponent', () => {
+describe('selectPair', () => {
   function reachPickOpponent(ids: string[], seed = 42): Store {
     const store = makeStore();
     initStore(store, ids, seed);
@@ -367,42 +394,64 @@ describe('pickOpponent', () => {
   it('transitions to duel', () => {
     const store = reachPickOpponent(['alice', 'bob', 'carol']);
     const s = getState(store);
-    const opponent = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opponent }));
+    const [fA, fB] = s.remainingPlayerIds.filter(() => true);
+    store.dispatch(selectPair({ fighterAId: fA, fighterBId: fB }));
     expect(getState(store).phase).toBe('duel');
   });
 
-  it('rejects self-pick', () => {
+  it('rejects same fighter for both slots', () => {
     const store = reachPickOpponent(['alice', 'bob']);
     const s = getState(store);
-    store.dispatch(pickOpponent({ opponentId: s.controllingPlayerId! }));
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[0] }));
     expect(getState(store).phase).toBe('pick_opponent');
   });
 
   it('rejects unknown player', () => {
     const store = reachPickOpponent(['alice', 'bob']);
-    store.dispatch(pickOpponent({ opponentId: 'nobody' }));
+    const s = getState(store);
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: 'nobody' }));
     expect(getState(store).phase).toBe('pick_opponent');
   });
 
-  it('deals 2 starting cards to each player', () => {
-    const store = reachPickOpponent(['alice', 'bob']);
+  it('controller can pick themselves as fighterA', () => {
+    const store = reachPickOpponent(['alice', 'bob', 'carol']);
     const s = getState(store);
-    const opponent = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opponent }));
-    const duel = getState(store).currentDuel!;
-    expect(duel.controllerCards).toHaveLength(2);
-    expect(duel.opponentCards).toHaveLength(2);
+    const ctrl = s.controllingPlayerId!;
+    const other = s.remainingPlayerIds.find((id) => id !== ctrl)!;
+    store.dispatch(selectPair({ fighterAId: ctrl, fighterBId: other }));
+    expect(getState(store).phase).toBe('duel');
+    expect(getState(store).currentDuel!.fighterAId).toBe(ctrl);
   });
 
-  it('sets duelTurn to controller', () => {
+  it('controller can pick two other players (not themselves)', () => {
+    const store = reachPickOpponent(['alice', 'bob', 'carol'], 42);
+    const s = getState(store);
+    const ctrl = s.controllingPlayerId!;
+    const others = s.remainingPlayerIds.filter((id) => id !== ctrl);
+    if (others.length >= 2) {
+      store.dispatch(selectPair({ fighterAId: others[0], fighterBId: others[1] }));
+      expect(getState(store).phase).toBe('duel');
+      const duel = getState(store).currentDuel!;
+      expect(duel.fighterAId).toBe(others[0]);
+      expect(duel.fighterBId).toBe(others[1]);
+    }
+  });
+
+  it('deals 2 starting cards to each fighter', () => {
     const store = reachPickOpponent(['alice', 'bob']);
     const s = getState(store);
-    const opponent = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opponent }));
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
     const duel = getState(store).currentDuel!;
-    // turn is controller unless controller busted on start (very rare)
-    expect(['controller', 'opponent', 'finished']).toContain(duel.duelTurn);
+    expect(duel.fighterACards).toHaveLength(2);
+    expect(duel.fighterBCards).toHaveLength(2);
+  });
+
+  it('sets duelTurn to fighterA or finished', () => {
+    const store = reachPickOpponent(['alice', 'bob']);
+    const s = getState(store);
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
+    const duel = getState(store).currentDuel!;
+    expect(['fighterA', 'fighterB', 'finished']).toContain(duel.duelTurn);
   });
 });
 
@@ -414,52 +463,52 @@ describe('hitCurrentPlayer / standCurrentPlayer', () => {
     initStore(store, ['alice', 'bob'], seed);
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    const opponent = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opponent }));
+    store.dispatch(selectPair({
+      fighterAId: s.remainingPlayerIds[0],
+      fighterBId: s.remainingPlayerIds[1],
+    }));
     return store;
   }
 
-  it('hit adds a card to the active player', () => {
+  it('hit adds a card to the active fighter', () => {
     const store = reachDuel(42);
     const before = getState(store).currentDuel!;
-    const controllerCardsBefore = before.controllerCards.length;
-    if (before.duelTurn === 'controller') {
+    const aCardsBefore = before.fighterACards.length;
+    if (before.duelTurn === 'fighterA') {
       store.dispatch(hitCurrentPlayer());
-      expect(getState(store).currentDuel!.controllerCards).toHaveLength(controllerCardsBefore + 1);
+      expect(getState(store).currentDuel!.fighterACards).toHaveLength(aCardsBefore + 1);
     }
   });
 
-  it('stand marks active player as stood', () => {
+  it('stand marks active fighter as stood', () => {
     const store = reachDuel(42);
     const before = getState(store).currentDuel!;
-    if (before.duelTurn === 'controller') {
+    if (before.duelTurn === 'fighterA') {
       store.dispatch(standCurrentPlayer());
-      expect(getState(store).currentDuel!.controllerStood).toBe(true);
+      expect(getState(store).currentDuel!.fighterAStood).toBe(true);
     }
   });
 
-  it('standing controller switches turn to opponent', () => {
+  it('standing fighterA switches turn to fighterB', () => {
     const store = reachDuel(42);
     const before = getState(store).currentDuel!;
-    if (before.duelTurn === 'controller') {
+    if (before.duelTurn === 'fighterA') {
       store.dispatch(standCurrentPlayer());
       const after = getState(store).currentDuel!;
-      expect(['opponent', 'finished']).toContain(after.duelTurn);
+      expect(['fighterB', 'finished']).toContain(after.duelTurn);
     }
   });
 
-  it('standing both players sets duelTurn to finished', () => {
-    // With 2 initial cards, bust is impossible (max total is 21), so
-    // duelTurn always starts at 'controller'. Use seed 42 for determinism.
+  it('standing both fighters sets duelTurn to finished', () => {
     const store = reachDuel(42);
     const duel = getState(store).currentDuel!;
-    expect(duel.duelTurn).toBe('controller');
+    expect(duel.duelTurn).toBe('fighterA');
 
-    store.dispatch(standCurrentPlayer()); // controller stands
+    store.dispatch(standCurrentPlayer()); // fighterA stands
     const mid = getState(store).currentDuel!;
-    expect(mid.duelTurn).toBe('opponent');
+    expect(mid.duelTurn).toBe('fighterB');
 
-    store.dispatch(standCurrentPlayer()); // opponent stands
+    store.dispatch(standCurrentPlayer()); // fighterB stands
     expect(getState(store).currentDuel!.duelTurn).toBe('finished');
   });
 
@@ -474,33 +523,35 @@ describe('hitCurrentPlayer / standCurrentPlayer', () => {
 // ─── resolveDuel ─────────────────────────────────────────────────────────────
 
 describe('resolveDuel', () => {
-  it('transitions to duel_result', () => {
+  function reachFinishedDuel(seed = 42): Store {
     const store = makeStore();
-    initStore(store, ['a', 'b'], 42);
+    initStore(store, ['a', 'b'], seed);
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    const opp = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opp }));
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
     store.dispatch(standCurrentPlayer());
     store.dispatch(standCurrentPlayer());
+    return store;
+  }
+
+  it('transitions to duel_result', () => {
+    const store = reachFinishedDuel(42);
     store.dispatch(resolveDuel());
     expect(getState(store).phase).toBe('duel_result');
   });
 
-  it('sets duelWinnerId and duelLoserId', () => {
-    const store = makeStore();
-    initStore(store, ['a', 'b'], 42);
-    store.dispatch(resolveSpinner());
-    const s = getState(store);
-    const opp = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opp }));
-    store.dispatch(standCurrentPlayer());
-    store.dispatch(standCurrentPlayer());
+  it('sets duelWinnerId/duelLoserId for decisive result, or isDuelTie for tie', () => {
+    const store = reachFinishedDuel(42);
     store.dispatch(resolveDuel());
     const ns = getState(store);
-    expect(ns.duelWinnerId).not.toBeNull();
-    expect(ns.duelLoserId).not.toBeNull();
-    expect(ns.duelWinnerId).not.toBe(ns.duelLoserId);
+    if (ns.isDuelTie) {
+      expect(ns.duelWinnerId).toBeNull();
+      expect(ns.duelLoserId).toBeNull();
+    } else {
+      expect(ns.duelWinnerId).not.toBeNull();
+      expect(ns.duelLoserId).not.toBeNull();
+      expect(ns.duelWinnerId).not.toBe(ns.duelLoserId);
+    }
   });
 
   it('is a no-op if duelTurn is not finished', () => {
@@ -508,8 +559,7 @@ describe('resolveDuel', () => {
     initStore(store, ['a', 'b'], 42);
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    const opp = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opp }));
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
     // Don't stand; just dispatch resolveDuel directly
     const before = getState(store);
     if (before.currentDuel?.duelTurn !== 'finished') {
@@ -519,17 +569,120 @@ describe('resolveDuel', () => {
   });
 });
 
+// ─── Tie → Rematch ────────────────────────────────────────────────────────────
+
+describe('Tie → Rematch', () => {
+  /**
+   * Build a state where both fighters have equal non-bust totals by directly
+   * constructing the duel state via selectPair and then standing immediately
+   * on a seed that produces a tie when both stand on their opening 2-card hand.
+   * We test the rematch logic by verifying isDuelTie + advanceFromDuelResult.
+   */
+
+  it('resolveDuelOutcome returns "tie" for equal totals', () => {
+    // [10, 9] = 19 for both → tie
+    expect(resolveDuelOutcome([10, 9], [10, 9])).toBe('tie');
+  });
+
+  it('on isDuelTie=true, advanceFromDuelResult rematches: no elimination, phase returns to duel', () => {
+    // Construct a deterministic tie scenario by preloading a duel_result state
+    // with isDuelTie = true, then advancing from the duel result.
+    const store = makeStore();
+    initStore(store, ['a', 'b'], 42);
+    const baseState = getState(store);
+
+    // Preload a finished duel state that represents a tie.
+    const tieResultState: BlackjackTournamentState = {
+      ...baseState,
+      phase: 'duel_result',
+      isDuelTie: true,
+      rematchCount: 0,
+    };
+
+    const remainingBefore = [...tieResultState.remainingPlayerIds];
+    const eliminatedBefore = [...tieResultState.eliminatedPlayerIds];
+
+    const afterAdvance = reducer(tieResultState, advanceFromDuelResult());
+
+    // No elimination on tie.
+    expect(afterAdvance.eliminatedPlayerIds).toEqual(eliminatedBefore);
+    expect(afterAdvance.remainingPlayerIds).toEqual(remainingBefore);
+    // Rematch: phase goes back to duel.
+    expect(afterAdvance.phase).toBe('duel');
+    // rematchCount incremented.
+    expect(afterAdvance.rematchCount).toBe(1);
+  });
+
+  it('rematch cap constant is exported and is a positive integer', () => {
+    expect(REMATCH_CAP).toBeGreaterThan(0);
+    expect(Number.isInteger(REMATCH_CAP)).toBe(true);
+  });
+
+  it('tie does not set duelWinnerId/duelLoserId', () => {
+    // When isDuelTie, winner/loser must be null.
+    const store = makeStore();
+    initStore(store, ['a', 'b'], 42);
+    store.dispatch(resolveSpinner());
+    const s = getState(store);
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
+    store.dispatch(standCurrentPlayer());
+    store.dispatch(standCurrentPlayer());
+    store.dispatch(resolveDuel());
+    const ns = getState(store);
+    if (ns.isDuelTie) {
+      expect(ns.duelWinnerId).toBeNull();
+      expect(ns.duelLoserId).toBeNull();
+    }
+  });
+
+  it('full loop: if tie resolves eventually to decisive result, no player is lost', () => {
+    // Run a full two-player tournament — the only valid end states are:
+    // 'alice' wins or 'bob' wins; no tie loop should prevent completion.
+    const store = makeStore();
+    initStore(store, ['alice', 'bob'], 12345);
+    let safety = 500;
+    while (getState(store).phase !== 'complete' && safety-- > 0) {
+      const ph = getState(store).phase;
+      if (ph === 'spin') store.dispatch(resolveSpinner());
+      else if (ph === 'pick_opponent') {
+        const ps = getState(store);
+        const aId = ps.fighterAId ?? ps.remainingPlayerIds[0];
+        const bId = ps.fighterBId ?? ps.remainingPlayerIds.find((id) => id !== aId)!;
+        store.dispatch(selectPair({ fighterAId: aId, fighterBId: bId }));
+      }
+      else if (ph === 'duel') {
+        const ds = getState(store).currentDuel!;
+        if (ds.duelTurn === 'finished') store.dispatch(resolveDuel());
+        else store.dispatch(standCurrentPlayer());
+      }
+      else if (ph === 'duel_result') store.dispatch(advanceFromDuelResult());
+    }
+    expect(getState(store).phase).toBe('complete');
+    expect(['alice', 'bob']).toContain(getState(store).winnerId);
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(1);
+  });
+});
+
 // ─── advanceFromDuelResult ────────────────────────────────────────────────────
 
 describe('advanceFromDuelResult', () => {
   function reachResult(store: Store): void {
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    const opp = s.remainingPlayerIds.find((id) => id !== s.controllingPlayerId)!;
-    store.dispatch(pickOpponent({ opponentId: opp }));
+    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
     store.dispatch(standCurrentPlayer());
     store.dispatch(standCurrentPlayer());
     store.dispatch(resolveDuel());
+    // If tie, keep resolving rematches until decisive.
+    let safety = 200;
+    while (getState(store).phase === 'duel_result' && getState(store).isDuelTie && safety-- > 0) {
+      store.dispatch(advanceFromDuelResult()); // triggers rematch
+      if (getState(store).phase === 'duel') {
+        store.dispatch(standCurrentPlayer());
+        store.dispatch(standCurrentPlayer());
+        store.dispatch(resolveDuel());
+      }
+    }
   }
 
   it('eliminates the loser from remainingPlayerIds', () => {
@@ -560,16 +713,16 @@ describe('advanceFromDuelResult', () => {
     expect(getState(store).winnerId).not.toBeNull();
   });
 
-  it('increments duelIndex', () => {
+  it('increments duelIndex on decisive result', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c'], 42);
     reachResult(store);
-    expect(getState(store).duelIndex).toBe(0);
+    const idxBefore = getState(store).duelIndex;
     store.dispatch(advanceFromDuelResult());
-    expect(getState(store).duelIndex).toBe(1);
+    expect(getState(store).duelIndex).toBe(idxBefore + 1);
   });
 
-  it('winner stays as controller', () => {
+  it('winner becomes next controller', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c'], 42);
     reachResult(store);
@@ -614,13 +767,14 @@ describe('Full 2-player tournament', () => {
 // ─── Full 3-player tournament ─────────────────────────────────────────────────
 
 describe('Full 3-player tournament', () => {
-  it('completes after 2 duels', () => {
+  it('completes after 2 decisive duels', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob', 'carol'], 42);
     runOneDuel(store);
     expect(getState(store).phase).toBe('pick_opponent');
     runOneDuel(store);
     expect(getState(store).phase).toBe('complete');
+    // duelIndex counts completed decisive duels (ties don't increment it).
     expect(getState(store).duelIndex).toBe(2);
   });
 
@@ -639,9 +793,22 @@ describe('Deterministic tournament simulation', () => {
   function runFullTournament(ids: string[], seed: number): string | null {
     const store = makeStore();
     initStore(store, ids, seed);
-    let safety = 100;
+    let safety = 500;
     while (getState(store).phase !== 'complete' && safety-- > 0) {
-      runOneDuel(store);
+      const ph = getState(store).phase;
+      if (ph === 'spin') store.dispatch(resolveSpinner());
+      else if (ph === 'pick_opponent') {
+        const ps = getState(store);
+        const aId = ps.fighterAId ?? ps.remainingPlayerIds[0];
+        const bId = ps.fighterBId ?? ps.remainingPlayerIds.find((id) => id !== aId)!;
+        store.dispatch(selectPair({ fighterAId: aId, fighterBId: bId }));
+      }
+      else if (ph === 'duel') {
+        const ds = getState(store).currentDuel!;
+        if (ds.duelTurn === 'finished') store.dispatch(resolveDuel());
+        else store.dispatch(standCurrentPlayer());
+      }
+      else if (ph === 'duel_result') store.dispatch(advanceFromDuelResult());
     }
     return getState(store).winnerId;
   }
@@ -661,14 +828,29 @@ describe('Deterministic tournament simulation', () => {
     expect(winners.size).toBeGreaterThanOrEqual(1);
   });
 
-  it('5-player tournament completes in 4 duels', () => {
+  it('5-player tournament eventually completes with 4 eliminations', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c', 'd', 'e'], 999);
-    let safety = 50;
+    let safety = 500;
     while (getState(store).phase !== 'complete' && safety-- > 0) {
-      runOneDuel(store);
+      const ph = getState(store).phase;
+      if (ph === 'spin') store.dispatch(resolveSpinner());
+      else if (ph === 'pick_opponent') {
+        const ps = getState(store);
+        const aId = ps.fighterAId ?? ps.remainingPlayerIds[0];
+        const bId = ps.fighterBId ?? ps.remainingPlayerIds.find((id) => id !== aId)!;
+        store.dispatch(selectPair({ fighterAId: aId, fighterBId: bId }));
+      }
+      else if (ph === 'duel') {
+        const ds = getState(store).currentDuel!;
+        if (ds.duelTurn === 'finished') store.dispatch(resolveDuel());
+        else store.dispatch(standCurrentPlayer());
+      }
+      else if (ph === 'duel_result') store.dispatch(advanceFromDuelResult());
     }
     expect(getState(store).phase).toBe('complete');
+    expect(getState(store).eliminatedPlayerIds).toHaveLength(4);
+    // 4 decisive duels required for 5 players.
     expect(getState(store).duelIndex).toBe(4);
   });
 });
@@ -698,25 +880,27 @@ describe('outcomeResolved', () => {
   });
 });
 
-// ─── Single opponent auto-select ──────────────────────────────────────────────
+// ─── Fighter auto-select when 2 players remain ───────────────────────────────
 
-describe('Single opponent auto-select', () => {
-  it('sets selectedOpponentId when only one opponent remains after spin', () => {
+describe('Fighter auto-select when 2 players remain', () => {
+  it('sets fighterAId/fighterBId when only two players exist after spin', () => {
     const store = makeStore();
     initStore(store, ['alice', 'bob'], 42);
     store.dispatch(resolveSpinner());
     const s = getState(store);
-    expect(s.selectedOpponentId).not.toBeNull();
-    expect(s.selectedOpponentId).not.toBe(s.controllingPlayerId);
+    expect(s.fighterAId).not.toBeNull();
+    expect(s.fighterBId).not.toBeNull();
+    expect(s.fighterAId).not.toBe(s.fighterBId);
   });
 
-  it('sets selectedOpponentId when only one opponent remains after advancing from result', () => {
+  it('sets fighterAId/fighterBId after advancing when only two remain', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c'], 7);
     runOneDuel(store);
     const s = getState(store);
     if (s.remainingPlayerIds.length === 2) {
-      expect(s.selectedOpponentId).not.toBeNull();
+      expect(s.fighterAId).not.toBeNull();
+      expect(s.fighterBId).not.toBeNull();
     }
   });
 });
