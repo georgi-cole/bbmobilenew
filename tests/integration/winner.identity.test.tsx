@@ -407,8 +407,20 @@ describe('SpectatorView — winner precedence after the fix', () => {
 
     document.body.classList.remove('no-animations');
 
-    // No throw means the object-shaped __authoritativeWinner was parsed without
-    // `competitorIds.includes(object)` throwing or silently returning false.
-    // The actual winner-pick behaviour is validated by the priority-order test above.
+    // Assert that SpectatorView completed and invoked onDone.
+    expect(onDone).toHaveBeenCalled();
+
+    // If onDone receives a payload with a winner identifier, assert it matches
+    // the playerId from the object-shaped __authoritativeWinner.
+    const onDoneMock = onDone as unknown as { mock: { calls: unknown[][] } };
+    const firstCall = onDoneMock.mock.calls[0] ?? [];
+    const firstArg = firstCall[0] as any;
+    if (firstArg && typeof firstArg === 'object') {
+      if ('winnerId' in firstArg) {
+        expect(firstArg.winnerId).toBe('p1');
+      } else if ('playerId' in firstArg) {
+        expect(firstArg.playerId).toBe('p1');
+      }
+    }
   });
 });
