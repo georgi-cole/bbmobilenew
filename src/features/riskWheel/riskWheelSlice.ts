@@ -727,6 +727,68 @@ const riskWheelSlice = createSlice({
     },
 
     /**
+     * Synchronously resolve ALL consecutive AI turns until a human turn,
+     * round_summary, or complete state is reached.
+     *
+     * This avoids the stall that occurs when multi-step setTimeout chains
+     * are cancelled by React re-renders triggered by shared `spinning` state.
+     * Call this once after any state transition that results in an AI turn.
+     */
+    resolveAllAiTurns(state) {
+      let safety = 0;
+      while (safety++ < 1000) {
+        const { phase } = state;
+        if (phase === 'round_summary' || phase === 'complete' || phase === 'idle') break;
+
+        const currentId = state.activePlayerIds[state.currentPlayerIndex];
+        // Stop if it's the human player's turn
+        if (currentId === state.humanPlayerId) break;
+
+        if (phase === 'awaiting_spin') {
+          // AI spins synchronously
+          const sectorIndex = pickSectorIndex(state.seed, state.rngCallCount);
+          applySector(state, sectorIndex, 1);
+          // If 666 landed, immediately skip the animation phase for AI
+          if (state.phase === 'six_six_six') {
+            state.phase =
+              state.currentSpinCount >= MAX_SPINS_PER_TURN
+                ? 'turn_complete'
+                : 'awaiting_decision';
+          }
+        } else if (phase === 'awaiting_decision') {
+          // AI decides synchronously
+          const score = state.roundScores[currentId] ?? 0;
+          const decisionIndex = state.aiDecisionCounts[currentId] ?? 0;
+          const stop = aiShouldStop({
+            seed: state.seed,
+            round: state.round,
+            playerId: currentId,
+            personality: state.aiPersonalities[currentId] ?? 'balanced',
+            currentScore: score,
+            activePlayerIds: state.activePlayerIds,
+            roundScores: state.roundScores,
+            spinsRemaining: Math.max(0, MAX_SPINS_PER_TURN - state.currentSpinCount),
+            initialPlayerCount: state.initialPlayerCount,
+            decisionIndex,
+          });
+          state.aiDecisionCallCount += 1;
+          state.aiDecisionCounts[currentId] = decisionIndex + 1;
+          state.phase = stop ? 'turn_complete' : 'awaiting_spin';
+        } else if (phase === 'turn_complete') {
+          advancePlayerOrRound(state);
+        } else if (phase === 'six_six_six') {
+          // Skip 666 animation for AI
+          state.phase =
+            state.currentSpinCount >= MAX_SPINS_PER_TURN
+              ? 'turn_complete'
+              : 'awaiting_decision';
+        } else {
+          break; // Unknown phase, stop to avoid infinite loop
+        }
+      }
+    },
+
+    /**
      * Advance from round_summary to the next round or complete.
      */
     advanceFromRoundSummary(state) {
@@ -797,6 +859,7 @@ export const {
   playerSpinAgain,
   aiDecide,
   advanceFromTurnComplete,
+  resolveAllAiTurns,
   advanceFromRoundSummary,
   markRiskWheelOutcomeResolved,
   resetRiskWheel,
