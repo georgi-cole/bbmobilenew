@@ -73,6 +73,19 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.9,
   },
+  /**
+   * Wheel-spin loop for the Risk Wheel minigame.
+   * Asset not yet present — drop /public/assets/sounds/minigame_wheelofluck.mp3
+   * to activate. SoundManager will no-op silently until the file is added.
+   */
+  'minigame:wheelofluck': {
+    key: 'minigame:wheelofluck',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_wheelofluck.mp3',
+    preload: false,
+    volume: 1.0,
+    loop: true,
+  },
   'music:menu_loop': {
     key: 'music:menu_loop',
     category: 'music',

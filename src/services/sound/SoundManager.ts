@@ -130,6 +130,17 @@ class _SoundManager {
     this._musicKey = null;
   }
 
+  /**
+   * Stop a specific sound by key without affecting the global music track.
+   * Intended for looping SFX (e.g. the wheel-spin loop) that are played via
+   * `play()` rather than `playMusic()`.
+   * No-ops silently if the key is unknown or not currently playing.
+   */
+  stop(key: string): void {
+    const src = this._sources.get(key);
+    src?.stop();
+  }
+
   // ── Category controls ─────────────────────────────────────────────────────
 
   /** Enable or disable all sounds in a category. */

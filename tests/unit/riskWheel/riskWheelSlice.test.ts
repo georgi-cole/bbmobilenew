@@ -19,6 +19,7 @@ import reducer, {
   playerSpinAgain,
   aiDecide,
   advanceFromTurnComplete,
+  resolveAllAiTurns,
   advanceFromRoundSummary,
   computeEliminationCount,
   computeEliminatedPlayers,
@@ -836,5 +837,180 @@ describe('aiDecide', () => {
     store.dispatch(aiDecide()); // should be no-op for human
     // Phase should remain awaiting_decision (not advanced by AI)
     expect(getState(store).phase).toBe(phaseBefore);
+  });
+});
+
+// ─── resolveAllAiTurns ────────────────────────────────────────────────────────
+
+describe('resolveAllAiTurns', () => {
+  /**
+   * Helper: find a seed such that the first sector selected
+   * (spin index 0) is a positive points sector.
+   *
+   * Used so tests can initialize the wheel with a deterministic
+   * seed that guarantees the first spin yields positive points.
+   */
+  function findPointsSeed(): number {
+    let seed = 0;
+    while (
+      WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'points' ||
+      (WHEEL_SECTORS[pickSectorIndex(seed, 0)].value ?? 0) <= 0
+    ) {
+      seed++;
+    }
+    return seed;
+  }
+
+  it('resolves all consecutive AI turns from awaiting_spin', () => {
+    // Players: AI='a', AI='b', AI='c' (no human)
+    const store = makeStore();
+    init(store, ['a', 'b', 'c'], 42, 'HOH', null); // no human (all AI)
+    // All in awaiting_spin; resolveAllAiTurns should run all three
+    store.dispatch(resolveAllAiTurns());
+    const s = getState(store);
+    // Should reach round_summary (all AI turns done, no human to stop at)
+    expect(s.phase).toBe('round_summary');
+    // All players should have completed their turns
+    expect(s.playersCompletedThisRound).toHaveLength(3);
+  });
+
+  it('stops at human turn and does not advance past it', () => {
+    const seed = findPointsSeed();
+    const store = makeStore();
+    init(store, ['a', 'b', 'c'], seed, 'HOH', 'a'); // 'a' is human, goes first
+    // Human hasn't gone yet; resolveAllAiTurns should be a no-op
+    store.dispatch(resolveAllAiTurns());
+    const s = getState(store);
+    // Still waiting on human player 'a'
+    expect(s.phase).toBe('awaiting_spin');
+    expect(s.activePlayerIds[s.currentPlayerIndex]).toBe('a');
+    expect(s.playersCompletedThisRound).toHaveLength(0);
+  });
+
+  it('no AI stall after human banks: AI turns resolve and reach round_summary', () => {
+    // Regression test for Bug #1:
+    // After human completes their turn, calling advanceFromTurnComplete()
+    // followed by resolveAllAiTurns() must fully process all AI turns
+    // and reach round_summary — never getting stuck.
+    const seed = findPointsSeed();
+    const store = makeStore();
+    // 'a' is human, 'b' and 'c' are AI
+    init(store, ['a', 'b', 'c'], seed, 'HOH', 'a');
+
+    // Human spins once then banks
+    store.dispatch(performSpin()); // human spin → awaiting_decision (or turn_complete)
+    const afterSpin = getState(store);
+    if (afterSpin.phase === 'awaiting_decision') {
+      store.dispatch(playerStop()); // human banks → turn_complete
+    }
+    expect(getState(store).phase).toBe('turn_complete');
+    expect(getState(store).activePlayerIds[getState(store).currentPlayerIndex]).toBe('a');
+
+    // Human presses "Continue" — mimics the UI's dispatched actions
+    store.dispatch(advanceFromTurnComplete()); // → awaiting_spin for next player (b or c)
+    store.dispatch(resolveAllAiTurns());       // resolve all remaining AI turns
+
+    const s = getState(store);
+    // Must reach round_summary without stalling
+    expect(s.phase).toBe('round_summary');
+    // All three players must have completed their turns
+    expect(s.playersCompletedThisRound).toHaveLength(3);
+  });
+
+  it('resolves from awaiting_decision for AI player', () => {
+    // Set up scenario where an AI is at awaiting_decision
+    // Choose a seed where the first spin does not land on BANKRUPT, SKIP, or 666,
+    // which would otherwise send us directly to turn_complete or six_six_six.
+    let seed = 0;
+    while (['devil', 'bankrupt', 'skip'].includes(WHEEL_SECTORS[pickSectorIndex(seed, 0)].type)) {
+      seed++;
+    }
+    const store = makeStore();
+    init(store, ['b', 'c'], seed, 'HOH', null); // all AI
+    store.dispatch(performSpin()); // should be awaiting_decision for the active AI
+    const s0 = getState(store);
+    expect(s0.phase).toBe('awaiting_decision');
+
+    store.dispatch(resolveAllAiTurns());
+    // Should finish both AI turns and reach round_summary
+    const s1 = getState(store);
+    expect(s1.phase).toBe('round_summary');
+    expect(s1.playersCompletedThisRound).toHaveLength(2);
+  });
+
+  it('is idempotent when already at round_summary', () => {
+    const store = makeStore();
+    init(store, ['a', 'b'], 42, 'HOH', null); // all AI
+    store.dispatch(resolveAllAiTurns());
+    expect(getState(store).phase).toBe('round_summary');
+    // Calling again should be a no-op
+    store.dispatch(resolveAllAiTurns());
+    expect(getState(store).phase).toBe('round_summary');
+  });
+
+  it('handles 666 sector for AI without getting stuck in six_six_six phase', () => {
+    // Find seed where first spin gives 666
+    let seed = 0;
+    while (WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'devil') seed++;
+    const store = makeStore();
+    init(store, ['a', 'b'], seed, 'HOH', null); // all AI, 'a' will get 666
+    store.dispatch(resolveAllAiTurns());
+    // Should never stall in six_six_six
+    const s = getState(store);
+    expect(s.phase).not.toBe('six_six_six');
+    expect(['round_summary', 'awaiting_spin', 'awaiting_decision', 'turn_complete', 'complete']).toContain(s.phase);
+  });
+
+  it('full round with resolveAllAiTurns reaches round_summary for any seed', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const store = makeStore();
+      init(store, ['x', 'y', 'z'], seed, 'HOH', null);
+      store.dispatch(resolveAllAiTurns());
+      expect(getState(store).phase).toBe('round_summary');
+    }
+  });
+});
+
+// ─── Spin Again (Bug #2 regression) ──────────────────────────────────────────
+
+describe('Spin Again direct spin regression', () => {
+  it('playerSpinAgain moves to awaiting_spin so performSpin can fire immediately', () => {
+    // Bug #2: in the old UI, "Spin Again" dispatched playerSpinAgain() and
+    // then showed a "Spin" button — an extra step. The fix is to dispatch
+    // playerSpinAgain() and then immediately dispatch performSpin() without
+    // waiting for a user interaction. Verify the slice supports this.
+    let seed = 0;
+    while (
+      WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'points' ||
+      (WHEEL_SECTORS[pickSectorIndex(seed, 0)].value ?? 0) <= 0
+    ) {
+      seed++;
+    }
+    // Make sure second spin also produces a non-terminal result
+    while (
+      WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'points' ||
+      (WHEEL_SECTORS[pickSectorIndex(seed, 0)].value ?? 0) <= 0 ||
+      WHEEL_SECTORS[pickSectorIndex(seed, 1)].type !== 'points' ||
+      (WHEEL_SECTORS[pickSectorIndex(seed, 1)].value ?? 0) <= 0
+    ) {
+      seed++;
+    }
+
+    const store = makeStore();
+    init(store, ['a', 'b'], seed, 'HOH', 'a');
+
+    // Spin 1
+    store.dispatch(performSpin());
+    expect(getState(store).phase).toBe('awaiting_decision');
+    expect(getState(store).currentSpinCount).toBe(1);
+
+    // Spin Again: playerSpinAgain → awaiting_spin, then immediately performSpin
+    store.dispatch(playerSpinAgain());
+    expect(getState(store).phase).toBe('awaiting_spin'); // confirms no intermediate "Spin" needed
+    store.dispatch(performSpin());                        // fires immediately (no extra button press)
+    expect(getState(store).currentSpinCount).toBe(2);
+
+    // Phase should be awaiting_decision (ready for next decision or bank)
+    expect(['awaiting_decision', 'turn_complete']).toContain(getState(store).phase);
   });
 });
