@@ -187,20 +187,27 @@ export default function SpectatorView({
   // ── Resolve authoritative winner from multiple sources ────────────────────
 
   // Synchronous check at mount time only — window.game.__authoritativeWinner
-  // is a legacy mutable global. Validated against competitorIds so a stale or
-  // unrelated winner ID is ignored.
+  // is a legacy mutable global set by hold-wall.js.  It may be an object with
+  // a `playerId` field (Hold the Wall) or a plain string.  Validated against
+  // competitorIds so a stale or unrelated winner ID is ignored.
   const windowAuthWinner = useMemo<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const w = window.game?.__authoritativeWinner;
-    if (w && competitorIds.includes(w)) return w;
-    return null;
+    const winnerId =
+      typeof w === 'string'
+        ? w
+        : w && typeof w === 'object' && 'playerId' in w
+        ? (w as { playerId: string }).playerId
+        : null;
+    return winnerId && competitorIds.includes(winnerId) ? winnerId : null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once at mount — this is synchronous detection only
 
   // hohId from Redux store — may be set before or after mount
   const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
 
-  // expectedWinnerId takes priority; falls back to initialWinnerId then other sources.
+  // expectedWinnerId (highest priority — pre-computed before the overlay opens);
+  // falls back to initialWinnerId, then window global, then Redux hohId.
   const resolvedExpectedWinner =
     propExpectedWinnerId && competitorIds.includes(propExpectedWinnerId)
       ? propExpectedWinnerId
@@ -208,7 +215,7 @@ export default function SpectatorView({
       ? propInitialWinnerId
       : null;
 
-  const initialWinner = windowAuthWinner ?? reduxWinner ?? resolvedExpectedWinner ?? null;
+  const initialWinner = resolvedExpectedWinner ?? windowAuthWinner ?? reduxWinner ?? null;
 
   // ── Simulation hook ───────────────────────────────────────────────────────
 
