@@ -309,6 +309,9 @@ describe('SpectatorView — winner precedence after the fix', () => {
 
     const onDone = vi.fn();
 
+    // body.no-animations → fast-path / immediate onDone in SpectatorView
+    document.body.classList.add('no-animations');
+
     const { unmount } = render(
       <Provider
         store={configureStore({
@@ -344,17 +347,12 @@ describe('SpectatorView — winner precedence after the fix', () => {
     );
 
     // SpectatorView should reveal p1 (expectedWinnerId) — not p2 (redux) or p3 (window).
-    // We check via the `onDone` call: SpectatorView calls onDone(winnerId) when it
-    // finishes its sequence.  In no-animations mode it fast-paths, but we
-    // verify the internal winner state via the skip mechanism.
-    await act(async () => {});
+    // In no-animations mode, onDone is called synchronously with the resolved winnerId.
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith('p1');
 
     unmount();
-    // The core assertion is that the module imported correctly and rendered
-    // without throwing — the winner-precedence logic is unit-tested by the
-    // imports themselves (no throw means the updated code is at least valid).
-    // The deeper behavioural assertion is covered by the `windowAuthWinner`
-    // object-shape test below.
+    document.body.classList.remove('no-animations');
   });
 
   it('windowAuthWinner reads playerId from an object-shaped __authoritativeWinner', async () => {
