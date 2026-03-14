@@ -5,7 +5,7 @@
  *   - Init → intro phase, correct state shape
  *   - advanceIntro → select_victim phase (saboteur assigned)
  *   - selectVictim self-target guard
- *   - submitVote self-vote guard
+ *   - submitVote self-vote guard, victim-target guard
  *   - Full round: majority → saboteur caught → reveal
  *   - Full round: no majority → victim eliminated → reveal
  *   - advanceReveal transitions: round_transition / final2_jury / winner
@@ -22,6 +22,7 @@ import silentSaboteurReducer, {
   advanceIntro,
   selectVictim,
   submitVote,
+  endVotingPhase,
   advanceReveal,
   startNextRound,
   submitJuryVote,
@@ -51,6 +52,23 @@ function init(
   store.dispatch(
     initSilentSaboteur({ participantIds: ids, prizeType: 'HOH', seed: SEED, humanPlayerId: human }),
   );
+}
+
+/**
+ * Helper: cast valid votes for all active players (excluding self and victim),
+ * then call endVotingPhase if the round is not yet resolved.
+ */
+function castAllValidVotes(store: ReturnType<typeof makeStore>) {
+  const { activeIds, victimId } = getState(store);
+  for (const id of activeIds) {
+    if (getState(store).votes[id] !== undefined) continue;
+    const accused = activeIds.find((x) => x !== id && x !== victimId);
+    if (accused) store.dispatch(submitVote({ voterId: id, accusedId: accused }));
+  }
+  // If voting phase is still open (e.g. someone had no valid target), end it
+  if (getState(store).phase === 'voting') {
+    store.dispatch(endVotingPhase());
+  }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -158,32 +176,40 @@ describe('submitVote', () => {
     expect(getState(store).votes[voter]).toBeUndefined();
   });
 
+  it('vote targeting the victim is rejected', () => {
+    const store = reachVoting();
+    const { victimId } = getState(store);
+    // Find a voter who is not the victim
+    const voter = PLAYERS_5.find((id) => id !== victimId)!;
+    store.dispatch(submitVote({ voterId: voter, accusedId: victimId! }));
+    expect(getState(store).votes[voter]).toBeUndefined();
+  });
+
   it('valid vote is recorded', () => {
     const store = reachVoting();
-    const voter = PLAYERS_5[0];
-    const accused = PLAYERS_5[1] !== voter ? PLAYERS_5[1] : PLAYERS_5[2];
+    const { victimId, activeIds } = getState(store);
+    const voter = activeIds[0];
+    // Find a valid accused: not self, not victim
+    const accused = activeIds.find((id) => id !== voter && id !== victimId)!;
     store.dispatch(submitVote({ voterId: voter, accusedId: accused }));
     expect(getState(store).votes[voter]).toBe(accused);
   });
 
   it('cannot vote twice', () => {
     const store = reachVoting();
-    const voter = PLAYERS_5[0];
-    const accused1 = PLAYERS_5[1];
-    const accused2 = PLAYERS_5[2];
+    const { victimId, activeIds } = getState(store);
+    const voter = activeIds[0];
+    const validCandidates = activeIds.filter((id) => id !== voter && id !== victimId);
+    const accused1 = validCandidates[0];
+    const accused2 = validCandidates[1] ?? validCandidates[0];
     store.dispatch(submitVote({ voterId: voter, accusedId: accused1 }));
     store.dispatch(submitVote({ voterId: voter, accusedId: accused2 }));
     expect(getState(store).votes[voter]).toBe(accused1); // first vote sticks
   });
 
-  it('advances to reveal when all players voted', () => {
+  it('advances to reveal when all players voted (or endVotingPhase)', () => {
     const store = reachVoting(PLAYERS_3);
-    const { activeIds } = getState(store);
-    // Cast 3 votes (one per player)
-    const [p1, p2, p3] = activeIds;
-    store.dispatch(submitVote({ voterId: p1, accusedId: p2 }));
-    store.dispatch(submitVote({ voterId: p2, accusedId: p3 }));
-    store.dispatch(submitVote({ voterId: p3, accusedId: p1 }));
+    castAllValidVotes(store);
     expect(getState(store).phase).toBe('reveal');
     expect(getState(store).revealInfo).not.toBeNull();
     // One player eliminated
@@ -195,21 +221,14 @@ describe('submitVote', () => {
 // ─── advanceReveal ────────────────────────────────────────────────────────────
 
 describe('advanceReveal', () => {
-  function reachReveal(players: string[], forceEliminate?: string) {
+  function reachReveal(players: string[]) {
     const store = makeStore();
     init(store, players);
     store.dispatch(advanceIntro());
     const { saboteurId, activeIds } = getState(store);
     const victim = activeIds.find((id) => id !== saboteurId)!;
     store.dispatch(selectVictim({ victimId: victim }));
-    // Build votes so victim is eliminated (all vote for someone who is not saboteur)
-    for (const id of activeIds) {
-      const target =
-        forceEliminate ??
-        activeIds.find((x) => x !== id && x !== saboteurId) ??
-        activeIds.find((x) => x !== id)!;
-      if (target) store.dispatch(submitVote({ voterId: id, accusedId: target }));
-    }
+    castAllValidVotes(store);
     return store;
   }
 
@@ -239,9 +258,7 @@ describe('advanceReveal', () => {
     const { saboteurId, activeIds } = getState(store);
     const victim = activeIds.find((id) => id !== saboteurId)!;
     store.dispatch(selectVictim({ victimId: victim }));
-    // Both players vote — one gets eliminated → 1 remains
-    store.dispatch(submitVote({ voterId: activeIds[0], accusedId: activeIds[1] }));
-    store.dispatch(submitVote({ voterId: activeIds[1], accusedId: activeIds[0] }));
+    castAllValidVotes(store);
     const state = getState(store);
     // 2 players may hit final2 through startFinal2 or winner
     expect(['reveal', 'winner', 'final2_jury']).toContain(state.phase);
@@ -258,11 +275,7 @@ describe('startNextRound', () => {
     const { saboteurId, activeIds } = getState(store);
     const victim = activeIds.find((id) => id !== saboteurId)!;
     store.dispatch(selectVictim({ victimId: victim }));
-    // Vote so everyone votes → reveal
-    for (const id of activeIds) {
-      const accused = activeIds.find((x) => x !== id)!;
-      if (!getState(store).votes[id]) store.dispatch(submitVote({ voterId: id, accusedId: accused }));
-    }
+    castAllValidVotes(store);
     if (getState(store).phase === 'reveal') store.dispatch(advanceReveal());
     if (getState(store).phase !== 'round_transition') return; // guard
 
@@ -289,10 +302,7 @@ describe('Final-2 no-jury fallback', () => {
     const { saboteurId, activeIds } = getState(store);
     const victim = activeIds.find((id) => id !== saboteurId)!;
     store.dispatch(selectVictim({ victimId: victim }));
-    // 2 votes cast — both vote for opponent → advanceReveal goes to final2 or winner
-    const [a, b] = activeIds;
-    store.dispatch(submitVote({ voterId: a, accusedId: b }));
-    store.dispatch(submitVote({ voterId: b, accusedId: a }));
+    castAllValidVotes(store);
     if (getState(store).phase === 'reveal') store.dispatch(advanceReveal());
     // If we're in final2_jury with 0 jury → noJuryFallback should have been applied
     // Or we're in winner
@@ -317,10 +327,7 @@ describe('submitJuryVote', () => {
     const { saboteurId, activeIds } = getState(store);
     const victim = activeIds.find((id) => id !== saboteurId)!;
     store.dispatch(selectVictim({ victimId: victim }));
-    for (const id of activeIds) {
-      const accused = activeIds.find((x) => x !== id)!;
-      if (!getState(store).votes[id]) store.dispatch(submitVote({ voterId: id, accusedId: accused }));
-    }
+    castAllValidVotes(store);
     if (getState(store).phase === 'reveal') store.dispatch(advanceReveal());
     if (getState(store).phase !== 'final2_jury') return; // skip if resolved differently
 

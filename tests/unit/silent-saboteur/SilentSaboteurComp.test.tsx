@@ -6,6 +6,7 @@ import silentSaboteurReducer, {
   advanceIntro,
   selectVictim,
   submitVote,
+  endVotingPhase,
 } from '../../../src/features/silentSaboteur/silentSaboteurSlice';
 import type { SilentSaboteurState } from '../../../src/features/silentSaboteur/silentSaboteurSlice';
 import SilentSaboteurComp from '../../../src/components/SilentSaboteurComp/SilentSaboteurComp';
@@ -24,9 +25,9 @@ function ss(store: ReturnType<typeof makeStore>): SilentSaboteurState {
 
 const PARTICIPANTS = [
   { id: 'user', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
-  { id: 'a1', name: 'Alice', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a2', name: 'Bob', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a3', name: 'Carol', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'finn', name: 'Finn', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'mimi', name: 'Mimi', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'rae', name: 'Rae', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 
 describe('SilentSaboteurComp — dramatic UI flow', () => {
@@ -65,6 +66,8 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(state.phase).toBe('select_victim');
 
     const victimId = state.activeIds.find((id) => id !== state.saboteurId)!;
+    const victimName = PARTICIPANTS.find((p) => p.id === victimId)?.name ?? victimId;
+    const expectedPortrait = `avatars/${victimName}.png`;
 
     await act(async () => {
       store.dispatch(selectVictim({ victimId }));
@@ -74,6 +77,9 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(screen.getByText('BOMB_REVEAL_PHASE')).toBeInTheDocument();
     expect(screen.getByText('💣 A bomb has been planted!')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /accuse/i })).not.toBeInTheDocument();
+    const portrait = screen.getByTestId(`ss-portrait-${victimId}`);
+    expect(portrait?.getAttribute('src')).toContain(expectedPortrait);
+    expect(portrait?.getAttribute('src')).not.toContain('api.dicebear.com');
   });
 
   it('reveals votes sequentially before showing the elimination result', async () => {
@@ -104,12 +110,20 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
       store.dispatch(selectVictim({ victimId }));
     });
 
+    // Submit valid votes: each voter picks a valid suspect (not self, not victim)
     const voters = ss(store).activeIds;
+    function pickValidVote(voter: string): string {
+      return voters.find((id) => id !== voter && id !== victimId) ?? voters[0];
+    }
+
     await act(async () => {
-      store.dispatch(submitVote({ voterId: voters[0], accusedId: voters[1] }));
-      store.dispatch(submitVote({ voterId: voters[1], accusedId: voters[2] }));
-      store.dispatch(submitVote({ voterId: voters[2], accusedId: voters[3] }));
-      store.dispatch(submitVote({ voterId: voters[3], accusedId: voters[0] }));
+      for (const voter of voters) {
+        store.dispatch(submitVote({ voterId: voter, accusedId: pickValidVote(voter) }));
+      }
+      // If auto-advance didn't fire (e.g. all candidates exhausted), end manually
+      if (ss(store).phase === 'voting') {
+        store.dispatch(endVotingPhase());
+      }
     });
 
     expect(ss(store).phase).toBe('reveal');
@@ -117,18 +131,18 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(screen.queryByText(/Vote 1/)).not.toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(1200);
     });
 
     expect(screen.getByText(/Vote 1/)).toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(2600);
+      vi.advanceTimersByTime(5000);
     });
 
     expect(screen.getByText('ELIMINATION_PHASE')).toBeInTheDocument();
     expect(
-      screen.getByText(/The saboteur has been exposed!|Wrong choice!/),
+      screen.getByText(/The saboteur has been exposed!|Wrong accusation/),
     ).toBeInTheDocument();
   });
 });

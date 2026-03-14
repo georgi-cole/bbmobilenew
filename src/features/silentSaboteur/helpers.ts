@@ -16,6 +16,8 @@ export interface RoundOutcome {
   reason: EliminationReason;
   /** True when final-3 1-1-1 Victim Override Rule was applied. */
   victimOverride: boolean;
+  /** The player who was accused (highest votes, or victim-override target). */
+  accusedId: string;
 }
 
 export interface Final2Outcome {
@@ -60,11 +62,34 @@ export function pickVictimForAi(
   return seededPick(rng, candidates);
 }
 
+// ─── Candidate filtering ──────────────────────────────────────────────────────
+
+/**
+ * Return the valid saboteur-candidate IDs for a voter in a normal round.
+ *
+ * Rule: valid suspects = activePlayers - self - victim
+ *
+ * This must be used consistently by: the human voting UI, AI vote generation,
+ * timeout/fallback vote logic, and round resolution validation.
+ *
+ * @param activeIds    All currently active player IDs.
+ * @param currentPlayerId  The player who is casting the vote.
+ * @param victimId     The current round's victim (excluded from accusation).
+ */
+export function getValidSaboteurCandidates(
+  activeIds: string[],
+  currentPlayerId: string,
+  victimId: string | null,
+): string[] {
+  return activeIds.filter((id) => id !== currentPlayerId && id !== victimId);
+}
+
 // ─── AI voting ────────────────────────────────────────────────────────────────
 
 /**
  * Deterministically pick who an AI voter accuses this round.
- * Excludes the voter from valid targets (no self-vote).
+ * Excludes the voter (no self-vote) and the victim (victim is not a valid
+ * saboteur candidate in normal rounds).
  *
  * The per-voter sub-seed uses a FNV-1a hash of the voter's ID so that each
  * AI player's suspicion pattern is stable across re-renders.
@@ -74,9 +99,15 @@ export function pickVoteForAi(
   round: number,
   voterId: string,
   activeIds: string[],
+  victimId?: string | null,
 ): string {
-  const candidates = activeIds.filter((id) => id !== voterId);
-  if (candidates.length === 0) return activeIds[0];
+  const candidates = getValidSaboteurCandidates(activeIds, voterId, victimId ?? null);
+  if (candidates.length === 0) {
+    // Absolute last resort for degenerate inputs: prefer any non-self target,
+    // otherwise return the voter only when no alternative exists.
+    const fallback = activeIds.filter((id) => id !== voterId);
+    return fallback[0] ?? voterId;
+  }
   const idHash = fnv1a32(voterId);
   const voteSeed = ((seed ^ (round * 0x3c6ef35f) ^ idHash) >>> 0);
   const rng = mulberry32(voteSeed);
@@ -84,17 +115,37 @@ export function pickVoteForAi(
 }
 
 /**
- * Build all AI votes for a round.  Human vote is excluded (handled via UI).
+ * Abstention-aware AI vote picker for normal rounds.
+ * Returns null when victim exclusion leaves no valid suspects.
+ */
+export function pickVoteForAiOrAbstain(
+  seed: number,
+  round: number,
+  voterId: string,
+  activeIds: string[],
+  victimId?: string | null,
+): string | null {
+  const candidates = getValidSaboteurCandidates(activeIds, voterId, victimId ?? null);
+  if (candidates.length === 0) return null;
+  return pickVoteForAi(seed, round, voterId, activeIds, victimId ?? null);
+}
+
+/**
+ * Build all AI votes for a round, excluding the victim from valid targets.
+ * Human vote is excluded (handled via UI).
  */
 export function buildAiVotes(
   seed: number,
   round: number,
   aiIds: string[],
   activeIds: string[],
+  victimId?: string | null,
 ): Record<string, string> {
   const votes: Record<string, string> = {};
   for (const id of aiIds) {
-    votes[id] = pickVoteForAi(seed, round, id, activeIds);
+    const accusedId = pickVoteForAiOrAbstain(seed, round, id, activeIds, victimId ?? null);
+    if (accusedId == null) continue;
+    votes[id] = accusedId;
   }
   return votes;
 }
@@ -102,75 +153,80 @@ export function buildAiVotes(
 // ─── Round resolution ─────────────────────────────────────────────────────────
 
 /**
- * Resolve a standard round (4+ players).
+ * Unified deterministic round resolution supporting abstentions.
  *
- * Strict-majority rule:
- *   saboteurVotes > totalVotes / 2  →  saboteur eliminated
- *   otherwise                       →  victim eliminated
+ * Implements the canonical tie + abstention rules:
+ *
+ *   Case D: Everyone abstains (no votes submitted)
+ *     → eliminate victim immediately.
+ *
+ *   Case A: Unique highest vote total
+ *     → accused = most-voted candidate.
+ *     → if accused === saboteur → saboteur eliminated (saboteur_caught).
+ *     → otherwise               → victim eliminated  (victim_eliminated).
+ *
+ *   Case B: Tie + victim voted
+ *     → Victim Override Rule: accused = victim's vote.
+ *     → resolve as Case A.
+ *
+ *   Case C: Tie + victim abstained
+ *     → eliminate victim immediately.
+ *
+ * @param votes       Submitted votes only (Record<voterId, accusedId>).
+ *                    Absent entries = abstentions — they are NOT counted.
+ * @param _allVoterIds All active player IDs (reserved for future diagnostics).
+ * @param saboteurId  Current round's saboteur.
+ * @param victimId    Current round's victim.
  */
-export function resolveStandardRound(
+export function resolveRoundWithAbstentions(
   votes: Record<string, string>,
+  _allVoterIds: string[],
   saboteurId: string,
   victimId: string,
 ): RoundOutcome {
-  const allVotes = Object.values(votes);
-  const totalVotes = allVotes.length;
-  const saboteurVotes = allVotes.filter((v) => v === saboteurId).length;
-  const majority = Math.floor(totalVotes / 2) + 1; // strict majority
+  // Filter to only submitted (non-null/non-undefined) votes
+  const submittedEntries = Object.entries(votes).filter(([, v]) => v != null);
 
-  if (saboteurVotes >= majority) {
-    return { eliminatedId: saboteurId, reason: 'saboteur_caught', victimOverride: false };
-  }
-  return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: false };
-}
-
-/**
- * Resolve the Final-3 round (exactly 3 active players).
- *
- * If 2 votes target the same player → resolve as standard round.
- * If 1-1-1 split → Victim Override Rule:
- *   only the victim's vote counts.
- *   victim voted for saboteur → saboteur eliminated.
- *   otherwise                 → victim eliminated.
- */
-export function resolveFinal3Round(
-  votes: Record<string, string>,
-  saboteurId: string,
-  victimId: string,
-): RoundOutcome {
-  const allVotes = Object.values(votes);
-  const totalVotes = allVotes.length;
-  const saboteurVotes = allVotes.filter((v) => v === saboteurId).length;
-  const majority = Math.floor(totalVotes / 2) + 1;
-
-  // 2+ votes for the saboteur → normal catch
-  if (saboteurVotes >= majority) {
-    return { eliminatedId: saboteurId, reason: 'saboteur_caught', victimOverride: false };
+  // Case D: everyone abstained
+  if (submittedEntries.length === 0) {
+    return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: false, accusedId: victimId };
   }
 
-  // Count votes per target
+  // Count votes per candidate
   const voteCounts: Record<string, number> = {};
-  for (const v of allVotes) {
-    voteCounts[v] = (voteCounts[v] ?? 0) + 1;
+  for (const [, accused] of submittedEntries) {
+    voteCounts[accused] = (voteCounts[accused] ?? 0) + 1;
   }
+
   const maxVotes = Math.max(...Object.values(voteCounts));
+  const topCandidates = Object.keys(voteCounts).filter((id) => voteCounts[id] === maxVotes);
 
-  if (maxVotes >= majority) {
-    // Someone got a majority (just not the saboteur) → victim eliminated
-    return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: false };
+  if (topCandidates.length === 1) {
+    // Case A: unique leader
+    const accused = topCandidates[0];
+    if (accused === saboteurId) {
+      return { eliminatedId: saboteurId, reason: 'saboteur_caught', victimOverride: false, accusedId: saboteurId };
+    }
+    return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: false, accusedId: accused };
   }
 
-  // True 1-1-1 split → Victim Override Rule
+  // Tie — check if victim voted (Case B) or abstained (Case C)
   const victimVote = votes[victimId];
-  if (victimVote === saboteurId) {
-    return { eliminatedId: saboteurId, reason: 'saboteur_caught', victimOverride: true };
+  if (victimVote == null || !(victimId in votes)) {
+    // Case C: tie + victim abstained → eliminate victim
+    return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: false, accusedId: victimId };
   }
-  return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: true };
+
+  // Case B: Victim Override Rule — victim's vote determines the accused
+  if (victimVote === saboteurId) {
+    return { eliminatedId: saboteurId, reason: 'saboteur_caught', victimOverride: true, accusedId: saboteurId };
+  }
+  return { eliminatedId: victimId, reason: 'victim_eliminated', victimOverride: true, accusedId: victimVote };
 }
 
 /**
  * Unified round resolution dispatcher.
- * Automatically selects Final-3 logic when exactly 3 active players remain.
+ * Delegates to resolveRoundWithAbstentions for all player counts.
  */
 export function resolveRound(
   votes: Record<string, string>,
@@ -178,10 +234,7 @@ export function resolveRound(
   victimId: string,
   activeIds: string[],
 ): RoundOutcome {
-  if (activeIds.length === 3) {
-    return resolveFinal3Round(votes, saboteurId, victimId);
-  }
-  return resolveStandardRound(votes, saboteurId, victimId);
+  return resolveRoundWithAbstentions(votes, activeIds, saboteurId, victimId);
 }
 
 // ─── Final-2 jury resolution ──────────────────────────────────────────────────

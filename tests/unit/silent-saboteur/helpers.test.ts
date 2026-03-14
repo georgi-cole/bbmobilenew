@@ -5,11 +5,8 @@
  *   - Deterministic saboteur selection (reproducible, covers range)
  *   - Deterministic victim selection (never self)
  *   - AI vote selection (never self)
- *   - resolveStandardRound: majority → saboteur caught
- *   - resolveStandardRound: no majority → victim eliminated
- *   - resolveFinal3Round: 2-votes majority → normal resolution
- *   - resolveFinal3Round: 1-1-1 tie + victim voted saboteur → saboteur caught
- *   - resolveFinal3Round: 1-1-1 tie + victim did NOT vote saboteur → victim eliminated
+ *   - resolveRoundWithAbstentions: deterministic cases A–D + edge cases
+ *   - resolveRound: delegates to abstention-aware resolution for 3+ players
  *   - resolveFinal2: jury correct (majority for saboteur)
  *   - resolveFinal2: jury incorrect (majority for victim)
  *   - resolveFinal2: jury tie → victim's tiebreak vote decides
@@ -25,9 +22,9 @@ import {
   pickSaboteur,
   pickVictimForAi,
   pickVoteForAi,
+  pickVoteForAiOrAbstain,
   buildAiVotes,
-  resolveStandardRound,
-  resolveFinal3Round,
+  resolveRoundWithAbstentions,
   resolveRound,
   resolveFinal2,
   noJuryFallbackWinner,
@@ -107,6 +104,21 @@ describe('pickVoteForAi', () => {
   });
 });
 
+describe('pickVoteForAiOrAbstain', () => {
+  it('returns null when victim exclusion leaves no valid suspects', () => {
+    expect(pickVoteForAiOrAbstain(SEED, 0, 'bob', ['alice', 'bob'], 'alice')).toBeNull();
+  });
+
+  it('returns a deterministic valid target when suspects exist', () => {
+    const a = pickVoteForAiOrAbstain(SEED, 0, 'alice', PLAYERS, 'eve');
+    const b = pickVoteForAiOrAbstain(SEED, 0, 'alice', PLAYERS, 'eve');
+    expect(a).toBe(b);
+    expect(a).not.toBeNull();
+    expect(a).not.toBe('alice');
+    expect(a).not.toBe('eve');
+  });
+});
+
 // ─── buildAiVotes ─────────────────────────────────────────────────────────────
 
 describe('buildAiVotes', () => {
@@ -122,110 +134,109 @@ describe('buildAiVotes', () => {
       expect(voterId).not.toBe(accusedId);
     }
   });
+
+  it('abstains when victim exclusion leaves no valid suspects', () => {
+    const votes = buildAiVotes(SEED, 0, ['bob'], ['alice', 'bob'], 'alice');
+    expect(votes).toEqual({});
+  });
 });
 
-// ─── resolveStandardRound ─────────────────────────────────────────────────────
+// ─── resolveRoundWithAbstentions ──────────────────────────────────────────────
 
-describe('resolveStandardRound', () => {
-  it('eliminates saboteur when strict majority votes for them', () => {
-    // 5 voters, 3 vote for saboteur → strict majority
-    const votes = {
-      alice: 'dave',   // saboteur
-      bob: 'dave',     // saboteur
-      carol: 'dave',   // saboteur
-      dave: 'alice',   // self-defense (dave is saboteur)
-      eve: 'alice',
-    };
-    const outcome = resolveStandardRound(votes, 'dave', 'alice');
-    expect(outcome.eliminatedId).toBe('dave');
-    expect(outcome.reason).toBe('saboteur_caught');
-  });
-
-  it('eliminates victim when no majority for saboteur', () => {
-    // 5 voters, only 2 vote for saboteur → not majority
+describe('resolveRoundWithAbstentions', () => {
+  it('Case A: unique leader who is the saboteur → saboteur caught', () => {
     const votes = {
       alice: 'dave',
       bob: 'dave',
-      carol: 'alice',
-      dave: 'carol',
-      eve: 'carol',
-    };
-    const outcome = resolveStandardRound(votes, 'dave', 'alice');
-    expect(outcome.eliminatedId).toBe('alice');
-    expect(outcome.reason).toBe('victim_eliminated');
-  });
-
-  it('exactly half votes is NOT a majority → victim eliminated', () => {
-    // 4 voters, 2 vote for saboteur → not strict majority (need 3)
-    const votes = {
-      alice: 'bob',   // saboteur
-      carol: 'bob',   // saboteur
-      bob: 'alice',
+      carol: 'dave',
       dave: 'alice',
+      eve: 'alice',
     };
-    const outcome = resolveStandardRound(votes, 'bob', 'alice');
-    expect(outcome.eliminatedId).toBe('alice');
-    expect(outcome.reason).toBe('victim_eliminated');
-  });
-});
-
-// ─── resolveFinal3Round ───────────────────────────────────────────────────────
-
-describe('resolveFinal3Round', () => {
-  it('resolves normally when 2 votes target same player (non-saboteur)', () => {
-    // alice=saboteur, bob=victim, carol=neutral
-    // votes: alice→carol, bob→carol, carol→alice  (2 for carol, 1 for alice)
-    const votes = { alice: 'carol', bob: 'carol', carol: 'alice' };
-    const outcome = resolveFinal3Round(votes, 'alice', 'bob');
-    // 2 votes for carol (not saboteur) → victim eliminated
-    expect(outcome.eliminatedId).toBe('bob');
-    expect(outcome.reason).toBe('victim_eliminated');
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol', 'dave', 'eve'], 'dave', 'alice');
+    expect(outcome.eliminatedId).toBe('dave');
+    expect(outcome.reason).toBe('saboteur_caught');
+    expect(outcome.accusedId).toBe('dave');
     expect(outcome.victimOverride).toBe(false);
   });
 
-  it('saboteur caught normally when 2+ votes target saboteur', () => {
-    // votes: bob→alice, carol→alice, alice→carol  (2 for alice=saboteur)
-    const votes = { alice: 'carol', bob: 'alice', carol: 'alice' };
-    const outcome = resolveFinal3Round(votes, 'alice', 'bob');
+  it('Case A: unique leader who is not the saboteur → victim eliminated', () => {
+    const votes = {
+      alice: 'carol',
+      bob: 'carol',
+      carol: 'dave',
+      dave: 'carol',
+      eve: 'dave',
+    };
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol', 'dave', 'eve'], 'dave', 'alice');
     expect(outcome.eliminatedId).toBe('alice');
-    expect(outcome.reason).toBe('saboteur_caught');
+    expect(outcome.reason).toBe('victim_eliminated');
+    expect(outcome.accusedId).toBe('carol');
     expect(outcome.victimOverride).toBe(false);
   });
 
-  it('1-1-1 tie + victim voted saboteur → saboteur caught via Victim Override', () => {
-    // alice=saboteur, bob=victim, carol=neutral
-    // each gets 1 vote → 1-1-1 tie
-    // victim (bob) voted for alice (saboteur)
-    const votes = { alice: 'carol', bob: 'alice', carol: 'bob' };
-    const outcome = resolveFinal3Round(votes, 'alice', 'bob');
-    expect(outcome.eliminatedId).toBe('alice');
+  it('Case B: tie + victim voted for saboteur → saboteur caught via victim override', () => {
+    const votes = {
+      alice: 'carol',
+      bob: 'dave',
+      carol: 'dave',
+      dave: 'carol',
+    };
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol', 'dave'], 'dave', 'bob');
+    expect(outcome.eliminatedId).toBe('dave');
     expect(outcome.reason).toBe('saboteur_caught');
+    expect(outcome.accusedId).toBe('dave');
     expect(outcome.victimOverride).toBe(true);
   });
 
-  it('1-1-1 tie + victim did NOT vote saboteur → victim eliminated via Victim Override', () => {
-    // alice=saboteur, bob=victim, carol=neutral
-    // For true 1-1-1: alice→bob, bob→carol, carol→alice  (each gets 1 vote)
-    // victim=bob voted for carol (not alice=saboteur)
-    const votes2 = { alice: 'bob', bob: 'carol', carol: 'alice' };
-    const outcome = resolveFinal3Round(votes2, 'alice', 'bob');
+  it('Case B edge case: tie + victim voted for a non-tied candidate → victim eliminated with victim vote as accusedId', () => {
+    const votes = {
+      alice: 'carol',
+      bob: 'eve',
+      carol: 'dave',
+      dave: 'carol',
+      eve: 'dave',
+    };
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol', 'dave', 'eve'], 'dave', 'bob');
     expect(outcome.eliminatedId).toBe('bob');
     expect(outcome.reason).toBe('victim_eliminated');
+    expect(outcome.accusedId).toBe('eve');
     expect(outcome.victimOverride).toBe(true);
+  });
+
+  it('Case C: tie + victim abstained → victim eliminated', () => {
+    const votes = {
+      alice: 'carol',
+      carol: 'dave',
+      dave: 'carol',
+      eve: 'dave',
+    };
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol', 'dave', 'eve'], 'dave', 'bob');
+    expect(outcome.eliminatedId).toBe('bob');
+    expect(outcome.reason).toBe('victim_eliminated');
+    expect(outcome.accusedId).toBe('bob');
+    expect(outcome.victimOverride).toBe(false);
+  });
+
+  it('Case D: everyone abstains → victim eliminated', () => {
+    const outcome = resolveRoundWithAbstentions({}, ['alice', 'bob', 'carol'], 'carol', 'bob');
+    expect(outcome.eliminatedId).toBe('bob');
+    expect(outcome.reason).toBe('victim_eliminated');
+    expect(outcome.accusedId).toBe('bob');
+    expect(outcome.victimOverride).toBe(false);
   });
 });
 
 // ─── resolveRound (dispatcher) ────────────────────────────────────────────────
 
 describe('resolveRound', () => {
-  it('delegates to resolveFinal3Round when 3 active players', () => {
+  it('uses abstention-aware victim override logic when 3 active players', () => {
     const votes = { alice: 'bob', bob: 'carol', carol: 'alice' };
     const outcome = resolveRound(votes, 'alice', 'bob', ['alice', 'bob', 'carol']);
     // 1-1-1 tie, victim=bob voted for carol (not saboteur) → victim override
     expect(outcome.victimOverride).toBe(true);
   });
 
-  it('delegates to resolveStandardRound when 4+ active players', () => {
+  it('uses the same abstention-aware resolution when 4+ active players', () => {
     const votes = {
       alice: 'dave',
       bob: 'dave',

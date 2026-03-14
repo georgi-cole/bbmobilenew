@@ -70,7 +70,6 @@ import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/Jury
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
-import { shouldSkipSpotlight } from './spotlightUtils'
 
 /**
  * GameScreen — main gameplay view.
@@ -1457,10 +1456,10 @@ export default function GameScreen() {
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
 
-            // ── SPOTLIGHT_SKIP games: skip SpotlightAnimation ──
+            // ── dontGoOver / holdWall / famousFigures / biographyBlitz / glass_bridge_brutal / silentSaboteur: skip SpotlightAnimation ──
             let skipSpotlightAnimation = false;
             const gameKey = pendingChallenge.game.key;
-            if (shouldSkipSpotlight(gameKey)) {
+            if (gameKey === 'dontGoOver' || gameKey === 'holdWall' || gameKey === 'famousFigures' || gameKey === 'biographyBlitz' || gameKey === 'glass_bridge_brutal' || gameKey === 'silentSaboteur') {
               // Don't start the heavy SpotlightAnimation for these games — it's brittle and
               // causes race/measurement issues. Instead, ensure the winner is applied and
               // show the lightweight QuickCrown. Do this asynchronously to avoid

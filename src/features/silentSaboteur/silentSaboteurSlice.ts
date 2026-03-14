@@ -61,6 +61,8 @@ export interface RevealInfo {
   victimOverride: boolean;
   saboteurId: string;
   victimId: string;
+  /** The player who received the most votes (or was designated via Victim Override). */
+  accusedId: string;
   votes: Record<string, string>;
 }
 
@@ -175,7 +177,12 @@ const silentSaboteurSlice = createSlice({
       if (state.phase !== 'select_victim') return;
       const { victimId } = action.payload;
       // Guard: cannot self-target
-      if (victimId === state.saboteurId) return;
+      if (victimId === state.saboteurId) {
+        if (import.meta.env.DEV) {
+          console.error('[silentSaboteur] INVARIANT: victimId === saboteurId rejected', { victimId, saboteurId: state.saboteurId });
+        }
+        return;
+      }
       if (!state.activeIds.includes(victimId)) return;
       state.victimId = victimId;
       state.votes = {};
@@ -191,6 +198,16 @@ const silentSaboteurSlice = createSlice({
       // Guard: must be active
       if (!state.activeIds.includes(voterId)) return;
       if (!state.activeIds.includes(accusedId)) return;
+      // Guard: victim is never a valid saboteur candidate in normal rounds
+      if (accusedId === state.victimId) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[silentSaboteur] INVARIANT: vote targeting victim rejected',
+            { voterId, accusedId, victimId: state.victimId },
+          );
+        }
+        return;
+      }
       // Guard: vote once only
       if (state.votes[voterId] !== undefined) return;
 
@@ -200,6 +217,12 @@ const silentSaboteurSlice = createSlice({
       if (Object.keys(state.votes).length === state.activeIds.length) {
         _resolveVotingPhase(state);
       }
+    },
+
+    // ── End voting phase (timer expiry / forced resolve with abstentions) ─────
+    endVotingPhase(state) {
+      if (state.phase !== 'voting') return;
+      _resolveVotingPhase(state);
     },
 
     // ── Advance from reveal ────────────────────────────────────────────────────
@@ -296,8 +319,24 @@ function _resolveVotingPhase(state: SilentSaboteurState) {
   const { votes, saboteurId, victimId, activeIds } = state;
   if (!saboteurId || !victimId) return;
 
+  // Dev invariant: saboteur and victim must be different
+  if (import.meta.env.DEV) {
+    if (saboteurId === victimId) {
+      console.error('[silentSaboteur] INVARIANT FAILURE: saboteurId === victimId', { saboteurId, victimId });
+    }
+    // Verify no vote targets the victim
+    for (const [voterId, accusedId] of Object.entries(votes)) {
+      if (accusedId === victimId) {
+        console.error(
+          '[silentSaboteur] INVARIANT FAILURE: vote targets victim in normal round',
+          { voterId, accusedId, victimId },
+        );
+      }
+    }
+  }
+
   const outcome = resolveRoundHelper(votes, saboteurId, victimId, activeIds);
-  const { eliminatedId, reason, victimOverride } = outcome;
+  const { eliminatedId, reason, victimOverride, accusedId } = outcome;
 
   // Apply elimination
   state.activeIds = state.activeIds.filter((id) => id !== eliminatedId);
@@ -309,6 +348,7 @@ function _resolveVotingPhase(state: SilentSaboteurState) {
     victimOverride,
     saboteurId,
     victimId,
+    accusedId,
     votes: { ...votes },
   };
   state.phase = 'reveal';
@@ -389,6 +429,7 @@ export const {
   advanceIntro,
   selectVictim,
   submitVote,
+  endVotingPhase,
   advanceReveal,
   startNextRound,
   submitJuryVote,

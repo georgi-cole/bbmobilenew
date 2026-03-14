@@ -11,11 +11,10 @@
  *   - final2_jury    (if human is victim AND jury tied): cast tiebreak vote
  *
  * All AI actions are dispatched automatically via useEffect timers.
- * All timeouts auto-resolve with a deterministic fallback so the game
- * never stalls even if the human window closes.
+ * Timer expiry calls endVotingPhase (abstentions allowed — no auto-random vote).
  */
 
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store/store';
 import {
@@ -23,6 +22,7 @@ import {
   advanceIntro,
   selectVictim,
   submitVote,
+  endVotingPhase,
   advanceReveal,
   startNextRound,
   submitJuryVote,
@@ -30,27 +30,43 @@ import {
   advanceWinner,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import { resolveSilentSaboteurOutcome } from '../../features/silentSaboteur/thunks';
-import { pickVictimForAi, pickVoteForAi } from '../../features/silentSaboteur/helpers';
+import { pickVictimForAi, pickVoteForAi, pickVoteForAiOrAbstain, getValidSaboteurCandidates, fnv1a32 } from '../../features/silentSaboteur/helpers';
+import { mulberry32 } from '../../store/rng';
 import type {
   SilentSaboteurPrizeType,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './SilentSaboteurComp.css';
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
+// ─── Centralized timing constants ─────────────────────────────────────────────
 
-const INTRO_ADVANCE_MS = 2500;
-const BOMB_REVEAL_MS = 2200;
-const SELECT_VICTIM_TIMEOUT_MS = 10_000;
-const VOTING_TIMEOUT_MS = 12_000;
-const VOTE_REVEAL_STEP_MS = 650;
-const REVEAL_RESULT_PAUSE_MS = 550;
-const ELIMINATION_HOLD_MS = 2200;
-const ROUND_TRANSITION_MS = 1500;
-const WINNER_AUTO_ADVANCE_MS = 6000;
-const AI_ACTION_DELAY_MS = 1200;
-const JURY_VOTE_TIMEOUT_MS = 12_000;
-const TIMER_TICK_MS = 250;
+const SILENT_SABOTEUR_TIMINGS = {
+  /** Intro hold before advancing. */
+  INTRO_MS: 2500,
+  /** Bomb planted cinematic hold. */
+  BOMB_REVEAL_MS: 2000,
+  /** AI saboteur action delay (natural feel). */
+  AI_ACTION_MS: 1200,
+  /** Human saboteur timeout fallback. */
+  SELECT_VICTIM_TIMEOUT_MS: 10_000,
+  /** Voting phase shared timer — 120 seconds. */
+  VOTING_TIMER_MS: 120_000,
+  /** Jury vote shared timer — 120 seconds. */
+  JURY_TIMER_MS: 120_000,
+  /** Delay between sequential vote reveals. */
+  VOTE_REVEAL_STEP_MS: 1100,
+  /** Pause after all votes revealed before showing elimination card. */
+  REVEAL_RESULT_PAUSE_MS: 1500,
+  /** Elimination card hold time. */
+  ELIMINATION_HOLD_MS: 2800,
+  /** Round transition hold. */
+  ROUND_TRANSITION_MS: 2000,
+  /** Winner screen auto-advance for AI-only / no-animation flows. */
+  WINNER_AUTO_ADVANCE_MS: 4000,
+  /** Countdown ticker interval. */
+  TIMER_TICK_MS: 250,
+} as const;
 
 type VisualPhaseKey =
   | 'SABOTAGE_PHASE'
@@ -67,6 +83,92 @@ interface PhaseBannerModel {
   label: string;
   detail: string;
   tone: 'sabotage' | 'bomb' | 'vote' | 'resolution' | 'elimination' | 'winner';
+}
+
+// ─── Social Map types ─────────────────────────────────────────────────────────
+
+type RelationshipCategory = 'Hostile' | 'Unfriendly' | 'Neutral' | 'Friendly' | 'Loyal';
+
+interface SuspectCard {
+  id: string;
+  name: string;
+  relationship: RelationshipCategory;
+  /** 0–4: 0 = most hostile, 4 = most loyal */
+  relationshipStrength: number;
+  traits: [string, string];
+  hint: string;
+}
+
+const PERSONALITY_TRAITS = [
+  'Calculating', 'Impulsive', 'Loyal', 'Deceptive', 'Observant',
+  'Paranoid', 'Strategic', 'Emotional', 'Ruthless', 'Diplomatic',
+  'Overconfident', 'Cautious', 'Charming', 'Secretive', 'Outspoken',
+];
+
+const RELATIONSHIP_LABELS: RelationshipCategory[] = [
+  'Hostile', 'Unfriendly', 'Neutral', 'Friendly', 'Loyal',
+];
+
+const RELATIONSHIP_COLORS: Record<RelationshipCategory, string> = {
+  Hostile: '#ef4444',
+  Unfriendly: '#f97316',
+  Neutral: '#64748b',
+  Friendly: '#22c55e',
+  Loyal: '#3b82f6',
+};
+
+function isDicebearAvatarUrl(src: string): boolean {
+  try {
+    return new URL(src, 'https://example.invalid').hostname === 'api.dicebear.com';
+  } catch {
+    return false;
+  }
+}
+
+const isNonDicebearAvatar = (src: string) => !isDicebearAvatarUrl(src);
+
+function buildSuspectCards(
+  suspects: string[],
+  victimId: string,
+  seed: number,
+  getName: (id: string) => string,
+): SuspectCard[] {
+  return suspects.map((id) => {
+    const idHash = fnv1a32(id);
+    const victimHash = fnv1a32(victimId);
+    const cardSeed = ((seed ^ idHash ^ victimHash ^ 0xdecafbad) >>> 0);
+    const rng = mulberry32(cardSeed);
+    const relIdx = Math.floor(rng() * 5);
+    const traitAIdx = Math.floor(rng() * PERSONALITY_TRAITS.length);
+    const traitA = PERSONALITY_TRAITS[traitAIdx];
+    // Ensure traitB is distinct from traitA
+    const remainingTraits = PERSONALITY_TRAITS.filter((_, i) => i !== traitAIdx);
+    const traitB = remainingTraits[Math.floor(rng() * remainingTraits.length)];
+    const relationship = RELATIONSHIP_LABELS[relIdx];
+    const hints: Record<RelationshipCategory, string> = {
+      Hostile:    `${getName(id)} had reason to want ${getName(victimId)} out of the game.`,
+      Unfriendly: `${getName(id)} has had friction with ${getName(victimId)} before.`,
+      Neutral:    `${getName(id)}'s connection to ${getName(victimId)} is unclear.`,
+      Friendly:   `${getName(id)} and ${getName(victimId)} seemed close — could be a cover.`,
+      Loyal:      `${getName(id)} vouched for ${getName(victimId)}. Too close to be suspicious?`,
+    };
+    return {
+      id,
+      name: getName(id),
+      relationship,
+      relationshipStrength: relIdx,
+      traits: [traitA, traitB],
+      hint: hints[relationship],
+    };
+  });
+}
+
+/** Format milliseconds as mm:ss (e.g. 01:42). */
+function formatMmSs(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -172,6 +274,89 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '?';
 }
 
+/**
+ * Renders a Silent Saboteur player portrait using the shared avatar resolver.
+ * Prefers local portrait image assets, explicitly skips Dicebear, and falls
+ * back to emoji/initials only when no real image can be shown.
+ *
+ * The keyed wrapper intentionally remounts the inner stateful renderer when the
+ * displayed player changes, so image-error fallback state never leaks from one
+ * portrait to the next across rounds.
+ */
+function HouseguestPortrait({
+  id,
+  name,
+  avatar = '',
+  sizeClass = '',
+}: {
+  id: string;
+  name: string;
+  avatar?: string;
+  sizeClass?: string;
+}) {
+  const candidates = useMemo(
+    () => resolveAvatarCandidates({ id, name, avatar }).filter(isNonDicebearAvatar),
+    [id, name, avatar],
+  );
+
+  return (
+    <HouseguestPortraitInner
+      key={id}
+      id={id}
+      name={name}
+      avatar={avatar}
+      candidates={candidates}
+      sizeClass={sizeClass}
+    />
+  );
+}
+
+function HouseguestPortraitInner({
+  id,
+  name,
+  avatar = '',
+  candidates,
+  sizeClass = '',
+}: {
+  id: string;
+  name: string;
+  avatar?: string;
+  candidates: string[];
+  sizeClass?: string;
+}) {
+  const [candidateIdx, setCandidateIdx] = useState(0);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const src = candidates[candidateIdx] ?? '';
+
+  if (showFallback || !src) {
+    const fallback = isEmoji(avatar) ? avatar : getInitial(name);
+    return (
+      <div className={`ss-victim-avatar ${sizeClass}`} aria-hidden="true">
+        {fallback}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`ss-victim-avatar ${sizeClass}`} aria-hidden="true">
+      <img
+        src={src}
+        alt=""
+        className="ss-victim-avatar__img"
+        data-testid={`ss-portrait-${id}`}
+        onError={() => {
+          if (candidateIdx < candidates.length - 1) {
+            setCandidateIdx((idx) => idx + 1);
+          } else {
+            setShowFallback(true);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SilentSaboteurComp({
@@ -193,6 +378,10 @@ export default function SilentSaboteurComp({
   const [revealedVoteCount, setRevealedVoteCount] = useState(0);
   const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
+  const [socialMapOpen, setSocialMapOpen] = useState(false);
+
+  // Guard: prevent duplicate timer-driven phase advances
+  const votingTimerFiredRef = useRef(false);
 
   const animationsDisabled = areAnimationsDisabled();
 
@@ -212,7 +401,6 @@ export default function SilentSaboteurComp({
 
   // Derive values from state (using defaults when ss is not yet initialized)
   const phase = ss?.phase ?? 'idle';
-  const activeIds = ss?.activeIds ?? [];
   const eliminatedIds = ss?.eliminatedIds ?? [];
   const humanPlayerId = ss?.humanPlayerId ?? null;
   const saboteurId = ss?.saboteurId ?? null;
@@ -223,7 +411,8 @@ export default function SilentSaboteurComp({
   const winnerId = ss?.winnerId ?? null;
   const round = ss?.round ?? 0;
 
-  // Stable references for object-typed state to avoid exhaustive-deps warnings
+  // Stable references for array/object-typed state to avoid exhaustive-deps warnings
+  const activeIds = useMemo(() => ss?.activeIds ?? [], [ss?.activeIds]);
   const votes = useMemo(() => ss?.votes ?? {}, [ss?.votes]);
   const juryVotes = useMemo(() => ss?.juryVotes ?? {}, [ss?.juryVotes]);
   const revealVoteEntries = useMemo<Array<[string, string]>>(
@@ -236,6 +425,7 @@ export default function SilentSaboteurComp({
   const isHumanJuror = humanPlayerId !== null && eliminatedIds.includes(humanPlayerId);
   const hasHumanParticipant = humanPlayerId !== null;
   const final2Mode = phase === 'final2_jury';
+  // Winner screen: human-controlled continue; AI-only games auto-advance
   const shouldAutoAdvanceWinner = animationsDisabled || !hasHumanParticipant;
 
   const banner = useMemo(
@@ -243,11 +433,19 @@ export default function SilentSaboteurComp({
     [phase, round, bombRevealVisible, revealStage, final2Mode],
   );
 
-  const countdownDurationMs = final2Mode ? JURY_VOTE_TIMEOUT_MS : VOTING_TIMEOUT_MS;
+  const countdownDurationMs = final2Mode
+    ? SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS
+    : SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS;
   const remainingCountdownMs =
     countdownStartedAt == null
       ? countdownDurationMs
       : Math.max(0, countdownDurationMs - (countdownNow - countdownStartedAt));
+
+  // Valid suspect targets for the human voter in normal rounds
+  const humanVoteCandidates = useMemo(
+    () => getValidSaboteurCandidates(activeIds, humanPlayerId ?? '', victimId),
+    [activeIds, humanPlayerId, victimId],
+  );
 
   // ── Init ───────────────────────────────────────────────────────────────────
   // Empty deps: intentionally fires once on mount. participantIds/prizeType/seed
@@ -272,31 +470,30 @@ export default function SilentSaboteurComp({
   // Intro: auto-advance
   useEffect(() => {
     if (phase !== 'intro') return;
-    const t = setTimeout(() => dispatch(advanceIntro()), INTRO_ADVANCE_MS);
+    const t = setTimeout(() => dispatch(advanceIntro()), SILENT_SABOTEUR_TIMINGS.INTRO_MS);
     return () => clearTimeout(t);
   }, [phase, dispatch]);
 
-  // Bomb reveal: brief cinematic hold after the victim is selected.
+  // Bomb reveal: cinematic hold before showing voting UI.
   useEffect(() => {
     if (phase !== 'voting' || !victimId) {
       setBombRevealVisible(false);
       return;
     }
-
     setBombRevealVisible(true);
+    // Reset the timer-fired guard so endVotingPhase can fire when this new
+    // voting phase's 120-second timer expires (guard prevents duplicate dispatches).
+    votingTimerFiredRef.current = false;
     emitSilentSaboteurEvent('bomb-planted', { victimId, round });
 
     const t = setTimeout(
       () => setBombRevealVisible(false),
-      animationsDisabled ? 0 : BOMB_REVEAL_MS,
+      animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.BOMB_REVEAL_MS,
     );
     return () => clearTimeout(t);
   }, [phase, victimId, round, animationsDisabled]);
 
   // select_victim: AI saboteur auto-picks; human saboteur has timeout fallback.
-  // Deps limited to [phase, saboteurId]: we want exactly one timer per phase
-  // entry. Other values (activeIds, seed, round) are stable during select_victim
-  // and captured correctly at the time this effect runs.
   useEffect(() => {
     if (phase !== 'select_victim' || !saboteurId) return;
 
@@ -305,7 +502,7 @@ export default function SilentSaboteurComp({
       const t = setTimeout(() => {
         const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
         dispatch(selectVictim({ victimId: victim }));
-      }, AI_ACTION_DELAY_MS);
+      }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS);
       return () => clearTimeout(t);
     }
 
@@ -316,14 +513,14 @@ export default function SilentSaboteurComp({
         const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
         dispatch(selectVictim({ victimId: victim }));
       }
-    }, SELECT_VICTIM_TIMEOUT_MS);
+    }, SILENT_SABOTEUR_TIMINGS.SELECT_VICTIM_TIMEOUT_MS);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, saboteurId]); // intentional: one timer per phase entry
 
-  // voting: AI voters auto-vote; human voter has timeout fallback.
-  // Deps limited to [phase, bombRevealVisible]: we want exactly one vote batch
-  // per visible voting phase. Re-running on each vote change would reset timers.
+  // voting: AI voters auto-vote.
+  // Human voter may vote voluntarily or abstain (no forced auto-vote fallback).
+  // Timer expiry handled in a separate effect below.
   useEffect(() => {
     if (phase !== 'voting' || bombRevealVisible) return;
 
@@ -333,24 +530,33 @@ export default function SilentSaboteurComp({
     for (const voterId of aiVoters) {
       if (votes[voterId] !== undefined) continue;
       const t = setTimeout(() => {
-        const accused = pickVoteForAi(seed, round, voterId, activeIds);
+        // AI vote: valid suspects = activePlayers - self - victim
+        const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId);
+        if (accused == null) return;
         dispatch(submitVote({ voterId, accusedId: accused }));
-      }, AI_ACTION_DELAY_MS + Math.floor(voterId.length * 37) % 800);
-      delays.push(t);
-    }
-
-    // Human timeout fallback
-    if (humanPlayerId && isHumanActive && votes[humanPlayerId] === undefined) {
-      const t = setTimeout(() => {
-        const accused = pickVoteForAi(seed, round, humanPlayerId, activeIds);
-        dispatch(submitVote({ voterId: humanPlayerId, accusedId: accused }));
-      }, VOTING_TIMEOUT_MS);
+      }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS + Math.floor(voterId.length * 37) % 800);
       delays.push(t);
     }
 
     return () => delays.forEach(clearTimeout);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, bombRevealVisible]); // intentional: one batch per visible voting phase
+
+  // voting timer: starts when bomb reveal ends; dispatches endVotingPhase on expiry.
+  // Opening the Social Map does NOT pause or reset this timer.
+  useEffect(() => {
+    if (phase !== 'voting' || bombRevealVisible) return;
+    const delay = animationsDisabled
+      ? 50
+      : SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS;
+    const t = setTimeout(() => {
+      if (votingTimerFiredRef.current) return; // prevent duplicate
+      votingTimerFiredRef.current = true;
+      dispatch(endVotingPhase());
+    }, delay);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, bombRevealVisible]); // intentional: one timer per visible voting phase
 
   // Visible countdown start for voting / jury voting.
   useEffect(() => {
@@ -367,9 +573,16 @@ export default function SilentSaboteurComp({
   // Countdown ticker.
   useEffect(() => {
     if (countdownStartedAt == null) return;
-    const i = setInterval(() => setCountdownNow(Date.now()), TIMER_TICK_MS);
+    const i = setInterval(() => setCountdownNow(Date.now()), SILENT_SABOTEUR_TIMINGS.TIMER_TICK_MS);
     return () => clearInterval(i);
   }, [countdownStartedAt]);
+
+  // Social map: close automatically when voting phase ends
+  useEffect(() => {
+    if (phase !== 'voting') {
+      setSocialMapOpen(false);
+    }
+  }, [phase]);
 
   // reveal: sequential vote reveal followed by elimination card and auto-advance.
   useEffect(() => {
@@ -380,9 +593,9 @@ export default function SilentSaboteurComp({
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const voteStepMs = animationsDisabled ? 0 : VOTE_REVEAL_STEP_MS;
-    const resultPauseMs = animationsDisabled ? 0 : REVEAL_RESULT_PAUSE_MS;
-    const eliminationHoldMs = animationsDisabled ? 0 : ELIMINATION_HOLD_MS;
+    const voteStepMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.VOTE_REVEAL_STEP_MS;
+    const resultPauseMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.REVEAL_RESULT_PAUSE_MS;
+    const eliminationHoldMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ELIMINATION_HOLD_MS;
     const voteCount = revealVoteEntries.length;
 
     if (voteStepMs === 0) {
@@ -428,40 +641,38 @@ export default function SilentSaboteurComp({
   // round_transition: auto-start next round
   useEffect(() => {
     if (phase !== 'round_transition') return;
-    const t = setTimeout(() => dispatch(startNextRound()), animationsDisabled ? 0 : ROUND_TRANSITION_MS);
+    const t = setTimeout(() => dispatch(startNextRound()), animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ROUND_TRANSITION_MS);
     return () => clearTimeout(t);
   }, [phase, dispatch, animationsDisabled]);
 
-  // final2_jury: human juror timeout fallback (AI votes pre-computed in slice).
-  // Deps: [phase, juryVotes] — re-check when a jury vote is added in case human
-  // still hasn't voted (safe: guard inside avoids duplicate dispatch).
+  // final2_jury: 120s shared timer; human juror timeout dispatches jury vote.
   useEffect(() => {
     if (phase !== 'final2_jury') return;
     if (!isHumanJuror || !final2SaboteurId || !final2VictimId) return;
     if (humanPlayerId && juryVotes[humanPlayerId] !== undefined) return;
 
+    const delay = animationsDisabled ? 50 : SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS;
     const t = setTimeout(() => {
       if (!humanPlayerId) return;
       const finalists = [final2SaboteurId, final2VictimId];
-      const accused = pickVoteForAi(seed, 9999, humanPlayerId, finalists);
+      const accused = pickVoteForAi(seed, 9999, humanPlayerId, finalists, null);
       const safeAccused = finalists.includes(accused) ? accused : finalists[0];
       dispatch(submitJuryVote({ jurorId: humanPlayerId, accusedId: safeAccused }));
-    }, JURY_VOTE_TIMEOUT_MS);
+    }, delay);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, juryVotes]); // intentional: one timer per phase/vote-change
 
-  // winner: optional human-controlled continue, otherwise auto-advance
+  // winner: human-controlled continue; AI-only auto-advances after a hold
   useEffect(() => {
     if (phase !== 'winner' || !winnerId) return;
 
     emitSilentSaboteurEvent('victory', { winnerId });
     if (!shouldAutoAdvanceWinner) return;
 
-    const t = setTimeout(
-      () => dispatch(advanceWinner()),
-      animationsDisabled ? 0 : WINNER_AUTO_ADVANCE_MS,
-    );
+    // Auto-advance only for AI-only games or animations-disabled mode
+    const holdMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.WINNER_AUTO_ADVANCE_MS;
+    const t = setTimeout(() => dispatch(advanceWinner()), holdMs);
     return () => clearTimeout(t);
   }, [phase, dispatch, winnerId, shouldAutoAdvanceWinner, animationsDisabled]);
 
@@ -481,9 +692,11 @@ export default function SilentSaboteurComp({
   const handleVote = useCallback(
     (accusedId: string) => {
       if (!humanPlayerId || votes[humanPlayerId] !== undefined) return;
+      // Client-side guard: victim cannot be accused in normal rounds
+      if (accusedId === victimId) return;
       dispatch(submitVote({ voterId: humanPlayerId, accusedId }));
     },
-    [dispatch, humanPlayerId, votes],
+    [dispatch, humanPlayerId, votes, victimId],
   );
 
   const handleSelectVictim = useCallback(
@@ -589,6 +802,7 @@ export default function SilentSaboteurComp({
           <p className="ss-phase-eyebrow">Bomb reveal</p>
           <h2 className="ss-reveal-title">💣 A bomb has been planted!</h2>
           <VictimNotice
+            playerId={victimId}
             name={getName(victimId)}
             subtitle="Find the saboteur before it detonates."
             spotlight={true}
@@ -599,27 +813,27 @@ export default function SilentSaboteurComp({
       {phase === 'voting' && victimId && !bombRevealVisible && (
         <div className="ss-phase-card ss-phase-card--vote">
           <VictimNotice
+            playerId={victimId}
             name={getName(victimId)}
             subtitle="Who planted the bomb?"
           />
-          <CountdownBar
-            label="Voting time remaining"
+          <CountdownTimer
             remainingMs={remainingCountdownMs}
-            totalMs={VOTING_TIMEOUT_MS}
+            totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
           />
           <h2 className="ss-phase-label">🗳️ Round {round + 1} — Investigation</h2>
           <p className="ss-hint">
             {isHumanActive && votes[humanPlayerId!] === undefined
-              ? 'Study the room and accuse the saboteur.'
+              ? 'Study the room and accuse the saboteur. You may also abstain.'
               : isHumanActive
-              ? '✅ Vote locked. Waiting for the rest of the house…'
+              ? '✅ Vote locked. Waiting for others or timer to expire…'
               : 'You are watching the investigation unfold.'}
           </p>
           {isHumanActive && votes[humanPlayerId!] === undefined && (
-            <ul className="ss-button-list" role="list">
-              {activeIds
-                .filter((id) => id !== humanPlayerId)
-                .map((id) => (
+            <>
+              {/* Valid suspects: activePlayers - self - victim */}
+              <ul className="ss-button-list" role="list">
+                {humanVoteCandidates.map((id) => (
                   <li key={id}>
                     <button
                       className="ss-btn ss-btn--vote"
@@ -627,12 +841,26 @@ export default function SilentSaboteurComp({
                       aria-label={`Accuse ${getName(id)}`}
                     >
                       <span className="ss-btn__main">🫵 {getName(id)}</span>
-                      {id === victimId && <span className="ss-btn__tag ss-btn__tag--danger">Victim</span>}
                     </button>
                   </li>
                 ))}
-            </ul>
+              </ul>
+              {/* Victim displayed separately — not accusable */}
+              <div className="ss-victim-row">
+                <span className="ss-victim-row__label">💣 In danger:</span>
+                <span className="ss-victim-row__name">{getName(victimId)}</span>
+                <span className="ss-victim-row__tag">Cannot be accused</span>
+              </div>
+            </>
           )}
+          {/* Social Map toggle */}
+          <button
+            className="ss-btn ss-btn--social-map"
+            onClick={() => setSocialMapOpen(true)}
+            aria-label="Open Social Map"
+          >
+            🗺️ Social Map
+          </button>
           <ProgressMeter
             label="Vote Progress"
             participantIds={activeIds}
@@ -640,6 +868,19 @@ export default function SilentSaboteurComp({
             getName={getName}
             noun="votes"
           />
+          {/* Social Map overlay */}
+          {socialMapOpen && victimId && (
+            <SocialMapOverlay
+              victimId={victimId}
+              suspects={humanVoteCandidates}
+              seed={seed}
+              remainingMs={remainingCountdownMs}
+              totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
+              getName={getName}
+              onClose={() => setSocialMapOpen(false)}
+              onVote={isHumanActive && votes[humanPlayerId!] === undefined ? handleVote : null}
+            />
+          )}
         </div>
       )}
 
@@ -675,20 +916,28 @@ export default function SilentSaboteurComp({
               <h2 className="ss-reveal-title">
                 {revealInfo.reason === 'saboteur_caught'
                   ? '🕵️ The saboteur has been exposed!'
-                  : '💥 Wrong choice!'}
+                  : '💥 Wrong accusation — the bomb detonates!'}
               </h2>
               {revealInfo.victimOverride && (
                 <p className="ss-override-badge">⚡ Victim Override Rule Applied</p>
               )}
-              <p className="ss-reveal-body">
-                <strong>{getName(revealInfo.eliminatedId)}</strong>{' '}
-                {revealInfo.reason === 'saboteur_caught'
-                  ? 'is eliminated after the house found the saboteur.'
-                  : 'is eliminated when the bomb detonates.'}
-              </p>
-              <p className="ss-reveal-detail">
-                Saboteur: <strong>{getName(revealInfo.saboteurId)}</strong> · Victim:{' '}
-                <strong>{getName(revealInfo.victimId)}</strong>
+              {revealInfo.reason === 'saboteur_caught' ? (
+                <p className="ss-reveal-body">
+                  The house correctly accused{' '}
+                  <strong>{getName(revealInfo.accusedId)}</strong> — the real saboteur.{' '}
+                  <strong>{getName(revealInfo.saboteurId)}</strong> is eliminated.
+                </p>
+              ) : (
+                <p className="ss-reveal-body">
+                  The house accused <strong>{getName(revealInfo.accusedId)}</strong>, but that
+                  was the wrong target.{' '}
+                  <strong>{getName(revealInfo.saboteurId)}</strong> was the real
+                  saboteur — and <strong>{getName(revealInfo.victimId)}</strong>{' '}
+                  pays the price.
+                </p>
+              )}
+              <p className="ss-reveal-eliminated">
+                ❌ Eliminated: <strong>{getName(revealInfo.eliminatedId)}</strong>
               </p>
               <VoteRevealSequence
                 entries={revealVoteEntries}
@@ -718,13 +967,13 @@ export default function SilentSaboteurComp({
       {phase === 'final2_jury' && final2SaboteurId && final2VictimId && (
         <div className="ss-phase-card ss-final2">
           <VictimNotice
+            playerId={final2VictimId}
             name={getName(final2VictimId)}
             subtitle="The jury must decide who planted the bomb."
           />
-          <CountdownBar
-            label="Final verdict timer"
+          <CountdownTimer
             remainingMs={remainingCountdownMs}
-            totalMs={JURY_VOTE_TIMEOUT_MS}
+            totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
           />
           <h2 className="ss-phase-label">🏁 Final 2 — Jury Deduction Finale</h2>
           <p className="ss-hint">
@@ -840,17 +1089,19 @@ function PhaseBanner({ banner }: { banner: PhaseBannerModel }) {
 }
 
 function VictimNotice({
+  playerId,
   name,
   subtitle,
   spotlight = false,
 }: {
+  playerId: string;
   name: string;
   subtitle: string;
   spotlight?: boolean;
 }) {
   return (
     <div className={`ss-victim-card ${spotlight ? 'ss-victim-card--spotlight' : ''}`}>
-      <div className="ss-victim-avatar" aria-hidden="true">{getInitial(name)}</div>
+      <HouseguestPortrait id={playerId} name={name} />
       <div className="ss-victim-copy">
         <p className="ss-victim-eyebrow">💣 {name} is in danger</p>
         <p className="ss-victim-name">{name}</p>
@@ -860,22 +1111,27 @@ function VictimNotice({
   );
 }
 
-function CountdownBar({
-  label,
+function CountdownTimer({
   remainingMs,
   totalMs,
+  compact = false,
 }: {
-  label: string;
   remainingMs: number;
   totalMs: number;
+  compact?: boolean;
 }) {
   const clampedRemaining = Math.max(0, remainingMs);
   const percent = totalMs <= 0 ? 0 : Math.max(0, Math.min(100, (clampedRemaining / totalMs) * 100));
+  const isWarning = clampedRemaining <= 20_000;
+  const mmss = formatMmSs(clampedRemaining);
   return (
-    <div className="ss-countdown" aria-label={`${label}: ${Math.ceil(clampedRemaining / 1000)} seconds remaining`}>
+    <div
+      className={`ss-countdown ${isWarning ? 'ss-countdown--warning' : ''} ${compact ? 'ss-countdown--compact' : ''}`}
+      aria-label={`Time remaining: ${mmss}`}
+    >
       <div className="ss-countdown__row">
-        <span className="ss-countdown__label">{label}</span>
-        <strong className="ss-countdown__value">{Math.ceil(clampedRemaining / 1000)}s</strong>
+        {!compact && <span className="ss-countdown__label">⏱ Time remaining</span>}
+        <strong className={`ss-countdown__value ${isWarning ? 'ss-countdown__value--warning' : ''}`}>{mmss}</strong>
       </div>
       <div className="ss-countdown__track">
         <div className="ss-countdown__fill" style={{ width: `${percent}%` }} />
@@ -1016,5 +1272,145 @@ function VoteRevealSequence({
         </li>
       )}
     </ol>
+  );
+}
+
+// ─── Social Map Overlay ────────────────────────────────────────────────────────
+
+function SocialMapOverlay({
+  victimId,
+  suspects,
+  seed,
+  remainingMs,
+  totalMs,
+  getName,
+  onClose,
+  onVote,
+}: {
+  victimId: string;
+  suspects: string[];
+  seed: number;
+  remainingMs: number;
+  totalMs: number;
+  getName: (id: string) => string;
+  onClose: () => void;
+  onVote: ((id: string) => void) | null;
+}) {
+  const cards = useMemo(
+    () => buildSuspectCards(suspects, victimId, seed, getName),
+    // getName is stable via useCallback, suspects/victimId/seed are stable per round
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [suspects, victimId, seed],
+  );
+
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  return (
+    <div
+      className="ss-social-map-backdrop"
+      role="dialog"
+      aria-label="Social Map"
+      aria-modal="true"
+      onClick={handleBackdropClick}
+    >
+      <div className="ss-social-map">
+        {/* Header with timer */}
+        <div className="ss-social-map__header">
+          <div className="ss-social-map__header-left">
+            <span className="ss-social-map__title">🗺️ Social Map</span>
+            <p className="ss-social-map__subtitle">Who had a reason to target {getName(victimId)}?</p>
+          </div>
+          <div className="ss-social-map__header-right">
+            <CountdownTimer remainingMs={remainingMs} totalMs={totalMs} compact={true} />
+          </div>
+          <button
+            className="ss-social-map__close"
+            onClick={onClose}
+            aria-label="Close Social Map"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Victim panel */}
+        <div className="ss-social-map__victim-panel">
+          <HouseguestPortrait id={victimId} name={getName(victimId)} sizeClass="ss-victim-avatar--lg" />
+          <div>
+            <p className="ss-social-map__victim-label">💣 {getName(victimId)} has the bomb</p>
+            <p className="ss-social-map__victim-hint">Who planted it?</p>
+          </div>
+        </div>
+
+        {/* Mini graph: victim in center, suspects around */}
+        {suspects.length > 0 && (
+          <div className="ss-social-map__graph" aria-hidden="true">
+            <div className="ss-social-map__graph-center">
+              <HouseguestPortrait id={victimId} name={getName(victimId)} sizeClass="ss-victim-avatar--sm" />
+              <span className="ss-social-map__graph-label">{getName(victimId)}</span>
+            </div>
+            {cards.map((card) => (
+              <div key={card.id} className="ss-social-map__graph-node">
+                <div
+                  className="ss-social-map__graph-line"
+                  style={{ borderColor: RELATIONSHIP_COLORS[card.relationship] }}
+                />
+                <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
+                <span className="ss-social-map__graph-label">{card.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Suspect cards */}
+        <div className="ss-social-map__cards">
+          {cards.map((card) => (
+            <div key={card.id} className="ss-social-map__card">
+              <div className="ss-social-map__card-header">
+                <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
+                <div className="ss-social-map__card-identity">
+                  <strong className="ss-social-map__card-name">{card.name}</strong>
+                  <span
+                    className="ss-social-map__card-rel"
+                    style={{ color: RELATIONSHIP_COLORS[card.relationship] }}
+                  >
+                    {card.relationship}
+                  </span>
+                </div>
+                <div className="ss-social-map__card-strength">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`ss-social-map__dot ${i <= card.relationshipStrength ? 'ss-social-map__dot--active' : ''}`}
+                      style={i <= card.relationshipStrength ? { background: RELATIONSHIP_COLORS[card.relationship] } : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="ss-social-map__card-traits">
+                {card.traits.map((t) => (
+                  <span key={t} className="ss-social-map__trait">{t}</span>
+                ))}
+              </div>
+              <p className="ss-social-map__card-hint">{card.hint}</p>
+              {onVote && (
+                <button
+                  className="ss-btn ss-btn--vote ss-btn--sm"
+                  onClick={() => { onVote(card.id); onClose(); }}
+                  aria-label={`Accuse ${card.name}`}
+                >
+                  🫵 Accuse {card.name}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button className="ss-btn ss-btn--secondary ss-social-map__close-btn" onClick={onClose}>
+          Close Social Map
+        </button>
+      </div>
+    </div>
   );
 }
