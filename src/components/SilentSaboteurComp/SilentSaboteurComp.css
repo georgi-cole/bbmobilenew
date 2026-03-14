@@ -1,0 +1,274 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Silent Saboteur — component styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.ss-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 1.5rem;
+  background: #0d0d1a;
+  color: #e8e8f0;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+/* ── Cinematic pulse animation ─────────────────────────────────────────────── */
+
+.ss-cinematic {
+  animation: ss-fade-in 0.6s ease both;
+}
+
+@keyframes ss-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Respect reduced-motion / no-animations flag */
+body.no-animations .ss-cinematic {
+  animation: none;
+}
+
+/* ── Intro screen ─────────────────────────────────────────────────────────── */
+
+.ss-intro {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.ss-bomb-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 0.75rem;
+  animation: ss-pulse 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes ss-pulse {
+  from { transform: scale(1);   opacity: 0.85; }
+  to   { transform: scale(1.1); opacity: 1;    }
+}
+
+body.no-animations .ss-bomb-icon {
+  animation: none;
+}
+
+.ss-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ff4c4c;
+  margin: 0 0 0.5rem;
+  text-shadow: 0 0 18px rgba(255, 76, 76, 0.7);
+}
+
+.ss-subtitle {
+  font-size: 1.05rem;
+  opacity: 0.75;
+  margin: 0;
+}
+
+/* ── Phase card ───────────────────────────────────────────────────────────── */
+
+.ss-phase-card {
+  width: 100%;
+  max-width: 520px;
+  background: #17172e;
+  border: 1px solid #2e2e50;
+  border-radius: 14px;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ss-final2 {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.25);
+}
+
+.ss-phase-label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #c8c8e8;
+  margin: 0;
+  text-align: center;
+}
+
+.ss-hint {
+  font-size: 0.92rem;
+  opacity: 0.8;
+  margin: 0;
+  text-align: center;
+}
+
+.hint-small {
+  font-size: 0.82rem;
+  opacity: 0.6;
+}
+
+/* ── Player list (active players) ────────────────────────────────────────── */
+
+.ss-player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  justify-content: center;
+}
+
+.ss-player-chip {
+  background: #252545;
+  border-radius: 99px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.85rem;
+  color: #9090c0;
+  border: 1px solid #3a3a6a;
+}
+
+/* ── Button list ─────────────────────────────────────────────────────────── */
+
+.ss-button-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ss-btn {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.ss-btn:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.ss-btn--vote {
+  background: #2d2d5e;
+  color: #c7c7f0;
+  border: 1px solid #4040a0;
+}
+
+.ss-btn--vote:hover:not(:disabled) {
+  background: #3b3b80;
+  transform: translateY(-1px);
+}
+
+.ss-btn--danger {
+  background: #5a1515;
+  color: #ffa0a0;
+  border: 1px solid #8b2020;
+}
+
+.ss-btn--danger:hover:not(:disabled) {
+  background: #7a2020;
+  transform: translateY(-1px);
+}
+
+/* ── Vote progress ───────────────────────────────────────────────────────── */
+
+.ss-vote-progress {
+  font-size: 0.88rem;
+  opacity: 0.7;
+  margin: 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.ss-vote-dot {
+  font-size: 1rem;
+}
+
+.ss-vote-dot--cast {
+  opacity: 1;
+}
+
+.ss-vote-breakdown {
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* ── Reveal screen ───────────────────────────────────────────────────────── */
+
+.ss-reveal-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ff6b6b;
+  text-align: center;
+  margin: 0;
+}
+
+.ss-override-badge {
+  background: #4a1d96;
+  color: #ddd6fe;
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  text-align: center;
+  margin: 0;
+}
+
+.ss-reveal-body {
+  font-size: 1.05rem;
+  text-align: center;
+  margin: 0;
+}
+
+.ss-reveal-detail {
+  font-size: 0.88rem;
+  opacity: 0.65;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Winner screen ───────────────────────────────────────────────────────── */
+
+.ss-winner-card {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.ss-trophy {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 0.75rem;
+  animation: ss-pulse 1s infinite alternate ease-in-out;
+}
+
+body.no-animations .ss-trophy {
+  animation: none;
+}
+
+.ss-winner-name {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fde68a;
+  text-shadow: 0 0 20px rgba(253, 230, 138, 0.6);
+  margin: 0 0 0.5rem;
+}
+
+.ss-winner-label {
+  font-size: 1.1rem;
+  opacity: 0.85;
+  margin: 0;
+}
