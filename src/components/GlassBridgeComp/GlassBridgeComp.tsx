@@ -43,6 +43,7 @@ import {
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
 import { mulberry32 } from '../../store/rng';
 import { getDicebear } from '../../utils/avatar';
+import { playScreamPlaceholder } from '../../services/sound';
 import './GlassBridgeComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -63,8 +64,16 @@ const SHATTER_ANIM_MS = 400;
 const POST_SHATTER_DELAY_MS = 300;
 /** Suspense pause after selecting a tile before the outcome resolves. */
 const STEP_SUSPENSE_DELAY_MS = 260;
-/** Auto-advance on complete screen (ms). */
-const COMPLETE_AUTO_ADVANCE_MS = 3_000;
+/** Delay between AI number picks while the human has NOT yet chosen (ms). */
+const ORDER_AI_PICK_SLOW_MS = 2_500;
+/** Delay between AI number picks after the human has chosen (ms). */
+const ORDER_AI_PICK_FAST_MS = 350;
+/** Duration of the death flash overlay (ms). Aligned with gb-elim-flash (0.12s). */
+const DEATH_FLASH_MS = 120;
+/** How long the death marker (skull) stays visible before fully fading (ms). Aligned with gb-death-fade (0.75s). */
+const DEATH_MARKER_DURATION_MS = 750;
+/** Landing animation duration for a finisher reaching the safe platform (ms). Aligned with gb-player-land (0.55s), plus a short grace period. */
+const LANDING_ANIM_DURATION_MS = 600;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -155,6 +164,13 @@ export default function GlassBridgeComp({
   const [showEliminationFlash, setShowEliminationFlash] = useState(false);
   const [showScreenShake, setShowScreenShake] = useState(false);
   const [timerDisplay, setTimerDisplay] = useState<number>(gb.globalTimeLimitMs);
+  /** Tile where the most recent player fell — shows the 💀 death marker. */
+  const [deathMarkerTile, setDeathMarkerTile] = useState<{
+    rowIdx: number;
+    side: TileSide;
+  } | null>(null);
+  /** IDs of players currently playing the safe-landing animation. */
+  const [landingPlayerIds, setLandingPlayerIds] = useState<string[]>([]);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
@@ -164,7 +180,23 @@ export default function GlassBridgeComp({
   const pendingStepRef = useRef<number | null>(null);
   const shatterResolveRef = useRef<number | null>(null);
   const flashResetRef = useRef<number | null>(null);
+  const deathMarkerClearRef = useRef<number | null>(null);
+  const landingTimersRef = useRef<number[]>([]);
   const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
+
+  // ── Order-selection AI pick queue refs (sequential pacing) ───────────────
+  /** Pre-computed AI number choices for this game, dispatched one by one. */
+  const aiOrderPickQueueRef = useRef<Array<{ playerId: string; number: number }>>([]);
+  /** Index of the next pick to dispatch from aiOrderPickQueueRef. */
+  const aiOrderPickIndexRef = useRef(0);
+  /** Timer handle for the next scheduled AI order pick. */
+  const aiOrderTimerRef = useRef<number | null>(null);
+  /** Whether the human has already chosen their number this game. */
+  const humanChosenForOrderRef = useRef(false);
+  /** Stable function ref used by the acceleration effect. */
+  const pickNextOrderFnRef = useRef<() => void>(() => {});
+  /** Tracks newly-finished players to trigger landing animation. */
+  const prevFinishersRef = useRef<Set<string>>(new Set());
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(seed + 9999));
@@ -198,6 +230,16 @@ export default function GlassBridgeComp({
       window.clearTimeout(flashResetRef.current);
       flashResetRef.current = null;
     }
+    if (aiOrderTimerRef.current !== null) {
+      window.clearTimeout(aiOrderTimerRef.current);
+      aiOrderTimerRef.current = null;
+    }
+    if (deathMarkerClearRef.current !== null) {
+      window.clearTimeout(deathMarkerClearRef.current);
+      deathMarkerClearRef.current = null;
+    }
+    for (const t of landingTimersRef.current) window.clearTimeout(t);
+    landingTimersRef.current = [];
   }
 
   // ── 1. Initialize on mount ────────────────────────────────────────────────
@@ -219,10 +261,17 @@ export default function GlassBridgeComp({
     };
   }, [dispatch]);
 
-  // ── 2. Order selection: AI auto-picks ────────────────────────────────────
+  // ── 2. Order selection: AI auto-picks (sequential, human-like pacing) ────
   useEffect(() => {
-    if (gb.phase !== 'order_selection') return;
+    if (gb.phase !== 'order_selection') {
+      // Reset queue state when leaving the phase.
+      aiOrderPickQueueRef.current = [];
+      aiOrderPickIndexRef.current = 0;
+      humanChosenForOrderRef.current = false;
+      return;
+    }
 
+    // Pre-compute all AI picks deterministically (same seed + 100 sub-seed).
     const aiRng = mulberry32(seed + 100);
     const aiChoices = buildAiNumberChoices(
       gb.participants.map(p => p.id),
@@ -231,19 +280,73 @@ export default function GlassBridgeComp({
       aiRng,
     );
 
-    for (const [playerId, number] of Object.entries(aiChoices)) {
-      dispatch(recordNumberChoice({ playerId, number }));
+    aiOrderPickQueueRef.current = Object.entries(aiChoices).map(
+      ([playerId, number]) => ({ playerId, number }),
+    );
+    aiOrderPickIndexRef.current = 0;
+    // If no human or human already chose (e.g. AI-only game), start in fast mode.
+    humanChosenForOrderRef.current = humanId
+      ? gb.chosenNumbers[humanId] !== undefined
+      : true;
+
+    // Dispatch one pick at a time with a delay so each AI player appears to
+    // "think" before choosing. Remaining AI speed up once the human picks.
+    function pickNext() {
+      const queue = aiOrderPickQueueRef.current;
+      if (aiOrderPickIndexRef.current >= queue.length) {
+        // All AI have picked. For AI-only games, finalise right away (effect #3
+        // handles the human-present case).
+        if (!humanId) {
+          revealTimerRef.current = window.setTimeout(() => {
+            dispatch(finaliseOrderSelection());
+          }, ORDER_REVEAL_DELAY_MS);
+        }
+        return;
+      }
+
+      const fast = humanChosenForOrderRef.current;
+      const delay = fast ? ORDER_AI_PICK_FAST_MS : ORDER_AI_PICK_SLOW_MS;
+
+      aiOrderTimerRef.current = window.setTimeout(() => {
+        aiOrderTimerRef.current = null;
+        const pick = aiOrderPickQueueRef.current[aiOrderPickIndexRef.current++];
+        if (pick) {
+          dispatch(recordNumberChoice({ playerId: pick.playerId, number: pick.number }));
+        }
+        pickNext();
+      }, delay);
     }
 
-    // If human has no choice to make (not present), finalise immediately.
-    if (!humanId) {
-      // Brief delay for UX even in AI-only games.
-      revealTimerRef.current = window.setTimeout(() => {
-        dispatch(finaliseOrderSelection());
-      }, ORDER_REVEAL_DELAY_MS);
-    }
+    // Store a stable reference so effect 2b can restart the chain in fast mode.
+    pickNextOrderFnRef.current = pickNext;
+    pickNext();
+
+    return () => {
+      if (aiOrderTimerRef.current !== null) {
+        window.clearTimeout(aiOrderTimerRef.current);
+        aiOrderTimerRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.phase]);
+
+  // ── 2b. Accelerate remaining AI picks the moment the human chooses ───────
+  useEffect(() => {
+    if (gb.phase !== 'order_selection') return;
+    if (!humanId) return;
+    if (gb.chosenNumbers[humanId] === undefined) return; // human hasn't picked yet
+    if (humanChosenForOrderRef.current) return; // already in fast mode
+
+    humanChosenForOrderRef.current = true;
+
+    // If a slow pick timer is running, cancel it and immediately start the
+    // fast-mode chain so remaining AI don't keep the human waiting.
+    if (aiOrderTimerRef.current !== null) {
+      window.clearTimeout(aiOrderTimerRef.current);
+      aiOrderTimerRef.current = null;
+      pickNextOrderFnRef.current();
+    }
+  }, [gb.chosenNumbers, gb.phase, humanId]);
 
   // ── 3. When all numbers chosen (including human), finalise ───────────────
   useEffect(() => {
@@ -384,10 +487,15 @@ export default function GlassBridgeComp({
           setShatteringTile({ rowIdx, side: chosenSide });
           setShowEliminationFlash(true);
           setShowScreenShake(true);
+          setDeathMarkerTile({ rowIdx, side: chosenSide });
+          playScreamPlaceholder();
           flashResetRef.current = window.setTimeout(() => {
             setShowEliminationFlash(false);
             setShowScreenShake(false);
-          }, noAnimations ? 0 : 500);
+          }, noAnimations ? 0 : DEATH_FLASH_MS);
+          deathMarkerClearRef.current = window.setTimeout(() => {
+            setDeathMarkerTile(null);
+          }, noAnimations ? 0 : DEATH_MARKER_DURATION_MS);
           shatterResolveRef.current = window.setTimeout(() => {
             setShatteringTile(null);
             setPendingStep(null);
@@ -427,22 +535,9 @@ export default function GlassBridgeComp({
     }
   }, [gb.phase, gb.outcomeResolved, dispatch]);
 
-  // ── 9. Auto-advance from complete ────────────────────────────────────────
-  useEffect(() => {
-    if (gb.phase !== 'complete') return;
-    if (autoAdvanceRef.current !== null) return;
-    autoAdvanceRef.current = window.setTimeout(() => {
-      // Ensure outcome is applied (idempotent) before MinigameHost unmounts.
-      dispatch(resolveGlassBridgeOutcome());
-      onComplete?.();
-    }, COMPLETE_AUTO_ADVANCE_MS);
-    return () => {
-      if (autoAdvanceRef.current !== null) {
-        window.clearTimeout(autoAdvanceRef.current);
-        autoAdvanceRef.current = null;
-      }
-    };
-  }, [gb.phase, onComplete, dispatch]);
+  // ── 9. Complete — outcome is applied by effect #8; user advances via the
+  //        Continue button. No auto-advance timer so the results screen persists
+  //        until the player taps Continue (matches spec requirement 5.1).
 
   // ── 10. Human eliminated → show spectator modal ───────────────────────────
   useEffect(() => {
@@ -453,6 +548,22 @@ export default function GlassBridgeComp({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.progress, humanId, gb.phase]);
+
+  // ── 11. Safe-landing animation — detect newly-finished players ────────────
+  useEffect(() => {
+    if (gb.phase !== 'playing') return;
+    for (const [pid, p] of Object.entries(gb.progress)) {
+      if (p.finishTimeMs !== undefined && !prevFinishersRef.current.has(pid)) {
+        prevFinishersRef.current.add(pid);
+        setLandingPlayerIds(prev => [...prev, pid]);
+        const t = window.setTimeout(() => {
+          setLandingPlayerIds(prev => prev.filter(id => id !== pid));
+          landingTimersRef.current = landingTimersRef.current.filter(x => x !== t);
+        }, LANDING_ANIM_DURATION_MS);
+        landingTimersRef.current.push(t);
+      }
+    }
+  }, [gb.progress, gb.phase]);
 
   // ── Human actions ─────────────────────────────────────────────────────────
 
@@ -490,10 +601,15 @@ export default function GlassBridgeComp({
           setShatteringTile({ rowIdx, side });
           setShowEliminationFlash(true);
           setShowScreenShake(true);
+          setDeathMarkerTile({ rowIdx, side });
+          playScreamPlaceholder();
           flashResetRef.current = window.setTimeout(() => {
             setShowEliminationFlash(false);
             setShowScreenShake(false);
-          }, noAnimations ? 0 : 500);
+          }, noAnimations ? 0 : DEATH_FLASH_MS);
+          deathMarkerClearRef.current = window.setTimeout(() => {
+            setDeathMarkerTile(null);
+          }, noAnimations ? 0 : DEATH_MARKER_DURATION_MS);
           shatterResolveRef.current = window.setTimeout(() => {
             setShatteringTile(null);
             setPendingStep(null);
@@ -720,6 +836,10 @@ export default function GlassBridgeComp({
                           aria-disabled={isBroken || !canActivate}
                         >
                           <span className="gb-tile-label">{side}</span>
+                          {/* Death marker — shown briefly at the tile where a player fell */}
+                          {deathMarkerTile?.rowIdx === rowIdx && deathMarkerTile?.side === side && (
+                            <div className="gb-death-marker" aria-hidden="true">💀</div>
+                          )}
                         </div>
                       );
                     })}
@@ -749,6 +869,25 @@ export default function GlassBridgeComp({
                 </div>
               );
             })}
+            {/* Safe platform — finishers land here with a bounce animation */}
+            {landingPlayerIds.length > 0 && (
+              <div className="gb-safe-platform">
+                {landingPlayerIds.map(pid => (
+                  <div key={pid} className="gb-player-marker gb-player-landing" title={getName(pid)}>
+                    <img
+                      src={avatarForId(pid)}
+                      alt={getName(pid)}
+                      width={18}
+                      height={18}
+                      onError={e => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Player status list */}
