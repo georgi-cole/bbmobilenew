@@ -106,7 +106,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
     evictionSplashId: null,
-    players: makePlayers(4),  // p0 = human, p1..p3 = AI
+    players: makePlayers(4), // p0 = human, p1..p3 = AI
     tvFeed: [],
     isLive: false,
   };

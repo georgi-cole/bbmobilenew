@@ -127,6 +127,23 @@ const FLOATER_CONFIG = [
   { left: '92%', delay: '0.3s',  dur: '6.4s' },
 ];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Extract a player ID string from window.game.__authoritativeWinner.
+ * The value may be a plain string or an object with a `playerId` field (e.g.
+ * the shape written by legacy hold-wall.js code).  Returns null for any
+ * unrecognised shape.
+ */
+function extractAuthoritativeWinnerId(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'playerId' in value) {
+    const id = (value as { playerId: unknown }).playerId;
+    return typeof id === 'string' ? id : null;
+  }
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SpectatorView({
@@ -193,12 +210,7 @@ export default function SpectatorView({
   const windowAuthWinner = useMemo<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const w = window.game?.__authoritativeWinner;
-    const winnerId =
-      typeof w === 'string'
-        ? w
-        : w && typeof w === 'object' && 'playerId' in w
-        ? (w as { playerId: string }).playerId
-        : null;
+    const winnerId = extractAuthoritativeWinnerId(w);
     return winnerId && competitorIds.includes(winnerId) ? winnerId : null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once at mount — this is synchronous detection only
