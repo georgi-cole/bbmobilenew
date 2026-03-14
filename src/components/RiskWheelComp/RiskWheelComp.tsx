@@ -89,11 +89,25 @@ function formatScore(score: number): string {
   return `${score >= 0 ? '+' : ''}${score}`;
 }
 
+/**
+ * Pre-built O(1) lookup map: houseguest id → resolved avatar URL.
+ * Built once at module level from the static HOUSEGUESTS array so repeated
+ * per-render calls (mini-scoreboard, summary rows, winner screen) are cheap.
+ */
+const HOUSEGUEST_AVATAR_MAP: Map<string, string> = new Map(
+  HOUSEGUESTS.map((hg) => [hg.id, resolveAvatar({ id: hg.id, name: hg.name, avatar: '' })]),
+);
+
 /** Resolve a player avatar URL from the houseguest database, falling back to dicebear. */
 function avatarForId(id: string): string {
-  const hg = HOUSEGUESTS.find((h) => h.id === id);
-  if (hg) return resolveAvatar({ id: hg.id, name: hg.name, avatar: '' });
-  return getDicebear(id);
+  return HOUSEGUEST_AVATAR_MAP.get(id) ?? getDicebear(id);
+}
+
+/** Return the SVG font-size string for a wheel sector label. */
+function getSectorFontSize(labelLength: number): string {
+  if (labelLength <= 2) return '10';
+  if (labelLength === 3) return '8.5';
+  return '7';
 }
 
 // ─── Sector colour palette ────────────────────────────────────────────────────
@@ -181,7 +195,7 @@ function WheelSvg({ rotation, transitioning, onTransitionEnd }: WheelSvgProps) {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="#fff"
-                  fontSize={sector.label.length > 3 ? '7' : sector.label.length <= 2 ? '10' : '8.5'}
+                  fontSize={getSectorFontSize(sector.label.length)}
                   fontWeight="800"
                   fontFamily="inherit"
                   transform={`rotate(${textAngleDeg.toFixed(1)}, ${lx.toFixed(3)}, ${ly.toFixed(3)})`}

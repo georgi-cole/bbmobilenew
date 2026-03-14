@@ -6,6 +6,11 @@
  * The audio asset path is /assets/sounds/minigame_wheelofluck.mp3; until the
  * file is added the hook is a no-op (SoundManager silently handles missing files).
  *
+ * The spin track is played via `playMusic` so it loops automatically.
+ * `stopWheelSound` calls `stopMusic`, which stops the active music track.
+ * This is safe inside the Risk Wheel minigame since no other music should be
+ * playing while a spin is in progress.
+ *
  * Usage:
  *   const { startWheelSound, stopWheelSound } = useWheelOfLuck();
  *   // When wheel starts spinning:
