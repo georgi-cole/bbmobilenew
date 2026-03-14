@@ -44,9 +44,7 @@ import './SilentSaboteurComp.css';
 
 const SILENT_SABOTEUR_TIMINGS = {
   /** Intro hold before advancing. */
-  INTRO_MS: 2500,
-  /** Bomb planted cinematic hold. */
-  BOMB_REVEAL_MS: 2000,
+  INTRO_MS: 7500,
   /** AI saboteur action delay (natural feel). */
   AI_ACTION_MS: 1200,
   /** Human saboteur timeout fallback. */
@@ -58,24 +56,14 @@ const SILENT_SABOTEUR_TIMINGS = {
   /** Delay between sequential vote reveals. */
   VOTE_REVEAL_STEP_MS: 1100,
   /** Pause after all votes revealed before showing elimination card. */
-  REVEAL_RESULT_PAUSE_MS: 1500,
+  REVEAL_RESULT_PAUSE_MS: 4500,
   /** Elimination card hold time. */
   ELIMINATION_HOLD_MS: 2800,
   /** Round transition hold. */
   ROUND_TRANSITION_MS: 2000,
-  /** Winner screen auto-advance for AI-only / no-animation flows. */
-  WINNER_AUTO_ADVANCE_MS: 4000,
   /** Countdown ticker interval. */
   TIMER_TICK_MS: 250,
 } as const;
-
-type VisualPhaseKey =
-  | 'SABOTAGE_PHASE'
-  | 'BOMB_REVEAL_PHASE'
-  | 'VOTING_PHASE'
-  | 'RESOLUTION_PHASE'
-  | 'ELIMINATION_PHASE'
-  | 'WINNER_PHASE';
 
 type RevealStage = 'votes' | 'accusationResult' | 'elimination';
 
@@ -95,13 +83,6 @@ type Final2Stage =
   | 'FINAL2_VERDICT_LOCKED'
   | 'FINAL2_REVEAL'
   | 'FINAL2_WINNER';
-
-interface PhaseBannerModel {
-  key: VisualPhaseKey;
-  label: string;
-  detail: string;
-  tone: 'sabotage' | 'bomb' | 'vote' | 'resolution' | 'elimination' | 'winner';
-}
 
 // ─── Social Map types ─────────────────────────────────────────────────────────
 
@@ -211,81 +192,6 @@ function emitSilentSaboteurEvent(type: string, detail?: Record<string, unknown>)
   } catch {
     // ignore — optional presentation hook only
   }
-}
-
-function getPhaseBannerModel({
-  phase,
-  round,
-  bombRevealVisible,
-  revealStage,
-  final2,
-}: {
-  phase: string;
-  round: number;
-  bombRevealVisible: boolean;
-  revealStage: RevealStage;
-  final2: boolean;
-}): PhaseBannerModel {
-  if (phase === 'winner' || phase === 'complete') {
-    return {
-      key: 'WINNER_PHASE',
-      label: '🏁 Final Verdict',
-      detail: 'Winner revealed',
-      tone: 'winner',
-    };
-  }
-
-  if (phase === 'reveal') {
-    if (revealStage !== 'elimination') {
-      return {
-        key: 'RESOLUTION_PHASE',
-        label: '⚖️ Resolution',
-        detail: revealStage === 'votes' ? 'Votes are being revealed' : 'The accusation has landed',
-        tone: 'resolution',
-      };
-    }
-
-    return {
-      key: 'ELIMINATION_PHASE',
-      label: '🚨 Elimination Reveal',
-      detail: 'The outcome is locked in',
-      tone: 'elimination',
-    };
-  }
-
-  if (phase === 'round_transition') {
-    return {
-      key: 'ELIMINATION_PHASE',
-      label: '🚨 Elimination Reveal',
-      detail: 'Preparing the next round',
-      tone: 'elimination',
-    };
-  }
-
-  if (bombRevealVisible) {
-    return {
-      key: 'BOMB_REVEAL_PHASE',
-      label: '🌑 Bomb Planted',
-      detail: 'The victim has been marked',
-      tone: 'bomb',
-    };
-  }
-
-  if (phase === 'voting' || phase === 'final2_jury') {
-    return {
-      key: 'VOTING_PHASE',
-      label: final2 ? '🏁 Final Verdict' : '🗳️ Investigation',
-      detail: final2 ? 'Jury deduction in progress' : `Round ${round + 1} voting`,
-      tone: 'vote',
-    };
-  }
-
-  return {
-    key: 'SABOTAGE_PHASE',
-    label: '💣 Sabotage Phase',
-    detail: phase === 'intro' ? 'Setting the stage' : `Round ${round + 1} sabotage`,
-    tone: 'sabotage',
-  };
 }
 
 function getInitial(name: string) {
@@ -490,10 +396,6 @@ export default function SilentSaboteurComp({
     return maxId;
   }, [juryVotes]);
 
-  const banner = useMemo(
-    () => getPhaseBannerModel({ phase, round, bombRevealVisible, revealStage, final2: final2Mode }),
-    [phase, round, bombRevealVisible, revealStage, final2Mode],
-  );
 
   const countdownDurationMs = final2Mode
     ? SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS
@@ -922,7 +824,6 @@ export default function SilentSaboteurComp({
 
   return (
     <div className="ss-wrap" aria-live="polite">
-      <PhaseBanner banner={banner} />
 
       {phase === 'intro' && (
         <div className="ss-intro ss-cinematic">
@@ -1472,16 +1373,6 @@ export default function SilentSaboteurComp({
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
-
-function PhaseBanner({ banner }: { banner: PhaseBannerModel }) {
-  return (
-    <div className={`ss-phase-banner ss-phase-banner--${banner.tone}`} role="status" aria-live="polite">
-      <span className="ss-phase-banner__key">{banner.key}</span>
-      <strong className="ss-phase-banner__label">{banner.label}</strong>
-      <span className="ss-phase-banner__detail">{banner.detail}</span>
-    </div>
-  );
-}
 
 function VictimNotice({
   playerId,

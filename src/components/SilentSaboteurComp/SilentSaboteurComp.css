@@ -11,7 +11,10 @@
   justify-content: flex-start;
   min-height: 100%;
   /* Allow vertical scrolling when content exceeds viewport height. */
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 1rem 1rem 1.5rem;
   background:
     radial-gradient(circle at top, rgba(140, 27, 49, 0.18), transparent 32%),
@@ -57,58 +60,22 @@ body.no-animations .ss-confetti-piece {
   animation: none;
 }
 
-/* ── Phase banner ─────────────────────────────────────────────────────────── */
+/* ── Phase banner (removed from render; styles kept for reference but banner is hidden) ──── */
 
 .ss-phase-banner {
-  width: 100%;
-  max-width: 620px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  display: none;
 }
 
-.ss-phase-banner__key {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  opacity: 0.82;
-}
-
-.ss-phase-banner__label {
-  font-size: 1.05rem;
-}
-
-.ss-phase-banner__detail {
-  font-size: 0.83rem;
-  opacity: 0.86;
-}
-
-.ss-phase-banner--sabotage {
-  background: linear-gradient(135deg, rgba(88, 28, 135, 0.8), rgba(49, 46, 129, 0.8));
-}
-
-.ss-phase-banner--bomb {
-  background: linear-gradient(135deg, rgba(127, 29, 29, 0.92), rgba(185, 28, 28, 0.78));
-}
-
-.ss-phase-banner--vote {
-  background: linear-gradient(135deg, rgba(30, 64, 175, 0.88), rgba(14, 116, 144, 0.82));
-}
-
-.ss-phase-banner--resolution {
-  background: linear-gradient(135deg, rgba(101, 43, 13, 0.88), rgba(161, 98, 7, 0.82));
-}
-
-.ss-phase-banner--elimination {
-  background: linear-gradient(135deg, rgba(127, 29, 29, 0.94), rgba(69, 10, 10, 0.92));
-}
-
+.ss-phase-banner__key,
+.ss-phase-banner__label,
+.ss-phase-banner__detail,
+.ss-phase-banner--sabotage,
+.ss-phase-banner--bomb,
+.ss-phase-banner--vote,
+.ss-phase-banner--resolution,
+.ss-phase-banner--elimination,
 .ss-phase-banner--winner {
-  background: linear-gradient(135deg, rgba(120, 53, 15, 0.92), rgba(161, 98, 7, 0.88));
+  display: none;
 }
 
 /* ── Cards / text ─────────────────────────────────────────────────────────── */
@@ -1212,11 +1179,8 @@ body.no-animations .ss-social-map {
   margin-top: auto;
   padding-top: 0.85rem;
   padding-bottom: max(0.15rem, env(safe-area-inset-bottom));
-  position: sticky;
-  bottom: 0;
   background:
     linear-gradient(180deg, rgba(23, 25, 42, 0) 0%, rgba(23, 25, 42, 0.92) 38%, rgba(23, 25, 42, 0.98) 100%);
-  z-index: 1;
 }
 
 .ss-action-btn:hover:not(:disabled),
