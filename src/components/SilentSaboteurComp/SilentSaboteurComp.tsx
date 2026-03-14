@@ -36,6 +36,7 @@ import type {
   SilentSaboteurPrizeType,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './SilentSaboteurComp.css';
 
 // ─── Centralized timing constants ─────────────────────────────────────────────
@@ -115,6 +116,16 @@ const RELATIONSHIP_COLORS: Record<RelationshipCategory, string> = {
   Friendly: '#22c55e',
   Loyal: '#3b82f6',
 };
+
+function isDicebearAvatarUrl(src: string): boolean {
+  try {
+    return new URL(src, 'https://example.invalid').hostname === 'api.dicebear.com';
+  } catch {
+    return false;
+  }
+}
+
+const isNonDicebearAvatar = (src: string) => !isDicebearAvatarUrl(src);
 
 function buildSuspectCards(
   suspects: string[],
@@ -261,6 +272,89 @@ function getPhaseBannerModel({
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '?';
+}
+
+/**
+ * Renders a Silent Saboteur player portrait using the shared avatar resolver.
+ * Prefers local portrait image assets, explicitly skips Dicebear, and falls
+ * back to emoji/initials only when no real image can be shown.
+ *
+ * The keyed wrapper intentionally remounts the inner stateful renderer when the
+ * displayed player changes, so image-error fallback state never leaks from one
+ * portrait to the next across rounds.
+ */
+function HouseguestPortrait({
+  id,
+  name,
+  avatar = '',
+  sizeClass = '',
+}: {
+  id: string;
+  name: string;
+  avatar?: string;
+  sizeClass?: string;
+}) {
+  const candidates = useMemo(
+    () => resolveAvatarCandidates({ id, name, avatar }).filter(isNonDicebearAvatar),
+    [id, name, avatar],
+  );
+
+  return (
+    <HouseguestPortraitInner
+      key={id}
+      id={id}
+      name={name}
+      avatar={avatar}
+      candidates={candidates}
+      sizeClass={sizeClass}
+    />
+  );
+}
+
+function HouseguestPortraitInner({
+  id,
+  name,
+  avatar = '',
+  candidates,
+  sizeClass = '',
+}: {
+  id: string;
+  name: string;
+  avatar?: string;
+  candidates: string[];
+  sizeClass?: string;
+}) {
+  const [candidateIdx, setCandidateIdx] = useState(0);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const src = candidates[candidateIdx] ?? '';
+
+  if (showFallback || !src) {
+    const fallback = isEmoji(avatar) ? avatar : getInitial(name);
+    return (
+      <div className={`ss-victim-avatar ${sizeClass}`} aria-hidden="true">
+        {fallback}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`ss-victim-avatar ${sizeClass}`} aria-hidden="true">
+      <img
+        src={src}
+        alt=""
+        className="ss-victim-avatar__img"
+        data-testid={`ss-portrait-${id}`}
+        onError={() => {
+          if (candidateIdx < candidates.length - 1) {
+            setCandidateIdx((idx) => idx + 1);
+          } else {
+            setShowFallback(true);
+          }
+        }}
+      />
+    </div>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -708,6 +802,7 @@ export default function SilentSaboteurComp({
           <p className="ss-phase-eyebrow">Bomb reveal</p>
           <h2 className="ss-reveal-title">💣 A bomb has been planted!</h2>
           <VictimNotice
+            playerId={victimId}
             name={getName(victimId)}
             subtitle="Find the saboteur before it detonates."
             spotlight={true}
@@ -718,6 +813,7 @@ export default function SilentSaboteurComp({
       {phase === 'voting' && victimId && !bombRevealVisible && (
         <div className="ss-phase-card ss-phase-card--vote">
           <VictimNotice
+            playerId={victimId}
             name={getName(victimId)}
             subtitle="Who planted the bomb?"
           />
@@ -871,6 +967,7 @@ export default function SilentSaboteurComp({
       {phase === 'final2_jury' && final2SaboteurId && final2VictimId && (
         <div className="ss-phase-card ss-final2">
           <VictimNotice
+            playerId={final2VictimId}
             name={getName(final2VictimId)}
             subtitle="The jury must decide who planted the bomb."
           />
@@ -992,17 +1089,19 @@ function PhaseBanner({ banner }: { banner: PhaseBannerModel }) {
 }
 
 function VictimNotice({
+  playerId,
   name,
   subtitle,
   spotlight = false,
 }: {
+  playerId: string;
   name: string;
   subtitle: string;
   spotlight?: boolean;
 }) {
   return (
     <div className={`ss-victim-card ${spotlight ? 'ss-victim-card--spotlight' : ''}`}>
-      <div className="ss-victim-avatar" aria-hidden="true">{getInitial(name)}</div>
+      <HouseguestPortrait id={playerId} name={name} />
       <div className="ss-victim-copy">
         <p className="ss-victim-eyebrow">💣 {name} is in danger</p>
         <p className="ss-victim-name">{name}</p>
@@ -1237,9 +1336,7 @@ function SocialMapOverlay({
 
         {/* Victim panel */}
         <div className="ss-social-map__victim-panel">
-          <div className="ss-victim-avatar ss-victim-avatar--lg" aria-hidden="true">
-            {getInitial(getName(victimId))}
-          </div>
+          <HouseguestPortrait id={victimId} name={getName(victimId)} sizeClass="ss-victim-avatar--lg" />
           <div>
             <p className="ss-social-map__victim-label">💣 {getName(victimId)} has the bomb</p>
             <p className="ss-social-map__victim-hint">Who planted it?</p>
@@ -1250,7 +1347,7 @@ function SocialMapOverlay({
         {suspects.length > 0 && (
           <div className="ss-social-map__graph" aria-hidden="true">
             <div className="ss-social-map__graph-center">
-              <div className="ss-victim-avatar ss-victim-avatar--sm">{getInitial(getName(victimId))}</div>
+              <HouseguestPortrait id={victimId} name={getName(victimId)} sizeClass="ss-victim-avatar--sm" />
               <span className="ss-social-map__graph-label">{getName(victimId)}</span>
             </div>
             {cards.map((card) => (
@@ -1259,7 +1356,7 @@ function SocialMapOverlay({
                   className="ss-social-map__graph-line"
                   style={{ borderColor: RELATIONSHIP_COLORS[card.relationship] }}
                 />
-                <div className="ss-victim-avatar ss-victim-avatar--sm">{getInitial(card.name)}</div>
+                <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
                 <span className="ss-social-map__graph-label">{card.name}</span>
               </div>
             ))}
@@ -1271,9 +1368,7 @@ function SocialMapOverlay({
           {cards.map((card) => (
             <div key={card.id} className="ss-social-map__card">
               <div className="ss-social-map__card-header">
-                <div className="ss-victim-avatar ss-victim-avatar--sm" aria-hidden="true">
-                  {getInitial(card.name)}
-                </div>
+                <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
                 <div className="ss-social-map__card-identity">
                   <strong className="ss-social-map__card-name">{card.name}</strong>
                   <span

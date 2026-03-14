@@ -25,9 +25,9 @@ function ss(store: ReturnType<typeof makeStore>): SilentSaboteurState {
 
 const PARTICIPANTS = [
   { id: 'user', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
-  { id: 'a1', name: 'Alice', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a2', name: 'Bob', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a3', name: 'Carol', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'finn', name: 'Finn', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'mimi', name: 'Mimi', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'rae', name: 'Rae', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 
 describe('SilentSaboteurComp — dramatic UI flow', () => {
@@ -66,6 +66,8 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(state.phase).toBe('select_victim');
 
     const victimId = state.activeIds.find((id) => id !== state.saboteurId)!;
+    const victimName = PARTICIPANTS.find((p) => p.id === victimId)?.name ?? victimId;
+    const expectedPortrait = `avatars/${victimName}.png`;
 
     await act(async () => {
       store.dispatch(selectVictim({ victimId }));
@@ -75,6 +77,9 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(screen.getByText('BOMB_REVEAL_PHASE')).toBeInTheDocument();
     expect(screen.getByText('💣 A bomb has been planted!')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /accuse/i })).not.toBeInTheDocument();
+    const portrait = screen.getByTestId(`ss-portrait-${victimId}`);
+    expect(portrait?.getAttribute('src')).toContain(expectedPortrait);
+    expect(portrait?.getAttribute('src')).not.toContain('api.dicebear.com');
   });
 
   it('reveals votes sequentially before showing the elimination result', async () => {

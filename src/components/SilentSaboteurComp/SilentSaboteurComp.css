@@ -262,11 +262,19 @@ body.no-animations .ss-confetti-piece {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   font-size: 1.7rem;
   font-weight: 900;
   background: radial-gradient(circle, rgba(254, 202, 202, 0.92), rgba(248, 113, 113, 0.82));
   color: #450a0a;
   border: 2px solid rgba(255, 255, 255, 0.28);
+}
+
+.ss-victim-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .ss-victim-copy {

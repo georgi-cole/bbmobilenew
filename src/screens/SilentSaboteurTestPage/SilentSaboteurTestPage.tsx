@@ -13,10 +13,10 @@ import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/sile
 
 const ALL_PARTICIPANTS = [
   { id: 'user', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
-  { id: 'a1', name: 'Alice', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a2', name: 'Bob', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a3', name: 'Carol', isHuman: false, precomputedScore: 0, previousPR: null },
-  { id: 'a4', name: 'Dave', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'finn', name: 'Finn', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'mimi', name: 'Mimi', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'rae', name: 'Rae', isHuman: false, precomputedScore: 0, previousPR: null },
+  { id: 'nova', name: 'Nova', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 
 export default function SilentSaboteurTestPage() {
