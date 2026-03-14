@@ -175,6 +175,13 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_TRIVIA,
     weights: WEIGHTS_MENTAL,
   },
+  silentSaboteur: {
+    key: 'silentSaboteur',
+    category: 'mental',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_PUZZLE,
+    weights: WEIGHTS_MENTAL_PRECISION,
+  },
   tiltedLedge: {
     key: 'tiltedLedge',
     category: 'endurance',

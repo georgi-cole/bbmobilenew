@@ -310,6 +310,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  silentSaboteur: {
+    key: 'silentSaboteur',
+    title: 'Silent Saboteur',
+    description:
+      'A hidden saboteur plants a bomb on a victim each round. Identify the saboteur through voting — or the bomb goes off!',
+    instructions: [
+      'Each round a secret saboteur is chosen from the active players.',
+      'The saboteur secretly targets a victim.',
+      'All players vote for who they think is the saboteur.',
+      'Strict majority for saboteur → saboteur is eliminated. Otherwise → victim is eliminated.',
+      'Final 3: a 1-1-1 tie invokes the Victim Override Rule — only the victim\'s vote counts.',
+      'Final 2: eliminated players form a jury and vote for who planted the bomb.',
+      'Last player standing wins the competition.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'SilentSaboteur',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
+
   tiltedLedge: {
     key: 'tiltedLedge',
     title: 'The Tilted Ledge',

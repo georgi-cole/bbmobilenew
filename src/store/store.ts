@@ -18,6 +18,7 @@ import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
+import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlice';
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 
@@ -35,6 +36,7 @@ export const store = configureStore({
     holdTheWall: holdTheWallReducer,
     biographyBlitz: biographyBlitzReducer,
     famousFigures: famousFiguresReducer,
+    silentSaboteur: silentSaboteurReducer,
     glassBridge: glassBridgeReducer,
     blackjackTournament: blackjackTournamentReducer,
   },
