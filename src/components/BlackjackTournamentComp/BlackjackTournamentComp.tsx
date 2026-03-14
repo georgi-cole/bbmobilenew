@@ -2,20 +2,21 @@
  * BlackjackTournamentComp — "Blackjack Tournament" last-player-standing competition.
  *
  * Tournament flow:
- *   spin         — Wheel animation selects the first controller.
- *   pick_opponent — Controller (human or AI) picks an opponent.
+ *   spin          — Wheel animation selects the current controller.
+ *   select_pair   — Controller (human or AI) selects two fighters for the duel.
  *   duel          — Both players take turns hitting or standing.
- *   duel_result   — Short result beat showing winner/eliminated player.
- *   complete      — Final winner announced; onComplete fires.
+ *   duel_result   — Short result beat showing winner/eliminated player; waits for Continue.
+ *   complete      — Final winner announced; parent onComplete fires when host presses Continue.
  *
  * Human flow:
- *   - Spin phase: watch the spinner reveal the starting controller.
- *   - Pick phase: if human is in control, tap an opponent avatar to select.
+ *   - Spin phase: watch the spinner reveal the current controller.
+ *   - Pair selection: if a human is in control, tap two eligible avatars to send to the table.
  *   - Duel phase: if human is in the duel, use Hit / Stand buttons.
- *   - If eliminated: spectator mode with auto-advance.
+ *   - Between rounds: tap Continue to advance from duel_result/complete to the next state.
+ *   - If eliminated: spectator mode with mostly auto-advance, still gated by Continue where shown.
  *
  * AI flow:
- *   - Opponent picks: auto-selected after a brief delay.
+ *   - Fighter pair selection: when controller is AI, pair is auto-selected via aiPickFighters after a delay.
  *   - Duel actions: auto-decided using aiShouldHit + aiDecisionRng.
  *   - All AI timers are cleaned up on unmount / phase change.
  */
