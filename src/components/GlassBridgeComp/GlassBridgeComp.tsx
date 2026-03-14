@@ -84,6 +84,10 @@ function formatTimeRemaining(remaining: number): string {
   return formatElapsed(remaining);
 }
 
+function areAnimationsDisabled(): boolean {
+  return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
@@ -142,6 +146,7 @@ export default function GlassBridgeComp({
     rowIdx: number;
     side: TileSide;
     isBreak: boolean;
+    chosenAt: number;
   } | null>(null);
   const [shatteringTile, setShatteringTile] = useState<{
     rowIdx: number;
@@ -303,7 +308,14 @@ export default function GlassBridgeComp({
       const remaining = Math.max(0, gb.globalTimeLimitMs - elapsed);
       setTimerDisplay(remaining);
 
-      if (remaining <= 0 && !gb.timerExpired && !pendingStep) {
+      const pendingSelectedBeforeExpiry =
+        !!pendingStep &&
+        gb.challengeStartTimeMs !== null &&
+        pendingStep.chosenAt < gb.challengeStartTimeMs + gb.globalTimeLimitMs;
+
+      // Preserve the logical selection moment for a tile that was chosen before time expired,
+      // even if its suspense animation is still playing.
+      if (remaining <= 0 && !gb.timerExpired && !pendingSelectedBeforeExpiry) {
         // Expire timer first (eliminates unfinished players) then finalise rankings.
         dispatch(expireTimer());
         dispatch(completeGame());
@@ -362,12 +374,11 @@ export default function GlassBridgeComp({
       // Check if it's a wrong choice (for animation).
       const isBreak = chosenSide !== row.safeSide;
 
-      const noAnimations =
-        typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+      const noAnimations = areAnimationsDisabled();
       const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
       const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
 
-      setPendingStep({ actorId: activeId, rowIdx, side: chosenSide, isBreak });
+      setPendingStep({ actorId: activeId, rowIdx, side: chosenSide, isBreak, chosenAt: now });
       pendingStepRef.current = window.setTimeout(() => {
         if (isBreak) {
           setShatteringTile({ rowIdx, side: chosenSide });
@@ -469,12 +480,11 @@ export default function GlassBridgeComp({
 
       const isBreak = side !== row.safeSide;
       const chosenAt = Date.now();
-      const noAnimations =
-        typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+      const noAnimations = areAnimationsDisabled();
       const suspenseDelay = noAnimations ? 0 : STEP_SUSPENSE_DELAY_MS;
       const shatterDelay = noAnimations ? 0 : SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
 
-      setPendingStep({ actorId: humanId, rowIdx, side, isBreak });
+      setPendingStep({ actorId: humanId, rowIdx, side, isBreak, chosenAt });
       pendingStepRef.current = window.setTimeout(() => {
         if (isBreak) {
           setShatteringTile({ rowIdx, side });
@@ -635,7 +645,7 @@ export default function GlassBridgeComp({
         <div className="gb-playing">
           <div className="gb-active-banner" aria-live="polite">
             {isHumanTurn && !pendingStep
-              ? 'Tap a highlighted tile to step.'
+              ? 'Select a highlighted tile to step.'
               : activeId
                 ? `${getName(activeId)} is on the bridge`
                 : 'Bridge awaiting next player'}
@@ -645,7 +655,7 @@ export default function GlassBridgeComp({
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
-              const depthScale = Math.max(0.82, 1 - rowIdx * 0.015);
+              const rowDepthScale = Math.max(0.82, 1 - rowIdx * 0.015);
 
               // Find players on this row (those who have reached exactly this row and are active).
               const playersOnRow = gb.turnOrder.filter(pid => {
@@ -663,7 +673,7 @@ export default function GlassBridgeComp({
                 <div
                   key={rowIdx}
                   className={`gb-row${isCurrentRow ? ' gb-row-current' : ' gb-row-dimmed'}`}
-                  style={{ transform: `scale(${depthScale})`, opacity: isCurrentRow ? 1 : Math.max(0.46, 1 - rowIdx * 0.03) }}
+                  style={{ transform: `scale(${rowDepthScale})`, opacity: isCurrentRow ? 1 : Math.max(0.46, 1 - rowIdx * 0.03) }}
                 >
                   <span className="gb-row-label">{rowNum}</span>
                   <div className="gb-tiles">

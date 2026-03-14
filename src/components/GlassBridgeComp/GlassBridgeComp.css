@@ -670,7 +670,7 @@
   min-width: 0;
   padding: 0.9rem 0.8rem;
   border-radius: 14px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-weight: 800;
   font-size: 0.9rem;
   cursor: pointer;
@@ -685,13 +685,14 @@
 .gb-btn-watch {
   background: linear-gradient(135deg, rgba(58, 123, 213, 0.95), rgba(126, 203, 255, 0.95));
   color: #fff;
+  border-color: rgba(126, 203, 255, 0.45);
   box-shadow: 0 12px 24px rgba(58, 123, 213, 0.28);
 }
 
 .gb-btn-skip {
   background: rgba(255, 255, 255, 0.03);
   color: #ffd1a8;
-  border-color: rgba(255, 140, 66, 0.45) !important;
+  border-color: rgba(255, 140, 66, 0.45);
 }
 
 /* ── Elimination overlay ────────────────────────────────────────────────────── */
