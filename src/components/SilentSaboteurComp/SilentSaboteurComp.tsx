@@ -408,6 +408,22 @@ export default function SilentSaboteurComp({
    */
   const final2FinalistIdsRef = useRef<string[]>([]);
 
+  /**
+   * True once the Final-2 cinematic begins (set when final2Stage is first assigned).
+   * Stays true until the final Continue is clicked so the complete effect can gate
+   * the onComplete callback.
+   *
+   * Note: this is a per-instance ref (initialized to false on every mount), so
+   * unmounting and remounting the component always starts clean — no explicit
+   * cleanup needed.
+   */
+  const isFinal2CinematicActiveRef = useRef(false);
+  /**
+   * Set to true when Redux reaches 'complete' while the Final-2 cinematic is still
+   * running.  The parent is notified only after the user clicks the winner Continue.
+   */
+  const pendingCompletionRef = useRef(false);
+
   // Guard: prevent duplicate timer-driven phase advances
   const votingTimerFiredRef = useRef(false);
 
@@ -714,13 +730,17 @@ export default function SilentSaboteurComp({
   useEffect(() => {
     if (phase !== 'final2_jury' || final2Stage !== null) return;
     final2FinalistIdsRef.current = [...activeIds];
+    isFinal2CinematicActiveRef.current = true;
     setFinal2Stage('FINAL2_INTRO');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, final2Stage]); // stable: only needs phase and whether we've started
 
-  // Detect jury verdict complete: Redux transitions final2_jury → winner.
+  // Detect jury verdict complete: Redux transitions final2_jury → winner (or complete).
+  // Also handles the case where Redux has already advanced past 'winner' to 'complete'
+  // before the user reaches FINAL2_VOTING (fast AI-only games).
   useEffect(() => {
-    if (phase !== 'winner' || final2Stage !== 'FINAL2_VOTING') return;
+    if (final2Stage !== 'FINAL2_VOTING') return;
+    if (phase !== 'winner' && phase !== 'complete') return;
     setFinal2Stage('FINAL2_VERDICT_LOCKED');
   }, [phase, final2Stage]);
 
@@ -781,14 +801,25 @@ export default function SilentSaboteurComp({
     return () => clearTimeout(t);
   }, [phase, dispatch, winnerId, shouldAutoAdvanceWinner, animationsDisabled, final2Stage]);
 
-  // complete: dispatch outcome + notify parent
+  // complete: dispatch outcome + notify parent.
+  // During Final-2 cinematic, defer the parent notification until the user
+  // clicks the final Continue button (see handleFinal2WinnerContinue).
   useEffect(() => {
     if (phase !== 'complete') return;
     if (!standalone) {
       dispatch(resolveSilentSaboteurOutcome());
     }
-    onComplete?.();
-  }, [phase, dispatch, onComplete, standalone]);
+    if (isFinal2CinematicActiveRef.current) {
+      // Cinematic is still running — store the pending completion and do NOT
+      // call onComplete() yet; it will be called in handleFinal2WinnerContinue.
+      pendingCompletionRef.current = true;
+    } else {
+      onComplete?.();
+    }
+  // onComplete is intentionally excluded: stable callback ref; adding it would
+  // cause double-fires when the host re-renders the component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, dispatch, standalone]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render helpers
@@ -848,12 +879,25 @@ export default function SilentSaboteurComp({
 
   /**
    * Final step of the Final-2 cinematic.
-   * Dispatches advanceWinner() → Redux 'complete' → existing complete effect
-   * dispatches resolveSilentSaboteurOutcome() and calls onComplete().
+   * - Clears the cinematic active flag so the complete effect won't gate again.
+   * - If Redux already reached 'complete' (pendingCompletion was set), call
+   *   onComplete() directly.
+   * - If Redux is still at 'winner', dispatch advanceWinner() → 'complete' →
+   *   the complete effect will call onComplete() since the gate is now cleared.
+   *
+   * onComplete is included in the useCallback deps so that if the parent provides
+   * a new reference between renders, the click handler always invokes the latest
+   * version.  This is safe for useCallback (no risk of double-fires unlike useEffect).
    */
   const handleFinal2WinnerContinue = useCallback(() => {
-    dispatch(advanceWinner());
-  }, [dispatch]);
+    isFinal2CinematicActiveRef.current = false;
+    if (pendingCompletionRef.current) {
+      pendingCompletionRef.current = false;
+      onComplete?.();
+    } else {
+      dispatch(advanceWinner());
+    }
+  }, [dispatch, onComplete]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render (early-exit guard after all hooks)
@@ -1092,82 +1136,15 @@ export default function SilentSaboteurComp({
         </div>
       )}
 
-      {phase === 'final2_jury' && final2SaboteurId && final2VictimId && final2Stage === null && (
-        <div className="ss-phase-card ss-final2">
-          <VictimNotice
-            playerId={final2VictimId}
-            name={getName(final2VictimId)}
-            subtitle="The jury must decide who planted the bomb."
-          />
-          <CountdownTimer
-            remainingMs={remainingCountdownMs}
-            totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
-          />
-          <h2 className="ss-phase-label">🏁 Final 2 — Jury Deduction Finale</h2>
-          <p className="ss-hint">
-            Finalists: <strong>{getName(activeIds[0] ?? '')}</strong> &amp;{' '}
-            <strong>{getName(activeIds[1] ?? '')}</strong>
-          </p>
-          <FinalistList finalistIds={activeIds} victimId={final2VictimId} getName={getName} />
-          <p className="ss-hint hint-small">
-            One of them planted the bomb. The victim breaks any deadlock.
-          </p>
-          {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
-            <>
-              <p className="ss-hint">Who planted the bomb?</p>
-              <ul className="ss-button-list" role="list">
-                {activeIds.map((id) => (
-                  <li key={id}>
-                    <button
-                      className="ss-btn ss-btn--vote"
-                      onClick={() => handleJuryVote(id)}
-                      aria-label={`Accuse ${getName(id)} of planting the bomb`}
-                    >
-                      <span className="ss-btn__main">🫵 {getName(id)}</span>
-                      {id === final2VictimId && <span className="ss-btn__tag ss-btn__tag--danger">Victim</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {isHumanJuror && juryVotes[humanPlayerId!] !== undefined && (
-            <p className="ss-hint">✅ Vote cast. Waiting for the final verdict…</p>
-          )}
-          {/* Human victim tiebreak — shown when jury tied and human is victim */}
-          {humanPlayerId === final2VictimId && (() => {
-            const allV = Object.values(juryVotes);
-            const total = allV.length;
-            const sabV = allV.filter((v) => v === final2SaboteurId).length;
-            const isTied = total > 0 && sabV * 2 === total;
-            if (!isTied) return <p className="ss-hint hint-small">You are a finalist. Waiting for jury…</p>;
-            return (
-              <>
-                <div className="ss-alert">⚠️ Jury is tied. The victim must cast the deciding vote.</div>
-                <ul className="ss-button-list" role="list">
-                  {activeIds.map((id) => (
-                    <li key={id}>
-                      <button
-                        className="ss-btn ss-btn--vote"
-                        onClick={() => handleTieBreak(id)}
-                        aria-label={`Accuse ${getName(id)} of planting the bomb (tiebreaker)`}
-                      >
-                        <span className="ss-btn__main">🫵 {getName(id)}</span>
-                        {id === final2VictimId && <span className="ss-btn__tag ss-btn__tag--danger">Victim</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            );
-          })()}
-          <ProgressMeter
-            label="Jury Votes"
-            participantIds={eliminatedIds}
-            submissions={juryVotes}
-            getName={getName}
-            noun="jury votes"
-          />
+      {/* Final-2 fallback: neutral loading screen shown for the single render
+          frame before the FINAL2_INTRO cinematic stage is set. Does NOT reveal
+          any role information (no victim/suspect labels). */}
+      {phase === 'final2_jury' && final2Stage === null && (
+        <div className="ss-phase-card ss-final2 ss-cinematic">
+          <p className="ss-phase-eyebrow">🏁 Final 2</p>
+          <h2 className="ss-phase-label">Two finalists remain.</h2>
+          <p className="ss-hint">One of them is the last saboteur.</p>
+          <p className="ss-hint hint-small">Preparing the jury finale…</p>
         </div>
       )}
 
@@ -1224,7 +1201,7 @@ export default function SilentSaboteurComp({
       )}
 
       {/* FINAL2_VOTING: Jury votes. No victim/saboteur labels visible. */}
-      {final2Stage === 'FINAL2_VOTING' && phase === 'final2_jury' && final2SaboteurId && final2VictimId && (
+      {final2Stage === 'FINAL2_VOTING' && final2SaboteurId && final2VictimId && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
           <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Phase</p>
           <h2 className="ss-phase-label">Who planted the bomb?</h2>
@@ -1482,30 +1459,6 @@ function PlayerList({
       {activeIds.map((id) => (
         <li key={id} className="ss-player-chip">
           {getName(id)}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function FinalistList({
-  finalistIds,
-  victimId,
-  getName,
-}: {
-  finalistIds: string[];
-  victimId: string;
-  getName: (id: string) => string;
-}) {
-  return (
-    <ul className="ss-finalist-list" aria-label="Finalists">
-      {finalistIds.map((id) => (
-        <li
-          key={id}
-          className={`ss-finalist-card ${id === victimId ? 'ss-finalist-card--victim' : ''}`}
-        >
-          <span className="ss-finalist-name">{getName(id)}</span>
-          <span className="ss-finalist-role">{id === victimId ? 'Victim' : 'Suspect'}</span>
         </li>
       ))}
     </ul>
