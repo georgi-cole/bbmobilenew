@@ -54,6 +54,8 @@ const TIMER_NORMAL_MS = 1_400;
 const TIMER_AI_ACTION_MS = 1_000;
 /** Duration of the spinner animation (ms). */
 const SPIN_DURATION_MS = 2_800;
+/** Fraction of SPIN_DURATION_MS at which the spinner slows down visually. */
+const SPIN_SLOW_AT_FRACTION = 0.6;
 /** Fast-forward speed multiplier applied to all timers for one round. */
 const FAST_FORWARD_MULT = 2.5;
 /** Spectator auto-advance delay per AI action (ms). */
@@ -245,9 +247,9 @@ export default function BlackjackTournamentComp({
   }
 
   /** Apply the speed multiplier to a base delay (returns shorter delay when faster). */
-  function applySpeed(baseMs: number): number {
+  const applySpeed = useCallback((baseMs: number): number => {
     return Math.round(baseMs / speedMultiplier);
-  }
+  }, [speedMultiplier]);
 
   const isHuman = useCallback(
     (id: string) => {
@@ -301,8 +303,8 @@ export default function BlackjackTournamentComp({
       setSpinnerIdx((i) => (i + 1) % len);
     }, 180);
 
-    // After 60% of spin duration, slow down.
-    const slowAt = Math.round(SPIN_DURATION_MS * 0.6);
+    // After SPIN_SLOW_AT_FRACTION of spin duration, slow down visually.
+    const slowAt = Math.round(SPIN_DURATION_MS * SPIN_SLOW_AT_FRACTION);
     const slowTimer = window.setTimeout(() => {
       setSpinFast(false);
     }, slowAt);
@@ -370,8 +372,8 @@ export default function BlackjackTournamentComp({
     bt.seed,
     dispatch,
     isHuman,
-    // applySpeed is stable within a render — intentionally omitted
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
+    applySpeed,
+  ]);
 
   // ── 4. Duel phase: AI auto-act and duel resolution ────────────────────────
   useEffect(() => {
@@ -415,8 +417,8 @@ export default function BlackjackTournamentComp({
     bt.isSpectating,
     dispatch,
     isHuman,
-    speedMultiplier,
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
+    applySpeed,
+  ]);
 
   // ── 5. Duel result phase: hold then advance; reset speed multiplier ────────
   useEffect(() => {
@@ -428,8 +430,7 @@ export default function BlackjackTournamentComp({
       dispatch(advanceFromDuelResult());
     }, delay);
     return () => { clearTimer(resultTimerRef); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bt.phase, bt.isSpectating, dispatch, speedMultiplier]);
+  }, [bt.phase, bt.isSpectating, dispatch, applySpeed]);
 
   // ── 6. Card highlight: detect new cards in duel ───────────────────────────
   useEffect(() => {
@@ -707,7 +708,7 @@ export default function BlackjackTournamentComp({
           aria-label={speedMultiplier > 1 ? 'Normal speed' : 'Fast-forward this round'}
           title={speedMultiplier > 1 ? 'Normal speed' : 'Fast-forward this round'}
         >
-          {speedMultiplier > 1 ? '▶' : '»'}
+          {speedMultiplier > 1 ? '▶ 1×' : '» FF'}
         </button>
 
         <div className="bjt-duel-arena" aria-label="Blackjack duel arena">

@@ -114,7 +114,7 @@ export interface BlackjackTournamentState {
 /** Multiplier used to derive per-duel seed from the master seed. */
 const DUEL_SEED_MULT = 0x9e3779b9;
 /** Multiplier used to vary rematch seeds so re-dealt cards differ from the tie round. */
-const REMATCH_SEED_MULT = 0xdeadbeef;
+const REMATCH_SEED_MULT = 0xbabecafe;
 /** XOR offset separating AI-decision RNG from card-deal RNG. */
 const AI_DECISION_RNG_MASK = 0xdeadbeef;
 /** XOR offset used for rematch-cap coin flip. */

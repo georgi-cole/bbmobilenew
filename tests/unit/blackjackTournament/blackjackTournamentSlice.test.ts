@@ -778,6 +778,8 @@ describe('Full 3-player tournament', () => {
     expect(getState(store).phase).toBe('pick_opponent');
     runOneDuel(store);
     expect(getState(store).phase).toBe('complete');
+    // duelIndex counts completed decisive duels (ties don't increment it).
+    expect(getState(store).duelIndex).toBe(2);
   });
 
   it('elimination order has 2 entries for 3 players', () => {
@@ -830,7 +832,7 @@ describe('Deterministic tournament simulation', () => {
     expect(winners.size).toBeGreaterThanOrEqual(1);
   });
 
-  it('5-player tournament eventually completes', () => {
+  it('5-player tournament eventually completes with 4 eliminations', () => {
     const store = makeStore();
     initStore(store, ['a', 'b', 'c', 'd', 'e'], 999);
     let safety = 500;
@@ -852,6 +854,8 @@ describe('Deterministic tournament simulation', () => {
     }
     expect(getState(store).phase).toBe('complete');
     expect(getState(store).eliminatedPlayerIds).toHaveLength(4);
+    // 4 decisive duels required for 5 players.
+    expect(getState(store).duelIndex).toBe(4);
   });
 });
 
