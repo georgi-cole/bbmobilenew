@@ -34,7 +34,7 @@ import {
   buildAiVotes,
   buildAiJuryVotes,
   resolveFinal2,
-  resolveFinal3Round,
+  resolveRoundWithAbstentions,
   noJuryFallbackWinner,
 } from '../../src/features/silentSaboteur/helpers';
 
@@ -221,7 +221,7 @@ describe('Integration — 3-player game Final-3 rule', () => {
     // For 1-1-1: alice→carol, bob→alice, carol→bob
     // victim (bob) votes for alice (saboteur) → victim override → saboteur (alice) caught
     const votes = { alice: 'carol', bob: 'alice', carol: 'bob' };
-    const outcome = resolveFinal3Round(votes, 'alice', 'bob');
+    const outcome = resolveRoundWithAbstentions(votes, ['alice', 'bob', 'carol'], 'alice', 'bob');
     expect(outcome.victimOverride).toBe(true);
     expect(outcome.eliminatedId).toBe('alice'); // saboteur caught
   });

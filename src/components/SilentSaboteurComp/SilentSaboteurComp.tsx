@@ -30,7 +30,7 @@ import {
   advanceWinner,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import { resolveSilentSaboteurOutcome } from '../../features/silentSaboteur/thunks';
-import { pickVictimForAi, pickVoteForAi, getValidSaboteurCandidates, fnv1a32 } from '../../features/silentSaboteur/helpers';
+import { pickVictimForAi, pickVoteForAi, pickVoteForAiOrAbstain, getValidSaboteurCandidates, fnv1a32 } from '../../features/silentSaboteur/helpers';
 import { mulberry32 } from '../../store/rng';
 import type {
   SilentSaboteurPrizeType,
@@ -61,6 +61,8 @@ const SILENT_SABOTEUR_TIMINGS = {
   ELIMINATION_HOLD_MS: 2800,
   /** Round transition hold. */
   ROUND_TRANSITION_MS: 2000,
+  /** Winner screen auto-advance for AI-only / no-animation flows. */
+  WINNER_AUTO_ADVANCE_MS: 4000,
   /** Countdown ticker interval. */
   TIMER_TICK_MS: 250,
 } as const;
@@ -105,6 +107,14 @@ const PERSONALITY_TRAITS = [
 const RELATIONSHIP_LABELS: RelationshipCategory[] = [
   'Hostile', 'Unfriendly', 'Neutral', 'Friendly', 'Loyal',
 ];
+
+const RELATIONSHIP_COLORS: Record<RelationshipCategory, string> = {
+  Hostile: '#ef4444',
+  Unfriendly: '#f97316',
+  Neutral: '#64748b',
+  Friendly: '#22c55e',
+  Loyal: '#3b82f6',
+};
 
 function buildSuspectCards(
   suspects: string[],
@@ -427,7 +437,8 @@ export default function SilentSaboteurComp({
       if (votes[voterId] !== undefined) continue;
       const t = setTimeout(() => {
         // AI vote: valid suspects = activePlayers - self - victim
-        const accused = pickVoteForAi(seed, round, voterId, activeIds, victimId);
+        const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId);
+        if (accused == null) return;
         dispatch(submitVote({ voterId, accusedId: accused }));
       }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS + Math.floor(voterId.length * 37) % 800);
       delays.push(t);
@@ -566,7 +577,7 @@ export default function SilentSaboteurComp({
     if (!shouldAutoAdvanceWinner) return;
 
     // Auto-advance only for AI-only games or animations-disabled mode
-    const holdMs = animationsDisabled ? 0 : 4000;
+    const holdMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.WINNER_AUTO_ADVANCE_MS;
     const t = setTimeout(() => dispatch(advanceWinner()), holdMs);
     return () => clearTimeout(t);
   }, [phase, dispatch, winnerId, shouldAutoAdvanceWinner, animationsDisabled]);
@@ -1192,14 +1203,6 @@ function SocialMapOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [suspects, victimId, seed],
   );
-
-  const RELATIONSHIP_COLORS: Record<RelationshipCategory, string> = {
-    Hostile:    '#ef4444',
-    Unfriendly: '#f97316',
-    Neutral:    '#64748b',
-    Friendly:   '#22c55e',
-    Loyal:      '#3b82f6',
-  };
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose();
