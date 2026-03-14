@@ -6,8 +6,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Top-align content so it is always reachable on small screens.
+     Vertical centering makes tall content clip at both ends. */
+  justify-content: flex-start;
   min-height: 100%;
+  /* Allow vertical scrolling when content exceeds viewport height. */
+  overflow-y: auto;
   padding: 1rem 1rem 1.5rem;
   background:
     radial-gradient(circle at top, rgba(140, 27, 49, 0.18), transparent 32%),
@@ -678,6 +682,10 @@ body.no-animations .ss-confetti-piece {
 @media (max-width: 560px) {
   .ss-wrap {
     padding: 0.85rem 0.85rem 1.25rem;
+    /* Ensure top-alignment and scrollability on small viewports.
+       Do not use justify-content: center here — that clips tall content. */
+    justify-content: flex-start;
+    overflow-y: auto;
   }
 
   .ss-phase-card,
