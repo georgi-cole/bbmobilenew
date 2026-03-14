@@ -277,7 +277,7 @@ describe('resolveFinal2', () => {
 
   it('tied jury + tiebreak arg provided → saboteur still wins (tiebreak ignored)', () => {
     const votes = { j1: 'sam', j2: 'pat' }; // 1-1 tie
-    const outcome = resolveFinal2(votes, 'sam', 'pat', 'sam');
+    const outcome = resolveFinal2(votes, 'sam', 'pat');
     expect(outcome.winnerId).toBe('sam');
     expect(outcome.reason).toBe('jury_tie');
   });

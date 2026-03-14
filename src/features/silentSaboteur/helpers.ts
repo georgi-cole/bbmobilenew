@@ -245,14 +245,12 @@ export function resolveRound(
  * Jury votes for who they think planted the bomb.
  * Strict majority correct → saboteur eliminated, victim wins.
  * Strict majority incorrect → victim eliminated, saboteur wins.
- * Tie → saboteur wins (deterministic; tieBreakVote parameter ignored).
+ * Tie → saboteur wins (deterministic).
  */
 export function resolveFinal2(
   juryVotes: Record<string, string>,
   saboteurId: string,
   victimId: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _tieBreakVote?: string | null,
 ): Final2Outcome {
   const allVotes = Object.values(juryVotes);
   const totalVotes = allVotes.length;
