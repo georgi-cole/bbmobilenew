@@ -33,7 +33,7 @@
  * Seeded RNG:
  *  - All random values use mulberry32 from src/store/rng.ts.
  *  - Card deals use a sequential counter (duel.rngCallCount) derived from the
- *    duel-specific seed (masterSeed XOR duelIndex * DUEL_SEED_MULT XOR rematchCount * REMATCH_SEED_MULT).
+ *    duel-specific seed (masterSeed XOR (duelIndex + 1) * DUEL_SEED_MULT XOR (rematchRound + 1) * REMATCH_SEED_MULT).
  *  - AI hit/stand decisions use a separate key (seed, duelIndex, playerId,
  *    decisionIndex) to avoid entanglement with card draw order.
  */
