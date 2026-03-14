@@ -45,8 +45,6 @@ import './SilentSaboteurComp.css';
 const SILENT_SABOTEUR_TIMINGS = {
   /** Intro hold before advancing. */
   INTRO_MS: 7500,
-  /** Bomb planted cinematic hold. */
-  BOMB_REVEAL_MS: 6000,
   /** AI saboteur action delay (natural feel). */
   AI_ACTION_MS: 1200,
   /** Human saboteur timeout fallback. */
