@@ -78,6 +78,23 @@ type VisualPhaseKey =
 
 type RevealStage = 'votes' | 'elimination';
 
+/**
+ * Local state machine for the Final-2 staged cinematic flow.
+ * Controlled entirely by the component; does not affect Redux state.
+ *
+ *  FINAL2_INTRO ──(button)──▶ FINAL2_VOTING
+ *  FINAL2_VOTING ──(jury votes done, Redux → winner)──▶ FINAL2_VERDICT_LOCKED
+ *  FINAL2_VERDICT_LOCKED ──(button)──▶ FINAL2_REVEAL
+ *  FINAL2_REVEAL ──(1.5s delay + button)──▶ FINAL2_WINNER
+ *  FINAL2_WINNER ──(button)──▶ (dispatch advanceWinner → complete → onComplete)
+ */
+type Final2Stage =
+  | 'FINAL2_INTRO'
+  | 'FINAL2_VOTING'
+  | 'FINAL2_VERDICT_LOCKED'
+  | 'FINAL2_REVEAL'
+  | 'FINAL2_WINNER';
+
 interface PhaseBannerModel {
   key: VisualPhaseKey;
   label: string;
@@ -380,6 +397,17 @@ export default function SilentSaboteurComp({
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
   const [socialMapOpen, setSocialMapOpen] = useState(false);
 
+  // ── Final-2 cinematic local state ──────────────────────────────────────────
+  /** Current stage of the Final-2 cinematic flow; null = not in Final-2 mode. */
+  const [final2Stage, setFinal2Stage] = useState<Final2Stage | null>(null);
+  /** True after the 1.5-second reveal delay has elapsed in FINAL2_REVEAL. */
+  const [final2RevealDone, setFinal2RevealDone] = useState(false);
+  /**
+   * Captured finalist IDs at the moment the game enters final2_jury.
+   * Persists through the winner/complete transition when activeIds may differ.
+   */
+  const final2FinalistIdsRef = useRef<string[]>([]);
+
   // Guard: prevent duplicate timer-driven phase advances
   const votingTimerFiredRef = useRef(false);
 
@@ -427,6 +455,23 @@ export default function SilentSaboteurComp({
   const final2Mode = phase === 'final2_jury';
   // Winner screen: human-controlled continue; AI-only games auto-advance
   const shouldAutoAdvanceWinner = animationsDisabled || !hasHumanParticipant;
+
+  /**
+   * ID of the finalist the jury majority accused of planting the bomb.
+   * Computed from juryVotes once voting is complete (phase ≥ winner).
+   */
+  const juryAccusedId = useMemo((): string | null => {
+    const vals = Object.values(juryVotes);
+    if (vals.length === 0) return null;
+    const counts: Record<string, number> = {};
+    for (const v of vals) counts[v] = (counts[v] ?? 0) + 1;
+    let maxId: string | null = null;
+    let maxCount = 0;
+    for (const [id, count] of Object.entries(counts)) {
+      if (count > maxCount) { maxCount = count; maxId = id; }
+    }
+    return maxId;
+  }, [juryVotes]);
 
   const banner = useMemo(
     () => getPhaseBannerModel({ phase, round, bombRevealVisible, revealStage, final2: final2Mode }),
@@ -663,18 +708,78 @@ export default function SilentSaboteurComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, juryVotes]); // intentional: one timer per phase/vote-change
 
-  // winner: human-controlled continue; AI-only auto-advances after a hold
+  // ── Final-2 cinematic effects ──────────────────────────────────────────────
+
+  // Detect Final-2 game entry: capture finalists and set initial cinematic stage.
+  useEffect(() => {
+    if (phase !== 'final2_jury' || final2Stage !== null) return;
+    final2FinalistIdsRef.current = [...activeIds];
+    setFinal2Stage('FINAL2_INTRO');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, final2Stage]); // stable: only needs phase and whether we've started
+
+  // Detect jury verdict complete: Redux transitions final2_jury → winner.
+  useEffect(() => {
+    if (phase !== 'winner' || final2Stage !== 'FINAL2_VOTING') return;
+    setFinal2Stage('FINAL2_VERDICT_LOCKED');
+  }, [phase, final2Stage]);
+
+  // AI jurors auto-vote during FINAL2_VOTING.
+  // Runs once per juryVotes change so newly-needed timers are set after each vote.
+  useEffect(() => {
+    if (final2Stage !== 'FINAL2_VOTING' || phase !== 'final2_jury') return;
+    if (!final2SaboteurId || !final2VictimId) return;
+
+    const aiJurors = eliminatedIds.filter(
+      (id) => id !== humanPlayerId && juryVotes[id] === undefined,
+    );
+    if (aiJurors.length === 0) return;
+
+    const finalists = [final2SaboteurId, final2VictimId];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (const jurorId of aiJurors) {
+      const delay = animationsDisabled
+        ? 0
+        : SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS + (Math.floor(jurorId.length * 37) % 800);
+      const t = setTimeout(() => {
+        const accused = pickVoteForAi(seed, 9999, jurorId, finalists, null);
+        const safeAccused = finalists.includes(accused) ? accused : finalists[0];
+        dispatch(submitJuryVote({ jurorId, accusedId: safeAccused }));
+      }, delay);
+      timers.push(t);
+    }
+    return () => timers.forEach(clearTimeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [final2Stage, phase, juryVotes]); // one batch per vote-change
+
+  // Reveal sequence: 1.5-second delay before saboteur is unmasked.
+  useEffect(() => {
+    if (final2Stage !== 'FINAL2_REVEAL') {
+      setFinal2RevealDone(false);
+      return;
+    }
+    const delayMs = animationsDisabled ? 0 : 1500;
+    const t = setTimeout(() => setFinal2RevealDone(true), delayMs);
+    return () => clearTimeout(t);
+  }, [final2Stage, animationsDisabled]);
+
+  // winner: human-controlled continue; AI-only auto-advances after a hold.
+  // Final-2 cinematic: always skip auto-advance — manual button required.
   useEffect(() => {
     if (phase !== 'winner' || !winnerId) return;
 
     emitSilentSaboteurEvent('victory', { winnerId });
+
+    // Final-2 cinematic is controlling progression; do not auto-advance.
+    if (final2Stage !== null) return;
+
     if (!shouldAutoAdvanceWinner) return;
 
     // Auto-advance only for AI-only games or animations-disabled mode
     const holdMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.WINNER_AUTO_ADVANCE_MS;
     const t = setTimeout(() => dispatch(advanceWinner()), holdMs);
     return () => clearTimeout(t);
-  }, [phase, dispatch, winnerId, shouldAutoAdvanceWinner, animationsDisabled]);
+  }, [phase, dispatch, winnerId, shouldAutoAdvanceWinner, animationsDisabled, final2Stage]);
 
   // complete: dispatch outcome + notify parent
   useEffect(() => {
@@ -724,6 +829,29 @@ export default function SilentSaboteurComp({
   );
 
   const handleContinue = useCallback(() => {
+    dispatch(advanceWinner());
+  }, [dispatch]);
+
+  // ── Final-2 cinematic handlers ─────────────────────────────────────────────
+
+  const handleFinal2ProceedToVoting = useCallback(() => {
+    setFinal2Stage('FINAL2_VOTING');
+  }, []);
+
+  const handleFinal2RevealTruth = useCallback(() => {
+    setFinal2Stage('FINAL2_REVEAL');
+  }, []);
+
+  const handleFinal2RevealContinue = useCallback(() => {
+    setFinal2Stage('FINAL2_WINNER');
+  }, []);
+
+  /**
+   * Final step of the Final-2 cinematic.
+   * Dispatches advanceWinner() → Redux 'complete' → existing complete effect
+   * dispatches resolveSilentSaboteurOutcome() and calls onComplete().
+   */
+  const handleFinal2WinnerContinue = useCallback(() => {
     dispatch(advanceWinner());
   }, [dispatch]);
 
@@ -964,7 +1092,7 @@ export default function SilentSaboteurComp({
         </div>
       )}
 
-      {phase === 'final2_jury' && final2SaboteurId && final2VictimId && (
+      {phase === 'final2_jury' && final2SaboteurId && final2VictimId && final2Stage === null && (
         <div className="ss-phase-card ss-final2">
           <VictimNotice
             playerId={final2VictimId}
@@ -1043,7 +1171,8 @@ export default function SilentSaboteurComp({
         </div>
       )}
 
-      {phase === 'winner' && winnerId && (
+      {/* Original winner screen — only for non-Final-2 games. */}
+      {phase === 'winner' && winnerId && final2Stage === null && (
         <div className="ss-winner-card ss-cinematic">
           <div className="ss-confetti" aria-hidden="true">
             {Array.from({ length: 12 }, (_, idx) => (
@@ -1063,6 +1192,207 @@ export default function SilentSaboteurComp({
           {shouldAutoAdvanceWinner && !animationsDisabled && (
             <p className="ss-hint hint-small">Auto advancing…</p>
           )}
+        </div>
+      )}
+
+      {/* ── Final-2 Cinematic Screens ────────────────────────────────────────── */}
+
+      {/* FINAL2_INTRO: Two finalists introduced, no role info revealed. */}
+      {final2Stage === 'FINAL2_INTRO' && (
+        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
+          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Deduction Finale</p>
+          <h2 className="ss-phase-label">The Final Confrontation</h2>
+          <p className="ss-hint">
+            Two players remain. One planted the bomb. The eliminated jury will decide.
+          </p>
+          <Final2FinalistsMuted
+            finalistIds={final2FinalistIdsRef.current}
+            getName={getName}
+          />
+          <p className="ss-hint hint-small">
+            {eliminatedIds.length} jury member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
+          </p>
+          <button
+            className="ss-btn ss-action-btn"
+            onClick={handleFinal2ProceedToVoting}
+            aria-label="Proceed to Jury Decision"
+            data-testid="ss-final2-proceed-btn"
+          >
+            Proceed to Jury Decision
+          </button>
+        </div>
+      )}
+
+      {/* FINAL2_VOTING: Jury votes. No victim/saboteur labels visible. */}
+      {final2Stage === 'FINAL2_VOTING' && phase === 'final2_jury' && final2SaboteurId && final2VictimId && (
+        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
+          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Phase</p>
+          <h2 className="ss-phase-label">Who planted the bomb?</h2>
+          <Final2FinalistsMuted
+            finalistIds={final2FinalistIdsRef.current}
+            getName={getName}
+          />
+          <CountdownTimer
+            remainingMs={remainingCountdownMs}
+            totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
+          />
+          <p className="ss-hint">
+            {isHumanJuror && juryVotes[humanPlayerId!] === undefined
+              ? 'Cast your vote. Which finalist planted the bomb?'
+              : isHumanJuror
+              ? '✅ Vote cast. Waiting for the final verdict…'
+              : 'Awaiting the jury verdict…'}
+          </p>
+          {/* Human jury vote buttons — no role labels */}
+          {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
+            <ul className="ss-button-list" role="list">
+              {final2FinalistIdsRef.current.map((id) => (
+                <li key={id}>
+                  <button
+                    className="ss-btn ss-btn--vote"
+                    onClick={() => handleJuryVote(id)}
+                    aria-label={`Accuse ${getName(id)} of planting the bomb`}
+                  >
+                    <span className="ss-btn__main">🫵 {getName(id)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Human finalist tiebreak — shown when jury tied and human is in Final-2 */}
+          {humanPlayerId !== null && final2FinalistIdsRef.current.includes(humanPlayerId) && (() => {
+            const allV = Object.values(juryVotes);
+            const total = allV.length;
+            const sabV = allV.filter((v) => v === final2SaboteurId).length;
+            const isTied = total > 0 && sabV * 2 === total;
+            if (!isTied) return null;
+            return (
+              <>
+                <div className="ss-alert">⚠️ Jury is tied. A finalist must cast the deciding vote.</div>
+                <ul className="ss-button-list" role="list">
+                  {final2FinalistIdsRef.current.map((id) => (
+                    <li key={id}>
+                      <button
+                        className="ss-btn ss-btn--vote"
+                        onClick={() => handleTieBreak(id)}
+                        aria-label={`Vote for ${getName(id)} (tiebreaker)`}
+                      >
+                        <span className="ss-btn__main">🫵 {getName(id)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            );
+          })()}
+          <ProgressMeter
+            label="Jury Votes"
+            participantIds={eliminatedIds}
+            submissions={juryVotes}
+            getName={getName}
+            noun="jury votes"
+          />
+        </div>
+      )}
+
+      {/* FINAL2_VERDICT_LOCKED: All jury votes in; awaiting reveal. */}
+      {final2Stage === 'FINAL2_VERDICT_LOCKED' && (
+        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-verdict-locked">
+          <p className="ss-phase-eyebrow">⚖️ Verdict Locked</p>
+          <h2 className="ss-phase-label">The jury has spoken.</h2>
+          <p className="ss-hint">The votes are sealed. The truth is about to be revealed.</p>
+          <Final2FinalistsMuted
+            finalistIds={final2FinalistIdsRef.current}
+            getName={getName}
+          />
+          <button
+            className="ss-btn ss-action-btn ss-action-btn--reveal"
+            onClick={handleFinal2RevealTruth}
+            aria-label="Reveal the Truth"
+            data-testid="ss-final2-reveal-btn"
+          >
+            Reveal the Truth
+          </button>
+        </div>
+      )}
+
+      {/* FINAL2_REVEAL: Accused highlighted → saboteur unmasked after 1.5s. */}
+      {final2Stage === 'FINAL2_REVEAL' && (
+        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-reveal">
+          <p className="ss-phase-eyebrow">🔍 The Truth Revealed</p>
+          {!final2RevealDone ? (
+            <>
+              <h2 className="ss-phase-label">The jury accused…</h2>
+              <Final2FinalistsReveal
+                finalistIds={final2FinalistIdsRef.current}
+                accusedId={juryAccusedId}
+                getName={getName}
+                revealDone={false}
+                saboteurId={null}
+              />
+            </>
+          ) : (
+            <>
+              <h2 className="ss-phase-label">
+                {final2SaboteurId === juryAccusedId
+                  ? '🕵️ Jury was correct!'
+                  : '💥 Jury was wrong!'}
+              </h2>
+              <Final2FinalistsReveal
+                finalistIds={final2FinalistIdsRef.current}
+                accusedId={juryAccusedId}
+                getName={getName}
+                revealDone={true}
+                saboteurId={final2SaboteurId}
+              />
+              {final2SaboteurId === juryAccusedId ? (
+                <p className="ss-hint">
+                  The jury correctly identified <strong>{getName(final2SaboteurId ?? '')}</strong> as the saboteur.{' '}
+                  <strong>{getName(final2VictimId ?? '')}</strong> wins!
+                </p>
+              ) : (
+                <p className="ss-hint">
+                  The jury accused <strong>{getName(juryAccusedId ?? '')}</strong>, but the real saboteur was{' '}
+                  <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
+                  <strong>{getName(winnerId ?? '')}</strong> wins!
+                </p>
+              )}
+              <button
+                className="ss-btn ss-action-btn"
+                onClick={handleFinal2RevealContinue}
+                aria-label="Continue"
+                data-testid="ss-final2-reveal-continue-btn"
+              >
+                Continue
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* FINAL2_WINNER: Winner celebration with manual Continue. */}
+      {final2Stage === 'FINAL2_WINNER' && winnerId && (
+        <div className="ss-winner-card ss-cinematic" data-testid="ss-final2-winner">
+          <div className="ss-confetti" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, idx) => (
+              <span key={idx} className="ss-confetti-piece" />
+            ))}
+          </div>
+          <div className="ss-trophy" aria-hidden="true">🏆</div>
+          <p className="ss-phase-eyebrow">Winner reveal</p>
+          <h2 className="ss-winner-name">{getName(winnerId)}</h2>
+          <p className="ss-winner-label">wins Silent Saboteur!</p>
+          {humanPlayerId === winnerId && (
+            <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>
+          )}
+          <button
+            className="ss-btn ss-action-btn"
+            onClick={handleFinal2WinnerContinue}
+            aria-label="Continue"
+            data-testid="ss-final2-winner-continue-btn"
+          >
+            Continue
+          </button>
         </div>
       )}
 
@@ -1275,7 +1605,96 @@ function VoteRevealSequence({
   );
 }
 
-// ─── Social Map Overlay ────────────────────────────────────────────────────────
+// ─── Final-2 Cinematic Sub-components ─────────────────────────────────────────
+
+/**
+ * Displays both finalists with muted (grayscale/dim) treatment and a lock icon.
+ * Does NOT show any role information (no victim/saboteur labels).
+ */
+function Final2FinalistsMuted({
+  finalistIds,
+  getName,
+}: {
+  finalistIds: string[];
+  getName: (id: string) => string;
+}) {
+  return (
+    <ul className="ss-final2-finalists" aria-label="Finalists">
+      {finalistIds.map((id) => (
+        <li key={id} className="ss-final2-finalist">
+          <div className="ss-final2-finalist__portrait">
+            <HouseguestPortrait id={id} name={getName(id)} sizeClass="ss-victim-avatar--lg" />
+            <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">🔒</span>
+          </div>
+          <span className="ss-final2-finalist__name">{getName(id)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Displays both finalists during the reveal sequence.
+ * Before revealDone: highlights only the accused player.
+ * After revealDone: shows the accused highlight AND unmasked saboteur label.
+ */
+function Final2FinalistsReveal({
+  finalistIds,
+  accusedId,
+  getName,
+  revealDone,
+  saboteurId,
+}: {
+  finalistIds: string[];
+  accusedId: string | null;
+  getName: (id: string) => string;
+  revealDone: boolean;
+  saboteurId: string | null;
+}) {
+  return (
+    <ul className="ss-final2-finalists" aria-label="Finalists reveal">
+      {finalistIds.map((id) => {
+        const isAccused = id === accusedId;
+        const isSaboteur = revealDone && id === saboteurId;
+        const isVictim = revealDone && saboteurId !== null && id !== saboteurId;
+        return (
+          <li
+            key={id}
+            className={[
+              'ss-final2-finalist',
+              isAccused ? 'ss-final2-finalist--accused' : '',
+              isSaboteur ? 'ss-final2-finalist--saboteur' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <div className="ss-final2-finalist__portrait">
+              <HouseguestPortrait id={id} name={getName(id)} sizeClass="ss-victim-avatar--lg" />
+              {isAccused && !revealDone && (
+                <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">🫵</span>
+              )}
+              {isSaboteur && (
+                <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">💣</span>
+              )}
+            </div>
+            <span className="ss-final2-finalist__name">{getName(id)}</span>
+            {revealDone && (
+              <span
+                className={`ss-final2-finalist__role-badge ${
+                  isSaboteur
+                    ? 'ss-final2-finalist__role-badge--saboteur'
+                    : isVictim
+                    ? 'ss-final2-finalist__role-badge--victim'
+                    : ''
+                }`}
+              >
+                {isSaboteur ? 'Saboteur' : 'Victim'}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function SocialMapOverlay({
   victimId,
