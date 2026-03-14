@@ -836,22 +836,6 @@
             g.lastCompScores.set(participant.id, s.score);
           }
         });
-        
-        // ENDURANCE FIX: Mark winner as authoritative to prevent override by fallback logic
-        // Store winner player ID for HOH/POV determination
-        const winnerParticipant = participantsByName.get(standings[0].name);
-        if(winnerParticipant && winnerParticipant.id !== undefined){
-          // BUG FIX: Store on g.game (window.game), not g (window)
-          // competitions.js reads from g.__authoritativeWinner where g = window.game
-          g.game.__authoritativeWinner = {
-            playerId: winnerParticipant.id,
-            score: standings[0].score,
-            minigame: gameId,
-            compType: compType, // 'hoh' or 'pov'
-            timestamp: Date.now()
-          };
-          console.log(`[HoldWall] ✓ Authoritative winner set: Player ${winnerParticipant.id} (${standings[0].name}) for ${compType}`);
-        }
       }
       
       // Dispatch event

@@ -314,15 +314,15 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'silentSaboteur',
     title: 'Silent Saboteur',
     description:
-      'A hidden saboteur plants a bomb on a victim each round. Identify the saboteur through voting — or the bomb goes off!',
+      'A hidden saboteur plants a bomb on a victim. Identify the saboteur — or the bomb goes off!',
     instructions: [
-      'Each round a secret saboteur is chosen from the active players.',
+      'Each round a secret saboteur is chosen.',
       'The saboteur secretly targets a victim.',
       'All players vote for who they think is the saboteur.',
-      'Strict majority for saboteur → saboteur is eliminated. Otherwise → victim is eliminated.',
-      "Final 3: a 1-1-1 tie invokes the Victim Override Rule — only the victim's vote counts.",
-      'Final 2: eliminated players form a jury and vote for who planted the bomb.',
-      'Last player standing wins the competition.',
+      'If the group does not guess correctly, the victim is eliminated',
+      'In case of a tie, the victim decides',
+      'Final 2: eliminated players must guess the last saboteur.',
+      'If they guess correctly the victim is the winner, if not the saboteur wins.',
     ],
     metricKind: 'points',
     metricLabel: 'Placement',
@@ -852,13 +852,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'blackjackTournament',
     title: 'Blackjack Tournament',
     description:
-      'Last-player-standing blackjack duel tournament. A spinner picks the first controller, who challenges any remaining opponent. Closest to 21 without busting wins the duel; loser is eliminated. Play continues until one champion remains.',
+      'Blackjack duel tournament. Closest to 21 without busting wins.'
     instructions: [
-      'A wheel spins to pick the first controlling player.',
-      'The controller challenges any remaining opponent to a blackjack duel.',
+      'By a random draw selection, the first players chooses the pair to duel',
       'Both players receive 2 cards. Choose to Hit (draw a card) or Stand.',
       'Closest to 21 without going over wins. Bust (over 21) = elimination.',
-      'The duel winner stays in control and picks the next opponent.',
+      'The duel winner stays in control and picks the next pair to duel.',
       'Last player standing wins the competition!',
     ],
     metricKind: 'accuracy',
@@ -909,8 +908,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     description: 'Run and jump through the castle, enter the correct pipes in order, and rescue the princess before time runs out!',
     instructions: [
       'Use Arrow Keys or WASD to run left/right, Up/Space to jump.',
-      'Find the 3 correct pipes (Ⅰ, Ⅱ, Ⅲ) and enter them in order by pressing ↓.',
-      'Wrong pipes send you back to your last checkpoint — watch out!',
+      'Find the 3 correct pipes and enter them in order by pressing ↓.',
+      'Wrong pipes send you back — watch out!',
       'Stomp enemies (land on them) for bonus points.',
       'Break bricks by jumping into them from below.',
       'Collect coins for extra score. Reach the princess to win!',
@@ -933,12 +932,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     key: 'glass_bridge_brutal',
     title: 'Glass Bridge — Brutal Mode',
     description:
-      'Cross a bridge of paired glass tiles one row at a time. One wrong step and you fall. Broken tiles persist — use them to your advantage.',
+      'Cross a bridge of paired glass tiles one row at a time. One wrong step and you die.',
     instructions: [
       'Players cross a bridge of glass tiles row by row.',
       'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
       'Choose wrong and the tile shatters — you are eliminated.',
-      'Broken tiles from previous players remain visible — use them as clues.',
       'Everyone starts from the beginning; turn order is determined by a number draw.',
       'The player who crosses fastest — or reaches the furthest row — wins.',
     ],
