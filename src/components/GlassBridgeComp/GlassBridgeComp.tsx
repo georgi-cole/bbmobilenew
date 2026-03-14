@@ -489,10 +489,16 @@ export default function GlassBridgeComp({
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side: chosenSide });
           playScreamPlaceholder();
+          if (flashResetRef.current !== null) {
+            window.clearTimeout(flashResetRef.current);
+          }
           flashResetRef.current = window.setTimeout(() => {
             setShowEliminationFlash(false);
             setShowScreenShake(false);
           }, noAnimations ? 0 : DEATH_FLASH_MS);
+          if (deathMarkerClearRef.current !== null) {
+            window.clearTimeout(deathMarkerClearRef.current);
+          }
           deathMarkerClearRef.current = window.setTimeout(() => {
             setDeathMarkerTile(null);
           }, noAnimations ? 0 : DEATH_MARKER_DURATION_MS);
