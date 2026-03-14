@@ -343,6 +343,21 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_HYBRID,
     weights: WEIGHTS_HYBRID,
   },
+  glass_bridge_brutal: {
+    key: 'glass_bridge_brutal',
+    category: 'endurance',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_ENDURANCE_BALANCE,
+    // Nerve (composure under pressure) and mental (remembering broken tiles)
+    // are the dominant skills; physical endurance matters less.
+    weights: {
+      physical: 0.1,
+      mental: 0.3,
+      precision: 0.2,
+      nerve: 0.35,
+      luck: 0.05,
+    },
+  },
   blackjackTournament: {
     key: 'blackjackTournament',
     category: 'luck',

@@ -23,6 +23,7 @@ import BiographyBlitzComp from '../BiographyBlitzComp/biography_blitz_game';
 import type { BiographyBlitzCompetitionType } from '../../features/biographyBlitz/biography_blitz_logic';
 import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
+import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
 import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import reactComponents from '../../minigames/reactComponents';
@@ -237,6 +238,17 @@ export default function MinigameHost({
                   seed={seed}
                   onComplete={handleReactComplete}
                   skipWinnerAnimation={true}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'GlassBridge') {
+              return (
+                <GlassBridgeComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' | undefined}
+                  seed={seed}
+                  onComplete={handleReactComplete}
                 />
               );
             }
