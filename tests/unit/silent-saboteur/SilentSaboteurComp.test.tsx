@@ -91,7 +91,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     });
 
     expect(screen.queryByTestId('ss-bomb-reveal')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /voting|investigation/i }) ?? screen.getByText(/vote for/i)).toBeTruthy();
+    expect(screen.queryByText(/investigation/i)).toBeInTheDocument();
   });
 
   it('waits for manual Continue from bomb reveal through accusation result, elimination result, and round summary phases', async () => {

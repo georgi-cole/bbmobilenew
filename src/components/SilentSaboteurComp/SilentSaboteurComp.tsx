@@ -61,8 +61,6 @@ const SILENT_SABOTEUR_TIMINGS = {
   ELIMINATION_HOLD_MS: 2800,
   /** Round transition hold. */
   ROUND_TRANSITION_MS: 2000,
-  /** Winner screen auto-advance for AI-only / no-animation flows. */
-  WINNER_AUTO_ADVANCE_MS: 12000,
   /** Countdown ticker interval. */
   TIMER_TICK_MS: 250,
 } as const;
