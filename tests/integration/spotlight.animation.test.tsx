@@ -7,6 +7,7 @@
 //   3. GameScreen defers applyMinigameWinner until CeremonyOverlay completes
 //      (when getBoundingClientRect returns valid dimensions).
 //   4. GameScreen commits immediately when DOMRect is unavailable (headless fallback).
+//   5. SPOTLIGHT_SKIP / shouldSkipSpotlight correctly includes known skip keys including blackjackTournament.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
@@ -21,6 +22,7 @@ import settingsReducer from '../../src/store/settingsSlice';
 import type { GameState, Player } from '../../src/types';
 import CeremonyOverlay from '../../src/components/CeremonyOverlay/CeremonyOverlay';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import { SPOTLIGHT_SKIP, shouldSkipSpotlight } from '../../src/screens/GameScreen/spotlightUtils';
 
 // ── Module-level captured callbacks ────────────────────────────────────────
 // vi.mock is hoisted so we capture MinigameHost's onDone via a module-level ref.
@@ -253,5 +255,46 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     // Now the store mutation should have fired.
     expect(store.getState().game.phase).toBe('hoh_results');
     expect(store.getState().game.hohId).not.toBeNull();
+  });
+});
+
+// ── SPOTLIGHT_SKIP / shouldSkipSpotlight unit tests ───────────────────────
+
+describe('SPOTLIGHT_SKIP and shouldSkipSpotlight', () => {
+  it('SPOTLIGHT_SKIP is a Set containing all legacy skip keys', () => {
+    expect(SPOTLIGHT_SKIP).toBeInstanceOf(Set);
+    expect(SPOTLIGHT_SKIP.has('dontGoOver')).toBe(true);
+    expect(SPOTLIGHT_SKIP.has('holdWall')).toBe(true);
+    expect(SPOTLIGHT_SKIP.has('famousFigures')).toBe(true);
+    expect(SPOTLIGHT_SKIP.has('biographyBlitz')).toBe(true);
+    expect(SPOTLIGHT_SKIP.has('glass_bridge_brutal')).toBe(true);
+  });
+
+  it('SPOTLIGHT_SKIP includes blackjackTournament', () => {
+    expect(SPOTLIGHT_SKIP.has('blackjackTournament')).toBe(true);
+  });
+
+  it('SPOTLIGHT_SKIP includes silentSaboteur', () => {
+    expect(SPOTLIGHT_SKIP.has('silentSaboteur')).toBe(true);
+  });
+
+  it('shouldSkipSpotlight returns true for all skip keys', () => {
+    for (const key of SPOTLIGHT_SKIP) {
+      expect(shouldSkipSpotlight(key)).toBe(true);
+    }
+  });
+
+  it('shouldSkipSpotlight returns true for blackjackTournament', () => {
+    expect(shouldSkipSpotlight('blackjackTournament')).toBe(true);
+  });
+
+  it('shouldSkipSpotlight returns true for silentSaboteur', () => {
+    expect(shouldSkipSpotlight('silentSaboteur')).toBe(true);
+  });
+
+  it('shouldSkipSpotlight returns false for minigames that use the spotlight', () => {
+    expect(shouldSkipSpotlight('tapRace')).toBe(false);
+    expect(shouldSkipSpotlight('castleRescue')).toBe(false);
+    expect(shouldSkipSpotlight('')).toBe(false);
   });
 });
