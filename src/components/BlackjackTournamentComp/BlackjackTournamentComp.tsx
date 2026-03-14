@@ -390,7 +390,7 @@ export default function BlackjackTournamentComp({
       // Both fighters done; resolve the duel.
       aiActionTimerRef.current = window.setTimeout(() => {
         dispatch(resolveDuel());
-      }, 300);
+      }, applySpeed(300));
       return () => { clearTimer(aiActionTimerRef); };
     }
 
