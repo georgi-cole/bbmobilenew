@@ -73,6 +73,14 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.9,
   },
+  'minigame:wheelofluck': {
+    key: 'minigame:wheelofluck',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_wheelofluck.mp3',
+    preload: false,
+    volume: 1.0,
+    loop: true,
+  },
   'music:menu_loop': {
     key: 'music:menu_loop',
     category: 'music',

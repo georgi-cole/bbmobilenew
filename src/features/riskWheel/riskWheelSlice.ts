@@ -136,26 +136,26 @@ export interface RiskWheelState {
 
 export const WHEEL_SECTORS: WheelSector[] = [
   // Positive
-  { type: 'points', value: 10,   label: '10'   },
-  { type: 'points', value: 30,   label: '30'   },
-  { type: 'points', value: 50,   label: '50'   },
-  { type: 'points', value: 100,  label: '100'  },
-  { type: 'points', value: 150,  label: '150'  },
-  { type: 'points', value: 200,  label: '200'  },
-  { type: 'points', value: 500,  label: '500'  },
-  { type: 'points', value: 750,  label: '750'  },
-  { type: 'points', value: 1000, label: '1000' },
+  { type: 'points', value: 10,   label: '10'  },
+  { type: 'points', value: 30,   label: '30'  },
+  { type: 'points', value: 50,   label: '50'  },
+  { type: 'points', value: 100,  label: '100' },
+  { type: 'points', value: 150,  label: '150' },
+  { type: 'points', value: 200,  label: '200' },
+  { type: 'points', value: 500,  label: '500' },
+  { type: 'points', value: 750,  label: '750' },
+  { type: 'points', value: 1000, label: '1K'  },
   // Neutral
-  { type: 'zero',  label: '0'     },
-  { type: 'skip',  label: 'SKIP'  },
-  // 3.14 is a deliberate joke: label shows π but awards 3 pts (funny low value).
-  { type: 'points', value: 3, label: '3.14' },
-  // Negative
-  { type: 'points', value: -100, label: '-100' },
-  { type: 'points', value: -200, label: '-200' },
+  { type: 'zero',  label: '0' },
+  { type: 'skip',  label: '⏭' },
+  // π is a deliberate joke: label shows π but awards 3 pts (funny low value).
+  { type: 'points', value: 3, label: 'π' },
+  // Negative sectors: colour (red/dark-red) conveys negativity; no minus needed.
+  { type: 'points', value: -100, label: '100' },
+  { type: 'points', value: -200, label: '200' },
   // Special
-  { type: 'bankrupt', label: 'BANKRUPT' },
-  { type: 'devil',    label: '666'      },
+  { type: 'bankrupt', label: '💀' },
+  { type: 'devil',    label: '666' },
 ];
 
 // ─── Pure helper functions (exported for tests) ───────────────────────────────

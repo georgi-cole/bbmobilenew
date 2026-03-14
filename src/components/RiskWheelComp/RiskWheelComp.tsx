@@ -33,6 +33,9 @@ import {
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import HOUSEGUESTS from '../../data/houseguests';
+import { useWheelOfLuck } from '../../hooks/useWheelOfLuck';
 import './RiskWheelComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -84,6 +87,13 @@ function getName(id: string, participants: MinigameParticipant[] | undefined): s
 /** Format a numeric score with a leading '+' for non-negative values. */
 function formatScore(score: number): string {
   return `${score >= 0 ? '+' : ''}${score}`;
+}
+
+/** Resolve a player avatar URL from the houseguest database, falling back to dicebear. */
+function avatarForId(id: string): string {
+  const hg = HOUSEGUESTS.find((h) => h.id === id);
+  if (hg) return resolveAvatar({ id: hg.id, name: hg.name, avatar: '' });
+  return getDicebear(id);
 }
 
 // ─── Sector colour palette ────────────────────────────────────────────────────
@@ -171,7 +181,7 @@ function WheelSvg({ rotation, transitioning, onTransitionEnd }: WheelSvgProps) {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="#fff"
-                  fontSize={sector.label.length > 4 ? '7' : '8.5'}
+                  fontSize={sector.label.length > 3 ? '7' : sector.label.length <= 2 ? '10' : '8.5'}
                   fontWeight="800"
                   fontFamily="inherit"
                   transform={`rotate(${textAngleDeg.toFixed(1)}, ${lx.toFixed(3)}, ${ly.toFixed(3)})`}
@@ -219,6 +229,9 @@ export default function RiskWheelComp({
 }: Props) {
   const dispatch = useDispatch<AppDispatch>();
   const rw = useSelector((s: RootState) => s.riskWheel);
+
+  // ── Audio ────────────────────────────────────────────────────────────────
+  const { startWheelSound, stopWheelSound } = useWheelOfLuck();
 
   // Wheel rotation state
   const [wheelAngle, setWheelAngle] = useState(0);
@@ -333,6 +346,9 @@ export default function RiskWheelComp({
     setWheelAngle(targetAngle);
     wheelAngleRef.current = targetAngle;
 
+    // Play wheel spin audio
+    startWheelSound();
+
     // Clear any pending spin timeout before scheduling a new one
     if (spinTimeoutRef.current !== null) {
       clearTimeout(spinTimeoutRef.current);
@@ -345,10 +361,11 @@ export default function RiskWheelComp({
       dispatch(performSpin());
       setSpinning(false);
       setWheelTransitioning(false);
+      stopWheelSound();
       spinTimeoutRef.current = null;
     }, spinDur);
     spinTimeoutRef.current = timeoutId;
-  }, [dispatch, rw, isHumanTurn, spinning]);
+  }, [dispatch, rw, isHumanTurn, spinning, startWheelSound, stopWheelSound]);
 
   const handleHumanSpin = useCallback(() => performHumanSpin(false), [performHumanSpin]);
   const handleSpinAgain = useCallback(() => performHumanSpin(true), [performHumanSpin]);
@@ -379,6 +396,14 @@ export default function RiskWheelComp({
           ))}
         </div>
         <div className="rw-winner-crown" aria-hidden="true">🏆</div>
+        {winnerId && (
+          <img
+            src={avatarForId(winnerId)}
+            alt={winnerName}
+            className="rw-winner-avatar"
+            onError={(e) => { (e.target as HTMLImageElement).src = getDicebear(winnerId); }}
+          />
+        )}
         <h1 className="rw-winner-title">WINNER</h1>
         <p className="rw-winner-name">{winnerName}</p>
         <p className="rw-winner-subtitle">
@@ -412,6 +437,12 @@ export default function RiskWheelComp({
             return (
               <li key={id} className={`rw-summary-row${isOut ? ' rw-summary-row--out' : ''}${rank === 0 ? ' rw-summary-row--top' : ''}`}>
                 <span className="rw-summary-rank">#{rank + 1}</span>
+                <img
+                  src={avatarForId(id)}
+                  alt=""
+                  className="rw-summary-avatar"
+                  onError={(e) => { (e.target as HTMLImageElement).src = getDicebear(id); }}
+                />
                 <span className="rw-summary-name">{getName(id, participants)}</span>
                 <span className={`rw-summary-score${score < 0 ? ' rw-summary-score--neg' : ''}`}>
                   {formatScore(score)}
@@ -580,6 +611,12 @@ export default function RiskWheelComp({
               const sc = roundScores[id] ?? 0;
               return (
                 <span key={id} className={`rw-mini-score-chip${isElim ? ' rw-mini-score-chip--out' : ''}`}>
+                  <img
+                    src={avatarForId(id)}
+                    alt=""
+                    className="rw-mini-score-avatar"
+                    onError={(e) => { (e.target as HTMLImageElement).src = getDicebear(id); }}
+                  />
                   <span className="rw-mini-score-name">{getName(id, participants)}</span>
                   <span className={`rw-mini-score-val${sc < 0 ? ' neg' : ''}`}>
                     {formatScore(sc)}
