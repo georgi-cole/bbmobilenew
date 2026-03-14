@@ -320,7 +320,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'The saboteur secretly targets a victim.',
       'All players vote for who they think is the saboteur.',
       'Strict majority for saboteur → saboteur is eliminated. Otherwise → victim is eliminated.',
-      'Final 3: a 1-1-1 tie invokes the Victim Override Rule — only the victim\'s vote counts.',
+      "Final 3: a 1-1-1 tie invokes the Victim Override Rule — only the victim's vote counts.",
       'Final 2: eliminated players form a jury and vote for who planted the bomb.',
       'Last player standing wins the competition.',
     ],
