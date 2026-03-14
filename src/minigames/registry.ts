@@ -874,6 +874,35 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  riskWheel: {
+    key: 'riskWheel',
+    title: 'Risk Wheel',
+    description:
+      'A Wheel-of-Fortune–style multi-round elimination contest. Spin for points, risk it all, or go bankrupt — and watch out for 666!',
+    instructions: [
+      'Players compete over 3 rounds. All scores reset each round.',
+      'Each player gets up to 3 spins per round.',
+      'After spin 1 or 2 you may Stop & Bank your score, or Spin Again.',
+      'After spin 3 your score is automatically banked.',
+      'BANKRUPT resets your score to 0 and ends your turn.',
+      'SKIP ends your turn immediately — you keep whatever you have.',
+      '666 randomly adds or subtracts 666 points (50/50) then continues.',
+      'After each round the lowest-scoring players are eliminated.',
+      'After Round 3 the highest scorer wins!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'RiskWheel',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   castleRescue: {
     key: 'castleRescue',
     title: 'Castle Rescue',

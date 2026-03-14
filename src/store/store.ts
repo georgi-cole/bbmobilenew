@@ -21,6 +21,7 @@ import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
 import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlice';
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
+import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
 
 export const store = configureStore({
   reducer: {
@@ -39,6 +40,7 @@ export const store = configureStore({
     silentSaboteur: silentSaboteurReducer,
     glassBridge: glassBridgeReducer,
     blackjackTournament: blackjackTournamentReducer,
+    riskWheel: riskWheelReducer,
   },
   preloadedState: {
     settings: loadSettings(),

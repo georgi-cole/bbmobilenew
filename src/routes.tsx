@@ -58,6 +58,11 @@ const SilentSaboteurTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/SilentSaboteurTestPage/SilentSaboteurTestPage'))
   : null;
 
+// Dev-only Risk Wheel test page.
+const RiskWheelTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/RiskWheelTestPage/RiskWheelTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -93,6 +98,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && SilentSaboteurTestPage != null
         ? [{ path: 'ss-test', element: <Suspense fallback={null}><SilentSaboteurTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && RiskWheelTestPage != null
+        ? [{ path: 'rw-test', element: <Suspense fallback={null}><RiskWheelTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },
