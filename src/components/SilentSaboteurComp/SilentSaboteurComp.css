@@ -11,6 +11,7 @@
   justify-content: flex-start;
   min-height: 100%;
   /* Allow vertical scrolling when content exceeds viewport height. */
+  max-height: 100vh;
   max-height: 100dvh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
