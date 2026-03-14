@@ -118,8 +118,11 @@ function buildSuspectCards(
     const cardSeed = ((seed ^ idHash ^ victimHash ^ 0xdecafbad) >>> 0);
     const rng = mulberry32(cardSeed);
     const relIdx = Math.floor(rng() * 5);
-    const traitA = PERSONALITY_TRAITS[Math.floor(rng() * PERSONALITY_TRAITS.length)];
-    const traitB = PERSONALITY_TRAITS[Math.floor(rng() * PERSONALITY_TRAITS.length)];
+    const traitAIdx = Math.floor(rng() * PERSONALITY_TRAITS.length);
+    const traitA = PERSONALITY_TRAITS[traitAIdx];
+    // Ensure traitB is distinct from traitA
+    const remainingTraits = PERSONALITY_TRAITS.filter((_, i) => i !== traitAIdx);
+    const traitB = remainingTraits[Math.floor(rng() * remainingTraits.length)];
     const relationship = RELATIONSHIP_LABELS[relIdx];
     const hints: Record<RelationshipCategory, string> = {
       Hostile:    `${getName(id)} had reason to want ${getName(victimId)} out of the game.`,
@@ -374,7 +377,9 @@ export default function SilentSaboteurComp({
       return;
     }
     setBombRevealVisible(true);
-    votingTimerFiredRef.current = false; // reset guard for new voting phase
+    // Reset the timer-fired guard so endVotingPhase can fire when this new
+    // voting phase's 120-second timer expires (guard prevents duplicate dispatches).
+    votingTimerFiredRef.current = false;
     emitSilentSaboteurEvent('bomb-planted', { victimId, round });
 
     const t = setTimeout(
@@ -1196,13 +1201,17 @@ function SocialMapOverlay({
     Loyal:      '#3b82f6',
   };
 
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
   return (
     <div
       className="ss-social-map-backdrop"
       role="dialog"
       aria-label="Social Map"
       aria-modal="true"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={handleBackdropClick}
     >
       <div className="ss-social-map">
         {/* Header with timer */}

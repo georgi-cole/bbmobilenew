@@ -105,7 +105,8 @@ export function pickVoteForAi(
   if (candidates.length === 0) {
     // Fallback: exclude only self (should not occur in a well-formed game state)
     const fallback = activeIds.filter((id) => id !== voterId);
-    return fallback[0] ?? activeIds[0];
+    // Ensure we never return the voter themselves
+    return (fallback.length > 0 ? fallback[0] : activeIds.find((id) => id !== voterId)) ?? voterId;
   }
   const idHash = fnv1a32(voterId);
   const voteSeed = ((seed ^ (round * 0x3c6ef35f) ^ idHash) >>> 0);
