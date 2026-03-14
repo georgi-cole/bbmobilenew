@@ -1,18 +1,89 @@
 /* ─── Blackjack Tournament Component Styles ───────────────────────────────── */
 
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+
+@keyframes bjt-bounce {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-8px); }
+}
+
+@keyframes bjt-reveal {
+  from { transform: scale(0.9); opacity: 0.5; box-shadow: none; }
+  to   { transform: scale(1.1); opacity: 1; box-shadow: 0 0 32px rgba(255, 215, 0, 0.8); }
+}
+
+@keyframes bjt-vs-pulse {
+  0%   { transform: scale(1);    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+  50%  { transform: scale(1.15); text-shadow: 0 0 24px rgba(255, 215, 0, 0.9); }
+  100% { transform: scale(1);    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+}
+
+@keyframes bjt-card-slide {
+  from { transform: translateX(-20px) scale(0.8); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+@keyframes bjt-win-pulse {
+  0%   { box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
+  50%  { box-shadow: 0 0 28px rgba(74, 222, 128, 0.9), 0 0 4px rgba(74, 222, 128, 0.4) inset; }
+  100% { box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
+}
+
+@keyframes bjt-loser-drop {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0.35; transform: translateY(8px); }
+}
+
+@keyframes bjt-bust-flash {
+  0%   { background: rgba(255, 59, 59, 0); }
+  30%  { background: rgba(255, 59, 59, 0.35); }
+  100% { background: rgba(255, 59, 59, 0); }
+}
+
+@keyframes bjt-confetti-fall {
+  0%   { transform: translateY(-5%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(108%) rotate(720deg); opacity: 0.1; }
+}
+
+@keyframes bjt-confetti-fall-reverse {
+  0%   { transform: translateY(-5%) rotate(0deg) scaleX(-1); opacity: 1; }
+  100% { transform: translateY(108%) rotate(-720deg) scaleX(-1); opacity: 0.1; }
+}
+
+@keyframes bjt-crown-drop {
+  from { transform: translateY(-60px) scale(0); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+@keyframes bjt-title-enter {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bjt-spotlight-pulse {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0.55; }
+}
+
+/* ─── Base layout ─────────────────────────────────────────────────────────── */
+
 .bjt-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 1.5rem 1rem;
-  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  padding: 1.5rem 1rem 5rem;
+  background: linear-gradient(135deg, #0b0f1a 0%, #1a2540 50%, #0f1e35 100%);
   color: #f0e6d3;
   font-family: inherit;
   box-sizing: border-box;
   gap: 1rem;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────── */
@@ -26,21 +97,31 @@
   justify-content: center;
   gap: 0.4rem;
   flex-wrap: wrap;
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.25);
+}
+
+.bjt-spin-title {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .bjt-title--winner {
   color: #ffd700;
-  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  text-shadow: 0 0 24px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  animation: bjt-title-enter 0.5s 0.3s ease-out both;
 }
 
 .bjt-subtitle {
   font-size: 1rem;
-  color: #b8d4e0;
+  color: rgba(255, 255, 255, 0.6);
   margin: 0 0 0.5rem;
 }
 
 .bjt-loading {
-  color: #b8d4e0;
+  color: rgba(255, 255, 255, 0.5);
   font-style: italic;
 }
 
@@ -49,28 +130,30 @@
 .bjt-avatar {
   border-radius: 50%;
   object-fit: cover;
-  background: #2c5364;
+  background: #1a2540;
   flex-shrink: 0;
 }
 
-.bjt-avatar--sm { width: 2.5rem; height: 2.5rem; }
+.bjt-avatar--sm    { width: 2.5rem; height: 2.5rem; }
 .bjt-avatar--inline { width: 1.8rem; height: 1.8rem; vertical-align: middle; }
-.bjt-avatar--lg { width: 4rem; height: 4rem; }
-.bjt-avatar--xl { width: 6rem; height: 6rem; margin: 0.5rem auto; }
+.bjt-avatar--lg    { width: 4rem; height: 4rem; }
+.bjt-avatar--xl    { width: 6rem; height: 6rem; margin: 0.5rem auto; }
+.bjt-avatar--xxl   { width: 8rem; height: 8rem; margin: 0.5rem auto; position: relative; z-index: 1; }
 
 /* ─── Status badges ───────────────────────────────────────────────────────── */
 
 .bjt-badge {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 1rem;
   padding: 0.2rem 0.7rem;
   font-size: 0.8rem;
+  color: #ffd700;
 }
 
 .bjt-you-badge {
   font-size: 0.7rem;
-  color: #ffd700;
+  color: #60a5fa;
   font-weight: 600;
 }
 
@@ -78,46 +161,63 @@
   display: block;
   color: #4ade80;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   margin-top: 0.25rem;
 }
 
 /* ─── Spinner / Spin phase ────────────────────────────────────────────────── */
 
 .bjt-spin {
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-.bjt-spinner {
+.bjt-reel-viewport {
   position: relative;
   width: min(320px, 90vw);
+  height: calc(3 * 64px + 2 * 0.35rem);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  border-radius: 0.75rem;
-  padding: 0.5rem;
+  border: 2px solid #ffd700;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.25);
 }
 
-.bjt-spinner-track {
+.bjt-reel-track {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  transition: transform 0.15s ease-out;
 }
 
 .bjt-spinner-slot {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.35rem 0.5rem;
+  gap: 0.7rem;
+  padding: 0 0.8rem;
   border-radius: 0.5rem;
-  transition: background 0.12s, transform 0.12s;
-  opacity: 0.5;
+  opacity: 0.35;
+  height: 64px;
+  flex-shrink: 0;
+  transition: background 0.1s, transform 0.1s, opacity 0.1s;
 }
 
 .bjt-spinner-slot--active {
-  background: rgba(255, 215, 0, 0.18);
+  background: rgba(255, 215, 0, 0.22);
   opacity: 1;
-  transform: scale(1.03);
+  transform: scale(1.06);
+  color: #ffd700;
+  transition: background 0.1s, transform 0.1s, opacity 0.1s;
+}
+
+.bjt-spinner-slot--fast img {
+  filter: blur(1.5px);
+}
+
+.bjt-spinner-slot--fast span {
+  opacity: 0.5;
+}
+
+.bjt-spinner-slot--revealed {
+  animation: bjt-reveal 0.5s ease-out forwards;
 }
 
 .bjt-spinner-pointer {
@@ -128,19 +228,32 @@
   font-size: 1.2rem;
   color: #ffd700;
   pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 0 6px #ffd700);
 }
 
-.bjt-spinner-highlight {
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  color: #ffd700;
-  font-weight: 600;
-  text-align: center;
+.bjt-reel-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bjt-reel-edge--top {
+  top: 0;
+  background: linear-gradient(to bottom, #0b0f1a 0%, transparent 100%);
+}
+
+.bjt-reel-edge--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, #0b0f1a 0%, transparent 100%);
 }
 
 .bjt-remaining {
-  font-size: 0.85rem;
-  color: #b8d4e0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
   margin: 0;
 }
 
@@ -157,8 +270,44 @@
 
 .bjt-eliminated-list {
   font-size: 0.78rem;
-  color: #e87070;
+  color: #ff3b3b;
   font-style: italic;
+  opacity: 0.8;
+}
+
+.bjt-controller-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px solid #ffd700;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 0.5rem;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.bjt-controller-card .bjt-avatar--lg {
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+.bjt-controller-label {
+  font-size: 0.75rem;
+  color: #ffd700;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bjt-pick-instruction {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f0e6d3;
+  margin: 0.25rem 0 0.75rem;
+  letter-spacing: 0.03em;
 }
 
 .bjt-opponent-grid {
@@ -174,20 +323,25 @@
   flex-direction: column;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(10, 12, 22, 0.7);
+  border: 2px solid rgba(255, 59, 59, 0.4);
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   cursor: pointer;
   color: #f0e6d3;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, opacity 0.15s;
   min-width: 5rem;
 }
 
 .bjt-opponent-btn:hover:not(:disabled) {
-  background: rgba(255, 215, 0, 0.18);
-  border-color: #ffd700;
-  transform: translateY(-2px);
+  background: rgba(255, 59, 59, 0.15);
+  border-color: #ff3b3b;
+  box-shadow: 0 0 16px rgba(255, 59, 59, 0.4);
+  transform: scale(1.05);
+}
+
+.bjt-opponent-grid:has(.bjt-opponent-btn:hover) .bjt-opponent-btn:not(:hover) {
+  opacity: 0.45;
 }
 
 .bjt-opponent-btn--disabled {
@@ -201,56 +355,60 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
   width: 100%;
-  max-width: 600px;
+  max-width: 680px;
 }
 
 .bjt-vs {
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-size: 2.5rem;
+  font-weight: 900;
   color: #ffd700;
   align-self: center;
   flex-shrink: 0;
+  letter-spacing: 0.04em;
+  animation: bjt-vs-pulse 1.2s ease-in-out infinite;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
 }
 
 .bjt-duelist {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.06);
+  gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  padding: 0.75rem 0.9rem;
-  min-width: 7rem;
+  border-radius: 0.85rem;
+  padding: 1rem 1.1rem;
+  min-width: 9rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .bjt-duelist--active {
   border-color: #ffd700;
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+  box-shadow: 0 0 0 3px #ffd700, 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
 .bjt-duelist--bust {
-  border-color: #e87070;
+  border-color: #ff3b3b;
   opacity: 0.8;
+  animation: bjt-bust-flash 0.5s ease-out;
 }
 
 .bjt-duelist--winner {
   border-color: #4ade80;
-  box-shadow: 0 0 12px rgba(74, 222, 128, 0.35);
+  animation: bjt-win-pulse 1s ease-in-out infinite;
 }
 
 .bjt-duelist--loser {
-  border-color: #e87070;
-  opacity: 0.7;
+  border-color: #ff3b3b;
+  animation: bjt-loser-drop 0.6s ease-in forwards;
 }
 
 .bjt-duelist-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 /* ─── Cards ───────────────────────────────────────────────────────────────── */
@@ -266,33 +424,38 @@
 .bjt-card {
   background: #fff;
   color: #1a1a2e;
-  border-radius: 0.3rem;
-  padding: 0.15rem 0.3rem;
-  font-size: 0.75rem;
+  border-radius: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  min-width: 1.6rem;
+  min-width: 1.9rem;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .bjt-card--red {
   color: #c0392b;
 }
 
+.bjt-card--new {
+  animation: bjt-card-slide 0.35s ease-out;
+}
+
 .bjt-hand-total {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #f0e6d3;
-  margin-left: 0.25rem;
+  margin-left: 0.3rem;
 }
 
 /* ─── Duel controls ───────────────────────────────────────────────────────── */
 
 .bjt-turn-label {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #ffd700;
-  font-weight: 600;
-  margin: 0.25rem 0;
+  font-weight: 700;
+  margin: 0.4rem 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 .bjt-actions {
@@ -303,12 +466,13 @@
 
 .bjt-btn {
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.65rem 1.5rem;
-  font-size: 1rem;
+  border-radius: 0.6rem;
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.1s, opacity 0.15s;
+  transition: transform 0.1s, opacity 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.03em;
 }
 
 .bjt-btn:active {
@@ -316,89 +480,293 @@
 }
 
 .bjt-btn--hit {
-  background: #e74c3c;
+  background: #ff3b3b;
   color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 59, 59, 0.4);
 }
 
 .bjt-btn--hit:hover {
-  background: #c0392b;
+  background: #e02020;
+  box-shadow: 0 4px 20px rgba(255, 59, 59, 0.6);
 }
 
 .bjt-btn--stand {
-  background: #27ae60;
+  background: #22c55e;
   color: #fff;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
 }
 
 .bjt-btn--stand:hover {
-  background: #219a52;
+  background: #16a34a;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.6);
 }
 
 .bjt-spectator-note {
-  font-size: 0.85rem;
-  color: #b8d4e0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.45);
   font-style: italic;
 }
 
 /* ─── Result phase ────────────────────────────────────────────────────────── */
 
 .bjt-result {
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .bjt-eliminated-msg {
-  color: #e87070;
-  font-weight: 600;
-  font-size: 1rem;
-  margin: 0.25rem 0;
+  color: #ff3b3b;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0.4rem 0;
+  text-shadow: 0 0 10px rgba(255, 59, 59, 0.5);
 }
 
 .bjt-remaining-msg {
-  font-size: 0.85rem;
-  color: #b8d4e0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.bjt-result-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bjt-result-confetti::before,
+.bjt-result-confetti::after {
+  content: '🎊 🎉 ✨ 💥 🎊 🎉 ✨ 💥';
+  position: absolute;
+  top: -5%;
+  left: -10%;
+  right: -10%;
+  font-size: 1.4rem;
+  letter-spacing: 1.5rem;
+  animation: bjt-confetti-fall 1.8s ease-in forwards;
+  white-space: nowrap;
+  line-height: 2.5;
 }
 
 /* ─── Complete phase ──────────────────────────────────────────────────────── */
 
 .bjt-complete {
-  gap: 0.75rem;
+  gap: 1rem;
+  position: relative;
+}
+
+.bjt-confetti,
+.bjt-confetti--reverse {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bjt-confetti::before,
+.bjt-confetti::after {
+  content: '🏅 ⭐ 🎊 👑 🏅 ⭐ 🎊 👑 🏅 ⭐';
+  position: absolute;
+  top: -5%;
+  left: -5%;
+  right: -5%;
+  font-size: 1.6rem;
+  letter-spacing: 2rem;
+  animation: bjt-confetti-fall 3s linear infinite;
+  white-space: nowrap;
+  line-height: 3;
+}
+
+.bjt-confetti::after {
+  animation-delay: 1s;
+  font-size: 1.2rem;
+  letter-spacing: 3rem;
+}
+
+.bjt-confetti--reverse::before {
+  content: '💛 ❤️ 🩵 💫 💛 ❤️ 🩵 💫 💛 ❤️';
+  position: absolute;
+  top: -5%;
+  left: -5%;
+  right: -5%;
+  font-size: 1.4rem;
+  letter-spacing: 1.8rem;
+  animation: bjt-confetti-fall-reverse 2.5s 0.5s linear infinite;
+  white-space: nowrap;
+  line-height: 3;
+}
+
+.bjt-confetti--reverse::after {
+  animation-delay: 1.5s;
+  animation-duration: 3.5s;
+}
+
+.bjt-winner-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bjt-spotlight {
+  position: absolute;
+  inset: -2.5rem;
+  background: radial-gradient(circle at 50% 55%, rgba(255, 215, 0, 0.45) 0%, rgba(255, 215, 0, 0.15) 45%, transparent 75%);
+  border-radius: 50%;
+  animation: bjt-spotlight-pulse 2s ease-in-out infinite;
+  z-index: 0;
 }
 
 .bjt-crown {
-  font-size: 3.5rem;
-  animation: bjt-bounce 0.6s ease infinite alternate;
+  font-size: 4.5rem;
+  animation: bjt-crown-drop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   will-change: transform;
-}
-
-@keyframes bjt-bounce {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-8px); }
+  position: relative;
+  z-index: 1;
 }
 
 .bjt-prize-label {
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: #ffd700;
-  font-weight: 600;
-  margin: 0.1rem 0;
+  font-weight: 700;
+  margin: 0.15rem 0;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  position: relative;
+  z-index: 1;
 }
 
 .bjt-elim-order {
-  font-size: 0.78rem;
-  color: #b8d4e0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.45);
   font-style: italic;
   max-width: 32rem;
   margin: 0.25rem auto 0;
+  position: relative;
+  z-index: 1;
 }
 
-/* ─── no-animations override ─────────────────────────────────────────────── */
+/* ─── Roster bar ──────────────────────────────────────────────────────────── */
 
-body.no-animations .bjt-crown {
+.bjt-roster-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.bjt-roster {
+  display: flex;
+  flex-direction: row;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.bjt-roster::-webkit-scrollbar {
+  display: none;
+}
+
+.bjt-roster-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 3rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bjt-roster-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: #1a2540;
+  transition: border-color 0.2s, filter 0.2s;
+}
+
+.bjt-roster-item--eliminated .bjt-roster-avatar {
+  filter: grayscale(1);
+  opacity: 0.35;
+  border-color: rgba(255, 59, 59, 0.3);
+}
+
+.bjt-roster-item--controller .bjt-roster-avatar {
+  border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.bjt-roster-item--you .bjt-roster-avatar {
+  border-color: #60a5fa;
+}
+
+.bjt-roster-item--controller.bjt-roster-item--you .bjt-roster-avatar {
+  border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 0 2px #60a5fa;
+}
+
+.bjt-roster-name {
+  font-size: 0.6rem;
+  opacity: 0.8;
+  max-width: 3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f0e6d3;
+}
+
+.bjt-roster-ctrl {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.2rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+}
+
+.bjt-roster-x {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.1rem;
+  font-size: 0.6rem;
+  color: #ff3b3b;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ─── no-animations overrides ─────────────────────────────────────────────── */
+
+body.no-animations .bjt-crown,
+body.no-animations .bjt-title--winner,
+body.no-animations .bjt-spinner-slot,
+body.no-animations .bjt-spinner-slot--active,
+body.no-animations .bjt-spinner-slot--revealed,
+body.no-animations .bjt-opponent-btn,
+body.no-animations .bjt-vs,
+body.no-animations .bjt-duelist,
+body.no-animations .bjt-duelist--winner,
+body.no-animations .bjt-duelist--loser,
+body.no-animations .bjt-duelist--bust,
+body.no-animations .bjt-card--new,
+body.no-animations .bjt-result-confetti::before,
+body.no-animations .bjt-result-confetti::after,
+body.no-animations .bjt-confetti::before,
+body.no-animations .bjt-confetti::after,
+body.no-animations .bjt-confetti--reverse::before,
+body.no-animations .bjt-confetti--reverse::after,
+body.no-animations .bjt-spotlight {
   animation: none;
-}
-
-body.no-animations .bjt-spinner-slot {
   transition: none;
 }
 
-body.no-animations .bjt-opponent-btn {
+body.no-animations .bjt-reel-track {
   transition: none;
 }
