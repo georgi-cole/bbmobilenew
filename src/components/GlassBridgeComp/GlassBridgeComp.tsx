@@ -609,6 +609,15 @@ export default function GlassBridgeComp({
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side });
           playScreamPlaceholder();
+
+          // Clear any existing flash/death-marker timeouts before scheduling new ones
+          if (flashResetRef.current != null) {
+            window.clearTimeout(flashResetRef.current);
+          }
+          if (deathMarkerClearRef.current != null) {
+            window.clearTimeout(deathMarkerClearRef.current);
+          }
+
           flashResetRef.current = window.setTimeout(() => {
             setShowEliminationFlash(false);
             setShowScreenShake(false);
