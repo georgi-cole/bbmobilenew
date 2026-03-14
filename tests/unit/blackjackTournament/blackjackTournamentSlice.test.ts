@@ -585,36 +585,32 @@ describe('Tie → Rematch', () => {
   });
 
   it('on isDuelTie=true, advanceFromDuelResult rematches: no elimination, phase returns to duel', () => {
-    // Simulate a tie scenario by reaching duel_result with isDuelTie.
-    // We'll use the fact that resolveDuel sets isDuelTie when outcome='tie'.
+    // Construct a deterministic tie scenario by preloading a duel_result state
+    // with isDuelTie = true, then advancing from the duel result.
     const store = makeStore();
     initStore(store, ['a', 'b'], 42);
-    store.dispatch(resolveSpinner());
-    const s = getState(store);
-    store.dispatch(selectPair({ fighterAId: s.remainingPlayerIds[0], fighterBId: s.remainingPlayerIds[1] }));
+    const baseState = getState(store);
 
-    // Force both to stand to get a potentially tied result, OR manipulate via standing.
-    store.dispatch(standCurrentPlayer());
-    store.dispatch(standCurrentPlayer());
-    store.dispatch(resolveDuel());
+    // Preload a finished duel state that represents a tie.
+    const tieResultState: BlackjackTournamentState = {
+      ...baseState,
+      phase: 'duel_result',
+      isDuelTie: true,
+      rematchCount: 0,
+    };
 
-    const afterResolve = getState(store);
-    if (afterResolve.isDuelTie) {
-      const remainingBefore = [...afterResolve.remainingPlayerIds];
-      store.dispatch(advanceFromDuelResult());
-      const afterAdvance = getState(store);
-      // No elimination on tie.
-      expect(afterAdvance.eliminatedPlayerIds).toEqual([]);
-      expect(afterAdvance.remainingPlayerIds).toEqual(remainingBefore);
-      // Rematch: phase goes back to duel.
-      expect(afterAdvance.phase).toBe('duel');
-      // rematchCount incremented.
-      expect(afterAdvance.rematchCount).toBe(1);
-    } else {
-      // Non-tie result: normal elimination path (we just verify it advances correctly).
-      store.dispatch(advanceFromDuelResult());
-      expect(['pick_opponent', 'complete']).toContain(getState(store).phase);
-    }
+    const remainingBefore = [...tieResultState.remainingPlayerIds];
+    const eliminatedBefore = [...tieResultState.eliminatedPlayerIds];
+
+    const afterAdvance = reducer(tieResultState, advanceFromDuelResult());
+
+    // No elimination on tie.
+    expect(afterAdvance.eliminatedPlayerIds).toEqual(eliminatedBefore);
+    expect(afterAdvance.remainingPlayerIds).toEqual(remainingBefore);
+    // Rematch: phase goes back to duel.
+    expect(afterAdvance.phase).toBe('duel');
+    // rematchCount incremented.
+    expect(afterAdvance.rematchCount).toBe(1);
   });
 
   it('rematch cap constant is exported and is a positive integer', () => {
