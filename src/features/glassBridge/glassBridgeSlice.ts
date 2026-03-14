@@ -134,10 +134,10 @@ const DEFAULT_TIME_LIMIT_MS = 120_000;
  * Default accuracy when AI observes one broken tile and infers the safe side.
  * Overridden by the player's `nerve` skill if a profile is available.
  *
- * 99.9% → AI almost always chooses the logically safe tile.
- * 0.1%  → "slip accident" — AI steps onto the broken tile despite knowing better.
+ * 99%   → AI usually chooses the logically safe tile.
+ * 1%    → "slip accident" — AI steps onto the broken tile despite knowing better.
  */
-const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.999;
+const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.99;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
