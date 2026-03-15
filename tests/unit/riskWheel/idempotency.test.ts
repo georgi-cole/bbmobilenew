@@ -136,8 +136,8 @@ describe('resolveRiskWheelOutcome idempotency', () => {
     const firstHohId = (store.getState().game as MockGameState).hohId;
     expect(firstHohId).not.toBeNull();
 
-    // Manually tamper hohId to a sentinel so we can detect a second dispatch.
-    // We achieve this by spying on dispatch AFTER the first call.
+    // Spy on dispatch AFTER the first call so we can detect any inner
+    // dispatches that would indicate the winner is being applied again.
     const dispatchSpy = vi.spyOn(store, 'dispatch');
 
     // Second call — should be a no-op
