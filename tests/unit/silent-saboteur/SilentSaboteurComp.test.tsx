@@ -126,6 +126,9 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
       fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
     });
 
+    expect(screen.queryByLabelText('Active suspects')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Accuse a saboteur')).toBeInTheDocument();
+
     // Submit valid votes: each voter picks a valid suspect (not self, not victim)
     const voters = ss(store).activeIds;
     function pickValidVote(voter: string): string {

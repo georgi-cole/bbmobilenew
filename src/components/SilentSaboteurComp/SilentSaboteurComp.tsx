@@ -203,7 +203,20 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '?';
 }
 
-function getAvatarGridRows(ids: string[]): string[][] {
+function getAvatarGridRows(ids: string[], dense = false): string[][] {
+  const denseLayouts: Record<number, number[]> = {
+    2: [2],
+    3: [3],
+    4: [4],
+    5: [3, 2],
+    6: [3, 3],
+    7: [4, 3],
+    8: [4, 4],
+    9: [3, 3, 3],
+    10: [4, 3, 3],
+    11: [4, 4, 3],
+    12: [4, 4, 4],
+  };
   const exactLayouts: Record<number, number[]> = {
     2: [2],
     3: [1, 2],
@@ -214,7 +227,7 @@ function getAvatarGridRows(ids: string[]): string[][] {
     12: [4, 4, 4],
   };
 
-  const layout = exactLayouts[ids.length];
+  const layout = (dense ? denseLayouts : exactLayouts)[ids.length];
   if (layout) {
     const rows: string[][] = [];
     let cursor = 0;
@@ -1011,16 +1024,7 @@ export default function SilentSaboteurComp({
               ? '✅ Vote locked. Waiting for others or timer to expire…'
               : 'You are watching the investigation unfold.'}
           </p>
-          <AvatarTileGrid
-            playerIds={activeIds.filter((id) => id !== victimId)}
-            getName={getName}
-            ariaLabel="Active suspects"
-            compact={true}
-            showVoteState={true}
-            votedIds={Object.keys(votes)}
-            selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
-          />
-          {isHumanActive && votes[humanPlayerId!] === undefined && (
+          {isHumanActive && votes[humanPlayerId!] === undefined ? (
             <>
               <AvatarTileGrid
                 playerIds={humanVoteCandidates}
@@ -1028,6 +1032,7 @@ export default function SilentSaboteurComp({
                 ariaLabel="Accuse a saboteur"
                 onSelect={handleVote}
                 selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+                dense={true}
                 variant="vote"
               />
               {/* Victim displayed separately — not accusable */}
@@ -1037,6 +1042,17 @@ export default function SilentSaboteurComp({
                 <span className="ss-victim-row__tag">Cannot be accused</span>
               </div>
             </>
+          ) : (
+            <AvatarTileGrid
+              playerIds={activeIds.filter((id) => id !== victimId)}
+              getName={getName}
+              ariaLabel="Active suspects"
+              compact={true}
+              dense={true}
+              showVoteState={true}
+              votedIds={Object.keys(votes)}
+              selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+            />
           )}
           {/* Social Map toggle */}
           <button
@@ -1513,6 +1529,7 @@ function AvatarTileGrid({
   showNames = true,
   compact = false,
   showVoteState = false,
+  dense = false,
   variant = 'default',
 }: {
   playerIds: string[];
@@ -1526,9 +1543,10 @@ function AvatarTileGrid({
   showNames?: boolean;
   compact?: boolean;
   showVoteState?: boolean;
+  dense?: boolean;
   variant?: 'default' | 'vote' | 'danger';
 }) {
-  const rows = getAvatarGridRows(playerIds);
+  const rows = getAvatarGridRows(playerIds, dense);
   const votedSet = new Set(votedIds);
   const eliminatedSet = new Set(eliminatedIds);
   const dimNonFocused = settledFocusId != null;
