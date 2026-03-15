@@ -1091,8 +1091,8 @@ describe('optional seed', () => {
     expect(typeof s.seed).toBe('number');
   });
 
-  it('generates a non-zero seed when none is supplied', () => {
-    // Run many initialisations without a seed and ensure we see non-zero seeds
+  it('generates varied seeds when none is supplied', () => {
+    // Run many initialisations without a seed and ensure we see variation in seeds
     const seeds = new Set<number>();
     for (let i = 0; i < 20; i++) {
       const store = makeStore();
