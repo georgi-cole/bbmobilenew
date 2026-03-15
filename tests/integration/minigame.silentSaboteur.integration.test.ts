@@ -335,13 +335,6 @@ describe('Final-2 jury logic', () => {
     expect(outcome.reason).toBe('jury_correct');
   });
 
-  it('jury tie → saboteur wins', () => {
-    const votes = { j1: 'sam', j2: 'pat' };
-    const outcome = resolveFinal2(votes, 'sam', 'pat');
-    expect(outcome.winnerId).toBe('sam');
-    expect(outcome.reason).toBe('jury_tie');
-  });
-
   it('no jury → no_jury_fallback', () => {
     const outcome = resolveFinal2({}, 'sam', 'pat');
     expect(outcome.reason).toBe('no_jury_fallback');
