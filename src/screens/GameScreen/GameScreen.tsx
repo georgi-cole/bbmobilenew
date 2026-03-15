@@ -1444,14 +1444,18 @@ export default function GameScreen() {
                   : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
             const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null;
-            // Record per-game personal records for all participants.
-            dispatch(updateGamePRs({
-              gameKey: capturedGameKey,
-              scores: Object.fromEntries(
-                rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
-              ),
-              lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
-            }));
+            // Only record personal records for valid (non-early-exit) completions.
+            // A partial=true exit uses rawValue=0 for the human and would
+            // incorrectly set a "best" 0-score for lowerBetter games.
+            if (!partial) {
+              dispatch(updateGamePRs({
+                gameKey: capturedGameKey,
+                scores: Object.fromEntries(
+                  rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
+                ),
+                lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
+              }));
+            }
 
             // ── Final 3 minigame completion ──────────────────────────────────
             // Apply the winner to the Final 3 part (no ceremony overlay for F3 parts).

@@ -73,7 +73,11 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 1,
-    phase: 'hoh_comp',
+    // Start in a non-competition phase so GameScreen's auto-start useEffect
+    // does not fire on mount.  Each test explicitly dispatches setPhase(...)
+    // to transition to the phase under test, ensuring the captured onDone
+    // closure corresponds to exactly the challenge started by that dispatch.
+    phase: 'week_start',
     seed: 42,
     hohId: null,
     prevHohId: null,
@@ -96,7 +100,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
     evictionSplashId: null,
-    players: makePlayers(4), // p0 = human, p1..p3 = AI
+    players: makePlayers(4), // p0 = human, p1-p3 = non-user
     tvFeed: [],
     isLive: false,
   };

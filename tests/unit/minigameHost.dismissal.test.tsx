@@ -57,10 +57,15 @@ vi.mock('../../src/components/RiskWheelComp/RiskWheelComp', () => ({
   default: () => <div data-testid="rw-comp" />,
 }));
 
-// LegacyMinigameWrapper: stub that renders a div.  Tests that want to simulate
-// the game calling onComplete should grab its callbacks via the parent refs.
+// LegacyMinigameWrapper: captures the onComplete callback so tests can
+// simulate the legacy game reporting its final score.
+let capturedLegacyOnComplete: ((result: { value: number }) => void) | null = null;
+
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
-  default: () => <div data-testid="legacy-game" />,
+  default: ({ onComplete }: { onComplete: (result: { value: number }) => void }) => {
+    capturedLegacyOnComplete = onComplete;
+    return <div data-testid="legacy-game" />;
+  },
 }));
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
@@ -95,7 +100,10 @@ function makeStore() {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('MinigameHost — dismiss / close buttons route through results screen', () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    capturedLegacyOnComplete = null;
+  });
   afterEach(() => vi.useRealTimers());
 
   // ── Rules-screen dismiss ──────────────────────────────────────────────
@@ -259,7 +267,7 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
   // ── Regression: normal countdown → playing flow is unaffected ──────
 
-  it('the playing phase renders the game (no auto-skip on mount)', async () => {
+  it('the playing phase renders the game without auto-skipping', async () => {
     const onDone = vi.fn();
     render(
       <Provider store={makeStore()}>
@@ -276,24 +284,12 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
     await act(async () => { vi.runAllTimers(); });
 
-    // The legacy game div should be mounted — onDone must NOT have been called
+    // The legacy game should be mounted — onDone must NOT have been called on mount
     expect(screen.getByTestId('legacy-game')).toBeTruthy();
     expect(onDone).not.toHaveBeenCalled();
   });
 
-  it('normal game completion (via results screen) fires onDone with partial=false', async () => {
-    // Simulate a legacy game that instantly reports its result by invoking
-    // handleComplete from the outer scope via the legacy wrapper.
-    // Since LegacyMinigameWrapper is mocked, we drive the flow manually:
-    // skipRules + skipCountdown → playing → we manually call setPhase('results')
-    // by exposing the results path through the quit button (wasPartial=false).
-    //
-    // The cleanest way: render MinigameHost, start playing, then access the
-    // host's internal results screen via the "Finished!" heading.
-    // We achieve this by using the LegacyMinigameWrapper's onQuit callback,
-    // but since it is mocked we instead confirm the default state hasn't broken.
-    //
-    // The key assertion is: onDone must NOT be called until the user interacts.
+  it('normal game completion: legacy onComplete → Finished results → Continue calls onDone(value, false)', async () => {
     const onDone = vi.fn();
     render(
       <Provider store={makeStore()}>
@@ -310,9 +306,27 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
     await act(async () => { vi.runAllTimers(); });
 
-    // Still in playing phase — onDone not yet called
+    // The legacy wrapper should have mounted and provided its onComplete callback
+    expect(capturedLegacyOnComplete).not.toBeNull();
     expect(onDone).not.toHaveBeenCalled();
-    // The legacy game is mounted
-    expect(screen.getByTestId('legacy-game')).toBeTruthy();
+
+    // Simulate the legacy game reporting a final score
+    await act(async () => {
+      capturedLegacyOnComplete!({ value: 42 });
+    });
+
+    // The "Finished!" results screen should now appear (not "Exited Early")
+    expect(screen.getByText('🏁 Finished!')).toBeTruthy();
+    // onDone must NOT have fired yet — player must click Continue
+    expect(onDone).not.toHaveBeenCalled();
+
+    // Click Continue to confirm
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    });
+
+    // onDone fired with the reported score and partial=false
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith(42, false);
   });
 });
