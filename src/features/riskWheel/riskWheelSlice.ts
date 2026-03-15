@@ -701,17 +701,25 @@ const riskWheelSlice = createSlice({
         seed?: number;
         humanPlayerId: string | null;
       }) {
+        const nextSeed =
+          payload.seed !== undefined
+            ? payload.seed >>> 0
+            : generateRuntimeSeed(
+              payload.competitionType,
+              payload.humanPlayerId,
+              payload.participantIds,
+            );
+        console.log('RISK_WHEEL_RESET', {
+          seedProvided: payload.seed !== undefined,
+          nextSeed,
+          stateCleared: true,
+          competitionType: payload.competitionType,
+          participantCount: payload.participantIds.length,
+        });
         return {
           payload: {
             ...payload,
-            seed:
-              payload.seed !== undefined
-                ? payload.seed >>> 0
-                : generateRuntimeSeed(
-                  payload.competitionType,
-                  payload.humanPlayerId,
-                  payload.participantIds,
-                ),
+            seed: nextSeed,
           },
         };
       },

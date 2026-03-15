@@ -322,15 +322,23 @@ export default function RiskWheelComp({
   useEffect(() => {
     if (isInitialisedRef.current) return;
     isInitialisedRef.current = true;
+    // Only forward a seed when it is explicitly non-zero (dev/test pages).
+    // 0 and undefined both result in undefined here, so the prepare
+    // callback in initRiskWheel generates a fresh crypto-random seed
+    // for every real-game session — ensuring each spin sequence is unique.
+    const forwardedSeed = seed !== 0 && seed !== undefined ? seed : undefined;
+    console.log('RISK_WHEEL_INIT', {
+      source: standalone ? 'standalone/test' : 'MinigameHost',
+      seedProp: seed,
+      seedForwarded: forwardedSeed,
+      participantIds,
+      prizeType,
+    });
     dispatch(
       initRiskWheel({
         participantIds,
         competitionType: prizeType,
-        // Only forward a seed when it is explicitly non-zero (dev/test pages).
-        // 0 and undefined both result in undefined here, so the prepare
-        // callback in initRiskWheel generates a fresh crypto-random seed
-        // for every real-game session — ensuring each spin sequence is unique.
-        seed: seed !== 0 && seed !== undefined ? seed : undefined,
+        seed: forwardedSeed,
         humanPlayerId: participants?.find((p) => p.isHuman)?.id ?? null,
       }),
     );
@@ -455,6 +463,15 @@ export default function RiskWheelComp({
     // Pre-compute the target sector (same RNG call that performSpin() will use)
     const targetIdx = pickSectorIndex(rw.seed ?? 0, rw.rngCallCount);
     const targetAngle = getTargetRotation(wheelAngleRef.current, targetIdx);
+
+    console.log('RISK_WHEEL_SPIN', {
+      spinNumber: rw.currentSpinCount + 1,
+      chosenIndex: targetIdx,
+      chosenSector: WHEEL_SECTORS[targetIdx],
+      rngCallCount: rw.rngCallCount,
+      seed: rw.seed,
+      source: 'human',
+    });
 
     if (fromDecision) {
       // Move from awaiting_decision → awaiting_spin first (sync)
