@@ -76,14 +76,13 @@ function deriveGeneratedSeed(
   humanPlayerId: string | null,
   participantIds: string[],
 ): number {
-  const baseSeed = deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
-  if (typeof globalThis.crypto?.getRandomValues === 'function') {
-    return (baseSeed ^ globalThis.crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
-  }
-  const perfNow = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000) : 0;
-  return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
+  // Keep this wrapper for semantic clarity; it currently returns the
+  // deterministic seed directly so reducers remain pure/deterministic.
+  return deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
 }
 // Personality is the anchor so AI behavior stays distinct per player.
+const AI_BASE_RISK_WEIGHT = 0.35;
+// Current round score strongly affects appetite for another spin.
 const AI_BASE_RISK_WEIGHT = 0.35;
 // Current round score strongly affects appetite for another spin.
 const AI_SCORE_FACTOR_WEIGHT = 0.25;
