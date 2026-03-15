@@ -1590,9 +1590,7 @@ function AvatarTileGrid({
                 ? 'Plant bomb on'
                 : variant === 'vote'
                   ? 'Accuse'
-                  : variant === 'jury'
-                    ? 'Vote for'
-                    : 'Select';
+                  : 'Select';
 
             return onSelect ? (
               <button
