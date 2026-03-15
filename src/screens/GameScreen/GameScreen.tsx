@@ -1420,7 +1420,7 @@ export default function GameScreen() {
               previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };
           })}
-          onDone={(rawValue, _partial, reactCompletion) => {
+          onDone={(rawValue, partial, reactCompletion) => {
             // Capture challenge fields now — completeChallenge() will clear
             // pendingChallenge from Redux, but this closure still holds it.
             const capturedParticipants = pendingChallenge.participants;
