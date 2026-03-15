@@ -630,17 +630,6 @@ export default function SilentSaboteurComp({
     const eliminationHoldMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ELIMINATION_HOLD_MS;
     const voteCount = revealVoteEntries.length;
 
-    if (voteStepMs === 0) {
-      setRevealedVoteCount(voteCount);
-      setRevealStage('elimination');
-      emitSilentSaboteurEvent(
-        revealInfo.reason === 'saboteur_caught' ? 'saboteur-caught' : 'explosion',
-        { eliminatedId: revealInfo.eliminatedId, victimId: revealInfo.victimId },
-      );
-      dispatch(advanceReveal());
-      return () => timers.forEach(clearTimeout);
-    }
-
     setRevealedVoteCount(0);
     setRevealStage('votes');
 
