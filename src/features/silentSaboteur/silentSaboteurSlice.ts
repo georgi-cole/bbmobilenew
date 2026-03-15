@@ -393,9 +393,25 @@ function _startFinal2(state: SilentSaboteurState) {
 
 /** Resolve the Final-2 phase. */
 function _resolveFinal2Phase(state: SilentSaboteurState) {
-  const saboteurId = state.final2SaboteurId!;
-  const victimId = state.final2VictimId!;
-  const { juryVotes } = state;
+  // Only resolve if we're in the Final-2 jury phase and finalists are known.
+  if (state.phase !== 'final2_jury') {
+    return;
+  }
+  if (!state.final2SaboteurId || !state.final2VictimId) {
+    return;
+  }
+
+  const saboteurId = state.final2SaboteurId;
+  const victimId = state.final2VictimId;
+  const { juryVotes, eliminatedIds } = state;
+
+  // Guard: do not resolve until all jurors have voted.
+  const jurorCount = eliminatedIds.length;
+  const votesReceived = Object.keys(juryVotes).length;
+  if (votesReceived < jurorCount) {
+    return;
+  }
+
   const outcome = resolveFinal2(juryVotes, saboteurId, victimId);
   state.winnerId = outcome.winnerId;
   state.phase = 'winner';
@@ -412,7 +428,6 @@ export const {
   advanceReveal,
   startNextRound,
   submitJuryVote,
-  submitFinal2TieBreak,
   advanceWinner,
   markSilentSaboteurOutcomeResolved,
   resetSilentSaboteur,
