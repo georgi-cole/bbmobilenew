@@ -352,7 +352,7 @@ export default function RiskWheelComp({
     }
 
     // Pre-compute the target sector (same RNG call that performSpin() will use)
-    const targetIdx = pickSectorIndex(rw.seed, rw.rngCallCount);
+    const targetIdx = pickSectorIndex(rw.seed ?? 0, rw.rngCallCount);
     const targetAngle = getTargetRotation(wheelAngleRef.current, targetIdx);
 
     if (fromDecision) {

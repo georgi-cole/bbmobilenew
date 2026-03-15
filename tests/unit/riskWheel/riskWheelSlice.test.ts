@@ -1014,3 +1014,122 @@ describe('Spin Again direct spin regression', () => {
     expect(['awaiting_decision', 'turn_complete']).toContain(getState(store).phase);
   });
 });
+
+// ─── finalScores snapshot ─────────────────────────────────────────────────────
+
+describe('finalScores', () => {
+  function runToComplete(store: TestStore) {
+    let safety = 0;
+    while (getState(store).phase !== 'complete' && safety++ < 2000) {
+      const s = getState(store);
+      if (s.phase === 'awaiting_spin') store.dispatch(performSpin());
+      else if (s.phase === 'six_six_six') store.dispatch(advanceFrom666());
+      else if (s.phase === 'awaiting_decision') store.dispatch(playerStop());
+      else if (s.phase === 'turn_complete') store.dispatch(advanceFromTurnComplete());
+      else if (s.phase === 'round_summary') store.dispatch(advanceFromRoundSummary());
+      else break;
+    }
+  }
+
+  it('is undefined before game completes', () => {
+    const store = makeStore();
+    init(store, ['a', 'b'], 42);
+    expect(getState(store).finalScores).toBeUndefined();
+  });
+
+  it('is set to a Record when game reaches complete', () => {
+    const store = makeStore();
+    init(store, ['a', 'b'], 42);
+    runToComplete(store);
+    const s = getState(store);
+    expect(s.phase).toBe('complete');
+    expect(s.finalScores).toBeDefined();
+    expect(typeof s.finalScores).toBe('object');
+  });
+
+  it('contains scores for all players who competed in the final round', () => {
+    const store = makeStore();
+    // 2 players — both remain to round 3
+    init(store, ['a', 'b'], 42);
+    runToComplete(store);
+    const s = getState(store);
+    expect(s.phase).toBe('complete');
+    // finalScores should include the winner's id
+    expect(s.finalScores).toBeDefined();
+    expect(s.winnerId).toBeTruthy();
+    expect(s.finalScores![s.winnerId!]).toBeDefined();
+  });
+
+  it('is reset to undefined when initRiskWheel is called again', () => {
+    const store = makeStore();
+    init(store, ['a', 'b'], 42);
+    runToComplete(store);
+    expect(getState(store).finalScores).toBeDefined();
+
+    // Re-initialise with a fresh game
+    init(store, ['x', 'y'], 99);
+    expect(getState(store).finalScores).toBeUndefined();
+  });
+});
+
+// ─── Optional seed (crypto/random fallback) ───────────────────────────────────
+
+describe('optional seed', () => {
+  it('initialises successfully when seed is omitted', () => {
+    const store = makeStore();
+    store.dispatch(
+      initRiskWheel({
+        participantIds: ['a', 'b'],
+        competitionType: 'HOH',
+        humanPlayerId: null,
+        // seed deliberately omitted
+      }),
+    );
+    const s = getState(store);
+    expect(s.phase).toBe('awaiting_spin');
+    expect(s.seed).toBeDefined();
+    expect(typeof s.seed).toBe('number');
+  });
+
+  it('generates varied seeds when none is supplied', () => {
+    // Run many initialisations without a seed and ensure we see variation in seeds
+    const seeds = new Set<number>();
+    for (let i = 0; i < 20; i++) {
+      const store = makeStore();
+      store.dispatch(
+        initRiskWheel({
+          participantIds: ['a', 'b'],
+          competitionType: 'HOH',
+          humanPlayerId: null,
+        }),
+      );
+      const s = getState(store);
+      seeds.add(s.seed!);
+    }
+    // Very likely (p ≈ 1 − (1/2^32)^20) to observe more than one unique seed
+    expect(seeds.size).toBeGreaterThan(1);
+  });
+
+  it('game with omitted seed reaches complete without errors', () => {
+    const store = makeStore();
+    store.dispatch(
+      initRiskWheel({
+        participantIds: ['a', 'b'],
+        competitionType: 'HOH',
+        humanPlayerId: null,
+      }),
+    );
+    let safety = 0;
+    while (getState(store).phase !== 'complete' && safety++ < 2000) {
+      const s = getState(store);
+      if (s.phase === 'awaiting_spin') store.dispatch(performSpin());
+      else if (s.phase === 'six_six_six') store.dispatch(advanceFrom666());
+      else if (s.phase === 'awaiting_decision') store.dispatch(playerStop());
+      else if (s.phase === 'turn_complete') store.dispatch(advanceFromTurnComplete());
+      else if (s.phase === 'round_summary') store.dispatch(advanceFromRoundSummary());
+      else break;
+    }
+    expect(getState(store).phase).toBe('complete');
+    expect(getState(store).winnerId).not.toBeNull();
+  });
+});
