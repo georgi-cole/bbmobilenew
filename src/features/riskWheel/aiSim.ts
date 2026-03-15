@@ -33,7 +33,7 @@ export interface AiSimResult {
  * Simulate a single round of Risk Wheel turns for all provided AI players.
  *
  * @param players    List of AI participants (id + optional personality).
- * @param seed       Optional deterministic seed. When omitted a fresh
+ * @param seed       Optional deterministic seed. When omitted or set to 0, a fresh
  *                   crypto-random seed is used so results vary each call.
  * @returns          Array of {id, score} for each simulated player.
  */
@@ -41,6 +41,7 @@ export function simulateAiTurns(
   players: AiSimPlayer[],
   seed?: number,
 ): AiSimResult[] {
+  // Treat seed === 0 as a sentinel meaning "use a fresh crypto-random seed".
   const effectiveSeed = seed !== undefined && seed !== 0 ? seed >>> 0 : cryptoSeed();
   // Use a separate RNG stream from the spin RNG to avoid entanglement.
   const decisionRng = mulberry32((effectiveSeed ^ 0xdeadbeef) >>> 0);
