@@ -35,13 +35,14 @@ import {
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
-import { useWheelOfLuck } from '../../hooks/useWheelOfLuck';
+import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio';
 import './RiskWheelComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SPIN_DURATION_MS = 2200;
 const AI_RESOLVE_DELAY_MS = 600;
+const SECTOR_HIGHLIGHT_DURATION_MS = 850;
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
@@ -84,9 +85,32 @@ function getName(id: string, participants: MinigameParticipant[] | undefined): s
   return participants?.find((p) => p.id === id)?.name ?? id;
 }
 
+function formatNumericValue(value: number): string {
+  const abs = Math.abs(value);
+  if (Number.isInteger(value)) return abs.toString();
+  // Keep comma decimal notation for the Risk Wheel UI per product request (e.g. 3,14).
+  return abs.toFixed(2).replace('.', ',');
+}
+
 /** Format a numeric score with a leading '+' for non-negative values. */
 function formatScore(score: number): string {
-  return `${score >= 0 ? '+' : ''}${score}`;
+  return `${score >= 0 ? '+' : '-'}${formatNumericValue(score)}`;
+}
+
+function classifyRewardSound(
+  sector: (typeof WHEEL_SECTORS)[number],
+  last666Effect: 'add' | 'subtract' | null,
+): 'good' | 'bad' | null {
+  if (sector.type === 'bankrupt') return 'bad';
+  if (sector.type === 'devil') {
+    if (last666Effect === 'add') return 'good';
+    if (last666Effect === 'subtract') return 'bad';
+    return null;
+  }
+  if (sector.type !== 'points' || sector.value == null) return null;
+  if (sector.value > 0) return 'good';
+  if (sector.value < 0) return 'bad';
+  return null;
 }
 
 /**
@@ -148,10 +172,16 @@ function sectorPath(i: number, n: number, r: number): string {
 interface WheelSvgProps {
   rotation: number;
   transitioning: boolean;
+  highlightedSectorIndex: number | null;
   onTransitionEnd?: () => void;
 }
 
-function WheelSvg({ rotation, transitioning, onTransitionEnd }: WheelSvgProps) {
+function WheelSvg({
+  rotation,
+  transitioning,
+  highlightedSectorIndex,
+  onTransitionEnd,
+}: WheelSvgProps) {
   const R = 95;
   const LABEL_R = 72;
 
@@ -160,7 +190,7 @@ function WheelSvg({ rotation, transitioning, onTransitionEnd }: WheelSvgProps) {
       {/* Pointer indicator */}
       <div className="rw-wheel-pointer" aria-hidden="true">▼</div>
       <div
-        className="rw-wheel-svg-wrapper"
+        className={`rw-wheel-svg-wrapper${transitioning ? ' rw-wheel-svg-wrapper--spinning' : ''}`}
         style={{
           transform: `rotate(${rotation}deg)`,
           transition: transitioning
@@ -181,14 +211,15 @@ function WheelSvg({ rotation, transitioning, onTransitionEnd }: WheelSvgProps) {
             const lx = LABEL_R * Math.cos(midAngle);
             const ly = LABEL_R * Math.sin(midAngle);
             const textAngleDeg = (midAngle * 180) / Math.PI + 90;
-            return (
-              <g key={i}>
-                <path
-                  d={sectorPath(i, N_SECTORS, R)}
-                  fill={SECTOR_COLORS[i] ?? '#374151'}
-                  stroke="#0a0a16"
-                  strokeWidth="1.2"
-                />
+              return (
+                <g key={i}>
+                  <path
+                    className={`rw-wheel-sector${highlightedSectorIndex === i ? ' rw-wheel-sector--highlight' : ''}`}
+                    d={sectorPath(i, N_SECTORS, R)}
+                    fill={SECTOR_COLORS[i] ?? '#374151'}
+                    stroke="#0a0a16"
+                    strokeWidth="1.2"
+                  />
                 <text
                   x={lx.toFixed(3)}
                   y={ly.toFixed(3)}
@@ -245,7 +276,14 @@ export default function RiskWheelComp({
   const rw = useSelector((s: RootState) => s.riskWheel);
 
   // ── Audio ────────────────────────────────────────────────────────────────
-  const { startWheelSound, stopWheelSound } = useWheelOfLuck();
+  const {
+    startWheelSound,
+    stopWheelSound,
+    playGoodRewardSound,
+    playBadRewardSound,
+    playScoreboardRevealSound,
+    playWinnerRevealSound,
+  } = useRiskWheelAudio();
   // Stable ref so the unmount cleanup can call stopWheelSound without it
   // needing to be in the effect's dependency array.
   const stopWheelSoundRef = useRef(stopWheelSound);
@@ -254,7 +292,10 @@ export default function RiskWheelComp({
   // Wheel rotation state
   const [wheelAngle, setWheelAngle] = useState(0);
   const [wheelTransitioning, setWheelTransitioning] = useState(false);
+  const [highlightedSectorIndex, setHighlightedSectorIndex] = useState<number | null>(null);
   const wheelAngleRef = useRef(0);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
 
   const [spinning, setSpinning] = useState(false);
   const isInitialisedRef = useRef(false);
@@ -292,6 +333,39 @@ export default function RiskWheelComp({
   // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rw?.outcomeResolved]);
+
+  const prevPhaseRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rw) return;
+    const prevPhase = prevPhaseRef.current;
+    if (prevPhase !== rw.phase) {
+      if (rw.phase === 'round_summary') playScoreboardRevealSound();
+      if (rw.phase === 'complete') playWinnerRevealSound();
+      prevPhaseRef.current = rw.phase;
+    }
+  }, [rw, playScoreboardRevealSound, playWinnerRevealSound]);
+
+  const lastResolvedSpinRef = useRef(0);
+  useEffect(() => {
+    if (!rw || rw.lastSectorIndex === null || rw.rngCallCount === 0) return;
+    if (lastResolvedSpinRef.current === rw.rngCallCount) return;
+    lastResolvedSpinRef.current = rw.rngCallCount;
+
+    const landedSector = WHEEL_SECTORS[rw.lastSectorIndex];
+    const rewardSound = classifyRewardSound(landedSector, rw.last666Effect);
+    if (rewardSound === 'good') playGoodRewardSound();
+    if (rewardSound === 'bad') playBadRewardSound();
+
+    if (highlightTimeoutRef.current !== null) {
+      clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
+    setHighlightedSectorIndex(rw.lastSectorIndex);
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      if (!isMountedRef.current) return;
+      setHighlightedSectorIndex(null);
+    }, animDelay(SECTOR_HIGHLIGHT_DURATION_MS));
+  }, [rw, playBadRewardSound, playGoodRewardSound]);
 
   const currentId = rw?.activePlayerIds[rw.currentPlayerIndex] ?? null;
   const humanId = rw?.humanPlayerId ?? null;
@@ -334,9 +408,14 @@ export default function RiskWheelComp({
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       if (spinTimeoutRef.current !== null) {
         clearTimeout(spinTimeoutRef.current);
         spinTimeoutRef.current = null;
+      }
+      if (highlightTimeoutRef.current !== null) {
+        clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
       }
       // Stop any looping spin audio if the component unmounts mid-spin.
       stopWheelSoundRef.current();
@@ -361,6 +440,11 @@ export default function RiskWheelComp({
     }
 
     setSpinning(true);
+    if (highlightTimeoutRef.current !== null) {
+      clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
+    setHighlightedSectorIndex(null);
     // Start the CSS transition
     setWheelTransitioning(true);
     setWheelAngle(targetAngle);
@@ -541,6 +625,7 @@ export default function RiskWheelComp({
         <WheelSvg
           rotation={wheelAngle}
           transitioning={wheelTransitioning}
+          highlightedSectorIndex={highlightedSectorIndex}
         />
 
         {/* Result chip */}
@@ -553,7 +638,7 @@ export default function RiskWheelComp({
             {sector.type === 'skip' && '⏭ SKIP — turn ended'}
             {sector.type === 'zero' && '○ Zero — no change'}
             {sector.type === 'points' && (
-              <>{(sector.value ?? 0) >= 0 ? '+' : ''}{sector.value} pts</>
+              <>{formatScore(sector.value ?? 0)} pts</>
             )}
             {sector.type === 'devil' && (
               <>

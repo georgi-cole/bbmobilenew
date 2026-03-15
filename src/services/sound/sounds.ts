@@ -76,7 +76,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   /**
    * Wheel-spin loop for the Risk Wheel minigame.
    * Asset not yet present — drop /public/assets/sounds/minigame_wheelofluck.mp3
-   * to activate. SoundManager will no-op silently until the file is added.
+   * to activate. Until the file is added, SoundManager will still attempt to
+   * load/play this asset (resulting in missing-file errors such as 404s).
    */
   'minigame:wheelofluck': {
     key: 'minigame:wheelofluck',
@@ -85,6 +86,68 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 1.0,
     loop: true,
+  },
+  /**
+   * Risk Wheel ambient loop.
+   * Asset not yet present — drop /public/assets/sounds/music_risk_wheel_loop.mp3
+   * to activate. Until the file is added, SoundManager will still attempt to
+   * load/play this asset (resulting in missing-file errors such as 404s).
+   */
+  'music:risk_wheel_loop': {
+    key: 'music:risk_wheel_loop',
+    category: 'music',
+    src: '/assets/sounds/music_risk_wheel_loop.mp3',
+    preload: false,
+    volume: 0.4,
+    loop: true,
+  },
+  /**
+   * Risk Wheel positive reward stinger.
+   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_good.mp3
+   * to activate.
+   */
+  'minigame:risk_wheel_good': {
+    key: 'minigame:risk_wheel_good',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_risk_wheel_good.mp3',
+    preload: false,
+    volume: 0.95,
+  },
+  /**
+   * Risk Wheel negative reward stinger.
+   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_bad.mp3
+   * to activate.
+   */
+  'minigame:risk_wheel_bad': {
+    key: 'minigame:risk_wheel_bad',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_risk_wheel_bad.mp3',
+    preload: false,
+    volume: 0.95,
+  },
+  /**
+   * Risk Wheel scoreboard reveal stinger.
+   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_scoreboard.mp3
+   * to activate.
+   */
+  'minigame:risk_wheel_scoreboard': {
+    key: 'minigame:risk_wheel_scoreboard',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_risk_wheel_scoreboard.mp3',
+    preload: false,
+    volume: 0.9,
+  },
+  /**
+   * Risk Wheel winner reveal stinger.
+   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_winner.mp3
+   * to activate.
+   */
+  'minigame:risk_wheel_winner': {
+    key: 'minigame:risk_wheel_winner',
+    category: 'minigame',
+    src: '/assets/sounds/minigame_risk_wheel_winner.mp3',
+    preload: false,
+    volume: 1.0,
   },
   'music:menu_loop': {
     key: 'music:menu_loop',

@@ -186,8 +186,8 @@ export const WHEEL_SECTORS: WheelSector[] = [
   // Neutral
   { type: 'zero',  label: '0' },
   { type: 'skip',  label: '⏭' },
-  // π is a deliberate joke: label shows π but awards 3 pts (funny low value).
-  { type: 'points', value: 3, label: 'π' },
+  // π awards 3.14 points.
+  { type: 'points', value: 3.14, label: 'π' },
   // Negative sectors: colour (red/dark-red) conveys negativity; no minus needed.
   { type: 'points', value: -100, label: '100' },
   { type: 'points', value: -200, label: '200' },
