@@ -25,7 +25,7 @@
 
 .ss-wrap--centered {
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────── */
