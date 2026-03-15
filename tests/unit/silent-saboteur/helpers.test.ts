@@ -9,7 +9,7 @@
  *   - resolveRound: delegates to abstention-aware resolution for 3+ players
  *   - resolveFinal2: jury correct (majority for saboteur)
  *   - resolveFinal2: jury incorrect (majority for victim)
- *   - resolveFinal2: jury tie → victim's tiebreak vote decides
+ *   - resolveFinal2: jury tie → saboteur wins
  *   - resolveFinal2: no jury → no_jury_fallback outcome
  *   - noJuryFallbackWinner: deterministic, returns one of the two finalists
  *   - buildAiJuryVotes: all jurors vote, no self-votes
@@ -268,17 +268,11 @@ describe('resolveFinal2', () => {
     expect(outcome.reason).toBe('jury_incorrect');
   });
 
-  it('tied jury + tiebreak accuses saboteur → victim wins', () => {
+  it('tied jury means the saboteur wins', () => {
     const votes = { j1: 'sam', j2: 'pat' }; // 1-1 tie
-    const outcome = resolveFinal2(votes, 'sam', 'pat', 'sam');
-    expect(outcome.winnerId).toBe('pat');
-    expect(outcome.reason).toBe('jury_tie');
-  });
-
-  it('tied jury + tiebreak accuses victim → saboteur wins', () => {
-    const votes = { j1: 'sam', j2: 'pat' }; // 1-1 tie
-    const outcome = resolveFinal2(votes, 'sam', 'pat', 'pat');
+    const outcome = resolveFinal2(votes, 'sam', 'pat');
     expect(outcome.winnerId).toBe('sam');
+    expect(outcome.eliminatedId).toBe('pat');
     expect(outcome.reason).toBe('jury_tie');
   });
 

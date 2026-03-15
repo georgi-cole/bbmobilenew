@@ -23,7 +23,7 @@
  *   - Strict majority for saboteur → saboteur eliminated.
  *   - Otherwise → victim eliminated.
  *   - Final-3: 1-1-1 tie triggers Victim Override Rule.
- *   - Final-2: eliminated players (jury) vote; no jury → seeded fallback.
+ *   - Final-2: eliminated players (jury) vote; ties make the saboteur win; no jury → seeded fallback.
  *   - Outcome dispatch is idempotent via outcomeResolved guard.
  */
 
@@ -34,7 +34,6 @@ import {
   resolveFinal2,
   noJuryFallbackWinner,
   buildAiJuryVotes,
-  pickVictimTieBreakVote,
 } from './helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -90,7 +89,7 @@ export interface SilentSaboteurState {
   final2VictimId: string | null;
   /** juryVotes[jurorId] = finalist they accuse */
   juryVotes: Record<string, string>;
-  /** Victim's tiebreak vote (set if jury is tied) */
+  /** Legacy field retained for state compatibility; Final-2 ties no longer use a tiebreak. */
   final2TieBreakVote: string | null;
 
   /** Reveal metadata for the UI. */
@@ -394,30 +393,26 @@ function _startFinal2(state: SilentSaboteurState) {
 
 /** Resolve the Final-2 phase. */
 function _resolveFinal2Phase(state: SilentSaboteurState) {
-  const saboteurId = state.final2SaboteurId!;
-  const victimId = state.final2VictimId!;
-  const { juryVotes, final2TieBreakVote } = state;
-
-  // Determine victim's tiebreak vote if tie and victim is human (not yet submitted)
-  // For AI victim we compute deterministically
-  let tieBreakVote = final2TieBreakVote;
-  if (tieBreakVote == null) {
-    const allVotes = Object.values(juryVotes);
-    const total = allVotes.length;
-    const saboteurVotes = allVotes.filter((v) => v === saboteurId).length;
-    const isTied = total > 0 && saboteurVotes * 2 === total;
-    if (isTied) {
-      const victimIsHuman = victimId === state.humanPlayerId;
-      if (!victimIsHuman) {
-        // AI victim: deterministic tiebreak
-        tieBreakVote = pickVictimTieBreakVote(state.seed, victimId, saboteurId, victimId);
-      }
-      // Human victim: wait for submitFinal2TieBreak — bail out early
-      if (victimIsHuman && final2TieBreakVote == null) return;
-    }
+  // Only resolve if we're in the Final-2 jury phase and finalists are known.
+  if (state.phase !== 'final2_jury') {
+    return;
+  }
+  if (!state.final2SaboteurId || !state.final2VictimId) {
+    return;
   }
 
-  const outcome = resolveFinal2(juryVotes, saboteurId, victimId, tieBreakVote);
+  const saboteurId = state.final2SaboteurId;
+  const victimId = state.final2VictimId;
+  const { juryVotes, eliminatedIds } = state;
+
+  // Guard: do not resolve until all jurors have voted.
+  const jurorCount = eliminatedIds.length;
+  const votesReceived = Object.keys(juryVotes).length;
+  if (votesReceived < jurorCount) {
+    return;
+  }
+
+  const outcome = resolveFinal2(juryVotes, saboteurId, victimId);
   state.winnerId = outcome.winnerId;
   state.phase = 'winner';
 }
@@ -433,7 +428,6 @@ export const {
   advanceReveal,
   startNextRound,
   submitJuryVote,
-  submitFinal2TieBreak,
   advanceWinner,
   markSilentSaboteurOutcomeResolved,
   resetSilentSaboteur,

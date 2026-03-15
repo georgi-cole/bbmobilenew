@@ -64,7 +64,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     await act(async () => {});
 
     await act(async () => {
-      vi.advanceTimersByTime(7500);
+      vi.advanceTimersByTime(7000);
     });
 
     const state = ss(store);
@@ -79,7 +79,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     });
 
     expect(screen.getByTestId('ss-bomb-reveal')).toBeInTheDocument();
-    expect(screen.getByText('💣 A bomb has been planted!')).toBeInTheDocument();
+    expect(screen.getByText('A bomb has been planted.')).toBeInTheDocument();
     expect(screen.getByTestId('ss-bomb-reveal-continue-btn')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /accuse/i })).not.toBeInTheDocument();
     const portrait = screen.getByTestId(`ss-portrait-${victimId}`);
@@ -126,6 +126,9 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
       fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
     });
 
+    expect(screen.queryByLabelText('Active suspects')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Accuse a saboteur')).toBeInTheDocument();
+
     // Submit valid votes: each voter picks a valid suspect (not self, not victim)
     const voters = ss(store).activeIds;
     function pickValidVote(voter: string): string {
@@ -149,7 +152,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
       vi.advanceTimersByTime(1200);
     });
 
-    expect(screen.getByText(/Vote 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Vote\s+\d+/)).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(8000);

@@ -8,7 +8,6 @@
  *   - select_victim  (if human is saboteur): choose a target
  *   - voting         (if human is active): vote for suspected saboteur
  *   - final2_jury    (if human is a juror): vote for who planted the bomb
- *   - final2_jury    (if human is victim AND jury tied): cast tiebreak vote
  *
  * All AI actions are dispatched automatically via useEffect timers.
  * Timer expiry calls endVotingPhase (abstentions allowed — no auto-random vote).
@@ -27,7 +26,6 @@ import {
   advanceReveal,
   startNextRound,
   submitJuryVote,
-  submitFinal2TieBreak,
   advanceWinner,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import { resolveSilentSaboteurOutcome } from '../../features/silentSaboteur/thunks';
@@ -44,19 +42,23 @@ import './SilentSaboteurComp.css';
 
 const SILENT_SABOTEUR_TIMINGS = {
   /** Intro hold before advancing. */
-  INTRO_MS: 7500,
-  /** AI saboteur action delay (natural feel). */
-  AI_ACTION_MS: 1200,
+  INTRO_MS: 7000,
+  /** AI saboteur cinematic screen length. */
+  SABOTEUR_CHOOSING_MS: 3500,
   /** Human saboteur timeout fallback. */
   SELECT_VICTIM_TIMEOUT_MS: 10_000,
+  /** AI voting stagger window minimum. */
+  AI_VOTE_STAGGER_MIN_MS: 3200,
+  /** AI voting stagger window maximum. */
+  AI_VOTE_STAGGER_MAX_MS: 5000,
   /** Voting phase shared timer — 120 seconds. */
   VOTING_TIMER_MS: 120_000,
   /** Jury vote shared timer — 120 seconds. */
   JURY_TIMER_MS: 120_000,
   /** Delay between sequential vote reveals. */
-  VOTE_REVEAL_STEP_MS: 1100,
+  VOTE_REVEAL_STEP_MS: 520,
   /** Pause after all votes revealed before showing elimination card. */
-  REVEAL_RESULT_PAUSE_MS: 4500,
+  REVEAL_RESULT_PAUSE_MS: 1500,
   /** Elimination card hold time. */
   ELIMINATION_HOLD_MS: 2800,
   /** Round transition hold. */
@@ -64,6 +66,9 @@ const SILENT_SABOTEUR_TIMINGS = {
   /** Countdown ticker interval. */
   TIMER_TICK_MS: 250,
 } as const;
+
+const SILENT_SABOTEUR_VOTE_JITTER_MS = 90;
+const SILENT_SABOTEUR_VOTE_JITTER_SPAN = (SILENT_SABOTEUR_VOTE_JITTER_MS * 2) + 1;
 
 type RevealStage = 'votes' | 'accusationResult' | 'elimination';
 
@@ -196,6 +201,85 @@ function emitSilentSaboteurEvent(type: string, detail?: Record<string, unknown>)
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '?';
+}
+
+function getAvatarGridRows(ids: string[], dense = false): string[][] {
+  const denseLayouts: Record<number, number[]> = {
+    2: [2],
+    3: [1, 2],
+    4: [2, 2],
+    5: [3, 2],
+    6: [3, 3],
+    7: [4, 3],
+    8: [4, 4],
+    9: [3, 3, 3],
+    10: [4, 3, 3],
+    11: [4, 4, 3],
+    12: [4, 4, 4],
+  };
+  const exactLayouts: Record<number, number[]> = {
+    2: [2],
+    3: [1, 2],
+    4: [2, 2],
+    6: [3, 3],
+    8: [4, 4],
+    9: [3, 3, 3],
+    12: [4, 4, 4],
+  };
+
+  const layout = (dense ? denseLayouts : exactLayouts)[ids.length];
+  if (layout) {
+    const rows: string[][] = [];
+    let cursor = 0;
+    for (const size of layout) {
+      rows.push(ids.slice(cursor, cursor + size));
+      cursor += size;
+    }
+    return rows;
+  }
+
+  if (ids.length <= 1) return [ids];
+
+  const maxColumns = ids.length >= 10 ? 4 : ids.length >= 7 ? 4 : 3;
+  const rowCount = Math.ceil(ids.length / maxColumns);
+  const baseSize = Math.floor(ids.length / rowCount);
+  const remainder = ids.length % rowCount;
+  const sizes = Array.from(
+    { length: rowCount },
+    (_, idx) => baseSize + (idx >= rowCount - remainder ? 1 : 0),
+  );
+
+  const rows: string[][] = [];
+  let cursor = 0;
+  for (const size of sizes) {
+    rows.push(ids.slice(cursor, cursor + size));
+    cursor += size;
+  }
+  return rows;
+}
+
+function buildStaggeredDelays(ids: string[], seed: number) {
+  const orderedIds = [...ids].sort((a, b) => {
+    const aKey = (fnv1a32(a) ^ seed) >>> 0;
+    const bKey = (fnv1a32(b) ^ seed) >>> 0;
+    return aKey - bKey;
+  });
+  const durationRange =
+    SILENT_SABOTEUR_TIMINGS.AI_VOTE_STAGGER_MAX_MS - SILENT_SABOTEUR_TIMINGS.AI_VOTE_STAGGER_MIN_MS;
+  const totalDuration =
+    SILENT_SABOTEUR_TIMINGS.AI_VOTE_STAGGER_MIN_MS + (((seed >>> 0) % (durationRange + 1)));
+  const firstDelay = Math.min(900, Math.max(450, Math.floor(totalDuration * 0.25)));
+  const lastDelay = Math.max(firstDelay, totalDuration);
+
+  return orderedIds.map((id, idx) => {
+    const ratio = orderedIds.length <= 1 ? 1 : idx / (orderedIds.length - 1);
+    const baseDelay = Math.round(firstDelay + ((lastDelay - firstDelay) * ratio));
+    const jitterSeed =
+      (((fnv1a32(id) ^ seed) >>> 0) % SILENT_SABOTEUR_VOTE_JITTER_SPAN)
+      - SILENT_SABOTEUR_VOTE_JITTER_MS;
+    const delay = Math.max(350, Math.min(totalDuration, baseDelay + jitterSeed));
+    return { id, delay };
+  });
 }
 
 /**
@@ -383,17 +467,26 @@ export default function SilentSaboteurComp({
    * ID of the finalist the jury majority accused of planting the bomb.
    * Computed from juryVotes once voting is complete (phase ≥ winner).
    */
-  const juryAccusedId = useMemo((): string | null => {
+  const juryAccusedId = useMemo(() => {
     const vals = Object.values(juryVotes);
-    if (vals.length === 0) return null;
+    const total = vals.length;
+    if (total === 0) {
+      return null as string | null;
+    }
     const counts: Record<string, number> = {};
     for (const v of vals) counts[v] = (counts[v] ?? 0) + 1;
-    let maxId: string | null = null;
     let maxCount = 0;
-    for (const [id, count] of Object.entries(counts)) {
-      if (count > maxCount) { maxCount = count; maxId = id; }
+    for (const count of Object.values(counts)) {
+      if (count > maxCount) {
+        maxCount = count;
+      }
     }
-    return maxId;
+    const leaderIds = Object.entries(counts)
+      .filter(([, count]) => count === maxCount)
+      .map(([id]) => id);
+    const majorityId =
+      leaderIds.length === 1 && maxCount > total / 2 ? leaderIds[0] : null;
+    return majorityId;
   }, [juryVotes]);
 
 
@@ -456,11 +549,11 @@ export default function SilentSaboteurComp({
     if (phase !== 'select_victim' || !saboteurId) return;
 
     if (!isHumanSaboteur) {
-      // AI saboteur: auto-pick after brief delay
+      // AI saboteur: hold on the anonymous cinematic screen before acting.
       const t = setTimeout(() => {
         const victim = pickVictimForAi(seed, round, saboteurId, activeIds);
         dispatch(selectVictim({ victimId: victim }));
-      }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS);
+      }, SILENT_SABOTEUR_TIMINGS.SABOTEUR_CHOOSING_MS);
       return () => clearTimeout(t);
     }
 
@@ -485,14 +578,14 @@ export default function SilentSaboteurComp({
     const aiVoters = activeIds.filter((id) => id !== humanPlayerId);
     const delays: ReturnType<typeof setTimeout>[] = [];
 
-    for (const voterId of aiVoters) {
+    for (const { id: voterId, delay } of buildStaggeredDelays(aiVoters, seed ^ round ^ fnv1a32(victimId ?? ''))) {
       if (votes[voterId] !== undefined) continue;
       const t = setTimeout(() => {
         // AI vote: valid suspects = activePlayers - self - victim
         const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId);
         if (accused == null) return;
         dispatch(submitVote({ voterId, accusedId: accused }));
-      }, SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS + Math.floor(voterId.length * 37) % 800);
+      }, delay);
       delays.push(t);
     }
 
@@ -640,17 +733,14 @@ export default function SilentSaboteurComp({
     );
     if (aiJurors.length === 0) return;
 
-    const finalists = [final2SaboteurId, final2VictimId];
     const timers: ReturnType<typeof setTimeout>[] = [];
-    for (const jurorId of aiJurors) {
-      const delay = animationsDisabled
-        ? 0
-        : SILENT_SABOTEUR_TIMINGS.AI_ACTION_MS + (Math.floor(jurorId.length * 37) % 800);
+    const finalists = [final2SaboteurId, final2VictimId];
+    for (const { id: jurorId, delay } of buildStaggeredDelays(aiJurors, seed ^ 9999 ^ round)) {
       const t = setTimeout(() => {
         const accused = pickVoteForAi(seed, 9999, jurorId, finalists, null);
         const safeAccused = finalists.includes(accused) ? accused : finalists[0];
         dispatch(submitJuryVote({ jurorId, accusedId: safeAccused }));
-      }, delay);
+      }, animationsDisabled ? 0 : delay);
       timers.push(t);
     }
     return () => timers.forEach(clearTimeout);
@@ -732,14 +822,6 @@ export default function SilentSaboteurComp({
       dispatch(submitJuryVote({ jurorId: humanPlayerId, accusedId }));
     },
     [dispatch, humanPlayerId, juryVotes],
-  );
-
-  const handleTieBreak = useCallback(
-    (accusedId: string) => {
-      if (!humanPlayerId || humanPlayerId !== final2VictimId) return;
-      dispatch(submitFinal2TieBreak({ victimId: humanPlayerId, accusedId }));
-    },
-    [dispatch, humanPlayerId, final2VictimId],
   );
 
   const handleWinnerContinue = useCallback(() => {
@@ -826,86 +908,95 @@ export default function SilentSaboteurComp({
     <div className="ss-wrap" aria-live="polite">
 
       {phase === 'intro' && (
-        <div className="ss-intro ss-cinematic">
-          <div className="ss-bomb-icon" aria-hidden="true">💣</div>
-          <h1 className="ss-title">Silent Saboteur</h1>
-          <p className="ss-subtitle">Someone among you has planted a bomb…</p>
-          <p className="ss-tagline">Read the room. Protect the victim. Expose the saboteur.</p>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-intro-card ss-cinematic">
+            <div className="ss-bomb-icon" aria-hidden="true">💣</div>
+            <h1 className="ss-title">Silent Saboteur</h1>
+            <p className="ss-subtitle">Someone among you has planted a bomb…</p>
+            <p className="ss-tagline">Read the room. Protect the victim. Expose the saboteur.</p>
+            <AvatarTileGrid
+              playerIds={activeIds}
+              getName={getName}
+              ariaLabel="Houseguests"
+              compact={true}
+              showNames={false}
+            />
+          </div>
         </div>
       )}
 
       {(phase === 'select_saboteur' || phase === 'select_victim') && (
-        <div className="ss-phase-card ss-cinematic">
+        <div className="ss-stage ss-stage--centered">
           {phase === 'select_saboteur' && (
-            <>
+            <div className="ss-phase-card ss-cinematic">
               <p className="ss-phase-eyebrow">Hidden role assignment in progress</p>
               <p className="ss-phase-label">🔍 Selecting tonight&apos;s saboteur…</p>
-            </>
+            </div>
           )}
 
           {phase === 'select_victim' && (
-            <>
-              <p className="ss-phase-eyebrow">Silent decision</p>
-              <p className="ss-phase-label">
-                {isHumanSaboteur
-                  ? '💣 You are the saboteur.'
-                  : '💣 The saboteur is choosing who to target…'}
-              </p>
-              <p className="ss-hint">
-                {isHumanSaboteur
-                  ? 'Choose carefully. Your victim will shape the entire investigation.'
-                  : 'Everyone else waits in the dark while the bomb is planted.'}
-              </p>
-
-              {isHumanSaboteur ? (
-                <>
-                  <div className="ss-alert ss-alert--danger">You are the saboteur. Choose carefully.</div>
-                  <ul className="ss-button-list" role="list">
-                    {activeIds
-                      .filter((id) => id !== saboteurId)
-                      .map((id) => (
-                        <li key={id}>
-                          <button
-                            className="ss-btn ss-btn--danger"
-                            onClick={() => handleSelectVictim(id)}
-                            aria-label={`Plant bomb on ${getName(id)}`}
-                          >
-                            <span className="ss-btn__main">🎯 {getName(id)}</span>
-                            <span className="ss-btn__tag">Target</span>
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
-                </>
-              ) : (
-                <PlayerList activeIds={activeIds} getName={getName} />
-              )}
-            </>
+            isHumanSaboteur ? (
+              <div className="ss-phase-card ss-cinematic">
+                <p className="ss-phase-eyebrow">Silent decision</p>
+                <p className="ss-phase-label">💣 You are the saboteur.</p>
+                <p className="ss-hint">Choose carefully. Your victim will shape the entire investigation.</p>
+                <div className="ss-alert ss-alert--danger">You are the saboteur. Choose carefully.</div>
+                <AvatarTileGrid
+                  playerIds={activeIds.filter((id) => id !== saboteurId)}
+                  getName={getName}
+                  ariaLabel="Choose a target"
+                  onSelect={handleSelectVictim}
+                  selectedId={victimId}
+                  variant="danger"
+                />
+              </div>
+            ) : (
+              <div className="ss-anonymous-screen ss-cinematic">
+                <div className="ss-anonymous-screen__halo" aria-hidden="true" />
+                <div className="ss-anonymous-screen__figure" aria-hidden="true">
+                  <span className="ss-anonymous-screen__hood" />
+                  <span className="ss-anonymous-screen__body" />
+                </div>
+                <p className="ss-phase-eyebrow ss-phase-eyebrow--danger">Silent decision</p>
+                <p className="ss-anonymous-screen__title">The saboteur is choosing their next target…</p>
+                <p className="ss-hint">No one else can see what happens in the dark.</p>
+              </div>
+            )
           )}
         </div>
       )}
 
       {phase === 'voting' && victimId && bombRevealVisible && (
-        <div className="ss-phase-card ss-phase-card--bomb ss-cinematic" data-testid="ss-bomb-reveal">
-          <p className="ss-phase-eyebrow">Bomb reveal</p>
-          <h2 className="ss-reveal-title">💣 A bomb has been planted!</h2>
-          <VictimNotice
-            playerId={victimId}
-            name={getName(victimId)}
-            subtitle="Find the saboteur before it detonates."
-            spotlight={true}
-          />
-          <ActionFooter>
-            <button
-              className="ss-btn ss-action-btn ss-action-btn--reveal"
-              onClick={handleBombRevealContinue}
-              aria-label="Continue"
-              data-testid="ss-bomb-reveal-continue-btn"
-              disabled={majorBeatActionLocked}
-            >
-              Continue
-            </button>
-          </ActionFooter>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-bomb-reveal-stage">
+            <div className="ss-bomb-reveal-emojis" aria-hidden="true">
+              {['😱', '😨', '⚡', '💥', '😱', '⚡'].map((icon, idx) => (
+                <span key={`${icon}-${idx}`} className="ss-bomb-reveal-emojis__item">{icon}</span>
+              ))}
+            </div>
+            <div className="ss-phase-card ss-phase-card--bomb ss-bomb-reveal-card ss-cinematic" data-testid="ss-bomb-reveal">
+              <p className="ss-phase-eyebrow ss-phase-eyebrow--danger">Bomb reveal</p>
+              <h2 className="ss-reveal-title">A bomb has been planted.</h2>
+              <VictimNotice
+                playerId={victimId}
+                name={getName(victimId)}
+                subtitle="Find the saboteur before it detonates."
+                spotlight={true}
+                cinematic={true}
+              />
+              <ActionFooter>
+                <button
+                  className="ss-btn ss-action-btn ss-action-btn--reveal"
+                  onClick={handleBombRevealContinue}
+                  aria-label="Continue"
+                  data-testid="ss-bomb-reveal-continue-btn"
+                  disabled={majorBeatActionLocked}
+                >
+                  Continue
+                </button>
+              </ActionFooter>
+            </div>
+          </div>
         </div>
       )}
 
@@ -928,22 +1019,17 @@ export default function SilentSaboteurComp({
               ? '✅ Vote locked. Waiting for others or timer to expire…'
               : 'You are watching the investigation unfold.'}
           </p>
-          {isHumanActive && votes[humanPlayerId!] === undefined && (
+          {isHumanActive && votes[humanPlayerId!] === undefined ? (
             <>
-              {/* Valid suspects: activePlayers - self - victim */}
-              <ul className="ss-button-list" role="list">
-                {humanVoteCandidates.map((id) => (
-                  <li key={id}>
-                    <button
-                      className="ss-btn ss-btn--vote"
-                      onClick={() => handleVote(id)}
-                      aria-label={`Accuse ${getName(id)}`}
-                    >
-                      <span className="ss-btn__main">🫵 {getName(id)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <AvatarTileGrid
+                playerIds={humanVoteCandidates}
+                getName={getName}
+                ariaLabel="Accuse a saboteur"
+                onSelect={handleVote}
+                selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+                dense={true}
+                variant="vote"
+              />
               {/* Victim displayed separately — not accusable */}
               <div className="ss-victim-row">
                 <span className="ss-victim-row__label">💣 In danger:</span>
@@ -951,6 +1037,17 @@ export default function SilentSaboteurComp({
                 <span className="ss-victim-row__tag">Cannot be accused</span>
               </div>
             </>
+          ) : (
+            <AvatarTileGrid
+              playerIds={activeIds.filter((id) => id !== victimId)}
+              getName={getName}
+              ariaLabel="Active suspects"
+              compact={true}
+              dense={true}
+              showVoteState={true}
+              votedIds={Object.keys(votes)}
+              selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+            />
           )}
           {/* Social Map toggle */}
           <button
@@ -984,129 +1081,132 @@ export default function SilentSaboteurComp({
       )}
 
       {phase === 'reveal' && revealInfo && (
-        <div
-          className={`ss-phase-card ss-cinematic ${
-            revealStage === 'elimination'
-              ? revealInfo.reason === 'saboteur_caught'
-                ? 'ss-phase-card--success'
-                : 'ss-phase-card--danger'
-              : 'ss-phase-card--resolution'
-          }`}
-        >
-          {revealStage === 'votes' ? (
-            <>
-              <p className="ss-phase-eyebrow">Vote reveal sequence</p>
-              <h2 className="ss-phase-label">⚖️ The votes are coming in…</h2>
-              <VoteRevealSequence
-                entries={revealVoteEntries}
-                revealedCount={revealedVoteCount}
-                getName={getName}
-              />
-              <p className="ss-hint hint-small">
-                {revealedVoteCount}/{revealVoteEntries.length} vote
-                {revealVoteEntries.length === 1 ? '' : 's'} revealed
-              </p>
-            </>
-          ) : revealStage === 'accusationResult' ? (
-            <>
-              <p className="ss-phase-eyebrow">Accusation result</p>
-              <h2 className="ss-reveal-title">
-                {revealInfo.reason === 'saboteur_caught'
-                  ? '🕵️ The saboteur has been exposed!'
-                  : '💥 Wrong accusation — the bomb detonates!'}
-              </h2>
-              {revealInfo.victimOverride && (
-                <p className="ss-override-badge">⚡ Victim Override Rule Applied</p>
-              )}
-              {revealInfo.reason === 'saboteur_caught' ? (
-                <p className="ss-reveal-body">
-                  The house correctly identified the real saboteur:{' '}
-                  <strong>{getName(revealInfo.saboteurId)}</strong>.
+        <div className={`ss-stage ${revealStage === 'votes' ? '' : 'ss-stage--centered'}`}>
+          <div
+            className={`ss-phase-card ss-cinematic ${
+              revealStage === 'elimination'
+                ? revealInfo.reason === 'saboteur_caught'
+                  ? 'ss-phase-card--success'
+                  : 'ss-phase-card--danger'
+                : 'ss-phase-card--resolution'
+            }`}
+          >
+            {revealStage === 'votes' ? (
+              <>
+                <p className="ss-phase-eyebrow">Vote reveal sequence</p>
+                <h2 className="ss-phase-label">⚖️ The votes are coming in…</h2>
+                <VoteRevealBoard
+                  entries={revealVoteEntries}
+                  revealedCount={revealedVoteCount}
+                  getName={getName}
+                />
+                <p className="ss-hint hint-small">
+                  {revealedVoteCount}/{revealVoteEntries.length} vote
+                  {revealVoteEntries.length === 1 ? '' : 's'} revealed
                 </p>
-              ) : (
-                <p className="ss-reveal-body">
-                  The house accused <strong>{getName(revealInfo.accusedId)}</strong>, but the real saboteur was{' '}
-                  <strong>{getName(revealInfo.saboteurId)}</strong>.
+              </>
+            ) : revealStage === 'accusationResult' ? (
+              <>
+                <p className="ss-phase-eyebrow">Accusation result</p>
+                <h2 className="ss-reveal-title">
+                  {revealInfo.reason === 'saboteur_caught'
+                    ? 'The saboteur has been exposed!'
+                    : 'The bomb detonates…'}
+                </h2>
+                {revealInfo.victimOverride && (
+                  <p className="ss-override-badge">⚡ Victim Override Rule Applied</p>
+                )}
+                <VoteRevealBoard
+                  entries={revealVoteEntries}
+                  revealedCount={revealVoteEntries.length}
+                  getName={getName}
+                  settledFocusId={revealInfo.accusedId}
+                />
+                {revealInfo.reason === 'saboteur_caught' ? (
+                  <p className="ss-reveal-body">
+                    The house correctly identified <strong>{getName(revealInfo.saboteurId)}</strong>.
+                  </p>
+                ) : (
+                  <p className="ss-reveal-body">
+                    The house accused <strong>{getName(revealInfo.accusedId)}</strong>. The real saboteur stayed hidden.
+                  </p>
+                )}
+                <VoteBreakdown
+                  votes={revealInfo.votes}
+                  saboteurId={revealInfo.saboteurId}
+                  getName={getName}
+                />
+                <ActionFooter>
+                  <button
+                    className="ss-btn ss-action-btn"
+                    onClick={handleRevealAccusationContinue}
+                    aria-label="Continue"
+                    data-testid="ss-reveal-result-continue-btn"
+                    disabled={majorBeatActionLocked}
+                  >
+                    Continue
+                  </button>
+                </ActionFooter>
+              </>
+            ) : (
+              <>
+                <p className="ss-phase-eyebrow">
+                  {revealInfo.reason === 'saboteur_caught' ? 'Saboteur caught' : 'Bomb detonated'}
                 </p>
-              )}
-              <VoteRevealSequence
-                entries={revealVoteEntries}
-                revealedCount={revealVoteEntries.length}
-                getName={getName}
-                compact={true}
-              />
-              <VoteBreakdown
-                votes={revealInfo.votes}
-                saboteurId={revealInfo.saboteurId}
-                getName={getName}
-              />
-              <ActionFooter>
-                <button
-                  className="ss-btn ss-action-btn"
-                  onClick={handleRevealAccusationContinue}
-                  aria-label="Continue"
-                  data-testid="ss-reveal-result-continue-btn"
-                  disabled={majorBeatActionLocked}
-                >
-                  Continue
-                </button>
-              </ActionFooter>
-            </>
-          ) : (
-            <>
-              <p className="ss-phase-eyebrow">
-                {revealInfo.reason === 'saboteur_caught' ? 'Saboteur caught' : 'Bomb detonated'}
-              </p>
-              <h2 className="ss-reveal-title">
-                ❌ {getName(revealInfo.eliminatedId)} has been eliminated.
-              </h2>
-              {revealInfo.reason === 'saboteur_caught' ? (
+                <HouseguestPortrait
+                  id={revealInfo.eliminatedId}
+                  name={getName(revealInfo.eliminatedId)}
+                  sizeClass="ss-victim-avatar--xl"
+                />
+                <h2 className="ss-reveal-title">
+                  {getName(revealInfo.eliminatedId)} has been eliminated.
+                </h2>
                 <p className="ss-reveal-body">
-                  The saboteur has been removed from the game. The rest of the house continues to the next round.
+                  {revealInfo.reason === 'saboteur_caught'
+                    ? 'The saboteur has been removed from the game. The house survives another round.'
+                    : `The sabotage succeeds. ${getName(revealInfo.victimId)} is gone.`}
                 </p>
-              ) : (
-                <p className="ss-reveal-body">
-                  The house wrongly blamed <strong>{getName(revealInfo.accusedId)}</strong>, and the
-                  sabotage succeeds. The house must keep going without{' '}
-                  <strong>{getName(revealInfo.victimId)}</strong>.
-                </p>
-              )}
-              <p className="ss-reveal-eliminated">
-                ❌ Eliminated: <strong>{getName(revealInfo.eliminatedId)}</strong>
-              </p>
-              <ActionFooter>
-                <button
-                  className="ss-btn ss-action-btn"
-                  onClick={handleRevealEliminationContinue}
-                  aria-label="Continue"
-                  data-testid="ss-elimination-continue-btn"
-                  disabled={majorBeatActionLocked}
-                >
-                  Continue
-                </button>
-              </ActionFooter>
-            </>
-          )}
+                <ActionFooter>
+                  <button
+                    className="ss-btn ss-action-btn"
+                    onClick={handleRevealEliminationContinue}
+                    aria-label="Continue"
+                    data-testid="ss-elimination-continue-btn"
+                    disabled={majorBeatActionLocked}
+                  >
+                    Continue
+                  </button>
+                </ActionFooter>
+              </>
+            )}
+          </div>
         </div>
       )}
 
       {phase === 'round_transition' && (
-        <div className="ss-phase-card ss-cinematic">
-          <p className="ss-phase-eyebrow">Aftermath</p>
-          <p className="ss-phase-label">⏳ {activeIds.length} players remain…</p>
-          <p className="ss-hint">The lights dim. The next sabotage is already brewing.</p>
-          <PlayerList activeIds={activeIds} getName={getName} />
-          <ActionFooter>
-            <button
-              className="ss-btn ss-action-btn"
-              onClick={handleRoundTransitionContinue}
-              aria-label="Continue"
-              data-testid="ss-round-transition-continue-btn"
-              disabled={majorBeatActionLocked}
-            >
-              Continue
-            </button>
-          </ActionFooter>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-cinematic">
+            <p className="ss-phase-eyebrow">Aftermath</p>
+            <p className="ss-phase-label">⏳ {activeIds.length} players remain…</p>
+            <p className="ss-hint">The room steadies, but the suspicion never does. Another sabotage is coming.</p>
+            <AvatarTileGrid
+              playerIds={activeIds}
+              getName={getName}
+              ariaLabel="Remaining players"
+              compact={true}
+            />
+            <ActionFooter>
+              <button
+                className="ss-btn ss-action-btn"
+                onClick={handleRoundTransitionContinue}
+                aria-label="Continue"
+                data-testid="ss-round-transition-continue-btn"
+                disabled={majorBeatActionLocked}
+              >
+                Continue
+              </button>
+            </ActionFooter>
+          </div>
         </div>
       )}
 
@@ -1114,11 +1214,13 @@ export default function SilentSaboteurComp({
           frame before the FINAL2_INTRO cinematic stage is set. Does NOT reveal
           any role information (no victim/suspect labels). */}
       {phase === 'final2_jury' && final2Stage === null && (
-        <div className="ss-phase-card ss-final2 ss-cinematic">
-          <p className="ss-phase-eyebrow">🏁 Final 2</p>
-          <h2 className="ss-phase-label">Two finalists remain.</h2>
-          <p className="ss-hint">One of them is the last saboteur.</p>
-          <p className="ss-hint hint-small">Preparing the jury finale…</p>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-final2 ss-cinematic">
+            <p className="ss-phase-eyebrow">🏁 Final 2</p>
+            <h2 className="ss-phase-label">Two finalists remain.</h2>
+            <p className="ss-hint">One of them is the last saboteur.</p>
+            <p className="ss-hint hint-small">Preparing the jury finale…</p>
+          </div>
         </div>
       )}
 
@@ -1153,30 +1255,32 @@ export default function SilentSaboteurComp({
 
       {/* FINAL2_INTRO: Two finalists introduced, no role info revealed. */}
       {final2Stage === 'FINAL2_INTRO' && (
-        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
-          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Deduction Finale</p>
-          <h2 className="ss-phase-label">The Final Confrontation</h2>
-          <p className="ss-hint">
-            Two players remain. One planted the bomb. The eliminated jury will decide.
-          </p>
-          <Final2FinalistsMuted
-            finalistIds={final2FinalistIdsRef.current}
-            getName={getName}
-          />
-          <p className="ss-hint hint-small">
-            {eliminatedIds.length} jury member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
-          </p>
-          <ActionFooter>
-            <button
-              className="ss-btn ss-action-btn"
-              onClick={handleFinal2ProceedToVoting}
-              aria-label="Proceed to Jury Decision"
-              data-testid="ss-final2-proceed-btn"
-              disabled={final2ActionLocked}
-            >
-              Proceed to Jury Decision
-            </button>
-          </ActionFooter>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
+            <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Deduction Finale</p>
+            <h2 className="ss-phase-label">The Final Confrontation</h2>
+            <p className="ss-hint">
+              Two players remain. One planted the bomb. The eliminated jury will decide.
+            </p>
+            <Final2FinalistsMuted
+              finalistIds={final2FinalistIdsRef.current}
+              getName={getName}
+            />
+            <p className="ss-hint hint-small">
+              {eliminatedIds.length} jury member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
+            </p>
+            <ActionFooter>
+              <button
+                className="ss-btn ss-action-btn"
+                onClick={handleFinal2ProceedToVoting}
+                aria-label="Proceed to Jury Decision"
+                data-testid="ss-final2-proceed-btn"
+                disabled={final2ActionLocked}
+              >
+                Proceed to Jury Decision
+              </button>
+            </ActionFooter>
+          </div>
         </div>
       )}
 
@@ -1185,10 +1289,6 @@ export default function SilentSaboteurComp({
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
           <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Phase</p>
           <h2 className="ss-phase-label">Who planted the bomb?</h2>
-          <Final2FinalistsMuted
-            finalistIds={final2FinalistIdsRef.current}
-            getName={getName}
-          />
           <CountdownTimer
             remainingMs={remainingCountdownMs}
             totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
@@ -1200,48 +1300,22 @@ export default function SilentSaboteurComp({
               ? '✅ Vote cast. Waiting for the final verdict…'
               : 'Awaiting the jury verdict…'}
           </p>
+          <Final2FinalistsMuted
+            finalistIds={final2FinalistIdsRef.current}
+            getName={getName}
+            compact={true}
+          />
           {/* Human jury vote buttons — no role labels */}
           {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
-            <ul className="ss-button-list" role="list">
-              {final2FinalistIdsRef.current.map((id) => (
-                <li key={id}>
-                  <button
-                    className="ss-btn ss-btn--vote"
-                    onClick={() => handleJuryVote(id)}
-                    aria-label={`Accuse ${getName(id)} of planting the bomb`}
-                  >
-                    <span className="ss-btn__main">🫵 {getName(id)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <AvatarTileGrid
+              playerIds={final2FinalistIdsRef.current}
+              getName={getName}
+              ariaLabel="Vote for a finalist"
+              onSelect={handleJuryVote}
+              selectedId={humanPlayerId ? juryVotes[humanPlayerId] : undefined}
+              variant="vote"
+            />
           )}
-          {/* Human finalist tiebreak — shown when jury tied and human is in Final-2 */}
-          {humanPlayerId !== null && final2FinalistIdsRef.current.includes(humanPlayerId) && (() => {
-            const allV = Object.values(juryVotes);
-            const total = allV.length;
-            const sabV = allV.filter((v) => v === final2SaboteurId).length;
-            const isTied = total > 0 && sabV * 2 === total;
-            if (!isTied) return null;
-            return (
-              <>
-                <div className="ss-alert">⚠️ Jury is tied. A finalist must cast the deciding vote.</div>
-                <ul className="ss-button-list" role="list">
-                  {final2FinalistIdsRef.current.map((id) => (
-                    <li key={id}>
-                      <button
-                        className="ss-btn ss-btn--vote"
-                        onClick={() => handleTieBreak(id)}
-                        aria-label={`Vote for ${getName(id)} (tiebreaker)`}
-                      >
-                        <span className="ss-btn__main">🫵 {getName(id)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            );
-          })()}
           <ProgressMeter
             label="Jury Votes"
             participantIds={eliminatedIds}
@@ -1254,82 +1328,92 @@ export default function SilentSaboteurComp({
 
       {/* FINAL2_VERDICT_LOCKED: All jury votes in; awaiting reveal. */}
       {final2Stage === 'FINAL2_VERDICT_LOCKED' && (
-        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-verdict-locked">
-          <p className="ss-phase-eyebrow">⚖️ Verdict Locked</p>
-          <h2 className="ss-phase-label">The jury has spoken.</h2>
-          <p className="ss-hint">The votes are sealed. The truth is about to be revealed.</p>
-          <Final2FinalistsMuted
-            finalistIds={final2FinalistIdsRef.current}
-            getName={getName}
-          />
-          <ActionFooter>
-            <button
-              className="ss-btn ss-action-btn ss-action-btn--reveal"
-              onClick={handleFinal2RevealTruth}
-              aria-label="Reveal the Truth"
-              data-testid="ss-final2-reveal-btn"
-              disabled={final2ActionLocked}
-            >
-              Reveal the Truth
-            </button>
-          </ActionFooter>
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-verdict-locked">
+            <p className="ss-phase-eyebrow">⚖️ Verdict Locked</p>
+            <h2 className="ss-phase-label">The jury has spoken.</h2>
+            <p className="ss-hint">The votes are sealed. The truth is about to be revealed.</p>
+            <Final2FinalistsMuted
+              finalistIds={final2FinalistIdsRef.current}
+              getName={getName}
+            />
+            <ActionFooter>
+              <button
+                className="ss-btn ss-action-btn ss-action-btn--reveal"
+                onClick={handleFinal2RevealTruth}
+                aria-label="Reveal the Truth"
+                data-testid="ss-final2-reveal-btn"
+                disabled={final2ActionLocked}
+              >
+                Reveal the Truth
+              </button>
+            </ActionFooter>
+          </div>
         </div>
       )}
 
       {/* FINAL2_REVEAL: Accused highlighted → saboteur unmasked after 1.5s. */}
       {final2Stage === 'FINAL2_REVEAL' && (
-        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-reveal">
-          <p className="ss-phase-eyebrow">🔍 The Truth Revealed</p>
-          {!final2RevealDone ? (
-            <>
-              <h2 className="ss-phase-label">The jury accused…</h2>
-              <Final2FinalistsReveal
-                finalistIds={final2FinalistIdsRef.current}
-                accusedId={juryAccusedId}
-                getName={getName}
-                revealDone={false}
-                saboteurId={null}
-              />
-            </>
-          ) : (
-            <>
-              <h2 className="ss-phase-label">
-                {final2SaboteurId === juryAccusedId
-                  ? '🕵️ Jury was correct!'
-                  : '💥 Jury was wrong!'}
-              </h2>
-              <Final2FinalistsReveal
-                finalistIds={final2FinalistIdsRef.current}
-                accusedId={juryAccusedId}
-                getName={getName}
-                revealDone={true}
-                saboteurId={final2SaboteurId}
-              />
-              {final2SaboteurId === juryAccusedId ? (
-                <p className="ss-hint">
-                  The jury correctly identified <strong>{getName(final2SaboteurId ?? '')}</strong> as the saboteur.{' '}
-                  <strong>{getName(final2VictimId ?? '')}</strong> wins!
-                </p>
-              ) : (
-                <p className="ss-hint">
-                  The jury accused <strong>{getName(juryAccusedId ?? '')}</strong>, but the real saboteur was{' '}
-                  <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
-                  <strong>{getName(winnerId ?? '')}</strong> wins!
-                </p>
-              )}
-              <ActionFooter>
-                <button
-                  className="ss-btn ss-action-btn"
-                  onClick={handleFinal2RevealContinue}
-                  aria-label="Continue"
-                  data-testid="ss-final2-reveal-continue-btn"
-                  disabled={final2ActionLocked}
-                >
-                  Continue
-                </button>
-              </ActionFooter>
-            </>
-          )}
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-reveal">
+            <p className="ss-phase-eyebrow">🔍 The Truth Revealed</p>
+            {!final2RevealDone ? (
+              <>
+                <h2 className="ss-phase-label">
+                  {juryAccusedId ? 'The jury accused…' : 'The jury could not agree…'}
+                </h2>
+                <Final2FinalistsReveal
+                  finalistIds={final2FinalistIdsRef.current}
+                  accusedId={juryAccusedId}
+                  getName={getName}
+                  revealDone={false}
+                  saboteurId={null}
+                />
+              </>
+            ) : (
+              <>
+                <h2 className="ss-phase-label">
+                  {juryAccusedId === final2SaboteurId
+                    ? 'The saboteur has been exposed!'
+                    : 'The bomb detonates…'}
+                </h2>
+                <Final2FinalistsReveal
+                  finalistIds={final2FinalistIdsRef.current}
+                  accusedId={juryAccusedId}
+                  getName={getName}
+                  revealDone={true}
+                  saboteurId={final2SaboteurId}
+                />
+                {juryAccusedId === final2SaboteurId ? (
+                  <p className="ss-hint">
+                    The jury exposed <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
+                    <strong>{getName(final2VictimId ?? '')}</strong> wins.
+                  </p>
+                ) : juryAccusedId ? (
+                  <p className="ss-hint">
+                    The jury accused <strong>{getName(juryAccusedId)}</strong>, but the saboteur stayed hidden.{' '}
+                    <strong>{getName(winnerId ?? '')}</strong> wins.
+                  </p>
+                ) : (
+                  <p className="ss-hint">
+                    The jury split their vote. The majority failed to expose the saboteur, so{' '}
+                    <strong>{getName(winnerId ?? '')}</strong> wins.
+                  </p>
+                )}
+                <ActionFooter>
+                  <button
+                    className="ss-btn ss-action-btn"
+                    onClick={handleFinal2RevealContinue}
+                    aria-label="Continue"
+                    data-testid="ss-final2-reveal-continue-btn"
+                    disabled={final2ActionLocked}
+                  >
+                    Continue
+                  </button>
+                </ActionFooter>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -1379,15 +1463,17 @@ function VictimNotice({
   name,
   subtitle,
   spotlight = false,
+  cinematic = false,
 }: {
   playerId: string;
   name: string;
   subtitle: string;
   spotlight?: boolean;
+  cinematic?: boolean;
 }) {
   return (
-    <div className={`ss-victim-card ${spotlight ? 'ss-victim-card--spotlight' : ''}`}>
-      <HouseguestPortrait id={playerId} name={name} />
+    <div className={`ss-victim-card ${spotlight ? 'ss-victim-card--spotlight' : ''} ${cinematic ? 'ss-victim-card--cinematic' : ''}`}>
+      <HouseguestPortrait id={playerId} name={name} sizeClass={cinematic ? 'ss-victim-avatar--xl' : ''} />
       <div className="ss-victim-copy">
         <p className="ss-victim-eyebrow">💣 {name} is in danger</p>
         <p className="ss-victim-name">{name}</p>
@@ -1426,21 +1512,105 @@ function CountdownTimer({
   );
 }
 
-function PlayerList({
-  activeIds,
+function AvatarTileGrid({
+  playerIds,
   getName,
+  ariaLabel,
+  onSelect,
+  selectedId,
+  votedIds = [],
+  eliminatedIds = [],
+  settledFocusId,
+  showNames = true,
+  compact = false,
+  showVoteState = false,
+  dense = false,
+  variant = 'default',
 }: {
-  activeIds: string[];
+  playerIds: string[];
   getName: (id: string) => string;
+  ariaLabel: string;
+  onSelect?: (id: string) => void;
+  selectedId?: string | null;
+  votedIds?: string[];
+  eliminatedIds?: string[];
+  settledFocusId?: string | null;
+  showNames?: boolean;
+  compact?: boolean;
+  showVoteState?: boolean;
+  dense?: boolean;
+  variant?: 'default' | 'vote' | 'danger';
 }) {
+  const rows = getAvatarGridRows(playerIds, dense);
+  const votedSet = new Set(votedIds);
+  const eliminatedSet = new Set(eliminatedIds);
+  const dimNonFocused = settledFocusId != null;
+
   return (
-    <ul className="ss-player-list" aria-label="Active players">
-      {activeIds.map((id) => (
-        <li key={id} className="ss-player-chip">
-          {getName(id)}
-        </li>
+    <div className={`ss-avatar-grid ${compact ? 'ss-avatar-grid--compact' : ''}`} aria-label={ariaLabel}>
+      {rows.map((row, rowIdx) => (
+        <div key={`${ariaLabel}-${rowIdx}`} className="ss-avatar-grid__row">
+          {row.map((id) => {
+            const isSelected = selectedId === id || settledFocusId === id;
+            const isEliminated = eliminatedSet.has(id);
+            const isVoted = votedSet.has(id);
+            const className = [
+              'ss-avatar-tile',
+              `ss-avatar-tile--${variant}`,
+              onSelect ? 'ss-avatar-tile--interactive' : '',
+              isSelected ? 'ss-avatar-tile--selected' : '',
+              isVoted ? 'ss-avatar-tile--voted' : '',
+              isEliminated ? 'ss-avatar-tile--eliminated' : '',
+              dimNonFocused && !isSelected ? 'ss-avatar-tile--dimmed' : '',
+              compact ? 'ss-avatar-tile--compact' : '',
+            ].filter(Boolean).join(' ');
+
+            const content = (
+              <>
+                <div className="ss-avatar-tile__portrait">
+                  <HouseguestPortrait
+                    id={id}
+                    name={getName(id)}
+                    sizeClass={compact ? 'ss-victim-avatar--md' : 'ss-victim-avatar--lg'}
+                  />
+                  {isSelected && <span className="ss-avatar-tile__badge" aria-hidden="true">🫵</span>}
+                  {!isSelected && showVoteState && isVoted && (
+                    <span className="ss-avatar-tile__badge ss-avatar-tile__badge--vote" aria-hidden="true">🗳️</span>
+                  )}
+                  {isEliminated && (
+                    <span className="ss-avatar-tile__badge ss-avatar-tile__badge--eliminated" aria-hidden="true">❌</span>
+                  )}
+                </div>
+                {showNames && <span className="ss-avatar-tile__name">{getName(id)}</span>}
+              </>
+            );
+
+            const ariaPrefix =
+              variant === 'danger'
+                ? 'Plant bomb on'
+                : variant === 'vote'
+                  ? 'Accuse'
+                  : 'Select';
+
+            return onSelect ? (
+              <button
+                key={id}
+                className={className}
+                onClick={() => onSelect(id)}
+                aria-label={`${ariaPrefix} ${getName(id)}`}
+                type="button"
+              >
+                {content}
+              </button>
+            ) : (
+              <div key={id} className={className}>
+                {content}
+              </div>
+            );
+          })}
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -1504,36 +1674,80 @@ function VoteBreakdown({
   );
 }
 
-function VoteRevealSequence({
+function VoteRevealBoard({
   entries,
   revealedCount,
   getName,
-  compact = false,
+  settledFocusId,
 }: {
   entries: Array<[string, string]>;
   revealedCount: number;
   getName: (id: string) => string;
-  compact?: boolean;
+  settledFocusId?: string | null;
 }) {
   const shownEntries = entries.slice(0, revealedCount);
+  const voteCounts = new Map<string, number>();
+  const firstSeenOrder = new Map<string, number>();
+
+  shownEntries.forEach(([, accusedId], idx) => {
+    voteCounts.set(accusedId, (voteCounts.get(accusedId) ?? 0) + 1);
+    if (!firstSeenOrder.has(accusedId)) {
+      firstSeenOrder.set(accusedId, idx);
+    }
+  });
+
+  const lastAccusedId = shownEntries.length > 0 ? shownEntries[shownEntries.length - 1][1] : null;
+  const revealedTargets = Array.from(voteCounts.entries())
+    .sort((a, b) => {
+      const countDiff = b[1] - a[1];
+      if (countDiff !== 0) return countDiff;
+      return (firstSeenOrder.get(a[0]) ?? 0) - (firstSeenOrder.get(b[0]) ?? 0);
+    })
+    .map(([id, count]) => ({ id, count }));
 
   return (
-    <ol className={`ss-vote-sequence ${compact ? 'ss-vote-sequence--compact' : ''}`} aria-label="Vote reveal sequence">
-      {shownEntries.map(([voterId, accusedId], idx) => (
-        <li key={`${voterId}-${idx}`} className="ss-vote-sequence__item">
-          <span className="ss-vote-sequence__index">Vote {idx + 1}</span>
-          <span className="ss-vote-sequence__value">
-            {getName(voterId)} → <strong>{getName(accusedId)}</strong>
-          </span>
-        </li>
-      ))}
-      {!compact && shownEntries.length < entries.length && (
-        <li className="ss-vote-sequence__item ss-vote-sequence__item--pending">
-          <span className="ss-vote-sequence__index">Next vote</span>
-          <span className="ss-vote-sequence__value">…</span>
-        </li>
+    <div className="ss-vote-board" aria-label="Vote reveal sequence">
+      {shownEntries.length > 0 && (
+        <p className="ss-vote-board__headline">
+          Vote {shownEntries.length}: <strong>{getName(lastAccusedId ?? '')}</strong>
+        </p>
       )}
-    </ol>
+      {revealedTargets.length > 0 ? (
+        <div className="ss-vote-board__grid">
+          {revealedTargets.map(({ id, count }) => {
+            const isFocused = settledFocusId === id;
+            const isDimmed = settledFocusId != null && !isFocused;
+            const isPulsing = settledFocusId == null && lastAccusedId === id;
+            return (
+              <div
+                key={id}
+                className={[
+                  'ss-vote-board__tile',
+                  isFocused ? 'ss-vote-board__tile--focused' : '',
+                  isDimmed ? 'ss-vote-board__tile--dimmed' : '',
+                  isPulsing ? 'ss-vote-board__tile--pulse' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <div className="ss-vote-board__portrait-wrap">
+                  <HouseguestPortrait id={id} name={getName(id)} sizeClass="ss-victim-avatar--lg" />
+                  <span className="ss-vote-board__count" aria-label={`${count} vote${count === 1 ? '' : 's'}`}>
+                    {count}
+                  </span>
+                </div>
+                <span className="ss-vote-board__name">{getName(id)}</span>
+                <span className="ss-vote-board__icons" aria-hidden="true">
+                  {Array.from({ length: count }, (_, idx) => (
+                    <span key={`${id}-vote-${idx}`}>🗳️</span>
+                  ))}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="ss-vote-board__placeholder">Waiting for the first vote…</div>
+      )}
+    </div>
   );
 }
 
@@ -1550,16 +1764,22 @@ function ActionFooter({ children }: { children: ReactNode }) {
 function Final2FinalistsMuted({
   finalistIds,
   getName,
+  compact = false,
 }: {
   finalistIds: string[];
   getName: (id: string) => string;
+  compact?: boolean;
 }) {
   return (
     <ul className="ss-final2-finalists" aria-label="Finalists">
       {finalistIds.map((id) => (
-        <li key={id} className="ss-final2-finalist">
+        <li key={id} className={`ss-final2-finalist ${compact ? 'ss-final2-finalist--compact' : ''}`}>
           <div className="ss-final2-finalist__portrait">
-            <HouseguestPortrait id={id} name={getName(id)} sizeClass="ss-victim-avatar--lg" />
+            <HouseguestPortrait
+              id={id}
+              name={getName(id)}
+              sizeClass={compact ? 'ss-victim-avatar--md' : 'ss-victim-avatar--lg'}
+            />
             <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">🔒</span>
           </div>
           <span className="ss-final2-finalist__name">{getName(id)}</span>
@@ -1598,6 +1818,7 @@ function Final2FinalistsReveal({
             key={id}
             className={[
               'ss-final2-finalist',
+              revealDone ? 'ss-final2-finalist--revealed' : '',
               isAccused ? 'ss-final2-finalist--accused' : '',
               isSaboteur ? 'ss-final2-finalist--saboteur' : '',
             ].filter(Boolean).join(' ')}
