@@ -4,11 +4,16 @@
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  /* Fallback first; prefer dynamic viewport units when supported. */
+  max-height: 100vh;
+  max-height: 100dvh;
   background: linear-gradient(160deg, #0a0a20 0%, #0f0f25 60%, #150a20 100%);
   color: #eef2ff;
   font-family: inherit;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Loading / idle */
@@ -152,8 +157,8 @@
 
 .rw-wheel-outer {
   position: relative;
-  width: 240px;
-  height: 240px;
+  width: 272px;
+  height: 272px;
   flex-shrink: 0;
 }
 
@@ -180,6 +185,50 @@
     0 0 30px rgba(99, 102, 241, 0.25),
     0 8px 32px rgba(0, 0, 0, 0.5);
   will-change: transform;
+}
+
+.rw-wheel-svg-wrapper--spinning {
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.12),
+    0 0 40px rgba(96, 165, 250, 0.55),
+    0 0 70px rgba(124, 58, 237, 0.35),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: rw-wheel-glow 0.8s ease-in-out infinite alternate;
+}
+
+.rw-wheel-sector {
+  transition: filter 0.2s ease, stroke-width 0.2s ease;
+}
+
+.rw-wheel-sector--highlight {
+  filter: brightness(1.5) saturate(1.35);
+  stroke: rgba(255, 255, 255, 0.98);
+  stroke-width: 2.4;
+  animation: rw-sector-flash 0.8s ease-out;
+}
+
+@keyframes rw-wheel-glow {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.18);
+  }
+}
+
+@keyframes rw-sector-flash {
+  0% {
+    filter: brightness(1) saturate(1);
+    stroke-width: 1.2;
+  }
+  30% {
+    filter: brightness(1.75) saturate(1.45);
+    stroke-width: 2.8;
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+    stroke-width: 1.2;
+  }
 }
 
 /* ─── Result chip ─────────────────────────────────────────────────────────── */
@@ -330,6 +379,8 @@
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
   color: #fff;
   box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+  padding: 12px 18px;
+  font-size: 0.95rem;
 }
 
 .rw-btn--spin:hover:not(:disabled) {
@@ -662,8 +713,8 @@
 
 @media (max-width: 380px) {
   .rw-wheel-outer {
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
   }
   .rw-score-value {
     font-size: 2.2rem;

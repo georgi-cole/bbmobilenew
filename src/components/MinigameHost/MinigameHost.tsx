@@ -101,9 +101,14 @@ export default function MinigameHost({
   }, []);
 
   // ── Dismiss challenge from rules (score 0) ───────────────────────────────
+  // Routes through the results screen so the player sees "Exited Early" and
+  // must explicitly confirm via the Continue button.  This prevents accidental
+  // dismissal from silently crowning a winner without any user feedback.
   const handleRulesDismiss = useCallback(() => {
-    onDone(0, true);
-  }, [onDone]);
+    setFinalValue(0);
+    setWasPartial(true);
+    setPhase('results');
+  }, []);
 
   // ── Countdown ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -194,11 +199,17 @@ export default function MinigameHost({
 
       {phase === 'playing' && (
         <div className="minigame-host-playing">
-          {/* Top-right close button — exits the minigame with a zero score (partial). */}
+          {/* Top-right close button — exits the minigame early (partial).
+              Routes through the results screen so the player must explicitly
+              confirm via Continue ▶ before a winner is applied. */}
           <button
             className="minigame-host-close-btn"
-            onClick={() => onDone(0, true)}
-            aria-label="Close minigame"
+            onClick={() => {
+              setFinalValue(0);
+              setWasPartial(true);
+              setPhase('results');
+            }}
+            aria-label="Exit minigame"
             title="Exit minigame"
           >
             ✕
