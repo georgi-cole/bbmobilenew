@@ -709,7 +709,7 @@ const riskWheelSlice = createSlice({
               payload.humanPlayerId,
               payload.participantIds,
             );
-        if (process.env.NODE_ENV !== 'production') {
+        if (import.meta.env.DEV) {
           console.log('RISK_WHEEL_RESET', {
             seedProvided: payload.seed !== undefined,
             nextSeed,
