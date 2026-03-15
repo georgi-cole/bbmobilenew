@@ -1590,12 +1590,21 @@ function AvatarTileGrid({
               </>
             );
 
+            const ariaPrefix =
+              variant === 'danger'
+                ? 'Plant bomb on'
+                : variant === 'vote'
+                  ? 'Accuse'
+                  : variant === 'jury'
+                    ? 'Vote for'
+                    : 'Select';
+
             return onSelect ? (
               <button
                 key={id}
                 className={className}
                 onClick={() => onSelect(id)}
-                aria-label={`${variant === 'danger' ? 'Plant bomb on' : 'Select'} ${getName(id)}`}
+                aria-label={`${ariaPrefix} ${getName(id)}`}
                 type="button"
               >
                 {content}
