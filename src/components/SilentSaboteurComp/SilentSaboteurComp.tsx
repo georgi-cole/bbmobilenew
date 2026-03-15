@@ -206,8 +206,8 @@ function getInitial(name: string) {
 function getAvatarGridRows(ids: string[], dense = false): string[][] {
   const denseLayouts: Record<number, number[]> = {
     2: [2],
-    3: [3],
-    4: [4],
+    3: [1, 2],
+    4: [2, 2],
     5: [3, 2],
     6: [3, 3],
     7: [4, 3],
