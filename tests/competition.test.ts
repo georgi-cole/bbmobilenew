@@ -215,6 +215,30 @@ describe('completeChallenge — positive-score winner preference', () => {
     expect(winnerId).toBeTruthy();
     expect(['p0', 'p1', 'p2']).toContain(winnerId);
   });
+
+  it('uses an authoritative winner override when a React minigame reports one', () => {
+    const players = makePlayers(3);
+    const store = makeStore({ players, phase: 'hoh_comp' });
+
+    store.dispatch(
+      startChallenge(77, ['p0', 'p1', 'p2'], { forceGameKey: 'quickTap' }),
+    );
+
+    const winnerId = store.dispatch(
+      completeChallenge(
+        [
+          { playerId: 'p0', rawValue: 10 },
+          { playerId: 'p1', rawValue: 90 },
+          { playerId: 'p2', rawValue: 40 },
+        ],
+        { authoritativeWinnerId: 'p2' },
+      ),
+    );
+
+    expect(winnerId).toBe('p2');
+    expect(store.getState().challenge.history[0]?.winnerId).toBe('p2');
+    expect(store.getState().challenge.history[0]?.authoritative).toBe(true);
+  });
 });
 
 // ── Advance guard (hoh_results random pick) ───────────────────────────────────

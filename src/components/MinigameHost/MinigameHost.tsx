@@ -46,6 +46,11 @@ export interface MinigameParticipant {
   previousPR: number | null;
 }
 
+export interface ReactMinigameCompletion {
+  authoritativeWinnerId?: string | null;
+  rawValue?: number;
+}
+
 interface Props {
   game: GameRegistryEntry;
   /** Options forwarded to the legacy module (e.g. seed, timeLimit). */
@@ -54,7 +59,7 @@ interface Props {
    * Called when the minigame ends (normally or via quit).
    * rawValue is the primary metric reported by the game.
    */
-  onDone: (rawValue: number, partial?: boolean) => void;
+  onDone: (rawValue: number, partial?: boolean, completion?: ReactMinigameCompletion) => void;
   /** When true the rules modal is skipped and countdown starts immediately. */
   skipRules?: boolean;
   /** When true the 3-second countdown is skipped (for testing). */
@@ -140,8 +145,8 @@ export default function MinigameHost({
   // the competition result is already stored in Redux. We call onDone(1) as a
   // sentinel to signal completion to the parent — the actual winner is
   // determined by the Redux state, not this value.
-  const handleReactComplete = useCallback(() => {
-    onDone(1, false);
+  const handleReactComplete = useCallback((completion?: ReactMinigameCompletion) => {
+    onDone(completion?.rawValue ?? 1, false, completion);
   }, [onDone]);
 
   // ── Continue from results ────────────────────────────────────────────────

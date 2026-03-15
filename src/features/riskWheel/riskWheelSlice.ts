@@ -45,8 +45,8 @@ const AI_NOISE_MAGNITUDE = 0.15;
 
 /**
  * Derive a deterministic 32-bit seed from the competition configuration.
- * This keeps the reducer pure while still providing varied seeds for
- * different combinations of inputs.
+ * This provides a stable base so omitted-seed games can still vary by
+ * mixing in runtime entropy.
  */
 function deriveDeterministicSeed(
   competitionType: string,
@@ -69,6 +69,21 @@ function deriveDeterministicSeed(
   }
 
   return hash >>> 0;
+}
+
+function generateRuntimeSeed(
+  competitionType: string,
+  humanPlayerId: string | null,
+  participantIds: string[],
+): number {
+  const baseSeed = deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const entropy = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(entropy);
+    return (baseSeed ^ entropy[0]) >>> 0;
+  }
+  const perfNow = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000) : 0;
+  return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
 }
 // Personality is the anchor so AI behavior stays distinct per player.
 const AI_BASE_RISK_WEIGHT = 0.35;
@@ -613,16 +628,16 @@ const riskWheelSlice = createSlice({
     /**
      * Initialise a new Risk Wheel competition.
      */
-    initRiskWheel(
-      state,
-      action: PayloadAction<{
-        participantIds: string[];
-        competitionType: RiskWheelCompetitionType;
-        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
-        seed?: number;
-        humanPlayerId: string | null;
-      }>,
-    ) {
+    initRiskWheel: {
+      reducer(
+        state,
+        action: PayloadAction<{
+          participantIds: string[];
+          competitionType: RiskWheelCompetitionType;
+          seed: number;
+          humanPlayerId: string | null;
+        }>,
+      ) {
       const { participantIds, competitionType, seed, humanPlayerId } = action.payload;
 
       // Reset all fields explicitly to avoid Immer frozen-object issues
@@ -649,11 +664,7 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Use the caller-supplied seed when provided; fall back to a deterministic value.
-      state.seed =
-        (seed !== undefined
-          ? seed
-          : deriveDeterministicSeed(competitionType as string, humanPlayerId as string | null, participantIds as string[])) >>> 0;
+      state.seed = seed;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
@@ -677,6 +688,28 @@ const riskWheelSlice = createSlice({
       state.round = 1;
       state.currentPlayerIndex = 0;
       state.phase = 'awaiting_spin';
+      },
+      prepare(payload: {
+        participantIds: string[];
+        competitionType: RiskWheelCompetitionType;
+        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
+        seed?: number;
+        humanPlayerId: string | null;
+      }) {
+        return {
+          payload: {
+            ...payload,
+            seed:
+              payload.seed !== undefined
+                ? payload.seed >>> 0
+                : generateRuntimeSeed(
+                  payload.competitionType,
+                  payload.humanPlayerId,
+                  payload.participantIds,
+                ),
+          },
+        };
+      },
     },
 
     /**
