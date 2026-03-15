@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import silentSaboteurReducer, {
@@ -67,7 +67,7 @@ describe('SilentSaboteurComp — cinematic polish', () => {
     expect(ss(store).phase).toBe('select_victim');
   });
 
-  it('auto-dismisses the bomb reveal and then shows avatar suspect tiles', async () => {
+  it('keeps the bomb reveal on screen until Continue is clicked', async () => {
     const store = makeStore();
 
     render(
@@ -94,10 +94,16 @@ describe('SilentSaboteurComp — cinematic polish', () => {
     });
 
     expect(screen.getByTestId('ss-bomb-reveal')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('ss-bomb-reveal-continue-btn')).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(2500);
+    });
+
+    expect(screen.getByTestId('ss-bomb-reveal')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
     });
 
     expect(screen.queryByTestId('ss-bomb-reveal')).not.toBeInTheDocument();
@@ -105,7 +111,7 @@ describe('SilentSaboteurComp — cinematic polish', () => {
     expect(screen.getByLabelText('Saboteur suspects')).toBeInTheDocument();
   });
 
-  it('reveals votes and elimination automatically before moving to the aftermath card', async () => {
+  it('requires Continue through accusation, elimination, and aftermath beats', async () => {
     const store = makeStore();
 
     render(
@@ -129,7 +135,10 @@ describe('SilentSaboteurComp — cinematic polish', () => {
 
     await act(async () => {
       store.dispatch(selectVictim({ victimId }));
-      vi.advanceTimersByTime(2500);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
     });
 
     const voters = ss(store).activeIds;
@@ -148,17 +157,32 @@ describe('SilentSaboteurComp — cinematic polish', () => {
       vi.advanceTimersByTime(5000);
     });
 
+    expect(screen.getByTestId('ss-accusation-result')).toBeInTheDocument();
+    expect(screen.getByTestId('ss-reveal-result-continue-btn')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-reveal-result-continue-btn'));
+    });
+
     expect(screen.getByTestId('ss-elimination-card')).toBeInTheDocument();
+    expect(screen.getByTestId('ss-elimination-continue-btn')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-elimination-continue-btn'));
+    });
+
+    expect(screen.getByTestId('ss-aftermath-card')).toBeInTheDocument();
+    expect(screen.getByTestId('ss-round-transition-continue-btn')).toBeInTheDocument();
+    expect(ss(store).phase).toBe('round_transition');
 
     await act(async () => {
       vi.advanceTimersByTime(2500);
     });
 
-    expect(screen.getByTestId('ss-aftermath-card')).toBeInTheDocument();
     expect(ss(store).phase).toBe('round_transition');
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      fireEvent.click(screen.getByTestId('ss-round-transition-continue-btn'));
     });
 
     expect(ss(store).phase).toBe('select_victim');

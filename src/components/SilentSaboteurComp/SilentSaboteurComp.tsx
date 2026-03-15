@@ -48,8 +48,6 @@ const SILENT_SABOTEUR_TIMINGS = {
   AI_ACTION_MS: 1200,
   /** Anonymous saboteur target-selection hold. */
   SABOTEUR_CHOOSING_MS: 3000,
-  /** Bomb planted reveal hold before voting UI. */
-  BOMB_REVEAL_MS: 2500,
   /** Investigation AI votes should stagger over realistic thinking time. */
   AI_VOTE_MIN_MS: 3000,
   AI_VOTE_MAX_MS: 5000,
@@ -63,12 +61,6 @@ const SILENT_SABOTEUR_TIMINGS = {
   VOTE_REVEAL_STEP_MS: 520,
   /** Pause after all votes revealed before showing accusation text. */
   REVEAL_RESULT_PAUSE_MS: 850,
-  /** Hold the accusation result beat before the elimination card. */
-  ACCUSATION_HOLD_MS: 1400,
-  /** Elimination card hold time. */
-  ELIMINATION_HOLD_MS: 2000,
-  /** Round transition hold. */
-  ROUND_TRANSITION_MS: 2000,
   /** Final-2 reveal flip hold. */
   FINAL2_REVEAL_MS: 1500,
   /** Countdown ticker interval. */
@@ -490,7 +482,7 @@ export default function SilentSaboteurComp({
     return () => clearTimeout(t);
   }, [phase, dispatch]);
 
-  // Bomb reveal: cinematic hold before showing voting UI.
+  // Bomb reveal: shown until the user continues into the investigation.
   useEffect(() => {
     if (phase !== 'voting' || !victimId) {
       setBombRevealVisible(false);
@@ -502,15 +494,6 @@ export default function SilentSaboteurComp({
     votingTimerFiredRef.current = false;
     emitSilentSaboteurEvent('bomb-planted', { victimId, round });
   }, [phase, victimId, round]);
-
-  useEffect(() => {
-    if (!bombRevealVisible) return;
-    const t = setTimeout(
-      () => setBombRevealVisible(false),
-      animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.BOMB_REVEAL_MS,
-    );
-    return () => clearTimeout(t);
-  }, [bombRevealVisible, animationsDisabled]);
 
   // select_victim: AI saboteur auto-picks; human saboteur has timeout fallback.
   useEffect(() => {
@@ -626,9 +609,17 @@ export default function SilentSaboteurComp({
     const timers: ReturnType<typeof setTimeout>[] = [];
     const voteStepMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.VOTE_REVEAL_STEP_MS;
     const resultPauseMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.REVEAL_RESULT_PAUSE_MS;
-    const accusationHoldMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ACCUSATION_HOLD_MS;
-    const eliminationHoldMs = animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ELIMINATION_HOLD_MS;
     const voteCount = revealVoteEntries.length;
+
+    if (voteStepMs === 0) {
+      setRevealedVoteCount(voteCount);
+      setRevealStage('accusationResult');
+      emitSilentSaboteurEvent(
+        revealInfo.reason === 'saboteur_caught' ? 'saboteur-caught' : 'explosion',
+        { eliminatedId: revealInfo.eliminatedId, victimId: revealInfo.victimId },
+      );
+      return () => timers.forEach(clearTimeout);
+    }
 
     setRevealedVoteCount(0);
     setRevealStage('votes');
@@ -653,29 +644,8 @@ export default function SilentSaboteurComp({
       }, votesDoneAt + resultPauseMs),
     );
 
-    timers.push(
-      setTimeout(() => {
-        setRevealStage('elimination');
-      }, votesDoneAt + resultPauseMs + accusationHoldMs),
-    );
-
-    timers.push(
-      setTimeout(() => {
-        dispatch(advanceReveal());
-      }, votesDoneAt + resultPauseMs + accusationHoldMs + eliminationHoldMs),
-    );
-
     return () => timers.forEach(clearTimeout);
-  }, [phase, revealInfo, revealVoteEntries, round, animationsDisabled, dispatch]);
-
-  useEffect(() => {
-    if (phase !== 'round_transition') return;
-    const t = setTimeout(
-      () => dispatch(startNextRound()),
-      animationsDisabled ? 0 : SILENT_SABOTEUR_TIMINGS.ROUND_TRANSITION_MS,
-    );
-    return () => clearTimeout(t);
-  }, [phase, dispatch, animationsDisabled]);
+  }, [phase, revealInfo, revealVoteEntries, round, animationsDisabled]);
 
   // final2_jury: 120s shared timer; human juror timeout dispatches jury vote.
   useEffect(() => {
@@ -826,6 +796,30 @@ export default function SilentSaboteurComp({
     dispatch(advanceWinner());
   }, [dispatch, majorBeatActionLocked]);
 
+  const handleBombRevealContinue = useCallback(() => {
+    if (majorBeatActionLocked) return;
+    setMajorBeatActionLocked(true);
+    setBombRevealVisible(false);
+  }, [majorBeatActionLocked]);
+
+  const handleRevealAccusationContinue = useCallback(() => {
+    if (majorBeatActionLocked) return;
+    setMajorBeatActionLocked(true);
+    setRevealStage('elimination');
+  }, [majorBeatActionLocked]);
+
+  const handleRevealEliminationContinue = useCallback(() => {
+    if (majorBeatActionLocked) return;
+    setMajorBeatActionLocked(true);
+    dispatch(advanceReveal());
+  }, [dispatch, majorBeatActionLocked]);
+
+  const handleRoundTransitionContinue = useCallback(() => {
+    if (majorBeatActionLocked) return;
+    setMajorBeatActionLocked(true);
+    dispatch(startNextRound());
+  }, [dispatch, majorBeatActionLocked]);
+
   // ── Final-2 cinematic handlers ─────────────────────────────────────────────
 
   const handleFinal2ProceedToVoting = useCallback(() => {
@@ -962,6 +956,17 @@ export default function SilentSaboteurComp({
               spotlight={true}
               centered={true}
             />
+            <ActionFooter>
+              <button
+                className="ss-btn ss-action-btn ss-action-btn--reveal"
+                onClick={handleBombRevealContinue}
+                aria-label="Continue"
+                data-testid="ss-bomb-reveal-continue-btn"
+                disabled={majorBeatActionLocked}
+              >
+                Continue
+              </button>
+            </ActionFooter>
           </div>
         </div>
       )}
@@ -1101,6 +1106,17 @@ export default function SilentSaboteurComp({
                 saboteurId={revealInfo.saboteurId}
                 getName={getName}
               />
+              <ActionFooter>
+                <button
+                  className="ss-btn ss-action-btn"
+                  onClick={handleRevealAccusationContinue}
+                  aria-label="Continue"
+                  data-testid="ss-reveal-result-continue-btn"
+                  disabled={majorBeatActionLocked}
+                >
+                  Continue
+                </button>
+              </ActionFooter>
             </>
           ) : (
             <>
@@ -1137,6 +1153,17 @@ export default function SilentSaboteurComp({
                   <strong>{getName(revealInfo.victimId)}</strong>.
                 </p>
               )}
+              <ActionFooter>
+                <button
+                  className="ss-btn ss-action-btn"
+                  onClick={handleRevealEliminationContinue}
+                  aria-label="Continue"
+                  data-testid="ss-elimination-continue-btn"
+                  disabled={majorBeatActionLocked}
+                >
+                  Continue
+                </button>
+              </ActionFooter>
             </>
           )}
         </div>
@@ -1153,6 +1180,17 @@ export default function SilentSaboteurComp({
             getAvatar={getAvatar}
             label="Remaining players"
           />
+          <ActionFooter>
+            <button
+              className="ss-btn ss-action-btn"
+              onClick={handleRoundTransitionContinue}
+              aria-label="Continue"
+              data-testid="ss-round-transition-continue-btn"
+              disabled={majorBeatActionLocked}
+            >
+              Continue
+            </button>
+          </ActionFooter>
         </div>
       )}
 
