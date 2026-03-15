@@ -9,10 +9,19 @@ describe('RiskWheelComp styles', () => {
       'utf8',
     );
 
-    const rootRule = css.match(/\.rw-root\s*\{(?<body>[\s\S]*?)\n\}/);
-    expect(rootRule?.groups?.body).toContain('max-height: 100vh;');
-    expect(rootRule?.groups?.body).toContain('max-height: 100dvh;');
-    expect(rootRule?.groups?.body).toContain('overflow-y: auto;');
-    expect(rootRule?.groups?.body).toContain('-webkit-overflow-scrolling: touch;');
+    const ruleStart = css.indexOf('.rw-root {');
+    expect(ruleStart).toBeGreaterThanOrEqual(0);
+
+    const ruleEnd = css.indexOf('}', ruleStart);
+    expect(ruleEnd).toBeGreaterThan(ruleStart);
+
+    const rootRuleBody = css.slice(ruleStart, ruleEnd);
+    const vhIndex = rootRuleBody.indexOf('max-height: 100vh;');
+    const dvhIndex = rootRuleBody.indexOf('max-height: 100dvh;');
+
+    expect(vhIndex).toBeGreaterThanOrEqual(0);
+    expect(dvhIndex).toBeGreaterThan(vhIndex);
+    expect(rootRuleBody).toContain('overflow-y: auto;');
+    expect(rootRuleBody).toContain('-webkit-overflow-scrolling: touch;');
   });
 });
