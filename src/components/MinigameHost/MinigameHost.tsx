@@ -301,12 +301,14 @@ export default function MinigameHost({
               // repeat whenever the same game.seed is active (e.g. after a page reload).
               // RiskWheelComp's init effect passes seed:undefined to initRiskWheel so
               // the prepare() callback always generates a fresh crypto-random seed.
-              console.log('RISK_WHEEL_NEW_SESSION', {
-                source: 'MinigameHost',
-                challengeSeedIgnored: seed,
-                participantIds,
-                prizeType: gameOptions?.prizeType ?? 'HOH',
-              });
+              if (import.meta.env.DEV) {
+                console.log('RISK_WHEEL_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'HOH',
+                });
+              }
               return (
                 <RiskWheelComp
                   participantIds={participantIds}
