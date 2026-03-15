@@ -467,16 +467,11 @@ export default function SilentSaboteurComp({
    * ID of the finalist the jury majority accused of planting the bomb.
    * Computed from juryVotes once voting is complete (phase ≥ winner).
    */
-  const juryVoteMeta = useMemo(() => {
+  const juryAccusedId = useMemo(() => {
     const vals = Object.values(juryVotes);
     const total = vals.length;
     if (total === 0) {
-      return {
-        counts: {} as Record<string, number>,
-        leaderIds: [] as string[],
-        majorityId: null as string | null,
-        total: 0,
-      };
+      return null as string | null;
     }
     const counts: Record<string, number> = {};
     for (const v of vals) counts[v] = (counts[v] ?? 0) + 1;
@@ -489,10 +484,10 @@ export default function SilentSaboteurComp({
     const leaderIds = Object.entries(counts)
       .filter(([, count]) => count === maxCount)
       .map(([id]) => id);
-    const majorityId = leaderIds.length === 1 && maxCount > total / 2 ? leaderIds[0] : null;
-    return { counts, leaderIds, majorityId, total };
+    const majorityId =
+      leaderIds.length === 1 && maxCount > total / 2 ? leaderIds[0] : null;
+    return majorityId;
   }, [juryVotes]);
-  const juryAccusedId = juryVoteMeta.majorityId;
 
 
   const countdownDurationMs = final2Mode
