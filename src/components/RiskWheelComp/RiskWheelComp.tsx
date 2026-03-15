@@ -327,13 +327,15 @@ export default function RiskWheelComp({
     // callback in initRiskWheel generates a fresh crypto-random seed
     // for every real-game session — ensuring each spin sequence is unique.
     const forwardedSeed = seed !== 0 && seed !== undefined ? seed : undefined;
-    console.log('RISK_WHEEL_INIT', {
-      source: standalone ? 'standalone/test' : 'MinigameHost',
-      seedProp: seed,
-      seedForwarded: forwardedSeed,
-      participantIds,
-      prizeType,
-    });
+    if (import.meta.env.DEV) {
+      console.log('RISK_WHEEL_INIT', {
+        source: standalone ? 'standalone/test' : 'MinigameHost',
+        seedProp: seed,
+        seedForwarded: forwardedSeed,
+        participantIds,
+        prizeType,
+      });
+    }
     dispatch(
       initRiskWheel({
         participantIds,
