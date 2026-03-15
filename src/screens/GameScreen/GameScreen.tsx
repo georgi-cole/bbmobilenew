@@ -1420,7 +1420,7 @@ export default function GameScreen() {
               previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };
           })}
-          onDone={(rawValue) => {
+          onDone={(rawValue, partial) => {
             // Capture challenge fields now — completeChallenge() will clear
             // pendingChallenge from Redux, but this closure still holds it.
             const capturedParticipants = pendingChallenge.participants;
@@ -1444,14 +1444,18 @@ export default function GameScreen() {
                   : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
             const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null;
-            // Record per-game personal records for all participants.
-            dispatch(updateGamePRs({
-              gameKey: capturedGameKey,
-              scores: Object.fromEntries(
-                rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
-              ),
-              lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
-            }));
+            // Only record personal records for valid (non-early-exit) completions.
+            // A partial=true exit uses rawValue=0 for the human and would
+            // incorrectly set a "best" 0-score for lowerBetter games.
+            if (!partial) {
+              dispatch(updateGamePRs({
+                gameKey: capturedGameKey,
+                scores: Object.fromEntries(
+                  rawResults.map((r) => [r.playerId, Math.round(r.rawValue)]),
+                ),
+                lowerIsBetter: pendingChallenge.game.scoringAdapter === 'lowerBetter',
+              }));
+            }
 
             // ── Final 3 minigame completion ──────────────────────────────────
             // Apply the winner to the Final 3 part (no ceremony overlay for F3 parts).
@@ -1481,6 +1485,18 @@ export default function GameScreen() {
             const finalWinnerId = (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner))
               ? featureAppliedWinner
               : (scoreWinnerId ?? capturedParticipants[0]);
+
+            // ── Partial / skipped challenge — apply winner without ceremony ───
+            // When the player dismissed or exited the challenge early
+            // (partial=true), the competition was not actually completed.
+            // Advance the game by applying the winner (the AI player with the
+            // highest pre-simulated score, since the human scored 0), but skip
+            // the SpotlightAnimation ceremony so an accidental exit does not
+            // surface as a false winner announcement.
+            if (partial) {
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              return;
+            }
 
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
             const sourceDomRect = getTileRect(finalWinnerId);
