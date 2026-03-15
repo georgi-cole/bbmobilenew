@@ -245,15 +245,12 @@ export function resolveRound(
  * Jury votes for who they think planted the bomb.
  * Strict majority correct → saboteur eliminated, victim wins.
  * Strict majority incorrect → victim eliminated, saboteur wins.
- * Tie → tieBreakVote (victim's vote) decides.
- *   tieBreakVote === saboteurId → victim wins.
- *   otherwise                  → saboteur wins.
+ * Tie → saboteur wins because the jury failed to reach a majority accusation.
  */
 export function resolveFinal2(
   juryVotes: Record<string, string>,
   saboteurId: string,
   victimId: string,
-  tieBreakVote?: string | null,
 ): Final2Outcome {
   const allVotes = Object.values(juryVotes);
   const totalVotes = allVotes.length;
@@ -279,10 +276,6 @@ export function resolveFinal2(
     return { winnerId: saboteurId, eliminatedId: victimId, reason: 'jury_incorrect' };
   }
 
-  // Tie: victim's vote decides
-  if (tieBreakVote === saboteurId) {
-    return { winnerId: victimId, eliminatedId: saboteurId, reason: 'jury_tie' };
-  }
   return { winnerId: saboteurId, eliminatedId: victimId, reason: 'jury_tie' };
 }
 
