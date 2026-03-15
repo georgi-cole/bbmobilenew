@@ -652,7 +652,7 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Seed is always a concrete non-zero value after the prepare callback.
+      // Seed is always a concrete 32-bit unsigned value after the prepare callback (may be 0).
       state.seed = seed >>> 0;
       state.humanPlayerId = humanPlayerId;
 
