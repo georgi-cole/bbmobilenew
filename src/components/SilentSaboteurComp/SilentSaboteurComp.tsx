@@ -67,6 +67,9 @@ const SILENT_SABOTEUR_TIMINGS = {
   TIMER_TICK_MS: 250,
 } as const;
 
+const SILENT_SABOTEUR_VOTE_JITTER_MS = 90;
+const SILENT_SABOTEUR_VOTE_JITTER_SPAN = (SILENT_SABOTEUR_VOTE_JITTER_MS * 2) + 1;
+
 type RevealStage = 'votes' | 'accusationResult' | 'elimination';
 
 /**
@@ -228,8 +231,10 @@ function getAvatarGridRows(ids: string[]): string[][] {
   const rowCount = Math.ceil(ids.length / maxColumns);
   const baseSize = Math.floor(ids.length / rowCount);
   const remainder = ids.length % rowCount;
-  const sizes = Array.from({ length: rowCount }, (_, idx) => baseSize + (idx >= rowCount - remainder ? 1 : 0))
-    .filter((size) => size > 0);
+  const sizes = Array.from(
+    { length: rowCount },
+    (_, idx) => baseSize + (idx >= rowCount - remainder ? 1 : 0),
+  );
 
   const rows: string[][] = [];
   let cursor = 0;
@@ -256,7 +261,9 @@ function buildStaggeredDelays(ids: string[], seed: number) {
   return orderedIds.map((id, idx) => {
     const ratio = orderedIds.length <= 1 ? 1 : idx / (orderedIds.length - 1);
     const baseDelay = Math.round(firstDelay + ((lastDelay - firstDelay) * ratio));
-    const jitterSeed = (((fnv1a32(id) ^ seed) >>> 0) % 181) - 90;
+    const jitterSeed =
+      (((fnv1a32(id) ^ seed) >>> 0) % SILENT_SABOTEUR_VOTE_JITTER_SPAN)
+      - SILENT_SABOTEUR_VOTE_JITTER_MS;
     const delay = Math.max(350, Math.min(totalDuration, baseDelay + jitterSeed));
     return { id, delay };
   });
