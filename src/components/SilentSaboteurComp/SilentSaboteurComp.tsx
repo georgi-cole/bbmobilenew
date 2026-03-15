@@ -618,7 +618,7 @@ export default function SilentSaboteurComp({
         revealInfo.reason === 'saboteur_caught' ? 'saboteur-caught' : 'explosion',
         { eliminatedId: revealInfo.eliminatedId, victimId: revealInfo.victimId },
       );
-      return () => timers.forEach(clearTimeout);
+      return () => {};
     }
 
     setRevealedVoteCount(0);

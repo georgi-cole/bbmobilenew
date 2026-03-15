@@ -187,4 +187,58 @@ describe('SilentSaboteurComp — cinematic polish', () => {
 
     expect(ss(store).phase).toBe('select_victim');
   });
+
+  it('goes straight to accusation result when animations are disabled and still waits for Continue', async () => {
+    const store = makeStore();
+    document.body.classList.add('no-animations');
+
+    render(
+      <Provider store={store}>
+        <SilentSaboteurComp
+          participantIds={PARTICIPANTS.map((p) => p.id)}
+          participants={PARTICIPANTS}
+          prizeType="HOH"
+          seed={7}
+          standalone={true}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      store.dispatch(advanceIntro());
+    });
+
+    const selecting = ss(store);
+    const victimId = selecting.activeIds.find((id) => id !== selecting.saboteurId)!;
+
+    await act(async () => {
+      store.dispatch(selectVictim({ victimId }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
+    });
+
+    const voters = ss(store).activeIds;
+
+    await act(async () => {
+      for (const voter of voters) {
+        const accusedId = voters.find((id) => id !== voter && id !== victimId) ?? voters[0];
+        store.dispatch(submitVote({ voterId: voter, accusedId }));
+      }
+      if (ss(store).phase === 'voting') {
+        store.dispatch(endVotingPhase());
+      }
+    });
+
+    expect(screen.getByTestId('ss-accusation-result')).toBeInTheDocument();
+    expect(screen.getByTestId('ss-reveal-result-continue-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('ss-vote-reveal')).not.toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(screen.getByTestId('ss-accusation-result')).toBeInTheDocument();
+  });
 });
