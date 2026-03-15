@@ -71,18 +71,21 @@ function deriveDeterministicSeed(
   return hash >>> 0;
 }
 
-function deriveGeneratedSeed(
+function generateRuntimeSeed(
   competitionType: string,
   humanPlayerId: string | null,
   participantIds: string[],
 ): number {
-  // Keep this wrapper for semantic clarity; it currently returns the
-  // deterministic seed directly so reducers remain pure/deterministic.
-  return deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
+  const baseSeed = deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const entropy = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(entropy);
+    return (baseSeed ^ entropy[0]) >>> 0;
+  }
+  const perfNow = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000) : 0;
+  return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
 }
 // Personality is the anchor so AI behavior stays distinct per player.
-const AI_BASE_RISK_WEIGHT = 0.35;
-// Current round score strongly affects appetite for another spin.
 const AI_BASE_RISK_WEIGHT = 0.35;
 // Current round score strongly affects appetite for another spin.
 const AI_SCORE_FACTOR_WEIGHT = 0.25;
@@ -625,16 +628,16 @@ const riskWheelSlice = createSlice({
     /**
      * Initialise a new Risk Wheel competition.
      */
-    initRiskWheel(
-      state,
-      action: PayloadAction<{
-        participantIds: string[];
-        competitionType: RiskWheelCompetitionType;
-        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
-        seed?: number;
-        humanPlayerId: string | null;
-      }>,
-    ) {
+    initRiskWheel: {
+      reducer(
+        state,
+        action: PayloadAction<{
+          participantIds: string[];
+          competitionType: RiskWheelCompetitionType;
+          seed: number;
+          humanPlayerId: string | null;
+        }>,
+      ) {
       const { participantIds, competitionType, seed, humanPlayerId } = action.payload;
 
       // Reset all fields explicitly to avoid Immer frozen-object issues
@@ -661,16 +664,7 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Use the caller-supplied seed when provided; otherwise derive a stable
-      // base hash and mix in a per-session nonce so repeated launches still vary.
-      state.seed =
-        (seed !== undefined
-          ? seed
-          : deriveGeneratedSeed(
-            competitionType as string,
-            humanPlayerId as string | null,
-            participantIds as string[],
-          )) >>> 0;
+      state.seed = seed;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
@@ -694,6 +688,28 @@ const riskWheelSlice = createSlice({
       state.round = 1;
       state.currentPlayerIndex = 0;
       state.phase = 'awaiting_spin';
+      },
+      prepare(payload: {
+        participantIds: string[];
+        competitionType: RiskWheelCompetitionType;
+        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
+        seed?: number;
+        humanPlayerId: string | null;
+      }) {
+        return {
+          payload: {
+            ...payload,
+            seed:
+              payload.seed !== undefined
+                ? payload.seed >>> 0
+                : generateRuntimeSeed(
+                  payload.competitionType,
+                  payload.humanPlayerId,
+                  payload.participantIds,
+                ),
+          },
+        };
+      },
     },
 
     /**

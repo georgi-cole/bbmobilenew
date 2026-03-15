@@ -1490,6 +1490,11 @@ export default function GameScreen() {
                 ? featureAppliedWinner
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
+            if (partial === true) {
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              return;
+            }
+
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
             const sourceDomRect = getTileRect(finalWinnerId);
 
