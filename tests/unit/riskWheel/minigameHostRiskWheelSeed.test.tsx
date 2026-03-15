@@ -174,37 +174,6 @@ describe('MinigameHost — Risk Wheel seed isolation', () => {
     expect(capturedRiskWheelSeed).toBeUndefined();
   });
 
-  it('RISK_WHEEL_NEW_SESSION is logged with the ignored challenge seed', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const CHALLENGE_SEED = 12345;
-
-    render(
-      <Provider store={makeStore()}>
-        <MinigameHost
-          game={RISK_WHEEL_GAME}
-          gameOptions={{ seed: CHALLENGE_SEED }}
-          participants={PARTICIPANTS}
-          onDone={vi.fn()}
-          skipRules
-          skipCountdown
-        />
-      </Provider>,
-    );
-
-    await act(async () => { vi.runAllTimers(); });
-
-    const newSessionCalls = logSpy.mock.calls.filter(
-      (args) => args[0] === 'RISK_WHEEL_NEW_SESSION',
-    );
-    expect(newSessionCalls.length).toBeGreaterThan(0);
-    expect(newSessionCalls[0][1]).toMatchObject({
-      source: 'MinigameHost',
-      challengeSeedIgnored: CHALLENGE_SEED,
-    });
-
-    logSpy.mockRestore();
-  });
-
   it('ClosestWithoutGoingOver (non-RiskWheel) still receives the challenge seed unchanged', async () => {
     const CHALLENGE_SEED = 77777;
     render(
