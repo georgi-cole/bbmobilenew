@@ -21,10 +21,8 @@ export function useRiskWheelAudio(): UseRiskWheelAudioReturn {
   const { startWheelSound, stopWheelSound } = useWheelOfLuck();
 
   useEffect(() => {
-    void SoundManager.playMusic(RISK_WHEEL_MUSIC_KEY);
     return () => {
       stopWheelSound();
-      SoundManager.stopMusic();
     };
   }, [stopWheelSound]);
 
