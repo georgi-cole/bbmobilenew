@@ -466,14 +466,16 @@ export default function RiskWheelComp({
     const targetIdx = pickSectorIndex(rw.seed ?? 0, rw.rngCallCount);
     const targetAngle = getTargetRotation(wheelAngleRef.current, targetIdx);
 
-    console.log('RISK_WHEEL_SPIN', {
-      spinNumber: rw.currentSpinCount + 1,
-      chosenIndex: targetIdx,
-      chosenSector: WHEEL_SECTORS[targetIdx],
-      rngCallCount: rw.rngCallCount,
-      seed: rw.seed,
-      source: 'human',
-    });
+    if (import.meta.env?.DEV) {
+      console.log('RISK_WHEEL_SPIN', {
+        spinNumber: rw.currentSpinCount + 1,
+        chosenIndex: targetIdx,
+        chosenSector: WHEEL_SECTORS[targetIdx],
+        rngCallCount: rw.rngCallCount,
+        seed: rw.seed,
+        source: 'human',
+      });
+    }
 
     if (fromDecision) {
       // Move from awaiting_decision → awaiting_spin first (sync)
