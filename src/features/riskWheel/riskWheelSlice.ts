@@ -627,6 +627,11 @@ const riskWheelSlice = createSlice({
   reducers: {
     /**
      * Initialise a new Risk Wheel competition.
+     *
+     * The `prepare` callback generates a fresh runtime seed whenever the
+     * caller omits `seed` (i.e. `seed` is `undefined`).  This ensures every
+     * interactive session is unpredictable while still allowing deterministic
+     * tests/replays to supply an explicit seed (including 0).
      */
     initRiskWheel: {
       reducer(
