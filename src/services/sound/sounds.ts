@@ -76,7 +76,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   /**
    * Wheel-spin loop for the Risk Wheel minigame.
    * Asset not yet present — drop /public/assets/sounds/minigame_wheelofluck.mp3
-   * to activate. SoundManager will no-op silently until the file is added.
+   * to activate. Until the file is added, SoundManager will still attempt to
+   * load/play this asset (resulting in missing-file errors such as 404s).
    */
   'minigame:wheelofluck': {
     key: 'minigame:wheelofluck',
@@ -89,7 +90,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   /**
    * Risk Wheel ambient loop.
    * Asset not yet present — drop /public/assets/sounds/music_risk_wheel_loop.mp3
-   * to activate. SoundManager will no-op silently until the file is added.
+   * to activate. Until the file is added, SoundManager will still attempt to
+   * load/play this asset (resulting in missing-file errors such as 404s).
    */
   'music:risk_wheel_loop': {
     key: 'music:risk_wheel_loop',
