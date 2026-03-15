@@ -379,14 +379,27 @@ export const completeChallenge =
     };
 
     dispatch(recordRun(run));
-    dispatch(
-      applyCompetitionSeasonUpdate({
-        participants,
-        scores: explicitWinnerId ? undefined : canonicalScores,
-        winnerId,
-        includePlacementBonuses: !explicitWinnerId,
-      }),
-    );
+    if (explicitWinnerId) {
+      // An authoritative React minigame winner may not align with the generic
+      // challenge-score ranking, so apply only the winner boost here and avoid
+      // placement bonuses based on fallback scores.
+      dispatch(
+        applyCompetitionSeasonUpdate({
+          participants,
+          winnerId,
+          includePlacementBonuses: false,
+        }),
+      );
+    } else {
+      dispatch(
+        applyCompetitionSeasonUpdate({
+          participants,
+          scores: canonicalScores,
+          winnerId,
+          includePlacementBonuses: true,
+        }),
+      );
+    }
     dispatch(setPendingChallenge(null));
 
     return winnerId;

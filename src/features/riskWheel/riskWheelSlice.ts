@@ -45,8 +45,8 @@ const AI_NOISE_MAGNITUDE = 0.15;
 
 /**
  * Derive a deterministic 32-bit seed from the competition configuration.
- * This keeps the reducer pure while still providing varied seeds for
- * different combinations of inputs.
+ * This provides a stable base so omitted-seed games can still vary by
+ * mixing in runtime entropy.
  */
 function deriveDeterministicSeed(
   competitionType: string,
@@ -69,6 +69,19 @@ function deriveDeterministicSeed(
   }
 
   return hash >>> 0;
+}
+
+function deriveGeneratedSeed(
+  competitionType: string,
+  humanPlayerId: string | null,
+  participantIds: string[],
+): number {
+  const baseSeed = deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    return (baseSeed ^ globalThis.crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
+  }
+  const perfNow = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000) : 0;
+  return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
 }
 // Personality is the anchor so AI behavior stays distinct per player.
 const AI_BASE_RISK_WEIGHT = 0.35;
@@ -649,11 +662,16 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Use the caller-supplied seed when provided; fall back to a deterministic value.
+      // Use the caller-supplied seed when provided; otherwise derive a stable
+      // base hash and mix in a per-session nonce so repeated launches still vary.
       state.seed =
         (seed !== undefined
           ? seed
-          : deriveDeterministicSeed(competitionType as string, humanPlayerId as string | null, participantIds as string[])) >>> 0;
+          : deriveGeneratedSeed(
+            competitionType as string,
+            humanPlayerId as string | null,
+            participantIds as string[],
+          )) >>> 0;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
