@@ -177,6 +177,15 @@ describe('computeEliminatedPlayers', () => {
   });
 });
 
+describe('WHEEL_SECTORS', () => {
+  it('keeps the π sector as a 3.14-point reward', () => {
+    const piSector = WHEEL_SECTORS.find((sector) => sector.label === 'π');
+    expect(piSector).toBeDefined();
+    expect(piSector?.type).toBe('points');
+    expect(piSector?.value).toBeCloseTo(3.14, 2);
+  });
+});
+
 // ─── 666 effect ───────────────────────────────────────────────────────────────
 
 describe('resolve666Effect', () => {
