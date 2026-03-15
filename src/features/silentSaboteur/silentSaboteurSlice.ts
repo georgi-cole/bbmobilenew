@@ -34,6 +34,7 @@ import {
   resolveFinal2,
   noJuryFallbackWinner,
   buildAiJuryVotes,
+  pickVictimTieBreakVote,
 } from './helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -89,6 +90,9 @@ export interface SilentSaboteurState {
   final2VictimId: string | null;
   /** juryVotes[jurorId] = finalist they accuse */
   juryVotes: Record<string, string>;
+  /** Victim's tiebreak vote (set if jury is tied) */
+  final2TieBreakVote: string | null;
+
   /** Reveal metadata for the UI. */
   revealInfo: RevealInfo | null;
 
@@ -121,6 +125,7 @@ const initialState: SilentSaboteurState = {
   final2SaboteurId: null,
   final2VictimId: null,
   juryVotes: {},
+  final2TieBreakVote: null,
 
   revealInfo: null,
 
@@ -271,6 +276,17 @@ const silentSaboteurSlice = createSlice({
       }
     },
 
+    // ── Submit final-2 victim tiebreak vote ───────────────────────────────────
+    submitFinal2TieBreak(state, action: PayloadAction<{ victimId: string; accusedId: string }>) {
+      if (state.phase !== 'final2_jury') return;
+      const { victimId, accusedId } = action.payload;
+      if (victimId !== state.final2VictimId) return;
+      const finalists = state.activeIds;
+      if (!finalists.includes(accusedId)) return;
+      state.final2TieBreakVote = accusedId;
+      _resolveFinal2Phase(state);
+    },
+
     // ── Advance winner → complete ─────────────────────────────────────────────
     advanceWinner(state) {
       if (state.phase !== 'winner') return;
@@ -348,6 +364,7 @@ function _startFinal2(state: SilentSaboteurState) {
   state.final2SaboteurId = final2Saboteur;
   state.final2VictimId = final2Victim;
   state.juryVotes = {};
+  state.final2TieBreakVote = null;
 
   if (state.eliminatedIds.length === 0) {
     // No jury — use deterministic fallback immediately
@@ -379,8 +396,28 @@ function _startFinal2(state: SilentSaboteurState) {
 function _resolveFinal2Phase(state: SilentSaboteurState) {
   const saboteurId = state.final2SaboteurId!;
   const victimId = state.final2VictimId!;
-  const { juryVotes } = state;
-  const outcome = resolveFinal2(juryVotes, saboteurId, victimId);
+  const { juryVotes, final2TieBreakVote } = state;
+
+  // Determine victim's tiebreak vote if tie and victim is human (not yet submitted)
+  // For AI victim we compute deterministically
+  let tieBreakVote = final2TieBreakVote;
+  if (tieBreakVote == null) {
+    const allVotes = Object.values(juryVotes);
+    const total = allVotes.length;
+    const saboteurVotes = allVotes.filter((v) => v === saboteurId).length;
+    const isTied = total > 0 && saboteurVotes * 2 === total;
+    if (isTied) {
+      const victimIsHuman = victimId === state.humanPlayerId;
+      if (!victimIsHuman) {
+        // AI victim: deterministic tiebreak
+        tieBreakVote = pickVictimTieBreakVote(state.seed, victimId, saboteurId, victimId);
+      }
+      // Human victim: wait for submitFinal2TieBreak — bail out early
+      if (victimIsHuman && final2TieBreakVote == null) return;
+    }
+  }
+
+  const outcome = resolveFinal2(juryVotes, saboteurId, victimId, tieBreakVote);
   state.winnerId = outcome.winnerId;
   state.phase = 'winner';
 }
@@ -396,6 +433,7 @@ export const {
   advanceReveal,
   startNextRound,
   submitJuryVote,
+  submitFinal2TieBreak,
   advanceWinner,
   markSilentSaboteurOutcomeResolved,
   resetSilentSaboteur,

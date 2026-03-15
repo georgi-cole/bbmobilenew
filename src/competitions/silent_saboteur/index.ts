@@ -14,6 +14,7 @@ export {
   advanceReveal,
   startNextRound,
   submitJuryVote,
+  submitFinal2TieBreak,
   advanceWinner,
   markSilentSaboteurOutcomeResolved,
   resetSilentSaboteur,
