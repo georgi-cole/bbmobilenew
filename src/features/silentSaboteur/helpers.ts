@@ -251,7 +251,6 @@ export function resolveFinal2(
   juryVotes: Record<string, string>,
   saboteurId: string,
   victimId: string,
-  _tieBreakVote?: string | null,
 ): Final2Outcome {
   const allVotes = Object.values(juryVotes);
   const totalVotes = allVotes.length;
