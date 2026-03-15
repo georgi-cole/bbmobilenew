@@ -26,12 +26,12 @@ import {
   advanceFromTurnComplete,
   resolveAllAiTurns,
   advanceFromRoundSummary,
-  markRiskWheelOutcomeResolved,
   WHEEL_SECTORS,
   computeEliminationCount,
   pickSectorIndex,
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
+import { resolveRiskWheelOutcome } from '../../features/riskWheel/thunks';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
@@ -74,7 +74,13 @@ interface Props {
   participantIds: string[];
   participants?: MinigameParticipant[];
   prizeType?: RiskWheelCompetitionType;
-  seed: number;
+  /**
+   * Deterministic seed for the competition RNG.
+   * Pass 0 or omit to have the component generate a fresh crypto-random seed
+   * each mount (recommended for real gameplay).
+   * Pass a non-zero value for reproducible dev/test sessions.
+   */
+  seed?: number;
   onComplete?: () => void;
   standalone?: boolean;
 }
@@ -310,7 +316,11 @@ export default function RiskWheelComp({
       initRiskWheel({
         participantIds,
         competitionType: prizeType,
-        seed,
+        // Only forward a seed when it is explicitly non-zero (dev/test pages).
+        // 0 and undefined both result in undefined here, so the prepare
+        // callback in initRiskWheel generates a fresh crypto-random seed
+        // for every real-game session — ensuring each spin sequence is unique.
+        seed: seed !== 0 && seed !== undefined ? seed : undefined,
         humanPlayerId: participants?.find((p) => p.isHuman)?.id ?? null,
       }),
     );
@@ -322,7 +332,9 @@ export default function RiskWheelComp({
   // ── Outcome resolved callback ────────────────────────────────────────────
   useEffect(() => {
     if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone) return;
-    dispatch(markRiskWheelOutcomeResolved());
+    // resolveRiskWheelOutcome marks outcomeResolved AND dispatches applyMinigameWinner.
+    // This ensures featureAppliedWinner is set in game state before onComplete fires.
+    dispatch(resolveRiskWheelOutcome());
   // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rw?.phase, rw?.outcomeResolved]);
@@ -514,7 +526,15 @@ export default function RiskWheelComp({
           won the Risk Wheel {prizeType} Competition!
         </p>
         {standalone && (
-          <button className="rw-btn rw-btn--primary" onClick={() => onCompleteRef.current?.()}>
+          <button
+            className="rw-btn rw-btn--primary"
+            onClick={() => {
+              if (!rw?.outcomeResolved) {
+                dispatch(resolveRiskWheelOutcome());
+              }
+              onCompleteRef.current?.();
+            }}
+          >
             Continue
           </button>
         )}

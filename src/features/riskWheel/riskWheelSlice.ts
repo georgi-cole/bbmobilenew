@@ -43,33 +43,6 @@ export const MAX_SPINS_PER_TURN = 3;
 const MAX_SCORE_REFERENCE = 1000;
 const AI_NOISE_MAGNITUDE = 0.15;
 
-/**
- * Derive a deterministic 32-bit seed from the competition configuration.
- * This keeps the reducer pure while still providing varied seeds for
- * different combinations of inputs.
- */
-function deriveDeterministicSeed(
-  competitionType: string,
-  humanPlayerId: string | null,
-  participantIds: string[],
-): number {
-  // Simple 32-bit FNV-1a hash over a concatenated description of inputs.
-  let hash = 0x811c9dc5; // FNV offset basis
-  const parts: string[] = [
-    String(competitionType),
-    humanPlayerId != null ? humanPlayerId : '',
-    participantIds.join(','),
-  ];
-  const input = parts.join('|');
-
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    // 32-bit FNV prime multiplication with overflow behavior.
-    hash = (hash * 0x01000193) >>> 0;
-  }
-
-  return hash >>> 0;
-}
 // Personality is the anchor so AI behavior stays distinct per player.
 const AI_BASE_RISK_WEIGHT = 0.35;
 // Current round score strongly affects appetite for another spin.
@@ -612,17 +585,47 @@ const riskWheelSlice = createSlice({
   reducers: {
     /**
      * Initialise a new Risk Wheel competition.
+     *
+     * The `prepare` callback generates a fresh crypto-random seed whenever the
+     * caller omits `seed` (i.e. `seed` is `undefined`).  This ensures every
+     * interactive session is unpredictable while still allowing deterministic
+     * tests/replays to supply an explicit seed (including 0).
      */
-    initRiskWheel(
-      state,
-      action: PayloadAction<{
+    initRiskWheel: {
+      prepare(payload: {
         participantIds: string[];
         competitionType: RiskWheelCompetitionType;
-        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
+        /** Explicit seed for deterministic RNG. Omit for a crypto-random seed. */
         seed?: number;
         humanPlayerId: string | null;
-      }>,
-    ) {
+      }) {
+        // Generate a crypto-random seed only when none is provided (undefined).
+        // An explicit seed of 0 is kept as-is for deterministic tests.
+        const resolvedSeed: number =
+          payload.seed !== undefined
+            ? (payload.seed >>> 0)
+            : (() => {
+                if (
+                  typeof crypto !== 'undefined' &&
+                  typeof crypto.getRandomValues === 'function'
+                ) {
+                  const buf = new Uint32Array(1);
+                  crypto.getRandomValues(buf);
+                  return (buf[0] || 1) >>> 0;
+                }
+                return ((Math.random() * 0x100000000) >>> 0) || 1;
+              })();
+        return { payload: { ...payload, seed: resolvedSeed } };
+      },
+      reducer(
+        state,
+        action: PayloadAction<{
+          participantIds: string[];
+          competitionType: RiskWheelCompetitionType;
+          seed: number;
+          humanPlayerId: string | null;
+        }>,
+      ) {
       const { participantIds, competitionType, seed, humanPlayerId } = action.payload;
 
       // Reset all fields explicitly to avoid Immer frozen-object issues
@@ -649,11 +652,8 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Use the caller-supplied seed when provided; fall back to a deterministic value.
-      state.seed =
-        (seed !== undefined
-          ? seed
-          : deriveDeterministicSeed(competitionType as string, humanPlayerId as string | null, participantIds as string[])) >>> 0;
+      // Seed is always a concrete non-zero value after the prepare callback.
+      state.seed = seed >>> 0;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
@@ -677,6 +677,7 @@ const riskWheelSlice = createSlice({
       state.round = 1;
       state.currentPlayerIndex = 0;
       state.phase = 'awaiting_spin';
+      },
     },
 
     /**
