@@ -1315,9 +1315,11 @@ export default function SilentSaboteurComp({
           ) : (
             <>
               <h2 className="ss-phase-label">
-                {juryAccusedId === final2SaboteurId
-                  ? 'The saboteur has been exposed!'
-                  : 'The bomb detonates…'}
+                {juryAccusedId == null
+                  ? 'The jury is deadlocked…'
+                  : juryAccusedId === final2SaboteurId
+                    ? 'The saboteur has been exposed!'
+                    : 'The bomb detonates…'}
               </h2>
               <Final2FinalistsReveal
                 finalistIds={final2FinalistIdsRef.current}
