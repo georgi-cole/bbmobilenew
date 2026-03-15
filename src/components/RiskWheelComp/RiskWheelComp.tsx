@@ -31,7 +31,10 @@ import {
   pickSectorIndex,
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
-import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
+import type {
+  MinigameParticipant,
+  ReactMinigameCompletion,
+} from '../MinigameHost/MinigameHost';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
 import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio';
@@ -307,6 +310,13 @@ export default function RiskWheelComp({
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
+  const buildCompletion = useCallback((): ReactMinigameCompletion | undefined => {
+    if (!rw || rw.phase !== 'complete') return undefined;
+    return {
+      authoritativeWinnerId: rw.winnerId ?? null,
+    };
+  }, [rw]);
+
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
     if (isInitialisedRef.current) return;
@@ -340,7 +350,7 @@ export default function RiskWheelComp({
 
   useEffect(() => {
     if (!rw || rw.phase !== 'complete' || !rw.outcomeResolved || standalone) return;
-    onCompleteRef.current?.();
+    onCompleteRef.current?.(buildCompletion());
   // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rw?.outcomeResolved]);
@@ -527,9 +537,7 @@ export default function RiskWheelComp({
         {standalone && (
           <button
             className="rw-btn rw-btn--primary"
-            onClick={() => {
-              onCompleteRef.current?.();
-            }}
+            onClick={() => onCompleteRef.current?.(buildCompletion())}
           >
             Continue
           </button>

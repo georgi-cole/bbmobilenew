@@ -43,6 +43,48 @@ export const MAX_SPINS_PER_TURN = 3;
 const MAX_SCORE_REFERENCE = 1000;
 const AI_NOISE_MAGNITUDE = 0.15;
 
+/**
+ * Derive a deterministic 32-bit seed from the competition configuration.
+ * This provides a stable base so omitted-seed games can still vary by
+ * mixing in runtime entropy.
+ */
+function deriveDeterministicSeed(
+  competitionType: string,
+  humanPlayerId: string | null,
+  participantIds: string[],
+): number {
+  // Simple 32-bit FNV-1a hash over a concatenated description of inputs.
+  let hash = 0x811c9dc5; // FNV offset basis
+  const parts: string[] = [
+    String(competitionType),
+    humanPlayerId != null ? humanPlayerId : '',
+    participantIds.join(','),
+  ];
+  const input = parts.join('|');
+
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    // 32-bit FNV prime multiplication with overflow behavior.
+    hash = (hash * 0x01000193) >>> 0;
+  }
+
+  return hash >>> 0;
+}
+
+function generateRuntimeSeed(
+  competitionType: string,
+  humanPlayerId: string | null,
+  participantIds: string[],
+): number {
+  const baseSeed = deriveDeterministicSeed(competitionType, humanPlayerId, participantIds);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const entropy = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(entropy);
+    return (baseSeed ^ entropy[0]) >>> 0;
+  }
+  const perfNow = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000) : 0;
+  return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
+}
 // Personality is the anchor so AI behavior stays distinct per player.
 const AI_BASE_RISK_WEIGHT = 0.35;
 // Current round score strongly affects appetite for another spin.
@@ -652,8 +694,7 @@ const riskWheelSlice = createSlice({
       state.finalScores = undefined;
 
       state.competitionType = competitionType;
-      // Seed is always a concrete 32-bit unsigned value after the prepare callback (may be 0).
-      state.seed = seed >>> 0;
+      state.seed = seed;
       state.humanPlayerId = humanPlayerId;
 
       state.allPlayerIds = [...participantIds];
@@ -677,6 +718,27 @@ const riskWheelSlice = createSlice({
       state.round = 1;
       state.currentPlayerIndex = 0;
       state.phase = 'awaiting_spin';
+      },
+      prepare(payload: {
+        participantIds: string[];
+        competitionType: RiskWheelCompetitionType;
+        /** Explicit seed for deterministic RNG. When omitted, a random seed is generated. */
+        seed?: number;
+        humanPlayerId: string | null;
+      }) {
+        return {
+          payload: {
+            ...payload,
+            seed:
+              payload.seed !== undefined
+                ? payload.seed >>> 0
+                : generateRuntimeSeed(
+                  payload.competitionType,
+                  payload.humanPlayerId,
+                  payload.participantIds,
+                ),
+          },
+        };
       },
     },
 

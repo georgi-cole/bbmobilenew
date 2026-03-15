@@ -50,10 +50,20 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Module-level captured callbacks ────────────────────────────────────────
 
-let capturedOnDone: ((rawValue: number) => void) | null = null;
+let capturedOnDone:
+  ((rawValue: number, partial?: boolean, completion?: { authoritativeWinnerId?: string | null }) => void)
+  | null = null;
 
 vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
-  default: ({ onDone }: { onDone: (rawValue: number) => void }) => {
+  default: ({
+    onDone,
+  }: {
+    onDone: (
+      rawValue: number,
+      partial?: boolean,
+      completion?: { authoritativeWinnerId?: string | null },
+    ) => void;
+  }) => {
     capturedOnDone = onDone;
     return <div data-testid="minigame-mock" />;
   },
@@ -306,6 +316,26 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     // Some winner must be applied (the score-based path picks p0 or highest scorer).
     expect(store.getState().game.hohId).not.toBeNull();
     expect(store.getState().game.phase).toBe('hoh_results');
+  });
+
+  it('prefers an authoritative winner returned by the React minigame over score-based challenge results', async () => {
+    const store = makeStore();
+    renderWithStore(store);
+
+    await act(async () => {
+      store.dispatch(setPhase('hoh_comp'));
+    });
+
+    expect(capturedOnDone).not.toBeNull();
+
+    await act(async () => {
+      capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' });
+    });
+
+    expect(store.getState().game.hohId).toBe('p2');
+    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().challenge.history[0]?.winnerId).toBe('p2');
+    expect(store.getState().challenge.history[0]?.authoritative).toBe(true);
   });
 });
 
