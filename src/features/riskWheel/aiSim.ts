@@ -33,15 +33,20 @@ export interface AiSimResult {
  * Simulate a single round of Risk Wheel turns for all provided AI players.
  *
  * @param players    List of AI participants (id + optional personality).
- * @param seed       Optional deterministic seed. When omitted or set to 0, a fresh
- *                   crypto-random seed is used so results vary each call.
+ * @param seed       Optional deterministic seed. Pass a non-zero value for
+ *                   reproducible results. Omit or pass `0` to use a fresh
+ *                   crypto-random seed. Both `undefined` and `0` are treated
+ *                   as "no seed provided — use random", which is consistent
+ *                   with the `0 = default/unset` convention used by MinigameHost.
  * @returns          Array of {id, score} for each simulated player.
  */
 export function simulateAiTurns(
   players: AiSimPlayer[],
   seed?: number,
 ): AiSimResult[] {
-  // Treat seed === 0 as a sentinel meaning "use a fresh crypto-random seed".
+  // seed=0 and seed=undefined are both treated as "no seed provided" — use
+  // crypto-random.  Any other value (including negative numbers, which become
+  // large positive values after >>>0) is used as a deterministic seed.
   const effectiveSeed = seed !== undefined && seed !== 0 ? seed >>> 0 : cryptoSeed();
   // Use a separate RNG stream from the spin RNG to avoid entanglement.
   const decisionRng = mulberry32((effectiveSeed ^ 0xdeadbeef) >>> 0);

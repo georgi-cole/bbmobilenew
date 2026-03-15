@@ -628,37 +628,12 @@ const riskWheelSlice = createSlice({
     /**
      * Initialise a new Risk Wheel competition.
      *
-     * The `prepare` callback generates a fresh crypto-random seed whenever the
+     * The `prepare` callback generates a fresh runtime seed whenever the
      * caller omits `seed` (i.e. `seed` is `undefined`).  This ensures every
      * interactive session is unpredictable while still allowing deterministic
      * tests/replays to supply an explicit seed (including 0).
      */
     initRiskWheel: {
-      prepare(payload: {
-        participantIds: string[];
-        competitionType: RiskWheelCompetitionType;
-        /** Explicit seed for deterministic RNG. Omit for a crypto-random seed. */
-        seed?: number;
-        humanPlayerId: string | null;
-      }) {
-        // Generate a crypto-random seed only when none is provided (undefined).
-        // An explicit seed of 0 is kept as-is for deterministic tests.
-        const resolvedSeed: number =
-          payload.seed !== undefined
-            ? (payload.seed >>> 0)
-            : (() => {
-                if (
-                  typeof crypto !== 'undefined' &&
-                  typeof crypto.getRandomValues === 'function'
-                ) {
-                  const buf = new Uint32Array(1);
-                  crypto.getRandomValues(buf);
-                  return (buf[0] || 1) >>> 0;
-                }
-                return ((Math.random() * 0x100000000) >>> 0) || 1;
-              })();
-        return { payload: { ...payload, seed: resolvedSeed } };
-      },
       reducer(
         state,
         action: PayloadAction<{

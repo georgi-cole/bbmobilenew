@@ -31,6 +31,7 @@ import {
   pickSectorIndex,
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
+import { resolveRiskWheelOutcome } from '../../features/riskWheel/thunks';
 import type {
   MinigameParticipant,
   ReactMinigameCompletion,
@@ -83,7 +84,7 @@ interface Props {
    * Pass a non-zero value for reproducible dev/test sessions.
    */
   seed?: number;
-  onComplete?: () => void;
+  onComplete?: (completion?: ReactMinigameCompletion) => void;
   standalone?: boolean;
 }
 
