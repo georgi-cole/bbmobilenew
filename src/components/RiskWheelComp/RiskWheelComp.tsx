@@ -31,7 +31,6 @@ import {
   pickSectorIndex,
   type RiskWheelCompetitionType,
 } from '../../features/riskWheel/riskWheelSlice';
-import { resolveRiskWheelOutcome } from '../../features/riskWheel/thunks';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
@@ -529,9 +528,6 @@ export default function RiskWheelComp({
           <button
             className="rw-btn rw-btn--primary"
             onClick={() => {
-              if (!rw?.outcomeResolved) {
-                dispatch(resolveRiskWheelOutcome());
-              }
               onCompleteRef.current?.();
             }}
           >
