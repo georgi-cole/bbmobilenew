@@ -337,7 +337,12 @@ export const startChallenge =
  * Returns the winner's player ID.
  */
 export const completeChallenge =
-  (rawResults: RawResult[]) =>
+  (
+    rawResults: RawResult[],
+    options?: {
+      authoritativeWinnerId?: string | null;
+    },
+  ) =>
   (dispatch: AppDispatch, getState: () => RootState): string | null => {
     const state = getState();
     const pending = state.challenge?.pending;
@@ -354,7 +359,12 @@ export const completeChallenge =
     // fall back to the first ranked entry, then the first participant.
     const positiveWinner = ranked.find((r) => r.score > 0);
     const winner = positiveWinner ?? ranked[0];
-    const winnerId = winner?.playerId ?? participants[0] ?? '';
+    const explicitWinnerId =
+      options?.authoritativeWinnerId &&
+      participants.includes(options.authoritativeWinnerId)
+        ? options.authoritativeWinnerId
+        : null;
+    const winnerId = explicitWinnerId ?? winner?.playerId ?? participants[0] ?? '';
 
     const run: ChallengeRun = {
       id: pending.id,
@@ -365,15 +375,16 @@ export const completeChallenge =
       canonicalScores,
       winnerId,
       timestamp: Date.now(),
-      authoritative: winner?.authoritativeWinner === true,
+      authoritative: explicitWinnerId !== null || winner?.authoritativeWinner === true,
     };
 
     dispatch(recordRun(run));
     dispatch(
       applyCompetitionSeasonUpdate({
         participants,
-        scores: canonicalScores,
+        scores: explicitWinnerId ? undefined : canonicalScores,
         winnerId,
+        includePlacementBonuses: !explicitWinnerId,
       }),
     );
     dispatch(setPendingChallenge(null));

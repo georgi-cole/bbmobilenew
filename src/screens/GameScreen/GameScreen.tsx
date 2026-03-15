@@ -1420,7 +1420,7 @@ export default function GameScreen() {
               previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
             };
           })}
-          onDone={(rawValue) => {
+          onDone={(rawValue, _partial, reactCompletion) => {
             // Capture challenge fields now — completeChallenge() will clear
             // pendingChallenge from Redux, but this closure still holds it.
             const capturedParticipants = pendingChallenge.participants;
@@ -1443,7 +1443,14 @@ export default function GameScreen() {
                   ? rawValue
                   : (pendingChallenge.aiScores[id] ?? rawValue),
             }));
-            const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null;
+            const explicitWinnerId =
+              reactCompletion?.authoritativeWinnerId &&
+              capturedParticipants.includes(reactCompletion.authoritativeWinnerId)
+                ? reactCompletion.authoritativeWinnerId
+                : null;
+            const scoreWinnerId = dispatch(completeChallenge(rawResults, {
+              authoritativeWinnerId: explicitWinnerId,
+            })) as string | null;
             // Record per-game personal records for all participants.
             dispatch(updateGamePRs({
               gameKey: capturedGameKey,
@@ -1478,9 +1485,10 @@ export default function GameScreen() {
             const featureAppliedWinner = isHohComp
               ? liveState.game.hohId
               : liveState.game.povWinnerId;
-            const finalWinnerId = (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner))
-              ? featureAppliedWinner
-              : (scoreWinnerId ?? capturedParticipants[0]);
+            const finalWinnerId = explicitWinnerId
+              ?? ((featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner))
+                ? featureAppliedWinner
+                : (scoreWinnerId ?? capturedParticipants[0]));
 
             const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null;
             const sourceDomRect = getTileRect(finalWinnerId);
