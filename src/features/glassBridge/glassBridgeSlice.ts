@@ -128,7 +128,7 @@ export interface GlassBridgeState {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ROWS_COUNT = 16;
-const DEFAULT_TIME_LIMIT_MS = 120_000;
+const DEFAULT_TIME_LIMIT_MS = 179_000;
 
 /**
  * Default accuracy when AI observes one broken tile and infers the safe side.
