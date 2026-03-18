@@ -41,6 +41,7 @@ import glassBridgeReducer, {
   buildPlacements,
   buildAiNumberChoices,
   aiDecideStep,
+  deriveAiObviousSafeAccuracy,
   simulateAiTurn,
   type BridgeRow,
   type GlassBridgePlayerProgress,
@@ -275,6 +276,15 @@ describe('aiDecideStep', () => {
     const rng1 = mulberry32(42);
     const rng2 = mulberry32(42);
     expect(aiDecideStep(row, rng1)).toBe(aiDecideStep(row, rng2));
+  });
+
+  it('keeps a 0.999 floor while allowing higher-nerve profiles to be slightly more accurate', () => {
+    const lowNerve = deriveAiObviousSafeAccuracy({ memory: 50, nerve: 0, composure: 50 });
+    const highNerve = deriveAiObviousSafeAccuracy({ memory: 50, nerve: 100, composure: 50 });
+
+    expect(lowNerve).toBe(0.999);
+    expect(highNerve).toBeGreaterThan(lowNerve);
+    expect(highNerve).toBeLessThan(1);
   });
 
   it('uses revealedSafeSide even when a tile is broken (revealed takes priority over broken-tile inference)', () => {

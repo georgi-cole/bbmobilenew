@@ -138,7 +138,7 @@ const DEFAULT_TIME_LIMIT_MS = 179_000;
 
 /**
  * Default accuracy when AI observes one broken tile and infers the safe side.
- * Overridden by the player's `nerve` skill if a profile is available.
+ * Used as the minimum floor; higher-nerve profiles can exceed it slightly.
  *
  * 99.9% → AI almost always chooses the logically safe tile.
  * 0.1%  → "slip accident" — AI steps onto the broken tile despite knowing better.
@@ -171,17 +171,15 @@ export function generateBridgeRows(rng: () => number, rowsCount: number): Bridge
  * Derive the AI accuracy for an "obvious safe" situation from the player's
  * competition profile if available, otherwise use the default.
  *
- * The legacy `nerve` mapping is still computed for documentation / future
- * tuning, but the current game design intentionally floors the result at
- * DEFAULT_AI_OBVIOUS_SAFE_ACCURACY (0.999). With today's required floor, all
- * "obvious safe" cases resolve at 99.9% accuracy.
+ * The required floor is 99.9%, but higher-nerve profiles can still gain a
+ * small bonus above that minimum so skill continues to matter in obvious-safe
+ * situations without ever dropping below the requested threshold.
  */
 export function deriveAiObviousSafeAccuracy(profile?: CompetitionSkillProfile): number {
   if (!profile) return DEFAULT_AI_OBVIOUS_SAFE_ACCURACY;
-  // Legacy nerve 0–100 → accuracy 0.75–0.99 mapping retained for future tuning.
-  // The required 0.999 floor intentionally dominates it in the current design.
-  const computed = 0.75 + (profile.nerve / 100) * 0.24;
-  return Math.max(DEFAULT_AI_OBVIOUS_SAFE_ACCURACY, computed);
+  // nerve 0–100 → 0.999–0.9999 accuracy.
+  const computed = DEFAULT_AI_OBVIOUS_SAFE_ACCURACY + (profile.nerve / 100) * 0.0009;
+  return Math.min(0.9999, Math.max(DEFAULT_AI_OBVIOUS_SAFE_ACCURACY, computed));
 }
 
 /**
