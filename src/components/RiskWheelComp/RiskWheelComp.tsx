@@ -603,19 +603,21 @@ export default function RiskWheelComp({
             );
           })}
         </ul>
-        {eliminatedThisRound.length > 0 && (
-          <p className="rw-summary-elim-msg" aria-live="assertive">
-            👋{' '}
-            {eliminatedThisRound.map((id) => getName(id, participants)).join(', ')}{' '}
-            {eliminatedThisRound.length === 1 ? 'has been' : 'have been'} eliminated.
-          </p>
-        )}
-        <button
-          className="rw-btn rw-btn--primary rw-btn--lg"
-          onClick={() => dispatch(advanceFromRoundSummary())}
-        >
-          {isLastRound ? '🏆 See Winner' : `▶ Start Round ${round + 1}`}
-        </button>
+        <div className="rw-summary-footer">
+          {eliminatedThisRound.length > 0 && (
+            <p className="rw-summary-elim-msg" aria-live="assertive">
+              👋{' '}
+              {eliminatedThisRound.map((id) => getName(id, participants)).join(', ')}{' '}
+              {eliminatedThisRound.length === 1 ? 'has been' : 'have been'} eliminated.
+            </p>
+          )}
+          <button
+            className="rw-btn rw-btn--primary rw-btn--lg"
+            onClick={() => dispatch(advanceFromRoundSummary())}
+          >
+            {isLastRound ? '🏆 See Winner' : `▶ Start Round ${round + 1}`}
+          </button>
+        </div>
       </div>
     );
   }
