@@ -516,6 +516,11 @@ export default function RiskWheelComp({
 
   const handleHumanSpin = useCallback(() => performHumanSpin(false), [performHumanSpin]);
   const handleSpinAgain = useCallback(() => performHumanSpin(true), [performHumanSpin]);
+  const handleStopAndBank = useCallback(() => {
+    dispatch(playerStop());
+    dispatch(advanceFromTurnComplete());
+    dispatch(resolveAllAiTurns());
+  }, [dispatch]);
 
   // ─────────────────────────────────────────────────────────────────────────
   if (!rw || rw.phase === 'idle') {
@@ -733,7 +738,7 @@ export default function RiskWheelComp({
               </button>
               <button
                 className="rw-btn rw-btn--bank"
-                onClick={() => dispatch(playerStop())}
+                onClick={handleStopAndBank}
                 aria-label={`Stop and bank ${currentScore} points`}
               >
                 🏦 Stop &amp; Bank{' '}
