@@ -46,6 +46,11 @@ import './RiskWheelComp.css';
 const SPIN_DURATION_MS = 2200;
 const AI_RESOLVE_DELAY_MS = 600;
 const SECTOR_HIGHLIGHT_DURATION_MS = 850;
+const FINAL3_HOSTED_PHASES = [
+  'final3_comp1_minigame',
+  'final3_comp2_minigame',
+  'final3_comp3_minigame',
+] as const;
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
@@ -284,13 +289,7 @@ export default function RiskWheelComp({
   const dispatch = useDispatch<AppDispatch>();
   const rw = useSelector((s: RootState) => s.riskWheel);
   const gamePhase = useSelector((s: RootState) => s.game.phase);
-  const isFinal3HostedMinigame =
-    !standalone
-    && (
-      gamePhase === 'final3_comp1_minigame'
-      || gamePhase === 'final3_comp2_minigame'
-      || gamePhase === 'final3_comp3_minigame'
-    );
+  const isFinal3HostedMinigame = !standalone && FINAL3_HOSTED_PHASES.includes(gamePhase);
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const {
