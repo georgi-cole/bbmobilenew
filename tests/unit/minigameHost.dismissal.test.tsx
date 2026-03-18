@@ -92,6 +92,7 @@ const PLACEMENT_GAME = {
   title: 'Risk the Wheel',
   description: 'Eliminate players until one remains.',
   instructions: ['Spin the wheel.', 'Avoid elimination.'],
+  resultMode: 'placement' as const,
   metricKind: 'points' as const,
   metricLabel: 'Placement',
   timeLimitMs: 0,
@@ -303,10 +304,10 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
       fireEvent.click(screen.getByRole('button', { name: /exit minigame/i }));
     });
 
+    expect(screen.getAllByText(/Placement:/i)).toHaveLength(3);
     expect(screen.getByText('1st')).toBeInTheDocument();
     expect(screen.getByText('2nd')).toBeInTheDocument();
     expect(screen.getByText('3rd')).toBeInTheDocument();
-    expect(screen.queryByText(/Placement:/i)).toBeNull();
     expect(screen.queryByText(/\b80\b/)).toBeNull();
     expect(screen.queryByText(/\b60\b/)).toBeNull();
   });

@@ -410,7 +410,7 @@ export default function MinigameHost({
                     <span className="minigame-host-leaderboard-score">
                       {rankingOnly ? (
                         <>
-                          Rank: <strong>{fmtOrdinal(i + 1)}</strong>
+                          {game.metricLabel}: <strong>{fmtOrdinal(i + 1)}</strong>
                         </>
                       ) : (
                         <>
