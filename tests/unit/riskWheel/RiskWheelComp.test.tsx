@@ -60,7 +60,7 @@ describe('RiskWheelComp', () => {
       </Provider>,
     );
 
-    await act(async () => {});
+    await screen.findByRole('button', { name: /spin the wheel/i });
 
     await act(async () => {
       store.dispatch(performSpin());
