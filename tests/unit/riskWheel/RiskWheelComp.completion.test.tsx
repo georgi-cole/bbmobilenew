@@ -85,7 +85,7 @@ function renderComponent({
     },
   });
 
-  render(
+  const view = render(
     <Provider store={store}>
       <RiskWheelComp
         participantIds={PARTICIPANTS.map((p) => p.id)}
@@ -95,7 +95,7 @@ function renderComponent({
     </Provider>,
   );
 
-  return { onComplete };
+  return { ...view, onComplete, store };
 }
 
 describe('RiskWheelComp completion flow', () => {
@@ -139,6 +139,32 @@ describe('RiskWheelComp completion flow', () => {
       expect(onComplete).toHaveBeenCalledWith({ authoritativeWinnerId: 'p0' });
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(resolveRiskWheelOutcomeMock).not.toHaveBeenCalled();
+  });
+
+  it('does not report hosted Final 3 completion more than once after a re-render', async () => {
+    const { onComplete, rerender, store } = renderComponent({
+      gamePhase: 'final3_comp3_minigame',
+      riskWheelState: makeRiskWheelState({ outcomeResolved: false }),
+    });
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <Provider store={store}>
+        <RiskWheelComp
+          participantIds={PARTICIPANTS.map((p) => p.id)}
+          participants={PARTICIPANTS}
+          onComplete={onComplete}
+        />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalledTimes(1);
+    });
     expect(resolveRiskWheelOutcomeMock).not.toHaveBeenCalled();
   });
 });
