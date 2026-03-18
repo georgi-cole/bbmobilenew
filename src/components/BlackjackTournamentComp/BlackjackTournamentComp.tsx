@@ -44,6 +44,7 @@ import type { BlackjackTournamentCompetitionType } from '../../features/blackjac
 import { resolveBlackjackTournamentOutcome } from '../../features/blackjackTournament/thunks';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './BlackjackTournamentComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -934,54 +935,50 @@ export default function BlackjackTournamentComp({
       <div className="bjt-container bjt-complete" role="status" aria-live="assertive">
         <div className="bjt-confetti" aria-hidden="true" />
         <div className="bjt-confetti--reverse" aria-hidden="true" />
-
-        <div className="bjt-crown" aria-hidden="true">👑</div>
-        <h2 className="bjt-title bjt-title--winner">
-          {winnerName} wins!
-        </h2>
-
-        {bt.winnerId && (
-          <div className="bjt-winner-avatar-wrap">
-            <img
-              src={avatarForId(bt.winnerId)}
-              alt={winnerName}
-              className="bjt-avatar bjt-avatar--xxl"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = getDicebear(bt.winnerId!);
-              }}
-            />
-          </div>
-        )}
-
-        <p className="bjt-prize-label">{prizeLabel}</p>
-        <p className="bjt-elim-order">
-          Elimination order:{' '}
-          {bt.eliminatedPlayerIds.map(getName).join(' → ')}
-        </p>
-
-        {bt.eliminatedPlayerIds.length > 0 && (
-          <RosterBar
-            allIds={allParticipantIds}
-            eliminatedIds={bt.eliminatedPlayerIds}
-            controllingId={bt.winnerId ?? null}
-            humanId={bt.humanPlayerId}
-            getName={getName}
-          />
-        )}
-
-        {/* Manual Continue: gates both outcome resolution and onComplete callback. */}
-        <button
-          className="bjt-btn bjt-btn--continue"
-          onClick={() => {
+        <MinigameCompleteWrapper
+          onContinue={() => {
             if (!bt.outcomeResolved) {
               dispatch(resolveBlackjackTournamentOutcome());
             }
             onComplete?.();
           }}
-          aria-label="Continue"
+          continueLabel="Continue →"
+          placementsNode={bt.eliminatedPlayerIds.length > 0 ? (
+            <>
+              <p className="bjt-elim-order">
+                Elimination order:{' '}
+                {bt.eliminatedPlayerIds.map(getName).join(' → ')}
+              </p>
+              <RosterBar
+                allIds={allParticipantIds}
+                eliminatedIds={bt.eliminatedPlayerIds}
+                controllingId={bt.winnerId ?? null}
+                humanId={bt.humanPlayerId}
+                getName={getName}
+              />
+            </>
+          ) : undefined}
         >
-          Continue →
-        </button>
+          <div className="bjt-crown" aria-hidden="true">👑</div>
+          <h2 className="bjt-title bjt-title--winner">
+            {winnerName} wins!
+          </h2>
+
+          {bt.winnerId && (
+            <div className="bjt-winner-avatar-wrap">
+              <img
+                src={avatarForId(bt.winnerId)}
+                alt={winnerName}
+                className="bjt-avatar bjt-avatar--xxl"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getDicebear(bt.winnerId!);
+                }}
+              />
+            </div>
+          )}
+
+          <p className="bjt-prize-label">{prizeLabel}</p>
+        </MinigameCompleteWrapper>
       </div>
     );
   }

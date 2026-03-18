@@ -43,6 +43,7 @@ import type { BiographyBlitzCompetitionType } from '../../features/biographyBlit
 import { resolveBiographyBlitzOutcome } from '../../features/biographyBlitz/thunks';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import HOUSEGUESTS from '../../data/houseguests';
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './BiographyBlitzComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -434,31 +435,29 @@ export default function BiographyBlitzComp({
           <span className="bb-blitz__title">Biography Blitz</span>
           <span className="bb-blitz__round-badge">Final</span>
         </div>
-        <div className="bb-blitz__winner-screen">
-          <div className="bb-blitz__winner-avatar-wrap">
-            {winner && (
-              <img
-                className="bb-blitz__winner-avatar"
-                src={avatarForId(winner)}
-                alt={winnerName}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = getDicebear(winner); }}
-              />
-            )}
+        <MinigameCompleteWrapper
+          onContinue={() => onComplete?.()}
+          continueLabel="Continue ›"
+        >
+          <div className="bb-blitz__winner-screen">
+            <div className="bb-blitz__winner-avatar-wrap">
+              {winner && (
+                <img
+                  className="bb-blitz__winner-avatar"
+                  src={avatarForId(winner)}
+                  alt={winnerName}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = getDicebear(winner); }}
+                />
+              )}
+            </div>
+            <p className="bb-blitz__winner-label">
+              {isHumanWin ? '🏆 You win!' : `🏆 ${winnerName} wins!`}
+            </p>
+            <p className="bb-blitz__winner-sub">
+              {bb.competitionType === 'HOH' ? 'New Head of Household' : 'Power of Veto winner'}
+            </p>
           </div>
-          <p className="bb-blitz__winner-label">
-            {isHumanWin ? '🏆 You win!' : `🏆 ${winnerName} wins!`}
-          </p>
-          <p className="bb-blitz__winner-sub">
-            {bb.competitionType === 'HOH' ? 'New Head of Household' : 'Power of Veto winner'}
-          </p>
-          <button
-            type="button"
-            className="bb-blitz__continue-btn"
-            onClick={() => onComplete?.()}
-          >
-            Continue ›
-          </button>
-        </div>
+        </MinigameCompleteWrapper>
       </div>
     );
   }

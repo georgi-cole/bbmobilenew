@@ -33,6 +33,7 @@ import { mulberry32 } from '../../store/rng';
 import { getDicebear, resolveAvatar } from '../../utils/avatar';
 import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import { getHintText } from '../../games/famous-figures/hints';
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './FamousFiguresComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -732,24 +733,18 @@ export default function FamousFiguresComp({
             <span className="ff-title">Famous Figures</span>
             <span className="ff-round-badge">Final Results</span>
           </div>
-
-          <div className="ff-winner-banner" role="status">
-            🏆&nbsp;{winnerName}
-            {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
-            &nbsp;wins!&nbsp;
-            <span className="ff-winner-banner-sub">{prizeType} Winner — {ff.playerScores[winnerId] ?? 0} pts</span>
-          </div>
-
-          {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
-
-          <button
-            className="ff-continue-btn"
-            onClick={() => onComplete?.()}
-            aria-label="Continue game"
-            type="button"
+          <MinigameCompleteWrapper
+            onContinue={() => onComplete?.()}
+            continueLabel="Continue ›"
+            placementsNode={renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
           >
-            Continue ›
-          </button>
+            <div className="ff-winner-banner" role="status">
+              🏆&nbsp;{winnerName}
+              {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
+              &nbsp;wins!&nbsp;
+              <span className="ff-winner-banner-sub">{prizeType} Winner — {ff.playerScores[winnerId] ?? 0} pts</span>
+            </div>
+          </MinigameCompleteWrapper>
         </div>
       );
     }
@@ -757,32 +752,29 @@ export default function FamousFiguresComp({
     // Original animated winner card (skipWinnerAnimation === false)
     return (
       <div className="ff-container ff-container--complete" aria-live="assertive">
-        <div className="ff-winner-card">
-          <div className="ff-winner-trophy" aria-hidden="true">🏆</div>
-          <h2 className="ff-winner-title">Famous Figures Champion!</h2>
-          <div className="ff-winner-avatar">
-            <img
-              src={playerAvatar(winnerId)}
-              alt={winnerName}
-              onError={(e) => { e.currentTarget.src = getDicebear(winnerName); }}
-            />
+        <MinigameCompleteWrapper
+          onContinue={() => onComplete?.()}
+          continueLabel="Continue ›"
+        >
+          <div className="ff-winner-card">
+            <div className="ff-winner-trophy" aria-hidden="true">🏆</div>
+            <h2 className="ff-winner-title">Famous Figures Champion!</h2>
+            <div className="ff-winner-avatar">
+              <img
+                src={playerAvatar(winnerId)}
+                alt={winnerName}
+                onError={(e) => { e.currentTarget.src = getDicebear(winnerName); }}
+              />
+            </div>
+            <p className="ff-winner-name">
+              {winnerName}
+              {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
+            </p>
+            <p className="ff-winner-subtitle">
+              {prizeType} Winner — Total Score: {ff.playerScores[winnerId] ?? 0}
+            </p>
           </div>
-          <p className="ff-winner-name">
-            {winnerName}
-            {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
-          </p>
-          <p className="ff-winner-subtitle">
-            {prizeType} Winner — Total Score: {ff.playerScores[winnerId] ?? 0}
-          </p>
-          <button
-            className="ff-continue-btn"
-            onClick={() => onComplete?.()}
-            aria-label="Continue game"
-            type="button"
-          >
-            Continue ›
-          </button>
-        </div>
+        </MinigameCompleteWrapper>
       </div>
     );
   }
