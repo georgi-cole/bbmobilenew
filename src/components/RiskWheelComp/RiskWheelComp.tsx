@@ -55,6 +55,12 @@ function animDelay(ms: number): number {
   return areAnimationsDisabled() ? 0 : ms;
 }
 
+function isFinal3HostedPhase(phase: string): boolean {
+  return phase === 'final3_comp1_minigame'
+    || phase === 'final3_comp2_minigame'
+    || phase === 'final3_comp3_minigame';
+}
+
 const N_SECTORS = WHEEL_SECTORS.length;
 const DEG_PER_SECTOR = 360 / N_SECTORS;
 
@@ -283,6 +289,8 @@ export default function RiskWheelComp({
 }: Props) {
   const dispatch = useDispatch<AppDispatch>();
   const rw = useSelector((s: RootState) => s.riskWheel);
+  const gamePhase = useSelector((s: RootState) => s.game.phase);
+  const isFinal3HostedMinigame = !standalone && isFinal3HostedPhase(gamePhase);
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const {
@@ -309,6 +317,7 @@ export default function RiskWheelComp({
   const [spinning, setSpinning] = useState(false);
   const isInitialisedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
+  const completionReportedRef = useRef(false);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   const buildCompletion = useCallback((): ReactMinigameCompletion | undefined => {
@@ -317,6 +326,14 @@ export default function RiskWheelComp({
       authoritativeWinnerId: rw.winnerId ?? null,
     };
   }, [rw]);
+  const isCompletePhase = rw?.phase === 'complete';
+  const isHostedComplete = isCompletePhase && !standalone;
+  const shouldResolveHostedOutcome =
+    isHostedComplete && !rw.outcomeResolved && !isFinal3HostedMinigame;
+  const shouldNotifyHostedCompletion =
+    isHostedComplete
+    && !completionReportedRef.current
+    && (rw.outcomeResolved || isFinal3HostedMinigame);
 
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -351,20 +368,23 @@ export default function RiskWheelComp({
 
   // ── Outcome resolved callback ────────────────────────────────────────────
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone) return;
+    if (!shouldResolveHostedOutcome) return;
     // resolveRiskWheelOutcome marks outcomeResolved AND dispatches applyMinigameWinner.
     // This ensures featureAppliedWinner is set in game state before onComplete fires.
     dispatch(resolveRiskWheelOutcome());
-  // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
+  // Effect is intentionally driven only by shouldResolveHostedOutcome, which
+  // encapsulates the underlying phase/standalone state needed to trigger this.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.phase, rw?.outcomeResolved]);
+  }, [shouldResolveHostedOutcome]);
 
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || !rw.outcomeResolved || standalone) return;
+    if (!shouldNotifyHostedCompletion) return;
+    completionReportedRef.current = true;
     onCompleteRef.current?.(buildCompletion());
-  // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
+  // Effect is intentionally driven only by shouldNotifyHostedCompletion, which
+  // encapsulates the outcomeResolved signal and other prerequisites.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.outcomeResolved]);
+  }, [shouldNotifyHostedCompletion]);
 
   const prevPhaseRef = useRef<string | null>(null);
   useEffect(() => {
