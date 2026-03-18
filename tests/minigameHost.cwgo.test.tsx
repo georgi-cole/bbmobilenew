@@ -38,6 +38,7 @@ const CWGO_GAME = {
   title: "Don't go over",
   description: 'Tournament-style numeric-guessing competition.',
   instructions: ['Guess without going over.'],
+  resultMode: 'placement' as const,
   metricKind: 'accuracy' as const,
   metricLabel: 'Placement',
   timeLimitMs: 0,

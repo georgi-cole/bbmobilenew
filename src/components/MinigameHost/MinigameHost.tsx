@@ -11,7 +11,7 @@
 //      results screen and call onDone directly when complete, skipping step 4.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { GameRegistryEntry } from '../../minigames/registry';
+import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry';
 import MinigameRules from '../MinigameRules/MinigameRules';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
@@ -80,6 +80,16 @@ function fmtScore(value: number): string {
   return String(Math.round(value));
 }
 
+function fmtOrdinal(value: number): string {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  const mod10 = value % 10;
+  if (mod10 === 1) return `${value}st`;
+  if (mod10 === 2) return `${value}nd`;
+  if (mod10 === 3) return `${value}rd`;
+  return `${value}th`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MinigameHost({
@@ -94,6 +104,7 @@ export default function MinigameHost({
   const [countdown, setCountdown] = useState(3);
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
+  const rankingOnly = isPlacementRankingGame(game);
 
   // ── Rules confirmed ─────────────────────────────────────────────────────
   const handleRulesConfirm = useCallback(() => {
@@ -166,10 +177,15 @@ export default function MinigameHost({
         (lowerBetter ? score < p.previousPR : score > p.previousPR);
       return { ...p, score, isPR };
     });
-    // Sort: lower-is-better adapters sort ascending; all others sort descending.
-    entries.sort((a, b) => (lowerBetter ? a.score - b.score : b.score - a.score));
+    entries.sort((a, b) => {
+      if (rankingOnly && wasPartial) {
+        if (a.isHuman !== b.isHuman) return a.isHuman ? 1 : -1;
+      }
+      // Sort: lower-is-better adapters sort ascending; all others sort descending.
+      return lowerBetter ? a.score - b.score : b.score - a.score;
+    });
     return entries;
-  }, [participants, finalValue, game.scoringAdapter]);
+  }, [participants, finalValue, game.scoringAdapter, rankingOnly, wasPartial]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
@@ -392,8 +408,16 @@ export default function MinigameHost({
                       )}
                     </span>
                     <span className="minigame-host-leaderboard-score">
-                      {game.metricLabel}: <strong>{fmtScore(entry.score)}</strong>
-                      {entry.isPR && (
+                      {rankingOnly ? (
+                        <>
+                          {game.metricLabel}: <strong>{fmtOrdinal(i + 1)}</strong>
+                        </>
+                      ) : (
+                        <>
+                          {game.metricLabel}: <strong>{fmtScore(entry.score)}</strong>
+                        </>
+                      )}
+                      {!rankingOnly && entry.isPR && (
                         <span className="minigame-host-leaderboard-pr" title="Personal Record!">
                           {' '}🏅 PR
                         </span>

@@ -24,6 +24,8 @@ export interface GameRegistryEntry {
   description: string;
   /** Bullet-point instructions shown in the Rules modal before the game. */
   instructions: string[];
+  /** Whether results for this game should be communicated as scores or placements/ranks. */
+  resultMode?: 'score' | 'placement';
   metricKind: MetricKind;
   metricLabel: string;
   /** Milliseconds before the game auto-ends (0 = unlimited / game controls its own end). */
@@ -59,6 +61,12 @@ export interface GameRegistryEntry {
   retired: boolean;
   /** Key of the game that supersedes this one (for retired games). */
   replacedBy?: string;
+}
+
+export function isPlacementRankingGame(
+  game: Pick<GameRegistryEntry, 'resultMode'>,
+): boolean {
+  return game.resultMode === 'placement';
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -250,6 +258,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'AI houseguests will drop off at random times — outlast them all.',
       'Last player standing wins the prize.',
     ],
+    resultMode: 'placement',
     metricKind: 'endurance',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -274,6 +283,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Answer incorrectly and you are eliminated.',
       'Last player standing wins the prize.',
     ],
+    resultMode: 'placement',
     metricKind: 'accuracy',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -324,6 +334,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Final 2: eliminated players must guess the last saboteur.',
       'If they guess correctly the victim is the winner, if not the saboteur wins.',
     ],
+    resultMode: 'placement',
     metricKind: 'points',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -835,6 +846,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Closest to the answer without going over wins the round.',
       'Mass round eliminates one player, then leaders pick duels until one champion remains.',
     ],
+    resultMode: 'placement',
     metricKind: 'accuracy',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -860,6 +872,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'The duel winner stays in control and picks the next pair to duel.',
       'Last player standing wins the competition!',
     ],
+    resultMode: 'placement',
     metricKind: 'accuracy',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -889,6 +902,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'After each round the lowest-scoring players are eliminated.',
       'After Round 3 the highest scorer wins!',
     ],
+    resultMode: 'placement',
     metricKind: 'points',
     metricLabel: 'Placement',
     timeLimitMs: 0,
@@ -940,6 +954,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Everyone starts from the beginning; turn order is determined by a number draw.',
       'The player who crosses fastest — or reaches the furthest row — wins.',
     ],
+    resultMode: 'placement',
     metricKind: 'accuracy',
     metricLabel: 'Placement',
     timeLimitMs: 179_000,

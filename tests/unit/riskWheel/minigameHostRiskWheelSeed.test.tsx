@@ -80,6 +80,7 @@ const RISK_WHEEL_GAME = {
   title: 'Risk Wheel',
   description: 'Spin for points.',
   instructions: ['Spin the wheel.'],
+  resultMode: 'placement' as const,
   metricKind: 'points' as const,
   metricLabel: 'Placement',
   timeLimitMs: 0,

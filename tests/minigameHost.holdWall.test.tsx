@@ -44,6 +44,7 @@ const HTW_GAME = {
   title: 'Hold the Wall',
   description: 'Endurance competition.',
   instructions: ['Press and hold.'],
+  resultMode: 'placement' as const,
   metricKind: 'endurance' as const,
   metricLabel: 'Placement',
   timeLimitMs: 0,

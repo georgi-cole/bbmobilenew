@@ -34,7 +34,7 @@ import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
-import settingsReducer from '../../src/store/settingsSlice';
+import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
@@ -69,7 +69,10 @@ function makePlayers(count: number, userIndex = 0): Player[] {
   }));
 }
 
-function makeStore(gameOverrides: Partial<GameState> = {}) {
+function makeStore(
+  gameOverrides: Partial<GameState> = {},
+  settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {},
+) {
   const base: GameState = {
     season: 1,
     week: 1,
@@ -112,7 +115,21 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
       ui: uiReducer,
       settings: settingsReducer,
     },
-    preloadedState: { game: { ...base, ...gameOverrides } },
+    preloadedState: {
+      game: { ...base, ...gameOverrides },
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...settingsOverrides,
+        gameUX: {
+          ...DEFAULT_SETTINGS.gameUX,
+          ...settingsOverrides.gameUX,
+          compSelection: {
+            ...DEFAULT_SETTINGS.gameUX.compSelection,
+            ...(settingsOverrides.gameUX?.compSelection ?? {}),
+          },
+        },
+      },
+    },
   });
 }
 
@@ -183,6 +200,35 @@ describe('GameScreen.onDone — partial=true still advances the game (no stuck s
 
     // pendingChallenge must be null so no second challenge starts
     expect(store.getState().challenge.pending).toBeNull();
+  });
+
+  it('partial=true on placement-based games records rank-based results instead of 0/random scores', async () => {
+    const store = makeStore(
+      {},
+      {
+        gameUX: {
+          ...DEFAULT_SETTINGS.gameUX,
+          compSelection: {
+            ...DEFAULT_SETTINGS.gameUX.compSelection,
+            mode: 'single-game',
+            selectedGameId: 'holdWall',
+          },
+        },
+      },
+    );
+    renderWithStore(store);
+
+    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+
+    const pending = store.getState().challenge.pending;
+    expect(pending?.game.key).toBe('holdWall');
+
+    await act(async () => { capturedOnDone!(0, true); });
+
+    const run = store.getState().challenge.history[0];
+    expect(run).toBeTruthy();
+    expect(run?.rawScores.p0).toBe(1);
+    expect(Object.values(run?.rawScores ?? {}).sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
   });
 
   it('POV prizeType is used (partial=true sets povWinnerId, not hohId)', async () => {
