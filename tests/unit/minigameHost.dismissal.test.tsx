@@ -87,6 +87,24 @@ const LEGACY_GAME = {
   retired: false,
 };
 
+const PLACEMENT_GAME = {
+  key: 'riskWheel',
+  title: 'Risk the Wheel',
+  description: 'Eliminate players until one remains.',
+  instructions: ['Spin the wheel.', 'Avoid elimination.'],
+  metricKind: 'points' as const,
+  metricLabel: 'Placement',
+  timeLimitMs: 0,
+  authoritative: true,
+  scoringAdapter: 'authoritative' as const,
+  implementation: 'react' as const,
+  reactComponentKey: 'RiskWheel',
+  legacy: false,
+  weight: 1,
+  category: 'arcade' as const,
+  retired: false,
+};
+
 const PARTICIPANTS = [
   { id: 'p0', name: 'Human', isHuman: true,  precomputedScore: 0,  previousPR: null },
   { id: 'p1', name: 'AI-1',  isHuman: false, precomputedScore: 80, previousPR: null },
@@ -263,6 +281,34 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(onDone).toHaveBeenCalledWith(0, true);
+  });
+
+  it('placement-based games show ranks instead of numeric scores after an early exit', async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={PLACEMENT_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={PARTICIPANTS}
+          onDone={vi.fn()}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => { vi.runAllTimers(); });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /exit minigame/i }));
+    });
+
+    expect(screen.getByText('1st')).toBeTruthy();
+    expect(screen.getByText('2nd')).toBeTruthy();
+    expect(screen.getByText('3rd')).toBeTruthy();
+    expect(screen.queryByText(/Placement:/i)).toBeNull();
+    expect(screen.queryByText(/\b80\b/)).toBeNull();
+    expect(screen.queryByText(/\b60\b/)).toBeNull();
   });
 
   // ── Regression: normal countdown → playing flow is unaffected ──────

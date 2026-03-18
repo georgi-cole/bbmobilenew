@@ -43,6 +43,7 @@ import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBina
 import TapRace from '../../components/TapRace/TapRace'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
+import { isPlacementRankingGame } from '../../minigames/registry'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
@@ -1436,13 +1437,27 @@ export default function GameScreen() {
 
             // Build raw results for all challenge participants using pre-computed
             // AI scores (appropriate for the selected game's metric kind).
-            const rawResults = capturedParticipants.map((id) => ({
-              playerId: id,
-              rawValue:
-                id === humanPlayer?.id
-                  ? rawValue
-                  : (pendingChallenge.aiScores[id] ?? rawValue),
-            }));
+            const rankingOnlyGame = isPlacementRankingGame(pendingChallenge.game)
+            const rawResults = partial && rankingOnlyGame
+              ? capturedParticipants
+                .map((id) => ({
+                  playerId: id,
+                  sortValue: id === humanPlayer?.id
+                    ? Number.NEGATIVE_INFINITY
+                    : (pendingChallenge.aiScores[id] ?? 0),
+                }))
+                .sort((a, b) => b.sortValue - a.sortValue)
+                .map((entry, index, ordered) => ({
+                  playerId: entry.playerId,
+                  rawValue: ordered.length - index,
+                }))
+              : capturedParticipants.map((id) => ({
+                playerId: id,
+                rawValue:
+                  id === humanPlayer?.id
+                    ? rawValue
+                    : (pendingChallenge.aiScores[id] ?? rawValue),
+              }))
             const explicitWinnerId =
               reactCompletion?.authoritativeWinnerId != null &&
               capturedParticipants.includes(reactCompletion.authoritativeWinnerId)

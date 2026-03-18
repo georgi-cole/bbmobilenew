@@ -61,6 +61,12 @@ export interface GameRegistryEntry {
   replacedBy?: string;
 }
 
+export function isPlacementRankingGame(
+  game: Pick<GameRegistryEntry, 'authoritative' | 'metricLabel'>,
+): boolean {
+  return game.authoritative && game.metricLabel === 'Placement';
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 const REGISTRY: Record<string, GameRegistryEntry> = {
