@@ -46,11 +46,6 @@ import './RiskWheelComp.css';
 const SPIN_DURATION_MS = 2200;
 const AI_RESOLVE_DELAY_MS = 600;
 const SECTOR_HIGHLIGHT_DURATION_MS = 850;
-const FINAL3_HOSTED_PHASES = [
-  'final3_comp1_minigame',
-  'final3_comp2_minigame',
-  'final3_comp3_minigame',
-] as const;
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
@@ -58,6 +53,12 @@ function areAnimationsDisabled(): boolean {
 
 function animDelay(ms: number): number {
   return areAnimationsDisabled() ? 0 : ms;
+}
+
+function isFinal3HostedPhase(phase: string): boolean {
+  return phase === 'final3_comp1_minigame'
+    || phase === 'final3_comp2_minigame'
+    || phase === 'final3_comp3_minigame';
 }
 
 const N_SECTORS = WHEEL_SECTORS.length;
@@ -289,7 +290,7 @@ export default function RiskWheelComp({
   const dispatch = useDispatch<AppDispatch>();
   const rw = useSelector((s: RootState) => s.riskWheel);
   const gamePhase = useSelector((s: RootState) => s.game.phase);
-  const isFinal3HostedMinigame = !standalone && FINAL3_HOSTED_PHASES.includes(gamePhase);
+  const isFinal3HostedMinigame = !standalone && isFinal3HostedPhase(gamePhase);
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const {
@@ -325,6 +326,14 @@ export default function RiskWheelComp({
       authoritativeWinnerId: rw.winnerId ?? null,
     };
   }, [rw]);
+  const isCompletePhase = rw?.phase === 'complete';
+  const isHostedComplete = isCompletePhase && !standalone;
+  const shouldResolveHostedOutcome =
+    isHostedComplete && !rw.outcomeResolved && !isFinal3HostedMinigame;
+  const shouldNotifyHostedCompletion =
+    isHostedComplete
+    && !completionReportedRef.current
+    && (rw.outcomeResolved || isFinal3HostedMinigame);
 
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -359,22 +368,21 @@ export default function RiskWheelComp({
 
   // ── Outcome resolved callback ────────────────────────────────────────────
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone || isFinal3HostedMinigame) return;
+    if (!shouldResolveHostedOutcome) return;
     // resolveRiskWheelOutcome marks outcomeResolved AND dispatches applyMinigameWinner.
     // This ensures featureAppliedWinner is set in game state before onComplete fires.
     dispatch(resolveRiskWheelOutcome());
   // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.phase, rw?.outcomeResolved, isFinal3HostedMinigame]);
+  }, [shouldResolveHostedOutcome]);
 
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || standalone || completionReportedRef.current) return;
-    if (!rw.outcomeResolved && !isFinal3HostedMinigame) return;
+    if (!shouldNotifyHostedCompletion) return;
     completionReportedRef.current = true;
     onCompleteRef.current?.(buildCompletion());
   // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.phase, rw?.outcomeResolved, isFinal3HostedMinigame]);
+  }, [shouldNotifyHostedCompletion]);
 
   const prevPhaseRef = useRef<string | null>(null);
   useEffect(() => {
