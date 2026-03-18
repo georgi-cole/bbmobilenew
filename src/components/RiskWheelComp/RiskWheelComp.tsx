@@ -283,6 +283,14 @@ export default function RiskWheelComp({
 }: Props) {
   const dispatch = useDispatch<AppDispatch>();
   const rw = useSelector((s: RootState) => s.riskWheel);
+  const gamePhase = useSelector((s: RootState) => s.game.phase);
+  const isFinal3HostedMinigame =
+    !standalone
+    && (
+      gamePhase === 'final3_comp1_minigame'
+      || gamePhase === 'final3_comp2_minigame'
+      || gamePhase === 'final3_comp3_minigame'
+    );
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const {
@@ -309,6 +317,7 @@ export default function RiskWheelComp({
   const [spinning, setSpinning] = useState(false);
   const isInitialisedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
+  const completionReportedRef = useRef(false);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   const buildCompletion = useCallback((): ReactMinigameCompletion | undefined => {
@@ -351,20 +360,22 @@ export default function RiskWheelComp({
 
   // ── Outcome resolved callback ────────────────────────────────────────────
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone) return;
+    if (!rw || rw.phase !== 'complete' || rw.outcomeResolved || standalone || isFinal3HostedMinigame) return;
     // resolveRiskWheelOutcome marks outcomeResolved AND dispatches applyMinigameWinner.
     // This ensures featureAppliedWinner is set in game state before onComplete fires.
     dispatch(resolveRiskWheelOutcome());
   // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.phase, rw?.outcomeResolved]);
+  }, [rw?.phase, rw?.outcomeResolved, isFinal3HostedMinigame]);
 
   useEffect(() => {
-    if (!rw || rw.phase !== 'complete' || !rw.outcomeResolved || standalone) return;
+    if (!rw || rw.phase !== 'complete' || standalone || completionReportedRef.current) return;
+    if (!rw.outcomeResolved && !isFinal3HostedMinigame) return;
+    completionReportedRef.current = true;
     onCompleteRef.current?.(buildCompletion());
   // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rw?.outcomeResolved]);
+  }, [rw?.phase, rw?.outcomeResolved, isFinal3HostedMinigame]);
 
   const prevPhaseRef = useRef<string | null>(null);
   useEffect(() => {
