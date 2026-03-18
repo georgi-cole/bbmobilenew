@@ -372,7 +372,8 @@ export default function RiskWheelComp({
     // resolveRiskWheelOutcome marks outcomeResolved AND dispatches applyMinigameWinner.
     // This ensures featureAppliedWinner is set in game state before onComplete fires.
     dispatch(resolveRiskWheelOutcome());
-  // dispatch and standalone are stable; only phase/outcomeResolved need to re-trigger.
+  // Effect is intentionally driven only by shouldResolveHostedOutcome, which
+  // encapsulates the underlying phase/standalone state needed to trigger this.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldResolveHostedOutcome]);
 
@@ -380,7 +381,8 @@ export default function RiskWheelComp({
     if (!shouldNotifyHostedCompletion) return;
     completionReportedRef.current = true;
     onCompleteRef.current?.(buildCompletion());
-  // onCompleteRef is a stable ref; outcomeResolved is the only signal needed.
+  // Effect is intentionally driven only by shouldNotifyHostedCompletion, which
+  // encapsulates the outcomeResolved signal and other prerequisites.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldNotifyHostedCompletion]);
 
