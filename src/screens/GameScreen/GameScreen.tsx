@@ -72,6 +72,8 @@ import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
+const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
+
 /**
  * GameScreen — main gameplay view.
  *
@@ -1443,7 +1445,7 @@ export default function GameScreen() {
                 .map((id) => ({
                   playerId: id,
                   sortValue: id === humanPlayer?.id
-                    ? Number.NEGATIVE_INFINITY
+                    ? EXITED_PLAYER_SORT_VALUE
                     : (pendingChallenge.aiScores[id] ?? 0),
                 }))
                 .sort((a, b) => b.sortValue - a.sortValue)

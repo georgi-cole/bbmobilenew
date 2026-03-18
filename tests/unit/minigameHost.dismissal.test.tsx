@@ -303,9 +303,9 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
       fireEvent.click(screen.getByRole('button', { name: /exit minigame/i }));
     });
 
-    expect(screen.getByText('1st')).toBeTruthy();
-    expect(screen.getByText('2nd')).toBeTruthy();
-    expect(screen.getByText('3rd')).toBeTruthy();
+    expect(screen.getByText('1st')).toBeInTheDocument();
+    expect(screen.getByText('2nd')).toBeInTheDocument();
+    expect(screen.getByText('3rd')).toBeInTheDocument();
     expect(screen.queryByText(/Placement:/i)).toBeNull();
     expect(screen.queryByText(/\b80\b/)).toBeNull();
     expect(screen.queryByText(/\b60\b/)).toBeNull();
