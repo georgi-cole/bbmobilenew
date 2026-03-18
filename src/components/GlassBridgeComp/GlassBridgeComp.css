@@ -511,6 +511,14 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
+.gb-player-marker img,
+.gb-player-marker .gb-avatar-fallback {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .gb-player-marker.gb-player-active {
   border-color: #7ecbff;
   box-shadow:
@@ -589,6 +597,83 @@
   font-size: 0.8rem;
   width: 1.2rem;
   text-align: center;
+}
+
+/* ── Compact active-player avatar bar ───────────────────────────────────────── */
+
+.gb-avatar-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  width: min(360px, calc(100% - 1.5rem));
+  margin: 0.4rem auto 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.gb-avatar-bar-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.gb-avatar-bar-item img,
+.gb-avatar-bar-item .gb-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gb-avatar-bar-item.gb-avatar-bar-active img,
+.gb-avatar-bar-item.gb-avatar-bar-active .gb-avatar-fallback {
+  border-color: #7ecbff;
+  box-shadow:
+    0 0 0 3px rgba(126, 203, 255, 0.18),
+    0 0 14px rgba(126, 203, 255, 0.45);
+  transform: scale(1.12);
+  animation: gb-avatar-pulse 1.4s ease-in-out infinite;
+}
+
+.gb-avatar-bar-item.gb-avatar-bar-you img,
+.gb-avatar-bar-item.gb-avatar-bar-you .gb-avatar-fallback {
+  border-color: #3aff8a;
+}
+
+.gb-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(70, 110, 190, 0.95), rgba(126, 203, 255, 0.95));
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.gb-avatar-bar-crown {
+  position: absolute;
+  top: -0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.gb-avatar-bar-you-badge {
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #3aff8a;
+  text-transform: uppercase;
 }
 
 .gb-step-hint {
@@ -947,7 +1032,9 @@ body.no-animations .glass-bridge.gb-screen-shake,
 body.no-animations .gb-spectator-card,
 body.no-animations .gb-player-marker.gb-player-active,
 body.no-animations .gb-death-marker,
-body.no-animations .gb-player-marker.gb-player-landing {
+body.no-animations .gb-player-marker.gb-player-landing,
+body.no-animations .gb-side-led,
+body.no-animations .gb-avatar-bar-item.gb-avatar-bar-active img {
   animation: none !important;
   transition: none !important;
   opacity: 1 !important;
@@ -998,9 +1085,32 @@ body.no-animations .gb-player-marker.gb-player-landing {
   animation: gb-led-breathe 4.8s ease-in-out infinite 1.6s;
 }
 
+/* Rainbow glow side LED — applied on top of the base rail via .gb-side-led */
+.gb-side-led {
+  background:
+    linear-gradient(
+      180deg,
+      hsl(0, 75%, 60%) 0%,
+      hsl(60, 75%, 60%) 17%,
+      hsl(120, 75%, 60%) 33%,
+      hsl(180, 75%, 60%) 50%,
+      hsl(240, 75%, 60%) 67%,
+      hsl(300, 75%, 60%) 83%,
+      hsl(360, 75%, 60%) 100%
+    );
+  background-size: 100% 400%;
+  animation: gb-rainbow-shift 15s linear infinite;
+  opacity: 0.55;
+}
+
 @keyframes gb-led-breathe {
   0%, 100% { opacity: 0.55; }
   50%       { opacity: 1; }
+}
+
+@keyframes gb-rainbow-shift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 400%; }
 }
 
 /* no-animations override */
@@ -1009,7 +1119,22 @@ body.no-animations .gb-led-rail {
   opacity: 0.7 !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gb-side-led {
+    animation: none;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(160, 100, 255, 0.35) 25%,
+      rgba(126, 203, 255, 0.45) 50%,
+      rgba(160, 100, 255, 0.35) 75%,
+      transparent 100%
+    );
+    background-size: 100% 100%;
+  }
+}
 
+@media (max-width: 540px) {
   .gb-spectator-actions {
     flex-direction: column;
   }

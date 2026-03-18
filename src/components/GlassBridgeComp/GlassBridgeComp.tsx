@@ -41,7 +41,7 @@ import {
 } from '../../features/glassBridge/glassBridgeSlice';
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
 import { mulberry32 } from '../../store/rng';
-import { getDicebear } from '../../utils/avatar';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { playScreamPlaceholder } from '../../services/sound';
 import './GlassBridgeComp.css';
 
@@ -73,11 +73,75 @@ const DEATH_FLASH_MS = 120;
 const DEATH_MARKER_DURATION_MS = 750;
 /** Landing animation duration for a finisher reaching the safe platform (ms). Aligned with gb-player-land (0.55s), plus a short grace period. */
 const LANDING_ANIM_DURATION_MS = 600;
+/** Keeps 1–2 letter initials comfortably inside the circular fallback avatars. */
+const AVATAR_INITIALS_FONT_SIZE_RATIO = 0.42;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function avatarForId(id: string): string {
-  return getDicebear(id);
+/** Resolve a player's avatar URL: real photo → Dicebear fallback. */
+function avatarForId(id: string, name?: string): string {
+  const displayName = name ?? id;
+  return resolveAvatar({ id, name: displayName, avatar: '' });
+}
+
+function initialsForName(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return '?';
+  return parts.map(part => part.charAt(0).toUpperCase()).join('');
+}
+
+interface GlassBridgeAvatarProps {
+  id: string;
+  name: string;
+  size: number;
+  alt: string;
+}
+
+function GlassBridgeAvatar({ id, name, size, alt }: GlassBridgeAvatarProps) {
+  const [avatarSrc, setAvatarSrc] = useState(() => avatarForId(id, name));
+  const [showInitials, setShowInitials] = useState(false);
+  const initials = useMemo(() => initialsForName(name), [name]);
+
+  function handleError() {
+    const dicebear = getDicebear(name);
+    if (avatarSrc !== dicebear) {
+      setAvatarSrc(dicebear);
+      return;
+    }
+    setShowInitials(true);
+  }
+
+  if (showInitials) {
+    return (
+      <span
+        className="gb-avatar-fallback"
+        style={{
+          width: size,
+          height: size,
+          fontSize: Math.max(10, Math.round(size * AVATAR_INITIALS_FONT_SIZE_RATIO)),
+        }}
+        role="img"
+        aria-label={alt}
+      >
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={avatarSrc}
+      alt={alt}
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={handleError}
+    />
+  );
 }
 
 function formatElapsed(ms: number): string {
@@ -833,8 +897,8 @@ export default function GlassBridgeComp({
           {/* Bridge */}
           <div className="gb-bridge-container" role="region" aria-label="Glass bridge">
             {/* LED accent rails — decorative outer edge lighting */}
-            <div className="gb-led-rail gb-led-rail-left" aria-hidden="true" />
-            <div className="gb-led-rail gb-led-rail-right" aria-hidden="true" />
+            <div className="gb-led-rail gb-led-rail-left gb-side-led" aria-hidden="true" />
+            <div className="gb-led-rail gb-led-rail-right gb-side-led" aria-hidden="true" />
             {gb.rows.map((row, rowIdx) => {
               const rowNum = rowIdx + 1;
               const isCurrentRow = gb.currentPlayerRow === rowNum;
@@ -920,15 +984,11 @@ export default function GlassBridgeComp({
                         className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}${pendingActorId === pid && shatteringTile ? ' gb-player-falling' : ''}`}
                         title={getName(pid)}
                       >
-                        <img
-                          src={avatarForId(pid)}
+                        <GlassBridgeAvatar
+                          id={pid}
+                          name={getName(pid)}
                           alt={getName(pid)}
-                          width={18}
-                          height={18}
-                          onError={e => {
-                            const img = e.currentTarget as HTMLImageElement;
-                            img.style.display = 'none';
-                          }}
+                          size={18}
                         />
                       </div>
                     ))}
@@ -941,15 +1001,11 @@ export default function GlassBridgeComp({
               <div className="gb-safe-platform">
                 {landingPlayerIds.map(pid => (
                   <div key={pid} className="gb-player-marker gb-player-landing" title={getName(pid)}>
-                    <img
-                      src={avatarForId(pid)}
+                    <GlassBridgeAvatar
+                      id={pid}
+                      name={getName(pid)}
                       alt={getName(pid)}
-                      width={18}
-                      height={18}
-                      onError={e => {
-                        const img = e.currentTarget as HTMLImageElement;
-                        img.style.display = 'none';
-                      }}
+                      size={18}
                     />
                   </div>
                 ))}
@@ -957,54 +1013,40 @@ export default function GlassBridgeComp({
             )}
           </div>
 
-          {/* Player status list */}
-          <div className="gb-player-list" role="list" aria-label="Player status">
-            {gb.turnOrder.map((pid, turnIdx) => {
-              const p = gb.progress[pid];
-              if (!p) return null;
-              const isActive = activeId === pid;
-              const isYou = pid === humanId;
-
-              let statusIcon = '';
-              let entryClass = 'gb-player-entry';
-              if (isActive) entryClass += ' gb-active-turn';
-              if (!isActive && activeId) entryClass += ' gb-entry-muted';
-              if (p.eliminated) {
-                entryClass += ' gb-entry-eliminated';
-                statusIcon = '💀';
-              } else if (p.finishTimeMs !== undefined) {
-                entryClass += ' gb-entry-finished';
-                statusIcon = '✅';
-              } else if (isActive) {
-                statusIcon = '➡️';
-              }
-
-              return (
-                <div key={pid} className={entryClass} role="listitem">
-                  <div className="gb-player-avatar">
-                    <img src={avatarForId(pid)} alt="" width={22} height={22} />
+          {/* Compact active-player avatar bar — remaining active players in turn order */}
+          <div className="gb-avatar-bar" role="list" aria-label="Active players">
+            {gb.turnOrder
+              .filter(pid => {
+                const p = gb.progress[pid];
+                return p && !p.eliminated && p.finishTimeMs === undefined;
+              })
+              .map((pid, idx) => {
+                const isActive = activeId === pid;
+                const isLeader = idx === 0;
+                const isYou = pid === humanId;
+                return (
+                  <div
+                    key={pid}
+                    className={`gb-avatar-bar-item${isActive ? ' gb-avatar-bar-active' : ''}${isYou ? ' gb-avatar-bar-you' : ''}`}
+                    title={getName(pid)}
+                    role="listitem"
+                    aria-label={`${getName(pid)}${isActive ? ' — current turn' : ''}${isLeader ? ', leader' : ''}`}
+                  >
+                    {isLeader && (
+                      <span className="gb-avatar-bar-crown" aria-hidden="true">👑</span>
+                    )}
+                    <GlassBridgeAvatar
+                      id={pid}
+                      name={getName(pid)}
+                      alt={getName(pid)}
+                      size={32}
+                    />
+                    {isYou && (
+                      <span className="gb-avatar-bar-you-badge" aria-hidden="true">YOU</span>
+                    )}
                   </div>
-                  <span className="gb-player-name">
-                    {isYou ? 'You' : getName(pid)}
-                    {turnIdx === 0 && !p.eliminated && p.finishTimeMs === undefined ? (
-                      <span style={{ color: '#ff8c42', marginLeft: '0.3rem', fontSize: '0.65rem' }}>
-                        [1st]
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="gb-player-progress">
-                    {p.finishTimeMs !== undefined
-                      ? `✓ ${formatElapsed(p.finishTimeMs)}`
-                      : p.eliminated
-                        ? `Row ${p.furthestRowReached}`
-                        : isActive
-                          ? `Row ${gb.currentPlayerRow}`
-                          : `${p.furthestRowReached > 0 ? `Row ${p.furthestRowReached}` : 'Waiting'}`}
-                  </span>
-                  <span className="gb-player-status-icon">{statusIcon}</span>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           {isHumanTurn && !isHumanEliminated && (

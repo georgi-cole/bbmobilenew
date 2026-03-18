@@ -4,23 +4,24 @@
  * Covers:
  *  1. Bridge generation is deterministic given the same seed.
  *  2. buildAiNumberChoices produces valid, unique picks.
- *  3. aiDecideStep inference: one broken tile → infers safe side.
+ *  3. aiDecideStep inference: one broken tile → infers safe side (≥ 99.9% accuracy).
  *  4. aiDecideStep: no broken tiles → random (50/50 distribution).
  *  5. aiDecideStep: both broken → recover safely (no crash).
  *  6. resolveStep: safe tile advances progress.
  *  7. resolveStep: wrong tile breaks tile and eliminates player.
  *  8. Broken tile persistence across turns.
- *  9. Safe tiles are never explicitly revealed.
- * 10. buildPlacements: finished players rank before non-finishers.
- * 11. buildPlacements: no finishers → rank by furthestRowReached DESC.
- * 12. buildPlacements: tie on row → rank by timeReachedFurthestRowMs ASC.
- * 13. buildPlacements: full tie → turn order ASC.
- * 14. completeGame sets phase to 'complete' and populates placements.
- * 15. Timer expiry eliminates remaining players.
- * 16. Full deterministic simulation: same seed produces same outcome.
- * 17. initGlassBridge: state shape is correct.
- * 18. recordNumberChoice: validates range and uniqueness.
- * 19. finaliseOrderSelection: produces correct turn order.
+ *  9. resolveStep: safe step sets revealedSafeSide on the row.
+ * 10. aiDecideStep: revealedSafeSide → picks revealed side ~95%.
+ * 11. buildPlacements: finished players rank before non-finishers.
+ * 12. buildPlacements: no finishers → rank by furthestRowReached DESC.
+ * 13. buildPlacements: tie on row → rank by timeReachedFurthestRowMs ASC.
+ * 14. buildPlacements: full tie → turn order ASC.
+ * 15. completeGame sets phase to 'complete' and populates placements.
+ * 16. Timer expiry eliminates remaining players.
+ * 17. Full deterministic simulation: same seed produces same outcome.
+ * 18. initGlassBridge: state shape is correct.
+ * 19. recordNumberChoice: validates range and uniqueness.
+ * 20. finaliseOrderSelection: produces correct turn order.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -40,6 +41,7 @@ import glassBridgeReducer, {
   buildPlacements,
   buildAiNumberChoices,
   aiDecideStep,
+  deriveAiObviousSafeAccuracy,
   simulateAiTurn,
   type BridgeRow,
   type GlassBridgePlayerProgress,
@@ -119,6 +121,7 @@ describe('generateBridgeRows', () => {
     for (const r of rows) {
       expect(r.leftBroken).toBe(false);
       expect(r.rightBroken).toBe(false);
+      expect(r.revealedSafeSide).toBeNull();
     }
   });
 
@@ -168,9 +171,10 @@ describe('buildAiNumberChoices', () => {
 
 describe('aiDecideStep', () => {
   it('infers right tile when left is broken (with high accuracy)', () => {
-    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'> = {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
       leftBroken: true,
       rightBroken: false,
+      revealedSafeSide: null,
     };
     // Run 100 times, expect the vast majority to choose 'right'.
     let rightCount = 0;
@@ -178,21 +182,22 @@ describe('aiDecideStep', () => {
       const rng = mulberry32(i * 13 + 1);
       if (aiDecideStep(row, rng) === 'right') rightCount++;
     }
-    // With 0.93 accuracy, expect > 80 correct out of 100.
-    expect(rightCount).toBeGreaterThan(80);
+    // With 0.999 accuracy, expect > 90 correct out of 100.
+    expect(rightCount).toBeGreaterThan(90);
   });
 
   it('infers left tile when right is broken (with high accuracy)', () => {
-    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'> = {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
       leftBroken: false,
       rightBroken: true,
+      revealedSafeSide: null,
     };
     let leftCount = 0;
     for (let i = 0; i < 100; i++) {
       const rng = mulberry32(i * 7 + 2);
       if (aiDecideStep(row, rng) === 'left') leftCount++;
     }
-    expect(leftCount).toBeGreaterThan(80);
+    expect(leftCount).toBeGreaterThan(90);
   });
 
   it('chooses randomly when no tiles are broken', () => {
@@ -211,9 +216,10 @@ describe('aiDecideStep', () => {
   });
 
   it('does not crash when both tiles are broken', () => {
-    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'> = {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
       leftBroken: true,
       rightBroken: true,
+      revealedSafeSide: null,
     };
     const rng = mulberry32(1);
     expect(() => aiDecideStep(row, rng)).not.toThrow();
@@ -222,13 +228,79 @@ describe('aiDecideStep', () => {
   });
 
   it('is deterministic for the same RNG state', () => {
-    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'> = {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
       leftBroken: false,
       rightBroken: false,
+      revealedSafeSide: null,
     };
     const rng1 = mulberry32(999);
     const rng2 = mulberry32(999);
     expect(aiDecideStep(row, rng1)).toBe(aiDecideStep(row, rng2));
+  });
+
+  it('picks revealedSafeSide ~95% of the time when set (left)', () => {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
+      leftBroken: false,
+      rightBroken: false,
+      revealedSafeSide: 'left',
+    };
+    let leftCount = 0;
+    for (let i = 0; i < 100; i++) {
+      const rng = mulberry32(i * 17 + 3);
+      if (aiDecideStep(row, rng) === 'left') leftCount++;
+    }
+    // 95% probability → expect > 85 out of 100.
+    expect(leftCount).toBeGreaterThan(85);
+  });
+
+  it('picks revealedSafeSide ~95% of the time when set (right)', () => {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
+      leftBroken: false,
+      rightBroken: false,
+      revealedSafeSide: 'right',
+    };
+    let rightCount = 0;
+    for (let i = 0; i < 100; i++) {
+      const rng = mulberry32(i * 11 + 7);
+      if (aiDecideStep(row, rng) === 'right') rightCount++;
+    }
+    expect(rightCount).toBeGreaterThan(85);
+  });
+
+  it('picks revealedSafeSide with deterministic behaviour for a given seed', () => {
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
+      leftBroken: false,
+      rightBroken: false,
+      revealedSafeSide: 'right',
+    };
+    const rng1 = mulberry32(42);
+    const rng2 = mulberry32(42);
+    expect(aiDecideStep(row, rng1)).toBe(aiDecideStep(row, rng2));
+  });
+
+  it('keeps a 0.999 floor while allowing higher-nerve profiles to be slightly more accurate', () => {
+    const lowNerve = deriveAiObviousSafeAccuracy({ memory: 50, nerve: 0, composure: 50 });
+    const highNerve = deriveAiObviousSafeAccuracy({ memory: 50, nerve: 100, composure: 50 });
+
+    expect(lowNerve).toBe(0.999);
+    expect(highNerve).toBeGreaterThan(lowNerve);
+    expect(highNerve).toBeLessThan(1);
+  });
+
+  it('uses revealedSafeSide even when a tile is broken (revealed takes priority over broken-tile inference)', () => {
+    // revealedSafeSide takes priority over broken-tile inference.
+    const row: Pick<BridgeRow, 'leftBroken' | 'rightBroken' | 'revealedSafeSide'> = {
+      leftBroken: true,
+      rightBroken: false,
+      revealedSafeSide: 'right', // consistent: right is safe and was revealed
+    };
+    // With revealedSafeSide = 'right' and 95% probability, should pick right most of the time.
+    let rightCount = 0;
+    for (let i = 0; i < 100; i++) {
+      const rng = mulberry32(i * 5 + 9);
+      if (aiDecideStep(row, rng) === 'right') rightCount++;
+    }
+    expect(rightCount).toBeGreaterThan(85);
   });
 });
 
@@ -284,7 +356,7 @@ describe('glassBridgeSlice — resolveStep', () => {
     }
   });
 
-  it('safe tile is NOT marked after a correct step (no revelation)', () => {
+  it('sets revealedSafeSide on the row after a correct step', () => {
     const store = startGame(['a', 'b'], 42);
     completeOrderPhase(store, 42);
     const gb = store.getState().glassBridge;
@@ -293,6 +365,8 @@ describe('glassBridgeSlice — resolveStep', () => {
     store.dispatch(resolveStep({ chosenSide: row.safeSide, now: T0 + 1000 }));
 
     const updatedRow = store.getState().glassBridge.rows[0];
+    // revealedSafeSide should be set to the safe side so subsequent AI players can use it.
+    expect(updatedRow.revealedSafeSide).toBe(row.safeSide);
     // Neither tile should be marked broken — the safe tile stays intact.
     expect(updatedRow.leftBroken).toBe(false);
     expect(updatedRow.rightBroken).toBe(false);

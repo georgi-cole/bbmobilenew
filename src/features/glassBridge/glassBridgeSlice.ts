@@ -29,6 +29,12 @@ export interface BridgeRow {
   safeSide: TileSide;
   leftBroken: boolean;
   rightBroken: boolean;
+  /**
+   * Set when a previous player safely stepped on this row, revealing the safe side
+   * to subsequent AI players via observable behavior.
+   * null = not yet revealed; a TileSide value = safe side was revealed.
+   */
+  revealedSafeSide?: TileSide | null;
 }
 
 /**
@@ -132,12 +138,12 @@ const DEFAULT_TIME_LIMIT_MS = 179_000;
 
 /**
  * Default accuracy when AI observes one broken tile and infers the safe side.
- * Overridden by the player's `nerve` skill if a profile is available.
+ * Used as the minimum floor; higher-nerve profiles can exceed it slightly.
  *
- * 99%   → AI usually chooses the logically safe tile.
- * 1%    → "slip accident" — AI steps onto the broken tile despite knowing better.
+ * 99.9% → AI almost always chooses the logically safe tile.
+ * 0.1%  → "slip accident" — AI steps onto the broken tile despite knowing better.
  */
-const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.99;
+const DEFAULT_AI_OBVIOUS_SAFE_ACCURACY = 0.999;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -157,6 +163,7 @@ export function generateBridgeRows(rng: () => number, rowsCount: number): Bridge
     safeSide: rng() < 0.5 ? 'left' : 'right',
     leftBroken: false,
     rightBroken: false,
+    revealedSafeSide: null,
   }));
 }
 
@@ -164,32 +171,47 @@ export function generateBridgeRows(rng: () => number, rowsCount: number): Bridge
  * Derive the AI accuracy for an "obvious safe" situation from the player's
  * competition profile if available, otherwise use the default.
  *
- * The `nerve` skill maps linearly from 0→ ~0.75 accuracy to 100→ ~0.99.
+ * The required floor is 99.9%, but higher-nerve profiles can still gain a
+ * small bonus above that minimum so skill continues to matter in obvious-safe
+ * situations without ever dropping below the requested threshold.
  */
 export function deriveAiObviousSafeAccuracy(profile?: CompetitionSkillProfile): number {
   if (!profile) return DEFAULT_AI_OBVIOUS_SAFE_ACCURACY;
-  // nerve 0–100 → accuracy 0.75–0.99
-  return 0.75 + (profile.nerve / 100) * 0.24;
+  // nerve 0–100 → 0.999–0.9999 accuracy.
+  const computed = DEFAULT_AI_OBVIOUS_SAFE_ACCURACY + (profile.nerve / 100) * 0.0009;
+  return Math.min(0.9999, Math.max(DEFAULT_AI_OBVIOUS_SAFE_ACCURACY, computed));
 }
 
 /**
  * AI step decision logic.
  *
- * The AI may only use visible public state (broken tile flags).
+ * The AI may only use visible public state (broken tile flags, revealed safe side).
  * It must NOT read safeSide directly.
  *
- * @param row        The row the AI is stepping onto (contains broken flags only; safeSide is
- *                   treated as hidden information and must NOT be used here).
+ * Decision priority:
+ *  1. If a previous player safely crossed this row (revealedSafeSide set):
+ *     choose that side with 95% probability (remembers what was revealed).
+ *  2. Else if one tile is broken: use deriveAiObviousSafeAccuracy (≥ 99.9%) to
+ *     choose the obviously safe side.
+ *  3. Else: pure 50/50 guess.
+ *
+ * @param row        The row the AI is stepping onto.
  * @param rng        Seeded RNG function.
  * @param profile    Optional competition profile to calibrate accuracy.
  * @returns chosen tile side.
  */
 export function aiDecideStep(
-  row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'>,
+  row: Pick<BridgeRow, 'leftBroken' | 'rightBroken'> & { revealedSafeSide?: TileSide | null },
   rng: () => number,
   profile?: CompetitionSkillProfile,
 ): TileSide {
-  const { leftBroken, rightBroken } = row;
+  const { leftBroken, rightBroken, revealedSafeSide } = row;
+
+  // Priority 1: a previous player already revealed the safe side by safely crossing.
+  if (revealedSafeSide) {
+    const opposite: TileSide = revealedSafeSide === 'left' ? 'right' : 'left';
+    return rng() < 0.95 ? revealedSafeSide : opposite;
+  }
 
   if (leftBroken && rightBroken) {
     // Invalid state — should never happen in a valid simulation.
@@ -204,7 +226,7 @@ export function aiDecideStep(
     // Right tile is logically safe.
     const accuracy = deriveAiObviousSafeAccuracy(profile);
     if (rng() < accuracy) return 'right';
-    // Slip accident (0.1%) — AI loses footing and steps onto the broken tile.
+    // Slip accident — AI loses footing and steps onto the broken tile.
     return 'left';
   }
 
@@ -212,7 +234,7 @@ export function aiDecideStep(
     // Left tile is logically safe.
     const accuracy = deriveAiObviousSafeAccuracy(profile);
     if (rng() < accuracy) return 'left';
-    // Slip accident (0.1%) — AI loses footing and steps onto the broken tile.
+    // Slip accident — AI loses footing and steps onto the broken tile.
     return 'right';
   }
 
@@ -473,6 +495,9 @@ const glassBridgeSlice = createSlice({
         // Safe — advance.
         progress.furthestRowReached = state.currentPlayerRow;
         progress.timeReachedFurthestRowMs = elapsed;
+
+        // Mark this row's safe side as revealed so subsequent AI players can use it.
+        row.revealedSafeSide = chosenSide;
 
         if (state.currentPlayerRow >= state.rowsCount) {
           // Player has crossed the final row — they finished!
