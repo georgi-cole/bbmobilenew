@@ -511,6 +511,14 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
+.gb-player-marker img,
+.gb-player-marker .gb-avatar-fallback {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .gb-player-marker.gb-player-active {
   border-color: #7ecbff;
   box-shadow:
@@ -613,7 +621,8 @@
   gap: 0.15rem;
 }
 
-.gb-avatar-bar-item img {
+.gb-avatar-bar-item img,
+.gb-avatar-bar-item .gb-avatar-fallback {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -623,7 +632,8 @@
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.gb-avatar-bar-item.gb-avatar-bar-active img {
+.gb-avatar-bar-item.gb-avatar-bar-active img,
+.gb-avatar-bar-item.gb-avatar-bar-active .gb-avatar-fallback {
   border-color: #7ecbff;
   box-shadow:
     0 0 0 3px rgba(126, 203, 255, 0.18),
@@ -632,8 +642,20 @@
   animation: gb-avatar-pulse 1.4s ease-in-out infinite;
 }
 
-.gb-avatar-bar-item.gb-avatar-bar-you img {
+.gb-avatar-bar-item.gb-avatar-bar-you img,
+.gb-avatar-bar-item.gb-avatar-bar-you .gb-avatar-fallback {
   border-color: #3aff8a;
+}
+
+.gb-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(70, 110, 190, 0.95), rgba(126, 203, 255, 0.95));
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  user-select: none;
 }
 
 .gb-avatar-bar-crown {
@@ -1112,7 +1134,7 @@ body.no-animations .gb-led-rail {
   }
 }
 
-
+@media (max-width: 540px) {
   .gb-spectator-actions {
     flex-direction: column;
   }

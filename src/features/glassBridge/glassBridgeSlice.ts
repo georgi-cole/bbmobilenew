@@ -171,12 +171,15 @@ export function generateBridgeRows(rng: () => number, rowsCount: number): Bridge
  * Derive the AI accuracy for an "obvious safe" situation from the player's
  * competition profile if available, otherwise use the default.
  *
- * The `nerve` skill maps linearly from 0→ ~0.75 accuracy to 100→ ~0.99,
- * but the result is always floored at DEFAULT_AI_OBVIOUS_SAFE_ACCURACY (0.999).
+ * The legacy `nerve` mapping is still computed for documentation / future
+ * tuning, but the current game design intentionally floors the result at
+ * DEFAULT_AI_OBVIOUS_SAFE_ACCURACY (0.999). With today's required floor, all
+ * "obvious safe" cases resolve at 99.9% accuracy.
  */
 export function deriveAiObviousSafeAccuracy(profile?: CompetitionSkillProfile): number {
   if (!profile) return DEFAULT_AI_OBVIOUS_SAFE_ACCURACY;
-  // nerve 0–100 → accuracy 0.75–0.99; floor at 0.999 so observed-safe accuracy is at least 99.9%
+  // Legacy nerve 0–100 → accuracy 0.75–0.99 mapping retained for future tuning.
+  // The required 0.999 floor intentionally dominates it in the current design.
   const computed = 0.75 + (profile.nerve / 100) * 0.24;
   return Math.max(DEFAULT_AI_OBVIOUS_SAFE_ACCURACY, computed);
 }

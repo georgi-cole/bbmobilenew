@@ -73,6 +73,8 @@ const DEATH_FLASH_MS = 120;
 const DEATH_MARKER_DURATION_MS = 750;
 /** Landing animation duration for a finisher reaching the safe platform (ms). Aligned with gb-player-land (0.55s), plus a short grace period. */
 const LANDING_ANIM_DURATION_MS = 600;
+/** Keeps 1–2 letter initials comfortably inside the circular fallback avatars. */
+const AVATAR_INITIALS_FONT_SIZE_RATIO = 0.42;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,66 @@ const LANDING_ANIM_DURATION_MS = 600;
 function avatarForId(id: string, name?: string): string {
   const displayName = name ?? id;
   return resolveAvatar({ id, name: displayName, avatar: '' });
+}
+
+function initialsForName(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return '?';
+  return parts.map(part => part.charAt(0).toUpperCase()).join('');
+}
+
+interface GlassBridgeAvatarProps {
+  id: string;
+  name: string;
+  size: number;
+  alt: string;
+}
+
+function GlassBridgeAvatar({ id, name, size, alt }: GlassBridgeAvatarProps) {
+  const [avatarSrc, setAvatarSrc] = useState(() => avatarForId(id, name));
+  const [showInitials, setShowInitials] = useState(false);
+  const initials = useMemo(() => initialsForName(name), [name]);
+
+  function handleError() {
+    const dicebear = getDicebear(name);
+    if (avatarSrc !== dicebear) {
+      setAvatarSrc(dicebear);
+      return;
+    }
+    setShowInitials(true);
+  }
+
+  if (showInitials) {
+    return (
+      <span
+        className="gb-avatar-fallback"
+        style={{
+          width: size,
+          height: size,
+          fontSize: Math.max(10, Math.round(size * AVATAR_INITIALS_FONT_SIZE_RATIO)),
+        }}
+        role="img"
+        aria-label={alt}
+      >
+        {initials}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={avatarSrc}
+      alt={alt}
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={handleError}
+    />
+  );
 }
 
 function formatElapsed(ms: number): string {
@@ -922,16 +984,11 @@ export default function GlassBridgeComp({
                         className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}${pendingActorId === pid && shatteringTile ? ' gb-player-falling' : ''}`}
                         title={getName(pid)}
                       >
-                        <img
-                          src={avatarForId(pid, getName(pid))}
+                        <GlassBridgeAvatar
+                          id={pid}
+                          name={getName(pid)}
                           alt={getName(pid)}
-                          width={18}
-                          height={18}
-                          loading="lazy"
-                          onError={e => {
-                            const img = e.currentTarget as HTMLImageElement;
-                            img.src = getDicebear(getName(pid));
-                          }}
+                          size={18}
                         />
                       </div>
                     ))}
@@ -944,16 +1001,11 @@ export default function GlassBridgeComp({
               <div className="gb-safe-platform">
                 {landingPlayerIds.map(pid => (
                   <div key={pid} className="gb-player-marker gb-player-landing" title={getName(pid)}>
-                    <img
-                      src={avatarForId(pid, getName(pid))}
+                    <GlassBridgeAvatar
+                      id={pid}
+                      name={getName(pid)}
                       alt={getName(pid)}
-                      width={18}
-                      height={18}
-                      loading="lazy"
-                      onError={e => {
-                        const img = e.currentTarget as HTMLImageElement;
-                        img.src = getDicebear(getName(pid));
-                      }}
+                      size={18}
                     />
                   </div>
                 ))}
@@ -981,18 +1033,13 @@ export default function GlassBridgeComp({
                     aria-label={`${getName(pid)}${isActive ? ' — current turn' : ''}${isLeader ? ', leader' : ''}`}
                   >
                     {isLeader && (
-                      <span className="gb-avatar-bar-crown" aria-label="Leader">👑</span>
+                      <span className="gb-avatar-bar-crown" aria-hidden="true">👑</span>
                     )}
-                    <img
-                      src={avatarForId(pid, getName(pid))}
+                    <GlassBridgeAvatar
+                      id={pid}
+                      name={getName(pid)}
                       alt={getName(pid)}
-                      width={32}
-                      height={32}
-                      loading="lazy"
-                      onError={e => {
-                        const img = e.currentTarget as HTMLImageElement;
-                        img.src = getDicebear(getName(pid));
-                      }}
+                      size={32}
                     />
                     {isYou && (
                       <span className="gb-avatar-bar-you-badge" aria-hidden="true">YOU</span>

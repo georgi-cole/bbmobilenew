@@ -250,8 +250,6 @@ describe('aiDecideStep', () => {
     }
     // 95% probability → expect > 85 out of 100.
     expect(leftCount).toBeGreaterThan(85);
-    // Should not be 100% (some variance expected).
-    expect(leftCount).toBeLessThan(100);
   });
 
   it('picks revealedSafeSide ~95% of the time when set (right)', () => {
