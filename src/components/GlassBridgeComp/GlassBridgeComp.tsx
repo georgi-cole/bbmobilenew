@@ -1061,12 +1061,17 @@ export default function GlassBridgeComp({
       {/* ── Complete ── */}
       {gb.phase === 'complete' && (
         <MinigameCompleteWrapper
+          className="gb-complete"
           onContinue={() => {
             // Ensure outcome is applied before MinigameHost unmounts this component.
             dispatch(resolveGlassBridgeOutcome());
             onComplete?.();
           }}
           continueLabel="Continue"
+          continueButtonClassName="gb-btn-primary"
+          placementsClassName="gb-placement-list"
+          placementsRole="list"
+          placementsAriaLabel="Final placements"
           placementsNode={gb.placements.map((pid, idx) => {
             const p = gb.progress[pid];
             const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;

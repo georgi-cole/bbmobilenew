@@ -438,6 +438,7 @@ export default function BiographyBlitzComp({
         <MinigameCompleteWrapper
           onContinue={() => onComplete?.()}
           continueLabel="Continue ›"
+          continueButtonClassName="bb-blitz__continue-btn"
         >
           <div className="bb-blitz__winner-screen">
             <div className="bb-blitz__winner-avatar-wrap">

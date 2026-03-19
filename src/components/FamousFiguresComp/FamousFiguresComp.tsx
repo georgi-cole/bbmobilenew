@@ -736,6 +736,7 @@ export default function FamousFiguresComp({
           <MinigameCompleteWrapper
             onContinue={() => onComplete?.()}
             continueLabel="Continue ›"
+            continueButtonClassName="ff-continue-btn"
             placementsNode={renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
           >
             <div className="ff-winner-banner" role="status">
@@ -755,6 +756,7 @@ export default function FamousFiguresComp({
         <MinigameCompleteWrapper
           onContinue={() => onComplete?.()}
           continueLabel="Continue ›"
+          continueButtonClassName="ff-continue-btn"
         >
           <div className="ff-winner-card">
             <div className="ff-winner-trophy" aria-hidden="true">🏆</div>

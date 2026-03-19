@@ -943,6 +943,7 @@ export default function BlackjackTournamentComp({
             onComplete?.();
           }}
           continueLabel="Continue →"
+          continueButtonClassName="bjt-btn bjt-btn--continue"
           placementsNode={bt.eliminatedPlayerIds.length > 0 ? (
             <>
               <p className="bjt-elim-order">
