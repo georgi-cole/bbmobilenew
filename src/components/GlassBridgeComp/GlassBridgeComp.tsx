@@ -43,6 +43,7 @@ import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
 import { mulberry32 } from '../../store/rng';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { playScreamPlaceholder } from '../../services/sound';
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './GlassBridgeComp.css';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -1059,7 +1060,40 @@ export default function GlassBridgeComp({
 
       {/* ── Complete ── */}
       {gb.phase === 'complete' && (
-        <div className="gb-complete">
+        <MinigameCompleteWrapper
+          className="gb-complete"
+          onContinue={() => {
+            // Ensure outcome is applied before MinigameHost unmounts this component.
+            dispatch(resolveGlassBridgeOutcome());
+            onComplete?.();
+          }}
+          continueLabel="Continue"
+          continueButtonClassName="gb-btn-primary"
+          placementsClassName="gb-placement-list"
+          placementsRole="list"
+          placementsAriaLabel="Final placements"
+          placementsNode={gb.placements.map((pid, idx) => {
+            const p = gb.progress[pid];
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+            const isYou = pid === humanId;
+
+            const detail: string = p?.finishTimeMs !== undefined
+              ? `Finished ${formatElapsed(p.finishTimeMs)}`
+              : p?.furthestRowReached
+                ? `Row ${p.furthestRowReached} / ${gb.rowsCount}`
+                : 'Row 0';
+
+            return (
+              <div key={pid} className="gb-placement-item" role="listitem">
+                <span className="gb-placement-rank">{medal}</span>
+                <span className="gb-placement-name">
+                  {isYou ? 'You' : getName(pid)}
+                </span>
+                <span className="gb-placement-detail">{detail}</span>
+              </div>
+            );
+          })}
+        >
           <div className="gb-complete-hero">
             <h2>Bridge Complete</h2>
             <div className="gb-winner-badge">🏆</div>
@@ -1072,43 +1106,7 @@ export default function GlassBridgeComp({
               Finishers are ranked by time. Everyone else is ranked by progress.
             </div>
           </div>
-
-          <div className="gb-placement-list" role="list" aria-label="Final placements">
-            {gb.placements.map((pid, idx) => {
-              const p = gb.progress[pid];
-              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-              const isYou = pid === humanId;
-
-              const detail: string = p?.finishTimeMs !== undefined
-                ? `Finished ${formatElapsed(p.finishTimeMs)}`
-                : p?.furthestRowReached
-                  ? `Row ${p.furthestRowReached} / ${gb.rowsCount}`
-                  : 'Row 0';
-
-              return (
-                <div key={pid} className="gb-placement-item" role="listitem">
-                  <span className="gb-placement-rank">{medal}</span>
-                  <span className="gb-placement-name">
-                    {isYou ? 'You' : getName(pid)}
-                  </span>
-                  <span className="gb-placement-detail">{detail}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            className="gb-btn-primary"
-            onClick={() => {
-              // Ensure outcome is applied before MinigameHost unmounts this component.
-              dispatch(resolveGlassBridgeOutcome());
-              onComplete?.();
-            }}
-            aria-label="Continue"
-          >
-            Continue
-          </button>
-        </div>
+        </MinigameCompleteWrapper>
       )}
 
       {/* ── Spectator modal ── */}
