@@ -1653,6 +1653,15 @@ const gameSlice = createSlice({
         spectatorActive: null,
       };
     },
+    /**
+     * Restore a previously saved in-progress game state (manual save/resume).
+     * Replaces the entire game slice with the snapshot.
+     * seasonFinale field is always preserved as-is from the snapshot.
+     */
+    hydrateGame(_state, action: PayloadAction<GameState>) {
+      return action.payload;
+    },
+
     /** Generate a new random RNG seed (debug only). */
     rerollSeed(state) {
       // Mix Math.random() with the low 32 bits of Date.now() via XOR to derive a 32-bit seed.
@@ -2406,6 +2415,7 @@ export const {
   replacePlayers,
   resetGame,
   rerollSeed,
+  hydrateGame,
 } = gameSlice.actions;
 export default gameSlice.reducer;
 

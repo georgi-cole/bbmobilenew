@@ -13,8 +13,15 @@ import {
   archiveKeyForProfile,
   type StoredProfile,
 } from '../../store/profilesSlice';
-import { resetGame } from '../../store/gameSlice';
+import { resetGame, hydrateGame } from '../../store/gameSlice';
+import { hydrateFinale } from '../../store/finaleSlice';
+import { hydrateSocial } from '../../social/socialSlice';
 import { loadSeasonArchives } from '../../store/archivePersistence';
+import {
+  savedStateKeyForProfile,
+  loadSeasonSnapshot,
+  clearSeasonSnapshot,
+} from '../../store/saveStatePersistence';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { imageIdToDataUrl } from '../../utils/imageDb';
 import { deleteImage } from '../../utils/imageDb';
@@ -28,6 +35,9 @@ const AVATAR_OPTIONS = [
  * ProfilePicker — allows the user to select, create, delete profiles or enter
  * guest mode.  Switching profiles (when a game is active) shows a confirmation
  * warning that the current season will be reset.
+ *
+ * When selecting a profile that has a saved in-progress season, the user is
+ * prompted to resume that season or start a fresh one.
  */
 export default function ProfilePicker() {
   const navigate = useNavigate();
@@ -50,12 +60,16 @@ export default function ProfilePicker() {
   const [newName, setNewName] = useState('');
   const [newAvatar, setNewAvatar] = useState('🧑');
 
-  // Confirmation for profile switch
+  // Confirmation for profile switch (current game is active)
   const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
   // Confirmation for guest mode
   const [pendingGuest, setPendingGuest] = useState(false);
   // Confirmation for delete
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Resume-save prompt: triggered when switching to a profile that has a saved season.
+  // Holds the profile ID to switch to so the confirm/cancel handlers can act on it.
+  const [pendingResumeId, setPendingResumeId] = useState<string | null>(null);
 
   const atLimit = profiles.length >= MAX_PROFILES;
 
@@ -99,6 +113,45 @@ export default function ProfilePicker() {
     // with the previous profile's in-memory archives.
     // After dispatch(selectActiveProfile), store.subscribe has already flushed the new
     // activeProfileId to localStorage, so the key below resolves to the right profile.
+
+    // Check if there's a saved in-progress season for this profile.
+    const saveKey = savedStateKeyForProfile(id);
+    const snapshot = loadSeasonSnapshot(saveKey);
+    if (snapshot && snapshot.profileId === id) {
+      // A saved season exists — prompt the user to resume or start fresh.
+      setPendingResumeId(id);
+    } else {
+      // No saved season — start fresh immediately.
+      const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
+      dispatch(resetGame(archives));
+      navigate('/profile');
+    }
+  }
+
+  function commitResume(id: string) {
+    const saveKey = savedStateKeyForProfile(id);
+    const snapshot = loadSeasonSnapshot(saveKey);
+    if (!snapshot || snapshot.profileId !== id) {
+      // Snapshot vanished or is from wrong profile — fall back to fresh start.
+      commitStartFresh(id);
+      return;
+    }
+    try {
+      dispatch(hydrateGame(snapshot.game));
+      dispatch(hydrateFinale(snapshot.finale));
+      dispatch(hydrateSocial(snapshot.social));
+      navigate('/game');
+    } catch {
+      // If hydration fails for any reason, gracefully fall back to a fresh season
+      // and clear the bad snapshot so it doesn't keep reappearing.
+      clearSeasonSnapshot(saveKey);
+      commitStartFresh(id);
+    }
+  }
+
+  function commitStartFresh(id: string) {
+    const saveKey = savedStateKeyForProfile(id);
+    clearSeasonSnapshot(saveKey);
     const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
     dispatch(resetGame(archives));
     navigate('/profile');
@@ -140,6 +193,8 @@ export default function ProfilePicker() {
     if (profile?.photoId) {
       await deleteImage(profile.photoId);
     }
+    // Clear any saved season snapshot for this profile.
+    clearSeasonSnapshot(savedStateKeyForProfile(id));
     dispatch(deleteProfile(id));
     setPendingDeleteId(null);
   }
@@ -148,6 +203,7 @@ export default function ProfilePicker() {
 
   const deleteTarget = profiles.find((p) => p.id === pendingDeleteId);
   const switchTarget = profiles.find((p) => p.id === pendingSwitchId);
+  const resumeTarget = profiles.find((p) => p.id === pendingResumeId);
 
   function renderAvatar(p: StoredProfile) {
     const url = photoCache[p.id];
@@ -304,12 +360,12 @@ export default function ProfilePicker() {
         </p>
       </div>
 
-      {/* Profile-switch confirmation modal */}
+      {/* Profile-switch confirmation modal (current season will be lost) */}
       <ConfirmExitModal
         open={Boolean(pendingSwitchId)}
         title="Switch Profile?"
-        description={`Switching to "${switchTarget?.name ?? ''}" will reset the current season. Any unsaved progress will be lost.`}
-        confirmLabel="Switch & Reset"
+        description={`Switching to "${switchTarget?.name ?? ''}" will leave your current season. Save your game first if you want to resume it later.`}
+        confirmLabel="Switch"
         cancelLabel="Keep Playing"
         onConfirm={() => {
           if (pendingSwitchId) commitSwitch(pendingSwitchId);
@@ -318,12 +374,29 @@ export default function ProfilePicker() {
         onCancel={() => setPendingSwitchId(null)}
       />
 
+      {/* Resume saved season prompt */}
+      <ConfirmExitModal
+        open={Boolean(pendingResumeId)}
+        title="Resume Saved Season?"
+        description={`"${resumeTarget?.name ?? ''}" has a saved season in progress. Would you like to pick up where you left off?`}
+        confirmLabel="Resume"
+        cancelLabel="Start Fresh"
+        onConfirm={() => {
+          if (pendingResumeId) commitResume(pendingResumeId);
+          setPendingResumeId(null);
+        }}
+        onCancel={() => {
+          if (pendingResumeId) commitStartFresh(pendingResumeId);
+          setPendingResumeId(null);
+        }}
+      />
+
       {/* Guest mode confirmation modal */}
       <ConfirmExitModal
         open={pendingGuest}
         title="Enter Guest Mode?"
-        description="Switching to guest mode will reset the current season. Stats and archives will not be saved."
-        confirmLabel="Guest & Reset"
+        description="Switching to guest mode will leave the current season. Stats and archives will not be saved."
+        confirmLabel="Guest Mode"
         cancelLabel="Keep Playing"
         onConfirm={() => { setPendingGuest(false); commitGuest(); }}
         onCancel={() => setPendingGuest(false)}

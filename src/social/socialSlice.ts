@@ -345,6 +345,14 @@ const socialSlice = createSlice({
       }
       state.weekStartRelSnapshot = snapshot;
     },
+
+    /**
+     * Restore a previously saved social state (manual save/resume).
+     * Replaces the entire social slice with the snapshot.
+     */
+    hydrateSocial(_state, action: PayloadAction<SocialState>) {
+      return action.payload;
+    },
   },
 });
 
@@ -380,6 +388,7 @@ export const {
   closeIncomingInbox,
   clearSessionLogs,
   snapshotWeekRelationships,
+  hydrateSocial,
 } = socialSlice.actions;
 export default socialSlice.reducer;
 

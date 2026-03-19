@@ -7,6 +7,9 @@
  *  3. Flash CSS class is added to the social button when energy changes.
  *  4. Flash CSS class is removed after the animation interval.
  *  5. ARIA label on social button includes energy value.
+ *  6. Save button is present and disabled at game start (nothing to save yet).
+ *  7. Save button is disabled in guest mode.
+ *  8. Help button navigates to /rules.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -20,21 +23,28 @@ import socialReducer, {
   applyEnergyDelta,
   pushIncomingInteraction,
 } from '../../../social/socialSlice';
+import profilesReducer from '../../../store/profilesSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore(hasHuman = true) {
-  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
+  const base = configureStore({
+    reducer: { game: gameReducer, social: socialReducer, profiles: profilesReducer },
+  });
   const defaultState = base.getState() as RootState;
   const players = hasHuman
     ? defaultState.game.players
     : defaultState.game.players.map((p) => ({ ...p, isUser: false }));
 
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
-    preloadedState: { game: { ...defaultState.game, players }, social: defaultState.social },
+    reducer: { game: gameReducer, social: socialReducer, profiles: profilesReducer },
+    preloadedState: {
+      game: { ...defaultState.game, players },
+      social: defaultState.social,
+      profiles: defaultState.profiles,
+    },
   });
 }
 
@@ -166,6 +176,35 @@ describe('FloatingActionBar – inbox badge', () => {
   });
 });
 
+describe('FloatingActionBar – save button', () => {
+  it('save button is present and disabled at game start (nothing to save yet)', () => {
+    const store = makeStore();
+    renderFAB(store);
+    // At game start (week 1, phase 'week_start'), there's nothing to save yet.
+    const saveBtn = screen.getByRole('button', { name: /nothing to save yet/i });
+    expect(saveBtn).toBeDefined();
+    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('save button is disabled in guest mode (no persistence)', () => {
+    const store = makeStore();
+    // Enter guest mode by updating the profiles state
+    store.dispatch({ type: 'profiles/enterGuestMode' });
+    renderFAB(store);
+    const saveBtn = screen.getByRole('button', { name: /unavailable in guest mode/i });
+    expect(saveBtn).toBeDefined();
+    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('no Diary Room navigation button is present', () => {
+    const store = makeStore();
+    renderFAB(store);
+    // The DR button should no longer exist in the FAB
+    const drBtn = screen.queryByRole('button', { name: /diary room/i });
+    expect(drBtn).toBeNull();
+  });
+});
+
 describe('FloatingActionBar – navigation buttons', () => {
   it('navigates to rules when the Help button is clicked', async () => {
     const store = makeStore();
@@ -174,14 +213,5 @@ describe('FloatingActionBar – navigation buttons', () => {
       screen.getByRole('button', { name: 'Help' }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/rules');
-  });
-
-  it('navigates to the Diary Room when the DR button is clicked', () => {
-    const store = makeStore();
-    renderFAB(store, '/game');
-    act(() => {
-      screen.getByRole('button', { name: /Diary Room/i }).click();
-    });
-    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
   });
 });
