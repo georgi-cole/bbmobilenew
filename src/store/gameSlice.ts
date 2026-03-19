@@ -98,47 +98,57 @@ function buildInitialCompetitionSeasonState(players: Player[]): Record<string, R
   return Object.fromEntries(players.map((player) => [player.id, getDefaultCompetitionSeasonState()]));
 }
 
-const initialPlayers = buildInitialPlayers();
 export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 
-const initialState: GameState = {
-  season: 1,
-  week: 1,
-  phase: 'week_start',
-  seed: 42,
-  hohId: null,
-  prevHohId: null,
-  nomineeIds: [],
-  povWinnerId: null,
-  replacementNeeded: false,
-  povSavedId: null,
-  awaitingNominations: false,
-  pendingNominee1Id: null,
-  awaitingPovDecision: false,
-  awaitingPovSaveTarget: false,
-  votes: {},
-  awaitingHumanVote: false,
-  awaitingTieBreak: false,
-  tiedNomineeIds: null,
-  awaitingFinal3Eviction: false,
-  awaitingFinal3Plea: false,
-  aiReplacementStep: 0,
-  aiReplacementWaiting: false,
-  f3Part1WinnerId: null,
-  f3Part2WinnerId: null,
-  voteResults: null,
-  evictionSplashId: null,
-  pendingEviction: null,
-  players: initialPlayers,
-  competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(initialPlayers),
-  tvFeed: [
-    { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
-  ],
-  isLive: false,
-  seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
-  spectatorActive: null,
-  seasonFinale: null,
-};
+/**
+ * Build a fresh initial game state from the current settings and profile.
+ * Called both at store initialization and on every manual game reset, so that
+ * each new season always uses the latest persisted configuration rather than
+ * stale module-scope values.
+ */
+export function createInitialGameState(): GameState {
+  const freshPlayers = buildInitialPlayers();
+  return {
+    season: 1,
+    week: 1,
+    phase: 'week_start',
+    seed: 42,
+    hohId: null,
+    prevHohId: null,
+    nomineeIds: [],
+    povWinnerId: null,
+    replacementNeeded: false,
+    povSavedId: null,
+    awaitingNominations: false,
+    pendingNominee1Id: null,
+    awaitingPovDecision: false,
+    awaitingPovSaveTarget: false,
+    votes: {},
+    awaitingHumanVote: false,
+    awaitingTieBreak: false,
+    tiedNomineeIds: null,
+    awaitingFinal3Eviction: false,
+    awaitingFinal3Plea: false,
+    aiReplacementStep: 0,
+    aiReplacementWaiting: false,
+    f3Part1WinnerId: null,
+    f3Part2WinnerId: null,
+    voteResults: null,
+    evictionSplashId: null,
+    pendingEviction: null,
+    players: freshPlayers,
+    competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
+    tvFeed: [
+      { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
+    ],
+    isLive: false,
+    seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
+    spectatorActive: null,
+    seasonFinale: null,
+  };
+}
+
+const initialState: GameState = createInitialGameState();
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 /** Monotonic counter to guarantee unique event IDs within the same millisecond. */
@@ -1593,7 +1603,7 @@ const gameSlice = createSlice({
       state.players = action.payload;
       state.competitionSeasonStateByPlayerId = buildInitialCompetitionSeasonState(action.payload);
     },
-    /** Reset game state with a fresh random roster (debug only). */
+    /** Reset game state with a fresh random roster. */
     resetGame(state, action: PayloadAction<SeasonArchive[] | undefined>) {
       // Mix Math.random() with Date.now() to derive a fresh 32-bit game seed.
       // This seed drives in-game RNG (HOH/POV/vote outcomes); it is independent
@@ -1605,53 +1615,9 @@ const gameSlice = createSlice({
       const seasonArchives = action.payload !== undefined
         ? action.payload
         : (state.seasonArchives ?? []);
-      // Build a fresh normalized player roster — no stale eviction/jury/grayscale flags.
-      const freshPlayers: Player[] = buildInitialPlayers().map((p) => ({
-        ...p,
-        status: 'active' as const,
-        finalRank: undefined,
-        isWinner: undefined,
-      }));
-      return {
-        season: 1,
-        week: 1,
-        phase: 'week_start' as Phase,
-        seed,
-        hohId: null,
-        prevHohId: null,
-        nomineeIds: [],
-        povWinnerId: null,
-        replacementNeeded: false,
-        povSavedId: null,
-        awaitingNominations: false,
-        pendingNominee1Id: null,
-        awaitingPovDecision: false,
-        awaitingPovSaveTarget: false,
-        votes: {},
-        awaitingHumanVote: false,
-        awaitingTieBreak: false,
-        tiedNomineeIds: null,
-        awaitingFinal3Eviction: false,
-        awaitingFinal3Plea: false,
-        f3Part1WinnerId: null,
-        f3Part2WinnerId: null,
-        voteResults: null,
-        evictionSplashId: null,
-        pendingEviction: null,
-        players: freshPlayers,
-        competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
-        tvFeed: [
-          {
-            id: 'e0',
-            text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.',
-            type: 'game' as const,
-            timestamp: Date.now(),
-          },
-        ],
-        isLive: false,
-        seasonArchives,
-        spectatorActive: null,
-      };
+      // Use the factory to build a fully fresh initial state from the latest
+      // persisted settings/profile, then override seed and seasonArchives.
+      return { ...createInitialGameState(), seed, seasonArchives };
     },
     /** Generate a new random RNG seed (debug only). */
     rerollSeed(state) {

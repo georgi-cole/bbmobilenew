@@ -15,28 +15,38 @@ export function getConfiguredCastSize(): number {
 
 /**
  * The subset of settings that require starting a new game to take effect.
- * Non-restart settings (audio, theme, accessibility) are intentionally excluded
- * so changing volume or theme never triggers the restart prompt.
+ * Pure UI/audio/accessibility settings (animations, useHaptics, compactRoster,
+ * audio, display, visual) are intentionally excluded — changing those never
+ * triggers the restart prompt.
+ * Gameplay-defining fields (castSize, spectatorMode, compSelection, sim.*) are
+ * included because they affect the season structure or player roster.
  */
 export type RestartRelevantSettings = {
-  gameUX: Pick<SettingsState['gameUX'], 'castSize' | 'spectatorMode' | 'compactRoster' | 'animations' | 'useHaptics'>;
+  gameUX: Pick<SettingsState['gameUX'], 'castSize' | 'spectatorMode' | 'compSelection'>;
   sim: SettingsState['sim'];
 };
 
 /**
- * Return only the game-affecting settings fields for restart-detection.
- * Call once on Settings mount; compare via JSON.stringify on Back to detect changes.
+ * Derive a restart-relevant snapshot from a live SettingsState object.
+ * Use this instead of reading from localStorage so detection always reflects
+ * the current in-memory (Redux) settings state.
  */
-export function getRestartRelevantSnapshot(): RestartRelevantSettings {
-  const s = loadSettings();
+export function getRestartRelevantSnapshotFromSettings(s: SettingsState): RestartRelevantSettings {
   return {
     gameUX: {
       castSize: s.gameUX.castSize,
       spectatorMode: s.gameUX.spectatorMode,
-      compactRoster: s.gameUX.compactRoster,
-      animations: s.gameUX.animations,
-      useHaptics: s.gameUX.useHaptics,
+      compSelection: s.gameUX.compSelection,
     },
     sim: { ...s.sim },
   };
+}
+
+/**
+ * Return only the game-affecting settings fields for restart-detection.
+ * Reads from persisted localStorage; prefer getRestartRelevantSnapshotFromSettings
+ * when a live SettingsState is available.
+ */
+export function getRestartRelevantSnapshot(): RestartRelevantSettings {
+  return getRestartRelevantSnapshotFromSettings(loadSettings());
 }
