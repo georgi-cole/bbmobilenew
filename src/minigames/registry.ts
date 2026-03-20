@@ -916,6 +916,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  wildcardWestern: {
+    key: 'wildcardWestern',
+    title: 'Wildcard Western',
+    description: 'Draw cards, face off in a high-noon duel — last sheriff standing wins!',
+    instructions: [
+      'Each player draws a secret numbered wildcard',
+      'Lowest and highest cards face off in a showdown',
+      'Be first to buzz and answer correctly to survive',
+      'Wrong answer or timeout and you\'re eliminated',
+      'Choose who faces the next showdown — last player standing wins!',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'WildcardWestern',
+    legacy: false,
+    weight: 1,
+    category: 'trivia',
+    retired: false,
+  },
+
   castleRescue: {
     key: 'castleRescue',
     title: 'Castle Rescue',

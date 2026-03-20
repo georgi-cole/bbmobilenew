@@ -30,6 +30,7 @@ import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournam
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
 import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
+import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -330,6 +331,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as RiskWheelCompetitionType ?? 'HOH'}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'WildcardWestern') {
+              return (
+                <WildcardWesternComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' ?? 'HOH'}
+                  seed={seed}
                   onComplete={handleReactComplete}
                 />
               );

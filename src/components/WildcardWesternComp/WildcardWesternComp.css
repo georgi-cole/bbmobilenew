@@ -1,0 +1,396 @@
+/* WildcardWesternComp.css – Western-themed styles */
+
+.wildcard-western-root {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #2d1b0e 0%, #1a0f08 100%);
+  color: #f4e4c1;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ww-header {
+  padding: 1.2rem 1.5rem;
+  background: rgba(139, 69, 19, 0.3);
+  border-bottom: 3px solid #8b4513;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ww-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #d4a017;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ww-seed {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  font-family: monospace;
+}
+
+.ww-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* Intro screen */
+.ww-intro {
+  text-align: center;
+  max-width: 600px;
+}
+
+.ww-intro h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #d4a017;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
+}
+
+.ww-intro p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+}
+
+.ww-btn {
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #722f37 0%, #d4a017 100%);
+  color: #fff;
+  border: 3px solid #8b4513;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.ww-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+}
+
+.ww-btn:active {
+  transform: translateY(0);
+}
+
+/* Card reveal */
+.ww-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 700px;
+}
+
+.ww-player-card {
+  background: linear-gradient(135deg, #c8a96e 0%, #8b4513 100%);
+  border: 4px solid #722f37;
+  border-radius: 12px;
+  padding: 1.2rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  animation: ww-card-deal 0.5s ease-out;
+}
+
+@keyframes ww-card-deal {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+
+.ww-player-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2d1b0e;
+  margin-bottom: 0.5rem;
+}
+
+.ww-card-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #722f37;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.ww-card-status {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+  color: #2d1b0e;
+  font-weight: 600;
+}
+
+/* Duel screen */
+.ww-duel-container {
+  width: 100%;
+  max-width: 800px;
+}
+
+.ww-duel-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.ww-duel-title {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #d4a017;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.ww-duel-pair {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.ww-duel-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f4e4c1;
+}
+
+.ww-vs {
+  font-size: 1.2rem;
+  color: #722f37;
+  font-weight: 900;
+}
+
+.ww-question-box {
+  background: rgba(139, 69, 19, 0.4);
+  border: 3px solid #8b4513;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ww-question-text {
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #f4e4c1;
+}
+
+.ww-answer-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ww-answer-btn {
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+  background: #722f37;
+  color: #fff;
+  border: 2px solid #d4a017;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-weight: 600;
+}
+
+.ww-answer-btn:hover:not(:disabled) {
+  background: #8b3a45;
+  border-color: #f4e4c1;
+  transform: translateX(4px);
+}
+
+.ww-answer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ww-buzz-section {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.ww-buzz-btn {
+  padding: 1.5rem 3rem;
+  font-size: 1.8rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #d4a017 0%, #f4e4c1 50%, #d4a017 100%);
+  color: #2d1b0e;
+  border: 5px solid #722f37;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+  text-transform: uppercase;
+}
+
+.ww-buzz-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.9);
+}
+
+.ww-buzz-btn:active {
+  transform: scale(0.95);
+}
+
+.ww-timer {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #d4a017;
+  margin-top: 1rem;
+}
+
+/* Resolution screen */
+.ww-resolution {
+  text-align: center;
+  max-width: 600px;
+}
+
+.ww-resolution h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  color: #d4a017;
+}
+
+.ww-resolution p {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.ww-outcome-correct {
+  color: #4ade80;
+}
+
+.ww-outcome-wrong {
+  color: #f87171;
+}
+
+.ww-outcome-timeout {
+  color: #fbbf24;
+}
+
+/* Elimination chooser */
+.ww-chooser {
+  text-align: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.ww-chooser h2 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #d4a017;
+}
+
+.ww-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ww-player-btn {
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+  background: #722f37;
+  color: #fff;
+  border: 2px solid #8b4513;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.ww-player-btn:hover {
+  background: #8b3a45;
+  border-color: #d4a017;
+  transform: scale(1.02);
+}
+
+/* Winner screen */
+.ww-winner {
+  text-align: center;
+  animation: ww-sunburst 1s ease-out;
+}
+
+@keyframes ww-sunburst {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ww-winner h2 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #d4a017;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
+}
+
+.ww-winner-name {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #f4e4c1;
+  margin-bottom: 2rem;
+}
+
+.ww-sheriff-badge {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: ww-rotate 2s linear infinite;
+}
+
+@keyframes ww-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status bar */
+.ww-status-bar {
+  padding: 1rem 1.5rem;
+  background: rgba(139, 69, 19, 0.3);
+  border-top: 2px solid #8b4513;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.ww-alive-count {
+  font-weight: 700;
+  color: #4ade80;
+}
+
+.ww-eliminated {
+  opacity: 0.6;
+}
