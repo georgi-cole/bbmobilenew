@@ -1,60 +1,16 @@
 /**
- * AudioSource.ts — thin wrapper around Howl (if available) or HTMLAudio fallback.
+ * AudioSource.ts — HTMLAudioElement wrapper.
  *
- * Provides a unified play/stop/unload/setVolume API so the rest of the sound
- * system does not need to know which backend is active.
+ * Provides a unified play/stop/unload/setVolume API backed by
+ * HTMLAudioElement.  The Howler dependency has been removed so that audio
+ * works reliably on GitHub Pages without requiring an AudioContext unlock.
+ *
+ * Note: SoundManager no longer uses AudioSource directly — it manages
+ * HTMLAudioElements and per-key pools internally.  This class is retained for
+ * any callers that import it from the sound service barrel (index.ts).
  */
-
-// Dynamic import of howler so tree-shaking works and SSR/test environments
-// don't crash if the module is absent.
-type HowlConstructor = new (options: {
-  src: string[];
-  volume?: number;
-  loop?: boolean;
-  preload?: boolean | 'metadata';
-  onload?: () => void;
-  onloaderror?: (id: number, err: unknown) => void;
-  onplayerror?: (id: number, err: unknown) => void;
-}) => HowlInstance;
-
-interface HowlInstance {
-  play(): number;
-  stop(id?: number): this;
-  unload(): this;
-  volume(vol?: number): number | this;
-  playing(id?: number): boolean;
-}
-
-let HowlClass: HowlConstructor | null = null;
 
 const _audioDebug = import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true';
-
-/**
- * Attempt to load Howl lazily; safe to call multiple times.
- * Caches a successful load; transient failures are not cached so the next
- * call can retry (e.g. after a network hiccup on a chunked bundle).
- */
-async function loadHowl(): Promise<HowlConstructor | null> {
-  if (HowlClass) return HowlClass;
-  try {
-    const mod = await import('howler');
-    HowlClass = (mod as unknown as { Howl: HowlConstructor }).Howl ?? null;
-    if (_audioDebug) {
-      if (HowlClass) {
-        console.log('[AudioSource] Howler loaded successfully — using Howl backend');
-      } else {
-        console.warn('[AudioSource] Howler import succeeded but Howl class not found — falling back to HTMLAudio');
-      }
-    }
-  } catch (err) {
-    // Do NOT cache failures — allow retries on transient chunk/network errors.
-    if (_audioDebug) {
-      console.warn('[AudioSource] Failed to import Howler — falling back to HTMLAudio', err);
-    }
-    HowlClass = null;
-  }
-  return HowlClass;
-}
 
 export interface AudioSourceOptions {
   src: string;
@@ -64,16 +20,16 @@ export interface AudioSourceOptions {
 }
 
 /**
- * AudioSource wraps either a Howl instance or an HTMLAudioElement so the
- * caller gets the same interface regardless of the backend.
+ * AudioSource wraps an HTMLAudioElement providing a simple play/stop/volume
+ * interface.
  */
 export class AudioSource {
-  private _howl: HowlInstance | null = null;
   private _audio: HTMLAudioElement | null = null;
   private _volume: number;
   private _loop: boolean;
   private readonly _src: string;
   private readonly _preload: boolean;
+  private _initPromise: Promise<void> | null = null;
 
   constructor(opts: AudioSourceOptions) {
     this._src = opts.src;
@@ -82,97 +38,83 @@ export class AudioSource {
     this._preload = opts.preload ?? false;
   }
 
-  private _initPromise: Promise<void> | null = null;
-
   /**
-   * Initialise the underlying backend. Idempotent — safe to call multiple
-   * times; concurrent calls are coalesced onto the same promise.
+   * Initialise the underlying HTMLAudioElement.  Idempotent — safe to call
+   * multiple times; concurrent calls are coalesced onto the same promise.
    */
   async init(): Promise<void> {
-    // Coalesce concurrent async calls
     if (this._initPromise) return this._initPromise;
-    // Already initialised (synchronous fast-path)
-    if (this._howl !== null || this._audio !== null) return;
+    if (this._audio !== null) return;
     this._initPromise = this._doInit().finally(() => {
       this._initPromise = null;
     });
     return this._initPromise;
   }
 
-  private async _doInit(): Promise<void> {
-    const Howl = await loadHowl();
-    if (Howl) {
-      this._howl = new Howl({
-        src: [this._src],
-        volume: this._volume,
-        loop: this._loop,
-        preload: this._preload,
-        onload: () => {
-          console.debug(`[AudioSource] Howl loaded: ${this._src}`);
-        },
-        onloaderror: (_id, err) => {
-          console.error(`[AudioSource] Howl load error for "${this._src}":`, err);
-        },
-        onplayerror: (_id, err) => {
-          console.error(`[AudioSource] Howl play error for "${this._src}":`, err);
-        },
-      });
-    } else {
-      // HTMLAudio fallback
-      if (typeof document !== 'undefined') {
-        const el = document.createElement('audio');
-        el.src = this._src;
-        el.volume = this._volume;
-        el.loop = this._loop;
-        if (this._preload) el.preload = 'auto';
-
-        el.addEventListener('error', () => {
-          const code = el.error?.code ?? 'unknown';
-          const msg = el.error?.message ?? '';
-          console.error(`[AudioSource] HTMLAudio error for "${this._src}" (code ${code}): ${msg}`);
-        });
-        el.addEventListener('stalled', () => {
-          console.warn(`[AudioSource] HTMLAudio stalled: "${this._src}"`);
-        });
-        el.addEventListener('suspend', () => {
-          console.warn(`[AudioSource] HTMLAudio suspend: "${this._src}"`);
-        });
-        el.addEventListener('abort', () => {
-          console.warn(`[AudioSource] HTMLAudio abort: "${this._src}"`);
-        });
-
-        this._audio = el;
+  private _doInit(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      if (typeof document === 'undefined') {
+        resolve();
+        return;
       }
-    }
+      const el = document.createElement('audio');
+      el.src = this._src;
+      el.volume = Math.max(0, Math.min(1, this._volume));
+      el.loop = this._loop;
+      el.preload = this._preload ? 'auto' : 'none';
+
+      el.addEventListener('error', () => {
+        const code = el.error?.code ?? 'unknown';
+        console.error(
+          `[AudioSource] load error for "${this._src}" (code ${code}):`,
+          el.error?.message ?? '',
+        );
+        resolve(); // don't reject — caller should still get a usable (silent) source
+      });
+
+      el.addEventListener(
+        'canplaythrough',
+        () => {
+          if (_audioDebug) {
+            console.debug(`[AudioSource] ready: ${this._src}`);
+          }
+          resolve();
+        },
+        { once: true },
+      );
+
+      this._audio = el;
+
+      // If not preloading, resolve immediately (element is ready to play on demand)
+      if (!this._preload) resolve();
+    });
   }
 
-  /** Play the sound. Returns the Howl sound id (or 0 for HTMLAudio). */
+  /** Play the sound. Returns 0 (HTMLAudio has no numeric id). */
   play(): number {
-    if (this._howl) return this._howl.play();
     if (this._audio) {
+      // Only rewind if the element is not currently playing
+      if (this._audio.paused || this._audio.ended) {
+        this._audio.currentTime = 0;
+      }
       void this._audio.play().catch((err: unknown) => {
-        console.warn(`[AudioSource] HTMLAudio play() rejected for "${this._src}":`, err);
+        console.warn(`[AudioSource] play() rejected for "${this._src}":`, err);
       });
     }
     return 0;
   }
 
-  /** Stop playback. */
+  /** Stop playback and rewind to the start. */
   stop(): void {
-    if (this._howl) {
-      this._howl.stop();
-    } else if (this._audio) {
+    if (this._audio) {
       this._audio.pause();
       this._audio.currentTime = 0;
     }
   }
 
-  /** Release all resources held by this source. */
+  /** Release all resources. */
   unload(): void {
-    if (this._howl) {
-      this._howl.unload();
-      this._howl = null;
-    } else if (this._audio) {
+    if (this._audio) {
       this._audio.pause();
       this._audio.src = '';
       this._audio = null;
@@ -182,17 +124,13 @@ export class AudioSource {
   /** Set the playback volume (0–1). */
   setVolume(vol: number): void {
     this._volume = Math.max(0, Math.min(1, vol));
-    if (this._howl) {
-      this._howl.volume(this._volume);
-    } else if (this._audio) {
+    if (this._audio) {
       this._audio.volume = this._volume;
     }
   }
 
   /** Whether audio is currently playing. */
   get isPlaying(): boolean {
-    if (this._howl) return this._howl.playing();
-    if (this._audio) return !this._audio.paused;
-    return false;
+    return this._audio ? !this._audio.paused : false;
   }
 }

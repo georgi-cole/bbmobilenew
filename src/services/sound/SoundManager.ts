@@ -1,22 +1,30 @@
 /**
- * SoundManager.ts — Singleton sound manager for bbmobilenew.
+ * SoundManager.ts — HTMLAudioElement-based sound manager for bbmobilenew.
  *
- * Provides a central API for playing SFX and music with per-category
- * enable/volume control.  Backed by AudioSource (Howl or HTMLAudio fallback).
+ * Architecture:
+ * - Music channel: single HTMLAudioElement with loop, replaced on track change.
+ * - SFX: small per-key pool (up to SFX_POOL_SIZE) so rapid effects overlap.
+ * - Unlock queue: play/playMusic calls made before a user gesture are queued
+ *   and replayed automatically after unlock (satisfies browser autoplay policy).
+ * - Graceful error handling: invalid/missing files are logged once then skipped.
  *
- * Usage:
- *   import { SoundManager } from './SoundManager';
- *   await SoundManager.init();
- *   SoundManager.play('ui:confirm');
- *   SoundManager.playMusic('music:menu_loop');
+ * Public API (unchanged from previous version):
+ *   init(), play(key, opts?), playMusic(key, opts?), stopMusic(), stop(key),
+ *   setCategoryEnabled, setCategoryVolume, unlockOnUserGesture, currentMusicKey
  */
 
-import { AudioSource } from './AudioSource';
 import { SOUND_REGISTRY } from './sounds';
 import type { SoundCategory, SoundEntry } from './sounds';
 
-/** True in DEV builds or when VITE_AUDIO_DEBUG=true is set. */
-const _audioDebug = import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true';
+/** True in DEV builds, when VITE_AUDIO_DEBUG=true, or ?debugAudio=1 in URL. */
+const _audioDebug =
+  import.meta.env.DEV ||
+  import.meta.env.VITE_AUDIO_DEBUG === 'true' ||
+  (typeof location !== 'undefined' &&
+    new URLSearchParams(location.search).get('debugAudio') === '1');
+
+/** Max simultaneous instances per SFX key. */
+const SFX_POOL_SIZE = 4;
 
 export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
@@ -30,164 +38,327 @@ interface CategoryState {
 
 const DEFAULT_CATEGORY_STATE: CategoryState = { enabled: true, volume: 1 };
 
+interface QueuedPlay {
+  key: string;
+  isMusic: boolean;
+  opts?: PlayOptions;
+}
+
+// ── HTMLAudio factory helpers ─────────────────────────────────────────────────
+
+function _makeMusicEl(src: string, volume: number): HTMLAudioElement {
+  const el = document.createElement('audio');
+  el.src = src;
+  el.loop = true;
+  el.volume = Math.max(0, Math.min(1, volume));
+  el.preload = 'auto';
+  return el;
+}
+
+function _makeSfxEl(src: string, volume: number): HTMLAudioElement {
+  const el = document.createElement('audio');
+  el.src = src;
+  el.loop = false;
+  el.volume = Math.max(0, Math.min(1, volume));
+  el.preload = 'none';
+  return el;
+}
+
+// ── SoundManager class ────────────────────────────────────────────────────────
+
 class _SoundManager {
-  private _sources = new Map<string, AudioSource>();
   private _categories = new Map<SoundCategory, CategoryState>();
+
+  // Music channel
+  private _musicEl: HTMLAudioElement | null = null;
   private _musicKey: string | null = null;
+
+  // SFX: pool of HTMLAudioElements per key
+  private _sfxPools = new Map<string, HTMLAudioElement[]>();
+
+  // Keys that have encountered a load/decode/play error — skip on subsequent calls
+  private _failedKeys = new Set<string>();
+
   private _initialised = false;
   private _unlocked = false;
 
-  // ── Initialisation ────────────────────────────────────────────────────────
+  // Requests queued before the first user gesture
+  private _playQueue: QueuedPlay[] = [];
+
+  // ── Initialisation ──────────────────────────────────────────────────────────
 
   /**
-   * Initialise the SoundManager: pre-initialise all SOUND_REGISTRY entries
-   * that are flagged `preload: true`.
+   * Initialise the SoundManager.
+   * With the HTMLAudio backend there is nothing to eagerly preload — audio
+   * elements are created lazily on first play — so this is a lightweight
+   * bookkeeping call.
    */
   async init(): Promise<void> {
     if (this._initialised) return;
     this._initialised = true;
     if (_audioDebug) {
-      console.log('[SoundManager] init() — registering', Object.keys(SOUND_REGISTRY).length, 'sound keys');
-    }
-
-    for (const entry of Object.values(SOUND_REGISTRY)) {
-      this.register(entry);
-    }
-
-    // Pre-init preload entries eagerly
-    const preloads = Object.values(SOUND_REGISTRY).filter((e) => e.preload);
-    if (_audioDebug) {
-      console.log('[SoundManager] preloading', preloads.length, 'entries:', preloads.map((e) => e.key));
-    }
-    await Promise.all(
-      preloads.map((e) => {
-        const src = this._sources.get(e.key);
-        return src ? src.init() : Promise.resolve();
-      }),
-    );
-    if (_audioDebug) {
-      console.log('[SoundManager] init() complete');
+      console.log('[SoundManager] init() — registry has', Object.keys(SOUND_REGISTRY).length, 'keys');
     }
   }
 
-  // ── Registration ──────────────────────────────────────────────────────────
+  // ── Registration (kept for API compatibility) ───────────────────────────────
 
-  /** Register a sound entry (creates an AudioSource but does not init it). */
-  register(entry: SoundEntry): void {
-    if (this._sources.has(entry.key)) return;
-    const src = new AudioSource({
-      src: entry.src,
-      volume: entry.volume ?? 1,
-      loop: entry.loop ?? false,
-      preload: entry.preload,
-    });
-    this._sources.set(entry.key, src);
+  /** No-op: registry is the source of truth; pools are created lazily on play. */
+  register(_entry: SoundEntry): void {
+    // intentional no-op — SoundEntry metadata lives in SOUND_REGISTRY
   }
 
-  // ── Playback ──────────────────────────────────────────────────────────────
+  // ── Playback ────────────────────────────────────────────────────────────────
 
   /**
-   * Play a one-shot sound effect.
-   * No-ops if the key is unknown (warns) or the category is disabled (logs in
-   * debug mode only).
+   * Play a one-shot SFX.
+   * If audio is not yet unlocked the request is queued and retried after the
+   * first user gesture.
    */
   async play(key: string, opts?: PlayOptions): Promise<void> {
+    if (!this._unlocked) {
+      if (_audioDebug) {
+        console.log(`[SoundManager] play("${key}") queued — not yet unlocked`);
+      }
+      this._playQueue.push({ key, isMusic: false, opts });
+      return;
+    }
+    return this._doPlay(key, opts);
+  }
+
+  private async _doPlay(key: string, opts?: PlayOptions): Promise<void> {
+    if (this._failedKeys.has(key)) return; // previously failed — silent skip
+
     const entry = SOUND_REGISTRY[key];
     if (!entry) {
       console.warn(`[SoundManager] Unknown sound key: "${key}"`);
       return;
     }
+
     const cat = this._getCategory(entry.category);
     if (!cat.enabled) {
       if (_audioDebug) {
-        console.log(`[SoundManager] play("${key}") skipped — category "${entry.category}" is disabled`);
+        console.log(`[SoundManager] play("${key}") skipped — category "${entry.category}" disabled`);
       }
       return;
     }
 
-    let src = this._sources.get(key);
-    if (!src) {
-      // Lazily register sounds added after init()
-      this.register(entry);
-      src = this._sources.get(key)!;
+    const baseVol = opts?.volume ?? entry.volume ?? 1;
+    const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
+
+    // Get or lazily create a per-key pool
+    let pool = this._sfxPools.get(key);
+    if (!pool) {
+      pool = [];
+      this._sfxPools.set(key, pool);
     }
 
-    // Ensure the source has been initialised before playing
-    await src.init();
+    // Find a free element in the pool
+    let el = pool.find((e) => e.paused || e.ended);
+    if (!el && pool.length < SFX_POOL_SIZE) {
+      // Grow the pool
+      el = _makeSfxEl(entry.src, effectiveVol);
+      el.addEventListener('error', () => {
+        if (!this._failedKeys.has(key)) {
+          const code = el!.error?.code ?? 'unknown';
+          console.error(
+            `[SoundManager] SFX load error "${key}" (code ${code}):`,
+            el!.error?.message ?? entry.src,
+          );
+          this._failedKeys.add(key);
+        }
+      });
+      pool.push(el);
+    } else if (!el) {
+      // Pool full — steal the element with the least time remaining
+      let minRemaining = Infinity;
+      let stolen: HTMLAudioElement | null = null;
+      for (const e of pool) {
+        const remaining = (isNaN(e.duration) ? 0 : e.duration) - e.currentTime;
+        if (remaining < minRemaining) {
+          minRemaining = remaining;
+          stolen = e;
+        }
+      }
+      // Fallback: steal the first element if the loop produced no result
+      el = stolen ?? pool[0]!;
+      el.pause();
+      el.currentTime = 0;
+    }
 
-    const vol = opts?.volume ?? entry.volume ?? 1;
-    const effectiveVolume = Math.max(0, Math.min(1, vol * cat.volume));
+    el!.volume = effectiveVol;
+    el!.currentTime = 0;
+
     if (_audioDebug) {
-      console.log(`[SoundManager] play("${key}") vol=${effectiveVolume.toFixed(2)} (entry=${vol}, cat=${cat.volume}) already=${src.isPlaying}`);
+      console.log(`[SoundManager] play("${key}") vol=${effectiveVol.toFixed(2)} src="${entry.src}"`);
     }
-    src.setVolume(effectiveVolume);
-    src.play();
+
+    try {
+      await el!.play();
+    } catch (err) {
+      if ((err as DOMException).name === 'NotAllowedError' && !this._unlocked) {
+        // Autoplay blocked before unlock — re-queue for after unlock
+        if (_audioDebug) {
+          console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
+        }
+        this._playQueue.push({ key, isMusic: false, opts });
+      } else {
+        if (!this._failedKeys.has(key)) {
+          console.error(`[SoundManager] play("${key}") failed:`, err);
+          this._failedKeys.add(key);
+        }
+      }
+    }
   }
 
-  // ── Music ─────────────────────────────────────────────────────────────────
+  // ── Music ───────────────────────────────────────────────────────────────────
 
   /** Returns the key of the currently-playing music track, or null. */
   get currentMusicKey(): string | null {
     return this._musicKey;
   }
 
-  /** Start a looping music track.  Stops any previously-playing music first. */
+  /**
+   * Start a looping music track.
+   * If audio is not yet unlocked the request is queued (replacing any earlier
+   * queued music request) and retried after the first user gesture.
+   */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
-    if (this._musicKey === key) {
+    if (!this._unlocked) {
       if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") — already playing, no-op`);
+        console.log(`[SoundManager] playMusic("${key}") queued — not yet unlocked`);
+      }
+      // Keep only the latest music request in the queue
+      this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+      this._playQueue.push({ key, isMusic: true, opts });
+      return;
+    }
+    return this._doPlayMusic(key, opts);
+  }
+
+  private async _doPlayMusic(key: string, opts?: PlayOptions): Promise<void> {
+    // Already playing this track and the element is running — no-op
+    if (this._musicKey === key && this._musicEl && !this._musicEl.paused) {
+      if (_audioDebug) {
+        console.log(`[SoundManager] playMusic("${key}") — already playing`);
       }
       return;
     }
-    this.stopMusic();
+
+    this._stopCurrentMusic();
 
     const entry = SOUND_REGISTRY[key];
     if (!entry) {
       console.warn(`[SoundManager] Unknown music key: "${key}"`);
       return;
     }
+
     const cat = this._getCategory('music');
     if (!cat.enabled) {
       if (_audioDebug) {
-        console.log(`[SoundManager] playMusic("${key}") skipped — music category is disabled`);
+        console.log(`[SoundManager] playMusic("${key}") skipped — music category disabled`);
       }
       return;
     }
 
-    if (_audioDebug) {
-      console.log(`[SoundManager] playMusic("${key}")`);
+    if (this._failedKeys.has(key)) {
+      if (_audioDebug) {
+        console.log(`[SoundManager] playMusic("${key}") skipped — previously failed`);
+      }
+      return;
     }
+
+    const baseVol = opts?.volume ?? entry.volume ?? 1;
+    const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
+
+    const el = _makeMusicEl(entry.src, effectiveVol);
+    this._musicEl = el;
     this._musicKey = key;
-    await this.play(key, opts);
+
+    el.addEventListener(
+      'error',
+      () => {
+        if (!this._failedKeys.has(key)) {
+          const code = el.error?.code ?? 'unknown';
+          console.error(
+            `[SoundManager] music load error "${key}" (code ${code}):`,
+            el.error?.message ?? entry.src,
+          );
+          this._failedKeys.add(key);
+        }
+        if (this._musicKey === key) {
+          this._musicKey = null;
+          this._musicEl = null;
+        }
+      },
+      { once: true },
+    );
+
+    if (_audioDebug) {
+      console.log(`[SoundManager] playMusic("${key}") vol=${effectiveVol.toFixed(2)} src="${entry.src}"`);
+    }
+
+    try {
+      await el.play();
+    } catch (err) {
+      if ((err as DOMException).name === 'NotAllowedError' && !this._unlocked) {
+        // Autoplay blocked before unlock — re-queue for after unlock
+        if (_audioDebug) {
+          console.log(`[SoundManager] playMusic("${key}") blocked by autoplay policy — re-queued`);
+        }
+        this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+        this._playQueue.push({ key, isMusic: true, opts });
+      } else {
+        if (!this._failedKeys.has(key)) {
+          console.error(`[SoundManager] playMusic("${key}") failed:`, err);
+          this._failedKeys.add(key);
+        }
+        if (this._musicKey === key) {
+          this._musicKey = null;
+          this._musicEl = null;
+        }
+      }
+    }
   }
 
   /** Stop the currently-playing music track. */
   stopMusic(): void {
-    if (!this._musicKey) return;
-    if (_audioDebug) {
+    if (_audioDebug && this._musicKey) {
       console.log(`[SoundManager] stopMusic() — stopping "${this._musicKey}"`);
     }
-    const src = this._sources.get(this._musicKey);
-    src?.stop();
+    this._stopCurrentMusic();
+    // Also clear any queued music so it doesn't restart after unlock
+    this._playQueue = this._playQueue.filter((q) => !q.isMusic);
+  }
+
+  private _stopCurrentMusic(): void {
+    if (this._musicEl) {
+      this._musicEl.pause();
+      // Setting src to '' releases the resource and stops buffering
+      this._musicEl.src = '';
+      this._musicEl = null;
+    }
     this._musicKey = null;
   }
 
   /**
    * Stop a specific sound by key without affecting the global music track.
-   * Intended for looping SFX (e.g. the wheel-spin loop) that are played via
-   * `play()` rather than `playMusic()`.
-   * No-ops silently if the key is unknown or not currently playing.
+   * Intended for looping SFX (e.g. a wheel-spin loop) played via play().
+   * No-ops silently if the key is unknown or not playing.
    */
   stop(key: string): void {
-    const src = this._sources.get(key);
-    if (!src) return;
+    const pool = this._sfxPools.get(key);
+    if (!pool) return;
     if (_audioDebug) {
       console.log(`[SoundManager] stop("${key}")`);
     }
-    src.stop();
+    for (const el of pool) {
+      el.pause();
+      el.currentTime = 0;
+    }
   }
 
-  // ── Category controls ─────────────────────────────────────────────────────
+  // ── Category controls ───────────────────────────────────────────────────────
 
   /** Enable or disable all sounds in a category. */
   setCategoryEnabled(category: SoundCategory, enabled: boolean): void {
@@ -198,10 +369,9 @@ class _SoundManager {
     if (prev !== enabled) {
       console.log(`[SoundManager] category "${category}" enabled=${enabled}`);
     }
-
-    // Stop music immediately if the music category is disabled while playing
+    // Stop music immediately when the music category is disabled
     if (!enabled && category === 'music') {
-      this.stopMusic();
+      this._stopCurrentMusic();
     }
   }
 
@@ -212,22 +382,27 @@ class _SoundManager {
     if (state.volume !== newVolume) {
       state.volume = newVolume;
       this._categories.set(category, state);
-      console.log(`[SoundManager] category "${category}" volume=${state.volume.toFixed(2)}`);
+      console.log(`[SoundManager] category "${category}" volume=${newVolume.toFixed(2)}`);
+      // Apply volume change to live music immediately
+      if (category === 'music' && this._musicEl && this._musicKey) {
+        const entry = SOUND_REGISTRY[this._musicKey];
+        const baseVol = entry?.volume ?? 1;
+        this._musicEl.volume = Math.max(0, Math.min(1, baseVol * newVolume));
+      }
     }
   }
 
-  // ── User-gesture unlock ───────────────────────────────────────────────────
+  // ── User-gesture unlock ─────────────────────────────────────────────────────
 
   /**
-   * Unlock the Web Audio API.
+   * Unlock the audio system.
    *
-   * - Performs the resume *immediately* (effective when called from within a
-   *   user-gesture handler, e.g. from AudioGate).
-   * - Also arms one-time document listeners so the unlock fires on the next
-   *   gesture when called in advance of any interaction.
+   * - Call from within a user-gesture handler (e.g. a button click) to
+   *   immediately unlock and drain the play queue.
+   * - Also arms document-level listeners so any subsequent gesture unlocks
+   *   if this is called before any interaction has occurred.
    *
-   * Uses a dynamic import for Howler so the ESM bundle's AudioContext is
-   * reached correctly (Howler does not attach itself to `window` in ESM mode).
+   * After unlock, all queued play/playMusic requests are replayed.
    */
   unlockOnUserGesture(): void {
     if (typeof document === 'undefined') return;
@@ -238,54 +413,61 @@ class _SoundManager {
       return;
     }
     if (_audioDebug) {
-      console.log('[SoundManager] unlockOnUserGesture() — arming unlock');
+      console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
     }
 
-    const doResume = () => {
+    const doUnlock = () => {
       if (this._unlocked) return;
       this._unlocked = true;
-      document.removeEventListener('click', doResume, true);
-      document.removeEventListener('keydown', doResume, true);
-      document.removeEventListener('touchstart', doResume, true);
+      document.removeEventListener('click', doUnlock, true);
+      document.removeEventListener('keydown', doUnlock, true);
+      document.removeEventListener('touchstart', doUnlock, true);
       if (_audioDebug) {
-        console.log('[SoundManager] audio unlocked — resuming AudioContext');
+        console.log(
+          '[SoundManager] audio unlocked — draining queue of',
+          this._playQueue.length,
+          'item(s)',
+        );
       }
-      // Resume AudioContext via dynamic import (works with ESM Howler bundles)
-      void import('howler')
-        .then((m: unknown) => {
-          const ctx = (m as { Howler?: { ctx?: AudioContext } }).Howler?.ctx;
-          if (ctx) {
-            if (_audioDebug) {
-              console.log(`[SoundManager] AudioContext state="${ctx.state}" — resuming`);
-            }
-            if (ctx.state === 'suspended') return ctx.resume();
-          } else if (_audioDebug) {
-            console.log('[SoundManager] Howler AudioContext not available');
-          }
-          return undefined;
-        })
-        .catch((err: unknown) => {
-          console.warn('[SoundManager] Failed to resume AudioContext via Howler:', err);
-        });
+      this._drainQueue();
     };
 
-    // Register document listeners first (ensures they exist for the pre-arm use case)
-    document.addEventListener('click', doResume, true);
-    document.addEventListener('keydown', doResume, true);
-    document.addEventListener('touchstart', doResume, true);
+    // Arm listeners for future gestures (pre-arm use case)
+    document.addEventListener('click', doUnlock, true);
+    document.addEventListener('keydown', doUnlock, true);
+    document.addEventListener('touchstart', doUnlock, true);
 
-    // Attempt the resume immediately (effective when called from within a user gesture handler)
-    doResume();
+    // Also try immediately — effective when called from inside a gesture handler
+    doUnlock();
   }
 
-  // ── Debug helpers (DEV only) ──────────────────────────────────────────────
+  private _drainQueue(): void {
+    const q = this._playQueue.splice(0);
+    if (_audioDebug && q.length > 0) {
+      console.log(
+        '[SoundManager] draining queue:',
+        q.map((i) => `${i.isMusic ? 'music' : 'sfx'}:${i.key}`),
+      );
+    }
+    for (const item of q) {
+      if (item.isMusic) {
+        void this._doPlayMusic(item.key, item.opts);
+      } else {
+        void this._doPlay(item.key, item.opts);
+      }
+    }
+  }
+
+  // ── Debug helpers ───────────────────────────────────────────────────────────
 
   /** Dump current audio engine state to the console. */
   debugDump(): void {
     console.group('[SoundManager] debugDump()');
     console.log('initialised:', this._initialised, '| unlocked:', this._unlocked);
     console.log('currentMusicKey:', this._musicKey ?? '(none)');
-    console.log('registered keys:', [...this._sources.keys()].join(', '));
+    console.log('queue length:', this._playQueue.length);
+    console.log('failed keys:', [...this._failedKeys].join(', ') || '(none)');
+    console.log('sfx pools:', [...this._sfxPools.keys()].join(', ') || '(none)');
     console.log('categories:');
     for (const cat of ['music', 'ui', 'tv', 'player', 'minigame'] as SoundCategory[]) {
       const state = this._categories.get(cat) ?? DEFAULT_CATEGORY_STATE;
@@ -294,7 +476,7 @@ class _SoundManager {
     console.groupEnd();
   }
 
-  // ── Private helpers ───────────────────────────────────────────────────────
+  // ── Private helpers ─────────────────────────────────────────────────────────
 
   private _getCategory(category: SoundCategory): CategoryState {
     if (!this._categories.has(category)) {
@@ -307,34 +489,41 @@ class _SoundManager {
 /** Singleton SoundManager instance. */
 export const SoundManager = new _SoundManager();
 
-// ── DEV-only window debug object ────────────────────────────────────────────
+// ── Window debug object (DEV / ?debugAudio=1) ─────────────────────────────────
 
 if (_audioDebug && typeof window !== 'undefined') {
-  // Avoid overwriting an existing __bbAudio object (e.g. from hot-reload).
-  if (!(window as unknown as Record<string, unknown>).__bbAudio) {
-    (window as unknown as Record<string, unknown>).__bbAudio = {
-      /** Dump full audio engine state. */
-      dump: () => SoundManager.debugDump(),
-      /** Play a sound key manually: __bbAudio.play('ui:confirm') */
-      play: (key: string) => void SoundManager.play(key),
-      /** Play a music key manually: __bbAudio.music('music:intro_hub_loop') */
-      music: (key: string) => void SoundManager.playMusic(key),
-      /** Stop current music. */
-      stopMusic: () => SoundManager.stopMusic(),
-      /** Stop a looping SFX key. */
-      stop: (key: string) => SoundManager.stop(key),
-      /** Unlock audio (simulates a user gesture). */
-      unlock: () => SoundManager.unlockOnUserGesture(),
-      /** Returns the current music key. */
-      get currentMusic() {
-        return SoundManager.currentMusicKey;
-      },
-    };
-  }
-  console.log('[SoundManager] DEV mode — debug helpers available on window.__bbAudio');
-  console.log('  __bbAudio.dump()        — print audio engine state');
-  console.log('  __bbAudio.play(key)     — manually play a sound');
-  console.log('  __bbAudio.music(key)    — manually start music');
-  console.log('  __bbAudio.stopMusic()   — stop current music');
-  console.log('  __bbAudio.unlock()      — simulate user gesture unlock');
+  const _dbg = {
+    /** List all registered sound keys. */
+    listKeys: (): string[] => Object.keys(SOUND_REGISTRY),
+    /** Manually play a SFX key: __audioDebug.play('ui:confirm') */
+    play: (key: string) => void SoundManager.play(key),
+    /** Manually start a music track: __audioDebug.playMusic('music:intro_hub_loop') */
+    playMusic: (key: string) => void SoundManager.playMusic(key),
+    /** Enable all audio categories (useful for quick testing). */
+    enableAll: () => {
+      for (const cat of ['music', 'ui', 'tv', 'player', 'minigame'] as SoundCategory[]) {
+        SoundManager.setCategoryEnabled(cat, true);
+      }
+    },
+    /** Dump full engine state to console. */
+    dump: () => SoundManager.debugDump(),
+    // Legacy helpers
+    stopMusic: () => SoundManager.stopMusic(),
+    stop: (key: string) => SoundManager.stop(key),
+    unlock: () => SoundManager.unlockOnUserGesture(),
+    get currentMusic() {
+      return SoundManager.currentMusicKey;
+    },
+  };
+
+  // Expose under both the new name (__audioDebug) and the legacy alias (__bbAudio)
+  (window as unknown as Record<string, unknown>).__audioDebug = _dbg;
+  (window as unknown as Record<string, unknown>).__bbAudio = _dbg;
+
+  console.log('[SoundManager] debug helpers on window.__audioDebug (alias: __bbAudio)');
+  console.log('  __audioDebug.listKeys()     — list all registered sound keys');
+  console.log('  __audioDebug.play(key)      — manually play a sound');
+  console.log('  __audioDebug.playMusic(key) — start music');
+  console.log('  __audioDebug.enableAll()    — enable all categories');
+  console.log('  __audioDebug.dump()         — print engine state');
 }
