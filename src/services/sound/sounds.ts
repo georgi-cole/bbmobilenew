@@ -346,31 +346,35 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Nominations reveal — horror/suspense variant.
+   * Nominations reveal — horror/suspense variant looping background music.
+   * Plays during the nominations ceremony alongside or instead of nominations_main.
    * Asset: public/assets/sounds/nominations_horror.mp3
    */
-  'tv:nominations_horror': {
-    key: 'tv:nominations_horror',
-    category: 'tv',
+  'music:nominations_horror': {
+    key: 'music:nominations_horror',
+    category: 'music',
     src: `${SOUNDS_BASE}nominations_horror.mp3`,
     preload: false,
     volume: 0.9,
+    loop: true,
   },
 
   /**
-   * Nominations reveal — main theme variant.
+   * Nominations ceremony looping background music.
+   * Plays when entering the nominations phase and continues through nomination_results.
    * Asset: public/assets/sounds/nominations_main.mp3
    */
-  'tv:nominations_main': {
-    key: 'tv:nominations_main',
-    category: 'tv',
+  'music:nominations_main': {
+    key: 'music:nominations_main',
+    category: 'music',
     src: `${SOUNDS_BASE}nominations_main.mp3`,
     preload: false,
     volume: 0.9,
+    loop: true,
   },
 
   /**
-   * Veto ceremony stinger.
+   * Veto ceremony stinger — one-shot sound played at the start of pov_ceremony.
    * Asset: public/assets/sounds/veto_ceremony.mp3
    */
   'tv:veto_ceremony': {
@@ -382,12 +386,13 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Veto phase loop — plays during the Power of Veto competition phase.
+   * Veto phase looping background music — plays during pov_ceremony and
+   * pov_ceremony_results phases.
    * Asset: public/assets/sounds/veto_phase.mp3
    */
-  'tv:veto_phase': {
-    key: 'tv:veto_phase',
-    category: 'tv',
+  'music:veto_phase': {
+    key: 'music:veto_phase',
+    category: 'music',
     src: `${SOUNDS_BASE}veto_phase.mp3`,
     preload: false,
     volume: 0.85,
@@ -423,10 +428,10 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
 export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
   // Legacy / non-prefix filenames → canonical key
   live_vote:                                             'tv:live_vote',
-  nominations_horror:                                    'tv:nominations_horror',
-  nominations_main:                                      'tv:nominations_main',
+  nominations_horror:                                    'music:nominations_horror',
+  nominations_main:                                      'music:nominations_main',
   veto_ceremony:                                         'tv:veto_ceremony',
-  veto_phase:                                            'tv:veto_phase',
+  veto_phase:                                            'music:veto_phase',
   voting_for_eviction_user_and_housguests:               'tv:voting_eviction',
   // Alternate / previously-used capitalised filenames (resolve safely)
   Social_module:                                         'music:social_module',
