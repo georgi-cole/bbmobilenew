@@ -8,12 +8,10 @@ import {
   setGameUX,
   setSim,
   setVisual,
-  importSettings,
-  loadSettings,
   type ThemePreset,
 } from '../../store/settingsSlice';
 import { resetGame } from '../../store/gameSlice';
-import { getRestartRelevantSnapshot, type RestartRelevantSettings } from '../../store/settingsHelpers';
+import { getRestartRelevantSnapshotFromSettings, type RestartRelevantSettings } from '../../store/settingsHelpers';
 import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
 import { getAllGames, type GameCategory } from '../../minigames/registry';
@@ -91,9 +89,10 @@ export default function Settings() {
     [dispatch],
   );
 
-  // Snapshot persisted settings on mount so we can deep-compare on Back.
-  // useRef's initial value is only evaluated once — on the first render.
-  const settingsOnMount = useRef<RestartRelevantSettings>(getRestartRelevantSnapshot());
+  // Snapshot live Redux settings on mount for restart-required detection.
+  // useRef's initial value is only used once — on the first render — so this
+  // captures settings as they were when Settings was opened, not from localStorage.
+  const settingsOnMount = useRef<RestartRelevantSettings>(getRestartRelevantSnapshotFromSettings(settings));
 
   // A game is "in progress" if it has advanced past the initial fresh state.
   const gameInProgress =
@@ -101,9 +100,34 @@ export default function Settings() {
     game.week !== 1 ||
     (Array.isArray(game.tvFeed) && game.tvFeed.length > 1);
 
+  /**
+   * Commit any pending cast-size input to Redux and return the committed value.
+   * Called before exit/restart checks so the user does not need to blur the
+   * numeric input for changes to be detected or applied.
+   */
+  const commitCastSizeInput = (): number => {
+    const parsed = parseInt(castSizeInput, 10);
+    const clamped = isNaN(parsed)
+      ? settings.gameUX.castSize
+      : Math.min(16, Math.max(4, parsed));
+    setCastSizeInput(String(clamped));
+    if (clamped !== settings.gameUX.castSize) {
+      dispatch(setGameUX({ castSize: clamped }));
+    }
+    return clamped;
+  };
+
   const handleBack = () => {
-    const current = getRestartRelevantSnapshot();
-    if (gameInProgress && JSON.stringify(settingsOnMount.current) !== JSON.stringify(current)) {
+    // Commit any pending cast-size input before comparing, so the user does not
+    // need to blur the numeric field first.
+    const committedCastSize = commitCastSizeInput();
+    // Build the current snapshot from live Redux state, overriding castSize with
+    // the just-committed value (the Redux component state hasn't re-rendered yet).
+    const currentSnapshot = getRestartRelevantSnapshotFromSettings({
+      ...settings,
+      gameUX: { ...settings.gameUX, castSize: committedCastSize },
+    });
+    if (gameInProgress && JSON.stringify(settingsOnMount.current) !== JSON.stringify(currentSnapshot)) {
       setShowRestartModal(true);
     } else {
       navigate(-1);
@@ -111,7 +135,9 @@ export default function Settings() {
   };
 
   const handleRestartSeason = () => {
-    dispatch(importSettings(loadSettings()));
+    // Settings are already committed to Redux (and persisted to localStorage via
+    // the store subscription). Simply reset the game — resetGame() calls
+    // createInitialGameState() which reads the latest persisted config.
     dispatch(resetGame());
     setShowRestartModal(false);
     navigate('/game');
