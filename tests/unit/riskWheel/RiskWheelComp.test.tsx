@@ -8,6 +8,7 @@ import riskWheelReducer, {
   WHEEL_SECTORS,
   pickSectorIndex,
 } from '../../../src/features/riskWheel/riskWheelSlice';
+import gameReducer from '../../../src/store/gameSlice';
 
 vi.mock('../../../src/hooks/useRiskWheelAudio', () => ({
   useRiskWheelAudio: () => ({
@@ -24,6 +25,7 @@ function makeStore() {
   return configureStore({
     reducer: {
       riskWheel: riskWheelReducer,
+      game: gameReducer,
     },
   });
 }
