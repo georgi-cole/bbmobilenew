@@ -42,7 +42,7 @@ import {
 import { resolveGlassBridgeOutcome } from '../../features/glassBridge/thunks';
 import { mulberry32 } from '../../store/rng';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
-import { playScreamPlaceholder } from '../../services/sound';
+import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './GlassBridgeComp.css';
 
@@ -267,6 +267,8 @@ export default function GlassBridgeComp({
   const tryFinalizeOrderSelectionRef = useRef<() => void>(() => {});
   /** Tracks newly-finished players to trigger landing animation. */
   const prevFinishersRef = useRef<Set<string>>(new Set());
+  /** Tracks the last (phase, currentTurnIndex) combo that triggered a new-turn sound. */
+  const lastNewTurnSoundRef = useRef<string>('');
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(seed + 9999));
@@ -311,6 +313,11 @@ export default function GlassBridgeComp({
     for (const t of landingTimersRef.current) window.clearTimeout(t);
     landingTimersRef.current = [];
   }
+
+  // ── Audio ─────────────────────────────────────────────────────────────────
+  const { playSafeStep, playDeath, playWinner, playNewTurn } = useGlassBridgeAudio(
+    gb.phase !== 'idle',
+  );
 
   // ── 1. Initialize on mount ────────────────────────────────────────────────
   useEffect(() => {
@@ -602,7 +609,7 @@ export default function GlassBridgeComp({
           setShowEliminationFlash(true);
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side: chosenSide });
-          playScreamPlaceholder();
+          playDeath();
           if (flashResetRef.current !== null) {
             window.clearTimeout(flashResetRef.current);
           }
@@ -626,6 +633,7 @@ export default function GlassBridgeComp({
         }
 
         setPendingStep(null);
+        playSafeStep();
         dispatch(resolveStep({ chosenSide, now }));
         // Game-over detection is handled by effect #7 which watches gb state.
       }, suspenseDelay);
@@ -637,7 +645,7 @@ export default function GlassBridgeComp({
         aiStepTimerRef.current = null;
       }
     };
-  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch]);
+  }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath]);
 
   // ── 7. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
@@ -672,9 +680,14 @@ export default function GlassBridgeComp({
   // ── 11. Safe-landing animation — detect newly-finished players ────────────
   useEffect(() => {
     if (gb.phase !== 'playing') return;
+    let isFirstFinisher = prevFinishersRef.current.size === 0;
     for (const [pid, p] of Object.entries(gb.progress)) {
       if (p.finishTimeMs !== undefined && !prevFinishersRef.current.has(pid)) {
         prevFinishersRef.current.add(pid);
+        if (isFirstFinisher) {
+          playWinner();
+          isFirstFinisher = false;
+        }
         setLandingPlayerIds(prev => [...prev, pid]);
         const t = window.setTimeout(() => {
           setLandingPlayerIds(prev => prev.filter(id => id !== pid));
@@ -683,7 +696,25 @@ export default function GlassBridgeComp({
         landingTimersRef.current.push(t);
       }
     }
-  }, [gb.progress, gb.phase]);
+  }, [gb.progress, gb.phase, playWinner]);
+
+  // ── 12. New-turn sound — play whenever a new player starts their turn ──────
+  useEffect(() => {
+    if (gb.phase !== 'playing') {
+      // Reset the guard so a fresh game session starts clean.
+      lastNewTurnSoundRef.current = '';
+      return;
+    }
+    const key = `playing:${gb.currentTurnIndex}`;
+    if (lastNewTurnSoundRef.current === key) return;
+    // Only play if there is an active player who hasn't finished or been eliminated.
+    const activePlayerId = gb.turnOrder[gb.currentTurnIndex];
+    if (!activePlayerId) return;
+    const progress = gb.progress[activePlayerId];
+    if (progress?.eliminated || progress?.finishTimeMs !== undefined) return;
+    lastNewTurnSoundRef.current = key;
+    playNewTurn();
+  }, [gb.phase, gb.currentTurnIndex, gb.turnOrder, gb.progress, playNewTurn]);
 
   // ── Human actions ─────────────────────────────────────────────────────────
 
@@ -722,7 +753,7 @@ export default function GlassBridgeComp({
           setShowEliminationFlash(true);
           setShowScreenShake(true);
           setDeathMarkerTile({ rowIdx, side });
-          playScreamPlaceholder();
+          playDeath();
 
           // Clear any existing flash/death-marker timeouts before scheduling new ones
           if (flashResetRef.current != null) {
@@ -748,10 +779,11 @@ export default function GlassBridgeComp({
         }
 
         setPendingStep(null);
+        playSafeStep();
         dispatch(resolveStep({ chosenSide: side, now: chosenAt }));
       }, suspenseDelay);
     },
-    [humanId, gb, dispatch, pendingStep],
+    [humanId, gb, dispatch, pendingStep, playSafeStep, playDeath],
   );
 
   const handleContinueWatching = useCallback(() => {

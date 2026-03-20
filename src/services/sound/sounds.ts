@@ -208,4 +208,66 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.9,
   },
+
+  // ── Glass Bridge minigame sounds ──────────────────────────────────────────
+
+  /**
+   * Glass Bridge looping background music.
+   * Asset: public/assets/sounds/glassbridge/glass bridge main 1.mp3
+   */
+  'music:gb_main': {
+    key: 'music:gb_main',
+    category: 'music',
+    src: '/assets/sounds/glassbridge/glass bridge main 1.mp3',
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
+  /**
+   * Glass Bridge safe-tile step sound — plays when a player steps on a
+   * non-breaking glass tile.
+   * Asset: public/assets/sounds/glassbridge/glass step.mp3
+   */
+  'minigame:gb_safe_step': {
+    key: 'minigame:gb_safe_step',
+    category: 'minigame',
+    src: '/assets/sounds/glassbridge/glass step.mp3',
+    preload: false,
+    volume: 0.9,
+  },
+  /**
+   * Glass Bridge death sound — plays when a tile breaks and the player dies.
+   * Asset: public/assets/sounds/glassbridge/jump fall death.mp3
+   */
+  'minigame:gb_death': {
+    key: 'minigame:gb_death',
+    category: 'minigame',
+    src: '/assets/sounds/glassbridge/jump fall death.mp3',
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Glass Bridge winner sound — plays when a player reaches the last correct
+   * row and survives.
+   * Asset: public/assets/sounds/glassbridge/glass bridge winner.mp3
+   */
+  'minigame:gb_winner': {
+    key: 'minigame:gb_winner',
+    category: 'minigame',
+    src: '/assets/sounds/glassbridge/glass bridge winner.mp3',
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Glass Bridge new-player-turn sound — plays whenever a new player starts
+   * their turn on the bridge.
+   * Asset: public/assets/sounds/glassbridge/new player turn.mp3
+   */
+  'minigame:gb_new_turn': {
+    key: 'minigame:gb_new_turn',
+    category: 'minigame',
+    src: '/assets/sounds/glassbridge/new player turn.mp3',
+    preload: false,
+    volume: 0.85,
+  },
 };
