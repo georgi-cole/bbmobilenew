@@ -63,8 +63,12 @@ let prevUserProfile = store.getState().userProfile;
 let prevProfiles = store.getState().profiles;
 // Persist season archives to localStorage whenever they change
 let prevSeasonArchives = store.getState().game.seasonArchives;
-// Track archive count to detect season completion (for auto-clearing save snapshots)
+// Track archive length together with the profile that owns those archives.
+// Using a profile-scoped baseline prevents profile switches and game hydration
+// from falsely triggering snapshot auto-clears when the newly loaded archive
+// array happens to be longer than the previous profile's.
 let prevSeasonArchivesLength = prevSeasonArchives?.length ?? 0;
+let prevArchiveProfileId: string | null = store.getState().profiles?.activeProfileId ?? null;
 store.subscribe(() => {
   const current = store.getState();
   if (current.settings !== prevSettings) {
@@ -82,20 +86,27 @@ store.subscribe(() => {
   if (current.game.seasonArchives !== prevSeasonArchives) {
     prevSeasonArchives = current.game.seasonArchives;
     const newLength = current.game.seasonArchives?.length ?? 0;
+    const archivesProfileId = current.profiles.activeProfileId;
+    // Only auto-clear when archives grew on the *same* profile — a genuine season
+    // completion. Skip when the profile changed (switch/hydration) to avoid
+    // deleting a valid in-progress save simply because a different profile had
+    // more archived seasons.
+    const sameProfile = archivesProfileId === prevArchiveProfileId;
     // Guest mode: skip archive persistence entirely.
     if (!current.profiles.isGuest) {
-      const archiveKey = current.profiles.activeProfileId
-        ? archiveKeyForProfile(current.profiles.activeProfileId)
+      const archiveKey = archivesProfileId
+        ? archiveKeyForProfile(archivesProfileId)
         : DEFAULT_ARCHIVE_KEY;
       saveSeasonArchives(archiveKey, current.game.seasonArchives ?? []);
 
-      // When a new season is archived (archive count increases), the previous
-      // in-progress save snapshot is now stale — clear it automatically.
-      if (newLength > prevSeasonArchivesLength && current.profiles.activeProfileId) {
-        clearSeasonSnapshot(savedStateKeyForProfile(current.profiles.activeProfileId));
+      // When a new season is archived (archive count increases on the same profile),
+      // the previous in-progress save snapshot is now stale — clear it automatically.
+      if (sameProfile && newLength > prevSeasonArchivesLength && archivesProfileId) {
+        clearSeasonSnapshot(savedStateKeyForProfile(archivesProfileId));
       }
     }
     prevSeasonArchivesLength = newLength;
+    prevArchiveProfileId = archivesProfileId;
   }
 });
 

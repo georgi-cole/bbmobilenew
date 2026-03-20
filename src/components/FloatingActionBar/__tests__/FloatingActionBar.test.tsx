@@ -23,7 +23,8 @@ import socialReducer, {
   applyEnergyDelta,
   pushIncomingInteraction,
 } from '../../../social/socialSlice';
-import profilesReducer from '../../../store/profilesSlice';
+import profilesReducer, { enterGuestMode } from '../../../store/profilesSlice';
+import challengeReducer from '../../../store/challengeSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 
@@ -31,7 +32,12 @@ import type { RootState } from '../../../store/store';
 
 function makeStore(hasHuman = true) {
   const base = configureStore({
-    reducer: { game: gameReducer, social: socialReducer, profiles: profilesReducer },
+    reducer: {
+      game: gameReducer,
+      social: socialReducer,
+      profiles: profilesReducer,
+      challenge: challengeReducer,
+    },
   });
   const defaultState = base.getState() as RootState;
   const players = hasHuman
@@ -39,11 +45,17 @@ function makeStore(hasHuman = true) {
     : defaultState.game.players.map((p) => ({ ...p, isUser: false }));
 
   return configureStore({
-    reducer: { game: gameReducer, social: socialReducer, profiles: profilesReducer },
+    reducer: {
+      game: gameReducer,
+      social: socialReducer,
+      profiles: profilesReducer,
+      challenge: challengeReducer,
+    },
     preloadedState: {
       game: { ...defaultState.game, players },
       social: defaultState.social,
       profiles: defaultState.profiles,
+      challenge: defaultState.challenge,
     },
   });
 }
@@ -179,6 +191,17 @@ describe('FloatingActionBar – inbox badge', () => {
 describe('FloatingActionBar – save button', () => {
   it('save button is present and disabled at game start (nothing to save yet)', () => {
     const store = makeStore();
+    // Pre-set an active profile so the "nothing to save yet" branch is reached
+    // (an active profile is required for save to be contextually meaningful).
+    const profileId = 'test-profile-1';
+    store.dispatch({
+      type: 'profiles/initProfiles',
+      payload: {
+        profiles: [{ id: profileId, name: 'Tester', avatar: '🧑', createdAt: new Date().toISOString() }],
+        activeProfileId: profileId,
+        isGuest: false,
+      },
+    });
     renderFAB(store);
     // At game start (week 1, phase 'week_start'), there's nothing to save yet.
     const saveBtn = screen.getByRole('button', { name: /nothing to save yet/i });
@@ -188,10 +211,19 @@ describe('FloatingActionBar – save button', () => {
 
   it('save button is disabled in guest mode (no persistence)', () => {
     const store = makeStore();
-    // Enter guest mode by updating the profiles state
-    store.dispatch({ type: 'profiles/enterGuestMode' });
+    // Use the real action creator instead of a hard-coded action type string.
+    act(() => { store.dispatch(enterGuestMode()); });
     renderFAB(store);
     const saveBtn = screen.getByRole('button', { name: /unavailable in guest mode/i });
+    expect(saveBtn).toBeDefined();
+    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('save button is disabled when no active profile is selected', () => {
+    const store = makeStore();
+    // Default state has no active profile — button should reflect that.
+    renderFAB(store);
+    const saveBtn = screen.getByRole('button', { name: /no active profile selected/i });
     expect(saveBtn).toBeDefined();
     expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
   });

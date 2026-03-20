@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
 import {
@@ -17,7 +18,7 @@ import {
   savedStateKeyForProfile,
   saveSeasonSnapshot,
 } from '../../store/saveStatePersistence';
-import { store } from '../../store/store';
+import type { RootState } from '../../store/store';
 import './FloatingActionBar.css';
 
 /**
@@ -30,12 +31,15 @@ import './FloatingActionBar.css';
  *   waiting for human input (replacement nominee, Final 4 POV vote, Final 3 HOH eviction).
  * - Left side: Social and Help buttons (Help opens Rules).
  * - Right side: Save and Inbox buttons.
- *   - Save persists the current in-progress season snapshot (disabled in guest mode or at game start).
+ *   - Save persists the current in-progress season snapshot.
+ *     Disabled in guest mode, at game start, when no profile is selected,
+ *     or while a competition/minigame is actively running.
  *   - Inbox shows pending incoming interaction badge count.
  */
 export default function FloatingActionBar() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const reduxStore = useStore<RootState>();
   const canAdvance = useAppSelector(selectAdvanceEnabled);
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
@@ -43,6 +47,9 @@ export default function FloatingActionBar() {
   // Use optional chaining so tests that don't include the profiles reducer still work.
   const isGuest = useAppSelector((s) => (s as { profiles?: { isGuest?: boolean } }).profiles?.isGuest ?? false);
   const activeProfileId = useAppSelector((s) => (s as { profiles?: { activeProfileId?: string | null } }).profiles?.activeProfileId ?? null);
+  // Disable Save while a competition/minigame is actively running to prevent
+  // saving state that requires additional slices (cwgo, riskWheel, etc.) to resume correctly.
+  const hasPendingChallenge = useAppSelector((s) => (s as { challenge?: { pending: unknown } }).challenge?.pending != null);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const gameWeek = useAppSelector((s) => s.game.week);
@@ -69,40 +76,72 @@ export default function FloatingActionBar() {
     };
   }, [humanEnergy]);
 
-  // Save-button feedback state: null | 'saving' | 'saved' | 'error'
+  // Save-button feedback state: null | 'saved' | 'error'
   const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the feedback timer on unmount to avoid state updates on an unmounted component.
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
+    };
+  }, []);
 
   // The Save button is disabled when:
   //  - Playing as guest (no persistence)
   //  - No active profile
   //  - Game is at its very first state (nothing meaningful to save)
+  //  - A competition or minigame is actively running (partial state would be unrestorable)
   const isAtGameStart = gameWeek === 1 && gamePhase === 'week_start';
-  const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart;
+  const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
 
   function handleSave() {
     if (!canSave || !activeProfileId) return;
 
-    try {
-      const currentState = store.getState();
-      const key = savedStateKeyForProfile(activeProfileId);
-      saveSeasonSnapshot(key, {
-        version: 1,
-        profileId: activeProfileId,
-        savedAt: new Date().toISOString(),
-        game: currentState.game,
-        finale: currentState.finale,
-        social: currentState.social,
-      });
-      setSaveStatus('saved');
-    } catch {
-      setSaveStatus('error');
-    }
+    const currentState = reduxStore.getState();
+    const key = savedStateKeyForProfile(activeProfileId);
+    const ok = saveSeasonSnapshot(key, {
+      version: 1,
+      profileId: activeProfileId,
+      savedAt: new Date().toISOString(),
+      game: currentState.game,
+      finale: currentState.finale,
+      social: currentState.social,
+    });
+    setSaveStatus(ok ? 'saved' : 'error');
 
     // Clear feedback after 2 seconds.
     if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
     saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
   }
+
+  const saveBtnAriaLabel = isGuest
+    ? 'Save (unavailable in guest mode)'
+    : !activeProfileId
+      ? 'Save (no active profile selected)'
+      : hasPendingChallenge
+        ? 'Save (unavailable during competition)'
+        : isAtGameStart
+          ? 'Save (nothing to save yet)'
+          : saveStatus === 'saved'
+            ? 'Saved!'
+            : saveStatus === 'error'
+              ? 'Save failed'
+              : 'Save game';
+
+  const saveBtnTitle = isGuest
+    ? 'Save unavailable in guest mode'
+    : !activeProfileId
+      ? 'No active profile selected'
+      : hasPendingChallenge
+        ? 'Save unavailable during competition'
+        : isAtGameStart
+          ? 'Nothing to save yet'
+          : saveStatus === 'saved'
+            ? 'Saved!'
+            : saveStatus === 'error'
+              ? 'Save failed — try again'
+              : 'Save game';
 
   return (
     <div className="fab" role="toolbar" aria-label="Game actions">
@@ -155,28 +194,8 @@ export default function FloatingActionBar() {
         <button
           className={`fab__side-btn${saveStatus === 'saved' ? ' fab__side-btn--flash' : ''}`}
           type="button"
-          aria-label={
-            isGuest
-              ? 'Save (unavailable in guest mode)'
-              : isAtGameStart
-                ? 'Save (nothing to save yet)'
-                : saveStatus === 'saved'
-                  ? 'Saved!'
-                  : saveStatus === 'error'
-                    ? 'Save failed'
-                    : 'Save game'
-          }
-          title={
-            isGuest
-              ? 'Save unavailable in guest mode'
-              : isAtGameStart
-                ? 'Nothing to save yet'
-                : saveStatus === 'saved'
-                  ? 'Saved!'
-                  : saveStatus === 'error'
-                    ? 'Save failed — try again'
-                    : 'Save game'
-          }
+          aria-label={saveBtnAriaLabel}
+          title={saveBtnTitle}
           disabled={!canSave}
           onClick={handleSave}
         >

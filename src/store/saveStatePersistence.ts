@@ -38,13 +38,15 @@ export function savedStateKeyForProfile(profileId: string): string {
 
 /**
  * Persist a season snapshot to localStorage.
- * Silently swallows errors (quota exceeded, private-browsing, etc.).
+ * Returns `true` on success, `false` if storage is unavailable or quota exceeded.
  */
-export function saveSeasonSnapshot(key: string, snapshot: SavedSeasonSnapshot): void {
+export function saveSeasonSnapshot(key: string, snapshot: SavedSeasonSnapshot): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(snapshot));
+    return true;
   } catch {
-    // Storage unavailable or quota exceeded — ignore.
+    // Storage unavailable or quota exceeded.
+    return false;
   }
 }
 
