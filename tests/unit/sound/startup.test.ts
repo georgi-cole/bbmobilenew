@@ -18,19 +18,12 @@ import settingsReducer, {
   type SettingsState,
 } from '../../../src/store/settingsSlice';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
+import {
+  SFX_SOUND_CATEGORIES,
+  syncRuntimeAudioSettings,
+} from '../../../src/services/sound/audioSettingsSync';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-/** Apply audio settings from the given SettingsState to SoundManager, mirroring
- *  the logic in store.ts subscribe listener and main.tsx startup init. */
-function applySoundManagerFromAudio(audio: SettingsState['audio']): void {
-  SoundManager.setCategoryEnabled('music', audio.musicOn);
-  SoundManager.setCategoryVolume('music', audio.musicVolume);
-  (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat => {
-    SoundManager.setCategoryEnabled(cat, audio.sfxOn);
-    SoundManager.setCategoryVolume(cat, audio.sfxVolume);
-  });
-}
 
 function makeStore(audioOverrides?: Partial<SettingsState['audio']>) {
   const settings: SettingsState = audioOverrides
@@ -46,11 +39,11 @@ function makeStore(audioOverrides?: Partial<SettingsState['audio']>) {
     const current = s.getState();
     if (current.settings !== prevSettings) {
       prevSettings = current.settings;
-      applySoundManagerFromAudio(current.settings.audio);
+      syncRuntimeAudioSettings(current.settings.audio);
     }
   });
-  // Apply initial state (mirrors main.tsx startup init).
-  applySoundManagerFromAudio(s.getState().settings.audio);
+  // Apply initial state through the same helper used by main.tsx startup init.
+  syncRuntimeAudioSettings(s.getState().settings.audio);
   return s;
 }
 
@@ -60,13 +53,7 @@ beforeEach(() => {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem('introhub_sfx_on');
   localStorage.removeItem('introhub_music_on');
-  // Reset SoundManager category state between tests by re-enabling everything.
-  SoundManager.setCategoryEnabled('music', true);
-  SoundManager.setCategoryVolume('music', 1);
-  (['ui', 'tv', 'player', 'minigame'] as const).forEach(cat => {
-    SoundManager.setCategoryEnabled(cat, true);
-    SoundManager.setCategoryVolume(cat, 1);
-  });
+  syncRuntimeAudioSettings(DEFAULT_SETTINGS.audio);
   vi.spyOn(SoundManager, 'play').mockResolvedValue();
   vi.spyOn(SoundManager, 'playMusic').mockResolvedValue();
   vi.spyOn(SoundManager, 'stopMusic').mockImplementation(() => {});
@@ -82,18 +69,20 @@ afterEach(() => {
 // ── 1. Default settings enable all categories ─────────────────────────────────
 
 describe('SoundManager startup defaults', () => {
-  it('initialises with DEFAULT_SETTINGS.audio.musicOn=true → music category enabled', () => {
+  it('initializes with DEFAULT_SETTINGS.audio.musicOn=true → music category enabled', () => {
     const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore(); // DEFAULT_SETTINGS: musicOn=true
     expect(setCategoryEnabled).toHaveBeenCalledWith('music', true);
+    expect(window._introhubMusicOn).toBe(true);
   });
 
-  it('initialises with DEFAULT_SETTINGS.audio.sfxOn=true → all SFX categories enabled', () => {
+  it('initializes with DEFAULT_SETTINGS.audio.sfxOn=true → all SFX categories enabled', () => {
     const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore(); // DEFAULT_SETTINGS: sfxOn=true
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
+    expect(window._introhubSfxOn).toBe(true);
   });
 });
 
@@ -103,9 +92,10 @@ describe('SoundManager startup with sfxOn=false', () => {
   it('disables all SFX categories when sfxOn is false in settings', () => {
     const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore({ sfxOn: false });
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, false);
     }
+    expect(window._introhubSfxOn).toBe(false);
   });
 
   it('does NOT disable music category when only sfxOn is false', () => {
@@ -127,7 +117,7 @@ describe('SoundManager startup with musicOn=false', () => {
   it('does NOT disable SFX categories when only musicOn is false', () => {
     const setCategoryEnabled = vi.spyOn(SoundManager, 'setCategoryEnabled');
     makeStore({ musicOn: false, sfxOn: true });
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
   });
@@ -145,7 +135,7 @@ describe('SoundManager volume sync from settings', () => {
   it('sets SFX category volumes from settings.audio.sfxVolume', () => {
     const setCategoryVolume = vi.spyOn(SoundManager, 'setCategoryVolume');
     makeStore({ sfxVolume: 0.6 });
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryVolume).toHaveBeenCalledWith(cat, 0.6);
     }
   });
@@ -160,9 +150,10 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
     store.dispatch(setAudio({ sfxOn: false }));
 
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, false);
     }
+    expect(window._introhubSfxOn).toBe(false);
   });
 
   it('enabling sfxOn via setAudio enables all SFX categories', () => {
@@ -171,9 +162,10 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
     store.dispatch(setAudio({ sfxOn: true }));
 
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
+    expect(window._introhubSfxOn).toBe(true);
   });
 
   it('disabling musicOn via setAudio disables music category', () => {
@@ -183,6 +175,7 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
     store.dispatch(setAudio({ musicOn: false }));
 
     expect(setCategoryEnabled).toHaveBeenCalledWith('music', false);
+    expect(window._introhubMusicOn).toBe(false);
   });
 
   it('updating sfxVolume via setAudio updates SFX category volumes', () => {
@@ -191,7 +184,7 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
 
     store.dispatch(setAudio({ sfxVolume: 0.3 }));
 
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryVolume).toHaveBeenCalledWith(cat, 0.3);
     }
   });
@@ -205,10 +198,11 @@ describe('setAudio dispatch re-syncs SoundManager', () => {
     makeStore({ sfxOn: true }); // canonical Redux settings say sfxOn=true
 
     // All SFX categories should be enabled regardless of the stale flag
-    for (const cat of ['ui', 'tv', 'player', 'minigame'] as const) {
+    for (const cat of SFX_SOUND_CATEGORIES) {
       expect(setCategoryEnabled).toHaveBeenCalledWith(cat, true);
     }
     // music category should not be disabled by this path
     expect(setCategoryEnabled).not.toHaveBeenCalledWith('music', false);
+    expect(window._introhubSfxOn).toBe(true);
   });
 });

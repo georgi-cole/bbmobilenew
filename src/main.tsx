@@ -9,6 +9,7 @@ import { store } from './store/store'
 import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { SoundManager } from './services/sound/SoundManager'
+import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import App from './App.tsx'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
@@ -52,47 +53,37 @@ const SFX_STORAGE_KEY   = 'introhub_sfx_on';
 
 const initAudio = store.getState().settings.audio;
 
-// Initialise window globals for legacy intro-hub JS compatibility, using the
-// canonical Redux settings as the source of truth (not stale localStorage flags).
-window._introhubMusicOn = initAudio.musicOn;
-window._introhubSfxOn   = initAudio.sfxOn;
-
-// Initialise SoundManager category states from canonical Redux settings so
-// that a stale intro-hub localStorage flag can never silently mute the game.
-SoundManager.setCategoryEnabled('music', initAudio.musicOn);
-SoundManager.setCategoryVolume('music', initAudio.musicVolume);
-(['ui', 'tv', 'player', 'minigame'] as const).forEach(cat => {
-  SoundManager.setCategoryEnabled(cat, initAudio.sfxOn);
-  SoundManager.setCategoryVolume(cat, initAudio.sfxVolume);
-});
+// Initialise audio runtime state from canonical Redux settings so that stale
+// intro-hub localStorage flags can never silently mute the game on startup.
+syncRuntimeAudioSettings(initAudio);
 
 window.toggleIntroHubMusic = function () {
-  window._introhubMusicOn = !window._introhubMusicOn;
+  const nextMusicOn = !store.getState().settings.audio.musicOn;
   try {
-    localStorage.setItem(MUSIC_STORAGE_KEY, String(window._introhubMusicOn));
+    localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn));
   } catch (err) {
     console.warn('[introHub] Failed to persist music toggle state:', err);
   }
-  console.debug('[introHub] toggleIntroHubMusic ->', window._introhubMusicOn);
+  console.debug('[introHub] toggleIntroHubMusic ->', nextMusicOn);
   // Keep Redux settings in sync so mute state is preserved correctly.
-  store.dispatch(setAudio({ musicOn: !!window._introhubMusicOn }));
-  if (window._introhubMusicOn) {
+  store.dispatch(setAudio({ musicOn: nextMusicOn }));
+  if (nextMusicOn) {
     void SoundManager.playMusic('music:intro_hub_loop');
   } else {
     SoundManager.stopMusic();
   }
 };
 window.toggleIntroHubSfx = function () {
-  window._introhubSfxOn = !window._introhubSfxOn;
+  const nextSfxOn = !store.getState().settings.audio.sfxOn;
   try {
-    localStorage.setItem(SFX_STORAGE_KEY, String(window._introhubSfxOn));
+    localStorage.setItem(SFX_STORAGE_KEY, String(nextSfxOn));
   } catch (err) {
     console.warn('[introHub] Failed to persist SFX toggle state:', err);
   }
-  console.debug('[introHub] toggleIntroHubSfx ->', window._introhubSfxOn);
+  console.debug('[introHub] toggleIntroHubSfx ->', nextSfxOn);
   // Dispatch to Redux so the store subscriber syncs all SFX categories and
   // persists the new value — Redux is the canonical source of truth.
-  store.dispatch(setAudio({ sfxOn: !!window._introhubSfxOn }));
+  store.dispatch(setAudio({ sfxOn: nextSfxOn }));
 };
 
 createRoot(document.getElementById('root')!).render(
