@@ -8,7 +8,7 @@
  *   - game/applyMinigameWinner → ui:confirm
  *   - game/skipMinigame        → ui:error
  *   - game/setPhase / game/forcePhase
- *                              → tv:event when entering eviction_results
+ *                              → phase-driven music / SFX policy applied
  *   - game/submitHumanVote     → ui:navigate (eviction vote)
  *   - game/submitPovSaveTarget → ui:confirm
  *   - game/activateBattleBack  → tv:battleback
@@ -18,6 +18,17 @@
  *   - social/closeSocialPanel  → stop social music, restore previous track
  *   - social/openIncomingInbox → music:social_module (saves previous track)
  *   - social/closeIncomingInbox→ stop social music, restore previous track
+ *
+ * Phase-driven music policy
+ * ─────────────────────────
+ *   hoh_comp / hoh_results          → music:hoh_comp_general (loop)
+ *   pov_comp / pov_results          → music:hoh_comp_general (loop)
+ *   nominations / nomination_results→ music:nominations_main (loop)
+ *   pov_ceremony / pov_ceremony_results → tv:veto_ceremony (stinger)
+ *                                        + music:veto_phase (loop)
+ *   live_vote                       → tv:voting_eviction (stinger)
+ *   eviction_results / final4_eviction → player:evicted (one-shot)
+ *   week_end / week_start           → stop phase music (clean slate)
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
@@ -35,6 +46,39 @@ interface StateWithGame {
 const EVICTION_PHASES = new Set<string>(['eviction_results', 'final4_eviction']);
 
 /**
+ * Phases that should trigger / maintain the HOH / general competition music.
+ * Includes hoh_results and pov_results so the track keeps playing through the
+ * results screen without an abrupt cut.
+ */
+const HOH_MUSIC_PHASES = new Set<string>([
+  'hoh_comp',
+  'hoh_results',
+  'pov_comp',
+  'pov_results',
+]);
+
+/**
+ * Phases that should trigger / maintain the nominations ceremony music.
+ */
+const NOMINATIONS_MUSIC_PHASES = new Set<string>([
+  'nominations',
+  'nomination_results',
+]);
+
+/**
+ * Phases that should trigger the veto ceremony stinger + veto loop music.
+ */
+const VETO_CEREMONY_PHASES = new Set<string>([
+  'pov_ceremony',
+  'pov_ceremony_results',
+]);
+
+/**
+ * Phases where all phase music should be stopped (clean week boundary).
+ */
+const MUSIC_STOP_PHASES = new Set<string>(['week_start', 'week_end']);
+
+/**
  * Music key that was playing before the Social module opened, so it can be
  * restored when the module closes.  Tracked as module-level state so it
  * persists across re-renders without being stored in Redux.
@@ -42,6 +86,43 @@ const EVICTION_PHASES = new Set<string>(['eviction_results', 'final4_eviction'])
 let _preSocialMusicKey: string | null = null;
 /** Whether the social module music is currently active. */
 let _socialMusicActive = false;
+
+/**
+ * Apply phase-driven music / SFX transitions.
+ * Called after the action has been committed so `newPhase` reflects the
+ * updated game state.
+ */
+function _applyPhaseAudio(newPhase: string): void {
+  if (EVICTION_PHASES.has(newPhase)) {
+    void SoundManager.play('player:evicted');
+  } else if (HOH_MUSIC_PHASES.has(newPhase)) {
+    // Play the results stinger only on results screens, not on comp start
+    if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
+      void SoundManager.play('tv:event');
+    }
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:hoh_comp_general');
+    }
+  } else if (NOMINATIONS_MUSIC_PHASES.has(newPhase)) {
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:nominations_main');
+    }
+  } else if (VETO_CEREMONY_PHASES.has(newPhase)) {
+    // Play veto ceremony stinger once, then start veto phase loop
+    void SoundManager.play('tv:veto_ceremony');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:veto_phase');
+    }
+  } else if (newPhase === 'live_vote') {
+    // Voting ceremony stinger; keep any existing background music
+    void SoundManager.play('tv:voting_eviction');
+  } else if (MUSIC_STOP_PHASES.has(newPhase)) {
+    // Clean week boundary — stop any lingering phase music
+    if (!_socialMusicActive) {
+      SoundManager.stopMusic();
+    }
+  }
+}
 
 export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (typeof action !== 'object' || action === null || !('type' in action)) {
@@ -55,15 +136,13 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     const result = next(action);
     const newPhase = (api.getState() as StateWithGame).game?.phase;
 
-    if (EVICTION_PHASES.has(newPhase)) {
-      void SoundManager.play('player:evicted');
-    } else if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
-      void SoundManager.play('tv:event');
-    } else if (newPhase === 'hoh_comp' || newPhase === 'pov_comp') {
+    // Play minigame:start SFX when a competition begins
+    if (newPhase === 'hoh_comp' || newPhase === 'pov_comp') {
       void SoundManager.play('minigame:start');
-    } else if (newPhase === 'nominations' || newPhase === 'pov_ceremony') {
-      void SoundManager.play('ui:navigate');
     }
+
+    // Apply phase-driven music / SFX policy
+    _applyPhaseAudio(newPhase);
 
     return result;
   }
@@ -73,11 +152,8 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     const newPhase = (action as { type: string; payload: string }).payload;
     const result = next(action);
 
-    if (EVICTION_PHASES.has(newPhase)) {
-      void SoundManager.play('player:evicted');
-    } else if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
-      void SoundManager.play('tv:event');
-    }
+    // Apply phase-driven music / SFX policy
+    _applyPhaseAudio(newPhase);
 
     return result;
   }

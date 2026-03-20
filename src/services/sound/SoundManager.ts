@@ -199,8 +199,10 @@ class _SoundManager {
     try {
       await el!.play();
     } catch (err) {
-      if ((err as DOMException).name === 'NotAllowedError' && !this._unlocked) {
-        // Autoplay blocked before unlock — re-queue for after unlock
+      if ((err as DOMException).name === 'NotAllowedError') {
+        // Autoplay blocked (either before unlock or iOS blocking a non-gesture
+        // call on a primed element).  Re-queue so it retries on the next gesture
+        // rather than permanently marking the key as failed.
         if (_audioDebug) {
           console.log(`[SoundManager] play("${key}") blocked by autoplay policy — re-queued`);
         }
@@ -337,8 +339,9 @@ class _SoundManager {
   private _stopCurrentMusic(): void {
     if (this._musicEl) {
       this._musicEl.pause();
-      // Setting src to '' releases the resource and stops buffering
-      this._musicEl.src = '';
+      // Do NOT set src='' here — that triggers an async error event which
+      // would add the key to _failedKeys and permanently prevent restart.
+      // Simply null the reference; the element will be garbage collected.
       this._musicEl = null;
     }
     this._musicKey = null;
@@ -458,11 +461,66 @@ class _SoundManager {
         q.map((i) => `${i.isMusic ? 'music' : 'sfx'}:${i.key}`),
       );
     }
+    // Prime SFX pool elements during this gesture context so that iOS allows
+    // future non-gesture plays (e.g. game-state-driven SFX like death/winner).
+    this._primeSfxForMobile();
     for (const item of q) {
       if (item.isMusic) {
         void this._doPlayMusic(item.key, item.opts);
       } else {
         void this._doPlay(item.key, item.opts);
+      }
+    }
+  }
+
+  /**
+   * Pre-create and "prime" one pool element per registered SFX key during a
+   * user-gesture context.  On iOS/Safari, calling `.play()` on a new
+   * HTMLAudioElement outside a gesture throws NotAllowedError even after the
+   * audio context is unlocked.  Touching the element here (play+pause at
+   * volume 0) registers it with the browser so subsequent non-gesture plays work.
+   */
+  private _primeSfxForMobile(): void {
+    if (typeof document === 'undefined') return;
+    for (const [key, entry] of Object.entries(SOUND_REGISTRY)) {
+      if (entry.category === 'music') continue; // music handled separately
+      let pool = this._sfxPools.get(key);
+      if (!pool) {
+        pool = [];
+        this._sfxPools.set(key, pool);
+      }
+      if (pool.length === 0) {
+        const el = _makeSfxEl(entry.src, 0, entry.loop ?? false);
+        // Attach error handling so primed elements behave like normally pooled
+        // ones — load errors are logged and the key is marked failed so the
+        // pool does not keep reusing a broken element.
+        el.addEventListener('error', () => {
+          if (!this._failedKeys.has(key)) {
+            const code = el.error?.code ?? 'unknown';
+            console.error(
+              `[SoundManager] SFX load error "${key}" (code ${code}):`,
+              el.error?.message ?? entry.src,
+            );
+            this._failedKeys.add(key);
+          }
+        });
+        pool.push(el);
+        // Call play() synchronously in the gesture context — iOS cares about
+        // the synchronous call, not the promise resolution.  Immediately pause
+        // and restore real volume in the callback.
+        // Use optional chaining: test envs may return undefined from play().
+        el.play()?.then(() => {
+          el.pause();
+          el.currentTime = 0;
+          el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
+        }).catch((err) => {
+          // Log priming failures in debug builds and mark the key as failed
+          // so we don't keep reusing a broken element.
+          if (_audioDebug) {
+            console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
+          }
+          this._failedKeys.add(key);
+        });
       }
     }
   }

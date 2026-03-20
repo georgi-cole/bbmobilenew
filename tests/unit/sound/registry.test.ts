@@ -40,14 +40,16 @@ describe('resolveKey()', () => {
     expect(resolveKey('tv:live_vote')).toBe('tv:live_vote');
     expect(resolveKey('music:intro_hub_loop')).toBe('music:intro_hub_loop');
     expect(resolveKey('ui:navigate')).toBe('ui:navigate');
+    expect(resolveKey('music:nominations_main')).toBe('music:nominations_main');
+    expect(resolveKey('music:veto_phase')).toBe('music:veto_phase');
   });
 
   it('resolves alias map stems (without .mp3 extension)', () => {
     expect(resolveKey('live_vote')).toBe('tv:live_vote');
-    expect(resolveKey('nominations_horror')).toBe('tv:nominations_horror');
-    expect(resolveKey('nominations_main')).toBe('tv:nominations_main');
+    expect(resolveKey('nominations_horror')).toBe('music:nominations_horror');
+    expect(resolveKey('nominations_main')).toBe('music:nominations_main');
     expect(resolveKey('veto_ceremony')).toBe('tv:veto_ceremony');
-    expect(resolveKey('veto_phase')).toBe('tv:veto_phase');
+    expect(resolveKey('veto_phase')).toBe('music:veto_phase');
     expect(resolveKey('voting_for_eviction_user_and_housguests')).toBe('tv:voting_eviction');
     expect(resolveKey('Social_module')).toBe('music:social_module');
     expect(resolveKey('Hoh_competition_and_general_competition')).toBe('music:hoh_comp_general');
@@ -55,7 +57,7 @@ describe('resolveKey()', () => {
 
   it('strips .mp3 extension before alias lookup', () => {
     expect(resolveKey('live_vote.mp3')).toBe('tv:live_vote');
-    expect(resolveKey('nominations_horror.mp3')).toBe('tv:nominations_horror');
+    expect(resolveKey('nominations_horror.mp3')).toBe('music:nominations_horror');
   });
 
   it('auto-derives prefix:rest keys from standard-named stems', () => {
@@ -76,13 +78,13 @@ describe('resolveKey()', () => {
 
 describe('SOUND_REGISTRY — new entries', () => {
   const expectedNewKeys: [string, string][] = [
-    ['music:hoh_comp_general',  'music_hoh_comp_general.mp3'],
-    ['tv:live_vote',            'live_vote.mp3'],
-    ['tv:nominations_horror',   'nominations_horror.mp3'],
-    ['tv:nominations_main',     'nominations_main.mp3'],
-    ['tv:veto_ceremony',        'veto_ceremony.mp3'],
-    ['tv:veto_phase',           'veto_phase.mp3'],
-    ['tv:voting_eviction',      'voting_for_eviction_user_and_housguests.mp3'],
+    ['music:hoh_comp_general',   'music_hoh_comp_general.mp3'],
+    ['tv:live_vote',             'live_vote.mp3'],
+    ['music:nominations_horror', 'nominations_horror.mp3'],
+    ['music:nominations_main',   'nominations_main.mp3'],
+    ['tv:veto_ceremony',         'veto_ceremony.mp3'],
+    ['music:veto_phase',         'veto_phase.mp3'],
+    ['tv:voting_eviction',       'voting_for_eviction_user_and_housguests.mp3'],
   ];
 
   it.each(expectedNewKeys)('"%s" is registered and points to "%s"', (key, filename) => {
@@ -92,9 +94,20 @@ describe('SOUND_REGISTRY — new entries', () => {
     expect(entry.key).toBe(key);
   });
 
-  it('all new tv: keys have category "tv"', () => {
-    const tvKeys = ['tv:live_vote', 'tv:nominations_horror', 'tv:nominations_main',
-      'tv:veto_ceremony', 'tv:veto_phase', 'tv:voting_eviction'];
+  it('nominations and veto_phase keys have category "music" and loop=true', () => {
+    const musicLoopKeys = [
+      'music:nominations_horror',
+      'music:nominations_main',
+      'music:veto_phase',
+    ];
+    for (const k of musicLoopKeys) {
+      expect(SOUND_REGISTRY[k].category, `${k} should be category "music"`).toBe('music');
+      expect(SOUND_REGISTRY[k].loop, `${k} should have loop=true`).toBe(true);
+    }
+  });
+
+  it('tv:live_vote, tv:veto_ceremony, tv:voting_eviction have category "tv"', () => {
+    const tvKeys = ['tv:live_vote', 'tv:veto_ceremony', 'tv:voting_eviction'];
     for (const k of tvKeys) {
       expect(SOUND_REGISTRY[k].category).toBe('tv');
     }
