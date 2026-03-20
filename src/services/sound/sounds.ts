@@ -26,15 +26,15 @@ export interface SoundEntry {
 
 /**
  * Base path for sound assets, derived from Vite's BASE_URL so that paths
- * resolve correctly both in local dev (base = '/') and on GitHub Pages
- * (base = '/bbmobilenew/').
+ * resolve correctly for both root deployments (base = '/') and sub-path
+ * deployments (e.g. base = '/bbmobilenew/').
  *
  * Vite guarantees BASE_URL always ends with a slash, so concatenating the
  * relative segment directly is safe.
  *
  * Examples:
- *   local dev  → '/assets/sounds/'
- *   production → '/bbmobilenew/assets/sounds/'
+ *   base = '/'            → SOUNDS_BASE = '/assets/sounds/'
+ *   base = '/bbmobilenew/' → SOUNDS_BASE = '/bbmobilenew/assets/sounds/'
  */
 const _viteBase: string = import.meta.env.BASE_URL ?? '/';
 export const SOUNDS_BASE = `${_viteBase}assets/sounds/`;
