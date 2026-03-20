@@ -38,6 +38,7 @@ const HUB_BUTTONS = [
   { to: '/credits',      label: '🎬 Credits',        variant: 'ghost'     },
 ] as const;
 
+/** Returns true if the hub music consent popup should be shown. */
 function shouldShowSoundConsent(): boolean {
   try {
     return localStorage.getItem(HUB_MUSIC_CONSENT_KEY) !== 'granted';
@@ -59,6 +60,9 @@ export default function HomeHub() {
   const [needsSoundConsent] = useState(() => shouldShowSoundConsent());
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
 
+  // Sound consent popup: shown after splash unless user previously consented.
+  const [showSoundConsent, setShowSoundConsent] = useState(false);
+
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
 
@@ -75,14 +79,23 @@ export default function HomeHub() {
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
 
+  // After the splash exits, decide whether to show the sound consent popup.
+  useEffect(() => {
+    if (splashDone && shouldShowSoundConsent()) {
+      setShowSoundConsent(true);
+    }
+  }, [splashDone]);
+
   const handleSoundConsentEnable = () => {
+    // User gesture — unlock Web Audio API and start hub music.
     SoundManager.unlockOnUserGesture();
     void SoundManager.playMusic('music:intro_hub_loop');
-    setSoundConsentHidden(true);
+    setShowSoundConsent(false);
   };
 
   const handleSoundConsentDismiss = () => {
-    setSoundConsentHidden(true);
+    // Option B: denial is NOT persisted — popup will show again next visit.
+    setShowSoundConsent(false);
   };
 
   const handlePlay = () => {
@@ -110,6 +123,9 @@ export default function HomeHub() {
         <PermissionPrompts showSoundPrompt={false} />
       )}
 
+      {/* Sound consent popup — asks user to enable hub music.
+          Shown after splash unless user already gave persistent consent.
+          "Not now" dismisses without persistence (Option B: ask again next time). */}
       {showSoundConsent && (
         <SoundConsentPopup
           onEnable={handleSoundConsentEnable}

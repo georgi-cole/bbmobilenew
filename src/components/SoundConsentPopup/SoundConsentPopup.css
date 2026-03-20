@@ -1,3 +1,6 @@
+/* SoundConsentPopup — hub music autostart consent modal */
+
+/* Full-screen overlay (above everything, including the permission prompts) */
 .sound-consent-overlay {
   position: fixed;
   inset: 0;
@@ -10,6 +13,7 @@
   background: rgba(0, 0, 0, 0.4);
 }
 
+/* Card */
 .sound-consent-popup {
   background: rgba(10, 14, 30, 0.92);
   border: 1px solid rgba(123, 92, 255, 0.35);
@@ -31,7 +35,7 @@
 
 @keyframes sound-consent-rise {
   from { opacity: 0; transform: translateY(24px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 .sound-consent-popup__icon {
