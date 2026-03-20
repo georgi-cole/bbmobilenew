@@ -182,7 +182,7 @@ const wildcardWesternSlice = createSlice({
     },
 
     advancePairIntro(state) {
-      if (state.phase !== 'pairIntro') return;
+      if (state.phase !== 'pairIntro' && state.phase !== 'finalDuel') return;
       state.duelNumber += 1;
       state.duelResolved = false;
 
@@ -200,9 +200,15 @@ const wildcardWesternSlice = createSlice({
 
       state.buzzedBy = null;
       state.selectedAnswerIndex = null;
-      state.buzzWindowUntil = Date.now() + BUZZ_WINDOW_MS;
+      state.buzzWindowUntil = 0;
       state.answerWindowUntil = 0;
 
+      state.phase = 'duelQuestion';
+    },
+
+    openBuzzWindow(state) {
+      if (state.phase !== 'duelQuestion') return;
+      state.buzzWindowUntil = Date.now() + BUZZ_WINDOW_MS;
       state.phase = 'buzzOpen';
     },
 
@@ -224,9 +230,14 @@ const wildcardWesternSlice = createSlice({
       state.lastDuelOutcome = 'nobuzz';
 
       if (state.aliveIds.length === 2) {
-        // Final 2: redraw question, don't eliminate
-        state.phase = 'pairIntro';
+        // Final 2: redraw question, don't eliminate.
+        state.phase = 'finalDuel';
         state.duelResolved = false;
+        state.currentQuestionId = null;
+        state.buzzedBy = null;
+        state.selectedAnswerIndex = null;
+        state.buzzWindowUntil = 0;
+        state.answerWindowUntil = 0;
         return;
       }
 
@@ -306,10 +317,9 @@ const wildcardWesternSlice = createSlice({
       }
 
       if (state.aliveIds.length === 2) {
-        state.phase = 'finalDuel';
         // In finalDuel mode, next pair is always the final 2
         state.currentPair = [state.aliveIds[0], state.aliveIds[1]];
-        state.phase = 'pairIntro';
+        state.phase = 'finalDuel';
         return;
       }
 
@@ -400,6 +410,7 @@ export const {
   dealCardsAction,
   advanceCardReveal,
   advancePairIntro,
+  openBuzzWindow,
   playerBuzz,
   buzzTimeout,
   playerAnswer,

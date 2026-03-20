@@ -16,7 +16,7 @@ export const resolveWildcardWesternOutcome =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
     const s = getState();
     const ww = (s as RootState & { wildcardWestern?: WildcardWesternState }).wildcardWestern;
-    if (!ww || ww.phase !== 'complete') return;
+    if (!ww || (ww.phase !== 'complete' && ww.phase !== 'gameOver')) return;
 
     if (ww.outcomeResolved) {
       if (import.meta.env.DEV) {

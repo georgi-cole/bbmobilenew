@@ -10,6 +10,7 @@ import wildcardWesternReducer, {
   dealCardsAction,
   advanceCardReveal,
   advancePairIntro,
+  openBuzzWindow,
   playerBuzz,
   buzzTimeout,
   playerAnswer,
@@ -17,11 +18,9 @@ import wildcardWesternReducer, {
   advanceResolution,
   playerChooseElimination,
   playerChooseNextPair,
-  randomPairChosen,
   resetWildcardWestern,
 } from '../../../src/features/wildcardWestern/wildcardWesternSlice';
 import { WILDCARD_QUESTIONS } from '../../../src/features/wildcardWestern/wildcardWesternQuestions';
-import type { RootState } from '../../../src/store/store';
 
 const SEED = 42;
 const PLAYERS = ['alice', 'bob', 'carol', 'dave'];
@@ -48,6 +47,15 @@ function getWrongAnswerIndex(store: TestStore): 0 | 1 | 2 {
   const { currentQuestionId } = store.getState().wildcardWestern;
   const question = WILDCARD_QUESTIONS.find((q) => q.id === currentQuestionId)!;
   return ([0, 1, 2] as const).find((i) => i !== question.correctIndex)!;
+}
+
+/** Advances the test store to an active duel with the buzz window open. */
+function reachBuzzOpen(store: TestStore) {
+  store.dispatch(advanceIntro());
+  store.dispatch(dealCardsAction());
+  store.dispatch(advanceCardReveal());
+  store.dispatch(advancePairIntro());
+  store.dispatch(openBuzzWindow());
 }
 
 describe('wildcardWesternSlice', () => {
@@ -152,6 +160,21 @@ describe('wildcardWesternSlice', () => {
         expect(card).toBeLessThanOrEqual(highCard);
       }
     });
+
+    it('uses duelQuestion before opening the buzz window', () => {
+      store.dispatch(advanceCardReveal());
+      store.dispatch(advancePairIntro());
+
+      const afterQuestionReveal = store.getState().wildcardWestern;
+      expect(afterQuestionReveal.phase).toBe('duelQuestion');
+      expect(afterQuestionReveal.currentQuestionId).not.toBeNull();
+      expect(afterQuestionReveal.buzzWindowUntil).toBe(0);
+
+      store.dispatch(openBuzzWindow());
+      const afterBuzzOpens = store.getState().wildcardWestern;
+      expect(afterBuzzOpens.phase).toBe('buzzOpen');
+      expect(afterBuzzOpens.buzzWindowUntil).toBeGreaterThan(0);
+    });
   });
 
   describe('buzz mechanics', () => {
@@ -164,10 +187,7 @@ describe('wildcardWesternSlice', () => {
           humanPlayerId: 'alice',
         }),
       );
-      store.dispatch(advanceIntro());
-      store.dispatch(dealCardsAction());
-      store.dispatch(advanceCardReveal());
-      store.dispatch(advancePairIntro());
+      reachBuzzOpen(store);
     });
 
     it('only allows current pair to buzz', () => {
@@ -215,10 +235,7 @@ describe('wildcardWesternSlice', () => {
           humanPlayerId: 'alice',
         }),
       );
-      store.dispatch(advanceIntro());
-      store.dispatch(dealCardsAction());
-      store.dispatch(advanceCardReveal());
-      store.dispatch(advancePairIntro());
+      reachBuzzOpen(store);
     });
 
     it('correct answer eliminates opponent', () => {
@@ -267,10 +284,7 @@ describe('wildcardWesternSlice', () => {
           humanPlayerId: 'alice',
         }),
       );
-      store.dispatch(advanceIntro());
-      store.dispatch(dealCardsAction());
-      store.dispatch(advanceCardReveal());
-      store.dispatch(advancePairIntro());
+      reachBuzzOpen(store);
     });
 
     it('eliminates both players when >2 alive', () => {
@@ -304,6 +318,10 @@ describe('wildcardWesternSlice', () => {
         } else if (s.phase === 'chooseNextPair') {
           const pair = [s.aliveIds[0], s.aliveIds[1]] as [string, string];
           store.dispatch(playerChooseNextPair({ pair }));
+        } else if (s.phase === 'finalDuel') {
+          store.dispatch(advancePairIntro());
+        } else if (s.phase === 'duelQuestion') {
+          store.dispatch(openBuzzWindow());
         } else if (s.phase === 'pairIntro') {
           store.dispatch(advancePairIntro());
         } else if (s.phase === 'buzzOpen') {
@@ -319,8 +337,8 @@ describe('wildcardWesternSlice', () => {
       if (finalState.aliveIds.length === 2 && finalState.phase === 'buzzOpen') {
         store.dispatch(buzzTimeout());
         const afterTimeout = store.getState().wildcardWestern;
-        // Final-two no-buzz should redraw (phase goes to pairIntro) instead of eliminating both
-        expect(afterTimeout.phase).toBe('pairIntro');
+        // Final-two no-buzz should redraw (phase goes to finalDuel) instead of eliminating both.
+        expect(afterTimeout.phase).toBe('finalDuel');
         expect(afterTimeout.aliveIds).toHaveLength(2);
       }
     });
@@ -336,10 +354,7 @@ describe('wildcardWesternSlice', () => {
           humanPlayerId: 'alice',
         }),
       );
-      store.dispatch(advanceIntro());
-      store.dispatch(dealCardsAction());
-      store.dispatch(advanceCardReveal());
-      store.dispatch(advancePairIntro());
+      reachBuzzOpen(store);
     });
 
     it('cannot eliminate self', () => {
@@ -393,10 +408,7 @@ describe('wildcardWesternSlice', () => {
           humanPlayerId: 'alice',
         }),
       );
-      store.dispatch(advanceIntro());
-      store.dispatch(dealCardsAction());
-      store.dispatch(advanceCardReveal());
-      store.dispatch(advancePairIntro());
+      reachBuzzOpen(store);
     });
 
     it('prevents double resolution via duelResolved flag', () => {

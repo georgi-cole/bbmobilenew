@@ -2,7 +2,7 @@
  * WildcardWesternComp.tsx – Main React component for Wildcard Western.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store/store';
 import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
@@ -12,6 +12,7 @@ import {
   dealCardsAction,
   advanceCardReveal,
   advancePairIntro,
+  openBuzzWindow,
   playerBuzz,
   buzzTimeout,
   playerAnswer,
@@ -44,6 +45,10 @@ const AI_PAIR_CHOICE_DELAY_MS = 2000;
 const RANDOM_PAIR_DELAY_MS = 1500;
 /** Duration to display the winner screen before auto-proceeding (ms). */
 const WINNER_DISPLAY_DURATION_MS = 3000;
+/** Brief delay between question reveal and opening the draw window. */
+const QUESTION_REVEAL_DELAY_MS = 700;
+/** Brief intro beat before the automatic final duel begins. */
+const FINAL_DUEL_INTRO_DELAY_MS = 1000;
 
 interface WildcardWesternCompProps {
   participantIds: string[];
@@ -67,12 +72,34 @@ export default function WildcardWesternComp({
 
   const [timeRemaining, setTimeRemaining] = useState(0);
 
-  const timerRef = useRef<number | null>(null);
+  const timeoutIdsRef = useRef<Set<number>>(new Set());
   const phaseRef = useRef(state.phase);
+  const completionReportedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  const clearScheduledTimeouts = useCallback(() => {
+    for (const timeoutId of timeoutIdsRef.current) {
+      clearTimeout(timeoutId);
+    }
+    timeoutIdsRef.current.clear();
+  }, []);
+
+  const scheduleTimeout = useCallback((callback: () => void, delayMs: number) => {
+    const timeoutId = window.setTimeout(() => {
+      timeoutIdsRef.current.delete(timeoutId);
+      callback();
+    }, delayMs);
+    timeoutIdsRef.current.add(timeoutId);
+    return timeoutId;
+  }, []);
 
   useEffect(() => {
     phaseRef.current = state.phase;
   }, [state.phase]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const participantMap = useRef<Map<string, MinigameParticipant>>(new Map());
   useEffect(() => {
@@ -88,8 +115,23 @@ export default function WildcardWesternComp({
   };
 
   const humanPlayerId = participants.find((p) => p.isHuman)?.id ?? null;
+  const buildCompletion = useCallback((): ReactMinigameCompletion | undefined => {
+    if (!state.winnerId) return undefined;
+    return {
+      authoritativeWinnerId: state.winnerId,
+    };
+  }, [state.winnerId]);
+  const isHostedGameOver = state.phase === 'gameOver' && !standalone;
+  const shouldResolveHostedOutcome =
+    isHostedGameOver && !!state.winnerId && !state.outcomeResolved;
+  const shouldNotifyHostedCompletion =
+    isHostedGameOver
+    && !!state.winnerId
+    && state.outcomeResolved
+    && !completionReportedRef.current;
 
   useEffect(() => {
+    completionReportedRef.current = false;
     dispatch(
       initWildcardWestern({
         participantIds,
@@ -100,17 +142,21 @@ export default function WildcardWesternComp({
     );
 
     return () => {
+      clearScheduledTimeouts();
       dispatch(resetWildcardWestern());
     };
-  }, [dispatch, participantIds, prizeType, seed, humanPlayerId]);
+  // Wildcard Western sessions should initialize only once per mount; the
+  // parent provides a new component instance for each new game.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Clear timers on phase change
   useEffect(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+    clearScheduledTimeouts();
+    if (state.phase !== 'buzzOpen' && state.phase !== 'answerOpen') {
+      setTimeRemaining(0);
     }
-  }, [state.phase]);
+  }, [clearScheduledTimeouts, state.phase]);
 
   // Buzz timer
   useEffect(() => {
@@ -124,12 +170,12 @@ export default function WildcardWesternComp({
             dispatch(buzzTimeout());
           }
         } else {
-          timerRef.current = window.setTimeout(updateTimer, 100);
+          scheduleTimeout(updateTimer, 100);
         }
       };
       updateTimer();
     }
-  }, [state.phase, state.buzzWindowUntil, dispatch]);
+  }, [dispatch, scheduleTimeout, state.buzzWindowUntil, state.phase]);
 
   // Answer timer
   useEffect(() => {
@@ -143,12 +189,32 @@ export default function WildcardWesternComp({
             dispatch(answerTimeout());
           }
         } else {
-          timerRef.current = window.setTimeout(updateTimer, 100);
+          scheduleTimeout(updateTimer, 100);
         }
       };
       updateTimer();
     }
-  }, [state.phase, state.answerWindowUntil, dispatch]);
+  }, [dispatch, scheduleTimeout, state.answerWindowUntil, state.phase]);
+
+  // Brief question reveal beat before buzzing opens.
+  useEffect(() => {
+    if (state.phase !== 'duelQuestion') return;
+    scheduleTimeout(() => {
+      if (phaseRef.current === 'duelQuestion') {
+        dispatch(openBuzzWindow());
+      }
+    }, QUESTION_REVEAL_DELAY_MS);
+  }, [dispatch, scheduleTimeout, state.phase]);
+
+  // Final duel begins automatically once only two players remain.
+  useEffect(() => {
+    if (state.phase !== 'finalDuel') return;
+    scheduleTimeout(() => {
+      if (phaseRef.current === 'finalDuel') {
+        dispatch(advancePairIntro());
+      }
+    }, FINAL_DUEL_INTRO_DELAY_MS);
+  }, [dispatch, scheduleTimeout, state.phase]);
 
   // AI buzz logic
   useEffect(() => {
@@ -167,7 +233,7 @@ export default function WildcardWesternComp({
       const plan = precomputeAiDuelPlan(playerId, personality, question, seed, state.duelNumber);
 
       if (plan.willBuzz) {
-        timerRef.current = window.setTimeout(() => {
+        scheduleTimeout(() => {
           if (phaseRef.current === 'buzzOpen') {
             dispatch(playerBuzz({ playerId }));
           }
@@ -177,7 +243,7 @@ export default function WildcardWesternComp({
 
     if (!isHuman(p1)) scheduleAiBuzz(p1);
     if (!isHuman(p2)) scheduleAiBuzz(p2);
-  }, [state.phase, state.currentPair, state.currentQuestionId, seed, state.duelNumber, dispatch]);
+  }, [dispatch, scheduleTimeout, seed, state.currentPair, state.currentQuestionId, state.duelNumber, state.phase]);
 
   // AI answer logic
   useEffect(() => {
@@ -192,13 +258,13 @@ export default function WildcardWesternComp({
     const plan = precomputeAiDuelPlan(state.buzzedBy, personality, question, seed, state.duelNumber);
 
     if (plan.willAnswer) {
-      timerRef.current = window.setTimeout(() => {
+      scheduleTimeout(() => {
         if (phaseRef.current === 'answerOpen') {
           dispatch(playerAnswer({ answerIndex: plan.chosenAnswerIndex }));
         }
       }, AI_ANSWER_DELAY_MS);
     }
-  }, [state.phase, state.buzzedBy, state.currentQuestionId, seed, state.duelNumber, dispatch]);
+  }, [dispatch, scheduleTimeout, seed, state.buzzedBy, state.currentQuestionId, state.duelNumber, state.phase]);
 
   // AI elimination choice
   useEffect(() => {
@@ -213,12 +279,12 @@ export default function WildcardWesternComp({
       state.duelNumber,
     );
 
-    timerRef.current = window.setTimeout(() => {
+    scheduleTimeout(() => {
       if (phaseRef.current === 'chooseElimination') {
         dispatch(playerChooseElimination({ targetId }));
       }
     }, AI_ELIMINATION_DELAY_MS);
-  }, [state.phase, state.eliminationChooserId, state.aliveIds, seed, state.duelNumber, dispatch]);
+  }, [dispatch, scheduleTimeout, seed, state.aliveIds, state.duelNumber, state.eliminationChooserId, state.phase]);
 
   // AI next pair choice
   useEffect(() => {
@@ -228,35 +294,35 @@ export default function WildcardWesternComp({
 
     const pair = precomputeAiNextPair(state.controllerId, state.aliveIds, seed, state.duelNumber);
 
-    timerRef.current = window.setTimeout(() => {
+    scheduleTimeout(() => {
       if (phaseRef.current === 'chooseNextPair') {
         dispatch(playerChooseNextPair({ pair }));
       }
     }, AI_PAIR_CHOICE_DELAY_MS);
-  }, [state.phase, state.controllerId, state.aliveIds, seed, state.duelNumber, dispatch]);
+  }, [dispatch, scheduleTimeout, seed, state.aliveIds, state.controllerId, state.duelNumber, state.phase]);
 
   // Auto-advance randomPairSelection
   useEffect(() => {
     if (state.phase !== 'randomPairSelection') return;
-    timerRef.current = window.setTimeout(() => {
+    scheduleTimeout(() => {
       if (phaseRef.current === 'randomPairSelection') {
         dispatch(randomPairChosen());
       }
     }, RANDOM_PAIR_DELAY_MS);
-  }, [state.phase, dispatch]);
+  }, [dispatch, scheduleTimeout, state.phase]);
 
-  // Winner outcome resolution
   useEffect(() => {
-    if (state.phase === 'gameOver' && state.winnerId && !state.outcomeResolved) {
-      dispatch(resolveWildcardWesternOutcome());
+    if (!shouldResolveHostedOutcome) return;
+    dispatch(resolveWildcardWesternOutcome());
+  }, [dispatch, shouldResolveHostedOutcome]);
 
-      if (!standalone && onComplete) {
-        timerRef.current = window.setTimeout(() => {
-          onComplete({ authoritativeWinnerId: state.winnerId });
-        }, WINNER_DISPLAY_DURATION_MS);
-      }
-    }
-  }, [state.phase, state.winnerId, state.outcomeResolved, standalone, onComplete, dispatch]);
+  useEffect(() => {
+    if (!shouldNotifyHostedCompletion) return;
+    completionReportedRef.current = true;
+    scheduleTimeout(() => {
+      onCompleteRef.current?.(buildCompletion());
+    }, WINNER_DISPLAY_DURATION_MS);
+  }, [buildCompletion, scheduleTimeout, shouldNotifyHostedCompletion]);
 
   // Render
   const currentQuestion = WILDCARD_QUESTIONS.find((q) => q.id === state.currentQuestionId);
@@ -337,6 +403,22 @@ export default function WildcardWesternComp({
           </div>
         )}
 
+        {state.phase === 'finalDuel' && (
+          <div className="ww-duel-container">
+            <div className="ww-duel-header">
+              <div className="ww-duel-title">Final Duel</div>
+              <div className="ww-duel-pair">
+                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[0] ?? '')}</div>
+                <div className="ww-vs">VS</div>
+                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[1] ?? '')}</div>
+              </div>
+            </div>
+            <p style={{ textAlign: 'center', fontSize: '1.15rem', opacity: 0.9 }}>
+              Only two gunslingers remain. The last showdown begins automatically…
+            </p>
+          </div>
+        )}
+
         {(state.phase === 'duelQuestion' || state.phase === 'buzzOpen') && currentQuestion && (
           <div className="ww-duel-container">
             <div className="ww-duel-header">
@@ -357,6 +439,14 @@ export default function WildcardWesternComp({
                 ))}
               </div>
             </div>
+
+            {state.phase === 'duelQuestion' && (
+              <div className="ww-buzz-section">
+                <div style={{ fontSize: '1.2rem', color: '#d4a017', fontWeight: 700 }}>
+                  Hands up… the draw opens in a heartbeat.
+                </div>
+              </div>
+            )}
 
             {state.phase === 'buzzOpen' && (
               <div className="ww-buzz-section">
