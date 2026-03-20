@@ -105,6 +105,11 @@ class _SoundManager {
 
   // ── Music ─────────────────────────────────────────────────────────────────
 
+  /** Returns the key of the currently-playing music track, or null. */
+  get currentMusicKey(): string | null {
+    return this._musicKey;
+  }
+
   /** Start a looping music track.  Stops any previously-playing music first. */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
     if (this._musicKey === key) return;

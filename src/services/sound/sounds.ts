@@ -224,6 +224,22 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     volume: 0.9,
   },
 
+  // ── Social module music ───────────────────────────────────────────────────
+
+  /**
+   * Social module background music — plays while the Social panel or incoming
+   * inbox is open.  Stops and restores the previous track on close.
+   * Asset: public/assets/sounds/Social_module.mp3
+   */
+  'music:social_module': {
+    key: 'music:social_module',
+    category: 'music',
+    src: `${SOUNDS_BASE}Social_module.mp3`,
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
+
   // ── Glass Bridge minigame sounds ──────────────────────────────────────────
 
   /**
