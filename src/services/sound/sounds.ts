@@ -14,7 +14,7 @@ export interface SoundEntry {
   key: string;
   /** Logical category for batch enable/volume control. */
   category: SoundCategory;
-  /** Resolved URL (relative to public root). */
+  /** Resolved URL (absolute, respecting the app base path). */
   src: string;
   /** Whether to preload the asset on init. */
   preload: boolean;
@@ -25,51 +25,66 @@ export interface SoundEntry {
 }
 
 /**
+ * Base path for sound assets, derived from Vite's BASE_URL so that paths
+ * resolve correctly both in local dev (base = '/') and on GitHub Pages
+ * (base = '/bbmobilenew/').
+ *
+ * Vite guarantees BASE_URL always ends with a slash, so concatenating the
+ * relative segment directly is safe.
+ *
+ * Examples:
+ *   local dev  → '/assets/sounds/'
+ *   production → '/bbmobilenew/assets/sounds/'
+ */
+const _viteBase: string = import.meta.env.BASE_URL ?? '/';
+export const SOUNDS_BASE = `${_viteBase}assets/sounds/`;
+
+/**
  * SOUND_REGISTRY — canonical map of all sound keys.
  *
- * Paths are relative to the public root so they can be served as static assets
- * without being processed by the bundler.
+ * Paths use SOUNDS_BASE so they are served from the correct location on any
+ * deployment (local dev or GitHub Pages sub-path).
  */
 export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'ui:navigate': {
     key: 'ui:navigate',
     category: 'ui',
-    src: '/assets/sounds/ui_navigate.mp3',
+    src: `${SOUNDS_BASE}ui_navigate.mp3`,
     preload: true,
     volume: 0.6,
   },
   'ui:confirm': {
     key: 'ui:confirm',
     category: 'ui',
-    src: '/assets/sounds/ui_confirm.mp3',
+    src: `${SOUNDS_BASE}ui_confirm.mp3`,
     preload: true,
     volume: 0.7,
   },
   'ui:error': {
     key: 'ui:error',
     category: 'ui',
-    src: '/assets/sounds/ui_error.mp3',
+    src: `${SOUNDS_BASE}ui_error.mp3`,
     preload: false,
     volume: 0.6,
   },
   'tv:event': {
     key: 'tv:event',
     category: 'tv',
-    src: '/assets/sounds/tv_event.mp3',
+    src: `${SOUNDS_BASE}tv_event.mp3`,
     preload: true,
     volume: 0.8,
   },
   'player:evicted': {
     key: 'player:evicted',
     category: 'player',
-    src: '/assets/sounds/player_evicted.mp3',
+    src: `${SOUNDS_BASE}player_evicted.mp3`,
     preload: false,
     volume: 1.0,
   },
   'minigame:start': {
     key: 'minigame:start',
     category: 'minigame',
-    src: '/assets/sounds/minigame_start.mp3',
+    src: `${SOUNDS_BASE}minigame_start.mp3`,
     preload: false,
     volume: 0.9,
   },
@@ -82,7 +97,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:wheelofluck': {
     key: 'minigame:wheelofluck',
     category: 'minigame',
-    src: '/assets/sounds/minigame_wheelofluck.mp3',
+    src: `${SOUNDS_BASE}minigame_wheelofluck.mp3`,
     preload: false,
     volume: 1.0,
     loop: true,
@@ -96,7 +111,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:risk_wheel_loop': {
     key: 'music:risk_wheel_loop',
     category: 'music',
-    src: '/assets/sounds/music_risk_wheel_loop.mp3',
+    src: `${SOUNDS_BASE}music_risk_wheel_loop.mp3`,
     preload: false,
     volume: 0.4,
     loop: true,
@@ -109,7 +124,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:risk_wheel_good': {
     key: 'minigame:risk_wheel_good',
     category: 'minigame',
-    src: '/assets/sounds/minigame_risk_wheel_good.mp3',
+    src: `${SOUNDS_BASE}minigame_risk_wheel_good.mp3`,
     preload: false,
     volume: 0.95,
   },
@@ -121,7 +136,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:risk_wheel_bad': {
     key: 'minigame:risk_wheel_bad',
     category: 'minigame',
-    src: '/assets/sounds/minigame_risk_wheel_bad.mp3',
+    src: `${SOUNDS_BASE}minigame_risk_wheel_bad.mp3`,
     preload: false,
     volume: 0.95,
   },
@@ -133,7 +148,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:risk_wheel_scoreboard': {
     key: 'minigame:risk_wheel_scoreboard',
     category: 'minigame',
-    src: '/assets/sounds/minigame_risk_wheel_scoreboard.mp3',
+    src: `${SOUNDS_BASE}minigame_risk_wheel_scoreboard.mp3`,
     preload: false,
     volume: 0.9,
   },
@@ -145,14 +160,14 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:risk_wheel_winner': {
     key: 'minigame:risk_wheel_winner',
     category: 'minigame',
-    src: '/assets/sounds/minigame_risk_wheel_winner.mp3',
+    src: `${SOUNDS_BASE}minigame_risk_wheel_winner.mp3`,
     preload: false,
     volume: 1.0,
   },
   'music:menu_loop': {
     key: 'music:menu_loop',
     category: 'music',
-    src: '/assets/sounds/music_menu_loop.mp3',
+    src: `${SOUNDS_BASE}music_menu_loop.mp3`,
     preload: false,
     volume: 0.5,
     loop: true,
@@ -160,7 +175,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:intro_hub_loop': {
     key: 'music:intro_hub_loop',
     category: 'music',
-    src: '/assets/sounds/music_intro_hub_loop.mp3',
+    src: `${SOUNDS_BASE}music_intro_hub_loop.mp3`,
     preload: false,
     volume: 0.45,
     loop: true,
@@ -168,7 +183,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:spectator_loop': {
     key: 'music:spectator_loop',
     category: 'music',
-    src: '/assets/sounds/music_spectator_loop.mp3',
+    src: `${SOUNDS_BASE}music_spectator_loop.mp3`,
     preload: false,
     volume: 0.4,
     loop: true,
@@ -176,35 +191,35 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:results': {
     key: 'minigame:results',
     category: 'minigame',
-    src: '/assets/sounds/minigame_results.mp3',
+    src: `${SOUNDS_BASE}minigame_results.mp3`,
     preload: false,
     volume: 0.85,
   },
   'ui:jury_vote': {
     key: 'ui:jury_vote',
     category: 'ui',
-    src: '/assets/sounds/ui_jury_vote.mp3',
+    src: `${SOUNDS_BASE}ui_jury_vote.mp3`,
     preload: false,
     volume: 0.7,
   },
   'tv:winner_reveal': {
     key: 'tv:winner_reveal',
     category: 'tv',
-    src: '/assets/sounds/tv_winner_reveal.mp3',
+    src: `${SOUNDS_BASE}tv_winner_reveal.mp3`,
     preload: false,
     volume: 1.0,
   },
   'tv:battleback': {
     key: 'tv:battleback',
     category: 'tv',
-    src: '/assets/sounds/tv_battleback.mp3',
+    src: `${SOUNDS_BASE}tv_battleback.mp3`,
     preload: false,
     volume: 0.9,
   },
   'tv:public_favorite': {
     key: 'tv:public_favorite',
     category: 'tv',
-    src: '/assets/sounds/tv_public_favorite.mp3',
+    src: `${SOUNDS_BASE}tv_public_favorite.mp3`,
     preload: false,
     volume: 0.9,
   },
@@ -218,7 +233,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'music:gb_main': {
     key: 'music:gb_main',
     category: 'music',
-    src: '/assets/sounds/glassbridge/glass bridge main 1.mp3',
+    src: `${SOUNDS_BASE}glassbridge/glass bridge main 1.mp3`,
     preload: false,
     volume: 0.5,
     loop: true,
@@ -231,7 +246,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:gb_safe_step': {
     key: 'minigame:gb_safe_step',
     category: 'minigame',
-    src: '/assets/sounds/glassbridge/glass step.mp3',
+    src: `${SOUNDS_BASE}glassbridge/glass step.mp3`,
     preload: false,
     volume: 0.9,
   },
@@ -242,7 +257,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:gb_death': {
     key: 'minigame:gb_death',
     category: 'minigame',
-    src: '/assets/sounds/glassbridge/jump fall death.mp3',
+    src: `${SOUNDS_BASE}glassbridge/jump fall death.mp3`,
     preload: false,
     volume: 1.0,
   },
@@ -254,7 +269,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:gb_winner': {
     key: 'minigame:gb_winner',
     category: 'minigame',
-    src: '/assets/sounds/glassbridge/glass bridge winner.mp3',
+    src: `${SOUNDS_BASE}glassbridge/glass bridge winner.mp3`,
     preload: false,
     volume: 1.0,
   },
@@ -266,7 +281,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   'minigame:gb_new_turn': {
     key: 'minigame:gb_new_turn',
     category: 'minigame',
-    src: '/assets/sounds/glassbridge/new player turn.mp3',
+    src: `${SOUNDS_BASE}glassbridge/new player turn.mp3`,
     preload: false,
     volume: 0.85,
   },
