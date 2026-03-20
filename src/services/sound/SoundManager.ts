@@ -55,10 +55,10 @@ function _makeMusicEl(src: string, volume: number): HTMLAudioElement {
   return el;
 }
 
-function _makeSfxEl(src: string, volume: number): HTMLAudioElement {
+function _makeSfxEl(src: string, volume: number, loop = false): HTMLAudioElement {
   const el = document.createElement('audio');
   el.src = src;
-  el.loop = false;
+  el.loop = loop;
   el.volume = Math.max(0, Math.min(1, volume));
   el.preload = 'none';
   return el;
@@ -84,6 +84,9 @@ class _SoundManager {
 
   // Requests queued before the first user gesture
   private _playQueue: QueuedPlay[] = [];
+
+  // Stored unlock handler — ensures only one set of listeners is ever registered
+  private _unlockHandler: (() => void) | null = null;
 
   // ── Initialisation ──────────────────────────────────────────────────────────
 
@@ -156,8 +159,8 @@ class _SoundManager {
     // Find a free element in the pool
     let el = pool.find((e) => e.paused || e.ended);
     if (!el && pool.length < SFX_POOL_SIZE) {
-      // Grow the pool
-      el = _makeSfxEl(entry.src, effectiveVol);
+      // Grow the pool — honour entry.loop so looping SFX (e.g. wheel-spin) work correctly
+      el = _makeSfxEl(entry.src, effectiveVol, entry.loop ?? false);
       el.addEventListener('error', () => {
         if (!this._failedKeys.has(key)) {
           const code = el!.error?.code ?? 'unknown';
@@ -401,6 +404,8 @@ class _SoundManager {
    *   immediately unlock and drain the play queue.
    * - Also arms document-level listeners so any subsequent gesture unlocks
    *   if this is called before any interaction has occurred.
+   * - Safe to call multiple times — only one set of document listeners is
+   *   ever registered, preventing listener leaks.
    *
    * After unlock, all queued play/playMusic requests are replayed.
    */
@@ -412,33 +417,37 @@ class _SoundManager {
       }
       return;
     }
-    if (_audioDebug) {
-      console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
+
+    // Only arm document listeners once — subsequent calls simply try to fire
+    // the existing handler immediately without registering duplicate listeners.
+    if (!this._unlockHandler) {
+      if (_audioDebug) {
+        console.log('[SoundManager] unlockOnUserGesture() — arming unlock listeners');
+      }
+      const handler = () => {
+        if (this._unlocked) return;
+        this._unlocked = true;
+        document.removeEventListener('click', handler, true);
+        document.removeEventListener('keydown', handler, true);
+        document.removeEventListener('touchstart', handler, true);
+        this._unlockHandler = null;
+        if (_audioDebug) {
+          console.log(
+            '[SoundManager] audio unlocked — draining queue of',
+            this._playQueue.length,
+            'item(s)',
+          );
+        }
+        this._drainQueue();
+      };
+      this._unlockHandler = handler;
+      document.addEventListener('click', handler, true);
+      document.addEventListener('keydown', handler, true);
+      document.addEventListener('touchstart', handler, true);
     }
 
-    const doUnlock = () => {
-      if (this._unlocked) return;
-      this._unlocked = true;
-      document.removeEventListener('click', doUnlock, true);
-      document.removeEventListener('keydown', doUnlock, true);
-      document.removeEventListener('touchstart', doUnlock, true);
-      if (_audioDebug) {
-        console.log(
-          '[SoundManager] audio unlocked — draining queue of',
-          this._playQueue.length,
-          'item(s)',
-        );
-      }
-      this._drainQueue();
-    };
-
-    // Arm listeners for future gestures (pre-arm use case)
-    document.addEventListener('click', doUnlock, true);
-    document.addEventListener('keydown', doUnlock, true);
-    document.addEventListener('touchstart', doUnlock, true);
-
     // Also try immediately — effective when called from inside a gesture handler
-    doUnlock();
+    this._unlockHandler?.();
   }
 
   private _drainQueue(): void {

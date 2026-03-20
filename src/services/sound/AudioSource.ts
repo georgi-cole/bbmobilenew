@@ -10,8 +10,6 @@
  * any callers that import it from the sound service barrel (index.ts).
  */
 
-const _audioDebug = import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true';
-
 export interface AudioSourceOptions {
   src: string;
   volume?: number;
@@ -72,21 +70,23 @@ export class AudioSource {
         resolve(); // don't reject — caller should still get a usable (silent) source
       });
 
-      el.addEventListener(
-        'canplaythrough',
-        () => {
-          if (_audioDebug) {
-            console.debug(`[AudioSource] ready: ${this._src}`);
-          }
-          resolve();
-        },
-        { once: true },
-      );
+      if (this._preload) {
+        // Resolve on whichever readiness event fires first.
+        // canplaythrough is ideal but may be delayed indefinitely on slow connections;
+        // canplay and loadedmetadata are earlier checkpoints that guarantee the
+        // browser has enough data to start the audio element.
+        const earlyResolve = () => resolve();
+        for (const evt of ['loadedmetadata', 'canplay', 'canplaythrough']) {
+          el.addEventListener(evt, earlyResolve, { once: true });
+        }
+        // Safety-net: always settle within 5 s so callers are never left hanging
+        setTimeout(resolve, 5000);
+      } else {
+        // Not preloading — resolve immediately; element is ready to play on demand
+        resolve();
+      }
 
       this._audio = el;
-
-      // If not preloading, resolve immediately (element is ready to play on demand)
-      if (!this._preload) resolve();
     });
   }
 
