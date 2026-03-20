@@ -26,6 +26,7 @@ import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlic
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
+import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 
 export const store = configureStore({
   reducer: {
@@ -74,6 +75,10 @@ store.subscribe(() => {
   if (current.settings !== prevSettings) {
     prevSettings = current.settings;
     saveSettings(current.settings);
+    // Keep SoundManager category enabled/volume state in sync with Redux audio
+    // settings so that mute controls and Settings screen are the canonical source
+    // of truth and stale localStorage flags cannot silently disable audio.
+    syncRuntimeAudioSettings(current.settings.audio);
   }
   if (current.userProfile !== prevUserProfile) {
     prevUserProfile = current.userProfile;
