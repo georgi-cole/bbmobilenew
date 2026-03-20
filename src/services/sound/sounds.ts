@@ -447,19 +447,22 @@ export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
  * - Returns null if no mapping can be found.
  */
 export function resolveKey(input: string): string | null {
+  // Use hasOwnProperty to avoid false positives from inherited prototype
+  // properties (e.g. "toString", "hasOwnProperty" itself would match with `in`).
+
   // 1. Already a canonical key?
-  if (input in SOUND_REGISTRY) return input;
+  if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, input)) return input;
 
   // 2. Alias map lookup (bare stem, no extension)
   const stem = input.replace(/\.mp3$/i, '');
-  if (stem in FILENAME_ALIAS_MAP) return FILENAME_ALIAS_MAP[stem];
+  if (Object.prototype.hasOwnProperty.call(FILENAME_ALIAS_MAP, stem)) return FILENAME_ALIAS_MAP[stem];
 
   // 3. Auto-derive: prefix_rest → prefix:rest
   const PREFIXES = ['ui', 'tv', 'player', 'minigame', 'music'] as const;
   for (const p of PREFIXES) {
     if (stem.startsWith(`${p}_`)) {
       const candidate = `${p}:${stem.slice(p.length + 1)}`;
-      if (candidate in SOUND_REGISTRY) return candidate;
+      if (Object.prototype.hasOwnProperty.call(SOUND_REGISTRY, candidate)) return candidate;
     }
   }
 
