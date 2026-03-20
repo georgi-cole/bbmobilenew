@@ -491,6 +491,19 @@ class _SoundManager {
       }
       if (pool.length === 0) {
         const el = _makeSfxEl(entry.src, 0, entry.loop ?? false);
+        // Attach error handling so primed elements behave like normally pooled
+        // ones — load errors are logged and the key is marked failed so the
+        // pool does not keep reusing a broken element.
+        el.addEventListener('error', () => {
+          if (!this._failedKeys.has(key)) {
+            const code = el.error?.code ?? 'unknown';
+            console.error(
+              `[SoundManager] SFX load error "${key}" (code ${code}):`,
+              el.error?.message ?? entry.src,
+            );
+            this._failedKeys.add(key);
+          }
+        });
         pool.push(el);
         // Call play() synchronously in the gesture context — iOS cares about
         // the synchronous call, not the promise resolution.  Immediately pause
@@ -500,9 +513,13 @@ class _SoundManager {
           el.pause();
           el.currentTime = 0;
           el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
-        }).catch(() => {
-          // Silently ignore priming failures (e.g. file not found) —
-          // the real play() will handle errors with proper logging.
+        }).catch((err) => {
+          // Log priming failures in debug builds and mark the key as failed
+          // so we don't keep reusing a broken element.
+          if (_audioDebug) {
+            console.warn(`[SoundManager] SFX priming play() failed for "${key}":`, err);
+          }
+          this._failedKeys.add(key);
         });
       }
     }

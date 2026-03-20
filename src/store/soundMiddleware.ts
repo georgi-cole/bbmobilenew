@@ -100,19 +100,27 @@ function _applyPhaseAudio(newPhase: string): void {
     if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
       void SoundManager.play('tv:event');
     }
-    void SoundManager.playMusic('music:hoh_comp_general');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:hoh_comp_general');
+    }
   } else if (NOMINATIONS_MUSIC_PHASES.has(newPhase)) {
-    void SoundManager.playMusic('music:nominations_main');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:nominations_main');
+    }
   } else if (VETO_CEREMONY_PHASES.has(newPhase)) {
     // Play veto ceremony stinger once, then start veto phase loop
     void SoundManager.play('tv:veto_ceremony');
-    void SoundManager.playMusic('music:veto_phase');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:veto_phase');
+    }
   } else if (newPhase === 'live_vote') {
     // Voting ceremony stinger; keep any existing background music
     void SoundManager.play('tv:voting_eviction');
   } else if (MUSIC_STOP_PHASES.has(newPhase)) {
     // Clean week boundary — stop any lingering phase music
-    SoundManager.stopMusic();
+    if (!_socialMusicActive) {
+      SoundManager.stopMusic();
+    }
   }
 }
 
