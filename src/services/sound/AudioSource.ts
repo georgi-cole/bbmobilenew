@@ -27,13 +27,30 @@ interface HowlInstance {
 
 let HowlClass: HowlConstructor | null = null;
 
-/** Attempt to load Howl lazily; safe to call multiple times. */
+const _audioDebug = import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true';
+
+/**
+ * Attempt to load Howl lazily; safe to call multiple times.
+ * Caches a successful load; transient failures are not cached so the next
+ * call can retry (e.g. after a network hiccup on a chunked bundle).
+ */
 async function loadHowl(): Promise<HowlConstructor | null> {
   if (HowlClass) return HowlClass;
   try {
     const mod = await import('howler');
     HowlClass = (mod as unknown as { Howl: HowlConstructor }).Howl ?? null;
-  } catch {
+    if (_audioDebug) {
+      if (HowlClass) {
+        console.log('[AudioSource] Howler loaded successfully — using Howl backend');
+      } else {
+        console.warn('[AudioSource] Howler import succeeded but Howl class not found — falling back to HTMLAudio');
+      }
+    }
+  } catch (err) {
+    // Do NOT cache failures — allow retries on transient chunk/network errors.
+    if (_audioDebug) {
+      console.warn('[AudioSource] Failed to import Howler — falling back to HTMLAudio', err);
+    }
     HowlClass = null;
   }
   return HowlClass;
@@ -90,6 +107,15 @@ export class AudioSource {
         volume: this._volume,
         loop: this._loop,
         preload: this._preload,
+        onload: () => {
+          console.debug(`[AudioSource] Howl loaded: ${this._src}`);
+        },
+        onloaderror: (_id, err) => {
+          console.error(`[AudioSource] Howl load error for "${this._src}":`, err);
+        },
+        onplayerror: (_id, err) => {
+          console.error(`[AudioSource] Howl play error for "${this._src}":`, err);
+        },
       });
     } else {
       // HTMLAudio fallback
@@ -99,6 +125,22 @@ export class AudioSource {
         el.volume = this._volume;
         el.loop = this._loop;
         if (this._preload) el.preload = 'auto';
+
+        el.addEventListener('error', () => {
+          const code = el.error?.code ?? 'unknown';
+          const msg = el.error?.message ?? '';
+          console.error(`[AudioSource] HTMLAudio error for "${this._src}" (code ${code}): ${msg}`);
+        });
+        el.addEventListener('stalled', () => {
+          console.warn(`[AudioSource] HTMLAudio stalled: "${this._src}"`);
+        });
+        el.addEventListener('suspend', () => {
+          console.warn(`[AudioSource] HTMLAudio suspend: "${this._src}"`);
+        });
+        el.addEventListener('abort', () => {
+          console.warn(`[AudioSource] HTMLAudio abort: "${this._src}"`);
+        });
+
         this._audio = el;
       }
     }
@@ -108,8 +150,8 @@ export class AudioSource {
   play(): number {
     if (this._howl) return this._howl.play();
     if (this._audio) {
-      void this._audio.play().catch(() => {
-        /* autoplay may be blocked; silently ignore */
+      void this._audio.play().catch((err: unknown) => {
+        console.warn(`[AudioSource] HTMLAudio play() rejected for "${this._src}":`, err);
       });
     }
     return 0;
