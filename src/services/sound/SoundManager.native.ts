@@ -25,6 +25,10 @@ class _SoundManagerNative {
     // TODO: play sound via native audio library
   }
 
+  get currentMusicKey(): string | null {
+    return null;
+  }
+
   async playMusic(_key: string, _opts?: PlayOptions): Promise<void> {
     // TODO: start looping music track via native audio library
   }

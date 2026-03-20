@@ -14,6 +14,10 @@
  *   - game/activateBattleBack  → tv:battleback
  *   - finale/castVote          → ui:jury_vote
  *   - finale/finalizeFinale    → tv:winner_reveal
+ *   - social/openSocialPanel   → music:social_module (saves previous track)
+ *   - social/closeSocialPanel  → stop social music, restore previous track
+ *   - social/openIncomingInbox → music:social_module (saves previous track)
+ *   - social/closeIncomingInbox→ stop social music, restore previous track
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
@@ -25,9 +29,19 @@ interface GameState {
 
 interface StateWithGame {
   game: GameState;
+  social?: { panelOpen?: boolean; incomingInboxOpen?: boolean };
 }
 
 const EVICTION_PHASES = new Set<string>(['eviction_results', 'final4_eviction']);
+
+/**
+ * Music key that was playing before the Social module opened, so it can be
+ * restored when the module closes.  Tracked as module-level state so it
+ * persists across re-renders without being stored in Redux.
+ */
+let _preSocialMusicKey: string | null = null;
+/** Whether the social module music is currently active. */
+let _socialMusicActive = false;
 
 export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (typeof action !== 'object' || action === null || !('type' in action)) {
@@ -121,6 +135,42 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'finale/finalizeFinale') {
     const result = next(action);
     void SoundManager.play('tv:winner_reveal');
+    return result;
+  }
+
+  // ── Social module opened (outgoing panel or incoming inbox) ───────────────
+  if (type === 'social/openSocialPanel' || type === 'social/openIncomingInbox') {
+    const result = next(action);
+    if (!_socialMusicActive) {
+      _preSocialMusicKey = SoundManager.currentMusicKey;
+      _socialMusicActive = true;
+      void SoundManager.playMusic('music:social_module');
+    }
+    return result;
+  }
+
+  // ── Social module closed (outgoing panel or incoming inbox) ───────────────
+  if (type === 'social/closeSocialPanel' || type === 'social/closeIncomingInbox') {
+    const result = next(action);
+    if (_socialMusicActive) {
+      const state = api.getState() as StateWithGame;
+      const panelOpen = state.social?.panelOpen ?? false;
+      const inboxOpen = state.social?.incomingInboxOpen ?? false;
+      // Only restore once both the panel and inbox are closed
+      if (!panelOpen && !inboxOpen) {
+        _socialMusicActive = false;
+        const prev = _preSocialMusicKey;
+        _preSocialMusicKey = null;
+        // Only stop music if it's still the social module track (another part
+        // of the app may have already transitioned to a different track)
+        if (SoundManager.currentMusicKey === 'music:social_module') {
+          SoundManager.stopMusic();
+          if (prev) {
+            void SoundManager.playMusic(prev);
+          }
+        }
+      }
+    }
     return result;
   }
 
