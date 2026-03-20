@@ -3,6 +3,22 @@
  *
  * Defines the canonical list of sound keys, their categories, and metadata
  * used by SoundManager to resolve and play audio assets.
+ *
+ * ## Option B: filename-driven sound keys
+ *
+ * Keys are derived from the uploaded filename prefix:
+ *   ui_*, tv_*, player_*, minigame_*, music_*
+ * Format: `[prefix]:[rest_of_stem]`  e.g. `tv:battleback`
+ *
+ * For files that do NOT follow a recognized prefix (legacy or vendor names),
+ * FILENAME_ALIAS_MAP maps the bare filename stem to the canonical semantic key.
+ * This avoids physically renaming binary assets — the registry resolves both
+ * the canonical key AND any aliases to the same underlying file.
+ *
+ * Usage:
+ *   import { resolveKey } from './sounds';
+ *   resolveKey('live_vote') // → 'tv:live_vote'
+ *   resolveKey('tv:live_vote') // → 'tv:live_vote' (pass-through)
  */
 
 /** Broad groupings that can be independently enabled/muted/volumed. */
@@ -301,4 +317,151 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.85,
   },
+
+  // ── Phase / TV event music ────────────────────────────────────────────────
+
+  /**
+   * HOH competition and general competition music.
+   * Asset: public/assets/sounds/music_hoh_comp_general.mp3
+   */
+  'music:hoh_comp_general': {
+    key: 'music:hoh_comp_general',
+    category: 'music',
+    src: `${SOUNDS_BASE}music_hoh_comp_general.mp3`,
+    preload: false,
+    volume: 0.6,
+    loop: true,
+  },
+
+  /**
+   * Live vote stinger — plays during live voting sequences.
+   * Asset: public/assets/sounds/live_vote.mp3
+   */
+  'tv:live_vote': {
+    key: 'tv:live_vote',
+    category: 'tv',
+    src: `${SOUNDS_BASE}live_vote.mp3`,
+    preload: false,
+    volume: 0.85,
+  },
+
+  /**
+   * Nominations reveal — horror/suspense variant.
+   * Asset: public/assets/sounds/nominations_horror.mp3
+   */
+  'tv:nominations_horror': {
+    key: 'tv:nominations_horror',
+    category: 'tv',
+    src: `${SOUNDS_BASE}nominations_horror.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+
+  /**
+   * Nominations reveal — main theme variant.
+   * Asset: public/assets/sounds/nominations_main.mp3
+   */
+  'tv:nominations_main': {
+    key: 'tv:nominations_main',
+    category: 'tv',
+    src: `${SOUNDS_BASE}nominations_main.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+
+  /**
+   * Veto ceremony stinger.
+   * Asset: public/assets/sounds/veto_ceremony.mp3
+   */
+  'tv:veto_ceremony': {
+    key: 'tv:veto_ceremony',
+    category: 'tv',
+    src: `${SOUNDS_BASE}veto_ceremony.mp3`,
+    preload: false,
+    volume: 0.85,
+  },
+
+  /**
+   * Veto phase loop — plays during the Power of Veto competition phase.
+   * Asset: public/assets/sounds/veto_phase.mp3
+   */
+  'tv:veto_phase': {
+    key: 'tv:veto_phase',
+    category: 'tv',
+    src: `${SOUNDS_BASE}veto_phase.mp3`,
+    preload: false,
+    volume: 0.85,
+    loop: true,
+  },
+
+  /**
+   * Voting for eviction — plays during the eviction vote ceremony.
+   * Asset: public/assets/sounds/voting_for_eviction_user_and_housguests.mp3
+   * (Note: actual filename has intentional typo "housguests".)
+   */
+  'tv:voting_eviction': {
+    key: 'tv:voting_eviction',
+    category: 'tv',
+    src: `${SOUNDS_BASE}voting_for_eviction_user_and_housguests.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
 };
+
+/**
+ * FILENAME_ALIAS_MAP — maps bare filename stems (without extension) to their
+ * canonical SOUND_REGISTRY key.
+ *
+ * This supports Option B: files uploaded with non-standard names (e.g. legacy
+ * vendor names, capitalised names, or abbreviated names) are resolved to their
+ * canonical semantic key without physically renaming the binary asset.
+ *
+ * Usage:
+ *   const key = FILENAME_ALIAS_MAP['live_vote'] ?? 'tv:live_vote';
+ *   // or use the resolveKey() helper below
+ */
+export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
+  // Legacy / non-prefix filenames → canonical key
+  live_vote:                                             'tv:live_vote',
+  nominations_horror:                                    'tv:nominations_horror',
+  nominations_main:                                      'tv:nominations_main',
+  veto_ceremony:                                         'tv:veto_ceremony',
+  veto_phase:                                            'tv:veto_phase',
+  voting_for_eviction_user_and_housguests:               'tv:voting_eviction',
+  // Alternate / previously-used capitalised filenames (resolve safely)
+  Social_module:                                         'music:social_module',
+  Hoh_competition_and_general_competition:               'music:hoh_comp_general',
+};
+
+/**
+ * resolveKey — resolves a filename stem OR an already-canonical key to the
+ * canonical SOUND_REGISTRY key.
+ *
+ * - If `input` is already a registered key (e.g. `"tv:live_vote"`), it is
+ *   returned unchanged.
+ * - If `input` matches an entry in FILENAME_ALIAS_MAP, the mapped key is
+ *   returned.
+ * - Otherwise, Option B automatic derivation: strip the leading prefix word
+ *   before the first underscore and reconstruct a `prefix:rest` key.
+ *   e.g. `"ui_navigate"` → `"ui:navigate"`.
+ * - Returns null if no mapping can be found.
+ */
+export function resolveKey(input: string): string | null {
+  // 1. Already a canonical key?
+  if (input in SOUND_REGISTRY) return input;
+
+  // 2. Alias map lookup (bare stem, no extension)
+  const stem = input.replace(/\.mp3$/i, '');
+  if (stem in FILENAME_ALIAS_MAP) return FILENAME_ALIAS_MAP[stem];
+
+  // 3. Auto-derive: prefix_rest → prefix:rest
+  const PREFIXES = ['ui', 'tv', 'player', 'minigame', 'music'] as const;
+  for (const p of PREFIXES) {
+    if (stem.startsWith(`${p}_`)) {
+      const candidate = `${p}:${stem.slice(p.length + 1)}`;
+      if (candidate in SOUND_REGISTRY) return candidate;
+    }
+  }
+
+  return null;
+}

@@ -6,6 +6,9 @@ import useIntroHubMusic from '../../hooks/useIntroHubMusic';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
+import SoundConsentPopup, {
+  HUB_MUSIC_CONSENT_KEY,
+} from '../../components/SoundConsentPopup/SoundConsentPopup';
 import { SoundManager } from '../../services/sound/SoundManager';
 import { preloadImage } from '../../utils/preload';
 import './HomeHub.css';
@@ -22,8 +25,10 @@ import './HomeHub.css';
  *   3. IMPORTANT — background loaded first: hub background is preloaded during
  *      the splash so buttons never appear over an empty background.
  *   4. After splash exits, PermissionPrompts appear over the hub (location only;
- *      sound is unlocked via the Play gesture instead).
- *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
+ *      sound consent is handled separately via SoundConsentPopup).
+ *   5. SoundConsentPopup is shown after splash unless the user already gave
+ *      persistent consent ('bb:hubMusicConsent' === 'granted').
+ *   6. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
   { to: '/game',         label: '▶  Play',          variant: 'primary'   },
@@ -32,6 +37,15 @@ const HUB_BUTTONS = [
   { to: '/leaderboard',  label: '🏆 Leaderboard',    variant: 'secondary' },
   { to: '/credits',      label: '🎬 Credits',        variant: 'ghost'     },
 ] as const;
+
+/** Returns true if the hub music consent popup should be shown. */
+function shouldShowSoundConsent(): boolean {
+  try {
+    return localStorage.getItem(HUB_MUSIC_CONSENT_KEY) !== 'granted';
+  } catch {
+    return true;
+  }
+}
 
 export default function HomeHub() {
   const navigate = useNavigate();
@@ -43,13 +57,15 @@ export default function HomeHub() {
   const [preloading, setPreloading] = useState(false);
   const bgPreloadedRef = useRef(false);
 
+  // Sound consent popup: shown after splash unless user previously consented.
+  const [showSoundConsent, setShowSoundConsent] = useState(false);
+
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
 
   // Play the intro hub ambient music while this screen is mounted.
-  // The hook starts playback immediately; on first load the Web Audio context
-  // may still be suspended (autoplay policy), so we also call playMusic()
-  // explicitly from handlePlay after unlocking audio.
+  // The hook only autoplays if persistent consent is stored; otherwise the
+  // SoundConsentPopup below provides the required user gesture.
   useIntroHubMusic();
 
   // Preload background as soon as its URL resolves, so it is ready before
@@ -59,6 +75,25 @@ export default function HomeHub() {
     bgPreloadedRef.current = true;
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
+
+  // After the splash exits, decide whether to show the sound consent popup.
+  useEffect(() => {
+    if (splashDone && shouldShowSoundConsent()) {
+      setShowSoundConsent(true);
+    }
+  }, [splashDone]);
+
+  const handleSoundConsentEnable = () => {
+    // User gesture — unlock Web Audio API and start hub music.
+    SoundManager.unlockOnUserGesture();
+    void SoundManager.playMusic('music:intro_hub_loop');
+    setShowSoundConsent(false);
+  };
+
+  const handleSoundConsentDismiss = () => {
+    // Option B: denial is NOT persisted — popup will show again next visit.
+    setShowSoundConsent(false);
+  };
 
   const handlePlay = () => {
     // Play gesture — always unlock the Web Audio API here so that AudioGate
@@ -80,9 +115,19 @@ export default function HomeHub() {
       )}
 
       {/* Permission prompts shown after splash exits, over the hub.
-          Sound prompt disabled — sound is unlocked via the Play gesture. */}
+          Sound prompt disabled — sound consent is handled by SoundConsentPopup. */}
       {splashDone && (
         <PermissionPrompts showSoundPrompt={false} />
+      )}
+
+      {/* Sound consent popup — asks user to enable hub music.
+          Shown after splash unless user already gave persistent consent.
+          "Not now" dismisses without persistence (Option B: ask again next time). */}
+      {showSoundConsent && (
+        <SoundConsentPopup
+          onEnable={handleSoundConsentEnable}
+          onDismiss={handleSoundConsentDismiss}
+        />
       )}
 
       {/* Asset preloader overlay — shown when Play is pressed */}
