@@ -60,9 +60,6 @@ export default function HomeHub() {
   const [needsSoundConsent] = useState(() => shouldShowSoundConsent());
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
 
-  // Sound consent popup: shown after splash unless user previously consented.
-  const [showSoundConsent, setShowSoundConsent] = useState(false);
-
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
 
@@ -79,23 +76,16 @@ export default function HomeHub() {
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
 
-  // After the splash exits, decide whether to show the sound consent popup.
-  useEffect(() => {
-    if (splashDone && shouldShowSoundConsent()) {
-      setShowSoundConsent(true);
-    }
-  }, [splashDone]);
-
   const handleSoundConsentEnable = () => {
     // User gesture — unlock Web Audio API and start hub music.
     SoundManager.unlockOnUserGesture();
     void SoundManager.playMusic('music:intro_hub_loop');
-    setShowSoundConsent(false);
+    setSoundConsentHidden(true);
   };
 
   const handleSoundConsentDismiss = () => {
     // Option B: denial is NOT persisted — popup will show again next visit.
-    setShowSoundConsent(false);
+    setSoundConsentHidden(true);
   };
 
   const handlePlay = () => {
