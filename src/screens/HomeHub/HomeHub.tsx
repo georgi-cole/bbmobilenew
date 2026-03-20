@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import useLoadIntroHub from '../../hooks/useLoadIntroHub';
+import useIntroHubMusic from '../../hooks/useIntroHubMusic';
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
 import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
@@ -45,6 +46,12 @@ export default function HomeHub() {
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
 
+  // Play the intro hub ambient music while this screen is mounted.
+  // The hook starts playback immediately; on first load the Web Audio context
+  // may still be suspended (autoplay policy), so we also call playMusic()
+  // explicitly from handlePlay after unlocking audio.
+  useIntroHubMusic();
+
   // Preload background as soon as its URL resolves, so it is ready before
   // the splash dismisses and buttons become visible.
   useEffect(() => {
@@ -58,6 +65,9 @@ export default function HomeHub() {
     // is not needed on the Intro/Home route.  This satisfies browser autoplay
     // policy: the first user gesture on the home screen unlocks audio context.
     SoundManager.unlockOnUserGesture();
+    // Explicitly start intro hub music in case autoplay was blocked on mount.
+    // playMusic() is idempotent — if music is already playing it is a no-op.
+    void SoundManager.playMusic('music:intro_hub_loop');
     setPreloading(true);
   };
 

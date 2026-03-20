@@ -43,6 +43,7 @@ class _SoundManager {
   async init(): Promise<void> {
     if (this._initialised) return;
     this._initialised = true;
+    console.log('[SoundManager] init() — registering', Object.keys(SOUND_REGISTRY).length, 'sound keys');
 
     for (const entry of Object.values(SOUND_REGISTRY)) {
       this.register(entry);
@@ -50,12 +51,14 @@ class _SoundManager {
 
     // Pre-init preload entries eagerly
     const preloads = Object.values(SOUND_REGISTRY).filter((e) => e.preload);
+    console.log('[SoundManager] preloading', preloads.length, 'entries:', preloads.map((e) => e.key));
     await Promise.all(
       preloads.map((e) => {
         const src = this._sources.get(e.key);
         return src ? src.init() : Promise.resolve();
       }),
     );
+    console.log('[SoundManager] init() complete');
   }
 
   // ── Registration ──────────────────────────────────────────────────────────
@@ -85,7 +88,10 @@ class _SoundManager {
       return;
     }
     const cat = this._getCategory(entry.category);
-    if (!cat.enabled) return;
+    if (!cat.enabled) {
+      console.log(`[SoundManager] play("${key}") skipped — category "${entry.category}" is disabled`);
+      return;
+    }
 
     let src = this._sources.get(key);
     if (!src) {
@@ -99,6 +105,7 @@ class _SoundManager {
 
     const vol = opts?.volume ?? entry.volume ?? 1;
     const effectiveVolume = Math.max(0, Math.min(1, vol * cat.volume));
+    console.log(`[SoundManager] play("${key}") vol=${effectiveVolume.toFixed(2)} (entry=${vol}, cat=${cat.volume}) already=${src.isPlaying}`);
     src.setVolume(effectiveVolume);
     src.play();
   }
@@ -112,7 +119,10 @@ class _SoundManager {
 
   /** Start a looping music track.  Stops any previously-playing music first. */
   async playMusic(key: string, opts?: PlayOptions): Promise<void> {
-    if (this._musicKey === key) return;
+    if (this._musicKey === key) {
+      console.log(`[SoundManager] playMusic("${key}") — already playing, no-op`);
+      return;
+    }
     this.stopMusic();
 
     const entry = SOUND_REGISTRY[key];
@@ -121,8 +131,12 @@ class _SoundManager {
       return;
     }
     const cat = this._getCategory('music');
-    if (!cat.enabled) return;
+    if (!cat.enabled) {
+      console.log(`[SoundManager] playMusic("${key}") skipped — music category is disabled`);
+      return;
+    }
 
+    console.log(`[SoundManager] playMusic("${key}")`);
     this._musicKey = key;
     await this.play(key, opts);
   }
@@ -130,6 +144,7 @@ class _SoundManager {
   /** Stop the currently-playing music track. */
   stopMusic(): void {
     if (!this._musicKey) return;
+    console.log(`[SoundManager] stopMusic() — stopping "${this._musicKey}"`);
     const src = this._sources.get(this._musicKey);
     src?.stop();
     this._musicKey = null;
@@ -142,6 +157,7 @@ class _SoundManager {
    * No-ops silently if the key is unknown or not currently playing.
    */
   stop(key: string): void {
+    console.log(`[SoundManager] stop("${key}")`);
     const src = this._sources.get(key);
     src?.stop();
   }
@@ -151,8 +167,12 @@ class _SoundManager {
   /** Enable or disable all sounds in a category. */
   setCategoryEnabled(category: SoundCategory, enabled: boolean): void {
     const state = this._getCategory(category);
+    const prev = state.enabled;
     state.enabled = enabled;
     this._categories.set(category, state);
+    if (prev !== enabled) {
+      console.log(`[SoundManager] category "${category}" enabled=${enabled}`);
+    }
 
     // Stop music immediately if the music category is disabled while playing
     if (!enabled && category === 'music') {
@@ -163,8 +183,12 @@ class _SoundManager {
   /** Set the master volume for a category (0–1). */
   setCategoryVolume(category: SoundCategory, volume: number): void {
     const state = this._getCategory(category);
-    state.volume = Math.max(0, Math.min(1, volume));
-    this._categories.set(category, state);
+    const newVolume = Math.max(0, Math.min(1, volume));
+    if (state.volume !== newVolume) {
+      state.volume = newVolume;
+      this._categories.set(category, state);
+      console.log(`[SoundManager] category "${category}" volume=${state.volume.toFixed(2)}`);
+    }
   }
 
   // ── User-gesture unlock ───────────────────────────────────────────────────
@@ -181,7 +205,12 @@ class _SoundManager {
    * reached correctly (Howler does not attach itself to `window` in ESM mode).
    */
   unlockOnUserGesture(): void {
-    if (this._unlocked || typeof document === 'undefined') return;
+    if (typeof document === 'undefined') return;
+    if (this._unlocked) {
+      console.log('[SoundManager] unlockOnUserGesture() — already unlocked');
+      return;
+    }
+    console.log('[SoundManager] unlockOnUserGesture() — arming unlock');
 
     const doResume = () => {
       if (this._unlocked) return;
@@ -189,15 +218,21 @@ class _SoundManager {
       document.removeEventListener('click', doResume, true);
       document.removeEventListener('keydown', doResume, true);
       document.removeEventListener('touchstart', doResume, true);
+      console.log('[SoundManager] audio unlocked — resuming AudioContext');
       // Resume AudioContext via dynamic import (works with ESM Howler bundles)
       void import('howler')
         .then((m: unknown) => {
           const ctx = (m as { Howler?: { ctx?: AudioContext } }).Howler?.ctx;
-          if (ctx && ctx.state === 'suspended') return ctx.resume();
+          if (ctx) {
+            console.log(`[SoundManager] AudioContext state="${ctx.state}" — resuming`);
+            if (ctx.state === 'suspended') return ctx.resume();
+          } else {
+            console.log('[SoundManager] Howler AudioContext not available');
+          }
           return undefined;
         })
-        .catch(() => {
-          // Howler unavailable; no AudioContext to resume — safe to ignore.
+        .catch((err: unknown) => {
+          console.warn('[SoundManager] Failed to resume AudioContext via Howler:', err);
         });
     };
 
@@ -208,6 +243,22 @@ class _SoundManager {
 
     // Attempt the resume immediately (effective when called from within a user gesture handler)
     doResume();
+  }
+
+  // ── Debug helpers (DEV only) ──────────────────────────────────────────────
+
+  /** Dump current audio engine state to the console. */
+  debugDump(): void {
+    console.group('[SoundManager] debugDump()');
+    console.log('initialised:', this._initialised, '| unlocked:', this._unlocked);
+    console.log('currentMusicKey:', this._musicKey ?? '(none)');
+    console.log('registered keys:', [...this._sources.keys()].join(', '));
+    console.log('categories:');
+    for (const cat of ['music', 'ui', 'tv', 'player', 'minigame'] as SoundCategory[]) {
+      const state = this._categories.get(cat) ?? DEFAULT_CATEGORY_STATE;
+      console.log(`  ${cat}: enabled=${state.enabled}, volume=${state.volume.toFixed(2)}`);
+    }
+    console.groupEnd();
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -222,3 +273,32 @@ class _SoundManager {
 
 /** Singleton SoundManager instance. */
 export const SoundManager = new _SoundManager();
+
+// ── DEV-only window debug object ────────────────────────────────────────────
+
+if (import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true') {
+  (window as unknown as Record<string, unknown>).__bbAudio = {
+    /** Dump full audio engine state. */
+    dump: () => SoundManager.debugDump(),
+    /** Play a sound key manually: __bbAudio.play('ui:confirm') */
+    play: (key: string) => void SoundManager.play(key),
+    /** Play a music key manually: __bbAudio.music('music:intro_hub_loop') */
+    music: (key: string) => void SoundManager.playMusic(key),
+    /** Stop current music. */
+    stopMusic: () => SoundManager.stopMusic(),
+    /** Stop a looping SFX key. */
+    stop: (key: string) => SoundManager.stop(key),
+    /** Unlock audio (simulates a user gesture). */
+    unlock: () => SoundManager.unlockOnUserGesture(),
+    /** Returns the current music key. */
+    get currentMusic() {
+      return SoundManager.currentMusicKey;
+    },
+  };
+  console.log('[SoundManager] DEV mode — debug helpers available on window.__bbAudio');
+  console.log('  __bbAudio.dump()        — print audio engine state');
+  console.log('  __bbAudio.play(key)     — manually play a sound');
+  console.log('  __bbAudio.music(key)    — manually start music');
+  console.log('  __bbAudio.stopMusic()   — stop current music');
+  console.log('  __bbAudio.unlock()      — simulate user gesture unlock');
+}
