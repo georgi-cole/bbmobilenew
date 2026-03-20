@@ -61,12 +61,12 @@ describe('useGlassBridgeAudio', () => {
   });
 
   it('sound registry src paths use SOUNDS_BASE for production-safe URL resolution', () => {
-    // SOUNDS_BASE is derived from import.meta.env.BASE_URL; in the test
-    // environment BASE_URL defaults to '/', so SOUNDS_BASE = '/assets/sounds/'.
-    // In production (GitHub Pages) BASE_URL = '/bbmobilenew/', so paths would
-    // be '/bbmobilenew/assets/sounds/...'.  Either way every src must start
-    // with SOUNDS_BASE to avoid 404s.
+    // SOUNDS_BASE is derived from import.meta.env.BASE_URL and ensures that
+    // sound URLs are correctly prefixed with the app's base path (for example,
+    // '/bbmobilenew/assets/sounds/...'). Every src must start with SOUNDS_BASE
+    // to avoid 404s when the app is served from a non-root base URL.
     const gbKeys = [
+      'music:gb_main',
       'music:gb_main',
       'minigame:gb_safe_step',
       'minigame:gb_death',
