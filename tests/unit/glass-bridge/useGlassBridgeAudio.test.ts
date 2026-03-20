@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGlassBridgeAudio } from '../../../src/hooks/useGlassBridgeAudio';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
-import { SOUND_REGISTRY } from '../../../src/services/sound/sounds';
+import { SOUND_REGISTRY, SOUNDS_BASE } from '../../../src/services/sound/sounds';
 
 describe('useGlassBridgeAudio', () => {
   beforeEach(() => {
@@ -58,5 +58,27 @@ describe('useGlassBridgeAudio', () => {
     expect(SOUND_REGISTRY['minigame:gb_death']).toBeDefined();
     expect(SOUND_REGISTRY['minigame:gb_winner']).toBeDefined();
     expect(SOUND_REGISTRY['minigame:gb_new_turn']).toBeDefined();
+  });
+
+  it('sound registry src paths use SOUNDS_BASE for production-safe URL resolution', () => {
+    // SOUNDS_BASE is derived from import.meta.env.BASE_URL and ensures that
+    // sound URLs are correctly prefixed with the app's base path (for example,
+    // '/bbmobilenew/assets/sounds/...'). Every src must start with SOUNDS_BASE
+    // to avoid 404s when the app is served from a non-root base URL.
+    const gbKeys = [
+      'music:gb_main',
+      'music:gb_main',
+      'minigame:gb_safe_step',
+      'minigame:gb_death',
+      'minigame:gb_winner',
+      'minigame:gb_new_turn',
+    ] as const;
+    for (const key of gbKeys) {
+      expect(SOUND_REGISTRY[key].src.startsWith(SOUNDS_BASE)).toBe(true);
+    }
+    // Also verify a sample of global sound keys use the same base
+    expect(SOUND_REGISTRY['ui:navigate'].src.startsWith(SOUNDS_BASE)).toBe(true);
+    expect(SOUND_REGISTRY['tv:event'].src.startsWith(SOUNDS_BASE)).toBe(true);
+    expect(SOUND_REGISTRY['ui:confirm'].src.startsWith(SOUNDS_BASE)).toBe(true);
   });
 });
