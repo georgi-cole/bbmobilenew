@@ -252,6 +252,14 @@ const finaleSlice = createSlice({
     resetFinale() {
       return { ...initialState };
     },
+
+    /**
+     * Restore a previously saved finale state (manual save/resume).
+     * Replaces the entire finale slice with the snapshot.
+     */
+    hydrateFinale(_state, action: PayloadAction<FinaleState>) {
+      return action.payload;
+    },
   },
   extraReducers: (builder) => {
     // Automatically reset finale state whenever the game is fully reset.
@@ -271,6 +279,7 @@ export const {
   rerollJurySeed,
   dismissFinale,
   resetFinale,
+  hydrateFinale,
 } = finaleSlice.actions;
 
 export default finaleSlice.reducer;
