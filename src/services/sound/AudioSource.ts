@@ -26,23 +26,31 @@ interface HowlInstance {
 }
 
 let HowlClass: HowlConstructor | null = null;
-let howlerLoadAttempted = false;
 
-/** Attempt to load Howl lazily; safe to call multiple times. */
+const _audioDebug = import.meta.env.DEV || import.meta.env.VITE_AUDIO_DEBUG === 'true';
+
+/**
+ * Attempt to load Howl lazily; safe to call multiple times.
+ * Caches a successful load; transient failures are not cached so the next
+ * call can retry (e.g. after a network hiccup on a chunked bundle).
+ */
 async function loadHowl(): Promise<HowlConstructor | null> {
   if (HowlClass) return HowlClass;
-  if (howlerLoadAttempted) return null;
-  howlerLoadAttempted = true;
   try {
     const mod = await import('howler');
     HowlClass = (mod as unknown as { Howl: HowlConstructor }).Howl ?? null;
-    if (HowlClass) {
-      console.log('[AudioSource] Howler loaded successfully — using Howl backend');
-    } else {
-      console.warn('[AudioSource] Howler import succeeded but Howl class not found — falling back to HTMLAudio');
+    if (_audioDebug) {
+      if (HowlClass) {
+        console.log('[AudioSource] Howler loaded successfully — using Howl backend');
+      } else {
+        console.warn('[AudioSource] Howler import succeeded but Howl class not found — falling back to HTMLAudio');
+      }
     }
   } catch (err) {
-    console.warn('[AudioSource] Failed to import Howler — falling back to HTMLAudio', err);
+    // Do NOT cache failures — allow retries on transient chunk/network errors.
+    if (_audioDebug) {
+      console.warn('[AudioSource] Failed to import Howler — falling back to HTMLAudio', err);
+    }
     HowlClass = null;
   }
   return HowlClass;
@@ -100,7 +108,7 @@ export class AudioSource {
         loop: this._loop,
         preload: this._preload,
         onload: () => {
-          console.log(`[AudioSource] Howl loaded: ${this._src}`);
+          console.debug(`[AudioSource] Howl loaded: ${this._src}`);
         },
         onloaderror: (_id, err) => {
           console.error(`[AudioSource] Howl load error for "${this._src}":`, err);
