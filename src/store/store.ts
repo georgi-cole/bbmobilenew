@@ -26,6 +26,7 @@ import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlic
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
+import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 
 export const store = configureStore({
@@ -46,6 +47,7 @@ export const store = configureStore({
     glassBridge: glassBridgeReducer,
     blackjackTournament: blackjackTournamentReducer,
     riskWheel: riskWheelReducer,
+    wildcardWestern: wildcardWesternReducer,
   },
   preloadedState: {
     settings: loadSettings(),
