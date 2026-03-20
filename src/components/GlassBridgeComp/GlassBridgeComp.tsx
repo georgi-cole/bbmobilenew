@@ -316,7 +316,7 @@ export default function GlassBridgeComp({
 
   // ── Audio ─────────────────────────────────────────────────────────────────
   const { playSafeStep, playDeath, playWinner, playNewTurn } = useGlassBridgeAudio(
-    gb.phase === 'playing',
+    gb.phase !== 'idle',
   );
 
   // ── 1. Initialize on mount ────────────────────────────────────────────────
@@ -680,10 +680,14 @@ export default function GlassBridgeComp({
   // ── 11. Safe-landing animation — detect newly-finished players ────────────
   useEffect(() => {
     if (gb.phase !== 'playing') return;
+    let isFirstFinisher = prevFinishersRef.current.size === 0;
     for (const [pid, p] of Object.entries(gb.progress)) {
       if (p.finishTimeMs !== undefined && !prevFinishersRef.current.has(pid)) {
         prevFinishersRef.current.add(pid);
-        playWinner();
+        if (isFirstFinisher) {
+          playWinner();
+          isFirstFinisher = false;
+        }
         setLandingPlayerIds(prev => [...prev, pid]);
         const t = window.setTimeout(() => {
           setLandingPlayerIds(prev => prev.filter(id => id !== pid));
