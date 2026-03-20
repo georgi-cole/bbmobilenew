@@ -36,7 +36,9 @@ export function getRestartRelevantSnapshotFromSettings(s: SettingsState): Restar
     gameUX: {
       castSize: s.gameUX.castSize,
       spectatorMode: s.gameUX.spectatorMode,
-      compSelection: s.gameUX.compSelection,
+      // Deep-clone compSelection so long-lived refs (e.g. useRef on mount) do
+      // not drift along with live state mutations.
+      compSelection: { ...s.gameUX.compSelection },
     },
     sim: { ...s.sim },
   };

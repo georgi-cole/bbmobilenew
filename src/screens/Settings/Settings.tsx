@@ -111,7 +111,9 @@ export default function Settings() {
       ? settings.gameUX.castSize
       : Math.min(16, Math.max(4, parsed));
     setCastSizeInput(String(clamped));
-    dispatch(setGameUX({ castSize: clamped }));
+    if (clamped !== settings.gameUX.castSize) {
+      dispatch(setGameUX({ castSize: clamped }));
+    }
     return clamped;
   };
 

@@ -251,13 +251,14 @@ describe('resetGame() uses fresh settings', () => {
   it('preserves existing seasonArchives when no payload is provided', () => {
     const store = makeStore();
     persistSettings(DEFAULT_SETTINGS);
-    // Force some archives into state
-    store.dispatch(resetGame([{ season: 1, winner: 'Alice', runnerUp: 'Bob', players: [], week: 12 }]));
+    // Force some archives into state using a minimal valid SeasonArchive shape
+    const existingArchives = [{ seasonIndex: 1, seasonId: 'season-1', playerSummaries: [] }];
+    store.dispatch(resetGame(existingArchives));
     store.dispatch(resetGame()); // second reset with no explicit archives
 
     const { seasonArchives } = store.getState().game;
     expect(seasonArchives).toHaveLength(1);
-    expect(seasonArchives[0].winner).toBe('Alice');
+    expect(seasonArchives[0].seasonId).toBe('season-1');
   });
 });
 
