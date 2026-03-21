@@ -1096,7 +1096,7 @@ export default function WildcardWesternComp({
         {state.phase === 'chooseNextPair' && (
           <div className="ww-chooser">
             <h2>{getParticipantName(state.controllerId ?? '')}, choose the next duel:</h2>
-            <div style={{ fontSize: '1rem', marginBottom: '1.5rem', opacity: 0.8 }}>
+            <div className="ww-chooser-subtitle">
               Select two players to face off in the next showdown.
             </div>
             <PairSelector
