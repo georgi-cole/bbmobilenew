@@ -268,6 +268,42 @@
   border-radius: 0 0 50% 50% / 0 0 20px 20px;
 }
 
+/* ── Twist badge — broadcast-style corner ribbon ──────────────────────────── */
+.tv-zone__twist-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.85);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(245, 158, 11, 0.3);
+  pointer-events: none;
+  user-select: none;
+  animation: twistBadgeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes twistBadgeIn {
+  from { opacity: 0; transform: scale(0.8) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-zone__twist-badge {
+    animation: none;
+  }
+}
+
 /* ── Responsive bezel tweaks ────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .tv-zone__bezel {
