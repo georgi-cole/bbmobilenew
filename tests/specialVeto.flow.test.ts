@@ -421,7 +421,7 @@ describe('VIP Veto — second use decision (human POV holder)', () => {
   it('submitVipSecondUseDecision(true) sets awaitingVipSecondSaveTarget', () => {
     const players = makePlayers(8, 1); // p1 is human POV holder
     const store = makeStore({
-      pohId: 'p0',
+      hohId: 'p0',
       povWinnerId: 'p1',
       nomineeIds: ['p3', 'p4'],
       players,

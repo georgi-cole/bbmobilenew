@@ -3349,8 +3349,10 @@ export const tryActivateSpecialVeto =
     if (alive.length < 6) return false;
 
     const chance = settings.sim.specialVetoChance ?? 25;
-    // Use a twist-specific RNG offset independent of the main game seed
-    const rngSpecial = mulberry32(((game.seed ^ 0x5e7c7074) >>> 0));
+    // Use a twist-specific RNG offset so this roll is independent of the main game seed
+    // sequence and does not perturb future HOH/POV/vote outcomes.
+    const SPECIAL_VETO_RNG_SALT = 0x5e7c7074; // arbitrary constant distinguishing this roll from others
+    const rngSpecial = mulberry32(((game.seed ^ SPECIAL_VETO_RNG_SALT) >>> 0));
     const roll = rngSpecial() * 100;
 
     if (roll >= chance) return false;
