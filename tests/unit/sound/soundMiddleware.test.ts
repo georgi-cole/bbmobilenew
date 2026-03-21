@@ -6,6 +6,7 @@
  *  2. game/setPhase / game/forcePhase dispatch — same policy applied
  *  3. Social-music override guard — playMusic/stopMusic not called while
  *     _socialMusicActive is true
+ *  4. game/setEvictionOverlay — eviction SFX, idempotency, and Battle Back gate
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -14,6 +15,12 @@ import { soundMiddleware } from '../../../src/store/soundMiddleware';
 import { SoundManager } from '../../../src/services/sound/SoundManager';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+interface TestGameState {
+  phase: string;
+  evictionOverlayPlayerId: string | null;
+  battleBack: { used: boolean; winnerId: string | null } | null;
+}
 
 /**
  * Build a minimal Redux store wired with soundMiddleware.
@@ -25,8 +32,13 @@ function makeTestStore(initialPhase = 'week_start') {
   // Minimal game reducer: responds to our test-only SET_PHASE_FOR_TEST action
   // and to game/advance by reading the pre-set nextPhase.
   let _nextPhase = initialPhase;
+  const initialGameState: TestGameState = {
+    phase: initialPhase,
+    evictionOverlayPlayerId: null,
+    battleBack: null,
+  };
   const gameReducer = (
-    state: { phase: string } = { phase: initialPhase },
+    state: TestGameState = initialGameState,
     action: { type: string; payload?: unknown },
   ) => {
     if (action.type === '__SET_NEXT_PHASE__') {
@@ -38,6 +50,18 @@ function makeTestStore(initialPhase = 'week_start') {
     }
     if (action.type === 'game/setPhase' || action.type === 'game/forcePhase') {
       return { ...state, phase: action.payload as string };
+    }
+    if (action.type === 'game/setEvictionOverlay') {
+      return { ...state, evictionOverlayPlayerId: action.payload as string | null };
+    }
+    if (action.type === 'game/clearEvictionOverlay') {
+      if (state.evictionOverlayPlayerId === (action.payload as string)) {
+        return { ...state, evictionOverlayPlayerId: null };
+      }
+      return state;
+    }
+    if (action.type === '__SET_BATTLE_BACK__') {
+      return { ...state, battleBack: action.payload as { used: boolean; winnerId: string | null } | null };
     }
     return state;
   };
@@ -92,6 +116,9 @@ beforeEach(() => {
   const s = makeTestStore();
   s.dispatch({ type: 'social/openSocialPanel' });
   s.dispatch({ type: 'social/closeSocialPanel' });
+  // Reset the module-level _lastEvictionSfxId by dispatching setEvictionOverlay(null).
+  // This is guaranteed to clear the tracker regardless of which player id was last used.
+  s.dispatch({ type: 'game/setEvictionOverlay', payload: null });
   // Clear call history accumulated during the reset so tests start clean.
   vi.clearAllMocks();
   // Re-establish the spies (clearAllMocks removes mock implementations).
@@ -341,5 +368,62 @@ describe('soundMiddleware — game/setEvictionOverlay eviction SFX', () => {
     store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-42' });
     expect(playMusicMock).not.toHaveBeenCalled();
     expect(stopMusicMock).not.toHaveBeenCalled();
+  });
+
+  it('idempotency: dispatching the same id twice (e.g. Final3Ceremony + SpotlightEvictionOverlay mount) only plays SFX once', () => {
+    const store = makeTestStore();
+    // First dispatch: null → 'player-1' → SFX plays
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-1' });
+    // Second dispatch (SpotlightEvictionOverlay mount effect): 'player-1' → 'player-1'
+    // The id was already non-null before next(); this is NOT a null→id transition.
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-1' });
+    expect(playMock).toHaveBeenCalledTimes(1);
+    expect(playMock).toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('clearEvictionOverlay resets the guard so the next eviction can play SFX again', () => {
+    const store = makeTestStore();
+    // First eviction cycle
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-1' });
+    expect(playMock).toHaveBeenCalledWith('player:evicted');
+    vi.clearAllMocks();
+    playMock = vi.spyOn(SoundManager, 'play').mockResolvedValue(undefined);
+
+    // Overlay cleared (unmount)
+    store.dispatch({ type: 'game/clearEvictionOverlay', payload: 'player-1' });
+
+    // Second eviction for a different player in the same session
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-2' });
+    expect(playMock).toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('Battle Back return: setEvictionOverlay does NOT play player:evicted', () => {
+    const store = makeTestStore();
+    // Simulate the state after completeBattleBack: battleBack.used=true, winnerId=id
+    store.dispatch({
+      type: '__SET_BATTLE_BACK__',
+      payload: { used: true, winnerId: 'player-bb' },
+    });
+    vi.clearAllMocks();
+    playMock = vi.spyOn(SoundManager, 'play').mockResolvedValue(undefined);
+
+    // SpotlightEvictionOverlay variant="return" dispatches setEvictionOverlay
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-bb' });
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('non-Battle-Back eviction: setEvictionOverlay plays player:evicted even when battleBack state exists for a different player', () => {
+    const store = makeTestStore();
+    // battleBack.winnerId is a different player (not the current evictee)
+    store.dispatch({
+      type: '__SET_BATTLE_BACK__',
+      payload: { used: true, winnerId: 'player-returner' },
+    });
+    vi.clearAllMocks();
+    playMock = vi.spyOn(SoundManager, 'play').mockResolvedValue(undefined);
+
+    // Real eviction of a different player
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-evicted' });
+    expect(playMock).toHaveBeenCalledWith('player:evicted');
   });
 });

@@ -30,15 +30,27 @@
  *   live_vote                       → tv:voting_eviction (stinger)
  *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
  *                                        game/setEvictionOverlay, see below)
- *   game/setEvictionOverlay(id)     → player:evicted (one-shot, when id non-null)
- *   week_end / week_start           → stop phase music (clean slate)
+ *   game/setEvictionOverlay(id)     → player:evicted (one-shot, null→id transition
+ *                                        only; Battle Back returns are excluded)
+ *   game/clearEvictionOverlay       → resets the evicted-SFX idempotency guard
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
 import { SoundManager } from '../services/sound/SoundManager';
 
+interface BattleBackInfo {
+  /** True once the twist has been used this season. */
+  used: boolean;
+  /** ID of the juror who won the Battle Back competition (null before resolved). */
+  winnerId: string | null;
+}
+
 interface GameState {
   phase: string;
+  /** Player whose eviction cinematic is currently being shown (null when none). */
+  evictionOverlayPlayerId?: string | null;
+  /** Battle Back twist state — used to distinguish return cinematics from evictions. */
+  battleBack?: BattleBackInfo | null;
 }
 
 interface StateWithGame {
@@ -79,6 +91,36 @@ const MUSIC_STOP_PHASES = new Set<string>(['week_start', 'week_end']);
 let _preSocialMusicKey: string | null = null;
 /** Whether the social module music is currently active. */
 let _socialMusicActive = false;
+
+/**
+ * The player id for which `player:evicted` was most recently played.
+ * Used to guard against double-play in two scenarios:
+ *   1. Final3Ceremony dispatches setEvictionOverlay(id) explicitly, then
+ *      SpotlightEvictionOverlay dispatches it again on mount — the second
+ *      dispatch is id→id (not null→id) and is therefore skipped.
+ *   2. React StrictMode double-runs mount effects in DEV — the first call sets
+ *      this variable; the second call finds the id unchanged and skips.
+ * Reset to null whenever the overlay is fully cleared so the next genuine
+ * eviction can trigger the SFX again.
+ */
+let _lastEvictionSfxId: string | null = null;
+
+/**
+ * Returns true when the given player id is the Battle Back winner returning to
+ * the house.  SpotlightEvictionOverlay (variant="return") dispatches
+ * setEvictionOverlay for the returning juror, but we must NOT play the eviction
+ * SFX for their return — they haven't been evicted, they're coming back.
+ *
+ * Detection: after completeBattleBack resolves, battleBack.used is set to true
+ * and battleBack.winnerId holds the returning player's id.  These two flags
+ * together reliably distinguish a return overlay from an eviction overlay.
+ */
+function _isBattleBackReturn(
+  battleBack: BattleBackInfo | null | undefined,
+  playerId: string,
+): boolean {
+  return battleBack?.used === true && battleBack?.winnerId === playerId;
+}
 
 /**
  * Apply phase-driven music / SFX transitions.
@@ -203,15 +245,62 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   // player:evicted is played here (when SpotlightEvictionOverlay mounts and
   // dispatches setEvictionOverlay) rather than on the eviction_results phase
   // transition.  This ensures the SFX fires only when the cinematic actually
-  // begins — i.e. after the vote-reveal modal has been dismissed — and never
-  // during the live vote results display.
-  // clearEvictionOverlay (payload is the player id being cleared) is ignored.
+  // begins — i.e. after the vote-reveal modal has been dismissed.
+  //
+  // Guards applied to avoid false positives:
+  //
+  //   null→id only: SpotlightEvictionOverlay (variant="return") is reused for
+  //     Battle Back returns and also dispatches setEvictionOverlay on mount.
+  //     By reading the state *before* next(), we can detect when the overlay id
+  //     was already set (id→id) and skip the SFX.
+  //
+  //   Battle Back return exclusion: when the Battle Back winner's id is set as
+  //     the overlay player *and* battleBack.used is true, this is a return
+  //     animation, not an eviction cinematic.
+  //
+  //   Idempotency tracker (_lastEvictionSfxId): Final3Ceremony explicitly
+  //     dispatches setEvictionOverlay(id) before mounting SpotlightEviction
+  //     Overlay (which dispatches it again on mount), and React StrictMode
+  //     double-runs effects in DEV.  Storing the last-played id prevents the
+  //     second identical dispatch from replaying the SFX.
   if (type === 'game/setEvictionOverlay') {
+    const prevGame = (api.getState() as StateWithGame).game;
+    const prevOverlayId = prevGame?.evictionOverlayPlayerId ?? null;
+    const newId = (action as { type: string; payload: string | null }).payload;
     const result = next(action);
-    const payload = (action as { type: string; payload: string | null }).payload;
-    if (payload !== null && payload !== undefined) {
+
+    if (
+      newId !== null &&
+      newId !== undefined &&
+      // Only fire on a null→id transition (overlay wasn't already showing someone)
+      prevOverlayId === null &&
+      // Idempotency: don't re-play if the SFX already fired for this id
+      newId !== _lastEvictionSfxId &&
+      // Exclude Battle Back return: the returning juror's id is set as the
+      // overlay player after completeBattleBack (battleBack.used=true), and the
+      // SpotlightEvictionOverlay runs with variant="return".  We must not play
+      // the eviction sting for their return to the house.
+      !_isBattleBackReturn(prevGame?.battleBack, newId)
+    ) {
+      _lastEvictionSfxId = newId;
       void SoundManager.play('player:evicted');
     }
+
+    // When explicitly clearing the overlay (null payload), reset the tracker
+    // so the next genuine eviction can trigger the SFX again.
+    if (newId === null) {
+      _lastEvictionSfxId = null;
+    }
+
+    return result;
+  }
+
+  // ── Eviction overlay cleared (safety-net unmount cleanup) ─────────────────
+  // clearEvictionOverlay is dispatched by SpotlightEvictionOverlay on unmount.
+  // Reset the idempotency tracker so the next eviction triggers the SFX.
+  if (type === 'game/clearEvictionOverlay') {
+    const result = next(action);
+    _lastEvictionSfxId = null;
     return result;
   }
 
