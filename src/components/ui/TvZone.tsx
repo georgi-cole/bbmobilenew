@@ -370,8 +370,8 @@ export default function TvZone() {
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
             {gameState.twistActive && (
-              <div className="tv-zone__twist-badge" aria-label="Twist active" role="status">
-                <span aria-hidden="true">🌀</span>
+              <div className="tv-zone__twist-badge" aria-hidden="true">
+                <span>🌀</span>
                 TWIST
               </div>
             )}
