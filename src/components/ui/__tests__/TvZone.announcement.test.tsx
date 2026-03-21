@@ -14,6 +14,7 @@
  * 10. Countdown pauses on hover/focus and resumes on leave/blur.
  * 11. Phase-based triggers: overlay shown on phase transition to popup phases.
  * 12. Phase-based non-triggers: week_start, hoh_comp, pov_comp show no overlay.
+ * 13. New pre-comp announcement phases: hoh_comp_announcement and pov_comp_announcement show overlays.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -606,6 +607,51 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('pov_comp')); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('shows HOH Competition overlay when phase transitions to hoh_comp_announcement', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: HOH Competition/i })).toBeDefined();
+  });
+
+  it('shows Power of Veto overlay when phase transitions to pov_comp_announcement', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Power of Veto/i })).toBeDefined();
+  });
+
+  it('HOH Competition overlay requires manual dismissal (no auto-dismiss)', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
+
+    // The overlay for hoh_comp_announcement has autoDismissMs: null — no auto-dismiss
+    const overlay = screen.getByRole('dialog', { name: /Announcement: HOH Competition/i });
+    expect(overlay).toBeDefined();
+    // Dismiss via central FAB event
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    expect(screen.queryByRole('dialog', { name: /Announcement: HOH Competition/i })).toBeNull();
+  });
+
+  it('POV overlay requires manual dismissal (no auto-dismiss)', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
+
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Power of Veto/i });
+    expect(overlay).toBeDefined();
+    // Dismiss via central FAB event
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    expect(screen.queryByRole('dialog', { name: /Announcement: Power of Veto/i })).toBeNull();
   });
 
   it('does NOT show any overlay when phase transitions to final3_comp1', () => {

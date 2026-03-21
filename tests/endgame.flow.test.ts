@@ -272,9 +272,11 @@ describe('eviction_results guard', () => {
 describe('endgame simulation — Final 5 through to jury', () => {
   /**
    * Deterministic fast-forward from a 5-player, week_end state.
-   * We advance() at most 100 steps; the test fails if it loops.
+   * We advance() at most 120 steps; the test fails if it loops.
+   * (Increased from 100 to accommodate the two extra pre-comp announcement
+   * phases per week: hoh_comp_announcement and pov_comp_announcement.)
    */
-  it('reaches "jury" from a 5-player game within 100 advance() calls', () => {
+  it('reaches "jury" from a 5-player game within 120 advance() calls', () => {
     const players: Player[] = [
       { id: 'p0', name: 'Alice', avatar: '👩', status: 'active', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
@@ -296,7 +298,7 @@ describe('endgame simulation — Final 5 through to jury', () => {
       seed: 12345,
     });
 
-    const MAX_STEPS = 100;
+    const MAX_STEPS = 120;
     let steps = 0;
     while (store.getState().game.phase !== 'jury' && steps < MAX_STEPS) {
       const state = store.getState().game;
@@ -371,6 +373,19 @@ describe('endgame simulation — Final 5 through to jury', () => {
       } else if (state.pendingEviction) {
         // Simulate the overlay completing instantly — commit the pending eviction.
         store.dispatch(finalizePendingEviction(state.pendingEviction.evicteeId));
+      } else if (
+        state.phase === 'final3_comp1_minigame' ||
+        state.phase === 'final3_comp2_minigame' ||
+        state.phase === 'final3_comp3_minigame'
+      ) {
+        // Resolve Final 3 minigame: pick the first available participant as winner.
+        const participants = state.minigameContext?.participants ?? [];
+        const winnerId = participants[0] ?? state.players.find((p) => p.status !== 'evicted' && p.status !== 'jury')?.id;
+        if (winnerId) {
+          store.dispatch(applyF3MinigameWinner(winnerId));
+        } else {
+          store.dispatch(advance());
+        }
       } else {
         store.dispatch(advance());
       }

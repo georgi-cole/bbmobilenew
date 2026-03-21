@@ -10,7 +10,14 @@
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../src/store/gameSlice';
+import gameReducer, {
+  selectNominee1,
+  finalizeNominations,
+  submitPovDecision,
+  submitPovSaveTarget,
+  setReplacementNominee,
+  submitHumanVote,
+} from '../../src/store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
   updateRelationship,
@@ -44,11 +51,15 @@ describe('event delta – HOH win (+5 energy)', () => {
     store.dispatch(engineReady({ budgets }));
 
     // Game starts at week_start.
-    // First advance: week_start → hoh_comp (no HOH set yet)
+    // First advance: week_start → hoh_comp_announcement (no HOH set yet)
+    store.dispatch({ type: 'game/advance' });
+    expect(store.getState().game.phase).toBe('hoh_comp_announcement');
+
+    // Second advance: hoh_comp_announcement → hoh_comp
     store.dispatch({ type: 'game/advance' });
     expect(store.getState().game.phase).toBe('hoh_comp');
 
-    // Second advance: hoh_comp → hoh_results (applyHohWinner runs, sets hohId)
+    // Third advance: hoh_comp → hoh_results (applyHohWinner runs, sets hohId)
     store.dispatch({ type: 'game/advance' });
     const stateAfterHoh = store.getState();
     expect(stateAfterHoh.game.phase).toBe('hoh_results');
@@ -77,9 +88,33 @@ describe('event delta – survived nomination (+4 energy)', () => {
 
     // Advance through phases until we reach live_vote so that the
     // game/advance-based survived-nomination middleware bonus fires.
+    // Handle human-blocking states (HOH nominations, POV decisions) that may
+    // arise depending on RNG seed/phase ordering.
     let phase = store.getState().game.phase;
-    for (let i = 0; i < 60 && phase !== 'live_vote'; i += 1) {
-      store.dispatch({ type: 'game/advance' });
+    for (let i = 0; i < 80 && phase !== 'live_vote'; i += 1) {
+      const gs = store.getState().game;
+      if (gs.awaitingNominations && !gs.pendingNominee1Id) {
+        const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId);
+        store.dispatch(selectNominee1(pool[0].id));
+      } else if (gs.awaitingNominations && gs.pendingNominee1Id) {
+        const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId && p.id !== gs.pendingNominee1Id);
+        store.dispatch(finalizeNominations(pool[0].id));
+      } else if (gs.awaitingPovDecision) {
+        store.dispatch(submitPovDecision(false));
+      } else if (gs.awaitingPovSaveTarget && gs.nomineeIds.length > 0) {
+        store.dispatch(submitPovSaveTarget(gs.nomineeIds[0]));
+      } else if (gs.replacementNeeded) {
+        const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId && p.id !== gs.povWinnerId && !gs.nomineeIds.includes(p.id));
+        if (pool.length > 0) store.dispatch(setReplacementNominee(pool[0].id));
+        else store.dispatch({ type: 'game/advance' });
+      } else if (gs.awaitingHumanVote && gs.nomineeIds.length > 0) {
+        store.dispatch(submitHumanVote(gs.nomineeIds[0]));
+      } else {
+        store.dispatch({ type: 'game/advance' });
+      }
       phase = store.getState().game.phase;
     }
 

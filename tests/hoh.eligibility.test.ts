@@ -83,7 +83,8 @@ describe('HOH eligibility — prevHohId tracking', () => {
 
   it('prevHohId persists through hoh_comp phase', () => {
     const store = makeStore({ phase: 'week_start', week: 2, hohId: null, prevHohId: 'p1' });
-    store.dispatch(advance()); // week_start → hoh_comp
+    store.dispatch(advance()); // week_start → hoh_comp_announcement
+    store.dispatch(advance()); // hoh_comp_announcement → hoh_comp
     const state = store.getState().game;
     expect(state.phase).toBe('hoh_comp');
     expect(state.prevHohId).toBe('p1');
@@ -186,7 +187,8 @@ describe('HOH eligibility — prevHohId tracking', () => {
     expect(state.hohId).toBeNull();
 
     // Advance through HOH comp and results to set a new HOH
-    store.dispatch(advance()); // week_start → hoh_comp
+    store.dispatch(advance()); // week_start → hoh_comp_announcement
+    store.dispatch(advance()); // hoh_comp_announcement → hoh_comp
     store.dispatch(advance()); // hoh_comp → hoh_results (picks new HOH, not p2)
     state = store.getState().game;
     expect(state.hohId).not.toBeNull();

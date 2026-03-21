@@ -295,15 +295,17 @@ All 15 integration tests should pass (create, fetch, patch, export, list).
 
 The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, not text heuristics.  Popups are shown only for the following phases:
 
-| Phase              | Trigger condition                       | Announcement shown            |
-|--------------------|-----------------------------------------|-------------------------------|
-| `nominations`      | any alive count                         | Nomination Ceremony           |
-| `pov_ceremony`     | alive count !== 4                       | Veto Ceremony                 |
-| `pov_ceremony`     | alive count === 4                       | Final 4 — Veto Ceremony       |
-| `live_vote`        | any alive count                         | Live Eviction                 |
-| `final3`           | alive count === 3                       | Final 3                       |
-| `final3_decision`  | any alive count                         | Final HOH Decision            |
-| `jury`             | any alive count                         | Jury Votes                    |
+| Phase                    | Trigger condition                       | Announcement shown            |
+|--------------------------|-----------------------------------------|-------------------------------|
+| `hoh_comp_announcement`  | any alive count                         | HOH Competition               |
+| `pov_comp_announcement`  | any alive count                         | Power of Veto                 |
+| `nominations`            | any alive count                         | Nomination Ceremony           |
+| `pov_ceremony`           | alive count !== 4                       | Veto Ceremony                 |
+| `pov_ceremony`           | alive count === 4                       | Final 4 — Veto Ceremony       |
+| `live_vote`              | any alive count                         | Live Eviction                 |
+| `final3`                 | alive count === 3                       | Final 3                       |
+| `final3_decision`        | any alive count                         | Final HOH Decision            |
+| `jury`                   | any alive count                         | Jury Votes                    |
 
 **No overlay** is shown for: `week_start`, `hoh_comp`, `pov_comp`, `final3_comp1`, `final3_comp2`, `final3_comp3`, and all other phases — these remain normal text messages.
 
@@ -313,7 +315,7 @@ All overlay announcements require manual dismissal.  The central Play/Continue F
 window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
 ```
 
-An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`).
+An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`, `hoh_comp_announcement`, `pov_comp_announcement`).
 
 > **After merging**, please attach a screenshot of the updated TV area (full-bleed announcement visible) to this PR for visual verification.
 

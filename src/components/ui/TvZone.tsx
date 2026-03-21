@@ -17,13 +17,15 @@ import './TvZoneEnhancements.css';
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
-  week_start:           'WEEK START',
-  hoh_comp:             'HOH COMP',
-  hoh_results:          'HOH RESULTS',
+  week_start:               'WEEK START',
+  hoh_comp_announcement:    'HOH COMP',
+  hoh_comp:                 'HOH COMP',
+  hoh_results:              'HOH RESULTS',
   social_1:             'SOCIAL',
   nominations:          'NOMS',
-  nomination_results:   'NOMS RESULTS',
-  pov_comp:             'POV COMP',
+  nomination_results:       'NOMS RESULTS',
+  pov_comp_announcement:    'POV COMP',
+  pov_comp:                 'POV COMP',
   pov_results:          'POV RESULTS',
   pov_ceremony:         'VETO',
   pov_ceremony_results: 'VETO RESULTS',
@@ -48,8 +50,8 @@ const PHASE_LABELS: Record<string, string> = {
 /**
  * Recognised major-key identifiers that can trigger an inline TV announcement
  * via an explicit event.meta.major or ev.major field.
- * Note: week_start and veto_competition are intentionally excluded — those
- * phases show normal text only (no overlay).
+ * Note: week_start is intentionally excluded — that phase shows normal text only
+ * (no overlay).
  */
 const MAJOR_KEYS = new Set([
   'nomination_ceremony',
@@ -62,6 +64,8 @@ const MAJOR_KEYS = new Set([
   'battle_back',
   'double_eviction',
   'twist',
+  'hoh_comp_announcement',
+  'pov_comp_announcement',
 ]);
 
 /** Maps a major key to its announcement title and subtitle. */
@@ -76,6 +80,8 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: 4500 },
   double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: 5000 },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
+  hoh_comp_announcement: { title: 'HOH Competition',           subtitle: 'Power is up for grabs — who will become Head of Household?',   isLive: true,  autoDismissMs: null },
+  pov_comp_announcement: { title: 'Power of Veto',             subtitle: 'It\'s time for the Power of Veto competition!',                isLive: true,  autoDismissMs: null },
 };
 
 /**
@@ -108,8 +114,12 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
  * Derive an announcement key from the current game phase and alive player count.
  * Only the phases explicitly listed here will trigger an overlay — all others
  * (week_start, hoh_comp, pov_comp, final3_comp1/2/3, …) remain normal text.
+ * Note: hoh_comp_announcement and pov_comp_announcement DO trigger overlays;
+ * hoh_comp and pov_comp themselves do not (they enter the actual minigame flow).
  */
 function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictionActive: boolean): string | null {
+  if (phase === 'hoh_comp_announcement') return 'hoh_comp_announcement';
+  if (phase === 'pov_comp_announcement') return 'pov_comp_announcement';
   if (phase === 'pov_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
   if (phase === 'nominations')     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony';
   if (phase === 'live_vote')       return 'live_eviction';
