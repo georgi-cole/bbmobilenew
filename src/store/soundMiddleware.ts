@@ -24,26 +24,39 @@
  *   hoh_comp / hoh_results          → music:hoh_comp_general (loop)
  *   pov_comp / pov_results          → music:hoh_comp_general (loop)
  *   nominations / nomination_results→ music:nominations_main (loop)
- *   pov_ceremony / pov_ceremony_results → tv:veto_ceremony (stinger)
- *                                        + music:veto_phase (loop)
+ *   pov_ceremony                    → tv:veto_ceremony (stinger, once)
+ *                                      + music:veto_phase (loop)
+ *   pov_ceremony_results            → music:veto_phase (loop, no stinger)
  *   live_vote                       → tv:voting_eviction (stinger)
- *   eviction_results / final4_eviction → player:evicted (one-shot)
- *   week_end / week_start           → stop phase music (clean slate)
+ *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
+ *                                        game/setEvictionOverlay, see below)
+ *   game/setEvictionOverlay(id)     → player:evicted (one-shot, null→id transition
+ *                                        only; Battle Back returns are excluded)
+ *   game/clearEvictionOverlay       → resets the evicted-SFX idempotency guard
  */
 
 import type { Middleware } from '@reduxjs/toolkit';
 import { SoundManager } from '../services/sound/SoundManager';
 
+interface BattleBackInfo {
+  /** True once the twist has been used this season. */
+  used: boolean;
+  /** ID of the juror who won the Battle Back competition (null before resolved). */
+  winnerId: string | null;
+}
+
 interface GameState {
   phase: string;
+  /** Player whose eviction cinematic is currently being shown (null when none). */
+  evictionOverlayPlayerId?: string | null;
+  /** Battle Back twist state — used to distinguish return cinematics from evictions. */
+  battleBack?: BattleBackInfo | null;
 }
 
 interface StateWithGame {
   game: GameState;
   social?: { panelOpen?: boolean; incomingInboxOpen?: boolean };
 }
-
-const EVICTION_PHASES = new Set<string>(['eviction_results', 'final4_eviction']);
 
 /**
  * Phases that should trigger / maintain the HOH / general competition music.
@@ -66,14 +79,6 @@ const NOMINATIONS_MUSIC_PHASES = new Set<string>([
 ]);
 
 /**
- * Phases that should trigger the veto ceremony stinger + veto loop music.
- */
-const VETO_CEREMONY_PHASES = new Set<string>([
-  'pov_ceremony',
-  'pov_ceremony_results',
-]);
-
-/**
  * Phases where all phase music should be stopped (clean week boundary).
  */
 const MUSIC_STOP_PHASES = new Set<string>(['week_start', 'week_end']);
@@ -88,14 +93,42 @@ let _preSocialMusicKey: string | null = null;
 let _socialMusicActive = false;
 
 /**
+ * The player id for which `player:evicted` was most recently played.
+ * Used to guard against double-play in two scenarios:
+ *   1. Final3Ceremony dispatches setEvictionOverlay(id) explicitly, then
+ *      SpotlightEvictionOverlay dispatches it again on mount — the second
+ *      dispatch is id→id (not null→id) and is therefore skipped.
+ *   2. React StrictMode double-runs mount effects in DEV — the first call sets
+ *      this variable; the second call finds the id unchanged and skips.
+ * Reset to null whenever the overlay is fully cleared so the next genuine
+ * eviction can trigger the SFX again.
+ */
+let _lastEvictionSfxId: string | null = null;
+
+/**
+ * Returns true when the given player id is the Battle Back winner returning to
+ * the house.  SpotlightEvictionOverlay (variant="return") dispatches
+ * setEvictionOverlay for the returning juror, but we must NOT play the eviction
+ * SFX for their return — they haven't been evicted, they're coming back.
+ *
+ * Detection: after completeBattleBack resolves, battleBack.used is set to true
+ * and battleBack.winnerId holds the returning player's id.  These two flags
+ * together reliably distinguish a return overlay from an eviction overlay.
+ */
+function _isBattleBackReturn(
+  battleBack: BattleBackInfo | null | undefined,
+  playerId: string,
+): boolean {
+  return battleBack?.used === true && battleBack?.winnerId === playerId;
+}
+
+/**
  * Apply phase-driven music / SFX transitions.
  * Called after the action has been committed so `newPhase` reflects the
  * updated game state.
  */
 function _applyPhaseAudio(newPhase: string): void {
-  if (EVICTION_PHASES.has(newPhase)) {
-    void SoundManager.play('player:evicted');
-  } else if (HOH_MUSIC_PHASES.has(newPhase)) {
+  if (HOH_MUSIC_PHASES.has(newPhase)) {
     // Play the results stinger only on results screens, not on comp start
     if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
       void SoundManager.play('tv:event');
@@ -107,9 +140,14 @@ function _applyPhaseAudio(newPhase: string): void {
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:nominations_main');
     }
-  } else if (VETO_CEREMONY_PHASES.has(newPhase)) {
-    // Play veto ceremony stinger once, then start veto phase loop
+  } else if (newPhase === 'pov_ceremony') {
+    // Play veto ceremony stinger once (on ceremony start only), then start veto loop
     void SoundManager.play('tv:veto_ceremony');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:veto_phase');
+    }
+  } else if (newPhase === 'pov_ceremony_results') {
+    // Continue veto loop; do NOT replay the stinger
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:veto_phase');
     }
@@ -122,6 +160,9 @@ function _applyPhaseAudio(newPhase: string): void {
       SoundManager.stopMusic();
     }
   }
+  // eviction_results / final4_eviction: player:evicted is triggered by
+  // game/setEvictionOverlay (when the cinematic overlay actually begins),
+  // NOT on the phase transition, to avoid playing before the vote reveal ends.
 }
 
 export const soundMiddleware: Middleware = (api) => (next) => (action) => {
@@ -197,6 +238,69 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'game/activateBattleBack') {
     const result = next(action);
     void SoundManager.play('tv:battleback');
+    return result;
+  }
+
+  // ── Eviction cinematic begins ─────────────────────────────────────────────
+  // player:evicted is played here (when SpotlightEvictionOverlay mounts and
+  // dispatches setEvictionOverlay) rather than on the eviction_results phase
+  // transition.  This ensures the SFX fires only when the cinematic actually
+  // begins — i.e. after the vote-reveal modal has been dismissed.
+  //
+  // Guards applied to avoid false positives:
+  //
+  //   null→id only: SpotlightEvictionOverlay (variant="return") is reused for
+  //     Battle Back returns and also dispatches setEvictionOverlay on mount.
+  //     By reading the state *before* next(), we can detect when the overlay id
+  //     was already set (id→id) and skip the SFX.
+  //
+  //   Battle Back return exclusion: when the Battle Back winner's id is set as
+  //     the overlay player *and* battleBack.used is true, this is a return
+  //     animation, not an eviction cinematic.
+  //
+  //   Idempotency tracker (_lastEvictionSfxId): Final3Ceremony explicitly
+  //     dispatches setEvictionOverlay(id) before mounting SpotlightEviction
+  //     Overlay (which dispatches it again on mount), and React StrictMode
+  //     double-runs effects in DEV.  Storing the last-played id prevents the
+  //     second identical dispatch from replaying the SFX.
+  if (type === 'game/setEvictionOverlay') {
+    const prevGame = (api.getState() as StateWithGame).game;
+    const prevOverlayId = prevGame?.evictionOverlayPlayerId ?? null;
+    const newId = (action as { type: string; payload: string | null }).payload;
+    const result = next(action);
+
+    if (
+      newId !== null &&
+      newId !== undefined &&
+      // Only fire on a null→id transition (overlay wasn't already showing someone)
+      prevOverlayId === null &&
+      // Idempotency: don't re-play if the SFX already fired for this id
+      newId !== _lastEvictionSfxId &&
+      // Exclude Battle Back return: the returning juror's id is set as the
+      // overlay player after completeBattleBack (battleBack.used=true), and the
+      // SpotlightEvictionOverlay runs with variant="return".  We must not play
+      // the eviction sting for their return to the house.
+      !_isBattleBackReturn(prevGame?.battleBack, newId)
+    ) {
+      _lastEvictionSfxId = newId;
+      void SoundManager.play('player:evicted');
+    }
+
+    // When explicitly clearing the overlay (null payload), reset the tracker
+    // so the next genuine eviction can trigger the SFX again.
+    if (newId === null) {
+      _lastEvictionSfxId = null;
+    }
+
+    return result;
+  }
+
+  // ── Eviction overlay cleared (safety-net unmount cleanup) ─────────────────
+  // clearEvictionOverlay is dispatched by SpotlightEvictionOverlay on unmount.
+  // Reset the idempotency tracker so the next eviction triggers the SFX.
+  if (type === 'game/clearEvictionOverlay') {
+    const result = next(action);
+    _lastEvictionSfxId = null;
     return result;
   }
 
