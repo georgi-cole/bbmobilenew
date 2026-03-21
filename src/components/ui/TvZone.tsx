@@ -191,21 +191,26 @@ export default function TvZone() {
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
-  // Only triggers on actual transitions (previousPhaseRef !== current phase).
+  // Also allows an in-place upgrade for nomination-phase overlays when
+  // Double Eviction activates after the phase has already been entered.
   useEffect(() => {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
-
-    // Skip on initial mount (no previous phase) and when phase hasn't changed.
-    if (prevPhase === null || prevPhase === currentPhase) return;
-
     const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const keyChangedInPlace =
+      prevPhase === currentPhase &&
+      currentPhase === 'nominations' &&
+      phaseAnnouncement?.key != null &&
+      phaseAnnouncement?.key !== key;
+
+    // Skip on initial mount (no previous phase) and when phase/key haven't changed.
+    if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return;
     const ev = latestEventRef.current;
     // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
     // by deferring setState calls into a callback rather than calling them synchronously).
     startTransition(() => {
-      if (key && currentPhase !== dismissedPhase) {
+      if (key && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
         const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
         setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
         // Suppress any concurrent event-based popup with the same key to prevent duplication.
@@ -221,7 +226,7 @@ export default function TvZone() {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive]);
+  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {

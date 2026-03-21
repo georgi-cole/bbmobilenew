@@ -10,7 +10,6 @@
  *  6. finalizePendingEviction promotes the second eviction after the first.
  *  7. finalizePendingEviction clears weekActive after both evictions resolve.
  *  8. Non-double-eviction weeks still behave exactly as before.
- *  9. TvZone announcement overlay uses 'double_eviction' key when weekActive.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -415,6 +414,17 @@ describe('advance() — eviction_results with Double Eviction', () => {
     });
     store.dispatch(advance());
     expect(store.getState().game.voteResults).not.toBeNull();
+  });
+
+  it('uses a deterministic precomputed tie-break when all three nominees are tied', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p2', v2: 'p3',
+    });
+    store.dispatch(advance());
+    const { pendingEviction, doubleEviction } = store.getState().game;
+    expect(pendingEviction).not.toBeNull();
+    expect(doubleEviction?.pendingSecondEviction).not.toBeNull();
+    expect(pendingEviction?.evicteeId).not.toBe(doubleEviction?.pendingSecondEviction?.evicteeId);
   });
 });
 

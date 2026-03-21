@@ -22,7 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
-import gameReducer, { addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
+import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
@@ -469,6 +469,19 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('nominations')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+  });
+
+  it('upgrades the nominations phase overlay to Double Eviction when the twist activates in-place', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('nominations')); });
+    expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+
+    act(() => { store.dispatch(activateDoubleEviction()); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeNull();
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Eviction!/i })).toBeDefined();
   });
 
   it('shows Veto Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {

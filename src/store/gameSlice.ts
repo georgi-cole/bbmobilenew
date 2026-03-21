@@ -2302,13 +2302,19 @@ const gameSlice = createSlice({
 
           // ── Double Eviction: evict top 2 nominees ─────────────────────────
           if (state.doubleEviction?.weekActive && nominees.length >= 2) {
-            // Sort nominees by vote count descending; use seeded RNG for ties.
+            // Precompute deterministic tie-break ranks so the comparator stays
+            // transitive/stable for tied vote counts.
+            const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
+            const tieBreakRanks: Record<string, number> = {};
+            for (const nomineeId of state.nomineeIds) {
+              tieBreakRanks[nomineeId] = aiRng();
+            }
+
+            // Sort nominees by vote count descending; use precomputed ranks for ties.
             const sortedIds = [...state.nomineeIds].sort((a, b) => {
               const diff = (voteCounts[b] ?? 0) - (voteCounts[a] ?? 0);
               if (diff !== 0) return diff;
-              // Deterministic tie-break via seeded RNG
-              const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
-              return aiRng() - 0.5;
+              return (tieBreakRanks[b] ?? 0) - (tieBreakRanks[a] ?? 0);
             });
 
             const firstId = sortedIds[0];
