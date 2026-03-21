@@ -28,6 +28,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import MinigameHost from '../../src/components/MinigameHost/MinigameHost';
+import { SoundManager } from '../../src/services/sound/SoundManager';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -375,5 +376,53 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
     // onDone fired with the reported score and partial=false
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(onDone).toHaveBeenCalledWith(42, false);
+  });
+});
+
+// ── Countdown timer sound ──────────────────────────────────────────────────
+
+describe('MinigameHost — countdown timer sound', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(SoundManager, 'play').mockResolvedValue();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('plays the 3-second timer sound when the countdown phase starts', async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={LEGACY_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={PARTICIPANTS}
+          onDone={vi.fn()}
+          skipRules
+        />
+      </Provider>,
+    );
+
+    expect(SoundManager.play).toHaveBeenCalledWith('minigame:all_3_seconds_timer');
+  });
+
+  it('does NOT play the timer sound when skipCountdown is true', async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={LEGACY_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={PARTICIPANTS}
+          onDone={vi.fn()}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => { vi.runAllTimers(); });
+
+    expect(SoundManager.play).not.toHaveBeenCalledWith('minigame:all_3_seconds_timer');
   });
 });

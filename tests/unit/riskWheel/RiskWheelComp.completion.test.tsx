@@ -30,8 +30,12 @@ vi.mock('../../../src/hooks/useRiskWheelAudio', () => ({
     stopWheelSound: vi.fn(),
     playGoodRewardSound: vi.fn(),
     playBadRewardSound: vi.fn(),
+    play666Sound: vi.fn(),
+    playBankruptOrSkipSound: vi.fn(),
     playScoreboardRevealSound: vi.fn(),
     playWinnerRevealSound: vi.fn(),
+    playStopAndBankSound: vi.fn(),
+    playClickSound: vi.fn(),
   }),
 }));
 

@@ -10,15 +10,21 @@ import riskWheelReducer, {
 } from '../../../src/features/riskWheel/riskWheelSlice';
 import gameReducer from '../../../src/store/gameSlice';
 
+const mockAudio = vi.hoisted(() => ({
+  startWheelSound: vi.fn(),
+  stopWheelSound: vi.fn(),
+  playGoodRewardSound: vi.fn(),
+  playBadRewardSound: vi.fn(),
+  play666Sound: vi.fn(),
+  playBankruptOrSkipSound: vi.fn(),
+  playScoreboardRevealSound: vi.fn(),
+  playWinnerRevealSound: vi.fn(),
+  playStopAndBankSound: vi.fn(),
+  playClickSound: vi.fn(),
+}));
+
 vi.mock('../../../src/hooks/useRiskWheelAudio', () => ({
-  useRiskWheelAudio: () => ({
-    startWheelSound: vi.fn(),
-    stopWheelSound: vi.fn(),
-    playGoodRewardSound: vi.fn(),
-    playBadRewardSound: vi.fn(),
-    playScoreboardRevealSound: vi.fn(),
-    playWinnerRevealSound: vi.fn(),
-  }),
+  useRiskWheelAudio: () => mockAudio,
 }));
 
 function makeStore() {
@@ -78,5 +84,81 @@ describe('RiskWheelComp', () => {
     expect(screen.getByRole('heading', { name: 'Results' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start round 2/i })).toBeInTheDocument();
+  });
+
+  it('plays playStopAndBankSound when the Stop and Bank button is clicked', async () => {
+    mockAudio.playStopAndBankSound.mockClear();
+
+    const store = makeStore();
+    const seed = findPositivePointsSeed();
+
+    render(
+      <Provider store={store}>
+        <RiskWheelComp
+          participantIds={['human', 'ai-1', 'ai-2']}
+          participants={[
+            { id: 'human', name: 'Human', isHuman: true },
+            { id: 'ai-1', name: 'AI 1', isHuman: false },
+            { id: 'ai-2', name: 'AI 2', isHuman: false },
+          ]}
+          prizeType="HOH"
+          seed={seed}
+          standalone
+        />
+      </Provider>,
+    );
+
+    await screen.findByRole('button', { name: /spin the wheel/i });
+
+    await act(async () => {
+      store.dispatch(performSpin());
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /stop and bank/i }));
+    });
+
+    expect(mockAudio.playStopAndBankSound).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays playClickSound when the Start Next Round button is clicked', async () => {
+    mockAudio.playClickSound.mockClear();
+
+    const store = makeStore();
+    const seed = findPositivePointsSeed();
+
+    render(
+      <Provider store={store}>
+        <RiskWheelComp
+          participantIds={['human', 'ai-1', 'ai-2']}
+          participants={[
+            { id: 'human', name: 'Human', isHuman: true },
+            { id: 'ai-1', name: 'AI 1', isHuman: false },
+            { id: 'ai-2', name: 'AI 2', isHuman: false },
+          ]}
+          prizeType="HOH"
+          seed={seed}
+          standalone
+        />
+      </Provider>,
+    );
+
+    await screen.findByRole('button', { name: /spin the wheel/i });
+
+    await act(async () => {
+      store.dispatch(performSpin());
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /stop and bank/i }));
+    });
+
+    // Now in round_summary; click "Start Round 2"
+    const nextRoundBtn = screen.getByRole('button', { name: /start round 2/i });
+    await act(async () => {
+      fireEvent.click(nextRoundBtn);
+    });
+
+    expect(mockAudio.playClickSound).toHaveBeenCalledTimes(1);
   });
 });

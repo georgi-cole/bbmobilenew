@@ -105,80 +105,140 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     volume: 0.9,
   },
   /**
-   * Wheel-spin loop for the Risk Wheel minigame.
-   * Asset not yet present — drop /public/assets/sounds/minigame_wheelofluck.mp3
-   * to activate. Until the file is added, SoundManager will still attempt to
-   * load/play this asset (resulting in missing-file errors such as 404s).
+   * Risk Wheel wheel-spin loop — plays while the wheel is spinning during a turn.
+   * Asset: public/assets/sounds/Risk_wheel/ui_risk_wheel_spin.mp3
    */
   'minigame:wheelofluck': {
     key: 'minigame:wheelofluck',
     category: 'minigame',
-    src: `${SOUNDS_BASE}minigame_wheelofluck.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/ui_risk_wheel_spin.mp3`,
     preload: false,
     volume: 1.0,
     loop: true,
   },
+
+  // ── Risk the Wheel minigame sounds ────────────────────────────────────────
+
   /**
-   * Risk Wheel ambient loop.
-   * Asset not yet present — drop /public/assets/sounds/music_risk_wheel_loop.mp3
-   * to activate. Until the file is added, SoundManager will still attempt to
-   * load/play this asset (resulting in missing-file errors such as 404s).
+   * Risk Wheel looping background music — plays throughout the entire game.
+   * Asset: public/assets/sounds/Risk_wheel/music_risk_wheel_main_loop.mp3
    */
   'music:risk_wheel_loop': {
     key: 'music:risk_wheel_loop',
     category: 'music',
-    src: `${SOUNDS_BASE}music_risk_wheel_loop.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/music_risk_wheel_main_loop.mp3`,
     preload: false,
     volume: 0.4,
     loop: true,
   },
   /**
-   * Risk Wheel positive reward stinger.
-   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_good.mp3
-   * to activate.
+   * Risk Wheel positive-sector stinger — plays when the player lands on a
+   * sector with a positive point value.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_good_sector.mp3
    */
   'minigame:risk_wheel_good': {
     key: 'minigame:risk_wheel_good',
     category: 'minigame',
-    src: `${SOUNDS_BASE}minigame_risk_wheel_good.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_risk_wheel_good_sector.mp3`,
     preload: false,
     volume: 0.95,
   },
   /**
-   * Risk Wheel negative reward stinger.
-   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_bad.mp3
-   * to activate.
+   * Risk Wheel negative-sector stinger — plays when the player lands on a
+   * sector with a negative point value.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_bad_sector.mp3
    */
   'minigame:risk_wheel_bad': {
     key: 'minigame:risk_wheel_bad',
     category: 'minigame',
-    src: `${SOUNDS_BASE}minigame_risk_wheel_bad.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_risk_wheel_bad_sector.mp3`,
     preload: false,
     volume: 0.95,
   },
   /**
-   * Risk Wheel scoreboard reveal stinger.
-   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_scoreboard.mp3
-   * to activate.
+   * Risk Wheel 666 landing stinger — plays when the player lands on the
+   * devil (666) sector.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_666.mp3
+   */
+  'minigame:risk_wheel_666': {
+    key: 'minigame:risk_wheel_666',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_risk_wheel_666.mp3`,
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Risk Wheel bankrupt/skip landing stinger — plays when the player lands
+   * on a Bankrupt or Skip sector.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_bankrupt_or_skip.mp3
+   */
+  'minigame:risk_wheel_bankrupt_or_skip': {
+    key: 'minigame:risk_wheel_bankrupt_or_skip',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_risk_wheel_bankrupt_or_skip.mp3`,
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Risk Wheel round-results stinger — plays when the round-summary
+   * scoreboard is revealed.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_round_results.mp3
    */
   'minigame:risk_wheel_scoreboard': {
     key: 'minigame:risk_wheel_scoreboard',
     category: 'minigame',
-    src: `${SOUNDS_BASE}minigame_risk_wheel_scoreboard.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_risk_wheel_round_results.mp3`,
     preload: false,
     volume: 0.9,
   },
   /**
-   * Risk Wheel winner reveal stinger.
-   * Asset not yet present — drop /public/assets/sounds/minigame_risk_wheel_winner.mp3
-   * to activate.
+   * Risk Wheel winner-announcement stinger — plays after the last round when
+   * the overall winner is revealed.
+   * Asset: public/assets/sounds/Risk_wheel/tv_risk_wheel_winner.mp3
    */
   'minigame:risk_wheel_winner': {
     key: 'minigame:risk_wheel_winner',
     category: 'minigame',
-    src: `${SOUNDS_BASE}minigame_risk_wheel_winner.mp3`,
+    src: `${SOUNDS_BASE}Risk_wheel/tv_risk_wheel_winner.mp3`,
     preload: false,
     volume: 1.0,
+  },
+  /**
+   * Risk Wheel Stop & Bank button — plays when the player taps the
+   * "Stop & Bank" button to lock in their current score.
+   * Asset: public/assets/sounds/Risk_wheel/ui_risk_wheel_stop_and_bank.mp3
+   */
+  'ui:risk_wheel_stop_and_bank': {
+    key: 'ui:risk_wheel_stop_and_bank',
+    category: 'ui',
+    src: `${SOUNDS_BASE}Risk_wheel/ui_risk_wheel_stop_and_bank.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+  /**
+   * Risk Wheel generic button click — plays for any uncategorised button press
+   * (Continue, Start Round, etc.) that doesn't have a dedicated sound.
+   * Asset: public/assets/sounds/Risk_wheel/ui_risk_wheel_click.mp3
+   */
+  'ui:risk_wheel_click': {
+    key: 'ui:risk_wheel_click',
+    category: 'ui',
+    src: `${SOUNDS_BASE}Risk_wheel/ui_risk_wheel_click.mp3`,
+    preload: false,
+    volume: 0.7,
+  },
+  /**
+   * Shared 3-second countdown timer — plays once in MinigameHost when the
+   * countdown screen appears (after the player confirms the rules).
+   * Shared across all minigames that use the MinigameHost countdown.
+   * Asset: public/assets/sounds/Risk_wheel/minigame_all_3_seconds_timer.mp3
+   */
+  'minigame:all_3_seconds_timer': {
+    key: 'minigame:all_3_seconds_timer',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}Risk_wheel/minigame_all_3_seconds_timer.mp3`,
+    preload: false,
+    volume: 0.9,
   },
   'music:menu_loop': {
     key: 'music:menu_loop',

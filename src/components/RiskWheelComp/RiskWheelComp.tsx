@@ -114,14 +114,9 @@ function formatScore(score: number): string {
 
 function classifyRewardSound(
   sector: (typeof WHEEL_SECTORS)[number],
-  last666Effect: 'add' | 'subtract' | null,
-): 'good' | 'bad' | null {
-  if (sector.type === 'bankrupt') return 'bad';
-  if (sector.type === 'devil') {
-    if (last666Effect === 'add') return 'good';
-    if (last666Effect === 'subtract') return 'bad';
-    return null;
-  }
+): 'good' | 'bad' | '666' | 'bankrupt_or_skip' | null {
+  if (sector.type === 'bankrupt' || sector.type === 'skip') return 'bankrupt_or_skip';
+  if (sector.type === 'devil') return '666';
   if (sector.type !== 'points' || sector.value == null) return null;
   if (sector.value > 0) return 'good';
   if (sector.value < 0) return 'bad';
@@ -298,8 +293,12 @@ export default function RiskWheelComp({
     stopWheelSound,
     playGoodRewardSound,
     playBadRewardSound,
+    play666Sound,
+    playBankruptOrSkipSound,
     playScoreboardRevealSound,
     playWinnerRevealSound,
+    playStopAndBankSound,
+    playClickSound,
   } = useRiskWheelAudio();
   // Stable ref so the unmount cleanup can call stopWheelSound without it
   // needing to be in the effect's dependency array.
@@ -326,6 +325,11 @@ export default function RiskWheelComp({
       authoritativeWinnerId: rw.winnerId ?? null,
     };
   }, [rw]);
+
+  const handleStandaloneComplete = useCallback(() => {
+    playClickSound();
+    onCompleteRef.current?.(buildCompletion());
+  }, [buildCompletion, playClickSound]);
   const isCompletePhase = rw?.phase === 'complete';
   const isHostedComplete = isCompletePhase && !standalone;
   const shouldResolveHostedOutcome =
@@ -404,9 +408,11 @@ export default function RiskWheelComp({
     lastResolvedSpinRef.current = rw.rngCallCount;
 
     const landedSector = WHEEL_SECTORS[rw.lastSectorIndex];
-    const rewardSound = classifyRewardSound(landedSector, rw.last666Effect);
+    const rewardSound = classifyRewardSound(landedSector);
     if (rewardSound === 'good') playGoodRewardSound();
-    if (rewardSound === 'bad') playBadRewardSound();
+    else if (rewardSound === 'bad') playBadRewardSound();
+    else if (rewardSound === '666') play666Sound();
+    else if (rewardSound === 'bankrupt_or_skip') playBankruptOrSkipSound();
 
     if (highlightTimeoutRef.current !== null) {
       clearTimeout(highlightTimeoutRef.current);
@@ -417,7 +423,7 @@ export default function RiskWheelComp({
       if (!isMountedRef.current) return;
       setHighlightedSectorIndex(null);
     }, animDelay(SECTOR_HIGHLIGHT_DURATION_MS));
-  }, [rw, playBadRewardSound, playGoodRewardSound]);
+  }, [rw, playBadRewardSound, playGoodRewardSound, play666Sound, playBankruptOrSkipSound]);
 
   const currentId = rw?.activePlayerIds[rw.currentPlayerIndex] ?? null;
   const humanId = rw?.humanPlayerId ?? null;
@@ -537,10 +543,22 @@ export default function RiskWheelComp({
   const handleHumanSpin = useCallback(() => performHumanSpin(false), [performHumanSpin]);
   const handleSpinAgain = useCallback(() => performHumanSpin(true), [performHumanSpin]);
   const handleStopAndBank = useCallback(() => {
+    playStopAndBankSound();
     dispatch(playerStop());
     dispatch(advanceFromTurnComplete());
     dispatch(resolveAllAiTurns());
-  }, [dispatch]);
+  }, [dispatch, playStopAndBankSound]);
+
+  const handleTurnContinue = useCallback(() => {
+    playClickSound();
+    dispatch(advanceFromTurnComplete());
+    dispatch(resolveAllAiTurns());
+  }, [dispatch, playClickSound]);
+
+  const handleNextRound = useCallback(() => {
+    playClickSound();
+    dispatch(advanceFromRoundSummary());
+  }, [dispatch, playClickSound]);
 
   // ─────────────────────────────────────────────────────────────────────────
   if (!rw || rw.phase === 'idle') {
@@ -584,7 +602,7 @@ export default function RiskWheelComp({
         {standalone && (
           <button
             className="rw-btn rw-btn--primary"
-            onClick={() => onCompleteRef.current?.(buildCompletion())}
+            onClick={handleStandaloneComplete}
           >
             Continue
           </button>
@@ -638,7 +656,7 @@ export default function RiskWheelComp({
           )}
           <button
             className="rw-btn rw-btn--primary rw-btn--lg"
-            onClick={() => dispatch(advanceFromRoundSummary())}
+            onClick={handleNextRound}
           >
             {isLastRound ? '🏆 See Winner' : `▶ Start Round ${round + 1}`}
           </button>
@@ -770,10 +788,7 @@ export default function RiskWheelComp({
           {phase === 'turn_complete' && isHumanTurn && (
             <button
               className="rw-btn rw-btn--primary"
-              onClick={() => {
-                dispatch(advanceFromTurnComplete());
-                dispatch(resolveAllAiTurns());
-              }}
+              onClick={handleTurnContinue}
               aria-label="Continue to next player"
             >
               Continue ▶
