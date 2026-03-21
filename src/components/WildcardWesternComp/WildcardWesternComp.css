@@ -55,6 +55,7 @@
 
 .ww-intro h2 {
   font-size: clamp(2rem, 5vw, 2.5rem);
+  margin-top: 0;
   margin-bottom: 1rem;
   color: #d4a017;
   text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
@@ -164,6 +165,7 @@
   font-weight: 900;
   color: #d4a017;
   text-transform: uppercase;
+  margin-top: 0;
   margin-bottom: 0.85rem;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
@@ -319,6 +321,7 @@
 
 .ww-resolution h2 {
   font-size: clamp(2rem, 5vw, 2.5rem);
+  margin-top: 0;
   margin-bottom: 1.1rem;
   color: #d4a017;
 }
@@ -397,6 +400,7 @@
 
 .ww-chooser h2 {
   font-size: clamp(1.7rem, 4.8vw, 2rem);
+  margin-top: 0;
   margin-bottom: 1.2rem;
   color: #d4a017;
 }
@@ -450,6 +454,7 @@
 
 .ww-winner h2 {
   font-size: clamp(2.2rem, 6vw, 3rem);
+  margin-top: 0;
   margin-bottom: 1rem;
   color: #d4a017;
   text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
@@ -751,9 +756,9 @@
   }
 
   .ww-title {
-    font-size: 1.35rem;
-    letter-spacing: 0.04em;
-    max-width: 11ch;
+    font-size: 1.18rem;
+    letter-spacing: 0.03em;
+    max-width: 9.5ch;
   }
 
   .ww-seed {
@@ -762,7 +767,7 @@
 
   .ww-content {
     justify-content: flex-start;
-    padding: 1rem 0.9rem;
+    padding: 0.8rem 0.85rem;
   }
 
   .ww-duel-container,
@@ -871,7 +876,7 @@
 
   .ww-avatar-btn--lg { width: 68px; height: 68px; }
   .ww-avatar-btn--md { width: 58px; height: 58px; }
-  .ww-avatar-btn--sm { width: 30px; height: 30px; }
+  .ww-avatar-btn--sm { width: 28px; height: 28px; }
 
   .ww-avatar-x {
     font-size: 1.35rem;
@@ -906,15 +911,35 @@
   }
 
   .ww-status-bar {
-    padding: 0.5rem 0.75rem max(0.5rem, env(safe-area-inset-bottom));
-    gap: 0.3rem;
+    padding: 0.42rem 0.65rem max(0.42rem, env(safe-area-inset-bottom));
+    gap: 0.25rem;
   }
 
   .ww-status-bar-counts {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
   }
 
   .ww-status-avatars {
-    gap: 0.25rem;
+    justify-content: center;
+    gap: 0.18rem;
+  }
+
+  .ww-status-avatars .ww-avatar-item {
+    gap: 0;
+  }
+
+  .ww-status-avatars .ww-avatar-name,
+  .ww-status-avatars .ww-avatar-you {
+    display: none;
+  }
+
+  .ww-status-avatars .ww-avatar-x {
+    font-size: 1.05rem;
+  }
+
+  .ww-status-avatars .ww-avatar-badge {
+    top: -3px;
+    right: -3px;
+    font-size: 0.68rem;
   }
 }
