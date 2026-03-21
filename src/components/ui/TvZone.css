@@ -290,16 +290,29 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: rgba(0, 0, 0, 0.65);
+  background:
+    radial-gradient(
+      circle at 50% 32%,
+      rgba(255, 214, 102, 0.1) 0%,
+      rgba(255, 214, 102, 0.06) 18%,
+      rgba(0, 0, 0, 0) 28%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(40, 0, 8, 0.84) 0%,
+      rgba(14, 0, 4, 0.78) 100%
+    );
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
-  animation: deBackdropFadeIn 0.45s ease-out both;
+  animation: deBackdropPulse var(--de-spotlight-ms, 1700ms) ease-out forwards;
 }
 
-@keyframes deBackdropFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+@keyframes deBackdropPulse {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  72%  { opacity: 0.92; }
+  100% { opacity: 0; }
 }
 
 /**
@@ -309,21 +322,29 @@
 .tv-zone--de-spotlight {
   position: relative;
   z-index: 9999;
-  animation: deSpotlightGlow 0.5s ease-out both;
+  animation: deSpotlightPulse var(--de-spotlight-ms, 1700ms) ease-out forwards;
 }
 
-@keyframes deSpotlightGlow {
-  from {
+@keyframes deSpotlightPulse {
+  0% {
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.5),
       0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: scale(1);
   }
-  to {
+  22% {
     box-shadow:
-      0 0 0 3px rgba(255, 200, 50, 0.9),
-      0 0 40px rgba(255, 180, 0, 0.7),
-      0 0 80px rgba(255, 120, 0, 0.35),
-      0 8px 32px rgba(0, 0, 0, 0.7);
+      0 0 0 3px rgba(255, 214, 102, 0.92),
+      0 0 44px rgba(196, 30, 58, 0.58),
+      0 0 96px rgba(120, 6, 22, 0.46),
+      0 12px 44px rgba(0, 0, 0, 0.76);
+    transform: scale(1.018);
+  }
+  100% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: scale(1);
   }
 }
 

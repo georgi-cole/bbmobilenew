@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition } from 'react';
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Phase } from '../../types';
 import { useNavigate } from 'react-router-dom';
@@ -123,6 +123,7 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 // Duration (ms) the main viewport text stays faded after an announcement is dismissed,
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
+const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
 
 /**
  * TvZone — the central "TV-like" action zone.
@@ -178,7 +179,10 @@ export default function TvZone() {
   const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null);
   // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
   const [postDismissBlocked, setPostDismissBlocked] = useState(false);
+  // Short-lived TV spotlight effect for Double Eviction special announcements.
+  const [deSpotlightActive, setDeSpotlightActive] = useState(false);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks the previous phase to detect phase transitions.
   const previousPhaseRef = useRef<Phase | null>(null);
   // Stable ref so phase-transition effect always reads the latest latestEvent.
@@ -259,6 +263,39 @@ export default function TvZone() {
     };
   }, []);
 
+  // Play a short TV-only spotlight intro for Double Eviction announcements,
+  // then return the surrounding UI to normal while keeping the announcement visible.
+  useEffect(() => {
+    if (activeAnnouncement?.key !== 'double_eviction') {
+      startTransition(() => {
+        setDeSpotlightActive(false);
+      });
+      if (deSpotlightTimerRef.current !== null) {
+        clearTimeout(deSpotlightTimerRef.current);
+        deSpotlightTimerRef.current = null;
+      }
+      return;
+    }
+
+    startTransition(() => {
+      setDeSpotlightActive(true);
+    });
+    if (deSpotlightTimerRef.current !== null) clearTimeout(deSpotlightTimerRef.current);
+    deSpotlightTimerRef.current = setTimeout(() => {
+      startTransition(() => {
+        setDeSpotlightActive(false);
+      });
+      deSpotlightTimerRef.current = null;
+    }, DOUBLE_EVICTION_SPOTLIGHT_MS);
+
+    return () => {
+      if (deSpotlightTimerRef.current !== null) {
+        clearTimeout(deSpotlightTimerRef.current);
+        deSpotlightTimerRef.current = null;
+      }
+    };
+  }, [activeAnnouncement?.key]);
+
   // Listen for central FAB 'tv:announcement-dismiss' events
   useEffect(() => {
     const handler = () => handleDismiss();
@@ -275,12 +312,13 @@ export default function TvZone() {
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
 
   // Whether the current announcement is a double eviction (for spotlight effect).
-  const isDeSpotlight = activeAnnouncement?.key === 'double_eviction';
+  const isDeSpotlight = deSpotlightActive;
 
   return (
     <section
       className={`tv-zone${isDeSpotlight ? ' tv-zone--de-spotlight' : ''}`}
       aria-label="Game action zone"
+      style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
     >
       {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
       {isDeSpotlight && createPortal(

@@ -99,19 +99,21 @@
 /* ── Double Eviction variant (gold / crimson spotlight) ──────────────────── */
 .tv-announcement--double-eviction {
   background: linear-gradient(
-    160deg,
-    rgba(90, 10, 10, 0.93) 0%,
-    rgba(200, 30, 30, 0.88) 48%,
-    rgba(100, 60, 0, 0.93) 100%
+    180deg,
+    rgba(28, 2, 8, 0.97) 0%,
+    rgba(78, 8, 16, 0.95) 40%,
+    rgba(116, 16, 28, 0.93) 72%,
+    rgba(44, 4, 10, 0.97) 100%
   );
 }
 
 .tv-announcement--double-eviction::before {
   background: linear-gradient(
-    160deg,
-    rgba(255, 200, 50, 0.28) 0%,
-    rgba(255, 80, 60, 0.32) 50%,
-    rgba(255, 200, 50, 0.22) 100%
+    180deg,
+    rgba(255, 142, 142, 0.08) 0%,
+    rgba(164, 18, 36, 0.18) 40%,
+    rgba(255, 188, 104, 0.12) 76%,
+    rgba(90, 10, 18, 0.12) 100%
   );
 }
 

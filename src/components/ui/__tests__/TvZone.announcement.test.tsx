@@ -484,6 +484,26 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Double Eviction!/i })).toBeDefined();
   });
 
+  it('plays a short Double Eviction spotlight intro, then returns the surrounding UI to normal', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('nominations')); });
+    act(() => { store.dispatch(activateDoubleEviction()); });
+
+    expect(document.body.querySelector('.tv-zone-de-backdrop')).not.toBeNull();
+    expect(screen.getByLabelText('Game action zone').className).toContain('tv-zone--de-spotlight');
+
+    act(() => {
+      vi.advanceTimersByTime(1700);
+    });
+
+    expect(document.body.querySelector('.tv-zone-de-backdrop')).toBeNull();
+    expect(screen.getByLabelText('Game action zone').className).not.toContain('tv-zone--de-spotlight');
+    vi.useRealTimers();
+  });
+
   it('shows Veto Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
     const store = makeStore();
     renderTvZone(store);
