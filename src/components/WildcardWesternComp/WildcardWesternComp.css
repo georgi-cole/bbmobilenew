@@ -89,6 +89,11 @@
   transform: translateY(0);
 }
 
+.ww-btn--secondary {
+  background: rgba(45, 27, 14, 0.92);
+  color: #f4e4c1;
+}
+
 /* Card reveal */
 .ww-card-grid {
   display: grid;
@@ -197,6 +202,13 @@
   color: #f4e4c1;
 }
 
+.ww-answer-subtitle {
+  text-align: center;
+  margin: -0.5rem 0 1rem;
+  color: rgba(244, 228, 193, 0.88);
+  font-size: 0.95rem;
+}
+
 .ww-answer-grid {
   display: flex;
   flex-direction: column;
@@ -262,6 +274,41 @@
   margin-top: 1rem;
 }
 
+.ww-draw-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(212, 160, 23, 0.14);
+  border: 2px solid rgba(212, 160, 23, 0.5);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  text-align: left;
+}
+
+.ww-draw-callout--compact {
+  margin: 0 auto 1rem;
+}
+
+.ww-draw-callout__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.ww-draw-callout__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 228, 193, 0.72);
+}
+
+.ww-draw-callout__name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f4e4c1;
+}
+
 /* Resolution screen */
 .ww-resolution {
   text-align: center;
@@ -278,6 +325,53 @@
   font-size: 1.2rem;
   margin-bottom: 1rem;
   line-height: 1.6;
+}
+
+.ww-answer-reveal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+}
+
+.ww-answer-reveal-card {
+  padding: 0.95rem 1rem;
+  border-radius: 12px;
+  border: 2px solid rgba(244, 228, 193, 0.16);
+  background: rgba(45, 27, 14, 0.55);
+  text-align: left;
+}
+
+.ww-answer-reveal-card--correct {
+  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.ww-answer-reveal-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244, 228, 193, 0.7);
+  margin-bottom: 0.4rem;
+}
+
+.ww-answer-reveal-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f4e4c1;
+}
+
+.ww-spectator-note {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.6rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  background: rgba(244, 228, 193, 0.08);
+  border: 1px solid rgba(244, 228, 193, 0.18);
+  color: rgba(244, 228, 193, 0.92);
+  font-weight: 600;
 }
 
 .ww-outcome-correct {
@@ -406,6 +500,50 @@
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
+}
+
+.ww-spectator-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 6, 4, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+}
+
+.ww-spectator-card {
+  width: min(100%, 420px);
+  padding: 1.5rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(69, 36, 18, 0.98), rgba(34, 18, 10, 0.98));
+  border: 3px solid rgba(212, 160, 23, 0.5);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.ww-spectator-card h2 {
+  margin: 0.4rem 0 0.7rem;
+  color: #f4e4c1;
+}
+
+.ww-spectator-card p {
+  margin: 0 0 1.25rem;
+  color: rgba(244, 228, 193, 0.86);
+  line-height: 1.5;
+}
+
+.ww-spectator-icon {
+  font-size: 2rem;
+}
+
+.ww-spectator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
 }
 
 /* ── WwAvatar component ───────────────────────────────────────────────────── */
@@ -582,4 +720,16 @@
   display: flex;
   justify-content: center;
   margin-bottom: 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .ww-draw-callout {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ww-spectator-actions {
+    flex-direction: column;
+  }
 }

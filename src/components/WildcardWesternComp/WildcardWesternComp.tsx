@@ -51,6 +51,12 @@ const WINNER_DISPLAY_DURATION_MS = 3000;
 const QUESTION_REVEAL_DELAY_MS = 700;
 /** Brief intro beat before the automatic final duel begins. */
 const FINAL_DUEL_INTRO_DELAY_MS = 1000;
+/** Spectator auto-advance delay for passive "continue" beats. */
+const SPECTATOR_CONTINUE_DELAY_MS = 1500;
+/** Spectator auto-advance delay for the "Begin Duel" beat. */
+const SPECTATOR_BEGIN_DUEL_DELAY_MS = 1100;
+/** Fast skip-to-results delay between simulated steps. */
+const SPECTATOR_SKIP_STEP_DELAY_MS = 250;
 
 // ─── WwAvatar ──────────────────────────────────────────────────────────────────
 // Compact circular avatar used in avatar-grid selectors and the status bar.
@@ -172,8 +178,13 @@ export default function WildcardWesternComp({
 }: WildcardWesternCompProps) {
   const dispatch = useDispatch<AppDispatch>();
   const state = useSelector((root: RootState) => root.wildcardWestern);
+  const humanPlayerId = participants.find((p) => p.isHuman)?.id ?? null;
 
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [showSpectatorModal, setShowSpectatorModal] = useState(false);
+  const [spectatorMode, setSpectatorMode] = useState<'playing' | 'prompt' | 'watching' | 'skipping'>(
+    humanPlayerId ? 'playing' : 'watching',
+  );
 
   const timeoutIdsRef = useRef<Set<number>>(new Set());
   const phaseRef = useRef(state.phase);
@@ -241,27 +252,32 @@ export default function WildcardWesternComp({
     participantMap.current = new Map(participants.map((p) => [p.id, p]));
   }, [participants]);
 
-  const getParticipantName = (id: string) => {
+  // These helpers intentionally close over participantMap.current (a mutable ref)
+  // so they always read the latest participant metadata without recreating callbacks
+  // on every render.
+  const getParticipantName = useCallback((id: string) => {
     return participantMap.current.get(id)?.name ?? id;
-  };
+  }, []);
 
-  const getParticipantAvatar = (id: string): string => {
+  const getParticipantAvatar = useCallback((id: string): string => {
     const p = participantMap.current.get(id);
     if (!p) return getDicebear(id);
     return resolveAvatar({ id: p.id, name: p.name, avatar: '' });
-  };
+  }, []);
 
-  const isHuman = (id: string) => {
+  const isHuman = useCallback((id: string) => {
     return participantMap.current.get(id)?.isHuman ?? false;
-  };
+  }, []);
 
-  const humanPlayerId = participants.find((p) => p.isHuman)?.id ?? null;
   const buildCompletion = useCallback((): ReactMinigameCompletion | undefined => {
     if (!state.winnerId) return undefined;
     return {
       authoritativeWinnerId: state.winnerId,
     };
   }, [state.winnerId]);
+  const isHumanEliminated = humanPlayerId ? state.eliminatedIds.includes(humanPlayerId) : false;
+  const isSpectating = spectatorMode === 'watching' || spectatorMode === 'skipping';
+  const isSkippingToResults = spectatorMode === 'skipping';
   const isHostedGameOver = state.phase === 'gameOver' && !standalone;
   const shouldResolveHostedOutcome =
     isHostedGameOver && !!state.winnerId && !state.outcomeResolved;
@@ -357,6 +373,21 @@ export default function WildcardWesternComp({
     }, FINAL_DUEL_INTRO_DELAY_MS);
   }, [dispatch, scheduleTimeout, state.phase]);
 
+  // Human eliminated → prompt for spectator choice once per run.
+  useEffect(() => {
+    if (!humanPlayerId) return;
+    if (!isHumanEliminated) return;
+    if (spectatorMode !== 'playing') return;
+    if (state.phase === 'gameOver' || state.phase === 'complete') return;
+    setSpectatorMode('prompt');
+    setShowSpectatorModal(true);
+  }, [humanPlayerId, isHumanEliminated, spectatorMode, state.phase]);
+
+  useEffect(() => {
+    if (state.phase !== 'gameOver' && state.phase !== 'complete') return;
+    setShowSpectatorModal(false);
+  }, [state.phase]);
+
   // AI buzz logic
   useEffect(() => {
     if (state.phase !== 'buzzOpen') return;
@@ -384,7 +415,7 @@ export default function WildcardWesternComp({
 
     if (!isHuman(p1)) scheduleAiBuzz(p1);
     if (!isHuman(p2)) scheduleAiBuzz(p2);
-  }, [dispatch, scheduleTimeout, seed, state.currentPair, state.currentQuestionId, state.duelNumber, state.phase]);
+  }, [dispatch, isHuman, scheduleTimeout, seed, state.currentPair, state.currentQuestionId, state.duelNumber, state.phase]);
 
   // AI answer logic
   useEffect(() => {
@@ -405,7 +436,7 @@ export default function WildcardWesternComp({
         }
       }, AI_ANSWER_DELAY_MS);
     }
-  }, [dispatch, scheduleTimeout, seed, state.buzzedBy, state.currentQuestionId, state.duelNumber, state.phase]);
+  }, [dispatch, isHuman, scheduleTimeout, seed, state.buzzedBy, state.currentQuestionId, state.duelNumber, state.phase]);
 
   // AI elimination choice
   useEffect(() => {
@@ -425,7 +456,7 @@ export default function WildcardWesternComp({
         dispatch(playerChooseElimination({ targetId }));
       }
     }, AI_ELIMINATION_DELAY_MS);
-  }, [dispatch, scheduleTimeout, seed, state.aliveIds, state.duelNumber, state.eliminationChooserId, state.phase]);
+  }, [dispatch, isHuman, scheduleTimeout, seed, state.aliveIds, state.duelNumber, state.eliminationChooserId, state.phase]);
 
   // AI next pair choice
   useEffect(() => {
@@ -440,7 +471,7 @@ export default function WildcardWesternComp({
         dispatch(playerChooseNextPair({ pair }));
       }
     }, AI_PAIR_CHOICE_DELAY_MS);
-  }, [dispatch, scheduleTimeout, seed, state.aliveIds, state.controllerId, state.duelNumber, state.phase]);
+  }, [dispatch, isHuman, scheduleTimeout, seed, state.aliveIds, state.controllerId, state.duelNumber, state.phase]);
 
   // Auto-advance randomPairSelection
   useEffect(() => {
@@ -462,11 +493,194 @@ export default function WildcardWesternComp({
     completionReportedRef.current = true;
     scheduleTimeout(() => {
       onCompleteRef.current?.(buildCompletion());
-    }, WINNER_DISPLAY_DURATION_MS);
-  }, [buildCompletion, scheduleTimeout, shouldNotifyHostedCompletion]);
+    }, isSkippingToResults ? SPECTATOR_SKIP_STEP_DELAY_MS : WINNER_DISPLAY_DURATION_MS);
+  }, [buildCompletion, isSkippingToResults, scheduleTimeout, shouldNotifyHostedCompletion]);
+
+  // Spectator auto-pacing after the human has been eliminated.
+  useEffect(() => {
+    if (!isHumanEliminated) return;
+    if (spectatorMode !== 'watching' && spectatorMode !== 'skipping') return;
+
+    const fast = spectatorMode === 'skipping';
+
+    if (state.phase === 'resolution') {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'resolution') return;
+        playContinue();
+        dispatch(advanceResolution());
+      }, fast ? SPECTATOR_SKIP_STEP_DELAY_MS : SPECTATOR_CONTINUE_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'pairIntro') {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'pairIntro') return;
+        playContinue();
+        dispatch(advancePairIntro());
+      }, fast ? SPECTATOR_SKIP_STEP_DELAY_MS : SPECTATOR_BEGIN_DUEL_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'finalDuel' && fast) {
+      scheduleTimeout(() => {
+        if (phaseRef.current === 'finalDuel') {
+          dispatch(advancePairIntro());
+        }
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'gameOver' && standalone) {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'gameOver') return;
+        dispatch(advanceGameOver());
+      }, fast ? SPECTATOR_SKIP_STEP_DELAY_MS : WINNER_DISPLAY_DURATION_MS);
+      return;
+    }
+
+    if (!fast) return;
+
+    if (state.phase === 'duelQuestion') {
+      scheduleTimeout(() => {
+        if (phaseRef.current === 'duelQuestion') {
+          dispatch(openBuzzWindow());
+        }
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'randomPairSelection') {
+      scheduleTimeout(() => {
+        if (phaseRef.current === 'randomPairSelection') {
+          dispatch(randomPairChosen());
+        }
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'buzzOpen') {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'buzzOpen' || !state.currentPair) return;
+
+        const question = WILDCARD_QUESTIONS.find((q) => q.id === state.currentQuestionId);
+        if (!question) {
+          dispatch(buzzTimeout());
+          return;
+        }
+
+        const plannedBuzzes = state.currentPair
+          .filter((id) => !isHuman(id))
+          .map((playerId) => ({
+            playerId,
+            plan: precomputeAiDuelPlan(
+              playerId,
+              getAiPersonality(playerId, seed),
+              question,
+              seed,
+              state.duelNumber,
+            ),
+          }))
+          .filter(({ plan }) => plan.willBuzz)
+          .sort((a, b) => a.plan.buzzDelayMs - b.plan.buzzDelayMs);
+
+        if (plannedBuzzes.length > 0) {
+          dispatch(playerBuzz({ playerId: plannedBuzzes[0].playerId }));
+          return;
+        }
+
+        dispatch(buzzTimeout());
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'answerOpen' && state.buzzedBy) {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'answerOpen') return;
+        const buzzedBy = state.buzzedBy;
+        if (!buzzedBy) {
+          dispatch(answerTimeout());
+          return;
+        }
+        if (isHuman(buzzedBy)) {
+          dispatch(answerTimeout());
+          return;
+        }
+
+        const question = WILDCARD_QUESTIONS.find((q) => q.id === state.currentQuestionId);
+        if (!question) {
+          dispatch(answerTimeout());
+          return;
+        }
+
+        const plan = precomputeAiDuelPlan(
+          buzzedBy,
+          getAiPersonality(buzzedBy, seed),
+          question,
+          seed,
+          state.duelNumber,
+        );
+
+        if (plan.willAnswer) {
+          dispatch(playerAnswer({ answerIndex: plan.chosenAnswerIndex }));
+          return;
+        }
+
+        dispatch(answerTimeout());
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'chooseElimination' && state.eliminationChooserId) {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'chooseElimination') return;
+        const eliminationChooserId = state.eliminationChooserId;
+        if (!eliminationChooserId) return;
+        const targetId = precomputeAiEliminationChoice(
+          eliminationChooserId,
+          state.aliveIds,
+          seed,
+          state.duelNumber,
+        );
+        dispatch(playerChooseElimination({ targetId }));
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+      return;
+    }
+
+    if (state.phase === 'chooseNextPair' && state.controllerId) {
+      scheduleTimeout(() => {
+        if (phaseRef.current !== 'chooseNextPair') return;
+        const controllerId = state.controllerId;
+        if (!controllerId) return;
+        const pair = precomputeAiNextPair(controllerId, state.aliveIds, seed, state.duelNumber);
+        dispatch(playerChooseNextPair({ pair }));
+      }, SPECTATOR_SKIP_STEP_DELAY_MS);
+    }
+  }, [
+    dispatch,
+    isHumanEliminated,
+    isHuman,
+    playContinue,
+    scheduleTimeout,
+    seed,
+    spectatorMode,
+    standalone,
+    state.aliveIds,
+    state.buzzedBy,
+    state.controllerId,
+    state.currentPair,
+    state.currentQuestionId,
+    state.duelNumber,
+    state.eliminationChooserId,
+    state.phase,
+  ]);
 
   // Render
   const currentQuestion = WILDCARD_QUESTIONS.find((q) => q.id === state.currentQuestionId);
+  const selectedAnswerText =
+    currentQuestion && state.selectedAnswerIndex !== null
+      ? currentQuestion.options[state.selectedAnswerIndex]
+      : null;
+  const correctAnswerText = currentQuestion ? currentQuestion.options[currentQuestion.correctIndex] : null;
 
   return (
     <div className="wildcard-western-root">
@@ -553,9 +767,15 @@ export default function WildcardWesternComp({
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <button className="ww-btn" onClick={() => { playSelect(); dispatch(advancePairIntro()); }}>
-                Begin Duel
-              </button>
+              {isSpectating ? (
+                <div className="ww-spectator-note" aria-live="polite">
+                  Spectator mode: the next showdown begins automatically.
+                </div>
+              ) : (
+                <button className="ww-btn" onClick={() => { playSelect(); dispatch(advancePairIntro()); }}>
+                  Begin Duel
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -634,8 +854,12 @@ export default function WildcardWesternComp({
                   </button>
                 )}
                 {state.buzzedBy && (
-                  <div style={{ fontSize: '1.3rem', color: '#d4a017', fontWeight: 700 }}>
-                    {getParticipantName(state.buzzedBy)} drew first!
+                  <div className="ww-draw-callout" aria-live="assertive">
+                    <span className="ww-draw-callout__icon" aria-hidden="true">⚡</span>
+                    <div>
+                      <div className="ww-draw-callout__label">Quickest draw</div>
+                      <div className="ww-draw-callout__name">{getParticipantName(state.buzzedBy)} drew first!</div>
+                    </div>
                   </div>
                 )}
                 <div className="ww-timer">{Math.ceil(timeRemaining / 1000)}s</div>
@@ -647,8 +871,12 @@ export default function WildcardWesternComp({
         {state.phase === 'answerOpen' && currentQuestion && (
           <div className="ww-duel-container">
             <div className="ww-duel-header">
-              <div style={{ fontSize: '1.1rem', color: '#d4a017', fontWeight: 700, marginBottom: '0.75rem', textAlign: 'center' }}>
-                {getParticipantName(state.buzzedBy ?? '')} drew first!
+              <div className="ww-draw-callout ww-draw-callout--compact" aria-live="polite">
+                <span className="ww-draw-callout__icon" aria-hidden="true">⚡</span>
+                <div>
+                  <div className="ww-draw-callout__label">First draw</div>
+                  <div className="ww-draw-callout__name">{getParticipantName(state.buzzedBy ?? '')} answers now</div>
+                </div>
               </div>
               <div className="ww-duel-pair">
                 <WwAvatarDuelist
@@ -669,6 +897,11 @@ export default function WildcardWesternComp({
 
             <div className="ww-question-box">
               <div className="ww-question-text">{currentQuestion.prompt}</div>
+              <div className="ww-answer-subtitle">
+                {state.buzzedBy === humanPlayerId
+                  ? 'Pick your answer before the timer hits zero.'
+                  : `${getParticipantName(state.buzzedBy ?? '')} is locking in an answer…`}
+              </div>
               <div className="ww-answer-grid">
                 {currentQuestion.options.map((opt, idx) => (
                   <button
@@ -697,6 +930,15 @@ export default function WildcardWesternComp({
         {state.phase === 'resolution' && (
           <div className="ww-resolution">
             <h2>Showdown Result</h2>
+            {state.buzzedBy && (
+              <div className="ww-draw-callout ww-draw-callout--compact" aria-live="polite">
+                <span className="ww-draw-callout__icon" aria-hidden="true">⚡</span>
+                <div>
+                  <div className="ww-draw-callout__label">Draw winner</div>
+                  <div className="ww-draw-callout__name">{getParticipantName(state.buzzedBy)} fired first</div>
+                </div>
+              </div>
+            )}
             {state.lastDuelOutcome === 'correct' && (
               <p className="ww-outcome-correct">
                 Correct! {getParticipantName(state.lastEliminatedId ?? '')} has been eliminated.
@@ -717,13 +959,35 @@ export default function WildcardWesternComp({
                 No one drew! {state.currentPair ? 'Both eliminated.' : ''}
               </p>
             )}
-            <button
-              className="ww-btn"
-              style={{ marginTop: '2rem' }}
-              onClick={() => { playContinue(); dispatch(advanceResolution()); }}
-            >
-              Continue
-            </button>
+            {(selectedAnswerText || correctAnswerText) && state.lastDuelOutcome !== 'nobuzz' && (
+              <div className="ww-answer-reveal">
+                {selectedAnswerText && (
+                  <div className="ww-answer-reveal-card">
+                    <div className="ww-answer-reveal-label">Chosen answer</div>
+                    <div className="ww-answer-reveal-value">{selectedAnswerText}</div>
+                  </div>
+                )}
+                {correctAnswerText && (
+                  <div className="ww-answer-reveal-card ww-answer-reveal-card--correct">
+                    <div className="ww-answer-reveal-label">Correct answer</div>
+                    <div className="ww-answer-reveal-value">{correctAnswerText}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {isSpectating ? (
+              <div className="ww-spectator-note" aria-live="polite">
+                Spectator mode: continuing automatically.
+              </div>
+            ) : (
+              <button
+                className="ww-btn"
+                style={{ marginTop: '2rem' }}
+                onClick={() => { playContinue(); dispatch(advanceResolution()); }}
+              >
+                Continue
+              </button>
+            )}
           </div>
         )}
 
@@ -782,7 +1046,7 @@ export default function WildcardWesternComp({
             <p style={{ fontSize: '1.2rem', opacity: 0.9 }}>
               The last outlaw standing claims the {prizeType === 'HOH' ? 'Head of Household' : 'Power of Veto'}!
             </p>
-            {standalone && (
+            {standalone && !isSpectating && (
               <button
                 className="ww-btn"
                 style={{ marginTop: '2rem' }}
@@ -794,6 +1058,38 @@ export default function WildcardWesternComp({
           </div>
         )}
       </div>
+
+      {showSpectatorModal && (
+        <div className="ww-spectator-overlay" role="presentation">
+          <div className="ww-spectator-card" role="dialog" aria-modal="true" aria-label="Spectator options">
+            <div className="ww-spectator-icon" aria-hidden="true">🤠</div>
+            <h2>You have been eliminated.</h2>
+            <p>Watch the rest of the Wildcard Western play out, or jump straight to the final result.</p>
+            <div className="ww-spectator-actions">
+              <button
+                className="ww-btn"
+                type="button"
+                onClick={() => {
+                  setShowSpectatorModal(false);
+                  setSpectatorMode('watching');
+                }}
+              >
+                Continue Watching
+              </button>
+              <button
+                className="ww-btn ww-btn--secondary"
+                type="button"
+                onClick={() => {
+                  setShowSpectatorModal(false);
+                  setSpectatorMode('skipping');
+                }}
+              >
+                Skip to Results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status bar */}
       <div className="ww-status-bar">
