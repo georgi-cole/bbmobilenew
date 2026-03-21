@@ -32,6 +32,7 @@ import {
   precomputeAiNextPair,
 } from '../../features/wildcardWestern/wildcardWesternAi';
 import { resolveWildcardWesternOutcome } from '../../features/wildcardWestern/thunks';
+import { useWildcardWesternAudio } from '../../hooks/useWildcardWesternAudio';
 import './WildcardWesternComp.css';
 
 // ─── Timing constants ──────────────────────────────────────────────────────────
@@ -100,6 +101,38 @@ export default function WildcardWesternComp({
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
+
+  // ── Audio ─────────────────────────────────────────────────────────────────
+  const { playSelect, playDraw, playEliminated, playWinner, playContinue, playNewRound } =
+    useWildcardWesternAudio(state.phase !== 'idle');
+
+  // Play elimination sound when a player is eliminated (resolution phase shows outcome).
+  const lastEliminatedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.phase !== 'resolution') return;
+    if (!state.lastEliminatedId) return;
+    if (state.lastEliminatedId === lastEliminatedIdRef.current) return;
+    lastEliminatedIdRef.current = state.lastEliminatedId;
+    playEliminated();
+  }, [playEliminated, state.lastEliminatedId, state.phase]);
+
+  // Play winner sound when the game-over screen appears.
+  const winnerSoundPlayedRef = useRef(false);
+  useEffect(() => {
+    if (state.phase !== 'gameOver') return;
+    if (winnerSoundPlayedRef.current) return;
+    winnerSoundPlayedRef.current = true;
+    playWinner();
+  }, [playWinner, state.phase]);
+
+  // Play new-round cue on each new pairIntro.
+  const lastDuelForNewRoundRef = useRef(-1);
+  useEffect(() => {
+    if (state.phase !== 'pairIntro') return;
+    if (state.duelNumber === lastDuelForNewRoundRef.current) return;
+    lastDuelForNewRoundRef.current = state.duelNumber;
+    playNewRound();
+  }, [playNewRound, state.duelNumber, state.phase]);
 
   const participantMap = useRef<Map<string, MinigameParticipant>>(new Map());
   useEffect(() => {
@@ -344,7 +377,7 @@ export default function WildcardWesternComp({
               Draw your wildcard. Face off in showdowns. Answer correctly or face elimination.
               Last sheriff standing wins!
             </p>
-            <button className="ww-btn" onClick={() => dispatch(advanceIntro())}>
+            <button className="ww-btn" onClick={() => { playSelect(); dispatch(advanceIntro()); }}>
               Draw Cards
             </button>
           </div>
@@ -353,7 +386,7 @@ export default function WildcardWesternComp({
         {state.phase === 'cardDeal' && (
           <div className="ww-intro">
             <h2>Dealing Cards...</h2>
-            <button className="ww-btn" onClick={() => dispatch(dealCardsAction())}>
+            <button className="ww-btn" onClick={() => { playSelect(); dispatch(dealCardsAction()); }}>
               Reveal Cards
             </button>
           </div>
@@ -378,7 +411,7 @@ export default function WildcardWesternComp({
               })}
             </div>
             <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-              <button className="ww-btn" onClick={() => dispatch(advanceCardReveal())}>
+              <button className="ww-btn" onClick={() => { playSelect(); dispatch(advanceCardReveal()); }}>
                 Start Showdown
               </button>
             </div>
@@ -396,7 +429,7 @@ export default function WildcardWesternComp({
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <button className="ww-btn" onClick={() => dispatch(advancePairIntro())}>
+              <button className="ww-btn" onClick={() => { playSelect(); dispatch(advancePairIntro()); }}>
                 Begin Duel
               </button>
             </div>
@@ -453,7 +486,7 @@ export default function WildcardWesternComp({
                 {state.currentPair?.includes(humanPlayerId ?? '') && !state.buzzedBy && (
                   <button
                     className="ww-buzz-btn"
-                    onClick={() => dispatch(playerBuzz({ playerId: humanPlayerId! }))}
+                    onClick={() => { playDraw(); dispatch(playerBuzz({ playerId: humanPlayerId! })); }}
                   >
                     DRAW!
                   </button>
@@ -492,6 +525,7 @@ export default function WildcardWesternComp({
                     disabled={state.buzzedBy !== humanPlayerId}
                     onClick={() => {
                       if (state.buzzedBy === humanPlayerId) {
+                        playSelect();
                         dispatch(playerAnswer({ answerIndex: idx as 0 | 1 | 2 }));
                       }
                     }}
@@ -534,7 +568,7 @@ export default function WildcardWesternComp({
             <button
               className="ww-btn"
               style={{ marginTop: '2rem' }}
-              onClick={() => dispatch(advanceResolution())}
+              onClick={() => { playContinue(); dispatch(advanceResolution()); }}
             >
               Continue
             </button>
@@ -553,7 +587,7 @@ export default function WildcardWesternComp({
                   <button
                     key={id}
                     className="ww-player-btn"
-                    onClick={() => dispatch(playerChooseElimination({ targetId: id }))}
+                    onClick={() => { playSelect(); dispatch(playerChooseElimination({ targetId: id })); }}
                     disabled={!isHuman(state.eliminationChooserId ?? '')}
                   >
                     {getParticipantName(id)}
@@ -575,6 +609,7 @@ export default function WildcardWesternComp({
               getParticipantName={getParticipantName}
               isHuman={isHuman}
               onSelectPair={(pair) => dispatch(playerChooseNextPair({ pair }))}
+              playSelect={playSelect}
             />
           </div>
         )}
@@ -626,12 +661,14 @@ interface PairSelectorProps {
   getParticipantName: (id: string) => string;
   isHuman: (id: string) => boolean;
   onSelectPair: (pair: [string, string]) => void;
+  playSelect: () => void;
 }
 
-function PairSelector({ aliveIds, controllerId, getParticipantName, isHuman, onSelectPair }: PairSelectorProps) {
+function PairSelector({ aliveIds, controllerId, getParticipantName, isHuman, onSelectPair, playSelect }: PairSelectorProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleToggle = (id: string) => {
+    playSelect();
     if (selected.includes(id)) {
       setSelected(selected.filter((s) => s !== id));
     } else if (selected.length < 2) {
@@ -641,6 +678,7 @@ function PairSelector({ aliveIds, controllerId, getParticipantName, isHuman, onS
 
   const handleConfirm = () => {
     if (selected.length === 2) {
+      playSelect();
       onSelectPair([selected[0], selected[1]]);
     }
   };

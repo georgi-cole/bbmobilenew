@@ -411,6 +411,89 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     preload: false,
     volume: 0.9,
   },
+
+  // ── Wildcard Western minigame sounds ──────────────────────────────────────
+
+  /**
+   * Wildcard Western looping background music — plays throughout the entire game.
+   * Asset: public/assets/sounds/wildcard western/music_wildcard_western_main.mp3
+   */
+  'music:wildcard_western_main': {
+    key: 'music:wildcard_western_main',
+    category: 'music',
+    src: `${SOUNDS_BASE}wildcard western/music_wildcard_western_main.mp3`,
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
+  /**
+   * Wildcard Western select sound — plays when the player taps an answer,
+   * selects a duel opponent, or picks another houseguest.
+   * Asset: public/assets/sounds/wildcard western/ui_wildcard_select.mp3
+   */
+  'ui:wildcard_select': {
+    key: 'ui:wildcard_select',
+    category: 'ui',
+    src: `${SOUNDS_BASE}wildcard western/ui_wildcard_select.mp3`,
+    preload: false,
+    volume: 0.8,
+  },
+  /**
+   * Wildcard Western draw sound — plays when the player hits the DRAW button.
+   * Asset: public/assets/sounds/wildcard western/ui_wildcard_draw.mp3
+   */
+  'ui:wildcard_draw': {
+    key: 'ui:wildcard_draw',
+    category: 'ui',
+    src: `${SOUNDS_BASE}wildcard western/ui_wildcard_draw.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+  /**
+   * Wildcard Western elimination sound — plays when a player is eliminated.
+   * Asset: public/assets/sounds/wildcard western/player_wildcard_eliminated.mp3
+   */
+  'player:wildcard_eliminated': {
+    key: 'player:wildcard_eliminated',
+    category: 'player',
+    src: `${SOUNDS_BASE}wildcard western/player_wildcard_eliminated.mp3`,
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Wildcard Western winner sound — plays when the game winner is revealed.
+   * Asset: public/assets/sounds/wildcard western/minigame_wildcard_winner.mp3
+   */
+  'minigame:wildcard_winner': {
+    key: 'minigame:wildcard_winner',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}wildcard western/minigame_wildcard_winner.mp3`,
+    preload: false,
+    volume: 1.0,
+  },
+  /**
+   * Wildcard Western continue sound — plays when the Continue button is pressed
+   * after a duel resolution.
+   * Asset: public/assets/sounds/wildcard western/ui_wildcard_continue.mp3
+   */
+  'ui:wildcard_continue': {
+    key: 'ui:wildcard_continue',
+    category: 'ui',
+    src: `${SOUNDS_BASE}wildcard western/ui_wildcard_continue.mp3`,
+    preload: false,
+    volume: 0.8,
+  },
+  /**
+   * Wildcard Western new-round cue — plays at round/pair transitions.
+   * Asset: public/assets/sounds/wildcard western/western_new_round.mp3
+   */
+  'ui:western_new_round': {
+    key: 'ui:western_new_round',
+    category: 'ui',
+    src: `${SOUNDS_BASE}wildcard western/western_new_round.mp3`,
+    preload: false,
+    volume: 0.85,
+  },
 };
 
 /**
@@ -436,6 +519,8 @@ export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
   // Alternate / previously-used capitalised filenames (resolve safely)
   Social_module:                                         'music:social_module',
   Hoh_competition_and_general_competition:               'music:hoh_comp_general',
+  // Wildcard Western — non-prefix filename that doesn't auto-derive
+  western_new_round:                                     'ui:western_new_round',
 };
 
 /**
