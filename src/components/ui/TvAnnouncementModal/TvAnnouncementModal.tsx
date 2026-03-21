@@ -88,13 +88,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏆',
     label: 'HOH COMPETITION',
     category: 'Competition',
-    body: 'The Head of Household competition is about to begin. Every houseguest is fighting for the most powerful position in the game. The winner becomes the new Head of Household and gains the authority to nominate two of their fellow houseguests for eviction. Power is up for grabs — who will reign supreme this week?',
+    body: 'The Head of Household competition is about to begin. Every eligible houseguest is fighting for the most powerful position in the game. The winner becomes the new Head of Household and gains the authority to nominate two of their fellow houseguests for eviction. Power is up for grabs — who will reign supreme this week?',
   },
   pov_comp_announcement: {
     icon: '🎭',
     label: 'POWER OF VETO',
     category: 'Competition',
-    body: 'It is time for the Power of Veto competition. Six players — the Head of Household, the two nominees, and three randomly selected houseguests — compete for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the week\'s outcome entirely.',
+    body: 'It is time for the Power of Veto competition. Houseguests will battle for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the week\'s outcome entirely.',
   },
 };
 

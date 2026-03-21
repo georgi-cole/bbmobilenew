@@ -77,9 +77,9 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final HOH begins.',      isLive: true,  autoDismissMs: null },
   final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
-  battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: 4500 },
-  double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: 5000 },
-  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
+  battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: null },
+  double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: null },
+  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: null },
   hoh_comp_announcement: { title: 'HOH Competition',           subtitle: 'Power is up for grabs — who will become Head of Household?',   isLive: true,  autoDismissMs: null },
   pov_comp_announcement: { title: 'Power of Veto',             subtitle: 'It\'s time for the Power of Veto competition!',                isLive: true,  autoDismissMs: null },
 };

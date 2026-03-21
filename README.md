@@ -111,8 +111,11 @@ triggers an overlay:
 | `final3_announcement` | manual |
 | `final_hoh` | manual |
 | `jury` | manual |
-| `battle_back` | 4.5 s |
-| `twist` | 4.5 s |
+| `battle_back` | manual |
+| `double_eviction` | manual |
+| `twist` | manual |
+| `hoh_comp_announcement` | manual |
+| `pov_comp_announcement` | manual |
 
 > **Note:** The correct key for the Final 3 announcement is `final3_announcement`.
 > Earlier documentation erroneously listed this as `final3`.
@@ -129,9 +132,8 @@ addTvEvent({
 });
 ```
 
-All manual-dismiss announcements are dismissed by the central Play/Continue FAB
+All overlay announcements are dismissed by the central Play/Continue FAB
 via the `tv:announcement-dismiss` custom event (see phase reference below).
-The countdown pauses automatically while the user hovers or focuses the overlay.
 
 ---
 
@@ -315,7 +317,7 @@ All overlay announcements require manual dismissal.  The central Play/Continue F
 window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
 ```
 
-An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `twist`, `hoh_comp_announcement`, `pov_comp_announcement`).
+An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `battle_back`, `double_eviction`, `twist`, `hoh_comp_announcement`, `pov_comp_announcement`).
 
 > **After merging**, please attach a screenshot of the updated TV area (full-bleed announcement visible) to this PR for visual verification.
 

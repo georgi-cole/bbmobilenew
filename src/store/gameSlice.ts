@@ -2114,7 +2114,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'hoh_comp_announcement': {
-          pushEvent(state, `The Head of Household competition is about to begin! 🏆 Power is up for grabs — who will reign supreme this week?`, 'game');
+          pushEvent(state, `The Head of Household competition is about to begin! 🏆 Power is up for grabs among the eligible houseguests — who will reign supreme this week?`, 'game');
           break;
         }
         case 'hoh_comp': {
@@ -2177,7 +2177,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_comp_announcement': {
-          pushEvent(state, `It is time for the Power of Veto competition! 🎭 Six players will battle for the most powerful item in the game.`, 'game');
+          pushEvent(state, `It is time for the Power of Veto competition! 🎭 Houseguests will battle for the most powerful item in the game.`, 'game');
           break;
         }
         case 'pov_comp': {
