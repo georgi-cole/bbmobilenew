@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import type { AppDispatch, RootState } from '../../store/store';
 import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import {
@@ -50,6 +51,107 @@ const WINNER_DISPLAY_DURATION_MS = 3000;
 const QUESTION_REVEAL_DELAY_MS = 700;
 /** Brief intro beat before the automatic final duel begins. */
 const FINAL_DUEL_INTRO_DELAY_MS = 1000;
+
+// ─── WwAvatar ──────────────────────────────────────────────────────────────────
+// Compact circular avatar used in avatar-grid selectors and the status bar.
+
+interface WwAvatarProps {
+  name: string;
+  avatarUrl: string;
+  isSelected?: boolean;
+  isDuelist?: boolean;
+  isEliminated?: boolean;
+  isYou?: boolean;
+  badge?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+function WwAvatar({
+  name,
+  avatarUrl,
+  isSelected,
+  isDuelist,
+  isEliminated,
+  isYou,
+  badge,
+  onClick,
+  disabled,
+  size = 'md',
+}: WwAvatarProps) {
+  const [imgSrc, setImgSrc] = useState(avatarUrl);
+  // Reset img src when avatarUrl changes (e.g. participant map updated)
+  useEffect(() => { setImgSrc(avatarUrl); }, [avatarUrl]);
+
+  function handleImgError() {
+    const fallback = getDicebear(name);
+    if (imgSrc !== fallback) setImgSrc(fallback);
+  }
+
+  const btnClasses = [
+    'ww-avatar-btn',
+    `ww-avatar-btn--${size}`,
+    isSelected ? 'ww-avatar-btn--selected' : '',
+    isDuelist && !isSelected ? 'ww-avatar-btn--duelist' : '',
+    isEliminated ? 'ww-avatar-btn--eliminated' : '',
+  ].filter(Boolean).join(' ');
+
+  const ariaLabel = [
+    name,
+    isYou ? 'you' : null,
+    isSelected ? 'selected' : null,
+    isDuelist ? 'current duelist' : null,
+    isEliminated ? 'eliminated' : null,
+  ].filter(Boolean).join(' – ');
+
+  return (
+    <div className={['ww-avatar-item', disabled && !isEliminated ? 'ww-avatar-item--disabled' : ''].filter(Boolean).join(' ')}>
+      <button
+        className={btnClasses}
+        type="button"
+        onClick={!disabled && !isEliminated ? onClick : undefined}
+        disabled={disabled && !isEliminated}
+        aria-label={ariaLabel}
+        title={name}
+      >
+        <div className={['ww-avatar-inner', isEliminated ? 'ww-avatar-inner--eliminated' : ''].filter(Boolean).join(' ')}>
+          <img src={imgSrc} alt={name} className="ww-avatar-img" onError={handleImgError} />
+        </div>
+        {isYou && <span className="ww-avatar-you" aria-label="You">YOU</span>}
+        {badge && <span className="ww-avatar-badge" aria-hidden="true">{badge}</span>}
+        {isEliminated && <span className="ww-avatar-x" aria-hidden="true">✕</span>}
+      </button>
+      <span className={`ww-avatar-name${size === 'sm' ? ' ww-avatar-name--sm' : ''}`}>{name}</span>
+    </div>
+  );
+}
+
+// ─── WwAvatarDuelist ────────────────────────────────────────────────────────
+// Larger avatar used in duel pair display — not interactive, always duelist-styled.
+
+interface WwAvatarDuelistProps {
+  name: string;
+  avatarUrl: string;
+  isYou?: boolean;
+  isBuzzed?: boolean;
+}
+
+function WwAvatarDuelist({ name, avatarUrl, isYou, isBuzzed }: WwAvatarDuelistProps) {
+  return (
+    <div className="ww-duel-avatar">
+      <WwAvatar
+        name={name}
+        avatarUrl={avatarUrl}
+        isDuelist={!isBuzzed}
+        isSelected={isBuzzed}
+        isYou={isYou}
+        badge={isBuzzed ? '🎯' : undefined}
+        size="lg"
+      />
+    </div>
+  );
+}
 
 interface WildcardWesternCompProps {
   participantIds: string[];
@@ -141,6 +243,12 @@ export default function WildcardWesternComp({
 
   const getParticipantName = (id: string) => {
     return participantMap.current.get(id)?.name ?? id;
+  };
+
+  const getParticipantAvatar = (id: string): string => {
+    const p = participantMap.current.get(id);
+    if (!p) return getDicebear(id);
+    return resolveAvatar({ id: p.id, name: p.name, avatar: '' });
   };
 
   const isHuman = (id: string) => {
@@ -403,7 +511,15 @@ export default function WildcardWesternComp({
                 const isAlive = state.aliveIds.includes(id);
                 return (
                   <div key={id} className="ww-player-card">
-                    <div className="ww-player-name">{getParticipantName(id)}</div>
+                    <div className="ww-player-card-avatar">
+                      <WwAvatar
+                        name={getParticipantName(id)}
+                        avatarUrl={getParticipantAvatar(id)}
+                        isEliminated={!isAlive}
+                        isYou={isHuman(id)}
+                        size="md"
+                      />
+                    </div>
                     <div className="ww-card-value">{cardValue}</div>
                     {!isAlive && <div className="ww-card-status">ELIMINATED</div>}
                   </div>
@@ -423,9 +539,17 @@ export default function WildcardWesternComp({
             <div className="ww-duel-header">
               <div className="ww-duel-title">High Noon Showdown</div>
               <div className="ww-duel-pair">
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[0] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[0] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[0] ?? '')}
+                  isYou={isHuman(state.currentPair?.[0] ?? '')}
+                />
                 <div className="ww-vs">VS</div>
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[1] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[1] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[1] ?? '')}
+                  isYou={isHuman(state.currentPair?.[1] ?? '')}
+                />
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -441,9 +565,17 @@ export default function WildcardWesternComp({
             <div className="ww-duel-header">
               <div className="ww-duel-title">Final Duel</div>
               <div className="ww-duel-pair">
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[0] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[0] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[0] ?? '')}
+                  isYou={isHuman(state.currentPair?.[0] ?? '')}
+                />
                 <div className="ww-vs">VS</div>
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[1] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[1] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[1] ?? '')}
+                  isYou={isHuman(state.currentPair?.[1] ?? '')}
+                />
               </div>
             </div>
             <p style={{ textAlign: 'center', fontSize: '1.15rem', opacity: 0.9 }}>
@@ -456,9 +588,19 @@ export default function WildcardWesternComp({
           <div className="ww-duel-container">
             <div className="ww-duel-header">
               <div className="ww-duel-pair">
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[0] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[0] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[0] ?? '')}
+                  isYou={isHuman(state.currentPair?.[0] ?? '')}
+                  isBuzzed={state.buzzedBy === state.currentPair?.[0]}
+                />
                 <div className="ww-vs">VS</div>
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[1] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[1] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[1] ?? '')}
+                  isYou={isHuman(state.currentPair?.[1] ?? '')}
+                  isBuzzed={state.buzzedBy === state.currentPair?.[1]}
+                />
               </div>
             </div>
 
@@ -505,13 +647,23 @@ export default function WildcardWesternComp({
         {state.phase === 'answerOpen' && currentQuestion && (
           <div className="ww-duel-container">
             <div className="ww-duel-header">
-              <div style={{ fontSize: '1.2rem', color: '#d4a017', fontWeight: 700, marginBottom: '1rem' }}>
+              <div style={{ fontSize: '1.1rem', color: '#d4a017', fontWeight: 700, marginBottom: '0.75rem', textAlign: 'center' }}>
                 {getParticipantName(state.buzzedBy ?? '')} drew first!
               </div>
               <div className="ww-duel-pair">
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[0] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[0] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[0] ?? '')}
+                  isYou={isHuman(state.currentPair?.[0] ?? '')}
+                  isBuzzed={state.buzzedBy === state.currentPair?.[0]}
+                />
                 <div className="ww-vs">VS</div>
-                <div className="ww-duel-name">{getParticipantName(state.currentPair?.[1] ?? '')}</div>
+                <WwAvatarDuelist
+                  name={getParticipantName(state.currentPair?.[1] ?? '')}
+                  avatarUrl={getParticipantAvatar(state.currentPair?.[1] ?? '')}
+                  isYou={isHuman(state.currentPair?.[1] ?? '')}
+                  isBuzzed={state.buzzedBy === state.currentPair?.[1]}
+                />
               </div>
             </div>
 
@@ -580,18 +732,19 @@ export default function WildcardWesternComp({
             <h2>
               {getParticipantName(state.eliminationChooserId ?? '')}, choose who to eliminate:
             </h2>
-            <div className="ww-player-list">
+            <div className="ww-avatar-grid">
               {state.aliveIds
                 .filter((id) => id !== state.eliminationChooserId)
                 .map((id) => (
-                  <button
+                  <WwAvatar
                     key={id}
-                    className="ww-player-btn"
+                    name={getParticipantName(id)}
+                    avatarUrl={getParticipantAvatar(id)}
+                    isYou={isHuman(id)}
                     onClick={() => { playSelect(); dispatch(playerChooseElimination({ targetId: id })); }}
                     disabled={!isHuman(state.eliminationChooserId ?? '')}
-                  >
-                    {getParticipantName(id)}
-                  </button>
+                    size="md"
+                  />
                 ))}
             </div>
           </div>
@@ -607,6 +760,7 @@ export default function WildcardWesternComp({
               aliveIds={state.aliveIds}
               controllerId={state.controllerId ?? ''}
               getParticipantName={getParticipantName}
+              getParticipantAvatar={getParticipantAvatar}
               isHuman={isHuman}
               onSelectPair={(pair) => dispatch(playerChooseNextPair({ pair }))}
               playSelect={playSelect}
@@ -643,12 +797,32 @@ export default function WildcardWesternComp({
 
       {/* Status bar */}
       <div className="ww-status-bar">
-        <div>
+        <div className="ww-status-bar-counts">
           <span className="ww-alive-count">Alive: {state.aliveIds.length}</span>
-          {' | '}
-          <span className="ww-eliminated">Eliminated: {state.eliminatedIds.length}</span>
+          <span>Duel #{state.duelNumber}</span>
+          <span className="ww-eliminated">Out: {state.eliminatedIds.length}</span>
         </div>
-        <div>Duel #{state.duelNumber}</div>
+        <div className="ww-status-avatars">
+          {state.aliveIds.map((id) => (
+            <WwAvatar
+              key={id}
+              name={getParticipantName(id)}
+              avatarUrl={getParticipantAvatar(id)}
+              isYou={isHuman(id)}
+              isDuelist={state.currentPair?.includes(id)}
+              size="sm"
+            />
+          ))}
+          {state.eliminatedIds.map((id) => (
+            <WwAvatar
+              key={id}
+              name={getParticipantName(id)}
+              avatarUrl={getParticipantAvatar(id)}
+              isEliminated
+              size="sm"
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -659,12 +833,13 @@ interface PairSelectorProps {
   aliveIds: string[];
   controllerId: string;
   getParticipantName: (id: string) => string;
+  getParticipantAvatar: (id: string) => string;
   isHuman: (id: string) => boolean;
   onSelectPair: (pair: [string, string]) => void;
   playSelect: () => void;
 }
 
-function PairSelector({ aliveIds, controllerId, getParticipantName, isHuman, onSelectPair, playSelect }: PairSelectorProps) {
+function PairSelector({ aliveIds, controllerId, getParticipantName, getParticipantAvatar, isHuman, onSelectPair, playSelect }: PairSelectorProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleToggle = (id: string) => {
@@ -687,20 +862,19 @@ function PairSelector({ aliveIds, controllerId, getParticipantName, isHuman, onS
 
   return (
     <div>
-      <div className="ww-player-list" style={{ marginBottom: '1.5rem' }}>
+      <div className="ww-avatar-grid" style={{ marginBottom: '1.5rem' }}>
         {aliveIds.map((id) => (
-          <button
+          <WwAvatar
             key={id}
-            className="ww-player-btn"
+            name={getParticipantName(id)}
+            avatarUrl={getParticipantAvatar(id)}
+            isSelected={selected.includes(id)}
+            isYou={isHuman(id)}
+            badge={selected.includes(id) ? '✓' : undefined}
             onClick={() => handleToggle(id)}
             disabled={!isControllerHuman}
-            style={{
-              background: selected.includes(id) ? '#d4a017' : '#722f37',
-              borderColor: selected.includes(id) ? '#f4e4c1' : '#8b4513',
-            }}
-          >
-            {getParticipantName(id)} {selected.includes(id) && '✓'}
-          </button>
+            size="md"
+          />
         ))}
       </div>
       {isControllerHuman && (

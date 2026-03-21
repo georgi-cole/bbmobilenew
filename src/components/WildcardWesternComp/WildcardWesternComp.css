@@ -377,13 +377,19 @@
 
 /* Status bar */
 .ww-status-bar {
-  padding: 1rem 1.5rem;
+  padding: 0.6rem 1rem;
   background: rgba(139, 69, 19, 0.3);
   border-top: 2px solid #8b4513;
   display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ww-status-bar-counts {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .ww-alive-count {
@@ -393,4 +399,187 @@
 
 .ww-eliminated {
   opacity: 0.6;
+}
+
+.ww-status-avatars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+/* ── WwAvatar component ───────────────────────────────────────────────────── */
+
+.ww-avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.ww-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ww-avatar-item--disabled .ww-avatar-name {
+  opacity: 0.5;
+}
+
+.ww-avatar-btn {
+  position: relative;
+  border-radius: 50%;
+  border: 3px solid #8b4513;
+  overflow: visible;
+  background: #2d1b0e;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ww-avatar-btn--lg { width: 80px; height: 80px; }
+.ww-avatar-btn--md { width: 68px; height: 68px; }
+.ww-avatar-btn--sm { width: 36px; height: 36px; border-width: 2px; }
+
+.ww-avatar-btn:hover:not(:disabled):not(.ww-avatar-btn--eliminated) {
+  transform: scale(1.1);
+  border-color: #d4a017;
+  box-shadow: 0 0 10px rgba(212, 160, 23, 0.5);
+}
+
+.ww-avatar-btn--selected,
+.ww-avatar-btn--selected:hover:not(:disabled):not(.ww-avatar-btn--eliminated) {
+  border-color: #d4a017;
+  box-shadow: 0 0 0 3px #d4a017, 0 0 14px rgba(212, 160, 23, 0.65);
+}
+
+.ww-avatar-btn--duelist {
+  border-color: #f4e4c1;
+  box-shadow: 0 0 0 3px rgba(244, 228, 193, 0.8), 0 0 18px rgba(212, 160, 23, 0.5);
+  animation: ww-duelist-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ww-duelist-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(244, 228, 193, 0.8), 0 0 12px rgba(212, 160, 23, 0.4); }
+  50%       { box-shadow: 0 0 0 5px #d4a017, 0 0 22px rgba(212, 160, 23, 0.75); }
+}
+
+.ww-avatar-btn--eliminated {
+  cursor: default;
+}
+
+.ww-avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+}
+
+.ww-avatar-inner--eliminated {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.ww-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+
+.ww-avatar-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: #ef4444;
+  font-weight: 900;
+  pointer-events: none;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+.ww-avatar-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: #2d1b0e;
+  border-radius: 50%;
+  padding: 2px;
+  border: 1.5px solid #8b4513;
+  pointer-events: none;
+}
+
+.ww-avatar-you {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.5rem;
+  font-weight: 800;
+  background: #d4a017;
+  color: #2d1b0e;
+  border-radius: 5px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ww-avatar-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #f4e4c1;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ww-avatar-name--sm {
+  font-size: 0.58rem;
+  max-width: 44px;
+}
+
+/* Duel pair: two large avatars with VS between */
+.ww-duel-pair {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ww-duel-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ww-duel-avatar-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f4e4c1;
+  text-align: center;
+}
+
+/* Card-reveal: avatar above card value */
+.ww-player-card-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.6rem;
 }
