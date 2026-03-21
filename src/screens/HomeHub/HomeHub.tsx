@@ -93,9 +93,12 @@ export default function HomeHub() {
     // is not needed on the Intro/Home route.  This satisfies browser autoplay
     // policy: the first user gesture on the home screen unlocks audio context.
     SoundManager.unlockOnUserGesture();
-    // Explicitly start intro hub music in case autoplay was blocked on mount.
-    // playMusic() is idempotent — if music is already playing it is a no-op.
-    void SoundManager.playMusic('music:intro_hub_loop');
+    // Do NOT start music:intro_hub_loop here — we are about to navigate away.
+    // Starting it here would cause the track to be queued or briefly played and
+    // then stopped by useIntroHubMusic's cleanup on unmount, which can race with
+    // game-phase music and cause overlap (e.g. intro hub loop restarting during
+    // pov_ceremony).  The hub music is managed exclusively by useIntroHubMusic
+    // and handleSoundConsentEnable.
     setPreloading(true);
   };
 

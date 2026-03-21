@@ -24,10 +24,13 @@
  *   hoh_comp / hoh_results          → music:hoh_comp_general (loop)
  *   pov_comp / pov_results          → music:hoh_comp_general (loop)
  *   nominations / nomination_results→ music:nominations_main (loop)
- *   pov_ceremony / pov_ceremony_results → tv:veto_ceremony (stinger)
- *                                        + music:veto_phase (loop)
+ *   pov_ceremony                    → tv:veto_ceremony (stinger, once)
+ *                                      + music:veto_phase (loop)
+ *   pov_ceremony_results            → music:veto_phase (loop, no stinger)
  *   live_vote                       → tv:voting_eviction (stinger)
- *   eviction_results / final4_eviction → player:evicted (one-shot)
+ *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
+ *                                        game/setEvictionOverlay, see below)
+ *   game/setEvictionOverlay(id)     → player:evicted (one-shot, when id non-null)
  *   week_end / week_start           → stop phase music (clean slate)
  */
 
@@ -42,8 +45,6 @@ interface StateWithGame {
   game: GameState;
   social?: { panelOpen?: boolean; incomingInboxOpen?: boolean };
 }
-
-const EVICTION_PHASES = new Set<string>(['eviction_results', 'final4_eviction']);
 
 /**
  * Phases that should trigger / maintain the HOH / general competition music.
@@ -66,14 +67,6 @@ const NOMINATIONS_MUSIC_PHASES = new Set<string>([
 ]);
 
 /**
- * Phases that should trigger the veto ceremony stinger + veto loop music.
- */
-const VETO_CEREMONY_PHASES = new Set<string>([
-  'pov_ceremony',
-  'pov_ceremony_results',
-]);
-
-/**
  * Phases where all phase music should be stopped (clean week boundary).
  */
 const MUSIC_STOP_PHASES = new Set<string>(['week_start', 'week_end']);
@@ -93,9 +86,7 @@ let _socialMusicActive = false;
  * updated game state.
  */
 function _applyPhaseAudio(newPhase: string): void {
-  if (EVICTION_PHASES.has(newPhase)) {
-    void SoundManager.play('player:evicted');
-  } else if (HOH_MUSIC_PHASES.has(newPhase)) {
+  if (HOH_MUSIC_PHASES.has(newPhase)) {
     // Play the results stinger only on results screens, not on comp start
     if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
       void SoundManager.play('tv:event');
@@ -107,9 +98,14 @@ function _applyPhaseAudio(newPhase: string): void {
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:nominations_main');
     }
-  } else if (VETO_CEREMONY_PHASES.has(newPhase)) {
-    // Play veto ceremony stinger once, then start veto phase loop
+  } else if (newPhase === 'pov_ceremony') {
+    // Play veto ceremony stinger once (on ceremony start only), then start veto loop
     void SoundManager.play('tv:veto_ceremony');
+    if (!_socialMusicActive) {
+      void SoundManager.playMusic('music:veto_phase');
+    }
+  } else if (newPhase === 'pov_ceremony_results') {
+    // Continue veto loop; do NOT replay the stinger
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:veto_phase');
     }
@@ -122,6 +118,9 @@ function _applyPhaseAudio(newPhase: string): void {
       SoundManager.stopMusic();
     }
   }
+  // eviction_results / final4_eviction: player:evicted is triggered by
+  // game/setEvictionOverlay (when the cinematic overlay actually begins),
+  // NOT on the phase transition, to avoid playing before the vote reveal ends.
 }
 
 export const soundMiddleware: Middleware = (api) => (next) => (action) => {
@@ -197,6 +196,22 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'game/activateBattleBack') {
     const result = next(action);
     void SoundManager.play('tv:battleback');
+    return result;
+  }
+
+  // ── Eviction cinematic begins ─────────────────────────────────────────────
+  // player:evicted is played here (when SpotlightEvictionOverlay mounts and
+  // dispatches setEvictionOverlay) rather than on the eviction_results phase
+  // transition.  This ensures the SFX fires only when the cinematic actually
+  // begins — i.e. after the vote-reveal modal has been dismissed — and never
+  // during the live vote results display.
+  // clearEvictionOverlay (payload is the player id being cleared) is ignored.
+  if (type === 'game/setEvictionOverlay') {
+    const result = next(action);
+    const payload = (action as { type: string; payload: string | null }).payload;
+    if (payload !== null && payload !== undefined) {
+      void SoundManager.play('player:evicted');
+    }
     return result;
   }
 

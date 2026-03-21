@@ -306,13 +306,26 @@ class _SoundManager {
     try {
       await el.play();
     } catch (err) {
-      if ((err as DOMException).name === 'NotAllowedError' && !this._unlocked) {
+      const domErr = err as DOMException;
+      if (domErr.name === 'NotAllowedError' && !this._unlocked) {
         // Autoplay blocked before unlock — re-queue for after unlock
         if (_audioDebug) {
           console.log(`[SoundManager] playMusic("${key}") blocked by autoplay policy — re-queued`);
         }
         this._playQueue = this._playQueue.filter((q) => !q.isMusic);
         this._playQueue.push({ key, isMusic: true, opts });
+      } else if (domErr.name === 'AbortError') {
+        // play() was interrupted by a subsequent pause() or src change (e.g.
+        // stopMusic() called while this promise was in-flight).  This is
+        // expected behaviour — do NOT mark the key as failed so the track can
+        // be replayed in the future.
+        if (_audioDebug) {
+          console.log(`[SoundManager] playMusic("${key}") aborted (stopMusic race) — ignored`);
+        }
+        if (this._musicKey === key) {
+          this._musicKey = null;
+          this._musicEl = null;
+        }
       } else {
         if (!this._failedKeys.has(key)) {
           console.error(`[SoundManager] playMusic("${key}") failed:`, err);

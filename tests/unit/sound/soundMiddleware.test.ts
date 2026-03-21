@@ -155,10 +155,12 @@ describe('soundMiddleware — game/advance phase music policy', () => {
     expect(playMusicMock).toHaveBeenCalledWith('music:veto_phase');
   });
 
-  it('pov_ceremony_results: plays tv:veto_ceremony stinger + starts music:veto_phase', () => {
+  it('pov_ceremony_results: continues music:veto_phase WITHOUT replaying stinger', () => {
     const store = makeTestStore();
     advanceTo(store, 'pov_ceremony_results');
-    expect(playMock).toHaveBeenCalledWith('tv:veto_ceremony');
+    // Stinger must NOT replay on results — it already fired on pov_ceremony
+    expect(playMock).not.toHaveBeenCalledWith('tv:veto_ceremony');
+    // Veto loop must still be started (in case of direct jump to results)
     expect(playMusicMock).toHaveBeenCalledWith('music:veto_phase');
   });
 
@@ -170,17 +172,17 @@ describe('soundMiddleware — game/advance phase music policy', () => {
     expect(stopMusicMock).not.toHaveBeenCalled();
   });
 
-  it('eviction_results: plays player:evicted one-shot', () => {
+  it('eviction_results: does NOT play player:evicted (deferred to cinematic overlay)', () => {
     const store = makeTestStore();
     advanceTo(store, 'eviction_results');
-    expect(playMock).toHaveBeenCalledWith('player:evicted');
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
     expect(playMusicMock).not.toHaveBeenCalled();
   });
 
-  it('final4_eviction: plays player:evicted one-shot', () => {
+  it('final4_eviction: does NOT play player:evicted (deferred to cinematic overlay)', () => {
     const store = makeTestStore();
     advanceTo(store, 'final4_eviction');
-    expect(playMock).toHaveBeenCalledWith('player:evicted');
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
   });
 
   it('week_start: stops music (clean slate)', () => {
@@ -227,10 +229,10 @@ describe('soundMiddleware — game/setPhase / game/forcePhase', () => {
     expect(playMusicMock).toHaveBeenCalledWith('music:nominations_main');
   });
 
-  it('setPhase("eviction_results") plays player:evicted', () => {
+  it('setPhase("eviction_results") does NOT play player:evicted (deferred to cinematic overlay)', () => {
     const store = makeTestStore();
     setPhase(store, 'eviction_results');
-    expect(playMock).toHaveBeenCalledWith('player:evicted');
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
   });
 
   it('forcePhase("pov_ceremony") plays veto_ceremony stinger + music:veto_phase', () => {
@@ -310,5 +312,34 @@ describe('soundMiddleware — social music override guard', () => {
     // Now phase advance should be allowed to start music
     advanceTo(store, 'hoh_comp');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
+  });
+});
+
+// ── 4. game/setEvictionOverlay — eviction cinematic SFX ──────────────────────
+
+describe('soundMiddleware — game/setEvictionOverlay eviction SFX', () => {
+  it('setEvictionOverlay with a player id plays player:evicted', () => {
+    const store = makeTestStore();
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-42' });
+    expect(playMock).toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('setEvictionOverlay with null does NOT play player:evicted', () => {
+    const store = makeTestStore();
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: null });
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('clearEvictionOverlay does NOT play player:evicted', () => {
+    const store = makeTestStore();
+    store.dispatch({ type: 'game/clearEvictionOverlay', payload: 'player-42' });
+    expect(playMock).not.toHaveBeenCalledWith('player:evicted');
+  });
+
+  it('setEvictionOverlay does not start or stop music', () => {
+    const store = makeTestStore();
+    store.dispatch({ type: 'game/setEvictionOverlay', payload: 'player-42' });
+    expect(playMusicMock).not.toHaveBeenCalled();
+    expect(stopMusicMock).not.toHaveBeenCalled();
   });
 });
