@@ -22,9 +22,6 @@ import gameReducer, {
   submitCoupReplacement,
   submitVipSecondUseDecision,
   submitVipSecondSaveTarget,
-  submitPovDecision,
-  submitPovSaveTarget,
-  setReplacementNominee,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import { selectIsWaitingForInput } from '../src/store/selectors';

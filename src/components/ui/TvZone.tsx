@@ -85,7 +85,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: null },
   vip_veto:             { title: 'VIP Veto!',                  subtitle: 'The POV holder may use the veto TWICE this ceremony!',            isLive: true,  autoDismissMs: null },
   diamond_pov:          { title: 'Diamond Power of Veto!',     subtitle: 'The POV holder may name the replacement nominee. 💎',             isLive: true,  autoDismissMs: null },
-  coup_detat:           { title: "Coup d'État!",               subtitle: 'Both nominees are removed! The POV holder names two replacements. ⚡', isLive: true, autoDismissMs: null },
+  coup_detat:           { title: "Coup d'État!",               subtitle: 'Both nominees removed! Holder names two replacements. ⚡',           isLive: true, autoDismissMs: null },
   spotlight_veto:       { title: 'Spotlight Veto!',            subtitle: 'The veto winner is FORCED to use the power this ceremony! 🔦',    isLive: true,  autoDismissMs: null },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: null },
   hoh_comp_announcement: { title: 'HOH Competition',           subtitle: 'Power is up for grabs — who will become Head of Household?',   isLive: true,  autoDismissMs: null },
