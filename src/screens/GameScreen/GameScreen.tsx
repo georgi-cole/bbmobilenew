@@ -27,6 +27,7 @@ import {
   dismissBattleBack,
   tryActivateBattleBack,
   openBattleBackCompetition,
+  tryActivateDoubleEviction,
   resolveFavoritePlayerWinner,
   awardFavoritePrize,
   openFavoritePlayerVoting,
@@ -461,6 +462,20 @@ export default function GameScreen() {
   // consumed by the AI animation path so it doesn't replay.  It is also
   // pre-set by handleCommitNominees to prevent double-animation when the
   // human HOH's commitNominees call lands and nomineeIds becomes non-empty.
+
+  // ── Double Eviction activation on nominations phase entry ────────────────
+  // Fire tryActivateDoubleEviction once per week when the game enters the
+  // nominations phase.  The thunk checks eligibility and probability, then
+  // dispatches activateDoubleEviction() which pushes the TV overlay event.
+  const doubleEvictionActivationWeekRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (game.phase !== 'nominations') return
+    // Only attempt once per week to prevent repeated rolls on re-renders.
+    if (doubleEvictionActivationWeekRef.current === game.week) return
+    doubleEvictionActivationWeekRef.current = game.week
+    dispatch(tryActivateDoubleEviction())
+  }, [game.phase, game.week, dispatch])
+
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
   const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
@@ -1258,8 +1273,13 @@ export default function GameScreen() {
       {showNominationsModal && (
         <TvMultiSelectModal
           title="Nomination Ceremony"
-          subtitle={`${humanPlayer?.name}, choose two houseguests to nominate for eviction.`}
+          subtitle={
+            game.doubleEviction?.weekActive
+              ? `${humanPlayer?.name}, choose THREE houseguests to nominate — Double Eviction tonight!`
+              : `${humanPlayer?.name}, choose two houseguests to nominate for eviction.`
+          }
           options={nomineeOptions}
+          maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
           onConfirm={handleCommitNominees}
         />
       )}

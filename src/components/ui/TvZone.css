@@ -277,3 +277,61 @@
     border-width: 2px;
   }
 }
+
+
+/* ── Double Eviction spotlight effect ──────────────────────────────────────── */
+
+/**
+ * Full-screen dim + blur backdrop rendered via React portal to document.body.
+ * Sits below the TvZone spotlight (z-index: 9998) so the TV appears to be
+ * spotlit while the rest of the screen recedes into the background.
+ */
+.tv-zone-de-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  animation: deBackdropFadeIn 0.45s ease-out both;
+}
+
+@keyframes deBackdropFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/**
+ * Elevated TvZone stacking context + golden glow during the Double Eviction
+ * announcement. Animates the box-shadow in to create a "spotlight reveal".
+ */
+.tv-zone--de-spotlight {
+  position: relative;
+  z-index: 9999;
+  animation: deSpotlightGlow 0.5s ease-out both;
+}
+
+@keyframes deSpotlightGlow {
+  from {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+  to {
+    box-shadow:
+      0 0 0 3px rgba(255, 200, 50, 0.9),
+      0 0 40px rgba(255, 180, 0, 0.7),
+      0 0 80px rgba(255, 120, 0, 0.35),
+      0 8px 32px rgba(0, 0, 0, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-zone-de-backdrop {
+    animation: none;
+  }
+  .tv-zone--de-spotlight {
+    animation: none;
+  }
+}

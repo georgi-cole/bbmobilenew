@@ -35,6 +35,7 @@ export default function TvAnnouncementOverlay({
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const isBattleBack = announcement.key === 'battle_back';
+  const isDoubleEviction = announcement.key === 'double_eviction';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
@@ -119,7 +120,11 @@ export default function TvAnnouncementOverlay({
   return (
     <div className="tv-announcement-wrap">
       <div
-        className={`tv-announcement${isBattleBack ? ' tv-announcement--battle-back' : ''}`}
+        className={[
+            'tv-announcement',
+            isBattleBack ? 'tv-announcement--battle-back' : '',
+            isDoubleEviction ? 'tv-announcement--double-eviction' : '',
+          ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="false"
         aria-live="polite"
