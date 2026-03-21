@@ -28,6 +28,11 @@ import {
   tryActivateBattleBack,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
+  tryActivateSpecialVeto,
+  submitDiamondReplacement,
+  submitCoupReplacement,
+  submitVipSecondUseDecision,
+  submitVipSecondSaveTarget,
   resolveFavoritePlayerWinner,
   awardFavoritePrize,
   openFavoritePlayerVoting,
@@ -476,6 +481,18 @@ export default function GameScreen() {
     dispatch(tryActivateDoubleEviction())
   }, [game.phase, game.week, dispatch])
 
+  // ── Special Veto activation on POV-results entry ─────────────────────────
+  // Fire tryActivateSpecialVeto once per week when the game enters pov_results.
+  // The thunk checks eligibility and probability, then dispatches
+  // activateSpecialVeto() which pushes the TV overlay event.
+  const specialVetoActivationWeekRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (game.phase !== 'pov_results') return
+    if (specialVetoActivationWeekRef.current === game.week) return
+    specialVetoActivationWeekRef.current = game.week
+    dispatch(tryActivateSpecialVeto())
+  }, [game.phase, game.week, dispatch])
+
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
   const [aiNomAnimConsumedKey, setAiNomAnimConsumedKey] = useState<string>('')
@@ -557,6 +574,17 @@ export default function GameScreen() {
 
   // ── Human POV holder decision (use veto or not) ──────────────────────────
   const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
+  const activeSpecialVeto = game.specialVeto?.activeType ?? null
+  const specialVetoName =
+    activeSpecialVeto === 'vip'
+      ? 'Double Trouble'
+      : activeSpecialVeto === 'diamond'
+        ? 'Halo Exchange'
+        : activeSpecialVeto === 'coup'
+          ? 'Detox'
+          : activeSpecialVeto === 'spotlight'
+            ? 'Force Majeure'
+            : null
   const showPovDecisionModal =
     game.phase === 'pov_ceremony_results' &&
     Boolean(game.awaitingPovDecision) &&
@@ -581,10 +609,21 @@ export default function GameScreen() {
   const handlePovSaveTarget = useCallback((id: string) => {
     const savedPlayer = game.players.find((p) => p.id === id)
     const savedRect = getTileRect(id)
+    const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
+    const submitSaveAction = isVipSecondSave ? submitVipSecondSaveTarget(id) : submitPovSaveTarget(id)
+    const saveSubtitle = isVipSecondSave
+      ? '👑 Double Trouble used again'
+      : activeSpecialVeto === 'diamond'
+        ? '😇 Halo Exchange used'
+        : activeSpecialVeto === 'spotlight'
+          ? '✨ Force Majeure used'
+          : activeSpecialVeto === 'vip'
+            ? '👑 Double Trouble used'
+            : '🛡️ Power used'
 
     if (!savedPlayer || !savedRect) {
       // Headless fallback: commit immediately.
-      dispatch(submitPovSaveTarget(id))
+      dispatch(submitSaveAction)
       return
     }
 
@@ -596,21 +635,39 @@ export default function GameScreen() {
       badgeLabel: `${savedPlayer.name} saved by veto`,
     }]
 
-    pendingSaveDispatchRef.current = () => dispatch(submitPovSaveTarget(id))
+    pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
     setPendingSaveCeremony({
       tiles,
       caption: `${savedPlayer.name} has been saved!`,
-      subtitle: '🛡️ Power of Veto used',
+      subtitle: saveSubtitle,
     })
-  }, [dispatch, game.players, getTileRect])
+  }, [dispatch, game.players, game.specialVeto?.awaitingVipSecondSaveTarget, activeSpecialVeto, getTileRect])
 
   // Hide the save modal while the save ceremony is playing.
+  const isAwaitingAnySave =
+    Boolean(game.awaitingPovSaveTarget) ||
+    Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
   const showPovSaveModal =
     game.phase === 'pov_ceremony_results' &&
-    Boolean(game.awaitingPovSaveTarget) &&
+    isAwaitingAnySave &&
     humanIsPovHolder &&
     !pendingSaveCeremony
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  const showVipSecondUseModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.specialVeto?.awaitingVipSecondUseDecision) &&
+    humanIsPovHolder
+
+  const showDiamondReplacementModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.specialVeto?.awaitingHolderReplacement) &&
+    humanIsPovHolder
+
+  const showCoupReplacementModal =
+    game.phase === 'pov_ceremony_results' &&
+    Boolean(game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) &&
+    humanIsPovHolder
 
   // ── Replacement nominee ceremony animation ─────────────────────────────
   // When the human HOH picks a replacement nominee via TvDecisionModal,
@@ -664,6 +721,20 @@ export default function GameScreen() {
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
+  const holderReplacementOptions = alivePlayers.filter(
+    (p) =>
+      p.id !== game.hohId &&
+      p.id !== game.povWinnerId &&
+      !game.nomineeIds.includes(p.id) &&
+      p.id !== game.povSavedId
+  )
+  const coupReplacementOptions = alivePlayers.filter(
+    (p) =>
+      p.id !== game.hohId &&
+      p.id !== game.povWinnerId &&
+      !game.nomineeIds.includes(p.id) &&
+      p.id !== game.specialVeto?.coupReplacement1Id
+  )
 
   // ── AI replacement nominee animation ───────────────────────────────────
   // When an AI HOH picks a replacement nominee, the store already has the
@@ -1309,23 +1380,82 @@ export default function GameScreen() {
       {/* ── Human POV holder Yes/No decision ────────────────────────────── */}
       {showPovDecisionModal && (
         <TvBinaryDecisionModal
-          title="Power of Veto Ceremony"
-          subtitle={`${humanPlayer?.name}, will you use the Power of Veto?`}
-          yesLabel="✅ Yes — use the Power of Veto"
-          noLabel="❌ No — keep nominations the same"
+          title={specialVetoName ?? 'Power of Veto Ceremony'}
+          subtitle={
+            activeSpecialVeto === 'vip'
+              ? `${humanPlayer?.name}, will you use Double Trouble? You may use it twice this ceremony.`
+              : activeSpecialVeto === 'diamond'
+                ? `${humanPlayer?.name}, will you use Halo Exchange and name the replacement yourself?`
+                : activeSpecialVeto === 'coup'
+                  ? `${humanPlayer?.name}, will you use Detox and replace both nominees yourself?`
+                  : `${humanPlayer?.name}, will you use the Power of Veto?`
+          }
+          yesLabel={
+            activeSpecialVeto === 'vip'
+              ? '👑 Yes — use Double Trouble'
+              : activeSpecialVeto === 'diamond'
+                ? '😇 Yes — use Halo Exchange'
+                : activeSpecialVeto === 'coup'
+                  ? '⚡ Yes — use Detox'
+                  : '✅ Yes — use the Power'
+          }
+          noLabel={
+            activeSpecialVeto === 'vip'
+              ? '❌ No — leave the block as is'
+              : activeSpecialVeto === 'diamond'
+                ? '❌ No — leave nominations the same'
+                : activeSpecialVeto === 'coup'
+                  ? '❌ No — keep both nominees up'
+                  : '❌ No — keep nominations the same'
+          }
           onYes={() => dispatch(submitPovDecision(true))}
           onNo={() => dispatch(submitPovDecision(false))}
+        />
+      )}
+
+      {showVipSecondUseModal && (
+        <TvBinaryDecisionModal
+          title="Double Trouble"
+          subtitle={`${humanPlayer?.name}, would you like to use Double Trouble a second time?`}
+          yesLabel="👑 Yes — save another nominee"
+          noLabel="❌ No — keep nominations as they are"
+          onYes={() => dispatch(submitVipSecondUseDecision(true))}
+          onNo={() => dispatch(submitVipSecondUseDecision(false))}
         />
       )}
 
       {/* ── Human POV holder picks who to save ──────────────────────────── */}
       {showPovSaveModal && (
         <TvDecisionModal
-          title="Power of Veto — Save a Nominee"
-          subtitle={`${humanPlayer?.name}, choose which nominee to save with the veto.`}
+          title={
+            game.specialVeto?.awaitingVipSecondSaveTarget
+              ? 'Double Trouble — Second Save'
+              : specialVetoName
+                ? `${specialVetoName} — Save a Nominee`
+                : 'Power of Veto — Save a Nominee'
+          }
+          subtitle={
+            activeSpecialVeto === 'diamond'
+              ? `${humanPlayer?.name}, choose one nominee to save with Halo Exchange.`
+              : activeSpecialVeto === 'spotlight'
+                ? `${humanPlayer?.name}, Force Majeure must be used. Choose a nominee to save.`
+                : game.specialVeto?.awaitingVipSecondSaveTarget
+                  ? `${humanPlayer?.name}, choose the second nominee to save with Double Trouble.`
+                  : `${humanPlayer?.name}, choose which nominee to save.`
+          }
           options={povSaveOptions}
           onSelect={handlePovSaveTarget}
-          stingerMessage="VETO USED"
+          stingerMessage={
+            activeSpecialVeto === 'vip'
+              ? 'DOUBLE TROUBLE'
+              : activeSpecialVeto === 'diamond'
+                ? 'HALO EXCHANGE'
+                : activeSpecialVeto === 'coup'
+                  ? 'DETOX'
+                  : activeSpecialVeto === 'spotlight'
+                    ? 'FORCE MAJEURE'
+                    : 'VETO USED'
+          }
         />
       )}
 
@@ -1337,6 +1467,30 @@ export default function GameScreen() {
           options={replacementOptions}
           onSelect={handleReplacementNominee}
           stingerMessage="NOMINATIONS SET"
+        />
+      )}
+
+      {showDiamondReplacementModal && (
+        <TvDecisionModal
+          title="Halo Exchange — Name the Replacement"
+          subtitle={`${humanPlayer?.name}, choose the replacement nominee.`}
+          options={holderReplacementOptions}
+          onSelect={(id) => dispatch(submitDiamondReplacement(id))}
+          stingerMessage="HALO EXCHANGE"
+        />
+      )}
+
+      {showCoupReplacementModal && (
+        <TvDecisionModal
+          title="Detox — Name Replacement Nominees"
+          subtitle={
+            game.specialVeto?.awaitingCoupReplacement1
+              ? `${humanPlayer?.name}, choose the first replacement nominee.`
+              : `${humanPlayer?.name}, choose the second replacement nominee.`
+          }
+          options={coupReplacementOptions}
+          onSelect={(id) => dispatch(submitCoupReplacement(id))}
+          stingerMessage="DETOX"
         />
       )}
 

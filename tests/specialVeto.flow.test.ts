@@ -6,8 +6,8 @@
  *  2. tryActivateSpecialVeto thunk respects all eligibility rules.
  *  3. Spotlight veto forces use behavior (AI and human paths).
  *  4. Diamond POV: holder names replacement nominee.
- *  5. Coup d'État: removes both nominees, names two replacements.
- *  6. VIP Veto: first use, second use decision flow.
+ *  5. Detox: removes both nominees, names two replacements.
+ *  6. Double Trouble: first use, second use decision flow.
  *  7. Season-one-per-season rule (seasonUsed prevents second activation).
  *  8. selectIsWaitingForInput returns true for all special veto blocking flags.
  */
@@ -118,6 +118,7 @@ describe('activateSpecialVeto', () => {
     expect(store.getState().game.twistActive).toBe(true);
     const feed = store.getState().game.tvFeed;
     expect(feed[0].major).toBe('vip_veto');
+    expect(feed[0].text).toMatch(/DOUBLE TROUBLE/i);
   });
 
   it('uses correct major key for diamond', () => {
@@ -136,6 +137,28 @@ describe('activateSpecialVeto', () => {
     const store = makeStore();
     store.dispatch(activateSpecialVeto({ type: 'spotlight', week: 3 }));
     expect(store.getState().game.tvFeed[0].major).toBe('spotlight_veto');
+  });
+
+  it('clears per-week special-veto state and twistActive at week_start', () => {
+    const store = makeStore({
+      phase: 'week_end',
+      twistActive: true,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'diamond',
+        activatedWeek: 4,
+      },
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+    expect(state.phase).toBe('week_start');
+    expect(state.specialVeto?.activeType).toBeNull();
+    expect(state.specialVeto?.activatedWeek).toBeNull();
+    expect(state.specialVeto?.awaitingHolderReplacement).toBe(false);
+    expect(state.specialVeto?.seasonUsed).toBe(true);
+    expect(state.twistActive).toBe(false);
   });
 });
 
@@ -244,9 +267,9 @@ describe('season one-per-season rule', () => {
   });
 });
 
-// ── Spotlight Veto ────────────────────────────────────────────────────────────
+// ── Force Majeure ─────────────────────────────────────────────────────────────
 
-describe('Spotlight Veto — AI POV holder (not nominee)', () => {
+describe('Force Majeure — AI POV holder (not nominee)', () => {
   it('AI forces use on a nominee and triggers AI replacement', () => {
     const players = makePlayers(8);
     // p1 is pov holder (not nominee), p2 and p3 are nominees
@@ -270,7 +293,7 @@ describe('Spotlight Veto — AI POV holder (not nominee)', () => {
   });
 });
 
-describe('Spotlight Veto — Human POV holder (not nominee)', () => {
+describe('Force Majeure — Human POV holder (not nominee)', () => {
   it('sets awaitingPovSaveTarget (forced use)', () => {
     const players = makePlayers(8, 1); // p1 is human
     players[2].status = 'nominated';
@@ -344,9 +367,9 @@ describe('Diamond POV — Human POV holder names replacement', () => {
   });
 });
 
-// ── Coup d'État ───────────────────────────────────────────────────────────────
+// ── Detox ─────────────────────────────────────────────────────────────────────
 
-describe("Coup d'État — Human POV holder names two replacements", () => {
+describe('Detox — Human POV holder names two replacements', () => {
   it('submitCoupReplacement first pick sets coupReplacement1Id and advances to pick 2', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
@@ -412,9 +435,9 @@ describe("Coup d'État — Human POV holder names two replacements", () => {
   });
 });
 
-// ── VIP Veto ──────────────────────────────────────────────────────────────────
+// ── Double Trouble ────────────────────────────────────────────────────────────
 
-describe('VIP Veto — second use decision (human POV holder)', () => {
+describe('Double Trouble — second use decision (human POV holder)', () => {
   it('submitVipSecondUseDecision(true) sets awaitingVipSecondSaveTarget', () => {
     const players = makePlayers(8, 1); // p1 is human POV holder
     const store = makeStore({
@@ -457,17 +480,15 @@ describe('VIP Veto — second use decision (human POV holder)', () => {
   });
 
   it('submitVipSecondSaveTarget saves nominee and sets vipUseStage=3 (human HOH)', () => {
-    const players = makePlayers(8, 1); // p1 is human pov holder
-    players[0].isUser = false; // p0 is human HOH... wait, p1 already isUser. Let's use different index
-    const players2 = makePlayers(8, 5); // p5 is the human user (POV holder)
-    players2[0].status = 'active'; // p0 = HOH
-    players2[3].status = 'nominated';
-    players2[4].status = 'nominated';
+    const players = makePlayers(8, 5); // p5 is the human user (POV holder)
+    players[0].status = 'active'; // p0 = HOH
+    players[3].status = 'nominated';
+    players[4].status = 'nominated';
     const store = makeStore({
       hohId: 'p0',
       povWinnerId: 'p5',
       nomineeIds: ['p3', 'p4'],
-      players: players2,
+      players,
       specialVeto: {
         ...INITIAL_SPECIAL_VETO,
         seasonUsed: true,

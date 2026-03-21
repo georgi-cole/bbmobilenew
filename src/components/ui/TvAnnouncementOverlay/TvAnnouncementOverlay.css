@@ -251,7 +251,7 @@
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.6);
 }
 
-/* ── VIP Veto variant (gold/black premium) ────────────────────────────────── */
+/* ── Double Trouble variant (gold/black premium) ──────────────────────────── */
 .tv-announcement--vip-veto {
   background: linear-gradient(
     180deg,
@@ -303,7 +303,7 @@
     0 1px 6px rgba(0, 0, 0, 1);
 }
 
-/* ── Diamond POV variant (diamond / icy-blue) ─────────────────────────────── */
+/* ── Halo Exchange variant (airy / icy-blue) ──────────────────────────────── */
 .tv-announcement--diamond-pov {
   background: linear-gradient(
     180deg,
@@ -325,7 +325,7 @@
 }
 
 .tv-announcement--diamond-pov::after {
-  content: '💎✨💎✨💎';
+  content: '😇✨😇✨😇';
   position: absolute;
   inset: -10%;
   display: flex;
@@ -355,7 +355,7 @@
     0 1px 6px rgba(0, 0, 0, 1);
 }
 
-/* ── Coup d'État variant (dramatic red / power) ───────────────────────────── */
+/* ── Detox variant (dramatic red / purge) ─────────────────────────────────── */
 .tv-announcement--coup-detat {
   background: linear-gradient(
     180deg,
@@ -377,7 +377,7 @@
 }
 
 .tv-announcement--coup-detat::after {
-  content: '⚡👑⚡👑⚡';
+  content: '⚡🌿⚡🌿⚡';
   position: absolute;
   inset: -10%;
   display: flex;
@@ -407,7 +407,7 @@
     0 1px 6px rgba(0, 0, 0, 1);
 }
 
-/* ── Spotlight Veto variant (bright forced-use) ───────────────────────────── */
+/* ── Force Majeure variant (bright forced-use) ────────────────────────────── */
 .tv-announcement--spotlight-veto {
   background: linear-gradient(
     180deg,
@@ -429,7 +429,7 @@
 }
 
 .tv-announcement--spotlight-veto::after {
-  content: '🔦💡🔦💡🔦';
+  content: '⚠️✨⚠️✨⚠️';
   position: absolute;
   inset: -10%;
   display: flex;

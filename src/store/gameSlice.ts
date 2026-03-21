@@ -853,7 +853,7 @@ const gameSlice = createSlice({
       if (action.payload) {
         const svType = state.specialVeto?.activeType;
         if (svType === 'coup') {
-          // Coup d'État: remove both nominees, await holder replacement picks
+          // Detox: remove both nominees, await holder replacement picks
           const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
           oldNominees.forEach((n) => { n.status = 'active'; });
           const removedNames = oldNominees.map((n) => n.name).join(' and ');
@@ -861,10 +861,10 @@ const gameSlice = createSlice({
           state.povSavedId = null;
           pushEvent(
             state,
-            `${povWinner?.name ?? 'The Coup d\'État holder'} used the Coup d'État! ${removedNames} are removed from the block! ⚡`,
+            `${povWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
             'game',
           );
-          pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'}, name your two replacement nominees. ⚡`, 'game');
+          pushEvent(state, `${povWinner?.name ?? 'The Detox holder'}, name your two replacement nominees. ⚡`, 'game');
           state.specialVeto!.awaitingCoupReplacement1 = true;
         } else {
           // Standard / VIP / Diamond / Spotlight: set awaitingPovSaveTarget
@@ -877,7 +877,7 @@ const gameSlice = createSlice({
         }
         pushEvent(
           state,
-          `${povWinner?.name ?? 'The veto holder'} has decided NOT to use the Power of Veto. The nominations remain the same. ⚡`,
+          `${povWinner?.name ?? 'The holder'} has decided NOT to use the power. The nominations remain the same. ⚡`,
           'game',
         );
       }
@@ -906,7 +906,7 @@ const gameSlice = createSlice({
       state.povSavedId = saveId;
       pushEvent(
         state,
-        `${povWinner.name} used the Power of Veto on ${savedPlayer.name}! 🛡️`,
+        `${povWinner.name} used the power on ${savedPlayer.name}! 🛡️`,
         'game',
       );
 
@@ -914,11 +914,11 @@ const gameSlice = createSlice({
       if (state.specialVeto?.activeType === 'diamond') {
         if (povWinner.isUser) {
           state.specialVeto.awaitingHolderReplacement = true;
-          pushEvent(
-            state,
-            `${povWinner.name}, as the Diamond POV holder, you must name the replacement nominee. 💎`,
-            'game',
-          );
+            pushEvent(
+              state,
+              `${povWinner.name}, as the Halo Exchange holder, you must name the replacement nominee. 😇`,
+              'game',
+            );
         } else {
           // AI holder names replacement
           const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
@@ -938,7 +938,7 @@ const gameSlice = createSlice({
             incrementTimesNominated(state, replacement.id);
             pushEvent(
               state,
-              `${povWinner.name} named ${replacement.name} as the replacement nominee. 💎`,
+              `${povWinner.name} named ${replacement.name} as the Halo Exchange replacement nominee. 😇`,
               'game',
             );
           }
@@ -1374,10 +1374,10 @@ const gameSlice = createSlice({
       state.twistActive = true;
 
       const typeLabels: Record<SpecialVetoType, string> = {
-        vip: 'VIP VETO! This week, the POV holder may use the veto TWICE! 👑',
-        diamond: 'DIAMOND POWER OF VETO! This week, the POV holder may name the replacement nominee. 💎',
-        coup: "COUP D'ÉTAT! This week, the POV holder may remove both nominees and name two replacements! ⚡",
-        spotlight: 'SPOTLIGHT VETO! This week, the POV holder is FORCED to use the veto! 🔦',
+        vip: 'DOUBLE TROUBLE! This week, the holder may use the power TWICE! 👑',
+        diamond: 'HALO EXCHANGE! This week, the holder may name the replacement nominee. 😇',
+        coup: 'DETOX! This week, the holder may clear both nominees and name two replacements! ⚡',
+        spotlight: 'FORCE MAJEURE! This week, the holder is forced to use the power. ✨',
       };
       const majorKeys: Record<SpecialVetoType, string> = {
         vip: 'vip_veto',
@@ -1398,7 +1398,7 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Human Diamond POV holder picks the replacement nominee.
+     * Human Halo Exchange holder picks the replacement nominee.
      */
     submitDiamondReplacement(state, action: PayloadAction<string>) {
       if (!state.specialVeto?.awaitingHolderReplacement) return;
@@ -1422,13 +1422,13 @@ const gameSlice = createSlice({
       state.specialVeto.awaitingHolderReplacement = false;
       pushEvent(
         state,
-        `${povHolder?.name ?? 'The Diamond POV holder'} named ${player.name} as the replacement nominee. 💎`,
+        `${povHolder?.name ?? 'The Halo Exchange holder'} named ${player.name} as the replacement nominee. 😇`,
         'game',
       );
     },
 
     /**
-     * Human Coup d'État holder picks replacement nominees (called twice: first and second pick).
+     * Human Detox holder picks replacement nominees (called twice: first and second pick).
      */
     submitCoupReplacement(state, action: PayloadAction<string>) {
       if (!state.specialVeto?.awaitingCoupReplacement1 && !state.specialVeto?.awaitingCoupReplacement2) return;
@@ -1446,7 +1446,7 @@ const gameSlice = createSlice({
         const player = state.players.find((p) => p.id === id);
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The Coup d\'État holder'} selects ${player?.name ?? id} as the first replacement. Choose a second. ⚡`,
+          `${povHolder?.name ?? 'The Detox holder'} selects ${player?.name ?? id} as the first replacement. Choose a second. ⚡`,
           'game',
         );
       } else if (state.specialVeto.awaitingCoupReplacement2) {
@@ -1467,14 +1467,14 @@ const gameSlice = createSlice({
         state.specialVeto.coupReplacement1Id = null;
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The Coup d\'État holder'} named ${rep1.name} and ${rep2.name} as the new nominees. ⚡`,
+          `${povHolder?.name ?? 'The Detox holder'} named ${rep1.name} and ${rep2.name} as the new nominees. ⚡`,
           'game',
         );
       }
     },
 
     /**
-     * Human VIP Veto holder decides whether to use the veto a second time.
+     * Human Double Trouble holder decides whether to use the power a second time.
      */
     submitVipSecondUseDecision(state, action: PayloadAction<boolean>) {
       if (!state.specialVeto?.awaitingVipSecondUseDecision) return;
@@ -1484,21 +1484,21 @@ const gameSlice = createSlice({
         state.specialVeto.awaitingVipSecondSaveTarget = true;
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The VIP Veto holder'} will use the VIP Veto a second time! Choose a nominee to save. 👑`,
+          `${povHolder?.name ?? 'The Double Trouble holder'} will use Double Trouble a second time! Choose a nominee to save. 👑`,
           'game',
         );
       } else {
         state.specialVeto.vipUseStage = -1;
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The VIP Veto holder'} chose not to use the VIP Veto a second time. 👑`,
+          `${povHolder?.name ?? 'The Double Trouble holder'} chose not to use Double Trouble a second time. 👑`,
           'game',
         );
       }
     },
 
     /**
-     * Human VIP Veto holder picks which nominee to save on the second use.
+     * Human Double Trouble holder picks which nominee to save on the second use.
      */
     submitVipSecondSaveTarget(state, action: PayloadAction<string>) {
       if (!state.specialVeto?.awaitingVipSecondSaveTarget) return;
@@ -1518,7 +1518,7 @@ const gameSlice = createSlice({
       state.povSavedId = saveId;
       pushEvent(
         state,
-        `${povHolder.name} used the VIP Veto a second time, saving ${savedPlayer.name}! 👑`,
+        `${povHolder.name} used Double Trouble a second time, saving ${savedPlayer.name}! 👑`,
         'game',
       );
       if (hohPlayer?.isUser) {
@@ -2367,7 +2367,7 @@ const gameSlice = createSlice({
         return;
       }
 
-      // ── VIP Veto second-use handling ─────────────────────────────────────────────
+      // ── Double Trouble second-use handling ──────────────────────────────────────
       if (state.specialVeto?.activeType === 'vip' && state.specialVeto.vipUseStage === 2) {
         const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
         if (nominees.length === 0) {
@@ -2379,7 +2379,7 @@ const gameSlice = createSlice({
           state.specialVeto.awaitingVipSecondUseDecision = true;
           pushEvent(
             state,
-            `${povHolder.name}, you may use the VIP Veto a second time! Would you like to save another nominee? 👑`,
+            `${povHolder.name}, you may use Double Trouble a second time! Would you like to save another nominee? 👑`,
             'game',
           );
         } else {
@@ -2396,7 +2396,7 @@ const gameSlice = createSlice({
             state.povSavedId = nominee2.id;
             pushEvent(
               state,
-              `${povHolder?.name ?? 'The VIP Veto holder'} used the VIP Veto a second time, saving ${nominee2.name}! 👑`,
+              `${povHolder?.name ?? 'The Double Trouble holder'} used Double Trouble a second time, saving ${nominee2.name}! 👑`,
               'game',
             );
             const hohP = state.players.find((p) => p.id === state.hohId);
@@ -2412,7 +2412,7 @@ const gameSlice = createSlice({
             state.specialVeto.vipUseStage = -1;
             pushEvent(
               state,
-              `${povHolder?.name ?? 'The VIP Veto holder'} chose not to use the VIP Veto a second time. The nominations stand. 👑`,
+              `${povHolder?.name ?? 'The Double Trouble holder'} chose not to use Double Trouble a second time. The nominations stand. 👑`,
               'game',
             );
           }
@@ -2465,6 +2465,7 @@ const gameSlice = createSlice({
             state.specialVeto.coupReplacement1Id = null;
             state.specialVeto.awaitingVipSecondUseDecision = false;
             state.specialVeto.awaitingVipSecondSaveTarget = false;
+            state.twistActive = false;
           }
           state.players.forEach((p) => {
             if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
@@ -2570,7 +2571,7 @@ const gameSlice = createSlice({
             : null;
           const isNominee = povWinner !== null && state.nomineeIds.includes(povWinner.id);
 
-          // ── Spotlight Veto: mandatory use (no choice) ─────────────────────────
+          // ── Force Majeure: mandatory use (no choice) ──────────────────────────
           if (svType === 'spotlight') {
             if (isNominee && povWinner !== null) {
               // Nominee auto-saves self
@@ -2579,7 +2580,7 @@ const gameSlice = createSlice({
               state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
               povWinner.status = 'pov';
               state.povSavedId = autoSavedId;
-              pushEvent(state, `${savedName} used the Spotlight Veto and saved themselves! 🔦`, 'game');
+              pushEvent(state, `${savedName} used Force Majeure and saved themselves! ✨`, 'game');
               const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
               if (hohPlayer?.isUser) {
                 state.replacementNeeded = true;
@@ -2601,7 +2602,7 @@ const gameSlice = createSlice({
             } else if (povWinner?.isUser) {
               // Human must use — directly to save target
               state.awaitingPovSaveTarget = true;
-              pushEvent(state, `${povWinner.name}, the Spotlight Veto MUST be used! Choose a nominee to save. 🔦`, 'game');
+              pushEvent(state, `${povWinner.name}, Force Majeure MUST be used! Choose a nominee to save. ✨`, 'game');
             } else {
               // AI: pick one nominee to save
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
@@ -2612,7 +2613,7 @@ const gameSlice = createSlice({
                 const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                 if (savedP) savedP.status = 'active';
                 state.povSavedId = nomineeToSave.id;
-                pushEvent(state, `${povWinner?.name ?? 'The Spotlight Veto holder'} used the Spotlight Veto on ${savedName}! 🔦`, 'game');
+                pushEvent(state, `${povWinner?.name ?? 'The Force Majeure holder'} used Force Majeure on ${savedName}! ✨`, 'game');
                 const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
                 if (hohPlayer?.isUser) {
                   state.replacementNeeded = true;
@@ -2625,7 +2626,7 @@ const gameSlice = createSlice({
             break;
           }
 
-          // ── Diamond POV: holder names the replacement ─────────────────────────
+          // ── Halo Exchange: holder names the replacement ────────────────────────
           if (svType === 'diamond') {
             if (isNominee && povWinner !== null) {
               const savedName = povWinner.name;
@@ -2633,10 +2634,10 @@ const gameSlice = createSlice({
               state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
               povWinner.status = 'pov';
               state.povSavedId = autoSavedId;
-              pushEvent(state, `${savedName} used the Diamond Power of Veto and saved themselves! 💎`, 'game');
+              pushEvent(state, `${savedName} used Halo Exchange and saved themselves! 😇`, 'game');
               if (povWinner.isUser) {
                 state.specialVeto!.awaitingHolderReplacement = true;
-                pushEvent(state, `${povWinner.name}, as the Diamond POV holder, you must name the replacement nominee. 💎`, 'game');
+                pushEvent(state, `${povWinner.name}, as the Halo Exchange holder, you must name the replacement nominee. 😇`, 'game');
               } else {
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
@@ -2648,12 +2649,12 @@ const gameSlice = createSlice({
                   const rp = state.players.find((pl) => pl.id === replacement.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the replacement nominee. 💎`, 'game');
+                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the Halo Exchange replacement nominee. 😇`, 'game');
                 }
               }
             } else if (povWinner?.isUser) {
               state.awaitingPovDecision = true;
-              pushEvent(state, `${povWinner.name}, will you use the Diamond Power of Veto? 💎`, 'game');
+              pushEvent(state, `${povWinner.name}, will you use Halo Exchange? 😇`, 'game');
             } else {
               const useIt = rng() < 0.70;
               if (useIt) {
@@ -2664,7 +2665,7 @@ const gameSlice = createSlice({
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
-                  pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} used the Diamond Power of Veto on ${nomineeToSave.name}! 💎`, 'game');
+                  pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} used Halo Exchange on ${nomineeToSave.name}! 😇`, 'game');
                   const eligible = alive.filter(
                     (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
                       !state.nomineeIds.includes(pl.id) && pl.id !== nomineeToSave.id,
@@ -2675,23 +2676,23 @@ const gameSlice = createSlice({
                     const rp = state.players.find((pl) => pl.id === replacement.id);
                     if (rp) rp.status = 'nominated';
                     incrementTimesNominated(state, replacement.id);
-                    pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} named ${replacement.name} as the replacement nominee. 💎`, 'game');
+                    pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the replacement nominee. 😇`, 'game');
                   }
                 }
               } else {
-                pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} chose NOT to use the Diamond Power of Veto. 💎`, 'game');
+                pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} chose not to use Halo Exchange. 😇`, 'game');
               }
             }
             break;
           }
 
-          // ── Coup d'État: removes both nominees, holder names both replacements ──
+          // ── Detox: removes both nominees, holder names both replacements ────────
           if (svType === 'coup') {
             if (povWinner?.isUser) {
               state.awaitingPovDecision = true;
               pushEvent(
                 state,
-                `${povWinner.name}, will you use the Coup d'État? ⚡ Both nominees would be removed and you would name two replacements!`,
+                `${povWinner.name}, will you use Detox? ⚡ Both nominees would be removed and you would name two replacements!`,
                 'game',
               );
             } else {
@@ -2702,7 +2703,7 @@ const gameSlice = createSlice({
                 state.nomineeIds = [];
                 state.povSavedId = null;
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
-                pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} used the Coup d'État! ${removedNames} are removed from the block! ⚡`, 'game');
+                pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
                 );
@@ -2715,23 +2716,23 @@ const gameSlice = createSlice({
                     incrementTimesNominated(state, r.id);
                   });
                   const repNames = replacements.map((r) => r.name).join(' and ');
-                  pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} named ${repNames} as the new nominees. ⚡`, 'game');
+                  pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`, 'game');
                 } else if (eligible.length === 1) {
                   const r = eligible[0];
                   state.nomineeIds.push(r.id);
                   const rp = state.players.find((pl) => pl.id === r.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, r.id);
-                  pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
+                  pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
                 }
               } else {
-                pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} chose NOT to use the Coup d'État. ⚡`, 'game');
+                pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} chose not to use Detox. ⚡`, 'game');
               }
             }
             break;
           }
 
-          // ── VIP Veto: like standard but POV holder tends to use it + second use ──
+          // ── Double Trouble: like standard but holder may use it twice ───────────
           if (svType === 'vip') {
             if (isNominee && povWinner !== null) {
               const savedName = povWinner.name;
@@ -2740,7 +2741,7 @@ const gameSlice = createSlice({
               povWinner.status = 'pov';
               state.povSavedId = autoSavedId;
               state.specialVeto!.vipUseStage = 1;
-              pushEvent(state, `${savedName} used the VIP Veto and saved themselves! 👑`, 'game');
+              pushEvent(state, `${savedName} used Double Trouble and saved themselves! 👑`, 'game');
               const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
               if (hohPlayer?.isUser) {
                 state.replacementNeeded = true;
@@ -2752,7 +2753,7 @@ const gameSlice = createSlice({
               state.awaitingPovDecision = true;
               pushEvent(
                 state,
-                `${povWinner.name}, will you use the VIP Veto? 👑 You may use it TWICE this ceremony!`,
+                `${povWinner.name}, will you use Double Trouble? 👑 You may use it TWICE this ceremony!`,
                 'game',
               );
             } else {
@@ -2766,7 +2767,7 @@ const gameSlice = createSlice({
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
                   state.specialVeto!.vipUseStage = 1;
-                  pushEvent(state, `${povWinner?.name ?? 'The VIP Veto holder'} used the VIP Veto on ${nomineeToSave.name}! 👑`, 'game');
+                  pushEvent(state, `${povWinner?.name ?? 'The Double Trouble holder'} used Double Trouble on ${nomineeToSave.name}! 👑`, 'game');
                   const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
                   if (hohPlayer?.isUser) {
                     state.replacementNeeded = true;
@@ -2779,7 +2780,7 @@ const gameSlice = createSlice({
                 }
               } else {
                 state.specialVeto!.vipUseStage = -1;
-                pushEvent(state, `${povWinner?.name ?? 'The VIP Veto holder'} chose NOT to use the VIP Veto. 👑`, 'game');
+                pushEvent(state, `${povWinner?.name ?? 'The Double Trouble holder'} chose not to use Double Trouble. 👑`, 'game');
               }
             }
             break;
