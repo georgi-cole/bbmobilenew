@@ -18,6 +18,7 @@ import type { RootState } from './store';
  */
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game;
+  const sv = game.specialVeto;
 
   return (
     Boolean(game.replacementNeeded) ||
@@ -26,7 +27,12 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.awaitingPovSaveTarget) ||
     Boolean(game.awaitingHumanVote) ||
     Boolean(game.awaitingTieBreak) ||
-    Boolean(game.awaitingFinal3Eviction)
+    Boolean(game.awaitingFinal3Eviction) ||
+    Boolean(sv?.awaitingHolderReplacement) ||
+    Boolean(sv?.awaitingCoupReplacement1) ||
+    Boolean(sv?.awaitingCoupReplacement2) ||
+    Boolean(sv?.awaitingVipSecondUseDecision) ||
+    Boolean(sv?.awaitingVipSecondSaveTarget)
   );
 };
 

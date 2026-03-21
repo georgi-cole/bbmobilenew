@@ -401,6 +401,29 @@ export default function Settings() {
             )}
 
             {settings.sim.enableTwists && (
+              <div className="settings-row settings-row--col">
+                <label className="settings-row__label">
+                  Special Veto Chance — {settings.sim.specialVetoChance ?? 25}%
+                </label>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={settings.sim.specialVetoChance ?? 25}
+                  onChange={(e) =>
+                    dispatch(setSim({ specialVetoChance: Number(e.target.value) }))
+                  }
+                  aria-label="Special Veto chance percentage"
+                />
+                <p className="settings-helper-text">
+                  Weekly chance (after Week 2, with 6+ players, no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
+                </p>
+              </div>
+            )}
+
+            {settings.sim.enableTwists && (
               <>
                 <div className="settings-row">
                   <label className="settings-row__label">Public's Favorite (America's Vote)</label>
