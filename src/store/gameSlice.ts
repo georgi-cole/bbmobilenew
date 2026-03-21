@@ -145,6 +145,7 @@ export function createInitialGameState(): GameState {
     seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
     spectatorActive: null,
     seasonFinale: null,
+    doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
   };
 }
 
@@ -783,34 +784,36 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Human HOH commits two nominees in a single action (multi-select flow).
+     * Human HOH commits nominees in a single action (multi-select flow).
+     * Accepts 2 nominees normally; accepts 3 nominees during a Double Eviction week.
      * Replaces the two-step `selectNominee1` / `finalizeNominations` pattern
-     * when TvMultiSelectModal is used. Validates both IDs are eligible.
+     * when TvMultiSelectModal is used. Validates all IDs are eligible.
      */
     commitNominees(state, action: PayloadAction<string[]>) {
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const ids = action.payload;
-      if (ids.length !== 2 || ids[0] === ids[1]) return;
+      const expectedCount = state.doubleEviction?.weekActive ? 3 : 2;
+      if (ids.length !== expectedCount) return;
+      if (new Set(ids).size !== ids.length) return; // duplicates check
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
       const eligible = alive.filter((p) => p.id !== state.hohId);
-      if (!eligible.some((p) => p.id === ids[0])) return;
-      if (!eligible.some((p) => p.id === ids[1])) return;
+      if (!ids.every((id) => eligible.some((p) => p.id === id))) return;
 
-      const p1 = state.players.find((p) => p.id === ids[0]);
-      const p2 = state.players.find((p) => p.id === ids[1]);
+      const nominees = ids.map((id) => state.players.find((p) => p.id === id)!).filter(Boolean);
       const hohPlayer = state.players.find((p) => p.id === state.hohId);
-      if (!p1 || !p2) return;
+      if (nominees.length !== expectedCount) return;
 
-      state.nomineeIds = [ids[0], ids[1]];
-      p1.status = 'nominated';
-      p2.status = 'nominated';
-      incrementTimesNominated(state, ids[0]);
-      incrementTimesNominated(state, ids[1]);
+      state.nomineeIds = ids;
+      nominees.forEach((n) => {
+        n.status = 'nominated';
+        incrementTimesNominated(state, n.id);
+      });
       state.awaitingNominations = false;
       state.pendingNominee1Id = null;
+      const nameList = nominees.map((n) => n.name).join(', ');
       pushEvent(
         state,
-        `${p1.name} and ${p2.name} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
+        `${nameList} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
         'game',
       );
     },
@@ -992,6 +995,9 @@ const gameSlice = createSlice({
      * nomineeIds, pushes the eviction event, and clears pendingEviction.
      * For Final-4 evictions (phase === 'final4_eviction') also transitions
      * the phase to 'final3' and pushes the "Final 3!" event.
+     * For Double Eviction weeks, promotes the pending second eviction to
+     * `pendingEviction` after the first resolves; clears `doubleEviction.weekActive`
+     * once both evictions have been committed.
      */
     finalizePendingEviction(state, action: PayloadAction<string>) {
       const evicteeId = action.payload;
@@ -1012,6 +1018,14 @@ const gameSlice = createSlice({
       if (isFinal4) {
         state.phase = 'final3';
         pushEvent(state, `Final 3! Three houseguests remain. 🏆`, 'game');
+      } else if (state.doubleEviction?.pendingSecondEviction) {
+        // Double Eviction: promote the second eviction to the main pending slot.
+        state.pendingEviction = state.doubleEviction.pendingSecondEviction;
+        state.doubleEviction.pendingSecondEviction = null;
+      } else if (state.doubleEviction?.weekActive) {
+        // Both double eviction evictions are done — reset the weekly flag.
+        state.doubleEviction.weekActive = false;
+        state.twistActive = false;
       }
     },
 
@@ -1215,6 +1229,35 @@ const gameSlice = createSlice({
         state.battleBack.used = true;
       }
       state.twistActive = false;
+    },
+
+    // ─── Double Eviction twist actions ───────────────────────────────────────
+
+    /**
+     * Activate the Double Eviction twist for the current week.
+     * Sets `doubleEviction.weekActive = true`, increments `usedCount`, sets
+     * `twistActive`, and pushes a TV event with `major: 'double_eviction'` so
+     * TvZone shows the announcement overlay.
+     * Called by the `tryActivateDoubleEviction` thunk when the probability roll passes.
+     */
+    activateDoubleEviction(state) {
+      if (!state.doubleEviction) {
+        state.doubleEviction = { usedCount: 0, weekActive: false, pendingSecondEviction: null };
+      }
+      state.doubleEviction.weekActive = true;
+      state.doubleEviction.usedCount += 1;
+      state.doubleEviction.pendingSecondEviction = null;
+      state.twistActive = true;
+      // Push event WITH major: 'double_eviction' so TvZone shows the overlay.
+      const ts = Date.now();
+      const event: TvEvent = {
+        id: `nominations-w${state.week}-${ts}-de`,
+        text: `⚡ DOUBLE EVICTION! Tonight the HOH must nominate THREE houseguests. TWO will be evicted live! ⚡`,
+        type: 'twist',
+        timestamp: ts,
+        major: 'double_eviction',
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
     },
 
     // ─── Public's Favorite Player twist actions ───────────────────────────────
@@ -2094,32 +2137,36 @@ const gameSlice = createSlice({
           break;
         }
         case 'nomination_results': {
-          // Guard: need at least 3 players to nominate 2 (HOH + 2 nominees).
+          // Double Eviction week: HOH nominates 3; otherwise 2.
+          const isDoubleEviction = state.doubleEviction?.weekActive === true;
+          const nomineeCount = isDoubleEviction ? 3 : 2;
+          // Guard: need HOH + nomineeCount eligible players.
           const pool = alive.filter((p) => p.id !== state.hohId);
-          if (pool.length < 2) break;
+          if (pool.length < nomineeCount) break;
 
           const hohPlayer = state.players.find((p) => p.id === state.hohId);
           if (hohPlayer?.isUser) {
-            // Human HOH: block advance() and wait for the two-step nomination UI
+            // Human HOH: block advance() and wait for the multi-select nomination UI
             state.awaitingNominations = true;
             state.pendingNominee1Id = null;
+            const countWord = isDoubleEviction ? 'three' : 'two';
             pushEvent(
               state,
-              `${hohPlayer.name}, it's time to make your nominations. Choose two houseguests to put on the block. 🎯`,
+              `${hohPlayer.name}, it's time to make your nominations. Choose ${countWord} houseguests to put on the block. 🎯`,
               'game',
             );
             break;
           }
 
           // AI HOH: pick randomly
-          const nominees = seededPickN(rng, pool, 2);
+          const nominees = seededPickN(rng, pool, nomineeCount);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id);
             if (p) p.status = 'nominated';
             incrementTimesNominated(state, n.id);
           });
-          const names = nominees.map((n) => n.name).join(' and ');
+          const names = nominees.map((n) => n.name).join(isDoubleEviction ? ', ' : ' and ');
           pushEvent(state, `${names} have been nominated for eviction. 🎯`, 'game');
           break;
         }
@@ -2253,6 +2300,44 @@ const gameSlice = createSlice({
             if (nomineeId in voteCounts) voteCounts[nomineeId]++;
           }
 
+          // ── Double Eviction: evict top 2 nominees ─────────────────────────
+          if (state.doubleEviction?.weekActive && nominees.length >= 2) {
+            // Precompute deterministic tie-break ranks for the current nominee
+            // IDs so the comparator stays transitive/stable for tied vote counts.
+            const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
+            const tieBreakRanks: Record<string, number> = {};
+            for (const nomineeId of state.nomineeIds) {
+              tieBreakRanks[nomineeId] = aiRng();
+            }
+
+            // Sort nominees by vote count descending; use precomputed ranks for ties.
+            const sortedIds = [...state.nomineeIds].sort((a, b) => {
+              const diff = (voteCounts[b] ?? 0) - (voteCounts[a] ?? 0);
+              if (diff !== 0) return diff;
+              return (tieBreakRanks[b] ?? 0) - (tieBreakRanks[a] ?? 0);
+            });
+
+            const firstId = sortedIds[0];
+            const secondId = sortedIds[1];
+            const firstEvictee = state.players.find((p) => p.id === firstId);
+            const secondEvictee = state.players.find((p) => p.id === secondId);
+
+            if (firstEvictee && secondEvictee) {
+              state.voteResults = { ...voteCounts };
+              state.votes = {};
+              state.pendingEviction = {
+                evicteeId: firstId,
+                evictionMessage: `${firstEvictee.name}, you have been evicted from the Big Brother house. 🚪`,
+              };
+              state.doubleEviction.pendingSecondEviction = {
+                evicteeId: secondId,
+                evictionMessage: `${secondEvictee.name}, you have also been evicted in tonight's Double Eviction! 🚪`,
+              };
+            }
+            break;
+          }
+
+          // ── Standard single eviction ──────────────────────────────────────
           // Find the highest vote count
           let maxVotes = -1;
           for (const count of Object.values(voteCounts)) {
@@ -2363,6 +2448,7 @@ export const {
   completeBattleBack,
   dismissBattleBack,
   openBattleBackCompetition,
+  activateDoubleEviction,
   startFavoritePlayerPhase,
   openFavoritePlayerVoting,
   eliminateFavoriteCandidate,
@@ -2566,5 +2652,66 @@ export const tryActivateBattleBack =
 
     const candidates = jurors.map((p) => p.id);
     dispatch(activateBattleBack({ candidates, week: game.week }));
+    return true;
+  };
+
+/**
+ * Attempt to activate the Double Eviction twist for the current week.
+ *
+ * Activation rules (based on alive player count):
+ *  - 13–16 alive: up to 2 times per season
+ *  - 10–12 alive: guaranteed once; second time at 35%
+ *  - 5–9 alive:   once at 60%
+ *
+ * Eligibility:
+ *  - `settings.sim.enableTwists` must be true
+ *  - current phase must be `nominations`
+ *  - double eviction must not already be active this week
+ *
+ * Returns `true` if the twist was activated; `false` otherwise.
+ */
+export const tryActivateDoubleEviction =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.phase !== 'nominations') return false;
+    // Don't activate twice in the same week
+    if (game.doubleEviction?.weekActive) return false;
+
+    const alive = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    const aliveCount = alive.length;
+    const usedCount = game.doubleEviction?.usedCount ?? 0;
+
+    // Use a twist-specific RNG offset so this roll is independent of the main
+    // game seed sequence and does not perturb future HOH/POV/vote outcomes.
+    const rng = mulberry32((game.seed ^ 0xde1cef01) >>> 0);
+    const roll = rng(); // [0, 1)
+
+    let shouldActivate = false;
+
+    if (aliveCount >= 13 && aliveCount <= 16) {
+      // Up to 2 times per season; always activates until cap is reached.
+      if (usedCount < 2) shouldActivate = true;
+    } else if (aliveCount >= 10 && aliveCount <= 12) {
+      // Guaranteed once; second time at 35%.
+      if (usedCount === 0) {
+        shouldActivate = true;
+      } else if (usedCount === 1) {
+        shouldActivate = roll < 0.35;
+      }
+    } else if (aliveCount >= 5 && aliveCount <= 9) {
+      // Once at 60% chance.
+      if (usedCount === 0) {
+        shouldActivate = roll < 0.60;
+      }
+    }
+
+    if (!shouldActivate) return false;
+
+    dispatch(activateDoubleEviction());
     return true;
   };

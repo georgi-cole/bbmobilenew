@@ -72,6 +72,12 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Twist',
     body: 'A Battle Back twist has been activated. Recently evicted houseguests will face off in a special competition for a chance to re-enter the Big Brother house. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
   },
+  double_eviction: {
+    icon: '⚡',
+    label: 'DOUBLE EVICTION',
+    category: 'Twist',
+    body: 'A Double Eviction has been triggered! Tonight\'s Head of Household must nominate THREE houseguests for eviction. After a Power of Veto competition and ceremony, the house will vote to evict TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.',
+  },
   twist: {
     icon: '🌀',
     label: 'TWIST',

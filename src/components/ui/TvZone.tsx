@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition } from 'react';
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import type { Phase } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
@@ -59,6 +60,7 @@ const MAJOR_KEYS = new Set([
   'final_hoh',
   'jury',
   'battle_back',
+  'double_eviction',
   'twist',
 ]);
 
@@ -72,6 +74,7 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
   battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: 4500 },
+  double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: 5000 },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: 4500 },
 };
 
@@ -106,9 +109,9 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
  * Only the phases explicitly listed here will trigger an overlay — all others
  * (week_start, hoh_comp, pov_comp, final3_comp1/2/3, …) remain normal text.
  */
-function getPhaseAnnouncementKey(phase: Phase, aliveCount: number): string | null {
+function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictionActive: boolean): string | null {
   if (phase === 'pov_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
-  if (phase === 'nominations')     return 'nomination_ceremony';
+  if (phase === 'nominations')     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony';
   if (phase === 'live_vote')       return 'live_eviction';
   if (phase === 'final3')          return aliveCount === 3 ? 'final3_announcement' : null;
   if (phase === 'final3_decision') return 'final_hoh';
@@ -120,6 +123,7 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number): string | nul
 // Duration (ms) the main viewport text stays faded after an announcement is dismissed,
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
+const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
 
 /**
  * TvZone — the central "TV-like" action zone.
@@ -138,6 +142,7 @@ const POST_DISMISS_FADE_MS = 300;
 export default function TvZone() {
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
+  const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
   const navigate = useNavigate();
 
   // Filter entries for the TV viewport (excludes DR-only events).
@@ -174,7 +179,10 @@ export default function TvZone() {
   const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null);
   // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
   const [postDismissBlocked, setPostDismissBlocked] = useState(false);
+  // Short-lived TV spotlight effect for Double Eviction special announcements.
+  const [deSpotlightActive, setDeSpotlightActive] = useState(false);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks the previous phase to detect phase transitions.
   const previousPhaseRef = useRef<Phase | null>(null);
   // Stable ref so phase-transition effect always reads the latest latestEvent.
@@ -187,21 +195,27 @@ export default function TvZone() {
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
-  // Only triggers on actual transitions (previousPhaseRef !== current phase).
+  // Also allows an in-place upgrade for nomination-phase overlays when
+  // Double Eviction activates after the phase has already been entered.
   useEffect(() => {
     const currentPhase = gameState.phase;
     const prevPhase = previousPhaseRef.current;
     previousPhaseRef.current = currentPhase;
+    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+    const keyChangedInPlace =
+      prevPhase === currentPhase &&
+      currentPhase === 'nominations' &&
+      phaseAnnouncement?.key !== null &&
+      phaseAnnouncement?.key !== undefined &&
+      phaseAnnouncement?.key !== key;
 
-    // Skip on initial mount (no previous phase) and when phase hasn't changed.
-    if (prevPhase === null || prevPhase === currentPhase) return;
-
-    const key = getPhaseAnnouncementKey(currentPhase, alivePlayers.length);
+    // Skip on initial mount (no previous phase) and when phase/key haven't changed.
+    if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return;
     const ev = latestEventRef.current;
     // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
     // by deferring setState calls into a callback rather than calling them synchronously).
     startTransition(() => {
-      if (key && currentPhase !== dismissedPhase) {
+      if (key && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
         const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
         setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
         // Suppress any concurrent event-based popup with the same key to prevent duplication.
@@ -217,7 +231,7 @@ export default function TvZone() {
         setPhaseAnnouncement(null);
       }
     });
-  }, [gameState.phase, alivePlayers.length, dismissedPhase]);
+  }, [gameState.phase, alivePlayers.length, dismissedPhase, doubleEvictionActive, phaseAnnouncement?.key]);
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
@@ -249,6 +263,39 @@ export default function TvZone() {
     };
   }, []);
 
+  // Play a short TV-only spotlight intro for Double Eviction announcements,
+  // then return the surrounding UI to normal while keeping the announcement visible.
+  useEffect(() => {
+    if (activeAnnouncement?.key !== 'double_eviction') {
+      startTransition(() => {
+        setDeSpotlightActive(false);
+      });
+      if (deSpotlightTimerRef.current !== null) {
+        clearTimeout(deSpotlightTimerRef.current);
+        deSpotlightTimerRef.current = null;
+      }
+      return;
+    }
+
+    startTransition(() => {
+      setDeSpotlightActive(true);
+    });
+    if (deSpotlightTimerRef.current !== null) clearTimeout(deSpotlightTimerRef.current);
+    deSpotlightTimerRef.current = setTimeout(() => {
+      startTransition(() => {
+        setDeSpotlightActive(false);
+      });
+      deSpotlightTimerRef.current = null;
+    }, DOUBLE_EVICTION_SPOTLIGHT_MS);
+
+    return () => {
+      if (deSpotlightTimerRef.current !== null) {
+        clearTimeout(deSpotlightTimerRef.current);
+        deSpotlightTimerRef.current = null;
+      }
+    };
+  }, [activeAnnouncement?.key]);
+
   // Listen for central FAB 'tv:announcement-dismiss' events
   useEffect(() => {
     const handler = () => handleDismiss();
@@ -264,8 +311,21 @@ export default function TvZone() {
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
 
+  // Whether the current announcement is a double eviction (for spotlight effect).
+  const isDeSpotlight = deSpotlightActive;
+
   return (
-    <section className="tv-zone" aria-label="Game action zone">
+    <section
+      className={`tv-zone${isDeSpotlight ? ' tv-zone--de-spotlight' : ''}`}
+      aria-label="Game action zone"
+      style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
+    >
+      {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
+      {isDeSpotlight && createPortal(
+        <div className="tv-zone-de-backdrop" aria-hidden="true" />,
+        document.body,
+      )}
+
       {/* ── Head bar ────────────────────────────────────────────────────── */}
       <div className="tv-zone__head">
         {/* Left: pinned phase pill */}

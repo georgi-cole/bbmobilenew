@@ -203,6 +203,32 @@ export interface BattleBackState {
   winnerId: string | null;
 }
 
+// ─── Double Eviction twist ────────────────────────────────────────────────────
+
+/**
+ * Season-level state for the Double Eviction twist.
+ * Stored in GameState.doubleEviction; undefined when the game state was created
+ * before this feature was added (backwards-compatible).
+ */
+export interface DoubleEvictionState {
+  /**
+   * How many times Double Eviction has fired this season.
+   * Used to enforce per-band caps (max 2 in the 13-16 band, max 2 in the 10-12 band).
+   */
+  usedCount: number;
+  /**
+   * True while the current week is a Double Eviction week.
+   * Set by `activateDoubleEviction`; cleared after both evictions resolve.
+   */
+  weekActive: boolean;
+  /**
+   * When `weekActive` is true and the first eviction has been queued, this holds
+   * the second eviction payload. After `finalizePendingEviction` handles the first
+   * evictee, this is promoted to `pendingEviction`. Null when not applicable.
+   */
+  pendingSecondEviction: { evicteeId: string; evictionMessage: string } | null;
+}
+
 // ─── Public's Favorite voting twist ──────────────────────────────────────────
 
 /**
@@ -413,6 +439,11 @@ export interface GameState {
    * Undefined until the twist is first attempted.
    */
   battleBack?: BattleBackState;
+  /**
+   * Double Eviction twist state.
+   * Undefined on legacy saved games created before this feature was added.
+   */
+  doubleEviction?: DoubleEvictionState;
   /**
    * Public's Favorite Player voting state.
    * Undefined until `startFavoritePlayerPhase` is dispatched.
