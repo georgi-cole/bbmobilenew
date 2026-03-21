@@ -63,6 +63,10 @@ const MAJOR_KEYS = new Set([
   'jury',
   'battle_back',
   'double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
   'twist',
   'hoh_comp_announcement',
   'pov_comp_announcement',
@@ -79,6 +83,10 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
   battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: null },
   double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: null },
+  vip_veto:             { title: 'VIP Veto!',                  subtitle: 'The POV holder may use the veto TWICE this ceremony!',            isLive: true,  autoDismissMs: null },
+  diamond_pov:          { title: 'Diamond Power of Veto!',     subtitle: 'The POV holder may name the replacement nominee. 💎',             isLive: true,  autoDismissMs: null },
+  coup_detat:           { title: "Coup d'État!",               subtitle: 'Both nominees are removed! The POV holder names two replacements. ⚡', isLive: true, autoDismissMs: null },
+  spotlight_veto:       { title: 'Spotlight Veto!',            subtitle: 'The veto winner is FORCED to use the power this ceremony! 🔦',    isLive: true,  autoDismissMs: null },
   twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: null },
   hoh_comp_announcement: { title: 'HOH Competition',           subtitle: 'Power is up for grabs — who will become Head of Household?',   isLive: true,  autoDismissMs: null },
   pov_comp_announcement: { title: 'Power of Veto',             subtitle: 'It\'s time for the Power of Veto competition!',                isLive: true,  autoDismissMs: null },
@@ -277,14 +285,21 @@ export default function TvZone() {
   // then return the surrounding UI to normal while keeping the announcement visible.
   useEffect(() => {
     if (activeAnnouncement?.key !== 'double_eviction') {
-      startTransition(() => {
-        setDeSpotlightActive(false);
-      });
-      if (deSpotlightTimerRef.current !== null) {
-        clearTimeout(deSpotlightTimerRef.current);
-        deSpotlightTimerRef.current = null;
+      const isSpecialVetoAnnouncement =
+        activeAnnouncement?.key === 'vip_veto' ||
+        activeAnnouncement?.key === 'diamond_pov' ||
+        activeAnnouncement?.key === 'coup_detat' ||
+        activeAnnouncement?.key === 'spotlight_veto';
+      if (!isSpecialVetoAnnouncement) {
+        startTransition(() => {
+          setDeSpotlightActive(false);
+        });
+        if (deSpotlightTimerRef.current !== null) {
+          clearTimeout(deSpotlightTimerRef.current);
+          deSpotlightTimerRef.current = null;
+        }
+        return;
       }
-      return;
     }
 
     startTransition(() => {

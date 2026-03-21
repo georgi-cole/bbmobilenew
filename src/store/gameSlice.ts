@@ -10,6 +10,8 @@ import type {
   BattleBackState,
   SpectatorActiveState,
   SeasonFinaleState,
+  SpecialVetoState,
+  SpecialVetoType,
 } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
 import {
@@ -148,6 +150,18 @@ export function createInitialGameState(): GameState {
     spectatorActive: null,
     seasonFinale: null,
     doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
+    specialVeto: {
+      seasonUsed: false,
+      activeType: null,
+      activatedWeek: null,
+      vipUseStage: 0,
+      awaitingHolderReplacement: false,
+      awaitingCoupReplacement1: false,
+      awaitingCoupReplacement2: false,
+      coupReplacement1Id: null,
+      awaitingVipSecondUseDecision: false,
+      awaitingVipSecondSaveTarget: false,
+    },
   };
 }
 
@@ -727,6 +741,14 @@ const gameSlice = createSlice({
       incrementTimesNominated(state, id);
       state.replacementNeeded = false;
       state.povSavedId = null;
+      // VIP: advance stage after first replacement (stage 1 → 2) or second replacement (stage 3 → -1)
+      if (state.specialVeto?.activeType === 'vip') {
+        if (state.specialVeto.vipUseStage === 1) {
+          state.specialVeto.vipUseStage = 2;
+        } else if (state.specialVeto.vipUseStage === 3) {
+          state.specialVeto.vipUseStage = -1;
+        }
+      }
       pushEvent(
         state,
         `${hohPlayer.name} named ${player.name} as the replacement nominee. 🎯`,
@@ -830,10 +852,30 @@ const gameSlice = createSlice({
       state.awaitingPovDecision = false;
       const povWinner = state.players.find((p) => p.id === state.povWinnerId);
       if (action.payload) {
-        // Will use veto — wait for save target
-        state.awaitingPovSaveTarget = true;
+        const svType = state.specialVeto?.activeType;
+        if (svType === 'coup') {
+          // Coup d'État: remove both nominees, await holder replacement picks
+          const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+          oldNominees.forEach((n) => { n.status = 'active'; });
+          const removedNames = oldNominees.map((n) => n.name).join(' and ');
+          state.nomineeIds = [];
+          state.povSavedId = null;
+          pushEvent(
+            state,
+            `${povWinner?.name ?? 'The Coup d\'État holder'} used the Coup d'État! ${removedNames} are removed from the block! ⚡`,
+            'game',
+          );
+          pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'}, name your two replacement nominees. ⚡`, 'game');
+          state.specialVeto!.awaitingCoupReplacement1 = true;
+        } else {
+          // Standard / VIP / Diamond / Spotlight: set awaitingPovSaveTarget
+          state.awaitingPovSaveTarget = true;
+        }
       } else {
-        // Will not use veto
+        // not using veto
+        if (state.specialVeto?.activeType === 'vip') {
+          state.specialVeto.vipUseStage = -1;
+        }
         pushEvent(
           state,
           `${povWinner?.name ?? 'The veto holder'} has decided NOT to use the Power of Veto. The nominations remain the same. ⚡`,
@@ -869,9 +911,49 @@ const gameSlice = createSlice({
         'game',
       );
 
+      // Diamond: holder names replacement (not HOH)
+      if (state.specialVeto?.activeType === 'diamond') {
+        if (povWinner.isUser) {
+          state.specialVeto.awaitingHolderReplacement = true;
+          pushEvent(
+            state,
+            `${povWinner.name}, as the Diamond POV holder, you must name the replacement nominee. 💎`,
+            'game',
+          );
+        } else {
+          // AI holder names replacement
+          const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+          const eligible = alive.filter(
+            (pl) =>
+              pl.id !== state.hohId &&
+              pl.id !== state.povWinnerId &&
+              !state.nomineeIds.includes(pl.id) &&
+              pl.id !== saveId,
+          );
+          if (eligible.length > 0) {
+            const rng = mulberry32(state.seed);
+            const replacement = seededPick(rng, eligible);
+            state.nomineeIds.push(replacement.id);
+            const rp = state.players.find((pl) => pl.id === replacement.id);
+            if (rp) rp.status = 'nominated';
+            incrementTimesNominated(state, replacement.id);
+            pushEvent(
+              state,
+              `${povWinner.name} named ${replacement.name} as the replacement nominee. 💎`,
+              'game',
+            );
+          }
+        }
+        return;
+      }
+
       // HOH must name a replacement
       if (hohPlayer?.isUser) {
         state.replacementNeeded = true;
+        // VIP: track first use stage
+        if (state.specialVeto?.activeType === 'vip') {
+          state.specialVeto.vipUseStage = 1;
+        }
         pushEvent(
           state,
           `${hohPlayer.name} must now name a replacement nominee. 🎯`,
@@ -901,6 +983,10 @@ const gameSlice = createSlice({
             `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
             'game',
           );
+          // VIP: after AI HOH replacement is done inline, stage is immediately 2
+          if (state.specialVeto?.activeType === 'vip') {
+            state.specialVeto.vipUseStage = 2;
+          }
         }
       }
     },
@@ -1260,6 +1346,204 @@ const gameSlice = createSlice({
         major: 'double_eviction',
       };
       state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    /**
+     * Activate a special veto twist for the current week.
+     * Called by the `tryActivateSpecialVeto` thunk when the probability roll passes.
+     */
+    activateSpecialVeto(state, action: PayloadAction<{ type: SpecialVetoType; week: number }>) {
+      const { type, week } = action.payload;
+      if (!state.specialVeto) {
+        state.specialVeto = {
+          seasonUsed: false,
+          activeType: null,
+          activatedWeek: null,
+          vipUseStage: 0,
+          awaitingHolderReplacement: false,
+          awaitingCoupReplacement1: false,
+          awaitingCoupReplacement2: false,
+          coupReplacement1Id: null,
+          awaitingVipSecondUseDecision: false,
+          awaitingVipSecondSaveTarget: false,
+        };
+      }
+      state.specialVeto.seasonUsed = true;
+      state.specialVeto.activeType = type;
+      state.specialVeto.activatedWeek = week;
+      state.specialVeto.vipUseStage = 0;
+      state.twistActive = true;
+
+      const typeLabels: Record<SpecialVetoType, string> = {
+        vip: 'VIP VETO! This week, the POV holder may use the veto TWICE! 👑',
+        diamond: 'DIAMOND POWER OF VETO! This week, the POV holder may name the replacement nominee. 💎',
+        coup: "COUP D'ÉTAT! This week, the POV holder may remove both nominees and name two replacements! ⚡",
+        spotlight: 'SPOTLIGHT VETO! This week, the POV holder is FORCED to use the veto! 🔦',
+      };
+      const majorKeys: Record<SpecialVetoType, string> = {
+        vip: 'vip_veto',
+        diamond: 'diamond_pov',
+        coup: 'coup_detat',
+        spotlight: 'spotlight_veto',
+      };
+      const ts = Date.now();
+      const event: TvEvent = {
+        id: `special-veto-${type}-w${week}-${ts}`,
+        text: typeLabels[type],
+        type: 'twist',
+        major: majorKeys[type],
+        meta: { major: majorKeys[type], week },
+        timestamp: ts,
+      };
+      state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+    },
+
+    /**
+     * Human Diamond POV holder picks the replacement nominee.
+     */
+    submitDiamondReplacement(state, action: PayloadAction<string>) {
+      if (!state.specialVeto?.awaitingHolderReplacement) return;
+      if (state.specialVeto.activeType !== 'diamond') return;
+      const id = action.payload;
+      if (
+        id === state.hohId ||
+        id === state.povWinnerId ||
+        state.nomineeIds.includes(id) ||
+        id === state.povSavedId
+      ) return;
+      const player = state.players.find((p) => p.id === id);
+      const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+      if (!player) return;
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      if (!alive.some((p) => p.id === id)) return;
+
+      state.nomineeIds.push(id);
+      player.status = 'nominated';
+      incrementTimesNominated(state, id);
+      state.specialVeto.awaitingHolderReplacement = false;
+      pushEvent(
+        state,
+        `${povHolder?.name ?? 'The Diamond POV holder'} named ${player.name} as the replacement nominee. 💎`,
+        'game',
+      );
+    },
+
+    /**
+     * Human Coup d'État holder picks replacement nominees (called twice: first and second pick).
+     */
+    submitCoupReplacement(state, action: PayloadAction<string>) {
+      if (!state.specialVeto?.awaitingCoupReplacement1 && !state.specialVeto?.awaitingCoupReplacement2) return;
+      if (state.specialVeto.activeType !== 'coup') return;
+      const id = action.payload;
+      const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+
+      if (state.specialVeto.awaitingCoupReplacement1) {
+        if (id === state.hohId || id === state.povWinnerId || state.nomineeIds.includes(id)) return;
+        if (!alive.some((p) => p.id === id)) return;
+        state.specialVeto.coupReplacement1Id = id;
+        state.specialVeto.awaitingCoupReplacement1 = false;
+        state.specialVeto.awaitingCoupReplacement2 = true;
+        const player = state.players.find((p) => p.id === id);
+        pushEvent(
+          state,
+          `${povHolder?.name ?? 'The Coup d\'État holder'} selects ${player?.name ?? id} as the first replacement. Choose a second. ⚡`,
+          'game',
+        );
+      } else if (state.specialVeto.awaitingCoupReplacement2) {
+        const rep1Id = state.specialVeto.coupReplacement1Id;
+        if (id === state.hohId || id === state.povWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return;
+        if (!alive.some((p) => p.id === id)) return;
+
+        const rep1 = state.players.find((p) => p.id === rep1Id);
+        const rep2 = state.players.find((p) => p.id === id);
+        if (!rep1 || !rep2) return;
+
+        [rep1, rep2].forEach((r) => {
+          state.nomineeIds.push(r.id);
+          r.status = 'nominated';
+          incrementTimesNominated(state, r.id);
+        });
+        state.specialVeto.awaitingCoupReplacement2 = false;
+        state.specialVeto.coupReplacement1Id = null;
+        pushEvent(
+          state,
+          `${povHolder?.name ?? 'The Coup d\'État holder'} named ${rep1.name} and ${rep2.name} as the new nominees. ⚡`,
+          'game',
+        );
+      }
+    },
+
+    /**
+     * Human VIP Veto holder decides whether to use the veto a second time.
+     */
+    submitVipSecondUseDecision(state, action: PayloadAction<boolean>) {
+      if (!state.specialVeto?.awaitingVipSecondUseDecision) return;
+      state.specialVeto.awaitingVipSecondUseDecision = false;
+      const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+      if (action.payload) {
+        state.specialVeto.awaitingVipSecondSaveTarget = true;
+        pushEvent(
+          state,
+          `${povHolder?.name ?? 'The VIP Veto holder'} will use the VIP Veto a second time! Choose a nominee to save. 👑`,
+          'game',
+        );
+      } else {
+        state.specialVeto.vipUseStage = -1;
+        pushEvent(
+          state,
+          `${povHolder?.name ?? 'The VIP Veto holder'} chose not to use the VIP Veto a second time. 👑`,
+          'game',
+        );
+      }
+    },
+
+    /**
+     * Human VIP Veto holder picks which nominee to save on the second use.
+     */
+    submitVipSecondSaveTarget(state, action: PayloadAction<string>) {
+      if (!state.specialVeto?.awaitingVipSecondSaveTarget) return;
+      if (state.specialVeto.activeType !== 'vip') return;
+      const saveId = action.payload;
+      if (!state.nomineeIds.includes(saveId)) return;
+
+      const savedPlayer = state.players.find((p) => p.id === saveId);
+      const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+      const hohPlayer = state.players.find((p) => p.id === state.hohId);
+      if (!savedPlayer || !povHolder) return;
+
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
+      savedPlayer.status = 'active';
+      state.specialVeto.awaitingVipSecondSaveTarget = false;
+      state.specialVeto.vipUseStage = 3;
+      state.povSavedId = saveId;
+      pushEvent(
+        state,
+        `${povHolder.name} used the VIP Veto a second time, saving ${savedPlayer.name}! 👑`,
+        'game',
+      );
+      if (hohPlayer?.isUser) {
+        state.replacementNeeded = true;
+        pushEvent(state, `${hohPlayer.name} must now name another replacement nominee. 🎯`, 'game');
+      } else {
+        const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        const eligible = aliveNow.filter(
+          (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
+            !state.nomineeIds.includes(pl.id) && pl.id !== saveId,
+        );
+        if (eligible.length > 0) {
+          const rng = mulberry32(state.seed);
+          const replacement = seededPick(rng, eligible);
+          state.nomineeIds.push(replacement.id);
+          const rp = state.players.find((pl) => pl.id === replacement.id);
+          if (rp) rp.status = 'nominated';
+          incrementTimesNominated(state, replacement.id);
+          pushEvent(state, `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`, 'game');
+          state.specialVeto.vipUseStage = -1;
+        } else {
+          state.specialVeto.vipUseStage = -1;
+        }
+      }
     },
 
     // ─── Public's Favorite Player twist actions ───────────────────────────────
@@ -1694,6 +1978,11 @@ const gameSlice = createSlice({
         state.awaitingTieBreak ||
         state.awaitingFinal3Eviction ||
         state.awaitingFinal3Plea ||
+        state.specialVeto?.awaitingHolderReplacement ||
+        state.specialVeto?.awaitingCoupReplacement1 ||
+        state.specialVeto?.awaitingCoupReplacement2 ||
+        state.specialVeto?.awaitingVipSecondUseDecision ||
+        state.specialVeto?.awaitingVipSecondSaveTarget ||
         state.pendingEviction != null ||
         state.battleBack?.active ||
         state.favoritePlayer?.active ||
@@ -2068,6 +2357,67 @@ const gameSlice = createSlice({
         // Keep povSavedId set so the UI can detect "veto was used" and show
         // the AI replacement animation. Cleared at week_start.
         state.aiReplacementStep = 0;
+        // VIP: after AI replacement completes first use, advance to second-use decision stage
+        if (state.specialVeto?.activeType === 'vip' && state.specialVeto.vipUseStage === 1) {
+          state.specialVeto.vipUseStage = 2;
+        }
+        // VIP: after AI replacement completes second use, mark ceremony done
+        if (state.specialVeto?.activeType === 'vip' && state.specialVeto.vipUseStage === 3) {
+          state.specialVeto.vipUseStage = -1;
+        }
+        return;
+      }
+
+      // ── VIP Veto second-use handling ─────────────────────────────────────────────
+      if (state.specialVeto?.activeType === 'vip' && state.specialVeto.vipUseStage === 2) {
+        const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+        if (nominees.length === 0) {
+          state.specialVeto.vipUseStage = -1;
+          return;
+        }
+        const povHolder = state.players.find((p) => p.id === state.povWinnerId);
+        if (povHolder?.isUser) {
+          state.specialVeto.awaitingVipSecondUseDecision = true;
+          pushEvent(
+            state,
+            `${povHolder.name}, you may use the VIP Veto a second time! Would you like to save another nominee? 👑`,
+            'game',
+          );
+        } else {
+          // AI: seeded decision — tends to use second time (~70%)
+          const seedRng2 = mulberry32(state.seed);
+          state.seed = (seedRng2() * 0x100000000) >>> 0;
+          const rng2 = mulberry32(state.seed);
+          const useSecond = rng2() < 0.70;
+          if (useSecond && nominees.length > 0) {
+            const nominee2 = seededPick(rng2, nominees);
+            state.nomineeIds = state.nomineeIds.filter((id) => id !== nominee2.id);
+            const savedP = state.players.find((p) => p.id === nominee2.id);
+            if (savedP) savedP.status = 'active';
+            state.povSavedId = nominee2.id;
+            pushEvent(
+              state,
+              `${povHolder?.name ?? 'The VIP Veto holder'} used the VIP Veto a second time, saving ${nominee2.name}! 👑`,
+              'game',
+            );
+            const hohP = state.players.find((p) => p.id === state.hohId);
+            if (hohP?.isUser) {
+              state.specialVeto.vipUseStage = 3;
+              state.replacementNeeded = true;
+              pushEvent(state, `${hohP.name} must now name another replacement nominee. 🎯`, 'game');
+            } else {
+              state.specialVeto.vipUseStage = 3;
+              state.aiReplacementStep = 1;
+            }
+          } else {
+            state.specialVeto.vipUseStage = -1;
+            pushEvent(
+              state,
+              `${povHolder?.name ?? 'The VIP Veto holder'} chose not to use the VIP Veto a second time. The nominations stand. 👑`,
+              'game',
+            );
+          }
+        }
         return;
       }
 
@@ -2105,6 +2455,18 @@ const gameSlice = createSlice({
           state.tiedNomineeIds = null;
           state.aiReplacementStep = 0;
           state.aiReplacementWaiting = false;
+          // Clear per-week special veto ceremony flags (preserve seasonUsed flag)
+          if (state.specialVeto) {
+            state.specialVeto.activeType = null;
+            state.specialVeto.activatedWeek = null;
+            state.specialVeto.vipUseStage = 0;
+            state.specialVeto.awaitingHolderReplacement = false;
+            state.specialVeto.awaitingCoupReplacement1 = false;
+            state.specialVeto.awaitingCoupReplacement2 = false;
+            state.specialVeto.coupReplacement1Id = null;
+            state.specialVeto.awaitingVipSecondUseDecision = false;
+            state.specialVeto.awaitingVipSecondSaveTarget = false;
+          }
           state.players.forEach((p) => {
             if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
               p.status = 'active';
@@ -2197,11 +2559,234 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_ceremony_results': {
+          const svType = state.specialVeto?.activeType ?? null;
+
+          // VIP: if already processed (stage not 0), this is a second pass – skip to advance phase.
+          if (svType === 'vip' && state.specialVeto!.vipUseStage !== 0) {
+            break;
+          }
+
           const povWinner = state.povWinnerId
             ? state.players.find((p) => p.id === state.povWinnerId) ?? null
             : null;
           const isNominee = povWinner !== null && state.nomineeIds.includes(povWinner.id);
 
+          // ── Spotlight Veto: mandatory use (no choice) ─────────────────────────
+          if (svType === 'spotlight') {
+            if (isNominee && povWinner !== null) {
+              // Nominee auto-saves self
+              const savedName = povWinner.name;
+              const autoSavedId = povWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
+              povWinner.status = 'pov';
+              state.povSavedId = autoSavedId;
+              pushEvent(state, `${savedName} used the Spotlight Veto and saved themselves! 🔦`, 'game');
+              const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+              if (hohPlayer?.isUser) {
+                state.replacementNeeded = true;
+                pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+              } else {
+                const eligible = alive.filter(
+                  (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
+                    !state.nomineeIds.includes(pl.id) && pl.id !== autoSavedId,
+                );
+                if (eligible.length > 0) {
+                  const replacement = seededPick(rng, eligible);
+                  state.nomineeIds.push(replacement.id);
+                  const rp = state.players.find((pl) => pl.id === replacement.id);
+                  if (rp) rp.status = 'nominated';
+                  incrementTimesNominated(state, replacement.id);
+                  pushEvent(state, `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`, 'game');
+                }
+              }
+            } else if (povWinner?.isUser) {
+              // Human must use — directly to save target
+              state.awaitingPovSaveTarget = true;
+              pushEvent(state, `${povWinner.name}, the Spotlight Veto MUST be used! Choose a nominee to save. 🔦`, 'game');
+            } else {
+              // AI: pick one nominee to save
+              const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+              if (nominees.length > 0) {
+                const nomineeToSave = seededPick(rng, nominees);
+                const savedName = nomineeToSave.name;
+                state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
+                const savedP = state.players.find((p) => p.id === nomineeToSave.id);
+                if (savedP) savedP.status = 'active';
+                state.povSavedId = nomineeToSave.id;
+                pushEvent(state, `${povWinner?.name ?? 'The Spotlight Veto holder'} used the Spotlight Veto on ${savedName}! 🔦`, 'game');
+                const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+                if (hohPlayer?.isUser) {
+                  state.replacementNeeded = true;
+                  pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                } else {
+                  state.aiReplacementStep = 1;
+                }
+              }
+            }
+            break;
+          }
+
+          // ── Diamond POV: holder names the replacement ─────────────────────────
+          if (svType === 'diamond') {
+            if (isNominee && povWinner !== null) {
+              const savedName = povWinner.name;
+              const autoSavedId = povWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
+              povWinner.status = 'pov';
+              state.povSavedId = autoSavedId;
+              pushEvent(state, `${savedName} used the Diamond Power of Veto and saved themselves! 💎`, 'game');
+              if (povWinner.isUser) {
+                state.specialVeto!.awaitingHolderReplacement = true;
+                pushEvent(state, `${povWinner.name}, as the Diamond POV holder, you must name the replacement nominee. 💎`, 'game');
+              } else {
+                const eligible = alive.filter(
+                  (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
+                    !state.nomineeIds.includes(pl.id) && pl.id !== autoSavedId,
+                );
+                if (eligible.length > 0) {
+                  const replacement = seededPick(rng, eligible);
+                  state.nomineeIds.push(replacement.id);
+                  const rp = state.players.find((pl) => pl.id === replacement.id);
+                  if (rp) rp.status = 'nominated';
+                  incrementTimesNominated(state, replacement.id);
+                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the replacement nominee. 💎`, 'game');
+                }
+              }
+            } else if (povWinner?.isUser) {
+              state.awaitingPovDecision = true;
+              pushEvent(state, `${povWinner.name}, will you use the Diamond Power of Veto? 💎`, 'game');
+            } else {
+              const useIt = rng() < 0.70;
+              if (useIt) {
+                const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+                if (nominees.length > 0) {
+                  const nomineeToSave = seededPick(rng, nominees);
+                  state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
+                  const savedP = state.players.find((p) => p.id === nomineeToSave.id);
+                  if (savedP) savedP.status = 'active';
+                  state.povSavedId = nomineeToSave.id;
+                  pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} used the Diamond Power of Veto on ${nomineeToSave.name}! 💎`, 'game');
+                  const eligible = alive.filter(
+                    (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
+                      !state.nomineeIds.includes(pl.id) && pl.id !== nomineeToSave.id,
+                  );
+                  if (eligible.length > 0) {
+                    const replacement = seededPick(rng, eligible);
+                    state.nomineeIds.push(replacement.id);
+                    const rp = state.players.find((pl) => pl.id === replacement.id);
+                    if (rp) rp.status = 'nominated';
+                    incrementTimesNominated(state, replacement.id);
+                    pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} named ${replacement.name} as the replacement nominee. 💎`, 'game');
+                  }
+                }
+              } else {
+                pushEvent(state, `${povWinner?.name ?? 'The Diamond POV holder'} chose NOT to use the Diamond Power of Veto. 💎`, 'game');
+              }
+            }
+            break;
+          }
+
+          // ── Coup d'État: removes both nominees, holder names both replacements ──
+          if (svType === 'coup') {
+            if (povWinner?.isUser) {
+              state.awaitingPovDecision = true;
+              pushEvent(
+                state,
+                `${povWinner.name}, will you use the Coup d'État? ⚡ Both nominees would be removed and you would name two replacements!`,
+                'game',
+              );
+            } else {
+              const useIt = rng() < 0.65;
+              if (useIt) {
+                const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+                oldNominees.forEach((n) => { n.status = 'active'; });
+                state.nomineeIds = [];
+                state.povSavedId = null;
+                const removedNames = oldNominees.map((n) => n.name).join(' and ');
+                pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} used the Coup d'État! ${removedNames} are removed from the block! ⚡`, 'game');
+                const eligible = alive.filter(
+                  (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId,
+                );
+                if (eligible.length >= 2) {
+                  const replacements = seededPickN(rng, eligible, 2);
+                  replacements.forEach((r) => {
+                    state.nomineeIds.push(r.id);
+                    const rp = state.players.find((pl) => pl.id === r.id);
+                    if (rp) rp.status = 'nominated';
+                    incrementTimesNominated(state, r.id);
+                  });
+                  const repNames = replacements.map((r) => r.name).join(' and ');
+                  pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} named ${repNames} as the new nominees. ⚡`, 'game');
+                } else if (eligible.length === 1) {
+                  const r = eligible[0];
+                  state.nomineeIds.push(r.id);
+                  const rp = state.players.find((pl) => pl.id === r.id);
+                  if (rp) rp.status = 'nominated';
+                  incrementTimesNominated(state, r.id);
+                  pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
+                }
+              } else {
+                pushEvent(state, `${povWinner?.name ?? 'The Coup d\'État holder'} chose NOT to use the Coup d'État. ⚡`, 'game');
+              }
+            }
+            break;
+          }
+
+          // ── VIP Veto: like standard but POV holder tends to use it + second use ──
+          if (svType === 'vip') {
+            if (isNominee && povWinner !== null) {
+              const savedName = povWinner.name;
+              const autoSavedId = povWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
+              povWinner.status = 'pov';
+              state.povSavedId = autoSavedId;
+              state.specialVeto!.vipUseStage = 1;
+              pushEvent(state, `${savedName} used the VIP Veto and saved themselves! 👑`, 'game');
+              const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+              if (hohPlayer?.isUser) {
+                state.replacementNeeded = true;
+                pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+              } else {
+                state.aiReplacementStep = 1;
+              }
+            } else if (povWinner?.isUser) {
+              state.awaitingPovDecision = true;
+              pushEvent(
+                state,
+                `${povWinner.name}, will you use the VIP Veto? 👑 You may use it TWICE this ceremony!`,
+                'game',
+              );
+            } else {
+              const useIt = rng() < 0.85;
+              if (useIt) {
+                const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
+                if (nominees.length > 0) {
+                  const nomineeToSave = seededPick(rng, nominees);
+                  state.nomineeIds = state.nomineeIds.filter((id) => id !== nomineeToSave.id);
+                  const savedP = state.players.find((p) => p.id === nomineeToSave.id);
+                  if (savedP) savedP.status = 'active';
+                  state.povSavedId = nomineeToSave.id;
+                  state.specialVeto!.vipUseStage = 1;
+                  pushEvent(state, `${povWinner?.name ?? 'The VIP Veto holder'} used the VIP Veto on ${nomineeToSave.name}! 👑`, 'game');
+                  const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
+                  if (hohPlayer?.isUser) {
+                    state.replacementNeeded = true;
+                    pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                  } else {
+                    state.aiReplacementStep = 1;
+                  }
+                } else {
+                  state.specialVeto!.vipUseStage = -1;
+                }
+              } else {
+                state.specialVeto!.vipUseStage = -1;
+                pushEvent(state, `${povWinner?.name ?? 'The VIP Veto holder'} chose NOT to use the VIP Veto. 👑`, 'game');
+              }
+            }
+            break;
+          }
+
+          // ── Standard (no special veto) ────────────────────────────────────────
           if (isNominee && povWinner !== null) {
             // ── POV auto-use rule: nominee who wins POV MUST use it on themselves ──
             const savedName = povWinner.name;
@@ -2459,6 +3044,11 @@ export const {
   dismissBattleBack,
   openBattleBackCompetition,
   activateDoubleEviction,
+  activateSpecialVeto,
+  submitDiamondReplacement,
+  submitCoupReplacement,
+  submitVipSecondUseDecision,
+  submitVipSecondSaveTarget,
   startFavoritePlayerPhase,
   openFavoritePlayerVoting,
   eliminateFavoriteCandidate,
@@ -2723,5 +3313,53 @@ export const tryActivateDoubleEviction =
     if (!shouldActivate) return false;
 
     dispatch(activateDoubleEviction());
+    return true;
+  };
+
+/**
+ * Attempt to activate a special veto twist after the POV winner is determined.
+ *
+ * Activation rules:
+ *  - `settings.sim.enableTwists` must be true
+ *  - current phase must be `pov_results`
+ *  - week must be > 2
+ *  - at least 6 alive players
+ *  - not a Double Eviction week
+ *  - the season must not already have had a special veto activated
+ *
+ * If eligible, rolls `settings.sim.specialVetoChance` (0-100, default 25) and
+ * picks a random veto type deterministically.
+ *
+ * Returns `true` if activated, `false` otherwise.
+ */
+export const tryActivateSpecialVeto =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (!settings.sim.enableTwists) return false;
+    if (game.phase !== 'pov_results') return false;
+    if (game.week <= 2) return false;
+    if (game.doubleEviction?.weekActive) return false;
+    if (game.specialVeto?.seasonUsed) return false;
+
+    const alive = game.players.filter(
+      (p) => p.status !== 'evicted' && p.status !== 'jury',
+    );
+    if (alive.length < 6) return false;
+
+    const chance = settings.sim.specialVetoChance ?? 25;
+    // Use a twist-specific RNG offset independent of the main game seed
+    const rngSpecial = mulberry32(((game.seed ^ 0x5e7c7074) >>> 0));
+    const roll = rngSpecial() * 100;
+
+    if (roll >= chance) return false;
+
+    // Deterministically pick one of the 4 veto types
+    const types: SpecialVetoType[] = ['vip', 'diamond', 'coup', 'spotlight'];
+    const typeRoll = rngSpecial();
+    const chosenType = types[Math.floor(typeRoll * types.length)];
+
+    dispatch(activateSpecialVeto({ type: chosenType, week: game.week }));
     return true;
   };

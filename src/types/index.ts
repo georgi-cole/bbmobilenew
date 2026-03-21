@@ -233,6 +233,40 @@ export interface DoubleEvictionState {
   pendingSecondEviction: { evicteeId: string; evictionMessage: string } | null;
 }
 
+export type SpecialVetoType = 'vip' | 'diamond' | 'coup' | 'spotlight';
+
+export interface SpecialVetoState {
+  /** Whether any special veto has been used this season (once true, no more can activate). */
+  seasonUsed: boolean;
+  /** Active veto type for the current week, or null if none. */
+  activeType: SpecialVetoType | null;
+  /** The week the special veto was activated, or null. */
+  activatedWeek: number | null;
+
+  /**
+   * VIP veto use stage:
+   *  0  = ceremony not started
+   *  1  = first use in progress (save done, awaiting first replacement)
+   *  2  = first replacement done, awaiting second-use decision
+   *  3  = second use decided yes, awaiting second replacement
+   * -1  = ceremony complete (no second use taken or all done)
+   */
+  vipUseStage: number;
+
+  /** Diamond: human POV holder picks their own replacement. */
+  awaitingHolderReplacement: boolean;
+  /** Coup: human POV holder picks first replacement. */
+  awaitingCoupReplacement1: boolean;
+  /** Coup: human POV holder picks second replacement. */
+  awaitingCoupReplacement2: boolean;
+  /** Coup: stores the first replacement ID between the two picks. */
+  coupReplacement1Id: string | null;
+  /** VIP: human POV holder decides whether to use the veto a second time. */
+  awaitingVipSecondUseDecision: boolean;
+  /** VIP: human POV holder picks which nominee to save on second use. */
+  awaitingVipSecondSaveTarget: boolean;
+}
+
 // ─── Public's Favorite voting twist ──────────────────────────────────────────
 
 /**
@@ -448,6 +482,11 @@ export interface GameState {
    * Undefined on legacy saved games created before this feature was added.
    */
   doubleEviction?: DoubleEvictionState;
+  /**
+   * Special Veto twist state.
+   * Undefined on legacy saved games created before this feature was added.
+   */
+  specialVeto?: SpecialVetoState;
   /**
    * Public's Favorite Player voting state.
    * Undefined until `startFavoritePlayerPhase` is dispatched.

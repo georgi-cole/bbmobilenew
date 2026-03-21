@@ -36,6 +36,10 @@ export default function TvAnnouncementOverlay({
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const isBattleBack = announcement.key === 'battle_back';
   const isDoubleEviction = announcement.key === 'double_eviction';
+  const isVipVeto = announcement.key === 'vip_veto';
+  const isDiamondPov = announcement.key === 'diamond_pov';
+  const isCoupDetat = announcement.key === 'coup_detat';
+  const isSpotlightVeto = announcement.key === 'spotlight_veto';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
@@ -124,6 +128,10 @@ export default function TvAnnouncementOverlay({
             'tv-announcement',
             isBattleBack ? 'tv-announcement--battle-back' : '',
             isDoubleEviction ? 'tv-announcement--double-eviction' : '',
+            isVipVeto ? 'tv-announcement--vip-veto' : '',
+            isDiamondPov ? 'tv-announcement--diamond-pov' : '',
+            isCoupDetat ? 'tv-announcement--coup-detat' : '',
+            isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
           ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="false"
