@@ -145,9 +145,7 @@ export default function MinigameHost({
   useEffect(() => {
     if (phase !== 'countdown' || skipCountdown) return;
     void SoundManager.play(COUNTDOWN_TIMER_KEY);
-  // Intentionally fires only when phase first becomes 'countdown'.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  }, [phase, skipCountdown]);
 
   // ── Game complete (legacy) ───────────────────────────────────────────────
   const handleComplete = useCallback((result: LegacyRawResult) => {

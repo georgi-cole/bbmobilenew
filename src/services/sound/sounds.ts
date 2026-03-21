@@ -145,7 +145,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
   /**
    * Risk Wheel negative-sector stinger — plays when the player lands on a
-   * sector with a zero or negative point value.
+   * sector with a negative point value.
    * Asset: public/assets/sounds/Risk_wheel/minigame_risk_wheel_bad_sector.mp3
    */
   'minigame:risk_wheel_bad': {
