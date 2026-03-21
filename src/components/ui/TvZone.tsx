@@ -337,9 +337,6 @@ export default function TvZone() {
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
           <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} /></li>
           <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
-          {gameState.twistActive && (
-            <li><StatusPill variant="twist" icon="🌀" label="TWIST" /></li>
-          )}
         </ul>
 
         <div className="tv-zone__head-actions">
@@ -370,6 +367,14 @@ export default function TvZone() {
             <p className="tv-zone__now" style={(postDismissBlocked || !!activeAnnouncement) ? { opacity: 0 } : undefined}>
               {latestEvent?.text ?? 'Welcome to Big Brother – AI Edition 🏠'}
             </p>
+
+            {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
+            {gameState.twistActive && (
+              <div className="tv-zone__twist-badge" aria-hidden="true">
+                <span>🌀</span>
+                TWIST
+              </div>
+            )}
 
             {/* Inline announcement overlay */}
             {activeAnnouncement && (
