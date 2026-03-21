@@ -10,7 +10,6 @@ import type {
   BattleBackState,
   SpectatorActiveState,
   SeasonFinaleState,
-  SpecialVetoState,
   SpecialVetoType,
 } from '../types';
 import { mulberry32, seededPick, seededPickN } from './rng';
