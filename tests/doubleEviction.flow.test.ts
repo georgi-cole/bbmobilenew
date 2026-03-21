@@ -10,6 +10,7 @@
  *  6. finalizePendingEviction promotes the second eviction after the first.
  *  7. finalizePendingEviction clears weekActive after both evictions resolve.
  *  8. Non-double-eviction weeks still behave exactly as before.
+ * UI overlay behavior is covered separately in `src/components/ui/__tests__/TvZone.announcement.test.tsx`.
  */
 
 import { describe, it, expect } from 'vitest';

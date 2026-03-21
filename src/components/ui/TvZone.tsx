@@ -201,7 +201,8 @@ export default function TvZone() {
     const keyChangedInPlace =
       prevPhase === currentPhase &&
       currentPhase === 'nominations' &&
-      phaseAnnouncement?.key != null &&
+      phaseAnnouncement?.key !== null &&
+      phaseAnnouncement?.key !== undefined &&
       phaseAnnouncement?.key !== key;
 
     // Skip on initial mount (no previous phase) and when phase/key haven't changed.

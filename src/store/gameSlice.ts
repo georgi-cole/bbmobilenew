@@ -2302,8 +2302,8 @@ const gameSlice = createSlice({
 
           // ── Double Eviction: evict top 2 nominees ─────────────────────────
           if (state.doubleEviction?.weekActive && nominees.length >= 2) {
-            // Precompute deterministic tie-break ranks so the comparator stays
-            // transitive/stable for tied vote counts.
+            // Precompute deterministic tie-break ranks for the current nominee
+            // IDs so the comparator stays transitive/stable for tied vote counts.
             const aiRng = mulberry32((state.seed ^ 0xdeadbeef) >>> 0);
             const tieBreakRanks: Record<string, number> = {};
             for (const nomineeId of state.nomineeIds) {
