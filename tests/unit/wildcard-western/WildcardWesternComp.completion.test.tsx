@@ -215,7 +215,9 @@ describe('WildcardWesternComp completion flow', () => {
       }),
     });
 
-    expect(screen.getByRole('dialog', { name: /spectator options/i })).toBeTruthy();
+    const dialog = screen.getByRole('dialog', { name: /you have been eliminated/i });
+    expect(dialog).toBeTruthy();
+    expect(dialog).toBe(document.activeElement);
     fireEvent.click(screen.getByRole('button', { name: /continue watching/i }));
 
     act(() => {
@@ -223,7 +225,39 @@ describe('WildcardWesternComp completion flow', () => {
     });
 
     expect(store.getState().wildcardWestern.phase).toBe('finalDuel');
-    expect(screen.queryByRole('dialog', { name: /spectator options/i })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: /you have been eliminated/i })).toBeNull();
+  });
+
+  it('treats escape on the spectator modal as continue watching', () => {
+    vi.useFakeTimers();
+    const question = WILDCARD_QUESTIONS[0];
+    const { store } = renderWithLiveWildcardReducer({
+      gamePhase: 'hoh_comp',
+      wildcardWesternState: makeWildcardWesternState({
+        phase: 'resolution',
+        participantIds: ['p0', 'p1', 'p2'],
+        aliveIds: ['p1', 'p2'],
+        eliminatedIds: ['p0'],
+        humanPlayerId: 'p0',
+        currentPair: ['p0', 'p1'],
+        currentQuestionId: question.id,
+        selectedAnswerIndex: question.correctIndex,
+        lastDuelOutcome: 'wrong',
+        lastEliminatedId: 'p0',
+        winnerId: null,
+        controllerId: 'p1',
+        eliminationChooserId: null,
+      }),
+    });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    act(() => {
+      vi.advanceTimersByTime(1600);
+    });
+
+    expect(store.getState().wildcardWestern.phase).toBe('finalDuel');
+    expect(screen.queryByRole('dialog', { name: /you have been eliminated/i })).toBeNull();
   });
 
   it('fast-forwards to the endgame after skip to results', async () => {

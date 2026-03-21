@@ -586,16 +586,20 @@
 .ww-avatar-btn--md { width: 68px; height: 68px; }
 .ww-avatar-btn--sm { width: 36px; height: 36px; border-width: 2px; }
 
-.ww-avatar-btn:hover:not(:disabled):not(.ww-avatar-btn--eliminated) {
+.ww-avatar-btn:hover:not(:disabled):not(.ww-avatar-btn--eliminated):not(.ww-avatar-btn--static) {
   transform: scale(1.1);
   border-color: #d4a017;
   box-shadow: 0 0 10px rgba(212, 160, 23, 0.5);
 }
 
 .ww-avatar-btn--selected,
-.ww-avatar-btn--selected:hover:not(:disabled):not(.ww-avatar-btn--eliminated) {
+.ww-avatar-btn--selected:hover:not(:disabled):not(.ww-avatar-btn--eliminated):not(.ww-avatar-btn--static) {
   border-color: #d4a017;
   box-shadow: 0 0 0 3px #d4a017, 0 0 14px rgba(212, 160, 23, 0.65);
+}
+
+.ww-avatar-btn--static {
+  cursor: default;
 }
 
 .ww-avatar-btn--duelist {
@@ -632,6 +636,21 @@
   object-fit: cover;
   display: block;
   border-radius: 50%;
+}
+
+.ww-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at top, #8b4513, #2d1b0e 75%);
+  color: #f4e4c1;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .ww-avatar-x {
@@ -692,27 +711,11 @@
   max-width: 44px;
 }
 
-/* Duel pair: two large avatars with VS between */
-.ww-duel-pair {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
 .ww-duel-avatar {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-}
-
-.ww-duel-avatar-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #f4e4c1;
-  text-align: center;
 }
 
 /* Card-reveal: avatar above card value */

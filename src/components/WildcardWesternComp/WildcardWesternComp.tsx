@@ -2,7 +2,7 @@
  * WildcardWesternComp.tsx – Main React component for Wildcard Western.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import type { AppDispatch, RootState } from '../../store/store';
@@ -74,6 +74,15 @@ interface WwAvatarProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+function createAvatarState(url: string) {
+  return {
+    sourceUrl: url,
+    imgSrc: url,
+    hasTriedDicebear: false,
+    showInitialsFallback: false,
+  };
+}
+
 function WwAvatar({
   name,
   avatarUrl,
@@ -86,14 +95,39 @@ function WwAvatar({
   disabled,
   size = 'md',
 }: WwAvatarProps) {
-  const [imgSrc, setImgSrc] = useState(avatarUrl);
-  // Reset img src when avatarUrl changes (e.g. participant map updated)
-  useEffect(() => { setImgSrc(avatarUrl); }, [avatarUrl]);
+  const [avatarState, setAvatarState] = useState(() => createAvatarState(avatarUrl));
+  const fallbackInitials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || '?';
+  const resolvedAvatarState =
+    avatarState.sourceUrl === avatarUrl
+      ? avatarState
+      : createAvatarState(avatarUrl);
 
   function handleImgError() {
-    const fallback = getDicebear(name);
-    if (imgSrc !== fallback) setImgSrc(fallback);
+    setAvatarState((prev) => {
+      const currentState = prev.sourceUrl === avatarUrl ? prev : createAvatarState(avatarUrl);
+      if (!currentState.hasTriedDicebear) {
+        return {
+          sourceUrl: avatarUrl,
+          imgSrc: getDicebear(name),
+          hasTriedDicebear: true,
+          showInitialsFallback: false,
+        };
+      }
+      return {
+        sourceUrl: avatarUrl,
+        imgSrc: currentState.imgSrc,
+        hasTriedDicebear: true,
+        showInitialsFallback: true,
+      };
+    });
   }
+
+  const useButtonShell = (!!onClick || !!disabled) && !isEliminated;
 
   const btnClasses = [
     'ww-avatar-btn',
@@ -111,23 +145,41 @@ function WwAvatar({
     isEliminated ? 'eliminated' : null,
   ].filter(Boolean).join(' – ');
 
+  const avatarFace = (
+    <>
+      <div className={['ww-avatar-inner', isEliminated ? 'ww-avatar-inner--eliminated' : ''].filter(Boolean).join(' ')}>
+        {resolvedAvatarState.showInitialsFallback ? (
+          <span className="ww-avatar-fallback" aria-label={name}>
+            {fallbackInitials}
+          </span>
+        ) : (
+          <img src={resolvedAvatarState.imgSrc} alt={name} className="ww-avatar-img" onError={handleImgError} />
+        )}
+      </div>
+      {isYou && <span className="ww-avatar-you" aria-label="You">YOU</span>}
+      {badge && <span className="ww-avatar-badge" aria-hidden="true">{badge}</span>}
+      {isEliminated && <span className="ww-avatar-x" aria-hidden="true">✕</span>}
+    </>
+  );
+
   return (
     <div className={['ww-avatar-item', disabled && !isEliminated ? 'ww-avatar-item--disabled' : ''].filter(Boolean).join(' ')}>
-      <button
-        className={btnClasses}
-        type="button"
-        onClick={!disabled && !isEliminated ? onClick : undefined}
-        disabled={disabled && !isEliminated}
-        aria-label={ariaLabel}
-        title={name}
-      >
-        <div className={['ww-avatar-inner', isEliminated ? 'ww-avatar-inner--eliminated' : ''].filter(Boolean).join(' ')}>
-          <img src={imgSrc} alt={name} className="ww-avatar-img" onError={handleImgError} />
+      {useButtonShell ? (
+        <button
+          className={btnClasses}
+          type="button"
+          onClick={!disabled && !isEliminated ? onClick : undefined}
+          disabled={disabled && !isEliminated}
+          aria-label={ariaLabel}
+          title={name}
+        >
+          {avatarFace}
+        </button>
+      ) : (
+        <div className={[btnClasses, 'ww-avatar-btn--static'].join(' ')} aria-label={ariaLabel} title={name}>
+          {avatarFace}
         </div>
-        {isYou && <span className="ww-avatar-you" aria-label="You">YOU</span>}
-        {badge && <span className="ww-avatar-badge" aria-hidden="true">{badge}</span>}
-        {isEliminated && <span className="ww-avatar-x" aria-hidden="true">✕</span>}
-      </button>
+      )}
       <span className={`ww-avatar-name${size === 'sm' ? ' ww-avatar-name--sm' : ''}`}>{name}</span>
     </div>
   );
@@ -179,6 +231,7 @@ export default function WildcardWesternComp({
   const dispatch = useDispatch<AppDispatch>();
   const state = useSelector((root: RootState) => root.wildcardWestern);
   const humanPlayerId = participants.find((p) => p.isHuman)?.id ?? null;
+  const spectatorDialogId = useId();
 
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [showSpectatorModal, setShowSpectatorModal] = useState(false);
@@ -190,6 +243,7 @@ export default function WildcardWesternComp({
   const phaseRef = useRef(state.phase);
   const completionReportedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
+  const spectatorModalCardRef = useRef<HTMLDivElement>(null);
 
   const clearScheduledTimeouts = useCallback(() => {
     for (const timeoutId of timeoutIdsRef.current) {
@@ -387,6 +441,31 @@ export default function WildcardWesternComp({
     if (state.phase !== 'gameOver' && state.phase !== 'complete') return;
     setShowSpectatorModal(false);
   }, [state.phase]);
+
+  const handleContinueWatching = useCallback(() => {
+    setShowSpectatorModal(false);
+    setSpectatorMode('watching');
+  }, []);
+
+  const handleSkipToResults = useCallback(() => {
+    setShowSpectatorModal(false);
+    setSpectatorMode('skipping');
+  }, []);
+
+  useEffect(() => {
+    if (!showSpectatorModal) return;
+
+    spectatorModalCardRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      handleContinueWatching();
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleContinueWatching, showSpectatorModal]);
 
   // AI buzz logic
   useEffect(() => {
@@ -1060,29 +1139,38 @@ export default function WildcardWesternComp({
       </div>
 
       {showSpectatorModal && (
-        <div className="ww-spectator-overlay" role="presentation">
-          <div className="ww-spectator-card" role="dialog" aria-modal="true" aria-label="Spectator options">
+        <div
+          className="ww-spectator-overlay"
+          role="presentation"
+          onClick={handleContinueWatching}
+        >
+          <div
+            ref={spectatorModalCardRef}
+            className="ww-spectator-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${spectatorDialogId}-title`}
+            aria-describedby={`${spectatorDialogId}-desc`}
+            tabIndex={-1}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <div className="ww-spectator-icon" aria-hidden="true">🤠</div>
-            <h2>You have been eliminated.</h2>
-            <p>Watch the rest of the Wildcard Western play out, or jump straight to the final result.</p>
+            <h2 id={`${spectatorDialogId}-title`}>You have been eliminated.</h2>
+            <p id={`${spectatorDialogId}-desc`}>Watch the rest of the Wildcard Western play out, or jump straight to the final result.</p>
             <div className="ww-spectator-actions">
               <button
                 className="ww-btn"
                 type="button"
-                onClick={() => {
-                  setShowSpectatorModal(false);
-                  setSpectatorMode('watching');
-                }}
+                onClick={handleContinueWatching}
               >
                 Continue Watching
               </button>
               <button
                 className="ww-btn ww-btn--secondary"
                 type="button"
-                onClick={() => {
-                  setShowSpectatorModal(false);
-                  setSpectatorMode('skipping');
-                }}
+                onClick={handleSkipToResults}
               >
                 Skip to Results
               </button>
