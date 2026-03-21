@@ -15,6 +15,7 @@ import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/
 import MinigameRules from '../MinigameRules/MinigameRules';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
+import { SoundManager } from '../../services/sound/SoundManager';
 import ClosestWithoutGoingOverComp from '../ClosestWithoutGoingOverComp';
 import type { CwgoPrizeType } from '../../features/cwgo/cwgoCompetitionSlice';
 import HoldTheWallComp from '../HoldTheWallComp/HoldTheWallComp';
@@ -33,6 +34,8 @@ import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWhee
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
+
+const COUNTDOWN_TIMER_KEY = 'minigame:all_3_seconds_timer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,6 +140,14 @@ export default function MinigameHost({
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [phase, countdown, skipCountdown]);
+
+  // Play the 3-second countdown timer sound once when the countdown starts.
+  useEffect(() => {
+    if (phase !== 'countdown' || skipCountdown) return;
+    void SoundManager.play(COUNTDOWN_TIMER_KEY);
+  // Intentionally fires only when phase first becomes 'countdown'.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // ── Game complete (legacy) ───────────────────────────────────────────────
   const handleComplete = useCallback((result: LegacyRawResult) => {
