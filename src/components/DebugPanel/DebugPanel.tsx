@@ -35,11 +35,13 @@ import './DebugPanel.css';
 
 const PHASES: Phase[] = [
   'week_start',
+  'hoh_comp_announcement',
   'hoh_comp',
   'hoh_results',
   'social_1',
   'nominations',
   'nomination_results',
+  'pov_comp_announcement',
   'pov_comp',
   'pov_results',
   'pov_ceremony',

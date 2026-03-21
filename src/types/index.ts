@@ -84,11 +84,15 @@ export interface MinigameContext {
 // Canonical weekly-game phase list (in execution order)
 export type Phase =
   | 'week_start'
+  /** Pre-competition TV announcement before the HOH competition begins. */
+  | 'hoh_comp_announcement'
   | 'hoh_comp'
   | 'hoh_results'
   | 'social_1'
   | 'nominations'
   | 'nomination_results'
+  /** Pre-competition TV announcement before the POV competition begins. */
+  | 'pov_comp_announcement'
   | 'pov_comp'
   | 'pov_results'
   | 'pov_ceremony'

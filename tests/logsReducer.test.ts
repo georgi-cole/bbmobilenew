@@ -72,7 +72,8 @@ describe('tvFeed — event ID uniqueness', () => {
     const store = makeStore({ phase: 'week_start' });
 
     // Advance through several phases to trigger multiple pushEvent calls.
-    store.dispatch(advance()); // week_start → hoh_comp
+    store.dispatch(advance()); // week_start → hoh_comp_announcement
+    store.dispatch(advance()); // hoh_comp_announcement → hoh_comp
     store.dispatch(advance()); // hoh_comp → hoh_results (pushes HOH event)
     store.dispatch(advance()); // hoh_results → social_1
 

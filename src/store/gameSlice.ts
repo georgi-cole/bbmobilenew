@@ -31,11 +31,13 @@ import { loadSeasonArchives } from './archivePersistence';
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
   'week_start',
+  'hoh_comp_announcement',
   'hoh_comp',
   'hoh_results',
   'social_1',
   'nominations',
   'nomination_results',
+  'pov_comp_announcement',
   'pov_comp',
   'pov_results',
   'pov_ceremony',
@@ -2111,6 +2113,10 @@ const gameSlice = createSlice({
           pushEvent(state, `Week ${state.week} begins! 🏠 It's time for the HOH competition.`, 'game');
           break;
         }
+        case 'hoh_comp_announcement': {
+          pushEvent(state, `The Head of Household competition is about to begin! 🏆 Power is up for grabs among the eligible houseguests — who will reign supreme this week?`, 'game');
+          break;
+        }
         case 'hoh_comp': {
           pushEvent(state, `The Head of Household competition has begun! 🏆 Who will win power this week?`, 'game');
           break;
@@ -2168,6 +2174,10 @@ const gameSlice = createSlice({
           });
           const names = nominees.map((n) => n.name).join(isDoubleEviction ? ', ' : ' and ');
           pushEvent(state, `${names} have been nominated for eviction. 🎯`, 'game');
+          break;
+        }
+        case 'pov_comp_announcement': {
+          pushEvent(state, `It is time for the Power of Veto competition! 🎭 Houseguests will battle for the most powerful item in the game.`, 'game');
           break;
         }
         case 'pov_comp': {
