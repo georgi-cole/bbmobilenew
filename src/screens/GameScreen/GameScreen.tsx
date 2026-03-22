@@ -623,7 +623,9 @@ export default function GameScreen() {
 
   // ── Pre-veto public save phase ───────────────────────────────────────────
   const showPublicSaveReveal =
-    game.phase === 'pre_veto_public_save' && Boolean(game.awaitingPublicSave)
+    game.phase === 'pre_veto_public_save' &&
+    Boolean(game.awaitingPublicSave) &&
+    game.nomineeIds.length === 3
 
   // Compute who would be saved; memoised to avoid recalculating on every render.
   const publicSaveWinnerId = useMemo(() => {
