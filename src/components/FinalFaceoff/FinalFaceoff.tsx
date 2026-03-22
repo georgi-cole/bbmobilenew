@@ -16,6 +16,7 @@ import {
   dismissFinale,
   selectFinale,
   selectRevealedJurors,
+  PUBLIC_JUROR_ID,
 } from '../../store/finaleSlice';
 import {
   finalizeGame,
@@ -23,6 +24,7 @@ import {
 } from '../../store/gameSlice';
 import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
+import { selectPublicOpinion } from '../../publicOpinion';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
@@ -35,6 +37,7 @@ export default function FinalFaceoff() {
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
+  const publicOpinion = useAppSelector(selectPublicOpinion);
 
   const jurorListRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +52,9 @@ export default function FinalFaceoff() {
     const preJury = game.players.filter((p) => p.status === 'evicted');
     const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id);
 
+    // Pass public approval profiles to enable the Public's jury vote
+    const hasPublicProfiles = Object.keys(publicOpinion.profiles).length > 0;
+
     dispatch(
       startFinale({
         finalistIds: finalists.map((p) => p.id),
@@ -60,9 +66,10 @@ export default function FinalFaceoff() {
           enableJuryReturn: game.cfg?.enableJuryReturn,
           americasVoteEnabled: game.cfg?.americasVoteEnabled,
         },
+        publicApprovalProfiles: hasPublicProfiles ? publicOpinion.profiles : undefined,
       }),
     );
-  }, [dispatch, finale.hasStarted, game.players, game.seed, game.cfg]);
+  }, [dispatch, finale.hasStarted, game.players, game.seed, game.cfg, publicOpinion.profiles]);
 
   // ── Auto-finalize once all jurors revealed ─────────────────────────────
   useEffect(() => {
@@ -219,15 +226,15 @@ export default function FinalFaceoff() {
       <div className="fo-jurors" ref={jurorListRef}>
         {revealed.map((r) => {
           const finalist = game.players.find((p) => p.id === r.finalistId);
-          if (r.jurorId === '__public__') {
+          if (r.jurorId === PUBLIC_JUROR_ID) {
             const publicJuror = {
-              id: '__public__',
+              id: PUBLIC_JUROR_ID,
               name: 'The Public 🌐',
               avatar: '🌐',
               status: 'jury' as const,
             };
             return (
-              <JurorBubble key="__public__" juror={publicJuror} finalist={finalist} reveal={r} />
+              <JurorBubble key={PUBLIC_JUROR_ID} juror={publicJuror} finalist={finalist} reveal={r} />
             );
           }
           const juror = game.players.find((p) => p.id === r.jurorId);

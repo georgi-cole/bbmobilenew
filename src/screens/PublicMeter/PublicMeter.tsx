@@ -89,6 +89,7 @@ export default function PublicMeter() {
               className="approval-bar__fill"
               style={{ width: `${userProfile.approval}%` }}
               role="progressbar"
+              aria-label="Your public approval rating"
               aria-valuenow={userProfile.approval}
               aria-valuemin={0}
               aria-valuemax={100}

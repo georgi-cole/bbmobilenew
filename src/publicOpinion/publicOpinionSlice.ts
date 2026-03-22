@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import { publicOpinionConfig } from './publicOpinionConfig';
 import type {
   PublicOpinionState,
@@ -94,12 +94,51 @@ const publicOpinionSlice = createSlice({
           profile.completedDirectionCount += 1;
         }
       }
+
+      // Apply approval impact for the resolution outcome
+      const profile = state.profiles[direction.playerId];
+      if (profile) {
+        let delta = 0;
+        if (status === 'completed') delta = publicOpinionConfig.directionRewards.success;
+        else if (status === 'failed') delta = publicOpinionConfig.directionRewards.fail;
+        // expired directions carry no penalty
+
+        if (delta !== 0) {
+          profile.previousApproval = profile.approval;
+          const newApproval = Math.min(
+            publicOpinionConfig.MAX_APPROVAL,
+            Math.max(publicOpinionConfig.MIN_APPROVAL, profile.approval + delta),
+          );
+          profile.approval = newApproval;
+          profile.seasonApprovals.push(newApproval);
+          if (delta > 0) {
+            profile.cumulativePositiveDelta += delta;
+          }
+          state.lastUpdatedWeek = week;
+
+          const feedEntry: PublicFeedEntry = {
+            id: `${direction.playerId}-${week}-${Date.now()}-dir-${status}`,
+            playerId: direction.playerId,
+            text:
+              status === 'completed'
+                ? `Completed public request: ${direction.description}`
+                : `Failed public request: ${direction.description}`,
+            delta,
+            week,
+            timestamp: Date.now(),
+          };
+          state.feed.unshift(feedEntry);
+          if (state.feed.length > 50) {
+            state.feed = state.feed.slice(0, 50);
+          }
+        }
+      }
     },
 
     pruneExpiredDirections(state, action: PayloadAction<{ week: number }>) {
       const { week } = action.payload;
       for (const direction of state.directions) {
-        if (direction.status === 'active' && direction.expiresAtWeek < week) {
+        if (direction.status === 'active' && direction.expiresAtWeek <= week) {
           direction.status = 'expired';
         }
       }
@@ -132,8 +171,11 @@ export const selectPlayerProfile = (
   playerId: string,
 ): PlayerPublicProfile | undefined => state.publicOpinion.profiles[playerId];
 
-export const selectRankedProfiles = (state: StateWithPublicOpinion): PlayerPublicProfile[] =>
-  Object.values(state.publicOpinion.profiles).sort((a, b) => b.approval - a.approval);
+export const selectRankedProfiles = createSelector(
+  (state: StateWithPublicOpinion) => state.publicOpinion.profiles,
+  (profiles) =>
+    Object.values(profiles).sort((a, b) => b.approval - a.approval),
+);
 
 export const selectActiveDirections = (
   state: StateWithPublicOpinion,

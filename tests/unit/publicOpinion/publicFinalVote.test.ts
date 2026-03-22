@@ -84,7 +84,7 @@ describe('resolvePublicJuryVote', () => {
     };
     const result = resolvePublicJuryVote({ finalistIds: ['f1', 'f2'], profiles });
     expect(result.tieBreakUsed).toBe(true);
-    expect(['f1', 'f2']).toContain(result.winnerId);
+    expect(result.winnerId).toBe('f1');
   });
 
   it('handles single finalist', () => {

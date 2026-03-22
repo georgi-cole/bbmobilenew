@@ -88,8 +88,6 @@ export function generateDirectionsForCycle(params: {
       relatedName = related.name;
     }
 
-    const approvalDelta = publicOpinionConfig.directionRewards.success;
-
     const direction: PublicDirection = {
       id: `dir-${week}-${player.id}-${dirType}-${Math.floor(rng() * 10000)}`,
       type: dirType,
@@ -98,8 +96,10 @@ export function generateDirectionsForCycle(params: {
       description: buildDescription(dirType, player.name, relatedName),
       status: 'active',
       createdWeek: week,
-      expiresAtWeek: week + 2,
-      approvalDelta,
+      expiresAtWeek: week + 1,
+      // approvalDelta reflects the success reward; actual delta applied on resolution
+      // is derived from the outcome status via publicOpinionConfig.directionRewards
+      approvalDelta: publicOpinionConfig.directionRewards.success,
     };
 
     directions.push(direction);

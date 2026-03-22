@@ -1,4 +1,5 @@
 import type { Middleware } from '@reduxjs/toolkit';
+import type { Player } from '../types';
 import {
   initializeProfiles,
   updateApproval,
@@ -8,19 +9,13 @@ import {
 import { publicOpinionConfig } from './publicOpinionConfig';
 import { generateDirectionsForCycle } from './PublicDirectionService';
 
-interface GamePlayer {
-  id: string;
-  status: string;
-  isUser?: boolean;
-}
-
 interface GameState {
   phase: string;
   week: number;
   hohId: string | null;
   povWinnerId: string | null;
   nomineeIds: string[];
-  players: GamePlayer[];
+  players: Player[];
   seed: number;
 }
 
@@ -98,7 +93,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           store.dispatch(
             updateApproval({
               playerId: nomineeId,
-              delta: -1,
+              delta: publicOpinionConfig.competitionImpact.nominated,
               reason: 'Was on the block',
               week,
             }),
@@ -109,11 +104,15 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       if (newPhase === 'week_end') {
         store.dispatch(pruneExpiredDirections({ week }));
 
+        // Detect evictions: any player whose status became 'evicted' or 'jury'
+        // (evictedStatus() sets status to 'jury' once jury phase starts)
         const prevEvicted = (prevState.game?.players ?? [])
-          .filter((p) => p.status === 'evicted')
+          .filter((p) => p.status === 'evicted' || p.status === 'jury')
           .map((p) => p.id);
         const newEvicted = (game.players ?? []).filter(
-          (p) => p.status === 'evicted' && !prevEvicted.includes(p.id),
+          (p) =>
+            (p.status === 'evicted' || p.status === 'jury') &&
+            !prevEvicted.includes(p.id),
         );
         for (const evicted of newEvicted) {
           store.dispatch(
@@ -132,7 +131,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
         if (activePlayers.length > 0) {
           const newDirections = generateDirectionsForCycle({
-            players: activePlayers as Parameters<typeof generateDirectionsForCycle>[0]['players'],
+            players: activePlayers,
             week: week + 1,
             seed: game.seed ?? 0,
             count: publicOpinionConfig.directionsPerCycle,

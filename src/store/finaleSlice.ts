@@ -163,6 +163,8 @@ const finaleSlice = createSlice({
         if (publicVoteResult.winnerId) {
           votes[PUBLIC_JUROR_ID] = publicVoteResult.winnerId;
           shuffled.push(PUBLIC_JUROR_ID);
+          // Include PUBLIC_JUROR_ID in jurorIds so rerollJurySeed preserves it
+          effectiveJurorIds = [...effectiveJurorIds, PUBLIC_JUROR_ID];
           publicJurorEnabled = true;
           publicVotedFor = publicVoteResult.winnerId;
         }
@@ -253,6 +255,9 @@ const finaleSlice = createSlice({
     /**
      * Debug: re-roll the reveal order and AI votes using a new seed.
      * Only effective before finalizing.
+     * The public juror (PUBLIC_JUROR_ID) is preserved in jurorIds and always
+     * placed last in the reveal order; its vote is not re-computed here since
+     * it depends on public-opinion state that lives outside this slice.
      */
     rerollJurySeed(
       state,
@@ -261,10 +266,18 @@ const finaleSlice = createSlice({
       if (state.isComplete) return;
       const { seed, humanPlayerIds } = action.payload;
 
+      // Separate public juror (if present) from regular jurors for shuffle
+      const regularJurors = state.jurorIds.filter((id) => id !== PUBLIC_JUROR_ID);
       const rng = mulberry32(seed);
-      state.revealOrder = seededPickN(rng, state.jurorIds, state.jurorIds.length);
+      const shuffled = seededPickN(rng, regularJurors, regularJurors.length);
+      // Re-append public juror last if it was enabled
+      if (state.publicJurorEnabled) {
+        shuffled.push(PUBLIC_JUROR_ID);
+      }
+      state.revealOrder = shuffled;
 
       for (const jId of state.revealOrder) {
+        if (jId === PUBLIC_JUROR_ID) continue; // public vote unchanged
         if (humanPlayerIds.includes(jId)) continue;
         state.votes[jId] = aiJurorVote(jId, state.finalistIds, seed);
       }
