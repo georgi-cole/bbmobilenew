@@ -230,7 +230,7 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Pick a severity band using weighted random draw. Returns 0=mild, 1=dramatic, 2=shocking. */
+/** Pick a severity band using a weighted random draw. Returns a HeadlineSeverity ('mild' | 'dramatic' | 'shocking'). */
 function pickSeverityIndex(rand: () => number): HeadlineSeverity {
   const { mild, dramatic } = publicOpinionConfig.headlineSeverityWeights;
   const roll = rand();
