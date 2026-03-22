@@ -230,11 +230,17 @@ const finaleSlice = createSlice({
       state.awaitingHumanJurorId = null;
 
       const tally = tallyVotes(state.votes);
-      const winnerId = determineWinner(
-        tally,
-        state.finalistIds,
-        action.payload.seed,
-      );
+      const [a, b] = state.finalistIds;
+      const aVotes = a ? (tally[a] ?? 0) : 0;
+      const bVotes = b ? (tally[b] ?? 0) : 0;
+      const winnerId =
+        aVotes === bVotes && state.publicJurorEnabled && state.publicVotedFor
+          ? state.publicVotedFor
+          : determineWinner(
+            tally,
+            state.finalistIds,
+            action.payload.seed,
+          );
       const runnerUpId = state.finalistIds.find((id) => id !== winnerId) ?? null;
 
       state.winnerId = winnerId;

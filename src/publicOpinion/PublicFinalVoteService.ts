@@ -11,6 +11,10 @@ function mean(arr: number[]): number {
   return arr.reduce((sum, v) => sum + v, 0) / arr.length;
 }
 
+function finalCycleApproval(profile: PlayerPublicProfile): number {
+  return profile.seasonApprovals.at(-1) ?? profile.approval;
+}
+
 export function resolvePublicJuryVote(params: {
   finalistIds: string[];
   profiles: Record<string, PlayerPublicProfile>;
@@ -44,6 +48,9 @@ export function resolvePublicJuryVote(params: {
     if (Math.abs(avgB - avgA) > 0.001) return avgB - avgA;
     if (b.completedDirectionCount !== a.completedDirectionCount)
       return b.completedDirectionCount - a.completedDirectionCount;
+    const finalCycleA = finalCycleApproval(a);
+    const finalCycleB = finalCycleApproval(b);
+    if (finalCycleB !== finalCycleA) return finalCycleB - finalCycleA;
     if (b.cumulativePositiveDelta !== a.cumulativePositiveDelta)
       return b.cumulativePositiveDelta - a.cumulativePositiveDelta;
     return 0;
@@ -78,6 +85,16 @@ export function resolvePublicJuryVote(params: {
       winnerId: winner.playerId,
       tieBreakUsed: true,
       tieBreakReason: 'More completed public directions',
+    };
+  }
+
+  const winnerFinalCycleApproval = finalCycleApproval(winner);
+  const runnerUpFinalCycleApproval = finalCycleApproval(runnerUp);
+  if (winnerFinalCycleApproval !== runnerUpFinalCycleApproval) {
+    return {
+      winnerId: winner.playerId,
+      tieBreakUsed: true,
+      tieBreakReason: 'Higher final-cycle approval',
     };
   }
 

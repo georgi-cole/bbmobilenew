@@ -102,7 +102,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       }
 
       if (newPhase === 'week_end') {
-        store.dispatch(pruneExpiredDirections({ week }));
+        store.dispatch(pruneExpiredDirections({ week: week + 1 }));
 
         const activePlayers = (game.players ?? []).filter(
           (p) => p.status !== 'evicted' && p.status !== 'jury',

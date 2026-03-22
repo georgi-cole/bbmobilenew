@@ -59,15 +59,34 @@ describe('resolvePublicJuryVote', () => {
     expect(result.tieBreakUsed).toBe(true);
   });
 
-  it('tie-break by cumulative positive delta', () => {
+  it('tie-break by final-cycle approval before cumulative positive delta', () => {
     const profiles = {
       f1: makeProfile('f1', 60, {
-        seasonApprovals: [60],
+        seasonApprovals: [40, 55, 62],
         completedDirectionCount: 3,
         cumulativePositiveDelta: 20,
       }),
       f2: makeProfile('f2', 60, {
-        seasonApprovals: [60],
+        seasonApprovals: [50, 52, 55],
+        completedDirectionCount: 3,
+        cumulativePositiveDelta: 35,
+      }),
+    };
+    const result = resolvePublicJuryVote({ finalistIds: ['f1', 'f2'], profiles });
+    expect(result.winnerId).toBe('f1');
+    expect(result.tieBreakUsed).toBe(true);
+    expect(result.tieBreakReason).toBe('Higher final-cycle approval');
+  });
+
+  it('tie-break by cumulative positive delta', () => {
+    const profiles = {
+      f1: makeProfile('f1', 60, {
+        seasonApprovals: [60, 60],
+        completedDirectionCount: 3,
+        cumulativePositiveDelta: 20,
+      }),
+      f2: makeProfile('f2', 60, {
+        seasonApprovals: [60, 60],
         completedDirectionCount: 3,
         cumulativePositiveDelta: 35,
       }),
@@ -75,6 +94,7 @@ describe('resolvePublicJuryVote', () => {
     const result = resolvePublicJuryVote({ finalistIds: ['f1', 'f2'], profiles });
     expect(result.winnerId).toBe('f2');
     expect(result.tieBreakUsed).toBe(true);
+    expect(result.tieBreakReason).toBe('Higher cumulative positive impact');
   });
 
   it('deterministic fallback picks first finalist', () => {
