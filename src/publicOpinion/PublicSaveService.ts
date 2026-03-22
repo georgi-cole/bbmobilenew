@@ -73,14 +73,31 @@ export function resolvePublicSaveNominee(params: {
   const winner = sorted[0];
   const runnerUp = sorted[1];
 
-  // Determine if any tie-break was needed
+  // Determine if any tie-break was needed between winner and runner-up.
   const winnerProfile = profiles[winner];
   const runnerUpProfile = profiles[runnerUp];
-  const tieBreakUsed = !!(
-    winnerProfile &&
-    runnerUpProfile &&
-    winnerProfile.approval === runnerUpProfile.approval
-  );
 
+  let tieBreakUsed = false;
+
+  if (!winnerProfile || !runnerUpProfile) {
+    // At least one unknown profile: ordering relied on fallback rules.
+    tieBreakUsed = true;
+  } else if (winnerProfile.approval === runnerUpProfile.approval) {
+    // Primary approval is tied; check secondary criteria.
+    const winnerAvg = seasonAvg(winnerProfile);
+    const runnerAvg = seasonAvg(runnerUpProfile);
+    const avgDiff = Math.abs(winnerAvg - runnerAvg);
+
+    if (avgDiff > FLOAT_EQUALITY_EPSILON) {
+      // Season-average approval broke the tie.
+      tieBreakUsed = true;
+    } else if (winnerProfile.completedDirectionCount !== runnerUpProfile.completedDirectionCount) {
+      // Completed public directions broke the tie.
+      tieBreakUsed = true;
+    } else if (winner !== runnerUp) {
+      // All numeric criteria equal; alphabetical ID fallback decided the winner.
+      tieBreakUsed = true;
+    }
+  }
   return { savedId: winner, tieBreakUsed };
 }
