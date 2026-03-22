@@ -380,7 +380,7 @@ export default function Settings() {
               <p className="settings-helper-text">
                 Off uses the original 2-nominee rules. On enables the public-influence mode:
                 a 3rd nominee is auto-added in normal weeks and the public saves one nominee
-                before veto.
+                before veto. Takes effect next season (requires restart to apply to the current run).
               </p>
             </div>
 
