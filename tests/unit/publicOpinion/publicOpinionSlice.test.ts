@@ -70,7 +70,8 @@ describe('publicOpinionSlice', () => {
     store.dispatch(updateApproval({ playerId: 'p1', delta: 5, reason: 'Won HOH', week: 1 }));
     const { feed } = store.getState().publicOpinion;
     expect(feed.length).toBe(1);
-    expect(feed[0].text).toBe('Won HOH');
+    expect(feed[0].text.length).toBeGreaterThan(0);
+    expect(feed[0].text).not.toContain('HOH');
     expect(feed[0].delta).toBe(5);
   });
 

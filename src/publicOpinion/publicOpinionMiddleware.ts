@@ -68,7 +68,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             updateApproval({
               playerId: game.hohId,
               delta: publicOpinionConfig.competitionImpact.hohWin,
-              reason: 'Won Head of Household',
+              reason: 'hoh_win',
               week,
             }),
           );
@@ -81,7 +81,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             updateApproval({
               playerId: game.povWinnerId,
               delta: publicOpinionConfig.competitionImpact.povWin,
-              reason: 'Won Power of Veto',
+              reason: 'pov_win',
               week,
             }),
           );
@@ -94,7 +94,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             updateApproval({
               playerId: nomineeId,
               delta: publicOpinionConfig.competitionImpact.nominated,
-              reason: 'Was on the block',
+              reason: 'nominated',
               week,
             }),
           );
@@ -103,27 +103,6 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
       if (newPhase === 'week_end') {
         store.dispatch(pruneExpiredDirections({ week }));
-
-        // Detect evictions: any player whose status became 'evicted' or 'jury'
-        // (evictedStatus() sets status to 'jury' once jury phase starts)
-        const prevEvicted = (prevState.game?.players ?? [])
-          .filter((p) => p.status === 'evicted' || p.status === 'jury')
-          .map((p) => p.id);
-        const newEvicted = (game.players ?? []).filter(
-          (p) =>
-            (p.status === 'evicted' || p.status === 'jury') &&
-            !prevEvicted.includes(p.id),
-        );
-        for (const evicted of newEvicted) {
-          store.dispatch(
-            updateApproval({
-              playerId: evicted.id,
-              delta: publicOpinionConfig.competitionImpact.evictionVotedOut,
-              reason: 'Was evicted from the house',
-              week,
-            }),
-          );
-        }
 
         const activePlayers = (game.players ?? []).filter(
           (p) => p.status !== 'evicted' && p.status !== 'jury',

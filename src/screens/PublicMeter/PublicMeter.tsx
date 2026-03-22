@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import {
@@ -5,9 +6,23 @@ import {
   selectRankedProfiles,
   selectPublicFeed,
   selectAllDirections,
+  publicOpinionConfig,
+  type PublicDirection,
 } from '../../publicOpinion';
-import { publicOpinionConfig } from '../../publicOpinion';
+import type { Player } from '../../types';
+import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
 import './PublicMeter.css';
+
+const DICEBEAR_HOST = 'dicebear.com';
+
+function isDicebearAvatarUrl(candidateUrl: string): boolean {
+  try {
+    const parsedUrl = new URL(candidateUrl, 'https://bbmobilenew.local');
+    return parsedUrl.hostname === DICEBEAR_HOST || parsedUrl.hostname.endsWith(`.${DICEBEAR_HOST}`);
+  } catch {
+    return false;
+  }
+}
 
 function getApprovalBand(approval: number): string {
   for (const band of publicOpinionConfig.approvalBands) {
@@ -16,8 +31,8 @@ function getApprovalBand(approval: number): string {
   return 'mixed';
 }
 
-function getDeltaClassName(delta: number): string {
-  return delta >= 0 ? 'feed-entry__delta feed-entry__delta--positive' : 'feed-entry__delta feed-entry__delta--negative';
+function isInactivePlayer(player?: Player): boolean {
+  return player?.status === 'evicted' || player?.status === 'jury';
 }
 
 function getTrend(
@@ -28,6 +43,107 @@ function getTrend(
   if (diff > 0) return { symbol: '↑', className: 'trend--up', diff };
   if (diff < 0) return { symbol: '↓', className: 'trend--down', diff };
   return { symbol: '→', className: 'trend--neutral', diff };
+}
+
+function getFeedSignal(delta: number): { symbol: string; className: string; label: string } {
+  if (delta >= 5) {
+    return { symbol: '↑↑', className: 'feed-entry__signal feed-entry__signal--strong-up', label: 'big rise' };
+  }
+  if (delta > 0) {
+    return { symbol: '↗', className: 'feed-entry__signal feed-entry__signal--up', label: 'modest rise' };
+  }
+  if (delta <= -3) {
+    return { symbol: '↓↓', className: 'feed-entry__signal feed-entry__signal--strong-down', label: 'big dip' };
+  }
+  if (delta < 0) {
+    return { symbol: '↘', className: 'feed-entry__signal feed-entry__signal--down', label: 'modest dip' };
+  }
+  return { symbol: '→', className: 'feed-entry__signal feed-entry__signal--neutral', label: 'steady' };
+}
+
+function getApprovalToneClass(approval: number): string {
+  if (approval >= 75) return 'approval-bar__fill--high';
+  if (approval >= 40) return 'approval-bar__fill--mid';
+  return 'approval-bar__fill--low';
+}
+
+function getDirectionSignal(direction: PublicDirection): { text: string; className: string } {
+  if (direction.status === 'completed') {
+    return { text: 'crowd loved it ↑↑', className: 'trend--up' };
+  }
+  if (direction.status === 'failed') {
+    return { text: 'missed the moment ↘', className: 'trend--down-soft' };
+  }
+  if (direction.status === 'expired') {
+    return { text: 'window closed →', className: 'trend--neutral' };
+  }
+  return { text: 'upside with viewers ↗', className: 'trend--up-soft' };
+}
+
+function getDirectionWindowLabel(direction: PublicDirection): string {
+  if (direction.status === 'completed' && direction.completedWeek) {
+    return `Day ${direction.createdWeek}–${direction.completedWeek}`;
+  }
+  return `Open through day ${direction.expiresAtWeek}`;
+}
+
+function formatStatus(status: PublicDirection['status']): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function PublicMeterAvatar({
+  player,
+  inactive = false,
+  size = 'md',
+}: {
+  player?: Player;
+  inactive?: boolean;
+  size?: 'sm' | 'md';
+}) {
+  const candidates = useMemo(() => {
+    if (!player) return [];
+    return resolveAvatarCandidates(player).filter((candidateUrl) => !isDicebearAvatarUrl(candidateUrl));
+  }, [player]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [showFallback, setShowFallback] = useState(false);
+
+  if (!player) {
+    return (
+      <span className={`public-meter-avatar public-meter-avatar--${size} public-meter-avatar--fallback`}>
+        🧑
+      </span>
+    );
+  }
+
+  const fallbackText = isEmoji(player.avatar ?? '')
+    ? player.avatar
+    : player.name.charAt(0).toUpperCase();
+
+  const avatarSrc = candidates[candidateIndex];
+
+  return (
+    <span
+      className={`public-meter-avatar public-meter-avatar--${size}${inactive ? ' public-meter-avatar--inactive' : ''}`}
+      aria-hidden="true"
+    >
+      {showFallback || !avatarSrc ? (
+        <span className="public-meter-avatar__fallback">{fallbackText}</span>
+      ) : (
+        <img
+          className="public-meter-avatar__img"
+          src={avatarSrc}
+          alt=""
+          onError={() => {
+            if (candidateIndex < candidates.length - 1) {
+              setCandidateIndex((value) => value + 1);
+            } else {
+              setShowFallback(true);
+            }
+          }}
+        />
+      )}
+    </span>
+  );
 }
 
 export default function PublicMeter() {
@@ -42,6 +158,34 @@ export default function PublicMeter() {
   const userProfile = userPlayer ? publicOpinion.profiles[userPlayer.id] : undefined;
 
   const hasProfiles = Object.keys(publicOpinion.profiles).length > 0;
+  const activePlayerIds = useMemo(
+    () =>
+      new Set(
+        game.players
+          .filter((player) => !isInactivePlayer(player))
+          .map((player) => player.id),
+      ),
+    [game.players],
+  );
+
+  const directionGroups = useMemo(
+    () =>
+      [
+        { key: 'active', label: 'Active now' },
+        { key: 'completed', label: 'Completed' },
+        { key: 'failed', label: 'Missed' },
+        { key: 'expired', label: 'Expired' },
+      ].map((group) => ({
+        ...group,
+        items: allDirections
+          .filter(
+            (direction) =>
+              direction.status === group.key && activePlayerIds.has(direction.playerId),
+          )
+          .sort((left, right) => right.createdWeek - left.createdWeek),
+      })),
+    [activePlayerIds, allDirections],
+  );
 
   if (!hasProfiles) {
     return (
@@ -78,15 +222,31 @@ export default function PublicMeter() {
         >
           ← Back
         </button>
-        <h1 className="public-meter__title">📊 Public Meter</h1>
+        <div className="public-meter__title-wrap">
+          <h1 className="public-meter__title">📊 Public Meter</h1>
+          <span className="public-meter__subtitle">The audience is always watching.</span>
+        </div>
       </div>
 
       {userProfile && userPlayer && (
-        <div className="public-meter__section">
-          <h2 className="public-meter__section-title">Your Approval</h2>
+        <div className="public-meter__section public-meter__section--hero">
+          <div className="public-meter__hero-head">
+            <div className="public-meter__hero-player">
+              <PublicMeterAvatar player={userPlayer} size="md" />
+              <div>
+                <h2 className="public-meter__section-title">Your Approval</h2>
+                <p className="public-meter__section-caption">How the outside world feels right now.</p>
+              </div>
+            </div>
+            {isInactivePlayer(userPlayer) && (
+              <span className="public-meter__status-pill public-meter__status-pill--inactive">
+                {userPlayer.status === 'jury' ? 'Jury phase' : 'Out of game'}
+              </span>
+            )}
+          </div>
           <div className="approval-bar">
             <div
-              className="approval-bar__fill"
+              className={`approval-bar__fill ${getApprovalToneClass(userProfile.approval)}`}
               style={{ width: `${userProfile.approval}%` }}
               role="progressbar"
               aria-label="Your public approval rating"
@@ -112,20 +272,31 @@ export default function PublicMeter() {
       )}
 
       <div className="public-meter__section">
-        <h2 className="public-meter__section-title">Public Rankings</h2>
+        <div className="public-meter__section-heading">
+          <h2 className="public-meter__section-title">Public Rankings</h2>
+          <span className="public-meter__section-caption">Evicted houseguests stay frozen at their last live rating.</span>
+        </div>
         <div className="ranking-list">
           {rankedProfiles.map((profile, index) => {
             const player = game.players.find((p) => p.id === profile.playerId);
             const isUser = player?.isUser ?? false;
+            const inactive = isInactivePlayer(player);
             const trend = getTrend(profile.approval, profile.previousApproval);
             return (
               <div
                 key={profile.playerId}
-                className={`ranking-row${isUser ? ' ranking-row--self' : ''}`}
+                className={`ranking-row${isUser ? ' ranking-row--self' : ''}${inactive ? ' ranking-row--inactive' : ''}`}
               >
                 <span className="ranking-row__rank">#{index + 1}</span>
-                <span className="ranking-row__avatar">{player?.avatar ?? '🧑'}</span>
-                <span className="ranking-row__name">{player?.name ?? profile.playerId}</span>
+                <PublicMeterAvatar player={player} inactive={inactive} size="sm" />
+                <div className="ranking-row__identity">
+                  <span className="ranking-row__name">{player?.name ?? profile.playerId}</span>
+                  {inactive && (
+                    <span className="ranking-row__state">
+                      {player?.status === 'jury' ? 'jury' : 'out'}
+                    </span>
+                  )}
+                </div>
                 <span className="ranking-row__approval">{profile.approval}%</span>
                 <span className={`ranking-row__trend ${trend.className}`}>{trend.symbol}</span>
               </div>
@@ -135,20 +306,26 @@ export default function PublicMeter() {
       </div>
 
       <div className="public-meter__section">
-        <h2 className="public-meter__section-title">Public Feed</h2>
+        <div className="public-meter__section-heading">
+          <h2 className="public-meter__section-title">Public Feed</h2>
+          <span className="public-meter__section-caption">Read the mood, not the exact formula.</span>
+        </div>
         {feed.length === 0 ? (
           <p className="public-meter__empty-note">No public activity yet this season.</p>
         ) : (
           <div className="feed-list">
             {feed.slice(0, 20).map((entry) => {
               const player = game.players.find((p) => p.id === entry.playerId);
+              const signal = getFeedSignal(entry.delta);
               return (
                 <div key={entry.id} className="feed-entry">
-                  <span className="feed-entry__avatar">{player?.avatar ?? '🧑'}</span>
-                  <span className="feed-entry__text">{entry.text}</span>
-                  <span className={getDeltaClassName(entry.delta)}>
-                    {entry.delta > 0 ? '+' : ''}
-                    {entry.delta}
+                  <PublicMeterAvatar player={player} inactive={isInactivePlayer(player)} size="sm" />
+                  <div className="feed-entry__body">
+                    <span className="feed-entry__text">{entry.text}</span>
+                    <span className="feed-entry__meta">Day {entry.week}</span>
+                  </div>
+                  <span className={signal.className} aria-label={signal.label} title={signal.label}>
+                    {signal.symbol}
                   </span>
                 </div>
               );
@@ -158,42 +335,51 @@ export default function PublicMeter() {
       </div>
 
       <div className="public-meter__section">
-        <h2 className="public-meter__section-title">Public Requests</h2>
-        {allDirections.length === 0 ? (
+        <div className="public-meter__section-heading">
+          <h2 className="public-meter__section-title">Public Requests</h2>
+          <span className="public-meter__section-caption">Only active houseguests receive new requests.</span>
+        </div>
+        {directionGroups.every((group) => group.items.length === 0) ? (
           <p className="public-meter__empty-note">No public requests yet.</p>
         ) : (
-          <div className="direction-list">
-            {allDirections.map((direction) => {
-              const player = game.players.find((p) => p.id === direction.playerId);
-              return (
-                <div
-                  key={direction.id}
-                  className={`direction-card direction-card--${direction.status}`}
-                >
-                  <div className="direction-card__header">
-                    <span className="direction-card__avatar">{player?.avatar ?? '🧑'}</span>
-                    <span className="direction-card__player">
-                      {player?.name ?? direction.playerId}
-                    </span>
-                    <span className="direction-card__status">{direction.status}</span>
-                  </div>
-                  <p className="direction-card__description">{direction.description}</p>
-                  <div className="direction-card__meta">
-                    <span>
-                      Week {direction.createdWeek}–{direction.expiresAtWeek}
-                    </span>
-                    <span className={direction.approvalDelta >= 0 ? 'trend--up' : 'trend--down'}>
-                      {direction.approvalDelta > 0 ? '+' : ''}
-                      {direction.approvalDelta} approval
-                    </span>
+          <div className="direction-groups">
+            {directionGroups.map((group) =>
+              group.items.length === 0 ? null : (
+                <div key={group.key} className="direction-group">
+                  <h3 className="direction-group__title">{group.label}</h3>
+                  <div className="direction-list">
+                    {group.items.map((direction) => {
+                      const player = game.players.find((p) => p.id === direction.playerId);
+                      const directionSignal = getDirectionSignal(direction);
+                      return (
+                        <div
+                          key={direction.id}
+                          className={`direction-card direction-card--${direction.status}`}
+                        >
+                          <div className="direction-card__header">
+                            <div className="direction-card__player-wrap">
+                              <PublicMeterAvatar player={player} size="sm" />
+                              <span className="direction-card__player">
+                                {player?.name ?? direction.playerId}
+                              </span>
+                            </div>
+                            <span className="direction-card__status">{formatStatus(direction.status)}</span>
+                          </div>
+                          <p className="direction-card__description">{direction.description}</p>
+                          <div className="direction-card__meta">
+                            <span>{getDirectionWindowLabel(direction)}</span>
+                            <span className={directionSignal.className}>{directionSignal.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
+              ),
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
-

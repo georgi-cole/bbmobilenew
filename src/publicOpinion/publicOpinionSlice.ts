@@ -1,5 +1,6 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import { publicOpinionConfig } from './publicOpinionConfig';
+import { createPublicNarrative } from './publicNarratives';
 import type {
   PublicOpinionState,
   PlayerPublicProfile,
@@ -60,7 +61,7 @@ const publicOpinionSlice = createSlice({
       const feedEntry: PublicFeedEntry = {
         id: `${playerId}-${week}-${Date.now()}-${state.feed.length}`,
         playerId,
-        text: reason,
+        text: createPublicNarrative({ reason, playerId, delta, week }),
         delta,
         week,
         timestamp: Date.now(),
@@ -119,10 +120,12 @@ const publicOpinionSlice = createSlice({
           const feedEntry: PublicFeedEntry = {
             id: `${direction.playerId}-${week}-${Date.now()}-dir-${status}`,
             playerId: direction.playerId,
-            text:
-              status === 'completed'
-                ? `Completed public request: ${direction.description}`
-                : `Failed public request: ${direction.description}`,
+            text: createPublicNarrative({
+              reason: status === 'completed' ? 'direction_completed' : 'direction_failed',
+              playerId: direction.playerId,
+              delta,
+              week,
+            }),
             delta,
             week,
             timestamp: Date.now(),
