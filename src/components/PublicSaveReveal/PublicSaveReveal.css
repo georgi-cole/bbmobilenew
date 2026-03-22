@@ -1,0 +1,247 @@
+/* ─── PublicSaveReveal ─────────────────────────────────────────────────────────
+ * Pre-veto public save ceremony overlay.
+ * Modern, compact, TV-style card reveal.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.psr {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ── Backdrop ── */
+.psr__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.45s ease;
+}
+
+.psr--entering .psr__backdrop,
+.psr--revealing .psr__backdrop,
+.psr--saved .psr__backdrop {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.psr--exiting .psr__backdrop {
+  background: rgba(0, 0, 0, 0);
+}
+
+/* ── Panel ── */
+.psr__panel {
+  position: relative;
+  z-index: 1;
+  background: rgba(15, 20, 35, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  max-width: 420px;
+  width: calc(100% - 2rem);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transform: scale(0.88) translateY(20px);
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.34, 1.42, 0.64, 1), opacity 0.4s ease;
+  backdrop-filter: blur(12px);
+}
+
+.psr--entering .psr__panel,
+.psr--revealing .psr__panel,
+.psr--saved .psr__panel {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.psr--exiting .psr__panel {
+  transform: scale(0.92) translateY(-12px);
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.35s ease;
+}
+
+/* ── Heading ── */
+.psr__heading {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.psr__heading-eyebrow {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #83bfff;
+  margin-bottom: 0.3rem;
+}
+
+.psr__heading-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.psr__heading-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Nominees row ── */
+.psr__nominees {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Single nominee card ── */
+.psr__nominee {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1 1 80px;
+  max-width: 110px;
+  /* Staggered entrance */
+  transform: scale(0.7) translateY(10px);
+  opacity: 0;
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) calc(var(--stagger) * 90ms),
+    opacity 0.4s ease calc(var(--stagger) * 90ms),
+    filter 0.35s ease,
+    box-shadow 0.4s ease;
+}
+
+.psr--entering .psr__nominee,
+.psr--revealing .psr__nominee,
+.psr--saved .psr__nominee {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+/* Saved state: scale forward + soft glow */
+.psr__nominee--saved {
+  transform: scale(1.08) translateY(-4px) !important;
+}
+
+.psr__nominee--dimmed {
+  opacity: 0.38 !important;
+  filter: grayscale(0.6);
+}
+
+/* ── Avatar wrap ── */
+.psr__avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Saved checkmark badge */
+.psr__saved-icon {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  font-size: 1.1rem;
+  line-height: 1;
+  animation: psrBadgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes psrBadgePop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Name ── */
+.psr__name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── Approval bar ── */
+.psr__bar-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.psr__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4fa3ff 0%, #83bfff 100%);
+  border-radius: 999px;
+  transition: width 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.psr__nominee--saved .psr__bar-fill {
+  background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.55);
+}
+
+/* ── Approval value ── */
+.psr__approval-value {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.04em;
+  transition: color 0.35s ease;
+}
+
+.psr__nominee--saved .psr__approval-value {
+  color: #4ade80;
+}
+
+/* ── Result banner ── */
+.psr__result {
+  margin-top: 1rem;
+  text-align: center;
+  animation: psrResultFade 0.4s ease forwards;
+}
+
+@keyframes psrResultFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.psr__result-text {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: 0.03em;
+}
+
+/* ── Reduce motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .psr__backdrop,
+  .psr__panel,
+  .psr__nominee,
+  .psr__bar-fill,
+  .psr__saved-icon {
+    animation: none !important;
+    transition: none !important;
+  }
+  .psr--entering .psr__panel,
+  .psr--revealing .psr__panel,
+  .psr--saved .psr__panel {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  .psr--entering .psr__nominee,
+  .psr--revealing .psr__nominee,
+  .psr--saved .psr__nominee {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}

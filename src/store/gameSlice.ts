@@ -38,6 +38,7 @@ const PHASE_ORDER: Phase[] = [
   'social_1',
   'nominations',
   'nomination_results',
+  'pre_veto_public_save',
   'pov_comp_announcement',
   'pov_comp',
   'pov_results',
@@ -126,6 +127,10 @@ export function createInitialGameState(): GameState {
     pendingNominee1Id: null,
     awaitingPovDecision: false,
     awaitingPovSaveTarget: false,
+    lastHohCompFinisherId: null,
+    publicSavedNomineeId: null,
+    nominationContext: null,
+    awaitingPublicSave: false,
     votes: {},
     awaitingHumanVote: false,
     awaitingTieBreak: false,
@@ -519,6 +524,14 @@ const gameSlice = createSlice({
       if (state.phase === 'hoh_comp') {
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
+        // Track the last-place HOH competition finisher for the third-nominee rule
+        const nonWinners = session.participants.filter((id) => id !== winnerId);
+        if (nonWinners.length > 0) {
+          state.lastHohCompFinisherId = nonWinners.reduce((worst, id) =>
+            (scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst,
+            nonWinners[0],
+          );
+        }
       } else if (state.phase === 'pov_comp') {
         state.phase = applyPovWinner(state, winnerId, alive);
       }
@@ -572,6 +585,14 @@ const gameSlice = createSlice({
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
         winnerWasApplied = true;
+        // Track the last-place HOH competition finisher for the third-nominee rule
+        const nonWinners = resolvedParticipants.filter((id) => id !== winnerId);
+        if (nonWinners.length > 0) {
+          state.lastHohCompFinisherId = nonWinners.reduce((worst, id) =>
+            (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
+            nonWinners[0],
+          );
+        }
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.
         if (state.povWinnerId) {
@@ -815,7 +836,9 @@ const gameSlice = createSlice({
     commitNominees(state, action: PayloadAction<string[]>) {
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const ids = action.payload;
-      const expectedCount = state.doubleEviction?.weekActive ? 3 : 2;
+      const isDoubleEviction = state.doubleEviction?.weekActive === true;
+      // Human always picks 2 in normal weeks (3rd is auto-appended); picks 3 in DE.
+      const expectedCount = isDoubleEviction ? 3 : 2;
       if (ids.length !== expectedCount) return;
       if (new Set(ids).size !== ids.length) return; // duplicates check
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
@@ -831,12 +854,69 @@ const gameSlice = createSlice({
         n.status = 'nominated';
         incrementTimesNominated(state, n.id);
       });
+
+      // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
+      if (!isDoubleEviction && state.lastHohCompFinisherId) {
+        const autoId = state.lastHohCompFinisherId;
+        if (!state.nomineeIds.includes(autoId)) {
+          const autoPlayer = eligible.find((p) => p.id === autoId);
+          if (autoPlayer) {
+            state.nomineeIds = [...state.nomineeIds, autoId];
+            autoPlayer.status = 'nominated';
+            incrementTimesNominated(state, autoId);
+          }
+        }
+        state.nominationContext = {
+          hohNomineeIds: ids,
+          autoNomineeId: autoId,
+          publicSaveApplied: false,
+        };
+      }
+
       state.awaitingNominations = false;
       state.pendingNominee1Id = null;
-      const nameList = nominees.map((n) => n.name).join(', ');
+      const allNomineePlayers = state.nomineeIds
+        .map((id) => state.players.find((p) => p.id === id))
+        .filter(Boolean);
+      const nameList = allNomineePlayers.map((n) => n!.name).join(', ');
       pushEvent(
         state,
         `${nameList} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
+        'game',
+      );
+    },
+
+    /**
+     * Resolve the pre-veto public save phase (normal weeks only).
+     * The UI calls this with the ID of the nominee to save (highest approval).
+     * Removes the saved player from nomineeIds, records publicSavedNomineeId,
+     * clears awaitingPublicSave, and advances the phase to pov_comp_announcement.
+     */
+    commitPublicSave(state, action: PayloadAction<string>) {
+      if (!state.awaitingPublicSave || state.phase !== 'pre_veto_public_save') return;
+      const savedId = action.payload;
+      if (!state.nomineeIds.includes(savedId)) return;
+
+      const savedPlayer = state.players.find((p) => p.id === savedId);
+      if (!savedPlayer) return;
+
+      // Remove from active nominee block
+      state.nomineeIds = state.nomineeIds.filter((id) => id !== savedId);
+      savedPlayer.status = 'active';
+
+      // Record metadata
+      state.publicSavedNomineeId = savedId;
+      if (state.nominationContext) {
+        state.nominationContext.publicSaveApplied = true;
+      }
+
+      state.awaitingPublicSave = false;
+      // Advance directly to pov_comp_announcement so veto starts with 2 nominees
+      state.phase = 'pov_comp_announcement';
+
+      pushEvent(
+        state,
+        `${savedPlayer.name} has been saved by the public! 🏆 They step off the block with the highest audience support.`,
         'game',
       );
     },
@@ -1899,6 +1979,7 @@ const gameSlice = createSlice({
       state.replacementNeeded = false;
       state.awaitingNominations = false;
       state.pendingNominee1Id = null;
+      state.awaitingPublicSave = false;
       state.awaitingPovDecision = false;
       state.awaitingPovSaveTarget = false;
       state.awaitingHumanVote = false;
@@ -1971,6 +2052,7 @@ const gameSlice = createSlice({
       if (
         state.replacementNeeded ||
         state.awaitingNominations ||
+        state.awaitingPublicSave ||
         state.awaitingPovDecision ||
         state.awaitingPovSaveTarget ||
         state.awaitingHumanVote ||
@@ -2448,6 +2530,10 @@ const gameSlice = createSlice({
           state.pendingNominee1Id = null;
           state.awaitingPovDecision = false;
           state.awaitingPovSaveTarget = false;
+          state.lastHohCompFinisherId = null;
+          state.publicSavedNomineeId = null;
+          state.nominationContext = null;
+          state.awaitingPublicSave = false;
           state.votes = {};
           state.awaitingHumanVote = false;
           state.awaitingTieBreak = false;
@@ -2490,8 +2576,15 @@ const gameSlice = createSlice({
           const hohPool = state.prevHohId
             ? alive.filter((p) => p.id !== state.prevHohId)
             : alive;
-          const hoh = seededPick(rng, hohPool.length > 0 ? hohPool : alive);
+          const hohEligible = hohPool.length > 0 ? hohPool : alive;
+          const hoh = seededPick(rng, hohEligible);
           applyHohWinner(state, hoh.id);
+          // Track last-place HOH competition finisher for the third-nominee rule.
+          // Use RNG to pick deterministically among non-HOH eligible players.
+          const lastPlacePool = hohEligible.filter((p) => p.id !== hoh.id);
+          if (lastPlacePool.length > 0) {
+            state.lastHohCompFinisherId = seededPick(rng, lastPlacePool).id;
+          }
           break;
         }
         case 'social_1': {
@@ -2514,7 +2607,8 @@ const gameSlice = createSlice({
 
           const hohPlayer = state.players.find((p) => p.id === state.hohId);
           if (hohPlayer?.isUser) {
-            // Human HOH: block advance() and wait for the multi-select nomination UI
+            // Human HOH: block advance() and wait for the multi-select nomination UI.
+            // Human still picks 2; the 3rd auto-nominee is appended by commitNominees.
             state.awaitingNominations = true;
             state.pendingNominee1Id = null;
             const countWord = isDoubleEviction ? 'three' : 'two';
@@ -2526,7 +2620,7 @@ const gameSlice = createSlice({
             break;
           }
 
-          // AI HOH: pick randomly
+          // AI HOH: pick randomly (2 for normal weeks, 3 for DE)
           const nominees = seededPickN(rng, pool, nomineeCount);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
@@ -2534,8 +2628,48 @@ const gameSlice = createSlice({
             if (p) p.status = 'nominated';
             incrementTimesNominated(state, n.id);
           });
-          const names = nominees.map((n) => n.name).join(isDoubleEviction ? ', ' : ' and ');
+
+          // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
+          if (!isDoubleEviction && state.lastHohCompFinisherId) {
+            const autoId = state.lastHohCompFinisherId;
+            if (!state.nomineeIds.includes(autoId)) {
+              const autoPlayer = pool.find((p) => p.id === autoId);
+              if (autoPlayer) {
+                state.nomineeIds = [...state.nomineeIds, autoId];
+                const ap = state.players.find((p) => p.id === autoId);
+                if (ap) ap.status = 'nominated';
+                incrementTimesNominated(state, autoId);
+              }
+            }
+            state.nominationContext = {
+              hohNomineeIds: nominees.map((n) => n.id),
+              autoNomineeId: autoId,
+              publicSaveApplied: false,
+            };
+          }
+
+          const allNominees = state.nomineeIds.map((id) => state.players.find((p) => p.id === id));
+          const names = allNominees
+            .filter(Boolean)
+            .map((n) => n!.name)
+            .join(isDoubleEviction ? ', ' : ' and ');
           pushEvent(state, `${names} have been nominated for eviction. 🎯`, 'game');
+          break;
+        }
+        case 'pre_veto_public_save': {
+          // Skip this phase entirely during Double Eviction weeks.
+          // The existing 3-nominee cap is the hard limit; no public save runs in DE.
+          if (state.doubleEviction?.weekActive) {
+            nextPhase = 'pov_comp_announcement';
+            break;
+          }
+          // Normal weeks: block advance() and let the UI resolve which nominee is saved.
+          state.awaitingPublicSave = true;
+          pushEvent(
+            state,
+            `Before veto night, the public has the power to save one nominee! 🗳️`,
+            'game',
+          );
           break;
         }
         case 'pov_comp_announcement': {
@@ -3016,6 +3150,7 @@ export const {
   selectNominee1,
   finalizeNominations,
   commitNominees,
+  commitPublicSave,
   submitPovDecision,
   submitPovSaveTarget,
   submitHumanVote,
@@ -3145,7 +3280,13 @@ export const fastForwardToEviction =
       getState().game.phase !== 'jury' &&
       steps < PHASE_ORDER.length
     ) {
-      dispatch(advance());
+      const state = getState().game;
+      // Auto-resolve pre-veto public save so the loop doesn't stall
+      if (state.awaitingPublicSave && state.nomineeIds.length > 0) {
+        dispatch(commitPublicSave(state.nomineeIds[0]));
+      } else {
+        dispatch(advance());
+      }
       steps++;
     }
   };

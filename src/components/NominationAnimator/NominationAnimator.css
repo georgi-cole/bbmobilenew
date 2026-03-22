@@ -94,6 +94,21 @@
   text-shadow: 0 1px 8px rgba(0,0,0,0.8);
 }
 
+/* Role pill shown below nominee name (e.g. "HOH Nominee" / "Last in HOH Comp") */
+.nom-anim__role-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
 .nom-anim__label {
   position: absolute;
   bottom: -2.8rem;
