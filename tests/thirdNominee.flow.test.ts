@@ -151,7 +151,7 @@ describe('third nominee — AI HOH normal week', () => {
     expect(state.nominationContext).toBeNull();
   });
 
-  it('does not auto-append a third nominee at final 4 even when public mode is on', () => {
+  it('still auto-appends a third nominee at final 4 when public mode is on', () => {
     const players = makePlayers(4);
     players[0].status = 'hoh';
 
@@ -167,9 +167,9 @@ describe('third nominee — AI HOH normal week', () => {
     const state = store.getState().game;
 
     expect(state.phase).toBe('nomination_results');
-    expect(state.nomineeIds).toHaveLength(2);
-    expect(state.nomineeIds).not.toContain('p3');
-    expect(state.nominationContext).toBeNull();
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(state.nomineeIds).toContain('p3');
+    expect(state.nominationContext?.autoNomineeId).toBe('p3');
   });
 
   it('does not duplicate if lastHohCompFinisherId is already in HOH nominees', () => {
@@ -188,6 +188,11 @@ describe('third nominee — AI HOH normal week', () => {
 
     expect(state.nomineeIds).toHaveLength(2);
     expect(state.nomineeIds.filter((id) => id === 'p1')).toHaveLength(1);
+    expect(state.nominationContext).toEqual({
+      hohNomineeIds: ['p1', 'p2'],
+      autoNomineeId: null,
+      publicSaveApplied: false,
+    });
   });
 });
 
@@ -233,9 +238,14 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
 
     expect(state.nomineeIds).toHaveLength(2); // no duplicate added
     expect(state.nomineeIds.filter((id) => id === 'p2')).toHaveLength(1);
+    expect(state.nominationContext).toEqual({
+      hohNomineeIds: ['p1', 'p2'],
+      autoNomineeId: null,
+      publicSaveApplied: false,
+    });
   });
 
-  it('does not auto-append a third nominee at final 4 for a human HOH', () => {
+  it('still auto-appends a third nominee at final 4 for a human HOH', () => {
     const players = makePlayers(4, 0);
     players[0].status = 'hoh';
 
@@ -252,8 +262,12 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
     const state = store.getState().game;
 
     expect(state.awaitingNominations).toBe(false);
-    expect(state.nomineeIds).toEqual(['p1', 'p2']);
-    expect(state.nominationContext).toBeNull();
+    expect(state.nomineeIds).toEqual(['p1', 'p2', 'p3']);
+    expect(state.nominationContext).toEqual({
+      hohNomineeIds: ['p1', 'p2'],
+      autoNomineeId: 'p3',
+      publicSaveApplied: false,
+    });
   });
 
   it('commits 3 nominees for double eviction (human picks 3)', () => {
@@ -474,6 +488,39 @@ describe('HOH comp last-place tracking', () => {
 });
 
 describe('public mode endgame boundaries', () => {
+  it('keeps the final 4 flow intact under public mode by reducing back to 2 nominees before veto', () => {
+    const players = makePlayers(4);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p3',
+      players,
+    });
+
+    store.dispatch(advance());
+    expect(store.getState().game.nomineeIds).toEqual(expect.arrayContaining(['p3']));
+    expect(store.getState().game.nomineeIds).toHaveLength(3);
+
+    store.dispatch(advance());
+    expect(store.getState().game.phase).toBe('pre_veto_public_save');
+    expect(store.getState().game.awaitingPublicSave).toBe(true);
+
+    store.dispatch(commitPublicSave('p3'));
+    expect(store.getState().game.phase).toBe('pov_comp_announcement');
+    expect(store.getState().game.nomineeIds).toHaveLength(2);
+
+    store.dispatch(advance()); // pov_comp_announcement -> pov_comp
+    store.dispatch(advance()); // pov_comp -> pov_results
+    store.dispatch(advance()); // pov_results -> final4_eviction via Final 4 bypass
+
+    const state = store.getState().game;
+    expect(state.phase).toBe('final4_eviction');
+    expect(state.nomineeIds).toHaveLength(2);
+  });
+
   it('clears public-save nomination state when entering final 3', () => {
     const players = makePlayers(3);
     players[0].status = 'hoh';

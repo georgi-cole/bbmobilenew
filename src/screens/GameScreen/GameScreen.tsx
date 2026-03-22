@@ -521,15 +521,14 @@ export default function GameScreen() {
   const showNomAnim = showHumanNomAnim || showAiNomAnim
   const canUsePublicNomineeRule =
     game.publicModeEnabled === true &&
-    game.doubleEviction?.weekActive !== true &&
-    alivePlayers.length > 4
+    game.doubleEviction?.weekActive !== true
 
   const nomAnimPlayers = useMemo(() => {
     if (showHumanNomAnim) {
       const base = pendingNominees
         .map((id) => game.players.find((p) => p.id === id))
         .filter(Boolean) as Player[]
-      // For standard weeks before Final 4, include the auto-third nominee in the animation display.
+      // When Public mode is active and this is not a Double Eviction, include the auto-third nominee.
       const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
       if (autoId && !pendingNominees.includes(autoId)) {
         const autoPlayer = game.players.find((p) => p.id === autoId)
