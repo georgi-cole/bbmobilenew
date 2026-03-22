@@ -145,7 +145,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
   return (
     <form className="dw-editor" onSubmit={handleSubmit} noValidate>
       <h2 className="dw-editor__title">
-        {isEdit ? `Edit Week ${existingWeek?.weekNumber}` : 'Create New Week'}
+        {isEdit ? `Edit Day ${existingWeek?.weekNumber}` : 'Create New Day'}
       </h2>
 
       {validationErrors.length > 0 && (
@@ -161,7 +161,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
       )}
 
       {field(
-        'Week Number *',
+        'Day Number *',
         <input
           className="dw-editor__input"
           type="number"
@@ -171,7 +171,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
           disabled={isEdit}
           required
         />,
-        isEdit ? 'Week number cannot be changed.' : undefined,
+        isEdit ? 'Day number cannot be changed.' : undefined,
       )}
 
       <div className="dw-editor__row">
@@ -303,7 +303,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
         type="submit"
         disabled={saving}
       >
-        {saving ? '⏳ Saving…' : isEdit ? '💾 Save Changes' : '➕ Create Week'}
+        {saving ? '⏳ Saving…' : isEdit ? '💾 Save Changes' : '➕ Create Day'}
       </button>
     </form>
   );

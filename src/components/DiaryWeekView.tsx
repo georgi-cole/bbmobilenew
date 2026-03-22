@@ -83,10 +83,10 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
   const tally = tallyVotes(week.evictionVotes);
 
   return (
-    <article className="dw-view" aria-label={`Diary Week ${week.weekNumber}`}>
+    <article className="dw-view" aria-label={`Diary Day ${week.weekNumber}`}>
       {/* ── Header ── */}
       <header className="dw-view__header">
-        <h2 className="dw-view__title">Week {week.weekNumber}</h2>
+        <h2 className="dw-view__title">Day {week.weekNumber}</h2>
         <p className="dw-view__dates">
           {formatDate(week.startAt)} – {formatDate(week.endAt)}
         </p>

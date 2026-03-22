@@ -7,9 +7,9 @@
  *  3. Flash CSS class is added to the social button when energy changes.
  *  4. Flash CSS class is removed after the animation interval.
  *  5. ARIA label on social button includes energy value.
- *  6. Save button is present and disabled at game start (nothing to save yet).
- *  7. Save button is disabled in guest mode.
- *  8. Help button navigates to /rules.
+ *  6. FAB button order reflects the redesigned layout.
+ *  7. Social actions badge remains visible on the inbox-style button.
+ *  8. Public Meter and Diary Room buttons navigate to their routes.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -23,7 +23,7 @@ import socialReducer, {
   applyEnergyDelta,
   pushIncomingInteraction,
 } from '../../../social/socialSlice';
-import profilesReducer, { enterGuestMode } from '../../../store/profilesSlice';
+import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
@@ -184,66 +184,49 @@ describe('FloatingActionBar – inbox badge', () => {
     });
     renderFAB(store);
     expect(screen.getByText('1')).toBeDefined();
-    expect(screen.getByRole('button', { name: /inbox/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /social actions/i })).toBeDefined();
   });
 });
 
-describe('FloatingActionBar – save button', () => {
-  it('save button is present and disabled at game start (nothing to save yet)', () => {
+describe('FloatingActionBar – layout', () => {
+  it('renders the redesigned button order', () => {
     const store = makeStore();
-    // Pre-set an active profile so the "nothing to save yet" branch is reached
-    // (an active profile is required for save to be contextually meaningful).
-    const profileId = 'test-profile-1';
-    store.dispatch({
-      type: 'profiles/initProfiles',
-      payload: {
-        profiles: [{ id: profileId, name: 'Tester', avatar: '🧑', createdAt: new Date().toISOString() }],
-        activeProfileId: profileId,
-        isGuest: false,
-      },
-    });
     renderFAB(store);
-    // At game start (week 1, phase 'week_start'), there's nothing to save yet.
-    const saveBtn = screen.getByRole('button', { name: /nothing to save yet/i });
-    expect(saveBtn).toBeDefined();
-    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+
+    const toolbar = screen.getByRole('toolbar', { name: /game actions/i });
+    const labels = Array.from(toolbar.querySelectorAll('button')).map((button) => button.getAttribute('aria-label'));
+    expect(labels).toEqual([
+      'Social (energy: 0)',
+      'Social actions',
+      'Advance to next phase',
+      'Public meter',
+      'Diary Room',
+    ]);
   });
 
-  it('save button is disabled in guest mode (no persistence)', () => {
-    const store = makeStore();
-    // Use the real action creator instead of a hard-coded action type string.
-    act(() => { store.dispatch(enterGuestMode()); });
-    renderFAB(store);
-    const saveBtn = screen.getByRole('button', { name: /unavailable in guest mode/i });
-    expect(saveBtn).toBeDefined();
-    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('save button is disabled when no active profile is selected', () => {
-    const store = makeStore();
-    // Default state has no active profile — button should reflect that.
-    renderFAB(store);
-    const saveBtn = screen.getByRole('button', { name: /no active profile selected/i });
-    expect(saveBtn).toBeDefined();
-    expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('no Diary Room navigation button is present', () => {
+  it('no save button is present in the FAB', () => {
     const store = makeStore();
     renderFAB(store);
-    // The DR button should no longer exist in the FAB
-    const drBtn = screen.queryByRole('button', { name: /diary room/i });
-    expect(drBtn).toBeNull();
+    expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
   });
 });
 
 describe('FloatingActionBar – navigation buttons', () => {
-  it('navigates to rules when the Help button is clicked', async () => {
+  it('navigates to public meter when the Public meter button is clicked', async () => {
     const store = makeStore();
     renderFAB(store, '/game');
     act(() => {
-      screen.getByRole('button', { name: 'Help' }).click();
+      screen.getByRole('button', { name: 'Public meter' }).click();
     });
-    expect(screen.getByTestId('location').textContent).toBe('/rules');
+    expect(screen.getByTestId('location').textContent).toBe('/public-meter');
+  });
+
+  it('navigates to diary room when the Diary Room button is clicked', async () => {
+    const store = makeStore();
+    renderFAB(store, '/game');
+    act(() => {
+      screen.getByRole('button', { name: 'Diary Room' }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
   });
 });

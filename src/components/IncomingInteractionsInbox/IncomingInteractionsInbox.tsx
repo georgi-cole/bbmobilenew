@@ -353,9 +353,9 @@ export default function IncomingInteractionsInbox() {
                 </section>
               )}
               {resolvedInteractions.length > 0 && (
-                <section className="inbox-section" aria-label="Resolved This Week">
+                <section className="inbox-section" aria-label="Resolved Today">
                   <h3 className="inbox-section__title inbox-section__title--resolved">
-                    Resolved This Week
+                    Resolved Today
                   </h3>
                   <div className="inbox-section__list" role="list">
                     {resolvedInteractions.map(({ interaction, priority }) => (

@@ -39,6 +39,19 @@ button.status-pill:active {
   transform: translateY(0);
 }
 
+button.status-pill:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+button.status-pill:disabled:hover,
+button.status-pill:disabled:active {
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
 button.status-pill:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;

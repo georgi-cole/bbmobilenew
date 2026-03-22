@@ -81,7 +81,7 @@ describe('gameSlice – addSocialSummary', () => {
     store.dispatch(addSocialSummary({ summary: 'Alliance formed.', week: 2 }));
     const { tvFeed } = store.getState().game;
     const entry = tvFeed.find((e) => e.type === 'diary');
-    expect(entry?.text).toContain('Week 2');
+    expect(entry?.text).toContain('Day 2');
     expect(entry?.text).toContain('Alliance formed.');
   });
 
@@ -130,7 +130,7 @@ describe('SocialSummaryPopup – rendering', () => {
       }),
     );
     renderPopup(store);
-    expect(screen.getByText('Week 7')).toBeDefined();
+    expect(screen.getByText('Day 7')).toBeDefined();
   });
 
   it('renders the close button', () => {

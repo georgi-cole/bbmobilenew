@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Phase } from '../../types';
-import { useNavigate } from 'react-router-dom';
+import { useStore } from 'react-redux';
 import { useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
+import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence';
+import type { RootState } from '../../store/store';
 import StatusPill from '../ui/StatusPill';
 import TVLog from '../TVLog/TVLog';
 import TvAnnouncementOverlay, {
@@ -17,7 +19,7 @@ import './TvZoneEnhancements.css';
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
-  week_start:               'WEEK START',
+  week_start:               'DAY START',
   hoh_comp_announcement:    'HOH COMP',
   hoh_comp:                 'HOH COMP',
   hoh_results:              'HOH RESULTS',
@@ -32,7 +34,7 @@ const PHASE_LABELS: Record<string, string> = {
   social_2:             'SOCIAL',
   live_vote:            'VOTE',
   eviction_results:     'EVICTION',
-  week_end:             'WEEK END',
+  week_end:             'DAY END',
   final4_eviction:      'F4 EVICT',
   final3:               'FINAL 3',
   final3_comp1:         'F3 P1',
@@ -161,7 +163,10 @@ export default function TvZone() {
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
-  const navigate = useNavigate();
+  const isGuest = useAppSelector((s: RootState) => s.profiles.isGuest);
+  const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId);
+  const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null);
+  const reduxStore = useStore<RootState>();
 
   // Filter entries for the TV viewport (excludes DR-only events).
   const tvVisibleFeed = useMemo(
@@ -199,8 +204,10 @@ export default function TvZone() {
   const [postDismissBlocked, setPostDismissBlocked] = useState(false);
   // Short-lived TV spotlight effect for Double Eviction special announcements.
   const [deSpotlightActive, setDeSpotlightActive] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks the previous phase to detect phase transitions.
   const previousPhaseRef = useRef<Phase | null>(null);
   // Stable ref so phase-transition effect always reads the latest latestEvent.
@@ -281,6 +288,12 @@ export default function TvZone() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current);
+    };
+  }, []);
+
   // Play a short TV-only spotlight intro for Double Eviction announcements,
   // then return the surrounding UI to normal while keeping the announcement visible.
   useEffect(() => {
@@ -335,9 +348,59 @@ export default function TvZone() {
   const handleModalClose = useCallback(() => setModalOpen(false), []);
 
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
+  const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
+  const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
+  const saveChipLabel = '';
+  const saveChipIcon = saveStatus === 'saved' ? '✅' : saveStatus === 'error' ? '❌' : '💾';
+  const saveChipVariant = saveStatus === 'error' ? 'danger' : 'success';
+  const saveChipAriaLabel = isGuest
+    ? 'Save (unavailable in guest mode)'
+    : !activeProfileId
+      ? 'Save (no active profile selected)'
+      : hasPendingChallenge
+        ? 'Save (unavailable during competition)'
+        : isAtGameStart
+          ? 'Save (nothing to save yet)'
+          : saveStatus === 'saved'
+            ? 'Saved!'
+            : saveStatus === 'error'
+              ? 'Save failed'
+              : 'Save game';
+  const saveChipTitle = isGuest
+    ? 'Save unavailable in guest mode'
+    : !activeProfileId
+      ? 'No active profile selected'
+      : hasPendingChallenge
+        ? 'Save unavailable during competition'
+        : isAtGameStart
+          ? 'Nothing to save yet'
+          : saveStatus === 'saved'
+            ? 'Saved!'
+            : saveStatus === 'error'
+              ? 'Save failed — try again'
+              : 'Save game';
 
   // Whether the current announcement is a double eviction (for spotlight effect).
   const isDeSpotlight = deSpotlightActive;
+
+  const handleSave = useCallback(() => {
+    if (!canSave || !activeProfileId) return;
+
+    const currentState = reduxStore.getState();
+    const key = savedStateKeyForProfile(activeProfileId);
+    const ok = saveSeasonSnapshot(key, {
+      version: 1,
+      profileId: activeProfileId,
+      savedAt: new Date().toISOString(),
+      game: currentState.game,
+      finale: currentState.finale,
+      social: currentState.social,
+    });
+    setSaveStatus(ok ? 'saved' : 'error');
+
+    if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current);
+    saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
+  }, [activeProfileId, canSave, reduxStore]);
 
   return (
     <section
@@ -360,7 +423,7 @@ export default function TvZone() {
 
         {/* Center: scrollable single-row status pills */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
-          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} /></li>
+          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
           <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
         </ul>
 
@@ -369,11 +432,13 @@ export default function TvZone() {
             <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
           )}
           <StatusPill
-            variant="dr"
-            icon="🎤"
-            label="DR"
-            onClick={() => navigate('/diary-room')}
-            ariaLabel="Open Diary Room"
+            variant={saveChipVariant}
+            icon={saveChipIcon}
+            label={saveChipLabel}
+            onClick={handleSave}
+            disabled={!canSave}
+            ariaLabel={saveChipAriaLabel}
+            title={saveChipTitle}
           />
         </div>
       </div>

@@ -278,7 +278,7 @@ export default function DebugPanel() {
             <section className="dbg-section">
               <h3 className="dbg-section__title">Inspector</h3>
               <dl className="dbg-grid">
-                <dt>Week</dt>            <dd>{game.week}</dd>
+                <dt>Day</dt>             <dd>{game.week}</dd>
                 <dt>Phase</dt>           <dd>{game.phase}</dd>
                 <dt>Seed</dt>            <dd>{game.seed}</dd>
                 <dt>HOH</dt>             <dd>{hohName}</dd>
@@ -569,7 +569,7 @@ export default function DebugPanel() {
                   disabled={!canSeedInteraction}
                   onClick={handleScheduleBusyWeek}
                 >
-                  Queue Busy Week
+                  Queue Busy Day
                 </button>
                 <button className="dbg-btn dbg-btn--wide" onClick={handleAutoResolveIgnored}>
                   Auto-resolve Ignored

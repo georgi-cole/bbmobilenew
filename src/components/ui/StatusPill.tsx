@@ -10,8 +10,11 @@ interface StatusPillProps {
   label: string;
   /** Make the pill a clickable button */
   onClick?: () => void;
+  /** Disable interaction when rendered as a button */
+  disabled?: boolean;
   /** aria-label override */
   ariaLabel?: string;
+  title?: string;
   className?: string;
 }
 
@@ -37,7 +40,9 @@ export default function StatusPill({
   icon,
   label,
   onClick,
+  disabled = false,
   ariaLabel,
+  title,
   className = '',
 }: StatusPillProps) {
   const Tag = onClick ? 'button' : 'span';
@@ -47,11 +52,12 @@ export default function StatusPill({
       className={`status-pill status-pill--${variant} ${className}`.trim()}
       onClick={onClick}
       aria-label={ariaLabel ?? label}
+      title={title}
       // button semantics
-      {...(onClick ? { type: 'button' as const } : {})}
+      {...(onClick ? { type: 'button' as const, disabled } : {})}
     >
       {icon && <span className="status-pill__icon" aria-hidden="true">{icon}</span>}
-      <span className="status-pill__label">{label}</span>
+      {label ? <span className="status-pill__label">{label}</span> : null}
     </Tag>
   );
 }

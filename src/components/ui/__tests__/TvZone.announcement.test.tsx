@@ -24,6 +24,10 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer } from '../../../store/gameSlice';
+import socialReducer from '../../../social/socialSlice';
+import profilesReducer from '../../../store/profilesSlice';
+import challengeReducer from '../../../store/challengeSlice';
+import finaleReducer from '../../../store/finaleSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
@@ -32,7 +36,15 @@ import type { TvEvent } from '../../../types';
 // ── Store helpers ─────────────────────────────────────────────────────────────
 
 function makeStore() {
-  return configureStore({ reducer: { game: gameReducer } });
+  return configureStore({
+    reducer: {
+      game: gameReducer,
+      social: socialReducer,
+      profiles: profilesReducer,
+      challenge: challengeReducer,
+      finale: finaleReducer,
+    },
+  });
 }
 
 function renderTvZone(store: ReturnType<typeof makeStore>) {
@@ -256,7 +268,7 @@ describe('TvZone — announcement overlay', () => {
         addTvEvent(
           makeEvent({
             id: 'ev-6',
-            text: 'A new week begins.',
+            text: 'A new day begins.',
             meta: { major: 'week_start' },
           }),
         ),
@@ -329,7 +341,7 @@ describe('TvZone — TVLog usage', () => {
     renderTvZone(store);
 
     act(() => {
-      store.dispatch(addTvEvent(makeEvent({ id: 'e1', text: 'Week 1 begins.' })));
+      store.dispatch(addTvEvent(makeEvent({ id: 'e1', text: 'Day 1 begins.' })));
       store.dispatch(addTvEvent(makeEvent({ id: 'e2', text: 'The house is watching.' })));
     });
 
@@ -372,7 +384,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
@@ -393,7 +405,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
@@ -408,7 +420,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
       />,
@@ -433,7 +445,7 @@ describe('TvAnnouncementOverlay — countdown logic', () => {
     const onDismiss = vi.fn();
     const { getByRole } = render(
       <TvAnnouncementOverlay
-        announcement={{ key: 'week_start', title: 'New Week', subtitle: '', isLive: false, autoDismissMs: 4500 }}
+        announcement={{ key: 'week_start', title: 'New Day', subtitle: '', isLive: false, autoDismissMs: 4500 }}
         onInfo={() => {}}
         onDismiss={onDismiss}
         paused={true}
