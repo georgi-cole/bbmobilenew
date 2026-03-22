@@ -13,7 +13,7 @@ import { resetGame } from '../../store/gameSlice';
  */
 const LINKS = [
   { to: '/',          icon: '🏠', label: 'Home'        },
-  { to: '/game',      icon: '🎮', label: 'Game'        },
+  { to: '/rules',     icon: '📋', label: 'Rules'       },
   { to: '/settings',  icon: '⚙️', label: 'Settings'    },
   { to: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
   { to: '/profile',   icon: '👤', label: 'Profile'     },
