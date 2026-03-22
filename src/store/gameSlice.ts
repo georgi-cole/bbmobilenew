@@ -850,11 +850,12 @@ const gameSlice = createSlice({
       const ids = action.payload;
       const isDoubleEviction = state.doubleEviction?.weekActive === true;
       const publicModeEnabled = state.publicModeEnabled === true;
+      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+      const canUsePublicNomineeRule = publicModeEnabled && !isDoubleEviction && alive.length > 4;
       // Human always picks 2 in normal weeks (3rd is auto-appended); picks 3 in DE.
       const expectedCount = isDoubleEviction ? 3 : 2;
       if (ids.length !== expectedCount) return;
       if (new Set(ids).size !== ids.length) return; // duplicates check
-      const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
       const eligible = alive.filter((p) => p.id !== state.hohId);
       if (!ids.every((id) => eligible.some((p) => p.id === id))) return;
 
@@ -868,8 +869,8 @@ const gameSlice = createSlice({
         incrementTimesNominated(state, n.id);
       });
 
-      // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
-      if (publicModeEnabled && !isDoubleEviction && state.lastHohCompFinisherId) {
+      // Standard weeks before Final 4: auto-append the last-place HOH comp finisher.
+      if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
         const autoId = state.lastHohCompFinisherId;
         if (!state.nomineeIds.includes(autoId)) {
           const autoPlayer = eligible.find((p) => p.id === autoId);
@@ -2163,6 +2164,10 @@ const gameSlice = createSlice({
         state.povWinnerId = null;
         state.replacementNeeded = false;
         state.povSavedId = null;
+        state.lastHohCompFinisherId = null;
+        state.publicSavedNomineeId = null;
+        state.nominationContext = null;
+        state.awaitingPublicSave = false;
         state.awaitingNominations = false;
         state.pendingNominee1Id = null;
         state.awaitingPovDecision = false;
@@ -2619,6 +2624,7 @@ const gameSlice = createSlice({
           // Double Eviction week: HOH nominates 3; otherwise 2.
           const isDoubleEviction = state.doubleEviction?.weekActive === true;
           const publicModeEnabled = state.publicModeEnabled === true;
+          const canUsePublicNomineeRule = publicModeEnabled && !isDoubleEviction && alive.length > 4;
           const nomineeCount = isDoubleEviction ? 3 : 2;
           // Guard: need HOH + nomineeCount eligible players.
           const pool = alive.filter((p) => p.id !== state.hohId);
@@ -2648,8 +2654,8 @@ const gameSlice = createSlice({
             incrementTimesNominated(state, n.id);
           });
 
-          // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
-          if (publicModeEnabled && !isDoubleEviction && state.lastHohCompFinisherId) {
+          // Standard weeks before Final 4: auto-append the last-place HOH comp finisher.
+          if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
             const autoId = state.lastHohCompFinisherId;
             if (!state.nomineeIds.includes(autoId)) {
               const autoPlayer = pool.find((p) => p.id === autoId);

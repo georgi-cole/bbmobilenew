@@ -276,6 +276,36 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
   });
 
+  it('does not include an auto-third nominee in the human animation when public mode is off', async () => {
+    const store = makeStore({
+      publicModeEnabled: false,
+      lastHohCompFinisherId: 'p3',
+    });
+    const view = renderWithStore(store);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Player 1')[0]);
+      fireEvent.click(screen.getAllByText('Player 2')[0]);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Confirm Nominees'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
+    expect(screen.queryByText('Last in HOH Comp')).toBeNull();
+
+    await act(async () => { vi.advanceTimersByTime(2800); });
+    await act(async () => { vi.advanceTimersByTime(500); });
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(store.getState().game.nomineeIds).toEqual(['p1', 'p2']);
+  });
+
   it('hides the floating action bar while the public save reveal is active', async () => {
     const store = makeStore({
       phase: 'pre_veto_public_save',

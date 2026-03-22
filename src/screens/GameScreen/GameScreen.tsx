@@ -77,12 +77,13 @@ import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/Public
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import PublicSaveReveal from '../../components/PublicSaveReveal/PublicSaveReveal'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
+import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
-const EMPTY_PUBLIC_PROFILES: Record<string, never> = {}
+const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 
 /**
  * GameScreen — main gameplay view.
@@ -112,7 +113,9 @@ export default function GameScreen() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const settings = useAppSelector(selectSettings)
-  const publicOpinionProfiles = useAppSelector((s: RootState) => s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES)
+  const publicOpinionProfiles = useAppSelector(
+    (s: RootState): Record<string, PlayerPublicProfile> => s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES,
+  )
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
@@ -516,15 +519,18 @@ export default function GameScreen() {
   const showHumanNomAnim = pendingNominees.length > 0
   const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
   const showNomAnim = showHumanNomAnim || showAiNomAnim
+  const canUsePublicNomineeRule =
+    game.publicModeEnabled === true &&
+    game.doubleEviction?.weekActive !== true &&
+    alivePlayers.length > 4
 
   const nomAnimPlayers = useMemo(() => {
     if (showHumanNomAnim) {
       const base = pendingNominees
         .map((id) => game.players.find((p) => p.id === id))
         .filter(Boolean) as Player[]
-      // For normal weeks, include the auto-third nominee in the animation display
-      const isDE = game.doubleEviction?.weekActive === true
-      const autoId = !isDE ? (game.lastHohCompFinisherId ?? null) : null
+      // For standard weeks before Final 4, include the auto-third nominee in the animation display.
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
       if (autoId && !pendingNominees.includes(autoId)) {
         const autoPlayer = game.players.find((p) => p.id === autoId)
         if (autoPlayer) return [...base, autoPlayer]
@@ -534,7 +540,7 @@ export default function GameScreen() {
     return game.nomineeIds
       .map((id) => game.players.find((p) => p.id === id))
       .filter(Boolean) as Player[]
-  }, [showHumanNomAnim, pendingNominees, game.players, game.doubleEviction?.weekActive, game.lastHohCompFinisherId, game.nomineeIds])
+  }, [showHumanNomAnim, pendingNominees, game.players, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.nomineeIds])
 
   // Build CeremonyOverlay tiles for nominations: ❓ badges fly to nominee tiles.
   // Tile rects are resolved lazily by the CeremonyOverlay via getTileRect
@@ -559,14 +565,13 @@ export default function GameScreen() {
     (ids: string[]) => {
       const currentUserIsHoh = !!humanIsHoH
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
-      // Pre-consume both the 2-ID key and the potential 3-ID key (after auto-third is appended)
-      const isDE = game.doubleEviction?.weekActive === true
-      const autoId = !isDE ? (game.lastHohCompFinisherId ?? null) : null
+      // Pre-consume the exact key that commitNominees will produce.
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
       const fullIds = autoId && !ids.includes(autoId) ? [...ids, autoId] : ids
       setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [humanIsHoH, game.week, game.doubleEviction?.weekActive, game.lastHohCompFinisherId]
+    [humanIsHoH, game.week, canUsePublicNomineeRule, game.lastHohCompFinisherId]
   )
 
   const handleNomAnimDone = useCallback(() => {

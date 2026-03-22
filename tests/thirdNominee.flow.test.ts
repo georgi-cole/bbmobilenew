@@ -151,6 +151,27 @@ describe('third nominee — AI HOH normal week', () => {
     expect(state.nominationContext).toBeNull();
   });
 
+  it('does not auto-append a third nominee at final 4 even when public mode is on', () => {
+    const players = makePlayers(4);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      players,
+      lastHohCompFinisherId: 'p3',
+      publicModeEnabled: true,
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('nomination_results');
+    expect(state.nomineeIds).toHaveLength(2);
+    expect(state.nomineeIds).not.toContain('p3');
+    expect(state.nominationContext).toBeNull();
+  });
+
   it('does not duplicate if lastHohCompFinisherId is already in HOH nominees', () => {
     // We set lastHohCompFinisherId = 'p1' and submit nominees ['p1', 'p2'].
     // The commitNominees guard should not append a third nominee when the
@@ -212,6 +233,27 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
 
     expect(state.nomineeIds).toHaveLength(2); // no duplicate added
     expect(state.nomineeIds.filter((id) => id === 'p2')).toHaveLength(1);
+  });
+
+  it('does not auto-append a third nominee at final 4 for a human HOH', () => {
+    const players = makePlayers(4, 0);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      awaitingNominations: true,
+      lastHohCompFinisherId: 'p3',
+      publicModeEnabled: true,
+      players,
+    });
+
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const state = store.getState().game;
+
+    expect(state.awaitingNominations).toBe(false);
+    expect(state.nomineeIds).toEqual(['p1', 'p2']);
+    expect(state.nominationContext).toBeNull();
   });
 
   it('commits 3 nominees for double eviction (human picks 3)', () => {
@@ -424,6 +466,42 @@ describe('HOH comp last-place tracking', () => {
     const state = store.getState().game;
 
     expect(state.phase).toBe('week_start');
+    expect(state.lastHohCompFinisherId).toBeNull();
+    expect(state.publicSavedNomineeId).toBeNull();
+    expect(state.nominationContext).toBeNull();
+    expect(state.awaitingPublicSave).toBe(false);
+  });
+});
+
+describe('public mode endgame boundaries', () => {
+  it('clears public-save nomination state when entering final 3', () => {
+    const players = makePlayers(3);
+    players[0].status = 'hoh';
+    players[1].status = 'nominated';
+    players[2].status = 'active';
+
+    const store = makeStore({
+      phase: 'final3',
+      week: 9,
+      hohId: 'p0',
+      nomineeIds: ['p1'],
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p2',
+      publicSavedNomineeId: 'p1',
+      nominationContext: {
+        hohNomineeIds: ['p1'],
+        autoNomineeId: 'p2',
+        publicSaveApplied: true,
+      },
+      players,
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('final3_comp1');
+    expect(state.week).toBe(10);
+    expect(state.nomineeIds).toEqual([]);
     expect(state.lastHohCompFinisherId).toBeNull();
     expect(state.publicSavedNomineeId).toBeNull();
     expect(state.nominationContext).toBeNull();

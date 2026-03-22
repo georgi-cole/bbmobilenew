@@ -16,8 +16,9 @@ const FLOAT_EQUALITY_EPSILON = 0.001;
  * Resolve which nominee is saved by the public before the veto competition.
  *
  * Rule: the nominee with the highest current approval rating is saved.
- * Tie-breaks use season-average approval (descending) then stable alphabetical
- * order by player ID to keep the result deterministic across renders.
+ * Tie-breaks use season-average approval (descending), then completed public
+ * directions (descending), then stable alphabetical order by player ID to keep
+ * the result deterministic across renders.
  *
  * Only considers player IDs listed in `nomineeIds`; unknown profiles fall last.
  */
