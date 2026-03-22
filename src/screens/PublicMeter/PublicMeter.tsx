@@ -16,6 +16,10 @@ function getApprovalBand(approval: number): string {
   return 'mixed';
 }
 
+function getDeltaClassName(delta: number): string {
+  return delta >= 0 ? 'feed-entry__delta feed-entry__delta--positive' : 'feed-entry__delta feed-entry__delta--negative';
+}
+
 function getTrend(
   current: number,
   previous: number,
@@ -141,9 +145,7 @@ export default function PublicMeter() {
                 <div key={entry.id} className="feed-entry">
                   <span className="feed-entry__avatar">{player?.avatar ?? '🧑'}</span>
                   <span className="feed-entry__text">{entry.text}</span>
-                  <span
-                    className={`feed-entry__delta ${entry.delta >= 0 ? 'feed-entry__delta--positive' : 'feed-entry__delta--negative'}`}
-                  >
+                  <span className={getDeltaClassName(entry.delta)}>
                     {entry.delta > 0 ? '+' : ''}
                     {entry.delta}
                   </span>

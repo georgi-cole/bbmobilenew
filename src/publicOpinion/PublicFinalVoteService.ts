@@ -51,6 +51,11 @@ export function resolvePublicJuryVote(params: {
 
   const winner = sorted[0];
   const runnerUp = sorted[1];
+
+  if (!runnerUp) {
+    return { winnerId: winner.playerId, tieBreakUsed: false };
+  }
+
   const tied = winner.approval === runnerUp.approval;
 
   if (!tied) {

@@ -10,6 +10,8 @@ import type {
 // Minimal type for selectors to avoid circular import with store.ts
 type StateWithPublicOpinion = { publicOpinion: PublicOpinionState };
 
+let feedEntryCounter = 0;
+
 const initialState: PublicOpinionState = {
   profiles: {},
   directions: [],
@@ -57,7 +59,7 @@ const publicOpinionSlice = createSlice({
       state.lastUpdatedWeek = week;
 
       const feedEntry: PublicFeedEntry = {
-        id: `${playerId}-${week}-${Date.now()}-${Math.random()}`,
+        id: `${playerId}-${week}-${(feedEntryCounter += 1)}`,
         playerId,
         text: reason,
         delta,
