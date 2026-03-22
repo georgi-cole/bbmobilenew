@@ -597,11 +597,14 @@ const gameSlice = createSlice({
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
         winnerWasApplied = true;
-        // Track the last-place HOH competition finisher for the third-nominee rule
+        // Track the last-place HOH competition finisher for the third-nominee rule.
+        // Only do this when real scores were provided; synthetic fallback scores
+        // do not encode placement and would introduce roster-order bias.
         const nonWinners = resolvedParticipants.filter((id) => id !== winnerId);
-        if (nonWinners.length > 0) {
-          state.lastHohCompFinisherId = nonWinners.reduce((worst, id) =>
-            (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
+        if (hasScores && nonWinners.length > 0) {
+          state.lastHohCompFinisherId = nonWinners.reduce(
+            (worst, id) =>
+              (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
             nonWinners[0],
           );
         }
