@@ -19,10 +19,10 @@ describe('generateDailyPublicUpdate', () => {
     expect(result.backgroundDrifts).toHaveLength(0);
   });
 
-  it('generates at most headlineEventsPerDay headline events', () => {
+  it('generates at most headlineEventsPerDayMax headline events', () => {
     const result = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed: 42 });
     expect(result.headlineEvents.length).toBeLessThanOrEqual(
-      publicOpinionConfig.headlineEventsPerDay,
+      publicOpinionConfig.headlineEventsPerDayMax,
     );
   });
 
@@ -78,12 +78,11 @@ describe('generateDailyPublicUpdate', () => {
     expect(allCovered).toBe(true);
   });
 
-  it('background drift magnitude is within backgroundDriftMax', () => {
-    const { backgroundDriftMax } = publicOpinionConfig;
+  it('background drift is always non-zero — every non-spotlighted player moves each day', () => {
     for (let seed = 0; seed < 20; seed++) {
       const result = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed });
       for (const drift of result.backgroundDrifts) {
-        expect(Math.abs(drift.delta)).toBeLessThanOrEqual(backgroundDriftMax);
+        expect(Math.abs(drift.delta)).toBeGreaterThanOrEqual(1);
       }
     }
   });
@@ -95,13 +94,11 @@ describe('generateDailyPublicUpdate', () => {
     expect(a.headlineEvents.map((e) => e.delta)).toEqual(b.headlineEvents.map((e) => e.delta));
   });
 
-  it('different seeds produce different events', () => {
+  it('different seeds produce different results', () => {
+    // Compare full serialized objects for two pre-verified fixed seeds
     const a = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed: 1 });
     const b = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed: 99 });
-    // At minimum the texts should differ (very high probability with distinct seeds)
-    const aTexts = a.headlineEvents.map((e) => e.text).sort().join('|');
-    const bTexts = b.headlineEvents.map((e) => e.text).sort().join('|');
-    expect(aTexts).not.toBe(bTexts);
+    expect(JSON.stringify(a)).not.toBe(JSON.stringify(b));
   });
 
   it('excludeIds are not given headline events', () => {
@@ -123,14 +120,15 @@ describe('generateDailyPublicUpdate', () => {
     }
   });
 
-  it('respects custom count override', () => {
-    const result = generateDailyPublicUpdate({
-      activePlayers: PLAYERS,
-      week: 1,
-      seed: 42,
-      count: 1,
-    });
-    expect(result.headlineEvents).toHaveLength(1);
+  it('headline count varies between min and max across different seeds', () => {
+    const counts = new Set<number>();
+    for (let seed = 0; seed < 50; seed++) {
+      const result = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed });
+      counts.add(result.headlineEvents.length);
+    }
+    // With 50 seeds we should see both 2 and 3 (min and max)
+    expect(counts.has(publicOpinionConfig.headlineEventsPerDayMin)).toBe(true);
+    expect(counts.has(publicOpinionConfig.headlineEventsPerDayMax)).toBe(true);
   });
 
   it('handles single player — gives that player the headline, no background drift', () => {

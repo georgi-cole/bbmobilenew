@@ -6,7 +6,6 @@ import {
   addDirection,
   pruneExpiredDirections,
   updateMissionProgress,
-  resolveDirection,
 } from './publicOpinionSlice';
 import { publicOpinionConfig } from './publicOpinionConfig';
 import { generateDirectionsForCycle } from './PublicDirectionService';
@@ -22,6 +21,10 @@ interface GameState {
   nomineeIds: string[];
   players: Player[];
   seed: number;
+  /** True when the human HOH has not yet submitted nominations. */
+  awaitingNominations?: boolean;
+  /** Map of voterId → nomineeId set during live_vote. */
+  votes?: Record<string, string>;
 }
 
 interface StateWithGame {
@@ -47,6 +50,9 @@ function dispatchMissionProgress(
 
   const signals = resolveEventMissionProgress(event, activeDirections);
   for (const signal of signals) {
+    // updateMissionProgress handles progress accumulation AND auto-completion at 100%.
+    // Do NOT also dispatch resolveDirection here — that would double-apply the success
+    // reward (delta, counter, feed entry) for the same completion event.
     store.dispatch(
       updateMissionProgress({
         directionId: signal.directionId,
@@ -54,15 +60,6 @@ function dispatchMissionProgress(
         week: event.week,
       }),
     );
-    // If the mission did NOT auto-complete via updateMissionProgress
-    // but the signal says it should, finalise it with resolveDirection too
-    // (resolveDirection handles the edge case when the direction was already
-    //  marked completed inside updateMissionProgress, that call is a no-op).
-    if (signal.isComplete) {
-      store.dispatch(
-        resolveDirection({ directionId: signal.directionId, status: 'completed', week: event.week }),
-      );
-    }
   }
 }
 
@@ -116,15 +113,15 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/submitHumanVote') {
-    // Human cast an eviction vote
-    const vote = actionPayload as { evicteeId?: string } | undefined;
+    // Payload is a plain string (the nomineeId the human voted to evict).
+    const nomineeId = actionPayload as string | undefined;
     const week = game.week ?? 1;
     const humanPlayer = game.players?.find((p) => p.isUser);
-    if (humanPlayer && vote?.evicteeId) {
+    if (humanPlayer && nomineeId) {
       dispatchMissionProgress(store, {
         type: 'voted_to_evict',
         actorId: humanPlayer.id,
-        targetId: vote.evicteeId,
+        targetId: nomineeId,
         week,
       });
     }
@@ -132,18 +129,16 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/applyMinigameWinner') {
-    // A competition (HOH / POV / other) was resolved via the minigame flow.
-    // Only dispatch mission progress when we have an explicit winnerId in the
-    // payload — falling back to the HOH/POV state could pick the wrong player
-    // (e.g. a stale HOH id when processing a POV result).
-    const payload = actionPayload as { winnerId?: string; competitionType?: string } | undefined;
+    // Payload shape: { winnerId, participants?, scores?, ... } — no competitionType field.
+    // Derive competition type from prevPhase, which is 'hoh_comp' or 'pov_comp' when
+    // this action is dispatched.
+    const payload = actionPayload as { winnerId?: string } | undefined;
     const week = game.week ?? 1;
     const winnerId = payload?.winnerId;
     if (winnerId) {
-      const compType = payload?.competitionType ?? newPhase ?? '';
-      const eventType = compType.includes('pov') || compType.includes('veto')
+      const eventType = prevPhase === 'pov_comp'
         ? 'pov_win'
-        : compType.includes('hoh')
+        : prevPhase === 'hoh_comp'
         ? 'hoh_win'
         : 'won_competition';
       dispatchMissionProgress(store, { type: eventType, actorId: winnerId, week });
@@ -151,34 +146,42 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
     return result;
   }
 
-  if (actionType === 'social/influenceUpdated') {
-    // Social influence action — map to mission progress
+  if (actionType === 'social/recordSocialAction') {
+    // Payload: { entry: SocialActionLogEntry }
+    // entry has actorId, targetId, actionId ('ally'|'protect'|'betray'|'nominate'),
+    // outcome ('success'|'failure'), and delta.
     const payload = actionPayload as {
-      actorId?: string;
-      targetId?: string;
-      type?: string;
-      week?: number;
+      entry?: {
+        actorId?: string;
+        targetId?: string;
+        actionId?: string;
+        outcome?: string;
+        delta?: number;
+      };
     } | undefined;
-    if (payload?.actorId) {
-      const week = payload.week ?? game.week ?? 1;
-      const socialType = payload.type ?? '';
+    const entry = payload?.entry;
+    if (entry?.actorId) {
+      const week = game.week ?? 1;
+      const { actorId, targetId, actionId = '', outcome = '', delta = 0 } = entry;
 
       let missionEventType: MissionGameEvent['type'] | null = null;
-      if (socialType.includes('betrayal')) missionEventType = 'betrayal';
-      else if (socialType.includes('positive')) missionEventType = 'positive_social';
-      else if (socialType.includes('negative')) missionEventType = 'negative_social';
-      else if (socialType.includes('alliance_formed')) missionEventType = 'formed_alliance';
-      else if (socialType.includes('alliance_broke')) missionEventType = 'broke_alliance';
-      else if (socialType.includes('confront')) missionEventType = 'confronted_player';
-      else if (socialType.includes('rumor')) missionEventType = 'spread_rumor';
-      else if (socialType.includes('apolog')) missionEventType = 'apologized_to';
-      else if (socialType.includes('loyal')) missionEventType = 'showed_loyalty';
+      if (actionId === 'betray' && outcome === 'success') {
+        missionEventType = 'betrayal';
+      } else if (actionId === 'ally' || actionId === 'protect') {
+        missionEventType = outcome === 'success' ? 'positive_social' : null;
+      } else if (actionId === 'nominate') {
+        missionEventType = outcome === 'success' ? 'negative_social' : null;
+      } else if (delta > 0) {
+        missionEventType = 'positive_social';
+      } else if (delta < 0) {
+        missionEventType = 'negative_social';
+      }
 
       if (missionEventType) {
         dispatchMissionProgress(store, {
           type: missionEventType,
-          actorId: payload.actorId,
-          targetId: payload.targetId,
+          actorId,
+          targetId,
           week,
         });
       }
@@ -251,6 +254,37 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             }),
           );
         }
+        // Dispatch mission progress for all votes cast (AI + human) during live_vote.
+        // Human vote is also wired from submitHumanVote, but this covers AI voters and
+        // remains idempotent (progress signals are additive, not re-applied on duplicates).
+        for (const [voterId, nomineeId] of Object.entries(game.votes ?? {})) {
+          dispatchMissionProgress(store, {
+            type: 'voted_to_evict',
+            actorId: voterId,
+            targetId: nomineeId,
+            week,
+          });
+        }
+      }
+
+      // nomination_results: dispatch mission progress for AI HOH nominations.
+      // (Human HOH nominations are handled by game/commitNominees.)
+      if (newPhase === 'nomination_results' && !game.awaitingNominations && game.hohId) {
+        for (const nomineeId of game.nomineeIds ?? []) {
+          dispatchMissionProgress(store, {
+            type: 'nominated_target',
+            actorId: game.hohId,
+            targetId: nomineeId,
+            week,
+          });
+        }
+        if ((game.nomineeIds ?? []).length > 0) {
+          dispatchMissionProgress(store, {
+            type: 'bold_move',
+            actorId: game.hohId,
+            week,
+          });
+        }
       }
 
       if (newPhase === 'week_start') {
@@ -279,18 +313,19 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             );
           }
 
+          // Background drift is applied silently (addToFeed: false) to keep the Public
+          // Feed focused on the 2–3 daily headline events rather than listing every
+          // player's hidden drift movement.
           for (const drift of backgroundDrifts) {
-            if (drift.delta !== 0) {
-              store.dispatch(
-                updateApproval({
-                  playerId: drift.playerId,
-                  delta: drift.delta,
-                  reason: drift.delta > 0 ? 'generic_positive' : 'generic_negative',
-                  week,
-                  isHeadline: false,
-                }),
-              );
-            }
+            store.dispatch(
+              updateApproval({
+                playerId: drift.playerId,
+                delta: drift.delta,
+                reason: drift.delta > 0 ? 'generic_positive' : 'generic_negative',
+                week,
+                addToFeed: false,
+              }),
+            );
           }
         }
       }

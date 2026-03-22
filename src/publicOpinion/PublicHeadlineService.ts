@@ -278,7 +278,7 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     activePlayers,
     week,
     seed,
-    count = publicOpinionConfig.headlineEventsPerDay,
+    count,
     excludeIds = [],
   } = params;
 
@@ -292,7 +292,17 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
   const rng = mulberry32(((seed ^ (week * 0x9e3779b9) ^ 0xdeadbeef) >>> 0));
 
   const eligible = activePlayers.filter((p) => !excludeIds.includes(p.id));
-  const headlineCount = Math.min(count, eligible.length);
+
+  // If count is explicitly provided use it; otherwise pick a seeded random count
+  // in [headlineEventsPerDayMin, headlineEventsPerDayMax] so the number of daily
+  // headline events varies naturally (2 or 3) rather than being fixed at 3.
+  const { headlineEventsPerDayMin, headlineEventsPerDayMax } = publicOpinionConfig;
+  const targetCount = count !== undefined
+    ? count
+    : headlineEventsPerDayMin +
+      Math.floor(rng() * (headlineEventsPerDayMax - headlineEventsPerDayMin + 1));
+
+  const headlineCount = Math.min(targetCount, eligible.length);
 
   // Shuffle eligible players using Fisher-Yates
   const shuffled = [...eligible];
@@ -342,14 +352,14 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     return { playerId: player.id, delta, severity, tone: template.tone, text, reason };
   });
 
-  // Background drift: integer in [0, backgroundDriftMax] then assign a random sign.
-  // Math.floor(...*(max+1)) gives uniform coverage of 0..max inclusive, which is
-  // appropriate for whole-point approval changes (vs the headline magnitude which
-  // uses Math.round to stay within a floating-point band boundary).
+  // Background drift: integer in [1, backgroundDriftMax] then assign a random sign.
+  // Using Math.floor(rng() * max) + 1 ensures every non-spotlighted player receives
+  // at least 1 point of movement each day — no player is static.
   const backgroundDrifts = activePlayers
     .filter((p) => !spotlightedIds.has(p.id))
     .map((p) => {
-      const magnitude = Math.floor(rng() * (publicOpinionConfig.backgroundDriftMax + 1));
+      const maxDrift = publicOpinionConfig.backgroundDriftMax;
+      const magnitude = maxDrift > 0 ? Math.floor(rng() * maxDrift) + 1 : 0;
       const sign = rng() > 0.5 ? 1 : -1;
       return { playerId: p.id, delta: sign * magnitude };
     });

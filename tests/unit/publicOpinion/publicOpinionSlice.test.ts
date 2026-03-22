@@ -75,6 +75,14 @@ describe('publicOpinionSlice', () => {
     expect(feed[0].delta).toBe(5);
   });
 
+  it('updateApproval with addToFeed:false updates approval silently without a feed entry', () => {
+    const store = makeStore();
+    store.dispatch(initializeProfiles(['p1']));
+    store.dispatch(updateApproval({ playerId: 'p1', delta: 5, reason: 'drift', week: 1, addToFeed: false }));
+    const { profiles, feed } = store.getState().publicOpinion;
+    expect(profiles['p1'].approval).toBe(publicOpinionConfig.DEFAULT_APPROVAL + 5);
+    expect(feed.length).toBe(0);
+  });
   it('addDirection adds to directions array', () => {
     const store = makeStore();
     store.dispatch(addDirection(makeDirection()));

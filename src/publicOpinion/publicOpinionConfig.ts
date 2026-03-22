@@ -34,10 +34,12 @@ export const publicOpinionConfig = {
   directionsPerCycle: 2,
   /**
    * Headline / public-reaction event settings.
-   * Up to headlineEventsPerDay visible events fire per in-game day (week).
+   * A seeded random number of headline events fires per in-game day (week),
+   * in the range [headlineEventsPerDayMin, headlineEventsPerDayMax].
    * Each event picks a severity band by weighted random draw.
    */
-  headlineEventsPerDay: 3,
+  headlineEventsPerDayMin: 2,
+  headlineEventsPerDayMax: 3,
   headlineSeverityBands: {
     mild:     { minMag: 3,  maxMag: 8  },
     dramatic: { minMag: 9,  maxMag: 18 },
