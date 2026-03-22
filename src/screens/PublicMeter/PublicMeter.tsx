@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import {
   selectPublicOpinion,
@@ -14,6 +14,7 @@ import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
 import './PublicMeter.css';
 
 const DICEBEAR_HOST = 'dicebear.com';
+type PublicMeterTab = 'overview' | 'requests';
 
 function isDicebearAvatarUrl(candidateUrl: string): boolean {
   try {
@@ -148,6 +149,7 @@ function PublicMeterAvatar({
 
 export default function PublicMeter() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const publicOpinion = useAppSelector(selectPublicOpinion);
   const rankedProfiles = useAppSelector(selectRankedProfiles);
   const feed = useAppSelector(selectPublicFeed);
@@ -156,6 +158,15 @@ export default function PublicMeter() {
   const game = useAppSelector((s) => s.game);
   const userPlayer = game.players.find((p) => p.isUser);
   const userProfile = userPlayer ? publicOpinion.profiles[userPlayer.id] : undefined;
+  const userActiveRequestCount = useMemo(
+    () =>
+      userPlayer
+        ? allDirections.filter(
+          (direction) => direction.playerId === userPlayer.id && direction.status === 'active',
+        ).length
+        : 0,
+    [allDirections, userPlayer],
+  );
 
   const hasProfiles = Object.keys(publicOpinion.profiles).length > 0;
   const activePlayerIds = useMemo(
@@ -186,6 +197,16 @@ export default function PublicMeter() {
       })),
     [activePlayerIds, allDirections],
   );
+  const requestedTab = searchParams.get('tab');
+  const activeTab: PublicMeterTab = requestedTab === 'requests' ? 'requests' : 'overview';
+
+  function handleTabChange(tab: PublicMeterTab) {
+    if (tab === 'overview') {
+      setSearchParams({});
+      return;
+    }
+    setSearchParams({ tab: 'requests' });
+  }
 
   if (!hasProfiles) {
     return (
@@ -228,7 +249,33 @@ export default function PublicMeter() {
         </div>
       </div>
 
-      {userProfile && userPlayer && (
+      <div className="public-meter__tabs" role="tablist" aria-label="Public meter views">
+        <button
+          className={`public-meter__tab${activeTab === 'overview' ? ' public-meter__tab--active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'overview'}
+          onClick={() => handleTabChange('overview')}
+        >
+          Public Meter
+        </button>
+        <button
+          className={`public-meter__tab${activeTab === 'requests' ? ' public-meter__tab--active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'requests'}
+          onClick={() => handleTabChange('requests')}
+        >
+          Public Requests
+          {userActiveRequestCount > 0 && (
+            <span className="public-meter__tab-badge" aria-hidden="true">
+              {userActiveRequestCount > 99 ? '99+' : userActiveRequestCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'overview' && userProfile && userPlayer && (
         <div className="public-meter__section public-meter__section--hero">
           <div className="public-meter__hero-head">
             <div className="public-meter__hero-player">
@@ -271,6 +318,7 @@ export default function PublicMeter() {
         </div>
       )}
 
+      {activeTab === 'overview' && (
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Rankings</h2>
@@ -304,7 +352,9 @@ export default function PublicMeter() {
           })}
         </div>
       </div>
+      )}
 
+      {activeTab === 'overview' && (
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Feed</h2>
@@ -333,7 +383,9 @@ export default function PublicMeter() {
           </div>
         )}
       </div>
+      )}
 
+      {activeTab === 'requests' && (
       <div className="public-meter__section">
         <div className="public-meter__section-heading">
           <h2 className="public-meter__section-title">Public Requests</h2>
@@ -380,6 +432,7 @@ export default function PublicMeter() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

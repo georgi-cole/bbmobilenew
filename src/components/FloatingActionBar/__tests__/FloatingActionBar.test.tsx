@@ -25,8 +25,10 @@ import socialReducer, {
 } from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
+import publicOpinionReducer, { addDirection } from '../../../publicOpinion/publicOpinionSlice';
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
+import type { PublicDirection } from '../../../publicOpinion/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,7 @@ function makeStore(hasHuman = true) {
       social: socialReducer,
       profiles: profilesReducer,
       challenge: challengeReducer,
+      publicOpinion: publicOpinionReducer,
     },
   });
   const defaultState = base.getState() as RootState;
@@ -50,19 +53,35 @@ function makeStore(hasHuman = true) {
       social: socialReducer,
       profiles: profilesReducer,
       challenge: challengeReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: {
       game: { ...defaultState.game, players },
       social: defaultState.social,
       profiles: defaultState.profiles,
       challenge: defaultState.challenge,
+      publicOpinion: defaultState.publicOpinion,
     },
   });
 }
 
+function makeDirection(playerId: string, overrides: Partial<PublicDirection> = {}): PublicDirection {
+  return {
+    id: `dir-${playerId}`,
+    type: 'win_competition',
+    playerId,
+    description: 'Win the next competition!',
+    status: 'active',
+    createdWeek: 1,
+    expiresAtWeek: 2,
+    approvalDelta: 5,
+    ...overrides,
+  };
+}
+
 function LocationDisplay() {
   const location = useLocation();
-  return <div data-testid="location">{location.pathname}</div>;
+  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
 }
 
 function renderFAB(store: ReturnType<typeof makeStore>, initialEntry = '/game') {
@@ -219,6 +238,22 @@ describe('FloatingActionBar – navigation buttons', () => {
       screen.getByRole('button', { name: 'Public meter' }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/public-meter');
+  });
+
+  it('shows an active public request badge and opens requests tab when the user has active requests', async () => {
+    const store = makeStore();
+    const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
+    act(() => {
+      store.dispatch(addDirection(makeDirection(humanId)));
+      store.dispatch(addDirection(makeDirection(humanId, { id: 'dir-2' })));
+    });
+    renderFAB(store, '/game');
+
+    expect(screen.queryByText('2')).not.toBeNull();
+    act(() => {
+      screen.getByRole('button', { name: /public meter \(2 active requests\)/i }).click();
+    });
+    expect(screen.getByTestId('location').textContent).toBe('/public-meter?tab=requests');
   });
 
   it('navigates to diary room when the Diary Room button is clicked', async () => {
