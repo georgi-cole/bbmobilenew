@@ -10,6 +10,8 @@ import SoundConsentPopup, {
   HUB_MUSIC_CONSENT_KEY,
 } from '../../components/SoundConsentPopup/SoundConsentPopup';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
+import { NATIVE_SFX_MAP, NATIVE_SFX_PATH } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import './HomeHub.css';
 
@@ -76,9 +78,31 @@ export default function HomeHub() {
     preloadImage(bgUrl).then(() => setBgLoaded(true));
   }, [bgUrl]);
 
-  const handleSoundConsentEnable = () => {
-    // User gesture — unlock Web Audio API and start hub music.
-    SoundManager.unlockOnUserGesture();
+  const handleSoundConsentEnable = async () => {
+    // User gesture — unlock Web Audio API and start hub music only.
+    // Initialise the native audio adapter (no-op in a plain browser).
+    try {
+      await NativeAudioAdapter.init();
+
+      if (NativeAudioAdapter.isAvailable()) {
+        // Running inside a Cordova WebView with the nativeaudio plugin.
+        // Preload the mapped SFX in the user-gesture context for low-latency
+        // native playback later, then unlock via the music-only path so no
+        // queued SFX are fired immediately.
+        const nativeKeys = Object.values(NATIVE_SFX_MAP) as Array<keyof typeof NATIVE_SFX_PATH>;
+        await Promise.all(
+          nativeKeys.map((nk) => NativeAudioAdapter.preloadSfx(nk, NATIVE_SFX_PATH[nk])),
+        );
+      }
+    } catch (err) {
+      console.warn('[HomeHub] NativeAudio init/preload failed, falling back to HTMLAudio', err);
+    }
+
+    // Unlock but only drain music queue — intentionally discard any queued SFX
+    // so users don't hear a flood of game sounds when tapping "Enable sounds".
+    SoundManager.unlockAndPlayMusicOnly();
+
+    // Start the hub ambient music (idempotent — no-op if already playing).
     void SoundManager.playMusic('music:intro_hub_loop');
     setSoundConsentHidden(true);
   };
