@@ -869,7 +869,7 @@ const gameSlice = createSlice({
         incrementTimesNominated(state, n.id);
       });
 
-      // Standard weeks before Final 4: auto-append the last-place HOH comp finisher.
+      // In eligible weeks (including Final 4), auto-append the last-place HOH comp finisher.
       if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
         const autoId = state.lastHohCompFinisherId;
         let autoNomineeId: string | null = null;
@@ -2073,7 +2073,9 @@ const gameSlice = createSlice({
       if (
         state.replacementNeeded ||
         state.awaitingNominations ||
-        state.awaitingPublicSave ||
+        (state.awaitingPublicSave &&
+          state.phase === 'pre_veto_public_save' &&
+          state.nomineeIds.length === 3) ||
         state.awaitingPovDecision ||
         state.awaitingPovSaveTarget ||
         state.awaitingHumanVote ||
@@ -2656,7 +2658,7 @@ const gameSlice = createSlice({
             incrementTimesNominated(state, n.id);
           });
 
-          // Standard weeks before Final 4: auto-append the last-place HOH comp finisher.
+          // In public mode on non-Double Eviction weeks, auto-append the last-place HOH comp finisher.
           if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
             const autoId = state.lastHohCompFinisherId;
             let autoNomineeId: string | null = null;
@@ -3316,8 +3318,12 @@ export const fastForwardToEviction =
     ) {
       const rootState = getState();
       const state = rootState.game;
-      // Auto-resolve pre-veto public save so the loop doesn't stall
-      if (state.awaitingPublicSave && state.nomineeIds.length > 0) {
+      // Auto-resolve pre-veto public save only when it is actually actionable.
+      if (
+        state.awaitingPublicSave &&
+        state.phase === 'pre_veto_public_save' &&
+        state.nomineeIds.length === 3
+      ) {
         const savedId =
           resolvePublicSaveNominee({
             nomineeIds: state.nomineeIds,

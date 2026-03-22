@@ -23,8 +23,10 @@ import gameReducer, {
   advance,
   commitNominees,
   commitPublicSave,
+  fastForwardToEviction,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
+import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../src/types';
 import { resolvePublicSaveNominee } from '../src/publicOpinion/PublicSaveService';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
@@ -92,7 +94,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   };
 
   return configureStore({
-    reducer: { game: gameReducer, settings: settingsReducer },
+    reducer: { game: gameReducer, settings: settingsReducer, publicOpinion: publicOpinionReducer },
     preloadedState: {
       game: { ...base, ...gameOverrides },
       settings: DEFAULT_SETTINGS,
@@ -442,6 +444,27 @@ describe('pre_veto_public_save phase', () => {
     expect(state.publicSavedNomineeId).toBeNull();
     expect(state.nomineeIds).toEqual(['p1', 'p2']);
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('nominated');
+  });
+
+  it('fastForwardToEviction falls through to advance when public save is not actionable', () => {
+    const players = makePlayers(12);
+    players[1].status = 'nominated';
+    players[2].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      hohId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      awaitingPublicSave: true,
+      publicModeEnabled: true,
+      players,
+    });
+
+    store.dispatch(fastForwardToEviction() as never);
+    const state = store.getState().game;
+
+    expect(state.phase).not.toBe('pre_veto_public_save');
+    expect(state.phase === 'eviction_results' || state.phase === 'jury').toBe(true);
   });
 });
 

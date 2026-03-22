@@ -588,15 +588,38 @@ export default function GameScreen() {
   // ── Nomination labels (HOH Nominee / Last in HOH Comp) ───────────────────
   // Used by the nomination ceremony overlay to show role pills on each nominee tile.
   const nominationLabels: Record<string, string> = useMemo(() => {
-    const ctx = game.nominationContext
-    if (!ctx) return {}
     const labels: Record<string, string> = {}
+
+    // While the human HOH animation is playing, the reducer hasn't committed
+    // nominationContext yet, so derive the pills from the pending picks.
+    if (showHumanNomAnim && pendingNominees.length > 0) {
+      pendingNominees.forEach((id) => {
+        labels[id] = 'HOH Nominee'
+      })
+      if (
+        canUsePublicNomineeRule &&
+        game.lastHohCompFinisherId &&
+        !pendingNominees.includes(game.lastHohCompFinisherId)
+      ) {
+        labels[game.lastHohCompFinisherId] = 'Last in HOH Comp'
+      }
+      return labels
+    }
+
+    const ctx = game.nominationContext
+    if (!ctx) return labels
     ctx.hohNomineeIds.forEach((id) => { labels[id] = 'HOH Nominee' })
     if (ctx.autoNomineeId && !ctx.hohNomineeIds.includes(ctx.autoNomineeId)) {
       labels[ctx.autoNomineeId] = 'Last in HOH Comp'
     }
     return labels
-  }, [game.nominationContext])
+  }, [
+    showHumanNomAnim,
+    pendingNominees,
+    canUsePublicNomineeRule,
+    game.lastHohCompFinisherId,
+    game.nominationContext,
+  ])
 
   // ── Pre-veto public save phase ───────────────────────────────────────────
   const showPublicSaveReveal =

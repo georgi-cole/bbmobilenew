@@ -306,6 +306,36 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(store.getState().game.nomineeIds).toEqual(['p1', 'p2']);
   });
 
+  it('shows human nomination role pills before commit when public mode adds an auto-third nominee', async () => {
+    const store = makeStore({
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p3',
+    });
+    renderWithStore(store);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Player 1')[0]);
+      fireEvent.click(screen.getAllByText('Player 2')[0]);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Confirm Nominees'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getAllByText('HOH Nominee')).toHaveLength(2);
+    expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
+    expect(
+      screen.getByText('🎯 Nominations are set — including the HOH comp last-place finisher'),
+    ).toBeTruthy();
+
+    expect(store.getState().game.nominationContext).toBeNull();
+    expect(store.getState().game.awaitingNominations).toBe(true);
+  });
+
   it('hides the floating action bar while the public save reveal is active', async () => {
     const store = makeStore({
       phase: 'pre_veto_public_save',
