@@ -163,9 +163,9 @@ export default function TvZone() {
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
-  const isGuest = useAppSelector((s) => (s as { profiles?: { isGuest?: boolean } }).profiles?.isGuest ?? false);
-  const activeProfileId = useAppSelector((s) => (s as { profiles?: { activeProfileId?: string | null } }).profiles?.activeProfileId ?? null);
-  const hasPendingChallenge = useAppSelector((s) => (s as { challenge?: { pending: unknown } }).challenge?.pending != null);
+  const isGuest = useAppSelector((s: RootState) => s.profiles.isGuest);
+  const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId);
+  const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null);
   const reduxStore = useStore<RootState>();
 
   // Filter entries for the TV viewport (excludes DR-only events).
