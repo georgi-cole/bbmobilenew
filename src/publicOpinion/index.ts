@@ -14,6 +14,7 @@ export {
   addDirection,
   resolveDirection,
   pruneExpiredDirections,
+  updateMissionProgress,
   selectPublicOpinion,
   selectPlayerProfile,
   selectRankedProfiles,
@@ -24,3 +25,7 @@ export {
 export { computeCycleDeltas } from './PublicOpinionService';
 export { generateDirectionsForCycle } from './PublicDirectionService';
 export { resolvePublicJuryVote } from './PublicFinalVoteService';
+export { generateDailyPublicUpdate } from './PublicHeadlineService';
+export type { HeadlineEvent, DailyPublicUpdate, HeadlineSeverity, HeadlineTone } from './PublicHeadlineService';
+export { resolveEventMissionProgress } from './MissionActionMapper';
+export type { MissionGameEvent, MissionGameEventType, MissionProgressSignal } from './MissionActionMapper';

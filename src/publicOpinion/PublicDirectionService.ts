@@ -16,9 +16,21 @@ const DIRECTION_TYPES: DirectionType[] = [
   'show_loyalty',
   'start_drama',
   'win_veto',
+  'flip_vote',
+  'influence_hoh',
+  'break_alliance',
+  'reinforce_alliance',
+  'repair_relationship',
+  'create_chaos',
 ];
 
-const SOLO_DIRECTION_TYPES: DirectionType[] = ['win_competition', 'make_bold_move', 'win_veto'];
+const SOLO_DIRECTION_TYPES: DirectionType[] = [
+  'win_competition',
+  'make_bold_move',
+  'win_veto',
+  'flip_vote',
+  'create_chaos',
+];
 
 function buildDescription(
   type: DirectionType,
@@ -50,6 +62,18 @@ function buildDescription(
       return `Start drama with ${relatedName ?? 'a housemate'}`;
     case 'win_veto':
       return `${playerName}, win the Power of Veto!`;
+    case 'flip_vote':
+      return `${playerName}, flip your vote and shake up the house!`;
+    case 'influence_hoh':
+      return `Influence the HOH${relatedName ? ` (${relatedName})` : ''} to nominate your target`;
+    case 'break_alliance':
+      return `Break up your alliance with ${relatedName ?? 'an ally'}`;
+    case 'reinforce_alliance':
+      return `Strengthen your bond with ${relatedName ?? 'an ally'}`;
+    case 'repair_relationship':
+      return `Repair your relationship with ${relatedName ?? 'a housemate'}`;
+    case 'create_chaos':
+      return `${playerName}, stir up chaos in the house this week!`;
     default:
       return `Complete a public challenge`;
   }
@@ -100,6 +124,7 @@ export function generateDirectionsForCycle(params: {
       // approvalDelta reflects the success reward; actual delta applied on resolution
       // is derived from the outcome status via publicOpinionConfig.directionRewards
       approvalDelta: publicOpinionConfig.directionRewards.success,
+      progressPercent: 0,
     };
 
     directions.push(direction);
