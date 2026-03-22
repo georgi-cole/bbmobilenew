@@ -1,0 +1,276 @@
+.public-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  font-family: inherit;
+}
+
+.public-meter__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.public-meter__back-btn {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.public-meter__back-btn:hover {
+  opacity: 1;
+}
+
+.public-meter__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.public-meter__empty {
+  padding: 2rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.public-meter__section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.public-meter__section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  opacity: 0.9;
+}
+
+.public-meter__empty-note {
+  opacity: 0.6;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Approval bar */
+.approval-bar {
+  height: 18px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.approval-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 9px;
+  transition: width 0.4s ease;
+}
+
+.approval-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.approval-bar__percent {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.approval-bar__trend {
+  font-weight: 600;
+}
+
+.approval-bar__band {
+  opacity: 0.7;
+  font-style: italic;
+  text-transform: capitalize;
+}
+
+/* Trend colors */
+.trend--up {
+  color: #10b981;
+}
+
+.trend--down {
+  color: #ef4444;
+}
+
+.trend--neutral {
+  color: #9ca3af;
+}
+
+/* Ranking list */
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.9rem;
+}
+
+.ranking-row--self {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.ranking-row__rank {
+  width: 2.5rem;
+  font-weight: 700;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.ranking-row__avatar {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ranking-row__name {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-row__approval {
+  font-weight: 700;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.ranking-row__trend {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Feed */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.feed-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.85rem;
+}
+
+.feed-entry__avatar {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.feed-entry__text {
+  flex: 1;
+  opacity: 0.85;
+}
+
+.feed-entry__delta {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.feed-entry__delta--positive {
+  color: #10b981;
+}
+
+.feed-entry__delta--negative {
+  color: #ef4444;
+}
+
+/* Directions */
+.direction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.direction-card {
+  border-radius: 8px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid transparent;
+}
+
+.direction-card--active {
+  border-left-color: #f59e0b;
+}
+
+.direction-card--completed {
+  border-left-color: #10b981;
+  opacity: 0.8;
+}
+
+.direction-card--failed {
+  border-left-color: #ef4444;
+  opacity: 0.7;
+}
+
+.direction-card--expired {
+  border-left-color: #6b7280;
+  opacity: 0.6;
+}
+
+.direction-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.direction-card__avatar {
+  font-size: 1.1rem;
+}
+
+.direction-card__player {
+  font-weight: 600;
+  flex: 1;
+}
+
+.direction-card__status {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.direction-card__description {
+  font-size: 0.9rem;
+  margin: 0 0 0.4rem;
+  opacity: 0.9;
+}
+
+.direction-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}

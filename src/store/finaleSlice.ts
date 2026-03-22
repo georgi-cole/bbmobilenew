@@ -10,6 +10,8 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from './store';
 import { mulberry32, seededPickN } from './rng';
+import { resolvePublicJuryVote } from '../publicOpinion/PublicFinalVoteService';
+import type { PlayerPublicProfile } from '../publicOpinion/types';
 import {
   aiJurorVote,
   tallyVotes,
@@ -19,6 +21,11 @@ import {
   pickPhrase,
   JURY_LOCKED_LINES,
 } from '../utils/juryUtils';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Sentinel juror ID representing the public vote. */
+export const PUBLIC_JUROR_ID = '__public__';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,6 +68,10 @@ export interface FinaleState {
    * Reset only on resetGame (via extraReducers wiring in store).
    */
   hasStarted: boolean;
+  /** Whether the public juror (__public__) is included in this finale. */
+  publicJurorEnabled: boolean;
+  /** The finalist ID that the public voted for, or null. */
+  publicVotedFor: string | null;
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -78,6 +89,8 @@ const initialState: FinaleState = {
   returnedJurorId: null,
   isComplete: false,
   hasStarted: false,
+  publicJurorEnabled: false,
+  publicVotedFor: null,
 };
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -105,11 +118,14 @@ const finaleSlice = createSlice({
           enableJuryReturn?: boolean;
           americasVoteEnabled?: boolean;
         };
+        /** Optional public approval profiles to enable the public juror vote. */
+        publicApprovalProfiles?: Record<string, PlayerPublicProfile>;
       }>,
     ) {
       if (state.hasStarted) return; // idempotency guard
 
-      const { finalistIds, jurorIds, preJuryIds, humanPlayerIds, seed, cfg } = action.payload;
+      const { finalistIds, jurorIds, preJuryIds, humanPlayerIds, seed, cfg, publicApprovalProfiles } =
+        action.payload;
 
       // ── Jury-return mechanic ──────────────────────────────────────────────
       let effectiveJurorIds = [...jurorIds];
@@ -136,6 +152,22 @@ const finaleSlice = createSlice({
         votes[jId] = aiJurorVote(jId, finalistIds, seed);
       }
 
+      // ── Public juror vote ─────────────────────────────────────────────────
+      let publicJurorEnabled = false;
+      let publicVotedFor: string | null = null;
+      if (publicApprovalProfiles) {
+        const publicVoteResult = resolvePublicJuryVote({
+          finalistIds,
+          profiles: publicApprovalProfiles,
+        });
+        if (publicVoteResult.winnerId) {
+          votes[PUBLIC_JUROR_ID] = publicVoteResult.winnerId;
+          shuffled.push(PUBLIC_JUROR_ID);
+          publicJurorEnabled = true;
+          publicVotedFor = publicVoteResult.winnerId;
+        }
+      }
+
       state.isActive = true;
       state.hasStarted = true;
       state.finalistIds = finalistIds;
@@ -148,6 +180,8 @@ const finaleSlice = createSlice({
       state.runnerUpId = null;
       state.returnedJurorId = returnedJurorId;
       state.isComplete = false;
+      state.publicJurorEnabled = publicJurorEnabled;
+      state.publicVotedFor = publicVotedFor;
     },
 
     /**

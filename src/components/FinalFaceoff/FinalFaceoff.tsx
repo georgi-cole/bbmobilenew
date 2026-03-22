@@ -218,8 +218,19 @@ export default function FinalFaceoff() {
       {/* Juror reveal list */}
       <div className="fo-jurors" ref={jurorListRef}>
         {revealed.map((r) => {
-          const juror = game.players.find((p) => p.id === r.jurorId);
           const finalist = game.players.find((p) => p.id === r.finalistId);
+          if (r.jurorId === '__public__') {
+            const publicJuror = {
+              id: '__public__',
+              name: 'The Public 🌐',
+              avatar: '🌐',
+              status: 'jury' as const,
+            };
+            return (
+              <JurorBubble key="__public__" juror={publicJuror} finalist={finalist} reveal={r} />
+            );
+          }
+          const juror = game.players.find((p) => p.id === r.jurorId);
           if (!juror) return null;
           return (
             <JurorBubble key={r.jurorId} juror={juror} finalist={finalist} reveal={r} />

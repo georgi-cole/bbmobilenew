@@ -28,6 +28,8 @@ import blackjackTournamentReducer from '../features/blackjackTournament/blackjac
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
 import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
+import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
+import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -48,6 +50,7 @@ export const store = configureStore({
     blackjackTournament: blackjackTournamentReducer,
     riskWheel: riskWheelReducer,
     wildcardWestern: wildcardWesternReducer,
+    publicOpinion: publicOpinionReducer,
   },
   preloadedState: {
     settings: loadSettings(),
@@ -55,7 +58,7 @@ export const store = configureStore({
     profiles: loadProfilesState(),
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware),
+    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware, publicOpinionMiddleware),
 });
 
 // Persist settings to localStorage whenever they change
