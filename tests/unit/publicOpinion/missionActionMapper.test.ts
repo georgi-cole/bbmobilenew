@@ -225,9 +225,9 @@ describe('resolveEventMissionProgress', () => {
     expect(signals[0].newProgress).toBe(publicOpinionConfig.missionDirectProgressWeight);
   });
 
-  it('flip_vote: betrayal advances the mission', () => {
+  it('flip_vote: voted_to_evict (any target) advances the mission', () => {
     const direction = makeDirection({ type: 'flip_vote' });
-    const event: MissionGameEvent = { type: 'betrayal', actorId: 'actor', week: 2 };
+    const event: MissionGameEvent = { type: 'voted_to_evict', actorId: 'actor', targetId: 'anyone', week: 2 };
     const signals = resolveEventMissionProgress(event, [direction]);
     expect(signals).toHaveLength(1);
   });

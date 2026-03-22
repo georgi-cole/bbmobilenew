@@ -183,11 +183,13 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
   ],
 
   // ── Flip a vote ─────────────────────────────────────────────────────────
+  // A "flip" is about voting unexpectedly, not targeting a pre-defined player,
+  // so voted_to_evict does not require the relatedPlayerId to match.
   flip_vote: [
-    { eventType: 'voted_to_evict',    requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'voted_to_evict',    requiresRelatedTarget: false, weight: publicOpinionConfig.missionDirectProgressWeight },
     { eventType: 'betrayal',          requiresRelatedTarget: false, weight: publicOpinionConfig.missionDirectProgressWeight },
     { eventType: 'influenced_hoh',    requiresRelatedTarget: false, weight: publicOpinionConfig.missionIndirectProgressWeight },
-    { eventType: 'negative_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
+    { eventType: 'negative_social',   requiresRelatedTarget: false, weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
 
   // ── Start drama / create chaos ──────────────────────────────────────────

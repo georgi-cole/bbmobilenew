@@ -132,10 +132,13 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/applyMinigameWinner') {
-    // A competition (HOH / POV / other) was resolved via the minigame flow
+    // A competition (HOH / POV / other) was resolved via the minigame flow.
+    // Only dispatch mission progress when we have an explicit winnerId in the
+    // payload — falling back to the HOH/POV state could pick the wrong player
+    // (e.g. a stale HOH id when processing a POV result).
     const payload = actionPayload as { winnerId?: string; competitionType?: string } | undefined;
     const week = game.week ?? 1;
-    const winnerId = payload?.winnerId ?? game.hohId ?? game.povWinnerId;
+    const winnerId = payload?.winnerId;
     if (winnerId) {
       const compType = payload?.competitionType ?? newPhase ?? '';
       const eventType = compType.includes('pov') || compType.includes('veto')

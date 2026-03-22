@@ -286,6 +286,9 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     return { headlineEvents: [], backgroundDrifts: [] };
   }
 
+  // Bit-mixing constants (Knuth's multiplicative hash / dead-beef marker) are used
+  // here to perturb the seed differently from other RNG callsites in the codebase
+  // so that headline events and direction generation don't share identical sequences.
   const rng = mulberry32(((seed ^ (week * 0x9e3779b9) ^ 0xdeadbeef) >>> 0));
 
   const eligible = activePlayers.filter((p) => !excludeIds.includes(p.id));
@@ -339,7 +342,10 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     return { playerId: player.id, delta, severity, tone: template.tone, text, reason };
   });
 
-  // Background drift for non-spotlighted active players
+  // Background drift: integer in [0, backgroundDriftMax] then assign a random sign.
+  // Math.floor(...*(max+1)) gives uniform coverage of 0..max inclusive, which is
+  // appropriate for whole-point approval changes (vs the headline magnitude which
+  // uses Math.round to stay within a floating-point band boundary).
   const backgroundDrifts = activePlayers
     .filter((p) => !spotlightedIds.has(p.id))
     .map((p) => {

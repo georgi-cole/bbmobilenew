@@ -43,7 +43,7 @@ export const publicOpinionConfig = {
     dramatic: { minMag: 9,  maxMag: 18 },
     shocking: { minMag: 19, maxMag: 30 },
   },
-  /** Cumulative weights for mild / dramatic / shocking severity (must sum ≤ 1). */
+  /** Cumulative weights for mild / dramatic / shocking severity (should sum to 1.0). */
   headlineSeverityWeights: { mild: 0.50, dramatic: 0.35, shocking: 0.15 },
   /**
    * Background drift applied to players who did NOT receive a headline event.
