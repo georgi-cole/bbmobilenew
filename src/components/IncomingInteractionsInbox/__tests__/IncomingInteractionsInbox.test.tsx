@@ -137,7 +137,7 @@ describe('IncomingInteractionsInbox', () => {
     expect(updatesItems[1].textContent).toContain('Low later.');
     expect(within(updatesSection).getByText('Expires this week')).toBeInTheDocument();
 
-    const resolvedSection = screen.getByLabelText('Resolved This Week');
+    const resolvedSection = screen.getByLabelText('Resolved Today');
     const resolvedItems = within(resolvedSection).getAllByRole('listitem');
     expect(resolvedItems).toHaveLength(1);
     expect(resolvedItems[0].textContent).toContain('Resolved note.');

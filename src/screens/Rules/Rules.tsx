@@ -19,8 +19,8 @@ export default function Rules() {
           game. Before you dive in, here&apos;s how it all works:
         </p>
 
-        <h3 className="rules-screen__heading">1. Weekly Cycle</h3>
-        <p>Every &ldquo;week&rdquo; follows the classic Big Brother rhythm: HOH → Nominations → Veto → Eviction.</p>
+        <h3 className="rules-screen__heading">1. Daily Cycle</h3>
+        <p>Every &ldquo;day&rdquo; follows the classic Big Brother rhythm: HOH → Nominations → Veto → Eviction.</p>
         <p>The system handles the competitions, nominations, and votes — but social dynamics shape the outcomes.</p>
 
         <h3 className="rules-screen__heading">2. Competitions</h3>
@@ -29,16 +29,16 @@ export default function Rules() {
         <p>Winning matters, but so does staying on good terms with others — power can make you a target.</p>
 
         <h3 className="rules-screen__heading">3. Social Interactions</h3>
-        <p>Houseguests form friendships, rivalries, and alliances that shift week to week.</p>
+        <p>Houseguests form friendships, rivalries, and alliances that shift day to day.</p>
         <p>Votes are not random — they reflect these relationships.</p>
         <p>Don&apos;t underestimate social influence: even a weak competitor can survive if they&apos;re well-connected.</p>
 
         <h3 className="rules-screen__heading">4. Eviction &amp; Jury</h3>
-        <p>Each week, one nominee is evicted by a house vote.</p>
+        <p>Each day, one nominee is evicted by a house vote.</p>
         <p>Once the Jury phase begins, evicted houseguests don&apos;t leave for good — they&apos;ll vote for the winner at the finale.</p>
         <p>Even if you&apos;re out, your influence on the game continues.</p>
 
-        <h3 className="rules-screen__heading">4b. Final Week &amp; Three-Part Final Competition</h3>
+        <h3 className="rules-screen__heading">4b. Final Day &amp; Three-Part Final Competition</h3>
         <p>When only three houseguests remain, the endgame unfolds with a special three-part competition.</p>
         <p><strong>Part 1:</strong> All three compete. The houseguest with the highest score advances directly to Part 3.</p>
         <p><strong>Part 2:</strong> The two losers from Part 1 face off head-to-head. The winner advances to Part 3.</p>

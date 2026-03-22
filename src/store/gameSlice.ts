@@ -449,7 +449,7 @@ const gameSlice = createSlice({
       const now = Date.now();
       const event: TvEvent = {
         id: crypto.randomUUID(),
-        text: `📊 Social Summary (Week ${action.payload.week}): ${action.payload.summary}`,
+        text: `📊 Social Summary (Day ${action.payload.week}): ${action.payload.summary}`,
         type: 'diary',
         timestamp: now,
         channels: ['dr'],
@@ -1032,7 +1032,7 @@ const gameSlice = createSlice({
       };
       // Push the week-end banner now: submitTieBreak jumps directly to week_end,
       // bypassing the advance() case 'week_end' branch that normally emits it.
-      pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
+      pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game');
       state.phase = 'week_end';
     },
 
@@ -2079,7 +2079,7 @@ const gameSlice = createSlice({
             p.status = 'active';
           }
         });
-        pushEvent(state, `Final 3 — Week ${state.week}! The three-part HOH competition begins. 🏆`, 'game');
+        pushEvent(state, `Final 3 — Day ${state.week}! The three-part HOH competition begins. 🏆`, 'game');
         state.phase = 'final3_comp1';
         return;
       }
@@ -2472,7 +2472,7 @@ const gameSlice = createSlice({
               p.status = 'active';
             }
           });
-          pushEvent(state, `Week ${state.week} begins! 🏠 It's time for the HOH competition.`, 'game');
+          pushEvent(state, `Day ${state.week} begins! 🏠 It's time for the HOH competition.`, 'game');
           break;
         }
         case 'hoh_comp_announcement': {
@@ -2987,7 +2987,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'week_end': {
-          pushEvent(state, `Week ${state.week} has come to an end. A new week begins soon… ✨`, 'game');
+          pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game');
           break;
         }
       }

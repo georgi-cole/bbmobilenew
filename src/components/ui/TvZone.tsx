@@ -19,7 +19,7 @@ import './TvZoneEnhancements.css';
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
-  week_start:               'WEEK START',
+  week_start:               'DAY START',
   hoh_comp_announcement:    'HOH COMP',
   hoh_comp:                 'HOH COMP',
   hoh_results:              'HOH RESULTS',
@@ -34,7 +34,7 @@ const PHASE_LABELS: Record<string, string> = {
   social_2:             'SOCIAL',
   live_vote:            'VOTE',
   eviction_results:     'EVICTION',
-  week_end:             'WEEK END',
+  week_end:             'DAY END',
   final4_eviction:      'F4 EVICT',
   final3:               'FINAL 3',
   final3_comp1:         'F3 P1',
@@ -350,7 +350,7 @@ export default function TvZone() {
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
   const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
-  const saveChipLabel = saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Retry' : 'Save';
+  const saveChipLabel = '';
   const saveChipIcon = saveStatus === 'saved' ? '✅' : saveStatus === 'error' ? '❌' : '💾';
   const saveChipVariant = saveStatus === 'error' ? 'danger' : 'success';
   const saveChipAriaLabel = isGuest
@@ -423,7 +423,7 @@ export default function TvZone() {
 
         {/* Center: scrollable single-row status pills */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
-          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}W${gameState.week}`} /></li>
+          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
           <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
         </ul>
 

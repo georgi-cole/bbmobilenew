@@ -17,6 +17,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../../src/store/gameSlice';
 import challengeReducer from '../../../src/store/challengeSlice';
 import socialReducer from '../../../src/social/socialSlice';
+import profilesReducer from '../../../src/store/profilesSlice';
+import finaleReducer from '../../../src/store/finaleSlice';
 import uiReducer from '../../../src/store/uiSlice';
 import settingsReducer from '../../../src/store/settingsSlice';
 import type { GameState, Player } from '../../../src/types';
@@ -70,6 +72,8 @@ function makeStore(twistActive: boolean) {
       game: gameReducer,
       challenge: challengeReducer,
       social: socialReducer,
+      profiles: profilesReducer,
+      finale: finaleReducer,
       ui: uiReducer,
       settings: settingsReducer,
     },

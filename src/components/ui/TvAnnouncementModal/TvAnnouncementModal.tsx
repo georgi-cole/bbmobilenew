@@ -14,9 +14,9 @@ interface PhaseCopy {
 const PHASE_COPY: Record<string, PhaseCopy> = {
   week_start: {
     icon: '📅',
-    label: 'NEW WEEK',
+    label: 'NEW DAY',
     category: 'Game Event',
-    body: 'A new week begins in the Big Brother house. Houseguests reset their social games and strategise before the Head of Household competition. Alliances shift, targets are reconsidered, and the house dynamics evolve.',
+    body: 'A new day begins in the Big Brother house. Houseguests reset their social games and strategise before the Head of Household competition. Alliances shift, targets are reconsidered, and the house dynamics evolve.',
   },
   nomination_ceremony: {
     icon: '🎯',
@@ -88,13 +88,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏆',
     label: 'HOH COMPETITION',
     category: 'Competition',
-    body: 'The Head of Household competition is about to begin. Every eligible houseguest is fighting for the most powerful position in the game. The winner becomes the new Head of Household and gains the authority to nominate two of their fellow houseguests for eviction. Power is up for grabs — who will reign supreme this week?',
+    body: 'The Head of Household competition is about to begin. Every eligible houseguest is fighting for the most powerful position in the game. The winner becomes the new Head of Household and gains the authority to nominate two of their fellow houseguests for eviction. Power is up for grabs — who will reign supreme today?',
   },
   pov_comp_announcement: {
     icon: '🎭',
     label: 'POWER OF VETO',
     category: 'Competition',
-    body: 'It is time for the Power of Veto competition. Houseguests will battle for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the week\'s outcome entirely.',
+    body: 'It is time for the Power of Veto competition. Houseguests will battle for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the day\'s outcome entirely.',
   },
 };
 

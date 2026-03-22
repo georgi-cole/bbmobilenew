@@ -44,7 +44,7 @@ interface ChatMessage {
  * Tabs:
  *   Confess  → private chat (user ↔ Big Brother); stored in sessionStorage only
  *   Log      → read-only transcript of the private chat
- *   Weekly   → Weekly Diary Room Log (read-only view + admin editor)
+ *   Daily    → Daily Diary Room Log (read-only view + admin editor)
  *              Only shown when FEATURE_DIARY_WEEK is enabled.
  *
  * To extend: add new tabs to TABS and a case in the tab body below.
@@ -52,7 +52,7 @@ interface ChatMessage {
 const TABS: { id: DiaryTab; label: string; icon: string }[] = [
   { id: 'confess', label: 'Confess',   icon: '🎙️' },
   { id: 'log',     label: 'Log',       icon: '📖' },
-  ...(FEATURE_DIARY_WEEK ? [{ id: 'weekly' as DiaryTab, label: 'Weekly', icon: '📅' }] : []),
+  ...(FEATURE_DIARY_WEEK ? [{ id: 'weekly' as DiaryTab, label: 'Daily', icon: '📅' }] : []),
 ];
 
 // ─── Summary message pool (10 generic messages, no private content) ───────────
@@ -539,7 +539,7 @@ export default function DiaryRoom() {
                 {/* Week controls */}
                 <div className="diary-room__weekly-controls">
                   <span className="diary-room__weekly-label">
-                    Season {seasonId} · Week {currentWeek}
+                    Season {seasonId} · Day {currentWeek}
                   </span>
                   <div className="diary-room__weekly-actions">
                     {isAdmin && (

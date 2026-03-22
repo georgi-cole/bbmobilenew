@@ -84,5 +84,5 @@ export function buildDrSessionSummary(
 ): string {
   const sLabel = successCount === 1 ? 'success' : 'successes';
   const fLabel = failCount === 1 ? 'failure' : 'failures';
-  return `📋 Week ${week}: ${count} social action(s) — ${successCount} ${sLabel}, ${failCount} ${fLabel}.`;
+  return `📋 Day ${week}: ${count} social action(s) — ${successCount} ${sLabel}, ${failCount} ${fLabel}.`;
 }

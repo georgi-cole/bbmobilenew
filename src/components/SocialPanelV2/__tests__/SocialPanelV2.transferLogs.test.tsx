@@ -140,7 +140,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     const feed = store.getState().game.tvFeed;
     const diaryEntry = feed.find((e) => e.type === 'diary');
     expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.text).toContain('Week');
+    expect(diaryEntry!.text).toContain('Day');
     expect(diaryEntry!.text).toContain('success');
   });
 

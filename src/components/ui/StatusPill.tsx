@@ -57,7 +57,7 @@ export default function StatusPill({
       {...(onClick ? { type: 'button' as const, disabled } : {})}
     >
       {icon && <span className="status-pill__icon" aria-hidden="true">{icon}</span>}
-      <span className="status-pill__label">{label}</span>
+      {label ? <span className="status-pill__label">{label}</span> : null}
     </Tag>
   );
 }

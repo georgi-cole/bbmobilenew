@@ -123,7 +123,7 @@ describe('isVisibleInDr', () => {
 describe('buildDrSessionSummary', () => {
   it('formats a concise one-line summary with week, count, successes and failures', () => {
     const summary = buildDrSessionSummary(3, 5, 4, 1);
-    expect(summary).toContain('Week 3');
+    expect(summary).toContain('Day 3');
     expect(summary).toContain('5');
     expect(summary).toContain('4 successes');
     expect(summary).toContain('1 failure');
@@ -131,7 +131,7 @@ describe('buildDrSessionSummary', () => {
 
   it('formats correctly when all actions succeed (zero failures)', () => {
     const summary = buildDrSessionSummary(1, 2, 2, 0);
-    expect(summary).toContain('Week 1');
+    expect(summary).toContain('Day 1');
     expect(summary).toContain('2 successes');
     expect(summary).toContain('0 failure');
   });

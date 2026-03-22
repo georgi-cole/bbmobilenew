@@ -162,11 +162,11 @@ export function validateCompSelection(
 
   if (weeklyLimit !== null) {
     if (!Number.isInteger(weeklyLimit) || weeklyLimit < 1) {
-      errors.push('Weekly limit must be a positive integer or null (no limit).');
+      errors.push('Daily limit must be a positive integer or null (no limit).');
     }
     // Application logic constraint: weeklyLimit <= enabledIds.length.
     if (weeklyLimit > enabledIds.length) {
-      errors.push('Weekly limit cannot exceed the number of enabled competitions.');
+      errors.push('Daily limit cannot exceed the number of enabled competitions.');
     }
   }
 

@@ -73,9 +73,9 @@ export default function Profile() {
 
     const chips: React.ReactNode[] = [];
 
-    // Week
+    // Day
     chips.push(
-      <StatusPill key="week" variant="week" icon="📅" label={`Week ${week}`} />,
+      <StatusPill key="week" variant="week" icon="📅" label={`Day ${week}`} />,
     );
 
     // HOH
@@ -302,4 +302,3 @@ export default function Profile() {
     </div>
   );
 }
-

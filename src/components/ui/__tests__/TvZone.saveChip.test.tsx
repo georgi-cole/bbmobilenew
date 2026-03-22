@@ -31,12 +31,14 @@ function renderTvZone() {
 }
 
 describe('TvZone save chip', () => {
-  it('shows a Save chip in the top-right actions instead of the Diary Room chip', () => {
+  it('shows an icon-only Save chip in the top-right actions instead of the Diary Room chip', () => {
     renderTvZone();
 
     const saveChip = screen.getByRole('button', { name: /no active profile selected/i });
     expect(saveChip).toBeDefined();
     expect((saveChip as HTMLButtonElement).disabled).toBe(true);
+    expect(saveChip.textContent).toContain('💾');
+    expect(saveChip.textContent).not.toContain('Save');
     expect(screen.queryByRole('button', { name: /open diary room/i })).toBeNull();
   });
 });

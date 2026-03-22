@@ -34,7 +34,7 @@ export default function SocialSummaryPopup() {
           <h2 className="ssp__title" id="ssp-title">
             Social Phase Summary
           </h2>
-          <span className="ssp__week">Week {report.week}</span>
+          <span className="ssp__week">Day {report.week}</span>
         </header>
 
         <div className="ssp__body">
