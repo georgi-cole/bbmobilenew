@@ -11,7 +11,13 @@ export type DirectionType =
   | 'confront_player'
   | 'show_loyalty'
   | 'start_drama'
-  | 'win_veto';
+  | 'win_veto'
+  | 'flip_vote'
+  | 'influence_hoh'
+  | 'break_alliance'
+  | 'reinforce_alliance'
+  | 'repair_relationship'
+  | 'create_chaos';
 
 export interface PublicDirection {
   id: string;
@@ -24,6 +30,8 @@ export interface PublicDirection {
   expiresAtWeek: number;
   completedWeek?: number;
   approvalDelta: number;
+  /** 0–100 cumulative progress toward completion (100 = complete). */
+  progressPercent?: number;
 }
 
 export interface PlayerPublicProfile {
@@ -42,6 +50,8 @@ export interface PublicFeedEntry {
   delta: number;
   week: number;
   timestamp: number;
+  /** True when this entry was generated as a dramatic headline event. */
+  isHeadline?: boolean;
 }
 
 export interface PublicOpinionState {

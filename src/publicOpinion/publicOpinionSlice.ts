@@ -19,6 +19,59 @@ const initialState: PublicOpinionState = {
   lastUpdatedWeek: 0,
 };
 
+// ── Shared helper (used by both resolveDirection and updateMissionProgress) ───
+
+/**
+ * Marks a direction as completed and applies all associated approval rewards
+ * (counter increment, success delta, feed entry) to the player's profile.
+ * Extracted to avoid duplicating this logic across two reducers.
+ */
+function applyDirectionCompletionRewards(
+  state: PublicOpinionState,
+  direction: PublicDirection,
+  week: number,
+): void {
+  direction.status = 'completed';
+  direction.completedWeek = week;
+
+  const profile = state.profiles[direction.playerId];
+  if (!profile) return;
+
+  profile.completedDirectionCount += 1;
+  const delta = publicOpinionConfig.directionRewards.success;
+  profile.previousApproval = profile.approval;
+  const newApproval = Math.min(
+    publicOpinionConfig.MAX_APPROVAL,
+    Math.max(publicOpinionConfig.MIN_APPROVAL, profile.approval + delta),
+  );
+  profile.approval = newApproval;
+  profile.seasonApprovals.push(newApproval);
+  if (delta > 0) {
+    profile.cumulativePositiveDelta += delta;
+  }
+  state.lastUpdatedWeek = week;
+
+  const feedEntry: PublicFeedEntry = {
+    id: `${direction.playerId}-${week}-${Date.now()}-dir-completed`,
+    playerId: direction.playerId,
+    text: createPublicNarrative({
+      reason: 'direction_completed',
+      playerId: direction.playerId,
+      delta,
+      week,
+    }),
+    delta,
+    week,
+    timestamp: Date.now(),
+  };
+  state.feed.unshift(feedEntry);
+  if (state.feed.length > 50) {
+    state.feed = state.feed.slice(0, 50);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const publicOpinionSlice = createSlice({
   name: 'publicOpinion',
   initialState,
@@ -40,9 +93,18 @@ const publicOpinionSlice = createSlice({
 
     updateApproval(
       state,
-      action: PayloadAction<{ playerId: string; delta: number; reason: string; week: number }>,
+      action: PayloadAction<{
+        playerId: string;
+        delta: number;
+        reason: string;
+        week: number;
+        isHeadline?: boolean;
+        headlineText?: string;
+        /** When false, approval is updated silently without a Public Feed entry. Default: true. */
+        addToFeed?: boolean;
+      }>,
     ) {
-      const { playerId, delta, reason, week } = action.payload;
+      const { playerId, delta, reason, week, isHeadline, headlineText, addToFeed = true } = action.payload;
       const profile = state.profiles[playerId];
       if (!profile) return;
 
@@ -58,17 +120,20 @@ const publicOpinionSlice = createSlice({
       }
       state.lastUpdatedWeek = week;
 
-      const feedEntry: PublicFeedEntry = {
-        id: `${playerId}-${week}-${Date.now()}-${state.feed.length}`,
-        playerId,
-        text: createPublicNarrative({ reason, playerId, delta, week }),
-        delta,
-        week,
-        timestamp: Date.now(),
-      };
-      state.feed.unshift(feedEntry);
-      if (state.feed.length > 50) {
-        state.feed = state.feed.slice(0, 50);
+      if (addToFeed) {
+        const feedEntry: PublicFeedEntry = {
+          id: `${playerId}-${week}-${Date.now()}-${state.feed.length}`,
+          playerId,
+          text: headlineText ?? createPublicNarrative({ reason, playerId, delta, week }),
+          delta,
+          week,
+          timestamp: Date.now(),
+          isHeadline: isHeadline ?? false,
+        };
+        state.feed.unshift(feedEntry);
+        if (state.feed.length > 50) {
+          state.feed = state.feed.slice(0, 50);
+        }
       }
     },
 
@@ -87,24 +152,21 @@ const publicOpinionSlice = createSlice({
       const { directionId, status, week } = action.payload;
       const direction = state.directions.find((d) => d.id === directionId);
       if (!direction) return;
-      direction.status = status;
+
       if (status === 'completed') {
-        direction.completedWeek = week;
-        const profile = state.profiles[direction.playerId];
-        if (profile) {
-          profile.completedDirectionCount += 1;
-        }
+        // Guard: already completed (e.g. completed via updateMissionProgress) — no-op.
+        if (direction.status === 'completed') return;
+        applyDirectionCompletionRewards(state, direction, week);
+        return;
       }
 
-      // Apply approval impact for the resolution outcome
-      const profile = state.profiles[direction.playerId];
-      if (profile) {
-        let delta = 0;
-        if (status === 'completed') delta = publicOpinionConfig.directionRewards.success;
-        else if (status === 'failed') delta = publicOpinionConfig.directionRewards.fail;
-        // expired directions carry no penalty
+      direction.status = status;
 
-        if (delta !== 0) {
+      // Apply fail penalty; expired directions carry no penalty.
+      if (status === 'failed') {
+        const profile = state.profiles[direction.playerId];
+        if (profile) {
+          const delta = publicOpinionConfig.directionRewards.fail;
           profile.previousApproval = profile.approval;
           const newApproval = Math.min(
             publicOpinionConfig.MAX_APPROVAL,
@@ -112,16 +174,13 @@ const publicOpinionSlice = createSlice({
           );
           profile.approval = newApproval;
           profile.seasonApprovals.push(newApproval);
-          if (delta > 0) {
-            profile.cumulativePositiveDelta += delta;
-          }
           state.lastUpdatedWeek = week;
 
           const feedEntry: PublicFeedEntry = {
-            id: `${direction.playerId}-${week}-${Date.now()}-dir-${status}`,
+            id: `${direction.playerId}-${week}-${Date.now()}-dir-failed`,
             playerId: direction.playerId,
             text: createPublicNarrative({
-              reason: status === 'completed' ? 'direction_completed' : 'direction_failed',
+              reason: 'direction_failed',
               playerId: direction.playerId,
               delta,
               week,
@@ -146,6 +205,31 @@ const publicOpinionSlice = createSlice({
         }
       }
     },
+
+    /**
+     * Update the progress percentage of an active mission direction.
+     * If progress reaches the completion threshold, calls the shared
+     * `applyDirectionCompletionRewards` helper so completion logic is
+     * never duplicated.
+     */
+    updateMissionProgress(
+      state,
+      action: PayloadAction<{
+        directionId: string;
+        progressPercent: number;
+        week: number;
+      }>,
+    ) {
+      const { directionId, progressPercent, week } = action.payload;
+      const direction = state.directions.find((d) => d.id === directionId);
+      if (!direction || direction.status !== 'active') return;
+
+      direction.progressPercent = Math.min(100, Math.max(0, progressPercent));
+
+      if (direction.progressPercent >= publicOpinionConfig.missionCompletionThreshold) {
+        applyDirectionCompletionRewards(state, direction, week);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder.addMatcher(
@@ -161,6 +245,7 @@ export const {
   addDirection,
   resolveDirection,
   pruneExpiredDirections,
+  updateMissionProgress,
 } = publicOpinionSlice.actions;
 
 export default publicOpinionSlice.reducer;

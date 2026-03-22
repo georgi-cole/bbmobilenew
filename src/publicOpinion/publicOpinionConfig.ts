@@ -32,4 +32,34 @@ export const publicOpinionConfig = {
     { min: 80, max: 100, label: 'beloved' },
   ],
   directionsPerCycle: 2,
+  /**
+   * Headline / public-reaction event settings.
+   * A seeded random number of headline events fires per in-game day (week),
+   * in the range [headlineEventsPerDayMin, headlineEventsPerDayMax].
+   * Each event picks a severity band by weighted random draw.
+   */
+  headlineEventsPerDayMin: 2,
+  headlineEventsPerDayMax: 3,
+  headlineSeverityBands: {
+    mild:     { minMag: 3,  maxMag: 8  },
+    dramatic: { minMag: 9,  maxMag: 18 },
+    shocking: { minMag: 19, maxMag: 30 },
+  },
+  /** Cumulative weights for mild / dramatic / shocking severity (should sum to 1.0). */
+  headlineSeverityWeights: { mild: 0.50, dramatic: 0.35, shocking: 0.15 },
+  /**
+   * Background drift applied to players who did NOT receive a headline event.
+   * The daily drift is a uniformly random non-zero integer with magnitude in
+   * [1, backgroundDriftMax], with a randomly chosen sign.
+   */
+  backgroundDriftMax: 8,
+  /**
+   * Threshold (0–100) at which a mission is considered complete
+   * via partial-progress accumulation.
+   */
+  missionCompletionThreshold: 100,
+  /** Progress weight awarded when a direct action satisfies a mission trigger. */
+  missionDirectProgressWeight: 70,
+  /** Progress weight awarded for an indirect / social action toward a mission. */
+  missionIndirectProgressWeight: 30,
 } as const;

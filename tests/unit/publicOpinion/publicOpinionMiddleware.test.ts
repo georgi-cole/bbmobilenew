@@ -125,6 +125,124 @@ describe('publicOpinionMiddleware', () => {
     expect(state.publicOpinion.directions.every((direction) => direction.playerId === 'p1')).toBe(true);
   });
 
+  it('dispatches mission progress for AI nominations on nomination_results', () => {
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+        publicOpinion: publicOpinionReducer,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(publicOpinionMiddleware),
+      preloadedState: {
+        game: makeGameState({ phase: 'nomination_ceremony', week: 1, hohId: 'p1' }),
+      },
+    });
+
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3']));
+    store.dispatch(addDirection(makeDirection({
+      id: 'target-dir',
+      type: 'target_player',
+      playerId: 'p1',
+      relatedPlayerId: 'p2',
+      status: 'active',
+      progressPercent: 0,
+    })));
+
+    // Simulate advance() result: nomination_results phase, AI HOH (awaitingNominations=false),
+    // nomineeIds already populated.
+    store.dispatch({
+      type: 'game/advance',
+      payload: {
+        phase: 'nomination_results',
+        hohId: 'p1',
+        nomineeIds: ['p2'],
+        awaitingNominations: false,
+        week: 1,
+      },
+    });
+
+    const dir = store.getState().publicOpinion.directions.find((d) => d.id === 'target-dir');
+    // Progress should have advanced
+    expect((dir?.progressPercent ?? 0)).toBeGreaterThan(0);
+  });
+
+  it('dispatches mission progress for AI votes at eviction_results', () => {
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+        publicOpinion: publicOpinionReducer,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(publicOpinionMiddleware),
+      preloadedState: {
+        game: makeGameState({ phase: 'live_vote', week: 1 }),
+      },
+    });
+
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3']));
+    store.dispatch(addDirection(makeDirection({
+      id: 'vote-dir',
+      type: 'target_player',
+      playerId: 'p1',
+      relatedPlayerId: 'p2',
+      status: 'active',
+      progressPercent: 0,
+    })));
+
+    // Simulate advance() to eviction_results with AI votes recorded
+    store.dispatch({
+      type: 'game/advance',
+      payload: {
+        phase: 'eviction_results',
+        nomineeIds: ['p2', 'p3'],
+        votes: { p1: 'p2' },  // p1 voted to evict p2 (the mission target)
+        week: 1,
+      },
+    });
+
+    const dir = store.getState().publicOpinion.directions.find((d) => d.id === 'vote-dir');
+    expect((dir?.progressPercent ?? 0)).toBeGreaterThan(0);
+  });
+
+  it('background drift does not create feed entries', () => {
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+        publicOpinion: publicOpinionReducer,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(publicOpinionMiddleware),
+      preloadedState: {
+        game: makeGameState({ phase: 'week_end', week: 1 }),
+      },
+    });
+
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3']));
+
+    // Fire week_start transition (generates headlines for some players, drift for others)
+    store.dispatch({
+      type: 'game/advance',
+      payload: {
+        phase: 'week_start',
+        week: 2,
+        players: [
+          makePlayer('p1', 'Aria'),
+          makePlayer('p2', 'Kian'),
+          makePlayer('p3', 'Rae'),
+        ],
+        seed: 42,
+      },
+    });
+
+    const { feed } = store.getState().publicOpinion;
+    // Only headline events should appear in the feed — drift is silent (addToFeed: false)
+    for (const entry of feed) {
+      expect(entry.isHeadline).toBe(true);
+    }
+    // Feed should only contain the 2-3 headline events, not 5 entries (one per player)
+    expect(feed.length).toBeLessThanOrEqual(3);
+  });
+
   it('prunes directions using the upcoming cycle week at week_end', () => {
     const store = configureStore({
       reducer: {
@@ -152,3 +270,4 @@ describe('publicOpinionMiddleware', () => {
     expect(expiredDirection?.status).toBe('expired');
   });
 });
+
