@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
@@ -8,6 +8,7 @@ import {
   selectEnergyBank,
   selectPendingIncomingInteractionCount,
 } from '../../social/socialSlice';
+import { selectAllDirections } from '../../publicOpinion';
 import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
@@ -35,9 +36,19 @@ export default function FloatingActionBar() {
   const humanIsActive = useAppSelector(selectHumanIsActive);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
+  const directions = useAppSelector(selectAllDirections);
 
   const humanPlayer = players.find((p) => p.isUser);
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null;
+  const publicRequestCount = useMemo(
+    () =>
+      humanPlayer
+        ? directions.filter(
+          (direction) => direction.playerId === humanPlayer.id && direction.status === 'active',
+        ).length
+        : 0,
+    [directions, humanPlayer],
+  );
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
@@ -114,11 +125,18 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label="Public meter"
+          aria-label={`Public meter${publicRequestCount > 0 ? ` (${publicRequestCount} active requests)` : ''}`}
           title="Public meter"
-          onClick={() => navigate('/public-meter')}
+          onClick={() =>
+            navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
+          }
         >
           📊
+          {publicRequestCount > 0 && (
+            <span className="fab__badge" aria-hidden="true">
+              {publicRequestCount > 99 ? '99+' : publicRequestCount}
+            </span>
+          )}
         </button>
         <button
           className="fab__side-btn"
