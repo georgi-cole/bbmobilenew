@@ -30,6 +30,8 @@ export interface SettingsState {
     compSelection: CompSelectionPayload;
   };
   sim: {
+    /** Enables the public-influence ruleset (3rd nominee + pre-veto public save). */
+    publicMode: boolean;
     enableJuryHouse: boolean;
     enableFanFavorite: boolean;
     enableTwists: boolean;
@@ -77,6 +79,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     },
   },
   sim: {
+    publicMode: false,
     enableJuryHouse: false,
     enableFanFavorite: false,
     enableTwists: false,

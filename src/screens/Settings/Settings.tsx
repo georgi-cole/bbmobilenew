@@ -366,6 +366,24 @@ export default function Settings() {
               />
             </div>
 
+            <div className="settings-row settings-row--col">
+              <div className="settings-row">
+                <label className="settings-row__label">Public mode</label>
+                <input
+                  type="checkbox"
+                  className="settings-toggle"
+                  checked={settings.sim.publicMode}
+                  onChange={(e) => dispatch(setSim({ publicMode: e.target.checked }))}
+                  aria-label="Toggle public mode"
+                />
+              </div>
+              <p className="settings-helper-text">
+                Off uses the original 2-nominee rules. On enables the public-influence mode:
+                a 3rd nominee is auto-added in normal weeks and the public saves one nominee
+                before veto.
+              </p>
+            </div>
+
             <div className="settings-row">
               <label className="settings-row__label">Twists</label>
               <input

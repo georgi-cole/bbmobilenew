@@ -50,6 +50,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     hohId: 'p0',
     prevHohId: null,
     nomineeIds: [],
+    publicModeEnabled: true,
     povWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
@@ -435,11 +436,28 @@ describe('resolvePublicSaveNominee', () => {
 });
 
 describe('backward compatibility', () => {
-  it('normal week without lastHohCompFinisherId still produces 2 nominees (AI HOH)', () => {
+  it('public mode off keeps original 2-nominee flow', () => {
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      publicModeEnabled: false,
+      lastHohCompFinisherId: 'p5',
+    });
+
+    store.dispatch(advance()); // nominations → nomination_results
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('nomination_results');
+    expect(state.nomineeIds).toHaveLength(2);
+    expect(state.nominationContext).toBeNull();
+  });
+
+  it('normal week without lastHohCompFinisherId still produces 2 nominees in public mode', () => {
     // If lastHohCompFinisherId is null (e.g., first week, no HOH comp data), AI nominates 2
     const store = makeStore({
       phase: 'nominations',
       hohId: 'p0',
+      publicModeEnabled: true,
       lastHohCompFinisherId: null,
     });
 

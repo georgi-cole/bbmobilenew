@@ -363,6 +363,12 @@ export interface GameState {
   prevHohId: string | null;
   /** Player IDs currently nominated for eviction. */
   nomineeIds: string[];
+  /**
+   * Feature flag snapshot for the current season. When true, normal weeks use
+   * the public-influence ruleset (3 nominees pre-veto + public save). This is
+   * read from settings at season creation/reset time.
+   */
+  publicModeEnabled?: boolean;
   /** Player ID of the current Power of Veto holder, or null. */
   povWinnerId: string | null;
   /**

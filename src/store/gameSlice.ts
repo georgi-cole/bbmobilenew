@@ -24,6 +24,7 @@ import {
 } from '../ai/competition';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
+import { loadSettings } from './settingsSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
@@ -112,6 +113,7 @@ export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
  */
 export function createInitialGameState(): GameState {
   const freshPlayers = buildInitialPlayers();
+  const freshSettings = loadSettings();
   return {
     season: 1,
     week: 1,
@@ -120,6 +122,7 @@ export function createInitialGameState(): GameState {
     hohId: null,
     prevHohId: null,
     nomineeIds: [],
+    publicModeEnabled: freshSettings.sim.publicMode === true,
     povWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
@@ -837,6 +840,7 @@ const gameSlice = createSlice({
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
       const ids = action.payload;
       const isDoubleEviction = state.doubleEviction?.weekActive === true;
+      const publicModeEnabled = state.publicModeEnabled === true;
       // Human always picks 2 in normal weeks (3rd is auto-appended); picks 3 in DE.
       const expectedCount = isDoubleEviction ? 3 : 2;
       if (ids.length !== expectedCount) return;
@@ -856,7 +860,7 @@ const gameSlice = createSlice({
       });
 
       // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
-      if (!isDoubleEviction && state.lastHohCompFinisherId) {
+      if (publicModeEnabled && !isDoubleEviction && state.lastHohCompFinisherId) {
         const autoId = state.lastHohCompFinisherId;
         if (!state.nomineeIds.includes(autoId)) {
           const autoPlayer = eligible.find((p) => p.id === autoId);
@@ -2600,6 +2604,7 @@ const gameSlice = createSlice({
         case 'nomination_results': {
           // Double Eviction week: HOH nominates 3; otherwise 2.
           const isDoubleEviction = state.doubleEviction?.weekActive === true;
+          const publicModeEnabled = state.publicModeEnabled === true;
           const nomineeCount = isDoubleEviction ? 3 : 2;
           // Guard: need HOH + nomineeCount eligible players.
           const pool = alive.filter((p) => p.id !== state.hohId);
@@ -2630,7 +2635,7 @@ const gameSlice = createSlice({
           });
 
           // Normal weeks: auto-append the last-place HOH comp finisher as 3rd nominee
-          if (!isDoubleEviction && state.lastHohCompFinisherId) {
+          if (publicModeEnabled && !isDoubleEviction && state.lastHohCompFinisherId) {
             const autoId = state.lastHohCompFinisherId;
             if (!state.nomineeIds.includes(autoId)) {
               const autoPlayer = pool.find((p) => p.id === autoId);
@@ -2657,9 +2662,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'pre_veto_public_save': {
-          // Skip this phase entirely during Double Eviction weeks.
+          // Skip this phase entirely when Public mode is off or during Double Eviction weeks.
           // The existing 3-nominee cap is the hard limit; no public save runs in DE.
-          if (state.doubleEviction?.weekActive) {
+          if (state.publicModeEnabled !== true || state.doubleEviction?.weekActive) {
             nextPhase = 'pov_comp_announcement';
             break;
           }
