@@ -49,7 +49,8 @@ export const publicOpinionConfig = {
   headlineSeverityWeights: { mild: 0.50, dramatic: 0.35, shocking: 0.15 },
   /**
    * Background drift applied to players who did NOT receive a headline event.
-   * The daily drift is a uniformly random value in ±backgroundDriftMax.
+   * The daily drift is a uniformly random non-zero integer with magnitude in
+   * [1, backgroundDriftMax], with a randomly chosen sign.
    */
   backgroundDriftMax: 8,
   /**
