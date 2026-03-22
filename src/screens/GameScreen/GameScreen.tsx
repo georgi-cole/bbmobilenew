@@ -1341,6 +1341,7 @@ export default function GameScreen() {
     showReplacementModal ||
     showNominationsModal ||
     showNomAnim ||
+    showPublicSaveReveal ||
     showReplacementCeremony ||
     showSaveCeremony ||
     showPovDecisionModal ||

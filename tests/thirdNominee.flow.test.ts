@@ -290,6 +290,23 @@ describe('pre_veto_public_save phase', () => {
     expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
   });
 
+  it('skips pre_veto_public_save when the block is not exactly 3 nominees', () => {
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      awaitingNominations: false,
+      publicModeEnabled: true,
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.awaitingPublicSave).toBeFalsy();
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+  });
+
   it('commitPublicSave removes saved nominee, records publicSavedNomineeId, and advances phase', () => {
     const players = makePlayers(12);
     players[1].status = 'nominated';
@@ -346,6 +363,29 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pre_veto_public_save');
     expect(state.nomineeIds).toHaveLength(3); // unchanged
+  });
+
+  it('commitPublicSave is a no-op unless it reduces the block from 3 nominees to 2', () => {
+    const players = makePlayers(12);
+    players[1].status = 'nominated';
+    players[2].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      hohId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      awaitingPublicSave: true,
+      players,
+    });
+
+    store.dispatch(commitPublicSave('p1'));
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('pre_veto_public_save');
+    expect(state.awaitingPublicSave).toBe(true);
+    expect(state.publicSavedNomineeId).toBeNull();
+    expect(state.nomineeIds).toEqual(['p1', 'p2']);
+    expect(state.players.find((p) => p.id === 'p1')?.status).toBe('nominated');
   });
 });
 

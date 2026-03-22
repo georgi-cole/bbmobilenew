@@ -907,14 +907,18 @@ const gameSlice = createSlice({
      */
     commitPublicSave(state, action: PayloadAction<string>) {
       if (!state.awaitingPublicSave || state.phase !== 'pre_veto_public_save') return;
+      if (state.nomineeIds.length !== 3) return;
       const savedId = action.payload;
       if (!state.nomineeIds.includes(savedId)) return;
 
       const savedPlayer = state.players.find((p) => p.id === savedId);
       if (!savedPlayer) return;
 
+      const remainingNomineeIds = state.nomineeIds.filter((id) => id !== savedId);
+      if (remainingNomineeIds.length !== 2) return;
+
       // Remove from active nominee block
-      state.nomineeIds = state.nomineeIds.filter((id) => id !== savedId);
+      state.nomineeIds = remainingNomineeIds;
       savedPlayer.status = 'active';
 
       // Record metadata
@@ -2672,9 +2676,13 @@ const gameSlice = createSlice({
           break;
         }
         case 'pre_veto_public_save': {
-          // Skip this phase entirely when Public mode is off or during Double Eviction weeks.
-          // The existing 3-nominee cap is the hard limit; no public save runs in DE.
-          if (state.publicModeEnabled !== true || state.doubleEviction?.weekActive) {
+          // Skip this phase unless Public mode is on, this is not a Double Eviction,
+          // and there is a valid 3-nominee block to reduce back to 2 before veto.
+          if (
+            state.publicModeEnabled !== true ||
+            state.doubleEviction?.weekActive ||
+            state.nomineeIds.length !== 3
+          ) {
             nextPhase = 'pov_comp_announcement';
             pushPovCompetitionAnnouncement(state);
             break;

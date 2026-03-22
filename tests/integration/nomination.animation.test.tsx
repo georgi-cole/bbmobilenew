@@ -276,6 +276,23 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
   });
 
+  it('hides the floating action bar while the public save reveal is active', async () => {
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      awaitingNominations: false,
+      awaitingPublicSave: true,
+      publicModeEnabled: true,
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    expect(screen.getByRole('status')).toBeTruthy();
+    expect(screen.queryByRole('toolbar', { name: 'Game actions' })).toBeNull();
+  });
+
   it('does not double-animate AI HOH nominees after the animation completes', async () => {
     const store = makeStore({
       hohId: 'p1',
