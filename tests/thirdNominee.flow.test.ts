@@ -223,6 +223,28 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
     expect(state.nominationContext?.autoNomineeId).toBe('p5');
   });
 
+  it('logs the auto-third nominee as game-nominated instead of attributing all three to the HOH', () => {
+    const players = makePlayers(12, 0);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      awaitingNominations: true,
+      lastHohCompFinisherId: 'p5',
+      players,
+    });
+
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const state = store.getState().game;
+
+    expect(state.tvFeed[0]?.text).toContain('Player 0 nominated Player 1 and Player 2');
+    expect(state.tvFeed[0]?.text).toContain(
+      'Player 5 was automatically nominated for finishing last in the HOH competition',
+    );
+    expect(state.tvFeed[0]?.text).not.toContain('Player 1, Player 2, Player 5 have been nominated for eviction by Player 0');
+  });
+
   it('does not duplicate auto-nominee if human already picked them', () => {
     const players = makePlayers(12, 0);
     players[0].status = 'hoh';

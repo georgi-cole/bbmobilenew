@@ -898,11 +898,13 @@ const gameSlice = createSlice({
         .map((id) => state.players.find((p) => p.id === id))
         .filter(Boolean);
       const nameList = allNomineePlayers.map((n) => n!.name).join(', ');
-      pushEvent(
-        state,
-        `${nameList} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
-        'game',
-      );
+      const autoNomineeName = state.nominationContext?.autoNomineeId
+        ? state.players.find((p) => p.id === state.nominationContext?.autoNomineeId)?.name
+        : null;
+      const eventText = autoNomineeName
+        ? `${nameList} have been nominated for eviction. ${hohPlayer?.name ?? 'The HOH'} nominated ${nominees.map((n) => n.name).join(' and ')}, and ${autoNomineeName} was automatically nominated for finishing last in the HOH competition. 🎯`
+        : `${nameList} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`;
+      pushEvent(state, eventText, 'game');
     },
 
     /**
