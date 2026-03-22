@@ -898,12 +898,20 @@ const gameSlice = createSlice({
         .map((id) => state.players.find((p) => p.id === id))
         .filter(Boolean);
       const nameList = allNomineePlayers.map((n) => n!.name).join(', ');
-      const autoNomineeName = state.nominationContext?.autoNomineeId
-        ? state.players.find((p) => p.id === state.nominationContext?.autoNomineeId)?.name
+      const autoNomineePlayer = state.nominationContext?.autoNomineeId
+        ? allNomineePlayers.find((player) => player?.id === state.nominationContext?.autoNomineeId)
         : null;
-      const eventText = autoNomineeName
-        ? `${nameList} have been nominated for eviction. ${hohPlayer?.name ?? 'The HOH'} nominated ${nominees.map((n) => n.name).join(' and ')}, and ${autoNomineeName} was automatically nominated for finishing last in the HOH competition. 🎯`
-        : `${nameList} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`;
+      const hohName = hohPlayer?.name ?? 'the HOH';
+      const hohNomineeNames = nominees.map((n) => n.name).join(' and ');
+      const autoNomineeReason = autoNomineePlayer
+        ? `${autoNomineePlayer.name} was automatically nominated for finishing last in the HOH competition`
+        : null;
+      const autoNomineeClause = autoNomineePlayer
+        ? `${hohName} nominated ${hohNomineeNames}, and ${autoNomineeReason}`
+        : null;
+      const eventText = autoNomineeClause
+        ? `${nameList} have been nominated for eviction. ${autoNomineeClause}. 🎯`
+        : `${nameList} have been nominated for eviction by ${hohName}. 🎯`;
       pushEvent(state, eventText, 'game');
     },
 
