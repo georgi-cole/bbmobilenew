@@ -254,10 +254,18 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             }),
           );
         }
-        // Dispatch mission progress for all votes cast (AI + human) during live_vote.
-        // Human vote is also wired from submitHumanVote, but this covers AI voters and
-        // remains idempotent (progress signals are additive, not re-applied on duplicates).
+        // Dispatch mission progress for AI votes cast during live_vote.
+        // Human vote is already handled via submitHumanVote; to avoid double-counting,
+        // we skip any votes cast by human players here.
+        const humanVoterIds =
+          (game.players ?? [])
+            .filter((player: Player & { isHuman?: boolean }) => player.isHuman)
+            .map((player) => player.id);
+
         for (const [voterId, nomineeId] of Object.entries(game.votes ?? {})) {
+          if (humanVoterIds.includes(voterId)) {
+            continue;
+          }
           dispatchMissionProgress(store, {
             type: 'voted_to_evict',
             actorId: voterId,
