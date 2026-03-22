@@ -235,10 +235,9 @@ describe('publicOpinionMiddleware', () => {
     });
 
     const { feed } = store.getState().publicOpinion;
-    // Only headline events should appear in the feed — drift is silent
+    // Only headline events should appear in the feed — drift is silent (addToFeed: false)
     for (const entry of feed) {
-      // All feed entries must have non-empty text (they're headlines or prior entries)
-      expect(entry.isHeadline !== false || entry.text.length > 0).toBe(true);
+      expect(entry.isHeadline).toBe(true);
     }
     // Feed should only contain the 2-3 headline events, not 5 entries (one per player)
     expect(feed.length).toBeLessThanOrEqual(3);

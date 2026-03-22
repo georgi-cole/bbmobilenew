@@ -95,10 +95,10 @@ describe('generateDailyPublicUpdate', () => {
   });
 
   it('different seeds produce different results', () => {
-    // Compare full serialized objects for two pre-verified fixed seeds
+    // Compare full results for two pre-verified fixed seeds using deep equality
     const a = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed: 1 });
     const b = generateDailyPublicUpdate({ activePlayers: PLAYERS, week: 1, seed: 99 });
-    expect(JSON.stringify(a)).not.toBe(JSON.stringify(b));
+    expect(a).not.toEqual(b);
   });
 
   it('excludeIds are not given headline events', () => {

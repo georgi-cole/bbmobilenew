@@ -359,7 +359,7 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     .filter((p) => !spotlightedIds.has(p.id))
     .map((p) => {
       const maxDrift = publicOpinionConfig.backgroundDriftMax;
-      const magnitude = maxDrift > 0 ? Math.floor(rng() * maxDrift) + 1 : 0;
+      const magnitude = Math.floor(rng() * maxDrift) + 1;
       const sign = rng() > 0.5 ? 1 : -1;
       return { playerId: p.id, delta: sign * magnitude };
     });
