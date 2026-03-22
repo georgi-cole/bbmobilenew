@@ -29,6 +29,7 @@ import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
 import type { SeasonArchive } from './seasonArchive';
 import { loadSeasonArchives } from './archivePersistence';
+import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -187,6 +188,14 @@ function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
     timestamp: ts,
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
+}
+
+function pushPovCompetitionAnnouncement(state: GameState) {
+  pushEvent(
+    state,
+    `It is time for the Power of Veto competition! 🎭 Houseguests will battle for the most powerful item in the game.`,
+    'game',
+  );
 }
 
 /**
@@ -923,6 +932,7 @@ const gameSlice = createSlice({
         `${savedPlayer.name} has been saved by the public! 🏆 They step off the block with the highest audience support.`,
         'game',
       );
+      pushPovCompetitionAnnouncement(state);
     },
 
     /**
@@ -2666,6 +2676,7 @@ const gameSlice = createSlice({
           // The existing 3-nominee cap is the hard limit; no public save runs in DE.
           if (state.publicModeEnabled !== true || state.doubleEviction?.weekActive) {
             nextPhase = 'pov_comp_announcement';
+            pushPovCompetitionAnnouncement(state);
             break;
           }
           // Normal weeks: block advance() and let the UI resolve which nominee is saved.
@@ -2678,7 +2689,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_comp_announcement': {
-          pushEvent(state, `It is time for the Power of Veto competition! 🎭 Houseguests will battle for the most powerful item in the game.`, 'game');
+          pushPovCompetitionAnnouncement(state);
           break;
         }
         case 'pov_comp': {
@@ -3285,10 +3296,16 @@ export const fastForwardToEviction =
       getState().game.phase !== 'jury' &&
       steps < PHASE_ORDER.length
     ) {
-      const state = getState().game;
+      const rootState = getState();
+      const state = rootState.game;
       // Auto-resolve pre-veto public save so the loop doesn't stall
       if (state.awaitingPublicSave && state.nomineeIds.length > 0) {
-        dispatch(commitPublicSave(state.nomineeIds[0]));
+        const savedId =
+          resolvePublicSaveNominee({
+            nomineeIds: state.nomineeIds,
+            profiles: rootState.publicOpinion?.profiles ?? {},
+          }).savedId || state.nomineeIds[0];
+        dispatch(commitPublicSave(savedId));
       } else {
         dispatch(advance());
       }

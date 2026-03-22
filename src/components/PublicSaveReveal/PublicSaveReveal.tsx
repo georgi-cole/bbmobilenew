@@ -11,7 +11,7 @@
  *   4. (exiting) Everything fades out; onDone() is called.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './PublicSaveReveal.css';
@@ -87,7 +87,7 @@ export default function PublicSaveReveal({
                   isSaved && phase === 'saved' ? 'psr__nominee--saved' : '',
                   !isSaved && phase === 'saved' ? 'psr__nominee--dimmed' : '',
                 ].filter(Boolean).join(' ')}
-                style={{ '--stagger': idx } as React.CSSProperties}
+                style={{ '--stagger': idx } as CSSProperties}
               >
                 <div className="psr__avatar-wrap">
                   <PlayerAvatar player={player} size="md" />

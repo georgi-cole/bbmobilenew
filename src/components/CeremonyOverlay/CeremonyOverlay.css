@@ -105,6 +105,33 @@
   opacity: 0;
 }
 
+/* ── Optional tile label pills ─────────────────────────────────────────────── */
+.ceremony-overlay__tile-label {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 8702;
+  pointer-events: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  animation: captionIn 0.4s 0.2s ease both;
+}
+
+.ceremony-overlay--exiting .ceremony-overlay__tile-label {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 /* ── Caption label ──────────────────────────────────────────────────────────── */
 .ceremony-overlay__caption {
   position: fixed;

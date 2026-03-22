@@ -582,7 +582,7 @@ export default function GameScreen() {
   }, [aiNomKey])
 
   // ── Nomination labels (HOH Nominee / Last in HOH Comp) ───────────────────
-  // Used by NominationAnimator to show role pills on each nominee card.
+  // Used by the nomination ceremony overlay to show role pills on each nominee tile.
   const nominationLabels: Record<string, string> = useMemo(() => {
     const ctx = game.nominationContext
     if (!ctx) return {}
@@ -1427,6 +1427,7 @@ export default function GameScreen() {
           resolveTiles={() => nomAnimPlayers.map((p) => ({
             rect: getTileRect(p.id),
             badge: '❓',
+            label: nominationLabels[p.id],
             badgeStart: 'center' as const,
             badgeLabel: `${p.name} nominated`,
           }))}

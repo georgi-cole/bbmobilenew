@@ -152,23 +152,21 @@ describe('third nominee — AI HOH normal week', () => {
   });
 
   it('does not duplicate if lastHohCompFinisherId is already in HOH nominees', () => {
-    // Seed the RNG so that 'p5' would naturally be picked by the AI.
-    // We set lastHohCompFinisherId = 'p1' and ensure p1 ends up in the AI picks.
-    // The simplest approach: set nominees manually and test commitNominees guard.
+    // We set lastHohCompFinisherId = 'p1' and submit nominees ['p1', 'p2'].
+    // The commitNominees guard should not append a third nominee when the
+    // would-be auto-nominee (p1) is already in the HOH's nominees.
     const store = makeStore({
       phase: 'nomination_results',
       hohId: 'p0',
       lastHohCompFinisherId: 'p1',
-      nomineeIds: ['p1', 'p2'], // p1 already nominated by AI
-      awaitingNominations: false,
+      awaitingNominations: true,
     });
 
-    // Simulate that AI has nominated [p1, p2] and nominationContext should be set
-    // after the advance. In this test we verify the nomineeIds don't grow beyond 2.
-    // (If auto-nominee is already nominated, we keep the 2-nominee set as-is.)
-    expect(store.getState().game.nomineeIds).toHaveLength(2);
-    // The commitment of AI nominations with p1 already included should not add p1 again
-    expect(store.getState().game.nomineeIds.filter((id) => id === 'p1')).toHaveLength(1);
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const state = store.getState().game;
+
+    expect(state.nomineeIds).toHaveLength(2);
+    expect(state.nomineeIds.filter((id) => id === 'p1')).toHaveLength(1);
   });
 });
 
@@ -272,6 +270,24 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pov_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+  });
+
+  it('skips pre_veto_public_save and still announces POV when public mode is off', () => {
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      publicModeEnabled: false,
+      nomineeIds: ['p1', 'p2'],
+      awaitingNominations: false,
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.awaitingPublicSave).toBeFalsy();
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
   });
 
   it('commitPublicSave removes saved nominee, records publicSavedNomineeId, and advances phase', () => {
@@ -300,6 +316,8 @@ describe('pre_veto_public_save phase', () => {
     expect(state.nomineeIds).toContain('p5');
     // Saved player reverts to active
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('active');
+    expect(state.tvFeed.some((event) => event.text.includes('has been saved by the public'))).toBe(true);
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
   });
 
   it('commitPublicSave is a no-op when phase is not pre_veto_public_save', () => {
