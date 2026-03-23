@@ -37,6 +37,7 @@ import {
   awardFavoritePrize,
   openFavoritePlayerVoting,
   resumeAfterPublicFavorite,
+  commitPublicSave,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -74,11 +75,15 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
+import PublicSaveReveal from '../../components/PublicSaveReveal/PublicSaveReveal'
+import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
+import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
+const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 
 /**
  * GameScreen — main gameplay view.
@@ -108,6 +113,9 @@ export default function GameScreen() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const settings = useAppSelector(selectSettings)
+  const publicOpinionProfiles = useAppSelector(
+    (s: RootState): Record<string, PlayerPublicProfile> => s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES,
+  )
   const pendingChallenge = useAppSelector(selectPendingChallenge)
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
@@ -511,12 +519,27 @@ export default function GameScreen() {
   const showHumanNomAnim = pendingNominees.length > 0
   const showAiNomAnim = aiNomKey !== '' && aiNomKey !== aiNomAnimConsumedKey && !showHumanNomAnim
   const showNomAnim = showHumanNomAnim || showAiNomAnim
+  const canUsePublicNomineeRule =
+    game.publicModeEnabled === true &&
+    game.doubleEviction?.weekActive !== true
 
-  const nomAnimPlayers = (
-    showHumanNomAnim
-      ? pendingNominees.map((id) => game.players.find((p) => p.id === id))
-      : game.nomineeIds.map((id) => game.players.find((p) => p.id === id))
-  ).filter(Boolean) as Player[]
+  const nomAnimPlayers = useMemo(() => {
+    if (showHumanNomAnim) {
+      const base = pendingNominees
+        .map((id) => game.players.find((p) => p.id === id))
+        .filter(Boolean) as Player[]
+      // When Public mode is active and this is not a Double Eviction, include the auto-third nominee.
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
+      if (autoId && !pendingNominees.includes(autoId)) {
+        const autoPlayer = game.players.find((p) => p.id === autoId)
+        if (autoPlayer) return [...base, autoPlayer]
+      }
+      return base
+    }
+    return game.nomineeIds
+      .map((id) => game.players.find((p) => p.id === id))
+      .filter(Boolean) as Player[]
+  }, [showHumanNomAnim, pendingNominees, game.players, canUsePublicNomineeRule, game.lastHohCompFinisherId, game.nomineeIds])
 
   // Build CeremonyOverlay tiles for nominations: ❓ badges fly to nominee tiles.
   // Tile rects are resolved lazily by the CeremonyOverlay via getTileRect
@@ -541,10 +564,13 @@ export default function GameScreen() {
     (ids: string[]) => {
       const currentUserIsHoh = !!humanIsHoH
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
-      setAiNomAnimConsumedKey(`w${game.week}-${[...ids].sort().join(',')}`)
+      // Pre-consume the exact key that commitNominees will produce.
+      const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
+      const fullIds = autoId && !ids.includes(autoId) ? [...ids, autoId] : ids
+      setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [humanIsHoH, game.week]
+    [humanIsHoH, game.week, canUsePublicNomineeRule, game.lastHohCompFinisherId]
   )
 
   const handleNomAnimDone = useCallback(() => {
@@ -558,6 +584,73 @@ export default function GameScreen() {
   const handleAiNomAnimDone = useCallback(() => {
     setAiNomAnimConsumedKey(aiNomKey)
   }, [aiNomKey])
+
+  // ── Nomination labels (HOH Nominee / Last in HOH Comp) ───────────────────
+  // Used by the nomination ceremony overlay to show role pills on each nominee tile.
+  const nominationLabels: Record<string, string> = useMemo(() => {
+    const labels: Record<string, string> = {}
+
+    // While the human HOH animation is playing, the reducer hasn't committed
+    // nominationContext yet, so derive the pills from the pending picks.
+    if (showHumanNomAnim && pendingNominees.length > 0) {
+      pendingNominees.forEach((id) => {
+        labels[id] = 'HOH Nominee'
+      })
+      if (
+        canUsePublicNomineeRule &&
+        game.lastHohCompFinisherId &&
+        !pendingNominees.includes(game.lastHohCompFinisherId)
+      ) {
+        labels[game.lastHohCompFinisherId] = 'Last in HOH Comp'
+      }
+      return labels
+    }
+
+    const ctx = game.nominationContext
+    if (!ctx) return labels
+    ctx.hohNomineeIds.forEach((id) => { labels[id] = 'HOH Nominee' })
+    if (ctx.autoNomineeId && !ctx.hohNomineeIds.includes(ctx.autoNomineeId)) {
+      labels[ctx.autoNomineeId] = 'Last in HOH Comp'
+    }
+    return labels
+  }, [
+    showHumanNomAnim,
+    pendingNominees,
+    canUsePublicNomineeRule,
+    game.lastHohCompFinisherId,
+    game.nominationContext,
+  ])
+
+  // ── Pre-veto public save phase ───────────────────────────────────────────
+  const showPublicSaveReveal =
+    game.phase === 'pre_veto_public_save' &&
+    Boolean(game.awaitingPublicSave) &&
+    game.nomineeIds.length === 3
+
+  // Compute who would be saved; memoised to avoid recalculating on every render.
+  const publicSaveWinnerId = useMemo(() => {
+    if (!showPublicSaveReveal) return null
+    const result = resolvePublicSaveNominee({
+      nomineeIds: game.nomineeIds,
+      profiles: publicOpinionProfiles,
+    })
+    return result.savedId || null
+  }, [showPublicSaveReveal, game.nomineeIds, publicOpinionProfiles])
+
+  const handlePublicSaveDone = useCallback(() => {
+    if (publicSaveWinnerId) {
+      dispatch(commitPublicSave(publicSaveWinnerId))
+    }
+  }, [dispatch, publicSaveWinnerId])
+
+  // Approval values for display in PublicSaveReveal
+  const publicSaveApprovals = useMemo(() => {
+    const out: Record<string, number> = {}
+    game.nomineeIds.forEach((id) => {
+      out[id] = publicOpinionProfiles[id]?.approval ?? 50
+    })
+    return out
+  }, [game.nomineeIds, publicOpinionProfiles])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -1277,6 +1370,7 @@ export default function GameScreen() {
     showReplacementModal ||
     showNominationsModal ||
     showNomAnim ||
+    showPublicSaveReveal ||
     showReplacementCeremony ||
     showSaveCeremony ||
     showPovDecisionModal ||
@@ -1363,17 +1457,34 @@ export default function GameScreen() {
           resolveTiles={() => nomAnimPlayers.map((p) => ({
             rect: getTileRect(p.id),
             badge: '❓',
+            label: nominationLabels[p.id],
             badgeStart: 'center' as const,
             badgeLabel: `${p.name} nominated`,
           }))}
           caption={
             nomAnimPlayers.length === 1
               ? `${nomAnimPlayers[0].name} has been nominated`
-              : `${nomAnimPlayers.map((n) => n.name).join(' & ')} have been nominated`
+              : nomAnimPlayers.length >= 3
+                ? `${nomAnimPlayers.map((n) => n.name).join(', ')} have been nominated`
+                : `${nomAnimPlayers.map((n) => n.name).join(' & ')} have been nominated`
           }
-          subtitle="🎯 Nominations are set"
+          subtitle={
+            nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] === 'Last in HOH Comp'
+              ? '🎯 Nominations are set — including the HOH comp last-place finisher'
+              : '🎯 Nominations are set'
+          }
           onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
           ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
+        />
+      )}
+
+      {/* ── Pre-veto public save reveal ─────────────────────────────────── */}
+      {showPublicSaveReveal && publicSaveWinnerId && (
+        <PublicSaveReveal
+          nominees={game.nomineeIds.map((id) => game.players.find((p) => p.id === id)).filter(Boolean) as Player[]}
+          approvals={publicSaveApprovals}
+          savedId={publicSaveWinnerId}
+          onDone={handlePublicSaveDone}
         />
       )}
 

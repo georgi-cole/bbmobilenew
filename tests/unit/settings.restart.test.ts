@@ -97,11 +97,17 @@ describe('getRestartRelevantSnapshotFromSettings', () => {
   it('includes all sim fields', () => {
     const liveSettings: SettingsState = {
       ...DEFAULT_SETTINGS,
-      sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, battleBackChance: 75 },
+      sim: {
+        ...DEFAULT_SETTINGS.sim,
+        enableTwists: true,
+        battleBackChance: 75,
+        publicMode: true,
+      },
     };
     const snapshot = getRestartRelevantSnapshotFromSettings(liveSettings);
     expect(snapshot.sim.enableTwists).toBe(true);
     expect(snapshot.sim.battleBackChance).toBe(75);
+    expect(snapshot.sim.publicMode).toBe(true);
   });
 
   it('does NOT include audio settings', () => {
@@ -282,6 +288,15 @@ describe('createInitialGameState() factory', () => {
     const state = createInitialGameState();
     expect(state.week).toBe(1);
     expect(state.phase).toBe('week_start');
+  });
+
+  it('reads publicMode from persisted settings', () => {
+    persistSettings({
+      ...DEFAULT_SETTINGS,
+      sim: { ...DEFAULT_SETTINGS.sim, publicMode: true },
+    });
+    const state = createInitialGameState();
+    expect(state.publicModeEnabled).toBe(true);
   });
 });
 

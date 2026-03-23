@@ -91,6 +91,13 @@ export type Phase =
   | 'social_1'
   | 'nominations'
   | 'nomination_results'
+  /**
+   * Pre-veto public save phase (normal weeks only).
+   * The nominee with the highest public approval is automatically saved,
+   * reducing the block from 3 back down to 2 before the veto competition.
+   * Skipped transparently during Double Eviction weeks.
+   */
+  | 'pre_veto_public_save'
   /** Pre-competition TV announcement before the POV competition begins. */
   | 'pov_comp_announcement'
   | 'pov_comp'
@@ -356,6 +363,12 @@ export interface GameState {
   prevHohId: string | null;
   /** Player IDs currently nominated for eviction. */
   nomineeIds: string[];
+  /**
+   * Feature flag snapshot for the current season. When true, normal weeks use
+   * the public-influence ruleset (3 nominees pre-veto + public save). This is
+   * read from settings at season creation/reset time.
+   */
+  publicModeEnabled?: boolean;
   /** Player ID of the current Power of Veto holder, or null. */
   povWinnerId: string | null;
   /**
@@ -370,6 +383,38 @@ export interface GameState {
    * Cleared after the replacement nominee is confirmed.
    */
   povSavedId?: string | null;
+  /**
+   * Player ID of the houseguest who finished last in the HOH competition.
+   * Used by the third-nominee rule: in normal weeks, this player is automatically
+   * added as the third nominee after the HOH selects two.
+   * Cleared at the start of each new week.
+   */
+  lastHohCompFinisherId?: string | null;
+  /**
+   * Player ID of the nominee saved by the public during the pre-veto public
+   * save phase (normal weeks only). Null until the phase resolves; cleared on
+   * week reset.
+   */
+  publicSavedNomineeId?: string | null;
+  /**
+   * Metadata distinguishing HOH-selected nominees from the auto-added third
+   * nominee. Used by the nomination reveal UI and nomination context.
+   * Null when not applicable (double eviction weeks or before nominations).
+   */
+  nominationContext?: {
+    /** IDs selected directly by the HOH. */
+    hohNomineeIds: string[];
+    /** ID of the player auto-added as 3rd nominee (last HOH comp finisher). */
+    autoNomineeId: string | null;
+    /** True once the pre-veto public save has resolved for this week. */
+    publicSaveApplied: boolean;
+  } | null;
+  /**
+   * When true, the pre-veto public save phase is waiting for the UI to
+   * resolve which nominee to save. advance() is blocked until
+   * commitPublicSave() clears this flag.
+   */
+  awaitingPublicSave?: boolean;
   /**
    * When true, the human HOH must pick two nominees in the `nomination_results` phase.
    * The Continue button is hidden and a two-step nominee picker is shown instead.

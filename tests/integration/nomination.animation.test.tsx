@@ -17,6 +17,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
@@ -51,7 +52,9 @@ function makeStore(overrides: Partial<GameState> = {}) {
     hohId: 'p0',
     prevHohId: null,
     nomineeIds: [],
+    nominationContext: null,
     povWinnerId: null,
+    publicModeEnabled: false,
     replacementNeeded: false,
     awaitingNominations: true,
     pendingNominee1Id: null,
@@ -66,12 +69,31 @@ function makeStore(overrides: Partial<GameState> = {}) {
     awaitingTieBreak: false,
     tiedNomineeIds: null,
     awaitingFinal3Eviction: false,
+    awaitingFinal3Plea: false,
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
     evictionSplashId: null,
+    pendingEviction: null,
+    povSavedId: null,
+    lastHohCompFinisherId: null,
+    publicSavedNomineeId: null,
+    awaitingPublicSave: false,
     players: makePlayers(6),
     tvFeed: [],
     isLive: false,
+    doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
+    specialVeto: {
+      seasonUsed: false,
+      activeType: null,
+      activatedWeek: null,
+      vipUseStage: 0,
+      awaitingHolderReplacement: false,
+      awaitingCoupReplacement1: false,
+      awaitingCoupReplacement2: false,
+      coupReplacement1Id: null,
+      awaitingVipSecondUseDecision: false,
+      awaitingVipSecondSaveTarget: false,
+    },
   };
   return configureStore({
     reducer: {
@@ -80,6 +102,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
   });
@@ -232,6 +255,102 @@ describe('NominationAnimator wiring in GameScreen', () => {
     // Store state is already committed (AI nominated directly); game retains nominees.
     expect(store.getState().game.nomineeIds).toContain('p2');
     expect(store.getState().game.nomineeIds).toContain('p3');
+  });
+
+  it('shows role pills for HOH nominees and the auto-third nominee', async () => {
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      awaitingNominations: false,
+      nominationContext: {
+        hohNomineeIds: ['p2', 'p3'],
+        autoNomineeId: 'p4',
+        publicSaveApplied: false,
+      },
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    expect(screen.getAllByText('HOH Nominee')).toHaveLength(2);
+    expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
+  });
+
+  it('does not include an auto-third nominee in the human animation when public mode is off', async () => {
+    const store = makeStore({
+      publicModeEnabled: false,
+      lastHohCompFinisherId: 'p3',
+    });
+    const view = renderWithStore(store);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Player 1')[0]);
+      fireEvent.click(screen.getAllByText('Player 2')[0]);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Confirm Nominees'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
+    expect(screen.queryByText('Last in HOH Comp')).toBeNull();
+
+    await act(async () => { vi.advanceTimersByTime(2800); });
+    await act(async () => { vi.advanceTimersByTime(500); });
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(store.getState().game.nomineeIds).toEqual(['p1', 'p2']);
+  });
+
+  it('shows human nomination role pills before commit when public mode adds an auto-third nominee', async () => {
+    const store = makeStore({
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p3',
+    });
+    renderWithStore(store);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Player 1')[0]);
+      fireEvent.click(screen.getAllByText('Player 2')[0]);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Confirm Nominees'));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getAllByText('HOH Nominee')).toHaveLength(2);
+    expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
+    expect(
+      screen.getByText('🎯 Nominations are set — including the HOH comp last-place finisher'),
+    ).toBeTruthy();
+
+    expect(store.getState().game.nominationContext).toBeNull();
+    expect(store.getState().game.awaitingNominations).toBe(true);
+  });
+
+  it('hides the floating action bar while the public save reveal is active', async () => {
+    const store = makeStore({
+      phase: 'pre_veto_public_save',
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      awaitingNominations: false,
+      awaitingPublicSave: true,
+      publicModeEnabled: true,
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    expect(screen.getByRole('status')).toBeTruthy();
+    expect(screen.queryByRole('toolbar', { name: 'Game actions' })).toBeNull();
   });
 
   it('does not double-animate AI HOH nominees after the animation completes', async () => {

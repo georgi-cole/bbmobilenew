@@ -8,9 +8,10 @@
  *      caller can apply the 'nominated' status indicator to the grid tiles.
  *
  * Props:
- *   nominees  – array of players being nominated (1 or 2)
+ *   nominees  – array of players being nominated (1–3)
  *   onDone    – called when the animation completes
  *   holdMs    – how long (ms) to hold the centred state (default 2000)
+ *   labels    – optional per-nominee label keyed by player ID (e.g. "HOH Nominee")
  */
 
 import { useState, useEffect } from 'react';
@@ -22,6 +23,8 @@ export interface NominationAnimatorProps {
   nominees: Player[];
   onDone: () => void;
   holdMs?: number;
+  /** Optional label text per nominee ID (e.g. `{ p3: 'Last in HOH Comp' }`). */
+  labels?: Record<string, string>;
 }
 
 type AnimState = 'entering' | 'holding' | 'exiting';
@@ -30,6 +33,7 @@ export default function NominationAnimator({
   nominees,
   onDone,
   holdMs = 2000,
+  labels,
 }: NominationAnimatorProps) {
   const [animState, setAnimState] = useState<AnimState>('entering');
 
@@ -60,6 +64,13 @@ export default function NominationAnimator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animState]);
 
+  const labelText =
+    nominees.length === 1
+      ? `${nominees[0].name} has been nominated`
+      : nominees.length >= 3
+        ? `${nominees.map((n) => n.name).join(', ')} have been nominated`
+        : `${nominees.map((n) => n.name).join(' & ')} have been nominated`;
+
   return (
     <div
       className={`nom-anim nom-anim--${animState}`}
@@ -76,13 +87,12 @@ export default function NominationAnimator({
               <span className="nom-anim__badge" aria-hidden="true">❓</span>
             </div>
             <span className="nom-anim__name">{player.name}</span>
+            {labels?.[player.id] && (
+              <span className="nom-anim__role-pill">{labels[player.id]}</span>
+            )}
           </div>
         ))}
-        <p className="nom-anim__label">
-          {nominees.length === 1
-            ? `${nominees[0].name} has been nominated`
-            : `${nominees.map((n) => n.name).join(' & ')} have been nominated`}
-        </p>
+        <p className="nom-anim__label">{labelText}</p>
       </div>
     </div>
   );

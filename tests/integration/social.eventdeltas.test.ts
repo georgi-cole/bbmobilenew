@@ -17,6 +17,7 @@ import gameReducer, {
   submitPovSaveTarget,
   setReplacementNominee,
   submitHumanVote,
+  commitPublicSave,
 } from '../../src/store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
@@ -101,6 +102,8 @@ describe('event delta – survived nomination (+4 energy)', () => {
         const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
         const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId && p.id !== gs.pendingNominee1Id);
         store.dispatch(finalizeNominations(pool[0].id));
+      } else if (gs.awaitingPublicSave && gs.nomineeIds.length > 0) {
+        store.dispatch(commitPublicSave(gs.nomineeIds[0]));
       } else if (gs.awaitingPovDecision) {
         store.dispatch(submitPovDecision(false));
       } else if (gs.awaitingPovSaveTarget && gs.nomineeIds.length > 0) {

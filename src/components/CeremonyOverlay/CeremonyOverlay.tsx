@@ -28,6 +28,8 @@ export interface CeremonyTile {
   rect: DOMRect | null;
   /** Badge emoji to animate onto this tile (e.g. '👑', '🛡️', '❓'). */
   badge: string;
+  /** Optional role/context label shown as a pill above the spotlighted tile. */
+  label?: string;
   /**
    * Where the badge starts before flying to the tile:
    *   'center' — screen centre (default for winner badges)
@@ -259,6 +261,22 @@ export default function CeremonyOverlay({
             aria-hidden="true"
           />
         ))}
+
+        {/* Optional role/context pills above spotlighted tiles */}
+        {validTiles.map((tile, i) => {
+          if (!tile.label) return null;
+          const c = cutouts[i];
+          return (
+            <div
+              key={`label-${i}`}
+              className="ceremony-overlay__tile-label"
+              style={{ left: c.x + (c.w / 2), top: Math.max(c.y - 30, 12) }}
+              aria-hidden="true"
+            >
+              {tile.label}
+            </div>
+          );
+        })}
 
         {/* Caption text */}
         <div

@@ -32,6 +32,7 @@ import gameReducer, {
   setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
+  commitPublicSave,
 } from '../src/store/gameSlice';
 import type { GameState, Player } from '../src/types';
 
@@ -335,6 +336,9 @@ describe('endgame simulation — Final 5 through to jury', () => {
         } else {
           store.dispatch(advance());
         }
+      } else if (state.awaitingPublicSave && state.nomineeIds.length > 0) {
+        // Pre-veto public save: save the first nominee deterministically
+        store.dispatch(commitPublicSave(state.nomineeIds[0]));
       } else if (state.awaitingPovDecision && state.phase === 'final4_eviction') {
         // Human is POV holder at Final 4; must choose who to evict via finalizeFinal4Eviction
         if (state.nomineeIds.length > 0) {
