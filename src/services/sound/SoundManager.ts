@@ -148,10 +148,18 @@ class _SoundManager {
       return;
     }
 
+    // Compute effective volume here so it is available to both the native
+    // fast-path (for gate checks) and the HTMLAudio fallback path below.
+    const baseVol = opts?.volume ?? entry.volume ?? 1;
+    const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
+
     // Native audio fast-path: when running inside a Cordova WebView with the
     // nativeaudio plugin, use the native backend for mapped SFX keys.
+    // Note: native SFX volume is baked in at preload time (via preloadComplex)
+    // so real-time category volume changes do not affect already-preloaded SFX.
+    // The fast-path is skipped when effectiveVol is 0 (muted) so silence is honoured.
     const nativeKey = NATIVE_SFX_MAP[key as keyof typeof NATIVE_SFX_MAP];
-    if (nativeKey && NativeAudioAdapter.isAvailable()) {
+    if (nativeKey && NativeAudioAdapter.isAvailable() && effectiveVol > 0) {
       try {
         NativeAudioAdapter.playSfx(nativeKey);
         return;
@@ -159,9 +167,6 @@ class _SoundManager {
         console.warn('[SoundManager] NativeAudio play failed, falling back to HTMLAudio', err);
       }
     }
-
-    const baseVol = opts?.volume ?? entry.volume ?? 1;
-    const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
 
     // Get or lazily create a per-key pool
     let pool = this._sfxPools.get(key);

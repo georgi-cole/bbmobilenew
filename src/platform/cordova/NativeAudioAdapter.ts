@@ -79,29 +79,31 @@ class _NativeAudioAdapter {
         return;
       }
 
-      if (!_getPlugin()) {
-        // Plugin not present (browser dev environment) — resolve immediately
+      const isCordovaEnv = 'cordova' in window;
+
+      if (!isCordovaEnv) {
+        // Plain browser (no Cordova) — resolve immediately
         this._ready = true;
         resolve();
         return;
       }
 
-      // Inside Cordova WebView — wait for deviceready
+      if (_getPlugin()) {
+        // Cordova is already ready and the plugin is available — resolve immediately.
+        // (deviceready has already fired by the time plugins are injected.)
+        this._ready = true;
+        resolve();
+        return;
+      }
+
+      // Running under Cordova but the plugin is not yet available — wait for
+      // deviceready, after which the plugin will be injected by Cordova.
       const onReady = () => {
         this._ready = true;
         resolve();
       };
 
-      // If deviceready already fired (e.g. init() called late) document.dispatchEvent
-      // won't re-fire it, so also handle the case where Cordova is already ready.
-      // cordova.platformId is set synchronously before deviceready on all platforms.
-      if ('cordova' in window) {
-        document.addEventListener('deviceready', onReady, { once: true });
-      } else {
-        // Cordova object not present — plain browser
-        this._ready = true;
-        resolve();
-      }
+      document.addEventListener('deviceready', onReady, { once: true });
     });
 
     return this._initPromise;
