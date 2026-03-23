@@ -447,7 +447,7 @@ export default function TvZone() {
       <div className="tv-zone__bezel">
         <div className="tv-zone__bezel-frame">
           <div className="tv-zone__bezel-brand" aria-hidden="true">
-            <span className="tv-zone__bezel-brand__text">BB</span>
+            <span className="tv-zone__bezel-brand__text">EW</span>
           </div>
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
