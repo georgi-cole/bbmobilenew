@@ -426,7 +426,7 @@ describe('Quick Tap Race — backward-compat: legacy numeric payload', () => {
     setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 80, p2: 70 });
 
     // Legacy callers pass a bare number
-    store.dispatch(completeMinigame(95 as unknown as CompleteMinigamePayload));
+    store.dispatch(completeMinigame(95));
 
     const state = store.getState().game;
     expect(state.hohId).toBe('p0');

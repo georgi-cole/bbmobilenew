@@ -137,12 +137,13 @@ export default function QuickTapRace({
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
+  const resolvedDuration = session?.options.timeLimit ?? GAME_DURATION;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
   const [countdown, setCountdown] = useState(READY_COUNT);
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [timeLeft, setTimeLeft] = useState(resolvedDuration);
   const [tapCount, setTapCount] = useState(0);
   const [effectiveScore, setEffectiveScore] = useState(0);
   const [heatLevel, setHeatLevel] = useState(0); // 0–5
@@ -160,6 +161,14 @@ export default function QuickTapRace({
   const particleIdRef = useRef(0);
   const activeMultiplierRef = useRef<MultiplierEvent | null>(null);
   const appliedModifiersRef = useRef<string[]>([]);
+  const particleTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+  useEffect(() => {
+    return () => {
+      particleTimeoutsRef.current.forEach(clearTimeout);
+      particleTimeoutsRef.current = [];
+    };
+  }, []);
 
   // ── Multiplier events ──────────────────────────────────────────────────────
 
@@ -290,9 +299,10 @@ export default function QuickTapRace({
     setParticles((prev) => [...prev.slice(-20), ...newParticles]);
     // Expire particles after 700 ms
     const ids = newParticles.map((p) => p.id);
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setParticles((prev) => prev.filter((p) => !ids.includes(p.id)));
     }, 700);
+    particleTimeoutsRef.current.push(timeoutId);
   }, [gamePhase]);
 
   // ── Game finish ────────────────────────────────────────────────────────────
@@ -335,24 +345,15 @@ export default function QuickTapRace({
   const handleDone = useCallback(() => {
     if (!session) return;
     const humanEffective = Math.round(effectiveScoreRef.current);
-
-    // Derive last-place from effective scores
-    const allScores: Record<string, number> = {
-      ...session.aiScores,
-      ...(humanId ? { [humanId]: humanEffective } : {}),
-    };
-    const sorted = [...session.participants].sort(
-      (a, b) => (allScores[a] ?? 0) - (allScores[b] ?? 0),
-    );
-    const lastPlaceId = sorted[0] ?? undefined;
+    const lastPlaceId = scores.length > 0 ? scores[scores.length - 1].id : undefined;
 
     const payload: CompleteMinigamePayload = { humanScore: humanEffective, lastPlaceId };
     dispatch(completeMinigame(payload));
-  }, [dispatch, session, humanId]);
+  }, [dispatch, scores, session]);
 
   // ── Derived UI values ──────────────────────────────────────────────────────
 
-  const progressPct = (timeLeft / GAME_DURATION) * 100;
+  const progressPct = (timeLeft / resolvedDuration) * 100;
   const isUrgent = timeLeft <= 5;
   const currentMultiplier = activeMultiplier?.multiplier ?? 1;
 
@@ -419,7 +420,7 @@ export default function QuickTapRace({
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={GAME_DURATION}
+              aria-valuemax={resolvedDuration}
             >
               <div
                 className="qtr__progress-fill"
@@ -460,9 +461,9 @@ export default function QuickTapRace({
             </div>
 
             {/* TAP button + particles */}
-            <div className="qtr__tap-area" aria-hidden="true">
+            <div className="qtr__tap-area">
               {/* Particle layer */}
-              <div className="qtr__particles">
+              <div className="qtr__particles" aria-hidden="true">
                 {particles.map((p) => (
                   <span
                     key={p.id}
