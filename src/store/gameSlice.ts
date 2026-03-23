@@ -152,14 +152,14 @@ export function createInitialGameState(): GameState {
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
       {
-        id: 'e1',
-        text: freshSettings.sim.publicMode === true
-          ? '[Rules] Public mode: ON — 3 nominees pre-veto + public save enabled. 🗳️'
-          : '[Rules] Public mode: OFF — standard 2 nominee rules.',
+        id: 'e0',
+        text:
+          freshSettings.sim.publicMode === true
+            ? 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin. [Rules] Public mode: ON — 3 nominees pre-veto + public save enabled. 🗳️'
+            : 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin. [Rules] Public mode: OFF — standard 2 nominee rules.',
         type: 'game',
-        timestamp: Date.now() + 1,
+        timestamp: Date.now(),
       },
-      { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
     seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
