@@ -151,6 +151,14 @@ export function createInitialGameState(): GameState {
     players: freshPlayers,
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
+      {
+        id: 'e1',
+        text: freshSettings.sim.publicMode === true
+          ? '[Rules] Public mode: ON — 3 nominees pre-veto + public save enabled. 🗳️'
+          : '[Rules] Public mode: OFF — standard 2 nominee rules.',
+        type: 'game',
+        timestamp: Date.now() + 1,
+      },
       { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
@@ -603,15 +611,18 @@ const gameSlice = createSlice({
         state.phase = 'hoh_results';
         winnerWasApplied = true;
         // Track the last-place HOH competition finisher for the third-nominee rule.
-        // Only do this when real scores were provided; synthetic fallback scores
-        // do not encode placement and would introduce roster-order bias.
+        // When real scores are provided use them for accurate placement; otherwise
+        // fall back to the first non-winner so the feature is never silently
+        // disabled when the challenge flow omits scores (e.g. via CeremonyOverlay).
         const nonWinners = resolvedParticipants.filter((id) => id !== winnerId);
-        if (hasScores && nonWinners.length > 0) {
-          state.lastHohCompFinisherId = nonWinners.reduce(
-            (worst, id) =>
-              (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
-            nonWinners[0],
-          );
+        if (nonWinners.length > 0) {
+          state.lastHohCompFinisherId = hasScores
+            ? nonWinners.reduce(
+                (worst, id) =>
+                  (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
+                nonWinners[0],
+              )
+            : nonWinners[0];
         }
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.
@@ -2713,6 +2724,15 @@ const gameSlice = createSlice({
             state.doubleEviction?.weekActive ||
             state.nomineeIds.length !== 3
           ) {
+            if (import.meta.env.DEV && state.publicModeEnabled === true) {
+              const reason = state.doubleEviction?.weekActive
+                ? 'double eviction active'
+                : `nomineeIds.length is ${state.nomineeIds.length} (expected 3)`;
+              console.warn(
+                `[publicMode] pre_veto_public_save skipped even though publicModeEnabled=true — reason: ${reason}`,
+                { week: state.week, nomineeCount: state.nomineeIds.length },
+              );
+            }
             nextPhase = 'pov_comp_announcement';
             pushPovCompetitionAnnouncement(state);
             break;
