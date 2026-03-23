@@ -24,6 +24,7 @@ import gameReducer, {
   commitNominees,
   commitPublicSave,
   fastForwardToEviction,
+  applyMinigameWinner,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
@@ -550,6 +551,48 @@ describe('HOH comp last-place tracking', () => {
     expect(state.publicSavedNomineeId).toBeNull();
     expect(state.nominationContext).toBeNull();
     expect(state.awaitingPublicSave).toBe(false);
+  });
+
+  it('applyMinigameWinner without scores still sets lastHohCompFinisherId in hoh_comp', () => {
+    // Simulates the challenge-flow path (GameScreen calls applyMinigameWinner without scores).
+    const players = makePlayers(12);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      publicModeEnabled: true,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({ winnerId: 'p1', participants: players.map((p) => p.id) }));
+    const state = store.getState().game;
+
+    expect(state.phase).toBe('hoh_results');
+    expect(state.hohId).toBe('p1');
+    expect(state.lastHohCompFinisherId).not.toBeNull();
+    expect(state.lastHohCompFinisherId).not.toBe('p1');
+  });
+
+  it('applyMinigameWinner with real scores picks the lowest scorer as lastHohCompFinisherId', () => {
+    const players = makePlayers(6);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      publicModeEnabled: true,
+      players,
+    });
+
+    // p0 wins; p4 has the lowest score → should be lastHohCompFinisherId
+    const scores: Record<string, number> = {
+      p0: 100, p1: 80, p2: 60, p3: 40, p4: 10, p5: 55,
+    };
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: players.map((p) => p.id),
+      scores,
+    }));
+    const state = store.getState().game;
+
+    expect(state.lastHohCompFinisherId).toBe('p4');
   });
 });
 

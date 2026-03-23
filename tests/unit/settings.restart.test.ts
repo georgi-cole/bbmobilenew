@@ -365,4 +365,43 @@ describe('full restart flow', () => {
 
     expect(store.getState().game.players).toHaveLength(6);
   });
+
+  it('dispatching setSim publicMode then resetGame produces publicModeEnabled: true', () => {
+    const store = makeStore();
+
+    // User enables Public mode in Settings, then confirms restart.
+    store.dispatch(setSim({ publicMode: true }));
+    // Simulate the store.subscribe persistence that happens in the real app.
+    persistSettings(store.getState().settings);
+
+    store.dispatch(resetGame());
+
+    expect(store.getState().game.publicModeEnabled).toBe(true);
+  });
+
+  it('new season tvFeed contains [Rules] Public mode: ON message when publicMode is true', () => {
+    const store = makeStore();
+
+    store.dispatch(setSim({ publicMode: true }));
+    persistSettings(store.getState().settings);
+
+    store.dispatch(resetGame());
+
+    const feed = store.getState().game.tvFeed;
+    const rulesEntry = feed.find((e) => e.text.includes('[Rules] Public mode: ON'));
+    expect(rulesEntry).toBeDefined();
+  });
+
+  it('new season tvFeed contains [Rules] Public mode: OFF message when publicMode is false', () => {
+    const store = makeStore();
+
+    store.dispatch(setSim({ publicMode: false }));
+    persistSettings(store.getState().settings);
+
+    store.dispatch(resetGame());
+
+    const feed = store.getState().game.tvFeed;
+    const rulesEntry = feed.find((e) => e.text.includes('[Rules] Public mode: OFF'));
+    expect(rulesEntry).toBeDefined();
+  });
 });
