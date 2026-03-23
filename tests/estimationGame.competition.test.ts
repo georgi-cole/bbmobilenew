@@ -408,19 +408,22 @@ describe('Estimation Game — tie-breaking', () => {
     expect(state.hohId).toBe('p1');
   });
 
-  it('when two players tie for last, the later participant is last (stable sort fallback)', () => {
+  it('when two players tie for last, the first tied player in participant order is last-place (stable reduce)', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
 
-    // p1 wins; p2 and p3 both score 50 — p3 comes last in participant order
+    // p1 wins (280); human p0=100; p2 and p3 both score 50.
+    // deriveLastPlaceId reduces over non-winners [p0, p2, p3]:
+    //   start worst=p0 (100); p2: 50<100 → worst=p2; p3: 50<50 → false → worst stays p2.
+    // So lastHohCompFinisherId must be deterministically p2.
     setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 280, p2: 50, p3: 50 });
 
     // Human scores 100 (not last)
     store.dispatch(completeMinigame({ humanScore: 100 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    // lastHohCompFinisherId: p2 and p3 tie; p3 is the last in participant order so it ends up last
-    expect(['p2', 'p3']).toContain(state.lastHohCompFinisherId);
+    // p2 is the first tied-lowest non-winner encountered during the reduce — deterministic
+    expect(state.lastHohCompFinisherId).toBe('p2');
   });
 
   it('no silent fallback: lastHohCompFinisherId is always set when session has 2+ participants', () => {
