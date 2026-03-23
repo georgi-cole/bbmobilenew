@@ -56,6 +56,31 @@ export interface MinigameResult {
   winnerId: string;
   /** Players whose score beat their previous personal record this run. */
   personalRecords?: Record<string, number>;
+  /**
+   * Canonical last-place finisher derived from the authoritative outcome.
+   * When set, this takes priority over score-based derivation in the store.
+   */
+  lastPlaceId?: string;
+  /**
+   * Full placement order (best → worst) derived from the authoritative outcome.
+   * Empty or absent = not yet determined (falls back to score-based ranking).
+   */
+  placements?: string[];
+}
+
+/**
+ * Payload for the `completeMinigame` action.
+ * Replaces the legacy single-number payload to enable canonical outcome data.
+ */
+export interface CompleteMinigamePayload {
+  /** The human player's final effective score (after any multipliers). */
+  humanScore: number;
+  /**
+   * Canonical last-place player ID derived by the game component itself.
+   * When provided this is preferred over the store's score-based derivation
+   * so the results UI and nomination logic share the same authoritative source.
+   */
+  lastPlaceId?: string;
 }
 
 /** Active minigame session stored in game state while waiting for player input. */

@@ -47,7 +47,7 @@ import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
 import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
-import TapRace from '../../components/TapRace/TapRace'
+import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
@@ -1308,12 +1308,12 @@ export default function GameScreen() {
   const pendingMinigame = game.pendingMinigame
   const humanIsParticipant =
     !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id)
-  // MinigameHost takes priority over legacy TapRace when a challenge is pending
+  // MinigameHost takes priority over QuickTapRace when a challenge is pending
   // and the human player is a participant in that challenge.
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  const showTapRace = !showMinigameHost && humanIsParticipant
+  const showQuickTapRace = !showMinigameHost && humanIsParticipant
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1395,7 +1395,7 @@ export default function GameScreen() {
     showMinigameHost ||
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
-    showTapRace ||
+    showQuickTapRace ||
     aiTiebreakerPending ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -1851,9 +1851,9 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── TapRace minigame overlay ─────────────────────────────────────── */}
-      {showTapRace && pendingMinigame && (
-        <TapRace session={pendingMinigame} players={game.players} />
+      {/* ── QuickTapRace minigame overlay ────────────────────────────────── */}
+      {showQuickTapRace && pendingMinigame && (
+        <QuickTapRace session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}
