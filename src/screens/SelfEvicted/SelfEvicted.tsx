@@ -12,7 +12,7 @@ export default function SelfEvicted() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const playerName = useAppSelector(
-    (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Houseguest',
+    (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Housemate',
   );
 
   function startNewSeason() {
@@ -31,7 +31,7 @@ export default function SelfEvicted() {
         <h1 className="self-evicted-title">You Left the House</h1>
         <p className="self-evicted-name">{playerName}</p>
         <p className="self-evicted-message">
-          You chose to self-evict from the Big Brother house. The game
+          You chose to self-evict from The Big Eye house. The game
           continues without you — but your story ends here.
         </p>
         <div className="self-evicted-actions">

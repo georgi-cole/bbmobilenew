@@ -72,7 +72,7 @@ export default function TiebreakerModal({
       className="tbm"
       role="dialog"
       aria-modal="true"
-      aria-label={isHoh ? 'Tiebreaker — HOH decision' : 'Tiebreaker — HOH is deciding'}
+      aria-label={isHoh ? 'Tiebreaker — LOH decision' : 'Tiebreaker — LOH is deciding'}
     >
       <div className="tbm__card">
         <header className="tbm__header">
@@ -82,8 +82,8 @@ export default function TiebreakerModal({
 
         <p className="tbm__subtitle">
           {isHoh
-            ? 'As Head of Household, you must break the tie. Choose who to evict.'
-            : 'HOH is thinking…'}
+            ? 'As Leader of the House, you must break the tie. Choose who to eliminate.'
+            : 'LOH is thinking…'}
         </p>
 
         {isHoh ? (
@@ -96,7 +96,7 @@ export default function TiebreakerModal({
               >
                 <PlayerAvatar player={player} size="sm" />
                 <span className="tbm__option-name">{player.name}</span>
-                <span className="tbm__option-cta">Evict</span>
+                <span className="tbm__option-cta">Eliminate</span>
               </button>
             ))}
           </div>
@@ -105,7 +105,7 @@ export default function TiebreakerModal({
             <div className="tbm__countdown-ring">
               <span className="tbm__countdown-number">{countdown}</span>
             </div>
-            <p className="tbm__ai-hint">Waiting for HOH to decide…</p>
+            <p className="tbm__ai-hint">Waiting for LOH to decide…</p>
           </div>
         )}
       </div>

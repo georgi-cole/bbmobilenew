@@ -917,7 +917,7 @@ export default function SilentSaboteurComp({
             <AvatarTileGrid
               playerIds={activeIds}
               getName={getName}
-              ariaLabel="Houseguests"
+              ariaLabel="Housemates"
               compact={true}
               showNames={false}
             />
@@ -1219,7 +1219,7 @@ export default function SilentSaboteurComp({
             <p className="ss-phase-eyebrow">🏁 Final 2</p>
             <h2 className="ss-phase-label">Two finalists remain.</h2>
             <p className="ss-hint">One of them is the last saboteur.</p>
-            <p className="ss-hint hint-small">Preparing the jury finale…</p>
+            <p className="ss-hint hint-small">Preparing the Tribunal finale…</p>
           </div>
         </div>
       )}
@@ -1257,27 +1257,27 @@ export default function SilentSaboteurComp({
       {final2Stage === 'FINAL2_INTRO' && (
         <div className="ss-stage ss-stage--centered">
           <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
-            <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Deduction Finale</p>
+            <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Deduction Finale</p>
             <h2 className="ss-phase-label">The Final Confrontation</h2>
             <p className="ss-hint">
-              Two players remain. One planted the bomb. The eliminated jury will decide.
+              Two players remain. One planted the bomb. The eliminated Tribunal will decide.
             </p>
             <Final2FinalistsMuted
               finalistIds={final2FinalistIdsRef.current}
               getName={getName}
             />
             <p className="ss-hint hint-small">
-              {eliminatedIds.length} jury member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
+              {eliminatedIds.length} Tribunal member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
             </p>
             <ActionFooter>
               <button
                 className="ss-btn ss-action-btn"
                 onClick={handleFinal2ProceedToVoting}
-                aria-label="Proceed to Jury Decision"
+                aria-label="Proceed to Tribunal Decision"
                 data-testid="ss-final2-proceed-btn"
                 disabled={final2ActionLocked}
               >
-                Proceed to Jury Decision
+                Proceed to Tribunal Decision
               </button>
             </ActionFooter>
           </div>
@@ -1287,7 +1287,7 @@ export default function SilentSaboteurComp({
       {/* FINAL2_VOTING: Jury votes. No victim/saboteur labels visible. */}
       {final2Stage === 'FINAL2_VOTING' && final2SaboteurId && final2VictimId && (
         <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
-          <p className="ss-phase-eyebrow">🏁 Final 2 — Jury Phase</p>
+          <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Phase</p>
           <h2 className="ss-phase-label">Who planted the bomb?</h2>
           <CountdownTimer
             remainingMs={remainingCountdownMs}
@@ -1297,8 +1297,8 @@ export default function SilentSaboteurComp({
             {isHumanJuror && juryVotes[humanPlayerId!] === undefined
               ? 'Cast your vote. Which finalist planted the bomb?'
               : isHumanJuror
-              ? '✅ Vote cast. Waiting for the final verdict…'
-              : 'Awaiting the jury verdict…'}
+              ? '✅ Vote cast. Waiting for the final Tribunal verdict…'
+              : 'Awaiting the Tribunal verdict…'}
           </p>
           <Final2FinalistsMuted
             finalistIds={final2FinalistIdsRef.current}

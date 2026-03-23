@@ -39,7 +39,7 @@ export default function SocialSummaryPopup() {
 
         <div className="ssp__body">
           <p className="ssp__text">{report.summary}</p>
-          <p className="ssp__note">🔒 Saved to Diary Room automatically</p>
+          <p className="ssp__note">🔒 Saved to Confessional automatically</p>
         </div>
 
         <footer className="ssp__footer">

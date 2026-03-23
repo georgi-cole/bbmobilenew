@@ -24,20 +24,20 @@ const LLM_TEMPERATURE = 0.7;
 
 // ─── Canned replies ───────────────────────────────────────────────────────────
 const FALLBACKS = [
-  "Big Brother has heard your confession. Remember – every word spoken in this room shapes your fate in the house.",
-  "Interesting. Big Brother is watching, and your honesty is noted. Play wisely.",
-  "Big Brother acknowledges your diary entry. The house has many ears – choose your allies carefully.",
-  "Your thoughts have been received. Big Brother reminds you: trust is currency, and it can run out.",
-  "Big Brother sees all. Your confession will not be forgotten when the time comes.",
-  "The house is full of secrets. Big Brother appreciates your candour. Stay focused.",
-  "Noted. Big Brother is always listening. Your game moves are being carefully observed.",
-  "Big Brother has received your message. The game is unpredictable – adapt or be evicted.",
+  "The Big Eye has heard your confession. Remember – every word spoken in this room shapes your fate in the house.",
+  "Interesting. The Big Eye is watching, and your honesty is noted. Play wisely.",
+  "The Big Eye acknowledges your diary entry. The house has many ears – choose your allies carefully.",
+  "Your thoughts have been received. The Big Eye reminds you: trust is currency, and it can run out.",
+  "The Big Eye sees all. Your confession will not be forgotten when the time comes.",
+  "The house is full of secrets. The Big Eye appreciates your candour. Stay focused.",
+  "Noted. The Big Eye is always listening. Your game moves are being carefully observed.",
+  "The Big Eye has received your message. The game is unpredictable – adapt or be eliminated.",
 ];
 
 const REFUSALS = [
-  "Big Brother cannot respond to that. Keep things civil in the Diary Room.",
-  "That kind of content is not permitted in the Diary Room. Please speak respectfully.",
-  "Big Brother must intervene here. Please keep your diary entries appropriate.",
+  "The Big Eye cannot respond to that. Keep things civil in the Confessional.",
+  "That kind of content is not permitted in the Confessional. Please speak respectfully.",
+  "The Big Eye must intervene here. Please keep your diary entries appropriate.",
 ];
 
 // ─── Deterministic helpers ────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ app.post('/api/ai/bigbrother', async (req, res) => {
   }
 
   const text = diaryText.trim().slice(0, MAX_DIARY_TEXT_LENGTH);
-  const name = typeof playerName === 'string' ? playerName.trim() : 'Houseguest';
+  const name = typeof playerName === 'string' ? playerName.trim() : 'Housemate';
   const gamePhase = typeof phase === 'string' ? phase : 'unknown';
   const rngSeed = typeof seed === 'number' ? seed : fnv32(text);
 
@@ -207,12 +207,12 @@ app.post('/api/ai/bigbrother', async (req, res) => {
 
   // ── Build system prompt ───────────────────────────────────────────────────
   const systemPrompt = [
-    'You are Big Brother, the omniscient host of the TV reality show "Big Brother".',
-    'You speak directly to a single houseguest in the Diary Room in a calm, authoritative, slightly enigmatic tone.',
-    'Keep your response to 1–3 sentences. Do not reveal other houseguests\' secrets.',
+    'You are The Big Eye, the omniscient host of the TV reality show "The Big Eye".',
+    'You speak directly to a single housemate in the Confessional in a calm, authoritative, slightly enigmatic tone.',
+    'Keep your response to 1–3 sentences. Do not reveal other housemates\' secrets.',
     'Do not produce harmful, offensive, or inappropriate content.',
     `Current game phase: ${gamePhase}.`,
-    `You are speaking to houseguest: ${name}.`,
+    `You are speaking to housemate: ${name}.`,
   ].join(' ');
 
   // ── Call LLM ──────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // MODULE: minigames/trivia-pulse.js
-// Trivia Pulse - Time-pressured Big Brother trivia with score multipliers
+// Trivia Pulse - Time-pressured strategy trivia with score multipliers
 
 (function(g){
   'use strict';
@@ -29,45 +29,45 @@
 
   const QUESTIONS = [
     // Core Game Mechanics (Easy)
-    { q: 'What year was Big Brother first aired in the US?', a: ['2000', '1999', '2001', '2002'], correct: 0, difficulty: 'easy' },
-    { q: 'How many houseguests typically start each season?', a: ['12', '14', '16', '18'], correct: 2, difficulty: 'easy' },
-    { q: 'What does HOH stand for?', a: ['Head of House', 'Head of Household', 'House of Honor', 'Hero of House'], correct: 1, difficulty: 'easy' },
+    { q: 'What year did The Big Eye first air in the US?', a: ['2000', '1999', '2001', '2002'], correct: 0, difficulty: 'easy' },
+    { q: 'How many housemates typically start each season?', a: ['12', '14', '16', '18'], correct: 2, difficulty: 'easy' },
+    { q: 'What does LOH stand for?', a: ['Leader of House', 'Leader of the House', 'Lord of Honor', 'Hero of House'], correct: 1, difficulty: 'easy' },
     { q: 'How many nominees are typically put up each week?', a: ['1', '2', '3', '4'], correct: 1, difficulty: 'easy' },
-    { q: 'What competition can save a nominee?', a: ['HOH', 'Veto', 'Jury', 'Vote'], correct: 1, difficulty: 'easy' },
-    { q: 'Where do evicted players go after jury starts?', a: ['Home', 'Jury House', 'Sequester', 'Hotel'], correct: 1, difficulty: 'medium' },
-    { q: 'Who votes in the finale?', a: ['America', 'Host', 'Jury', 'Nominees'], correct: 2, difficulty: 'easy' },
-    { q: 'What is a "backdoor" in Big Brother?', a: ['Exit door', 'Secret room', 'Veto strategy', 'Alliance name'], correct: 2, difficulty: 'medium' },
-    { q: 'How many jury members typically vote?', a: ['7', '9', '5', '11'], correct: 1, difficulty: 'medium' },
-    { q: 'What is a "floater" in Big Brother?', a: ['Pool toy', 'Strategic player', 'Loyalty player', 'Non-aligned player'], correct: 3, difficulty: 'medium' },
-    { q: 'What happens during a double eviction?', a: ['Two nominees', 'Two evictions', 'Two HOHs', 'Two vetoes'], correct: 1, difficulty: 'medium' },
-    { q: 'Who typically cannot compete in HOH?', a: ['Previous HOH', 'Nominees', 'Veto winner', 'Jury'], correct: 0, difficulty: 'easy' },
+    { q: 'What competition can save a nominee?', a: ['LOH', 'Safety', 'Tribunal', 'Vote'], correct: 1, difficulty: 'easy' },
+    { q: 'Where do eliminated players go after the Tribunal starts?', a: ['Home', 'Tribunal House', 'Sequester', 'Hotel'], correct: 1, difficulty: 'medium' },
+    { q: 'Who votes in the finale?', a: ['Public', 'Host', 'Tribunal', 'Nominees'], correct: 2, difficulty: 'easy' },
+    { q: 'What is a "backdoor" in the game?', a: ['Exit door', 'Secret room', 'Veto strategy', 'Alliance name'], correct: 2, difficulty: 'medium' },
+    { q: 'How many Tribunal members typically vote?', a: ['7', '9', '5', '11'], correct: 1, difficulty: 'medium' },
+    { q: 'What is a "floater" in the game?', a: ['Pool toy', 'Strategic player', 'Loyalty player', 'Non-aligned player'], correct: 3, difficulty: 'medium' },
+    { q: 'What happens during a double elimination?', a: ['Two nominees', 'Two eliminations', 'Two LOHs', 'Two safety comps'], correct: 1, difficulty: 'medium' },
+    { q: 'Who typically cannot compete in LOH?', a: ['Previous LOH', 'Nominees', 'Safety winner', 'Tribunal'], correct: 0, difficulty: 'easy' },
     
     // Additional Core Rules (Easy)
-    { q: 'What does POV stand for?', a: ['Point of View', 'Power of Veto', 'Player of Victory', 'Power of Vote'], correct: 1, difficulty: 'easy' },
-    { q: 'How many people compete in POV?', a: ['4', '6', '8', '10'], correct: 1, difficulty: 'easy' },
-    { q: 'Who breaks tie votes?', a: ['America', 'Host', 'HOH', 'Oldest player'], correct: 2, difficulty: 'easy' },
-    { q: 'What is the Diary Room for?', a: ['Storage', 'Confessionals', 'Sleeping', 'Competitions'], correct: 1, difficulty: 'easy' },
-    { q: 'What day is eviction typically?', a: ['Monday', 'Wednesday', 'Thursday', 'Saturday'], correct: 2, difficulty: 'easy' },
-    { q: 'What happens on eviction night?', a: ['Nominations', 'Someone leaves', 'POV ceremony', 'Alliance forms'], correct: 1, difficulty: 'easy' },
+    { q: 'What does POS stand for?', a: ['Point of Strategy', 'Power of Safety', 'Player of Strategy', 'Power of Score'], correct: 1, difficulty: 'easy' },
+    { q: 'How many people compete in POS?', a: ['4', '6', '8', '10'], correct: 1, difficulty: 'easy' },
+    { q: 'Who breaks tie votes?', a: ['Public', 'Host', 'LOH', 'Oldest player'], correct: 2, difficulty: 'easy' },
+    { q: 'What is the Confessional for?', a: ['Storage', 'Confessions', 'Sleeping', 'Competitions'], correct: 1, difficulty: 'easy' },
+    { q: 'What day is elimination typically?', a: ['Monday', 'Wednesday', 'Thursday', 'Saturday'], correct: 2, difficulty: 'easy' },
+    { q: 'What happens on elimination night?', a: ['Nominations', 'Someone leaves', 'Safety ceremony', 'Alliance forms'], correct: 1, difficulty: 'easy' },
     { q: 'What is "the Block"?', a: ['Punishment', 'Nomination seats', 'Voting area', 'Time limit'], correct: 1, difficulty: 'easy' },
-    { q: 'Who can use the veto?', a: ['Anyone', 'POV winner', 'HOH only', 'Nominees'], correct: 1, difficulty: 'easy' },
+    { q: 'Who can use the Safety?', a: ['Anyone', 'POS winner', 'LOH only', 'Nominees'], correct: 1, difficulty: 'easy' },
     
     // Strategy Terms (Medium)
     { q: 'What is a "showmance"?', a: ['TV show', 'House romance', 'Performance', 'Drama'], correct: 1, difficulty: 'easy' },
-    { q: 'What is "jury management"?', a: ['Managing jurors', 'Building jury votes', 'Controlling jury', 'Avoiding jury'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "Tribunal management"?', a: ['Managing judges', 'Building Tribunal votes', 'Controlling Tribunal', 'Avoiding Tribunal'], correct: 1, difficulty: 'medium' },
     { q: 'What does "throwing a comp" mean?', a: ['Give up', 'Lose intentionally', 'Throw objects', 'Get angry'], correct: 1, difficulty: 'medium' },
     { q: 'What is a "pawn"?', a: ['Chess piece', 'Safe nominee', 'Weak player', 'Sacrifice'], correct: 1, difficulty: 'medium' },
-    { q: 'What is a "blindside"?', a: ['Surprise eviction', 'Closed eyes', 'Darkness', 'Betrayal'], correct: 0, difficulty: 'medium' },
-    { q: 'What is "blood on hands"?', a: ['Injury', 'Eviction guilt', 'Actual blood', 'Violence'], correct: 1, difficulty: 'medium' },
+    { q: 'What is a "blindside"?', a: ['Surprise elimination', 'Closed eyes', 'Darkness', 'Betrayal'], correct: 0, difficulty: 'medium' },
+    { q: 'What is "blood on hands"?', a: ['Injury', 'Elimination guilt', 'Actual blood', 'Violence'], correct: 1, difficulty: 'medium' },
     { q: 'What is a "comp beast"?', a: ['Animal', 'Strong player', 'Competition winner', 'Frequent winner'], correct: 3, difficulty: 'medium' },
-    { q: 'What is "flipping the house"?', a: ['Renovating', 'Changing votes', 'Evicting HOH', 'Winning all'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "flipping the house"?', a: ['Renovating', 'Changing votes', 'Eliminating LOH', 'Winning all'], correct: 1, difficulty: 'medium' },
     { q: 'What does "laying low" mean?', a: ['Sleeping', 'Avoiding attention', 'Losing comps', 'Quitting'], correct: 1, difficulty: 'easy' },
-    { q: 'What is a "power alliance"?', a: ['Electric group', 'Dominant alliance', 'HOH team', 'Winners'], correct: 1, difficulty: 'medium' },
+    { q: 'What is a "power alliance"?', a: ['Electric group', 'Dominant alliance', 'LOH team', 'Winners'], correct: 1, difficulty: 'medium' },
     
     // Advanced Strategy (Hard)
-    { q: 'What is a "bitter jury"?', a: ['Angry jurors', 'Bad losers', 'Personal voting', 'All of these'], correct: 3, difficulty: 'hard' },
+    { q: 'What is a "bitter Tribunal"?', a: ['Angry judges', 'Bad losers', 'Personal voting', 'All of these'], correct: 3, difficulty: 'hard' },
     { q: 'What is a "goat"?', a: ['Animal', 'Weak finalist', 'Winner', 'Villain'], correct: 1, difficulty: 'hard' },
-    { q: 'What does "cutting someone" mean?', a: ['Injury', 'Evicting ally', 'Nomination', 'Betrayal'], correct: 1, difficulty: 'medium' },
+    { q: 'What does "cutting someone" mean?', a: ['Injury', 'Eliminating ally', 'Nomination', 'Betrayal'], correct: 1, difficulty: 'medium' },
     { q: 'What is "sitting pretty"?', a: ['Posing', 'Safe position', 'Winning', 'Relaxing'], correct: 1, difficulty: 'medium' },
     { q: 'What is a "vote flip"?', a: ['Coin toss', 'Changing vote', 'Gymnastics', 'Betrayal'], correct: 1, difficulty: 'medium' },
     { q: 'What does "throwing under bus" mean?', a: ['Violence', 'Blaming others', 'Accident', 'Strategy'], correct: 1, difficulty: 'easy' },
@@ -75,17 +75,17 @@
     
     // Game Phases (Medium)
     { q: 'What is the "Final 2"?', a: ['Last two players', 'Final comp', 'Last vote', 'Finale episode'], correct: 0, difficulty: 'easy' },
-    { q: 'What is the "Final HOH"?', a: ['Last comp', '3-part comp', 'Chooses F2', 'All of these'], correct: 3, difficulty: 'medium' },
-    { q: 'What is "pre-jury"?', a: ['Before game', 'Before jury phase', 'Early eviction', 'First week'], correct: 1, difficulty: 'medium' },
-    { q: 'What is "jury phase"?', a: ['Trial', 'When jury forms', 'Final weeks', 'Voting period'], correct: 1, difficulty: 'medium' },
-    { q: 'What is "making jury"?', a: ['Creating jury', 'Lasting to jury', 'Joining jury', 'Winning game'], correct: 2, difficulty: 'medium' },
+    { q: 'What is the "Final LOH"?', a: ['Last comp', '3-part comp', 'Chooses F2', 'All of these'], correct: 3, difficulty: 'medium' },
+    { q: 'What is "pre-Tribunal"?', a: ['Before game', 'Before Tribunal phase', 'Early elimination', 'First week'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "Tribunal phase"?', a: ['Trial', 'When Tribunal forms', 'Final weeks', 'Voting period'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "making the Tribunal"?', a: ['Creating Tribunal', 'Lasting to Tribunal', 'Joining Tribunal', 'Winning game'], correct: 2, difficulty: 'medium' },
     { q: 'What is the "Jury Roundtable"?', a: ['Table shape', 'Jury discussion', 'Voting area', 'Final comp'], correct: 1, difficulty: 'medium' },
     
     // Competitions (Medium)
     { q: 'What is a "Battle Back"?', a: ['Fight', 'Return comp', 'Revenge', 'Backstab'], correct: 1, difficulty: 'medium' },
     { q: 'What type is an endurance comp?', a: ['Quick', 'Long-lasting', 'Mental', 'Physical'], correct: 1, difficulty: 'easy' },
     { q: 'What is a mental comp?', a: ['Days comp', 'Memory test', 'Quiz', 'All of these'], correct: 3, difficulty: 'medium' },
-    { q: 'What happens at POV ceremony?', a: ['Nominations', 'Veto decision', 'Eviction', 'Vote'], correct: 1, difficulty: 'easy' },
+    { q: 'What happens at POS ceremony?', a: ['Nominations', 'Safety decision', 'Elimination', 'Vote'], correct: 1, difficulty: 'easy' },
     { q: 'What is a "knockout" comp?', a: ['Boxing', 'Elimination style', 'Physical', 'Mental'], correct: 1, difficulty: 'medium' },
     
     // Social Game (Easy/Medium)
@@ -97,13 +97,13 @@
     
     // Voting & Nominations (Easy/Medium)
     { q: 'What is a unanimous vote?', a: ['Close vote', 'All agree', 'Tie vote', 'No vote'], correct: 1, difficulty: 'easy' },
-    { q: 'When is the veto ceremony?', a: ['Before noms', 'After POV comp', 'Eviction night', 'Finale'], correct: 1, difficulty: 'easy' },
-    { q: 'What happens if POV is used?', a: ['Nothing', 'Replacement nom', 'Week ends', 'No eviction'], correct: 1, difficulty: 'easy' },
-    { q: 'What are jury votes for?', a: ['Evictions', 'Winner decision', 'Nominations', 'America'], correct: 1, difficulty: 'easy' },
+    { q: 'When is the safety ceremony?', a: ['Before noms', 'After POS comp', 'Elimination night', 'Finale'], correct: 1, difficulty: 'easy' },
+    { q: 'What happens if POS is used?', a: ['Nothing', 'Backup nominee', 'Week ends', 'No elimination'], correct: 1, difficulty: 'easy' },
+    { q: 'What are Tribunal votes for?', a: ['Eliminations', 'Winner decision', 'Nominations', 'Public'], correct: 1, difficulty: 'easy' },
     
     // Special Events (Medium/Hard)
     { q: 'What is a "twist"?', a: ['Dance move', 'Rule change', 'Turn', 'Strategy'], correct: 1, difficulty: 'easy' },
-    { q: 'What is "America\'s Vote"?', a: ['Election', 'Viewer influence', 'HOH comp', 'Jury vote'], correct: 1, difficulty: 'medium' },
+    { q: 'What is "America\'s Vote"?', a: ['Election', 'Viewer influence', 'LOH comp', 'Tribunal vote'], correct: 1, difficulty: 'medium' },
     { q: 'What are "Have-Nots"?', a: ['Losers', 'Food restriction', 'Nominees', 'Jury'], correct: 1, difficulty: 'medium' },
     { q: 'What is the prize money?', a: ['$100K', '$250K', '$500K', '$1M'], correct: 2, difficulty: 'medium' },
   ];
@@ -121,7 +121,7 @@
     wrapper.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:20px;max-width:500px;margin:0 auto;';
     
     const title = document.createElement('h3');
-    title.textContent = variant === 'pulse' ? 'Trivia Pulse' : 'Big Brother Trivia';
+    title.textContent = variant === 'pulse' ? 'Trivia Pulse' : 'The Big Eye Trivia';
     title.style.cssText = 'margin:0;font-size:1.2rem;color:#e3ecf5;text-align:center;';
     
     const bestScore = loadBestScore(variant === 'pulse' ? 'triviaPulse' : 'triviaQuiz');

@@ -455,7 +455,7 @@ export default function BiographyBlitzComp({
               {isHumanWin ? '🏆 You win!' : `🏆 ${winnerName} wins!`}
             </p>
             <p className="bb-blitz__winner-sub">
-              {bb.competitionType === 'HOH' ? 'New Head of Household' : 'Power of Veto winner'}
+              {bb.competitionType === 'HOH' ? 'New Leader of the House' : 'Power of Safety winner'}
             </p>
           </div>
         </MinigameCompleteWrapper>
@@ -584,7 +584,7 @@ export default function BiographyBlitzComp({
             <p className="bb-blitz__question-hint">
               {selectedAnswerId
                 ? `Selected: ${getName(selectedAnswerId)} — Press Submit to confirm`
-                : 'Tap the correct houseguest, then press Submit!'}
+                : 'Tap the correct housemate, then press Submit!'}
             </p>
           )}
           {phase === 'reveal' && bb.correctAnswerId && (

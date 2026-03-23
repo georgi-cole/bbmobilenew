@@ -133,7 +133,7 @@
       id: 'triviaPulse',
       key: 'triviaPulse',
       name: 'Trivia Pulse',
-      description: 'Time-pressured Big Brother trivia',
+      description: 'Time-pressured strategy trivia',
       module: 'trivia-pulse.js',
       type: 'trivia',
       supportsDebugMode: true

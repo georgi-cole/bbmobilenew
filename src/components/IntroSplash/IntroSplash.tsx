@@ -161,7 +161,7 @@ export default function IntroSplash({
       ) : (
         <img
           src={LOGO_SRC}
-          alt="Big Brother"
+          alt="The Big Eye"
           className="intro-splash__logo"
           draggable={false}
           onLoad={handleLogoLoad}

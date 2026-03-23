@@ -204,7 +204,7 @@ export default function AnimatedVoteResultsModal({
 
         {outcomeVisible && resolvedEvictee && (
           <div className="avrm__evictee" role="status">
-            <span className="avrm__evictee-label">EVICTED</span>
+            <span className="avrm__evictee-label">ELIMINATED</span>
             <span className="avrm__evictee-name">{resolvedEvictee.name}</span>
           </div>
         )}
@@ -221,7 +221,7 @@ export default function AnimatedVoteResultsModal({
         {allRevealed && isTied && !outcomeVisible && (
           <div className="avrm__tie-banner" role="status" aria-live="assertive">
             <span className="avrm__tie-icon">⚖️</span>
-            <span className="avrm__tie-text">It&rsquo;s a tie! HOH must break the tie.</span>
+            <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>
           </div>
         )}
       </div>

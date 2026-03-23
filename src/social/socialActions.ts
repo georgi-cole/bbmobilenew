@@ -182,7 +182,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'nominate',
     title: 'Nominate Player',
     icon: '🎯',
-    description: 'Strategically name a target for eviction.',
+    description: 'Strategically name a target for elimination.',
     category: 'strategic',
     baseCost: { energy: 1 },
     successWeight: 2,

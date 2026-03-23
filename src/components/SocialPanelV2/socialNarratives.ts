@@ -11,7 +11,7 @@
 // Exported so tests can verify messages are drawn from this pool.
 export const TV_SOCIAL_CLOSE_MESSAGES = [
   'The house is buzzing after that social session! 🏠',
-  'Alliances are shifting like sand in the Big Brother house… 🌊',
+  'Alliances are shifting like sand in The Big Eye house… 🌊',
   "Smooth operator — you've been working that social game! 💬",
   'The whispers have started. Watch your back! 👀',
   "Social butterfly in action — who's loyal and who isn't? 🦋",
@@ -40,7 +40,7 @@ const NARRATIVES: Record<string, string[]> = {
     "You dropped a bombshell on {target}: someone has a pre-game alliance.",
     "You suggested to {target} the house is closer to turning than they think.",
     "You told {target} you heard their name come up for a backdoor.",
-    "You whispered to {target} that a certain houseguest is obsessed with them — and not in a good way.",
+    "You whispered to {target} that a certain housemate is obsessed with them — and not in a good way.",
     "You informed {target} that someone in the house has been keeping a diary about everyone.",
     "You told {target} that three people voted against them last week and they don't know who.",
     "You insinuated to {target} that someone is tanking the vote to stay under the radar.",
@@ -85,7 +85,7 @@ const NARRATIVES: Record<string, string[]> = {
     "You told {target} in front of everyone that their loyalty is suspect.",
   ],
   protect: [
-    "You promised {target} complete safety heading into the next eviction.",
+    "You promised {target} complete safety heading into the next elimination.",
     "You swore to {target} they are not — and never will be — on your radar.",
     "You guaranteed {target} that as long as you hold power, they are untouchable.",
     "You pulled {target} aside and told them to stop worrying: you have their back.",
@@ -105,8 +105,8 @@ const NARRATIVES: Record<string, string[]> = {
   ],
   nominate: [
     "You campaigned quietly to have {target} put on the block this week.",
-    "You made it crystal clear to the HOH: {target} is your personal target.",
-    "You convinced the HOH that {target} is the single biggest strategic threat in the house.",
+    "You made it crystal clear to the LOH: {target} is your personal target.",
+    "You convinced the LOH that {target} is the single biggest strategic threat in the house.",
     "You planted {target}'s name in every whispered conversation you could find.",
     "You sat down with the decision-makers and methodically argued why {target} should go.",
     "You built the case against {target} with surgical precision and zero emotion.",

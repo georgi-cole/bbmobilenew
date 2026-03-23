@@ -28,10 +28,10 @@ export const STATUS_BADGE_EMOJI: Record<string, string> = {
 
 /** Human-readable label for each badge code (used in aria-label). */
 export const STATUS_BADGE_LABEL: Record<string, string> = {
-  hoh: 'Head of Household',
-  pov: 'Power of Veto',
+  hoh: 'Leader of the House',
+  pov: 'Power of Safety',
   nominated: 'Nominated',
-  jury: 'Juror',
+  jury: 'Tribunal Member',
   first: '1st place',
   second: '2nd place',
   third: '3rd place',

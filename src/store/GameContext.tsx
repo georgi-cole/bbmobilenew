@@ -55,7 +55,7 @@ const INITIAL_STATE: GameState = {
   povWinnerId: null,
   players: buildInitialPlayers(),
   tvFeed: [
-    { id: 'e0', text: 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
+    { id: 'e0', text: 'Welcome to The Big Eye – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
   ],
   isLive: false,
   social: SOCIAL_INITIAL_STATE,

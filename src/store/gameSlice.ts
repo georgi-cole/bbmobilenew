@@ -151,15 +151,7 @@ export function createInitialGameState(): GameState {
     players: freshPlayers,
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
-      {
-        id: 'e0',
-        text:
-          freshSettings.sim.publicMode === true
-            ? 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin. [Rules] Public mode: ON — 3 nominees pre-veto + public save enabled. 🗳️'
-            : 'Welcome to Big Brother – AI Edition! 🏠 Season 1 is about to begin. [Rules] Public mode: OFF — standard 2 nominee rules.',
-        type: 'game',
-        timestamp: Date.now(),
-      },
+      { id: 'e0', text: 'Welcome to The Big Eye home! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
     seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
@@ -206,7 +198,7 @@ function formatNameList(names: string[]): string {
 function pushPovCompetitionAnnouncement(state: GameState) {
   pushEvent(
     state,
-    `It is time for the Power of Veto competition! 🎭 Houseguests will battle for the most powerful item in the game.`,
+    `It is time for the Power of Safety competition! 🎭 Housemates will battle for the most powerful item in the game.`,
     'game',
   );
 }
@@ -310,7 +302,7 @@ function applyHohWinner(state: GameState, winnerId: string) {
     if (!winner.stats) winner.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
     winner.stats.hohWins += 1;
   }
-  pushEvent(state, `${winner?.name ?? winnerId} has won Head of Household! 👑`, 'game');
+  pushEvent(state, `${winner?.name ?? winnerId} has won Leader of the House! 👑`, 'game');
 }
 
 /**
@@ -327,7 +319,7 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
     if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
     p.stats.povWins += 1;
   }
-  pushEvent(state, `${p?.name ?? winnerId} has won the Power of Veto! 🎭`, 'game');
+  pushEvent(state, `${p?.name ?? winnerId} has won the Power of Safety! 🎭`, 'game');
 
   // ── Final 4 bypass (skip ceremony; POV holder has sole eviction vote) ──
   // This rule always applies at Final 4 regardless of any config flags.
@@ -355,7 +347,7 @@ function applyPovWinner(state: GameState, winnerId: string, alive: Player[]): Ph
       });
       pushEvent(
         state,
-        `Final 4! ${f4Names} are on the block. The POV holder has the sole vote to evict. 🏆`,
+        `Final 4! ${f4Names} are on the block. The POS holder has the sole vote to eliminate. 🏆`,
         'game',
       );
       return 'final4_eviction';
@@ -672,7 +664,7 @@ const gameSlice = createSlice({
         state.f3Part1WinnerId = winnerId;
         pushEvent(
           state,
-          `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two houseguests will compete in Part 2. 🏆`,
+          `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two housemates will compete in Part 2. 🏆`,
           'game',
         );
         state.minigameContext = null;
@@ -706,7 +698,7 @@ const gameSlice = createSlice({
 
         pushEvent(
           state,
-          `Final 3 Part 3: ${winner?.name ?? winnerId} wins and is crowned the Final Head of Household! 👑`,
+          `Final 3 Part 3: ${winner?.name ?? winnerId} wins and is crowned the Final Leader of the House! 👑`,
           'game',
         );
 
@@ -719,7 +711,7 @@ const gameSlice = createSlice({
             .join(' and ');
           pushEvent(
             state,
-            `${winner?.name ?? winnerId}, you must now evict either ${nomineeNames} to set the Final 2. 🎯`,
+            `${winner?.name ?? winnerId}, you must now eliminate either ${nomineeNames} to set the Final 2. 🎯`,
             'game',
           );
           state.phase = 'final3_decision';
@@ -734,10 +726,10 @@ const gameSlice = createSlice({
           }
           pushEvent(
             state,
-            `${winner?.name ?? winnerId} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+            `${winner?.name ?? winnerId} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
             'game',
           );
-          pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+          pushEvent(state, `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`, 'game');
           state.phase = 'week_end';
         }
       }
@@ -853,7 +845,7 @@ const gameSlice = createSlice({
       state.pendingNominee1Id = null;
       pushEvent(
         state,
-        `${p1.name} and ${p2.name} have been nominated for eviction by ${hohPlayer?.name ?? 'the HOH'}. 🎯`,
+        `${p1.name} and ${p2.name} have been nominated for elimination by ${hohPlayer?.name ?? 'the LOH'}. 🎯`,
         'game',
       );
     },
@@ -917,17 +909,17 @@ const gameSlice = createSlice({
       const autoNomineePlayer = state.nominationContext?.autoNomineeId
         ? allNomineePlayers.find((player) => player?.id === state.nominationContext?.autoNomineeId)
         : null;
-      const hohName = hohPlayer?.name ?? 'the HOH';
+      const hohName = hohPlayer?.name ?? 'the LOH';
       const hohNomineeNames = formatNameList(nominees.map((n) => n.name));
       const autoNomineeReason = autoNomineePlayer
-        ? `${autoNomineePlayer.name} was automatically nominated for finishing last in the HOH competition`
+        ? `${autoNomineePlayer.name} was automatically nominated for finishing last in the LOH competition`
         : null;
       const autoNomineeClause = autoNomineePlayer
         ? `${hohName} nominated ${hohNomineeNames}, and ${autoNomineeReason}`
         : null;
       const eventText = autoNomineeClause
-        ? `${nameList} have been nominated for eviction. ${autoNomineeClause}. 🎯`
-        : `${nameList} have been nominated for eviction by ${hohName}. 🎯`;
+        ? `${nameList} have been nominated for elimination. ${autoNomineeClause}. 🎯`
+        : `${nameList} have been nominated for elimination by ${hohName}. 🎯`;
       pushEvent(state, eventText, 'game');
     },
 
@@ -994,7 +986,7 @@ const gameSlice = createSlice({
             `${povWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
             'game',
           );
-          pushEvent(state, `${povWinner?.name ?? 'The Detox holder'}, name your two replacement nominees. ⚡`, 'game');
+          pushEvent(state, `${povWinner?.name ?? 'The Detox holder'}, name your two backup nominees. ⚡`, 'game');
           state.specialVeto!.awaitingCoupReplacement1 = true;
         } else {
           // Standard / VIP / Diamond / Spotlight: set awaitingPovSaveTarget
@@ -1046,7 +1038,7 @@ const gameSlice = createSlice({
           state.specialVeto.awaitingHolderReplacement = true;
             pushEvent(
               state,
-              `${povWinner.name}, as the Halo Exchange holder, you must name the replacement nominee. 😇`,
+              `${povWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`,
               'game',
             );
         } else {
@@ -1068,7 +1060,7 @@ const gameSlice = createSlice({
             incrementTimesNominated(state, replacement.id);
             pushEvent(
               state,
-              `${povWinner.name} named ${replacement.name} as the Halo Exchange replacement nominee. 😇`,
+              `${povWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`,
               'game',
             );
           }
@@ -1085,7 +1077,7 @@ const gameSlice = createSlice({
         }
         pushEvent(
           state,
-          `${hohPlayer.name} must now name a replacement nominee. 🎯`,
+          `${hohPlayer.name} must now name a backup nominee. 🎯`,
           'game',
         );
       } else {
@@ -1109,7 +1101,7 @@ const gameSlice = createSlice({
           // the AI replacement animation. Cleared at week_start.
           pushEvent(
             state,
-            `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+            `${hohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
             'game',
           );
           // VIP: after AI HOH replacement is done inline, stage is immediately 2
@@ -1158,7 +1150,7 @@ const gameSlice = createSlice({
       // Defer the eviction commit until the cinematic overlay completes.
       state.pendingEviction = {
         evicteeId: nomineeId,
-        evictionMessage: `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🗳️`,
+        evictionMessage: `${hohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
       };
       // Push the week-end banner now: submitTieBreak jumps directly to week_end,
       // bypassing the advance() case 'week_end' branch that normally emits it.
@@ -1234,7 +1226,7 @@ const gameSlice = createSlice({
 
       if (isFinal4) {
         state.phase = 'final3';
-        pushEvent(state, `Final 3! Three houseguests remain. 🏆`, 'game');
+        pushEvent(state, `Final 3! Three housemates remain. 🏆`, 'game');
       } else if (state.doubleEviction?.pendingSecondEviction) {
         // Double Eviction: promote the second eviction to the main pending slot.
         state.pendingEviction = state.doubleEviction.pendingSecondEviction;
@@ -1288,7 +1280,7 @@ const gameSlice = createSlice({
 
       pushEvent(
         state,
-        `${player.name} has chosen to self-evict from the Big Brother house. 🚪`,
+        `${player.name} has chosen to self-evict from The Big Eye house. 🚪`,
         'game',
       );
     },
@@ -1320,7 +1312,7 @@ const gameSlice = createSlice({
       state.awaitingPovDecision = false;
       state.pendingEviction = {
         evicteeId,
-        evictionMessage: `${povHolder.name} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+        evictionMessage: `${povHolder.name} has chosen to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🚪`,
       };
     },
 
@@ -1343,11 +1335,11 @@ const gameSlice = createSlice({
       state.awaitingFinal3Eviction = false;
       pushEvent(
         state,
-        `${finalHoh.name} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+        `${finalHoh.name} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
         'game',
       );
       state.phase = 'week_end';
-      pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+      pushEvent(state, `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`, 'game');
     },
 
     // ─── Battle Back / Jury Return twist actions ──────────────────────────────
@@ -1379,7 +1371,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event = {
         id: `${state.phase}-w${state.week}-${ts}-bb`,
-        text: `🔥 TWIST: The Jury Return / Battle Back is here! Jurors will compete for a chance to return! 🏆`,
+        text: `🔥 SHOCK: The Tribunal Return / Battle Back is here! Judges will compete for a chance to return! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
         major: 'battle_back',
@@ -1425,7 +1417,7 @@ const gameSlice = createSlice({
       winner.stats.battleBackWins = (winner.stats.battleBackWins ?? 0) + 1;
       pushEvent(
         state,
-        `🔥 ${winner.name} has survived the Battle Back and RETURNS to the Big Brother house! 🏠✨`,
+        `🔥 ${winner.name} has survived the Battle Back and RETURNS to The Big Eye house! 🏠✨`,
         'twist',
       );
 
@@ -1469,7 +1461,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event: TvEvent = {
         id: `nominations-w${state.week}-${ts}-de`,
-        text: `⚡ DOUBLE EVICTION! Tonight the HOH must nominate THREE houseguests. TWO will be evicted live! ⚡`,
+        text: `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE housemates. TWO will be eliminated live! ⚡`,
         type: 'twist',
         timestamp: ts,
         major: 'double_eviction',
@@ -1653,7 +1645,7 @@ const gameSlice = createSlice({
       );
       if (hohPlayer?.isUser) {
         state.replacementNeeded = true;
-        pushEvent(state, `${hohPlayer.name} must now name another replacement nominee. 🎯`, 'game');
+        pushEvent(state, `${hohPlayer.name} must now name another backup nominee. 🎯`, 'game');
       } else {
         const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         const eligible = aliveNow.filter(
@@ -1667,7 +1659,7 @@ const gameSlice = createSlice({
           const rp = state.players.find((pl) => pl.id === replacement.id);
           if (rp) rp.status = 'nominated';
           incrementTimesNominated(state, replacement.id);
-          pushEvent(state, `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`, 'game');
+          pushEvent(state, `${hohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`, 'game');
           state.specialVeto.vipUseStage = -1;
         } else {
           state.specialVeto.vipUseStage = -1;
@@ -1856,10 +1848,10 @@ const gameSlice = createSlice({
 
       pushEvent(
         state,
-        `${hoh?.name ?? hohWinnerId} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+        `${hoh?.name ?? hohWinnerId} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
         'game',
       );
-      pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+      pushEvent(state, `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`, 'game');
 
       state.awaitingFinal3Plea = false;
       state.phase = 'week_end';
@@ -1881,7 +1873,7 @@ const gameSlice = createSlice({
       const player = state.players.find((p) => p.id === id);
       if (player) {
         player.status = player.status === 'pov' ? 'hoh+pov' : 'hoh';
-        pushEvent(state, `[DEBUG] ${player.name} forced as Head of Household. 👑`, 'game');
+        pushEvent(state, `[DEBUG] ${player.name} forced as Leader of the House. 👑`, 'game');
       }
     },
     /** Force specific players as nominees (debug only). */
@@ -1940,7 +1932,7 @@ const gameSlice = createSlice({
       });
       pushEvent(
         state,
-        `🏆 ${state.players.find((p) => p.id === winnerId)?.name ?? 'The winner'} has won Big Brother – AI Edition! Congratulations! 🎉`,
+        `🏆 ${state.players.find((p) => p.id === winnerId)?.name ?? 'The winner'} has won The Big Eye – AI Edition! Congratulations! 🎉`,
         'game',
       );
     },
@@ -2181,7 +2173,7 @@ const gameSlice = createSlice({
           // set evictee.status and transition to final3 after the cinematic plays.
           state.pendingEviction = {
             evicteeId: evictee.id,
-            evictionMessage: `${povHolder?.name ?? 'The POV holder'} has chosen to evict ${evictee.name}. ${evictee.name} has been evicted from the Big Brother house. 🚪`,
+            evictionMessage: `${povHolder?.name ?? 'The POS holder'} has chosen to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🚪`,
           };
         }
         return;
@@ -2217,7 +2209,7 @@ const gameSlice = createSlice({
             p.status = 'active';
           }
         });
-        pushEvent(state, `Final 3 — Day ${state.week}! The three-part HOH competition begins. 🏆`, 'game');
+        pushEvent(state, `Final 3 — Day ${state.week}! The three-part LOH competition begins. 🏆`, 'game');
         state.phase = 'final3_comp1';
         return;
       }
@@ -2252,7 +2244,7 @@ const gameSlice = createSlice({
 
         pushEvent(
           state,
-          `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two houseguests will compete in Part 2. 🏆`,
+          `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two housemates will compete in Part 2. 🏆`,
           'game',
         );
         state.phase = 'final3_comp2';
@@ -2325,7 +2317,7 @@ const gameSlice = createSlice({
         if (f3Part1Name && f3Part2Name) {
           pushEvent(
             state,
-            `Final 3 Part 3 is underway! ${f3Part1Name} (Part 1 winner) vs ${f3Part2Name} (Part 2 winner) — the winner becomes the Final Head of Household! 🏁`,
+            `Final 3 Part 3 is underway! ${f3Part1Name} (Part 1 winner) vs ${f3Part2Name} (Part 2 winner) — the winner becomes the Final Leader of the House! 🏁`,
             'game',
           );
         }
@@ -2363,7 +2355,7 @@ const gameSlice = createSlice({
 
         pushEvent(
           state,
-          `Final 3 Part 3: ${finalHoh.name} wins and is crowned the Final Head of Household! 👑`,
+          `Final 3 Part 3: ${finalHoh.name} wins and is crowned the Final Leader of the House! 👑`,
           'game',
         );
 
@@ -2375,7 +2367,7 @@ const gameSlice = createSlice({
             .join(' and ');
           pushEvent(
             state,
-            `${finalHoh.name}, you must now evict either ${nomineeNames} to set the Final 2. 🎯`,
+            `${finalHoh.name}, you must now eliminate either ${nomineeNames} to set the Final 2. 🎯`,
             'game',
           );
         } else {
@@ -2408,10 +2400,10 @@ const gameSlice = createSlice({
           state.awaitingFinal3Eviction = false;
           pushEvent(
             state,
-            `${finalHoh?.name ?? 'The Final HOH'} has chosen to evict ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+            `${finalHoh?.name ?? 'The Final LOH'} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
             'game',
           );
-          pushEvent(state, `The Final 2 is set! The jury will now vote for the winner of Big Brother. 🏆`, 'game');
+          pushEvent(state, `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`, 'game');
         }
         state.phase = 'week_end';
         return;
@@ -2456,7 +2448,7 @@ const gameSlice = createSlice({
         const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
         pushEvent(
           state,
-          `${hohPlayer?.name ?? 'The HOH'} must now name a replacement nominee. 🎯`,
+          `${hohPlayer?.name ?? 'The LOH'} must now name a backup nominee. 🎯`,
           'game',
         );
         state.aiReplacementStep = 2;
@@ -2487,7 +2479,7 @@ const gameSlice = createSlice({
           incrementTimesNominated(state, replacement.id);
           pushEvent(
             state,
-            `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+            `${hohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
             'game',
           );
         }
@@ -2541,7 +2533,7 @@ const gameSlice = createSlice({
             if (hohP?.isUser) {
               state.specialVeto.vipUseStage = 3;
               state.replacementNeeded = true;
-              pushEvent(state, `${hohP.name} must now name another replacement nominee. 🎯`, 'game');
+              pushEvent(state, `${hohP.name} must now name another backup nominee. 🎯`, 'game');
             } else {
               state.specialVeto.vipUseStage = 3;
               state.aiReplacementStep = 1;
@@ -2614,15 +2606,15 @@ const gameSlice = createSlice({
               p.status = 'active';
             }
           });
-          pushEvent(state, `Day ${state.week} begins! 🏠 It's time for the HOH competition.`, 'game');
+          pushEvent(state, `Day ${state.week} begins! 🏠 It's time for the LOH competition.`, 'game');
           break;
         }
         case 'hoh_comp_announcement': {
-          pushEvent(state, `The Head of Household competition is about to begin! 🏆 Power is up for grabs among the eligible houseguests — who will reign supreme this week?`, 'game');
+          pushEvent(state, `The Leader of the House competition is about to begin! 🏆 Power is up for grabs among the eligible housemates — who will reign supreme this week?`, 'game');
           break;
         }
         case 'hoh_comp': {
-          pushEvent(state, `The Head of Household competition has begun! 🏆 Who will win power this week?`, 'game');
+          pushEvent(state, `The Leader of the House competition has begun! 🏆 Who will win power this week?`, 'game');
           break;
         }
         case 'hoh_results': {
@@ -2645,11 +2637,11 @@ const gameSlice = createSlice({
         }
         case 'social_1': {
           const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The new HOH';
-          pushEvent(state, `Houseguests congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
+          pushEvent(state, `Housemates congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
           break;
         }
         case 'nominations': {
-          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The HOH';
+          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The LOH';
           pushEvent(state, `${hohName} is preparing the nomination ceremony. 🎯`, 'game');
           break;
         }
@@ -2713,7 +2705,7 @@ const gameSlice = createSlice({
             .filter(Boolean)
             .map((n) => n!.name);
           const nameList = isDoubleEviction ? names.join(', ') : formatNameList(names);
-          pushEvent(state, `${nameList} have been nominated for eviction. 🎯`, 'game');
+          pushEvent(state, `${nameList} have been nominated for elimination. 🎯`, 'game');
           break;
         }
         case 'pre_veto_public_save': {
@@ -2751,7 +2743,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_comp': {
-          pushEvent(state, `The Power of Veto competition is underway! 🎭`, 'game');
+          pushEvent(state, `The Power of Safety competition is underway! 🎭`, 'game');
           break;
         }
         case 'pov_results': {
@@ -2762,8 +2754,8 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_ceremony': {
-          const povName = state.players.find((p) => p.id === state.povWinnerId)?.name ?? 'The veto holder';
-          pushEvent(state, `${povName} is holding the Veto Ceremony. ⚡`, 'game');
+          const povName = state.players.find((p) => p.id === state.povWinnerId)?.name ?? 'The safety holder';
+          pushEvent(state, `${povName} is holding the Safety Ceremony. ⚡`, 'game');
           break;
         }
         case 'pov_ceremony_results': {
@@ -2792,7 +2784,7 @@ const gameSlice = createSlice({
               const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
               if (hohPlayer?.isUser) {
                 state.replacementNeeded = true;
-                pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                pushEvent(state, `${hohPlayer.name} must now name a backup nominee. 🎯`, 'game');
               } else {
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
@@ -2804,7 +2796,7 @@ const gameSlice = createSlice({
                   const rp = state.players.find((pl) => pl.id === replacement.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`, 'game');
+                  pushEvent(state, `${hohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`, 'game');
                 }
               }
             } else if (povWinner?.isUser) {
@@ -2825,7 +2817,7 @@ const gameSlice = createSlice({
                 const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
                 if (hohPlayer?.isUser) {
                   state.replacementNeeded = true;
-                  pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                  pushEvent(state, `${hohPlayer.name} must now name a backup nominee. 🎯`, 'game');
                 } else {
                   state.aiReplacementStep = 1;
                 }
@@ -2845,7 +2837,7 @@ const gameSlice = createSlice({
               pushEvent(state, `${savedName} used Halo Exchange and saved themselves! 😇`, 'game');
               if (povWinner.isUser) {
                 state.specialVeto!.awaitingHolderReplacement = true;
-                pushEvent(state, `${povWinner.name}, as the Halo Exchange holder, you must name the replacement nominee. 😇`, 'game');
+                pushEvent(state, `${povWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`, 'game');
               } else {
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.hohId && pl.id !== state.povWinnerId &&
@@ -2857,7 +2849,7 @@ const gameSlice = createSlice({
                   const rp = state.players.find((pl) => pl.id === replacement.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the Halo Exchange replacement nominee. 😇`, 'game');
+                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`, 'game');
                 }
               }
             } else if (povWinner?.isUser) {
@@ -2884,7 +2876,7 @@ const gameSlice = createSlice({
                     const rp = state.players.find((pl) => pl.id === replacement.id);
                     if (rp) rp.status = 'nominated';
                     incrementTimesNominated(state, replacement.id);
-                    pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the replacement nominee. 😇`, 'game');
+                    pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the backup nominee. 😇`, 'game');
                   }
                 }
               } else {
@@ -2953,7 +2945,7 @@ const gameSlice = createSlice({
               const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
               if (hohPlayer?.isUser) {
                 state.replacementNeeded = true;
-                pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                pushEvent(state, `${hohPlayer.name} must now name a backup nominee. 🎯`, 'game');
               } else {
                 state.aiReplacementStep = 1;
               }
@@ -2979,7 +2971,7 @@ const gameSlice = createSlice({
                   const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
                   if (hohPlayer?.isUser) {
                     state.replacementNeeded = true;
-                    pushEvent(state, `${hohPlayer.name} must now name a replacement nominee. 🎯`, 'game');
+                    pushEvent(state, `${hohPlayer.name} must now name a backup nominee. 🎯`, 'game');
                   } else {
                     state.aiReplacementStep = 1;
                   }
@@ -3004,7 +2996,7 @@ const gameSlice = createSlice({
             povWinner.status = 'pov';
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId;
-            pushEvent(state, `${savedName} used the Veto and saved themselves! 🛡️`, 'game');
+            pushEvent(state, `${savedName} used the Safety and saved themselves! 🛡️`, 'game');
 
             // HOH must name a replacement
             const hohPlayer = state.players.find((pl) => pl.id === state.hohId);
@@ -3013,7 +3005,7 @@ const gameSlice = createSlice({
               state.replacementNeeded = true;
               pushEvent(
                 state,
-                `${hohPlayer.name} must now name a replacement nominee. 🎯`,
+                `${hohPlayer.name} must now name a backup nominee. 🎯`,
                 'game',
               );
             } else {
@@ -3034,7 +3026,7 @@ const gameSlice = createSlice({
                 // the AI replacement animation. Cleared at week_start.
                 pushEvent(
                   state,
-                  `${hohPlayer?.name ?? 'The HOH'} named ${replacement.name} as the replacement nominee. 🎯`,
+                  `${hohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
                   'game',
                 );
               }
@@ -3044,29 +3036,29 @@ const gameSlice = createSlice({
             state.awaitingPovDecision = true;
             pushEvent(
               state,
-              `${povWinner.name}, will you use the Power of Veto? ⚡`,
+              `${povWinner.name}, will you use the Power of Safety? ⚡`,
               'game',
             );
           } else {
             // AI POV holder who is not a nominee: does not use the veto
-            const povName = povWinner?.name ?? 'The veto holder';
+            const povName = povWinner?.name ?? 'The safety holder';
             pushEvent(
               state,
-              `${povName} has decided NOT to use the Power of Veto. The nominations remain the same. ⚡`,
+              `${povName} has decided NOT to use the Power of Safety. The nominations remain the same. ⚡`,
               'game',
             );
           }
           break;
         }
         case 'social_2': {
-          pushEvent(state, `Houseguests make their final pitches before the live vote. 🤝`, 'social');
+          pushEvent(state, `Housemates make their final pitches before the live vote. 🤝`, 'social');
           break;
         }
         case 'live_vote': {
           const nomNames = state.nomineeIds
             .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
             .join(' and ');
-          pushEvent(state, `The live eviction vote has begun! ${nomNames} face eviction. 🗳️`, 'vote');
+          pushEvent(state, `The live elimination vote has begun! ${nomNames} face elimination. 🗳️`, 'vote');
 
           // Cast AI eligible votes (eligible = alive, not HOH, not nominee)
           state.votes = {};
@@ -3130,7 +3122,7 @@ const gameSlice = createSlice({
               state.votes = {};
               state.pendingEviction = {
                 evicteeId: firstId,
-                evictionMessage: `${firstEvictee.name}, you have been evicted from the Big Brother house. 🚪`,
+                evictionMessage: `${firstEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
               };
               state.doubleEviction.pendingSecondEviction = {
                 evicteeId: secondId,
@@ -3157,7 +3149,7 @@ const gameSlice = createSlice({
               state.votes = {};
               state.pendingEviction = {
                 evicteeId: evicted.id,
-                evictionMessage: `${evicted.name}, you have been evicted from the Big Brother house. 🚪`,
+                evictionMessage: `${evicted.name}, you have been eliminated from The Big Eye house. 🚪`,
               };
             }
           } else {
@@ -3187,7 +3179,7 @@ const gameSlice = createSlice({
                 state.votes = {};
                 state.pendingEviction = {
                   evicteeId: evicted.id,
-                  evictionMessage: `${hohPlayer?.name ?? 'The HOH'} breaks the tie, voting to evict ${evicted.name}. ${evicted.name} has been evicted from the Big Brother house. 🗳️`,
+                  evictionMessage: `${hohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
                 };
               }
             }

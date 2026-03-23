@@ -57,16 +57,16 @@ const TABS: { id: DiaryTab; label: string; icon: string }[] = [
 
 // ─── Summary message pool (10 generic messages, no private content) ───────────
 const SUMMARY_POOL = [
-  '{name} whispered secrets in the Diary Room. The feeds perked up.',
-  '{name} had a heart-to-heart with Big Brother. No cameras allowed.',
-  'The Diary Room door just closed behind {name}. What was said stays in there.',
-  '{name} just left the Diary Room looking... thoughtful.',
-  'Big Brother called {name} to the Diary Room. The other houseguests noticed.',
-  '{name} spent some quality time in the Diary Room. Drama incoming?',
-  'Sources close to the Diary Room report {name} was very talkative today.',
-  '{name} and Big Brother had words. The House will never know what.',
-  'The Diary Room light is off — {name} just wrapped up a private session.',
-  '{name} visited the Diary Room. Whatever was said, it stays private.',
+  '{name} whispered secrets in the Confessional. The feeds perked up.',
+  '{name} had a heart-to-heart with The Big Eye. No cameras allowed.',
+  'The Confessional door just closed behind {name}. What was said stays in there.',
+  '{name} just left the Confessional looking... thoughtful.',
+  'The Big Eye called {name} to the Confessional. The other housemates noticed.',
+  '{name} spent some quality time in the Confessional. Drama incoming?',
+  'Sources close to the Confessional report {name} was very talkative today.',
+  '{name} and The Big Eye had words. The House will never know what.',
+  'The Confessional light is off — {name} just wrapped up a private session.',
+  '{name} visited the Confessional. Whatever was said, it stays private.',
 ];
 
 /** Select a summary message deterministically from the pool. */
@@ -148,7 +148,7 @@ function MessageStatusIcon({ status }: { status?: MessageStatus }) {
 /** Renders private chat messages as styled bubbles. */
 function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
   return (
-    <div className="diary-room__chat" aria-live="polite" aria-label="Diary Room chat">
+    <div className="diary-room__chat" aria-live="polite" aria-label="Confessional chat">
       {msgs.length === 0 ? (
         <p className="diary-room__empty">No messages yet. Speak freely.</p>
       ) : (
@@ -158,7 +158,7 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
             className={`diary-room__bubble diary-room__bubble--${msg.role}`}
           >
             <span className="diary-room__bubble-author">
-              {msg.role === 'user' ? playerName : '📺 Big Brother'}
+              {msg.role === 'user' ? playerName : '📺 The Big Eye'}
             </span>
             <span className="diary-room__bubble-text">{msg.text}</span>
             <div className="diary-room__bubble-footer">
@@ -200,7 +200,7 @@ export default function DiaryRoom() {
   const seed = useAppSelector((s) => s.game.seed);
   const season = useAppSelector((s) => s.game.season);
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
-  const playerName = userPlayer?.name ?? 'Houseguest';
+  const playerName = userPlayer?.name ?? 'Housemate';
   const playerId = userPlayer?.id ?? 'user';
 
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
@@ -341,7 +341,7 @@ export default function DiaryRoom() {
         const bbAsk: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'bb',
-          text: "Do you really want to leave the Big Brother house?",
+          text: "Do you really want to leave The Big Eye house?",
           timestamp: Date.now(),
         };
         setMessages((prev) => {
@@ -396,7 +396,7 @@ export default function DiaryRoom() {
       const bbErr: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'bb',
-        text: `Big Brother is unavailable: ${detail}`,
+        text: `The Big Eye is unavailable: ${detail}`,
         timestamp: Date.now(),
       };
       setMessages((prev) => {
@@ -416,7 +416,7 @@ export default function DiaryRoom() {
       <ConfirmExitModal
         open={showSelfEvictConfirm}
         title="Self-Evict?"
-        description="Do you want to self-evict from the Big Brother house? This cannot be undone."
+        description="Do you want to self-evict from The Big Eye house? This cannot be undone."
         confirmLabel="Yes, Leave"
         cancelLabel="No, Stay"
         onConfirm={() => {
@@ -437,7 +437,7 @@ export default function DiaryRoom() {
         >
           ‹ Back
         </button>
-        <h1 className="diary-room__title">🚪 Diary Room</h1>
+        <h1 className="diary-room__title">🚪 Confessional</h1>
       </div>
 
       {/* Tabs */}
@@ -461,7 +461,7 @@ export default function DiaryRoom() {
         {activeTab === 'confess' && (
           <div className="diary-room__confess">
             <p className="diary-room__prompt">
-              "You are now in the Diary Room. No one can hear you. Speak freely."
+              "You are now in the Confessional. No one can hear you. Speak freely."
             </p>
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             {bbTyping && (

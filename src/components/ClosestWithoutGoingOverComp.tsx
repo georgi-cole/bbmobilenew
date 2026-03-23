@@ -280,7 +280,7 @@ export default function ClosestWithoutGoingOverComp({
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
-  const prizeLabel = prizeType === 'HOH' ? '🏆 Head of Household' : '🔑 Power of Veto';
+  const prizeLabel = prizeType === 'HOH' ? '🏆 Leader of the House' : '🔑 Power of Safety';
 
   // Hide the question card during choose_duel — the question belongs to the
   // upcoming duel, not the leader-pick phase.

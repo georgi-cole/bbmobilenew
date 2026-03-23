@@ -124,7 +124,7 @@ export default function SocialPanelV2() {
     // Guard: block actions targeting unknown, evicted, or jury players.
     const targetPlayer = game.players.find((p) => p.id === targetId);
     if (!targetPlayer || targetPlayer.status === 'evicted' || targetPlayer.status === 'jury') {
-      setFeedbackMsg('Cannot target an evicted or jury player.');
+      setFeedbackMsg('Cannot target an eliminated or Tribunal player.');
       isExecutingRef.current = false;
       return;
     }

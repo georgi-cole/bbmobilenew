@@ -62,7 +62,7 @@ const NARRATIVE_VARIANTS = {
     'The live-feed communities are absolutely obsessed with this storyline right now.',
     'That confrontation just crashed the fan forum servers.',
     'Chaos found a new spokesperson and the ratings suggest viewers love it.',
-    'Nobody saw that twist coming, and the audience has been screaming about it ever since.',
+    'Nobody saw that shock coming, and the audience has been screaming about it ever since.',
     'The drama hit a new level and the public is genuinely gripped.',
     'A bombshell just dropped and the reaction threads are moving at light speed.',
     'That moment will be dissected for weeks. The audience cannot look away.',
@@ -93,9 +93,9 @@ type NarrativeKey = keyof typeof NARRATIVE_VARIANTS;
 
 const REASON_ALIASES: Record<string, NarrativeKey> = {
   hoh_win: 'hoh_win',
-  'Won Head of Household': 'hoh_win',
+  'Won Leader of the House': 'hoh_win',
   pov_win: 'pov_win',
-  'Won Power of Veto': 'pov_win',
+  'Won Power of Safety': 'pov_win',
   nominated: 'nominated',
   'Was on the block': 'nominated',
   direction_completed: 'direction_completed',

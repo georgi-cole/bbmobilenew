@@ -80,7 +80,7 @@ export default function Final3Ceremony() {
       {
         id: 'f3c-intro',
         role: 'host',
-        text: `${hohPlayer.name} has won Part 3 and is the Final Head of Household! 👑`,
+        text: `${hohPlayer.name} has won Part 3 and is the Final Leader of the House! 👑`,
       },
       {
         id: 'f3c-plea-prompt',
@@ -160,12 +160,12 @@ export default function Final3Ceremony() {
         id: 'f3c-evict-decision',
         role: 'hoh',
         player: hohPlayer ?? undefined,
-        text: `I've made my decision. ${evictee.name}, I'm evicting you from the Big Brother house. 🗳️`,
+        text: `I've made my decision. ${evictee.name}, I'm eliminating you from The Big Eye house. 🗳️`,
       },
       {
         id: 'f3c-evict-host',
         role: 'host',
-        text: `${evictee.name}, you have been evicted and will finish in 3rd place. 🥉`,
+        text: `${evictee.name}, you have been eliminated and will finish in 3rd place. 🥉`,
       },
     ];
     setAnnounceLines(lines);
@@ -237,11 +237,11 @@ export default function Final3Ceremony() {
           className="f3c-coronation"
           role="dialog"
           aria-modal="true"
-          aria-label="Final HOH Coronation"
+          aria-label="Final LOH Coronation"
         >
           <div className="f3c-coronation__crown" aria-hidden="true">👑</div>
           <div className="f3c-coronation__name">{hohPlayer.name}</div>
-          <div className="f3c-coronation__title">Final Head of Household</div>
+          <div className="f3c-coronation__title">Final Leader of the House</div>
           <div className="f3c-coronation__subtitle">Part 3 Winner</div>
         </div>
       )}
@@ -260,8 +260,8 @@ export default function Final3Ceremony() {
       {/* Human HOH decision modal */}
       {stage === 'decision' && humanIsHoh && (
         <TvDecisionModal
-          title="Final HOH — Evict a Houseguest"
-          subtitle={`${hohPlayer?.name ?? 'You'}, as Final HOH you must directly evict one of the remaining houseguests.`}
+          title="Final LOH — Eliminate a Housemate"
+          subtitle={`${hohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining housemates.`}
           options={nominees}
           onSelect={handleHumanDecision}
           danger
@@ -274,9 +274,9 @@ export default function Final3Ceremony() {
         <ChatOverlay
           lines={announceLines}
           skippable
-          header={{ title: 'Final 3 🚪', subtitle: 'The Final HOH has made their decision.' }}
+          header={{ title: 'Final 3 🚪', subtitle: 'The Final LOH has made their decision.' }}
           onComplete={handleAnnounceComplete}
-          ariaLabel="Final 3 eviction announcement"
+          ariaLabel="Final 3 elimination announcement"
         />
       )}
 

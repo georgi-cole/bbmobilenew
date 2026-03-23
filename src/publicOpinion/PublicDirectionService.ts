@@ -41,9 +41,9 @@ function buildDescription(
     case 'get_closer':
       return `Get closer to ${relatedName ?? 'a housemate'}`;
     case 'target_player':
-      return `Target ${relatedName ?? 'a rival'} for eviction`;
+      return `Target ${relatedName ?? 'a rival'} for elimination`;
     case 'protect_player':
-      return `Protect ${relatedName ?? 'an ally'} from eviction`;
+      return `Protect ${relatedName ?? 'an ally'} from elimination`;
     case 'win_competition':
       return `${playerName}, win the next competition!`;
     case 'make_bold_move':
@@ -61,11 +61,11 @@ function buildDescription(
     case 'start_drama':
       return `Start drama with ${relatedName ?? 'a housemate'}`;
     case 'win_veto':
-      return `${playerName}, win the Power of Veto!`;
+      return `${playerName}, win the Power of Safety!`;
     case 'flip_vote':
       return `${playerName}, flip your vote and shake up the house!`;
     case 'influence_hoh':
-      return `Influence the HOH${relatedName ? ` (${relatedName})` : ''} to nominate your target`;
+      return `Influence the LOH${relatedName ? ` (${relatedName})` : ''} to nominate your target`;
     case 'break_alliance':
       return `Break up your alliance with ${relatedName ?? 'an ally'}`;
     case 'reinforce_alliance':

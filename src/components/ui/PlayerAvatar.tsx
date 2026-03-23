@@ -117,8 +117,8 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
           </span>
           {player.stats && (
             <ul className="player-avatar__popover-stats">
-              <li>👑 HOH wins: {player.stats.hohWins}</li>
-              <li>🛡️ POV wins: {player.stats.povWins}</li>
+              <li>👑 LOH wins: {player.stats.hohWins}</li>
+              <li>🛡️ POS wins: {player.stats.povWins}</li>
               <li>❓ Times nominated: {player.stats.timesNominated}</li>
             </ul>
           )}

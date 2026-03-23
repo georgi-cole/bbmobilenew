@@ -87,7 +87,7 @@ const NARRATION_LINES: Record<SpectatorVariant, string[]> = {
     'The physical toll is starting to show… 😤',
     'Who will be the last one standing? 🧱',
     'Can they hold on just a little longer? 🤞',
-    'This is what Big Brother is all about! 🔥',
+    'This is what The Big Eye is all about! 🔥',
     'The crowd is going wild! 🎉',
     'Pure determination on display right now! ⚡',
   ],
@@ -99,7 +99,7 @@ const NARRATION_LINES: Record<SpectatorVariant, string[]> = {
     'The competition is heating up fast! 🔥',
     'One slip-up could flip the whole game! 😰',
     'They are laser-focused right now! 🎯',
-    'Knowledge is power in the Big Brother house! 🏠',
+    'Knowledge is power in The Big Eye house! 🏠',
   ],
   maze: [
     'Navigating through the twists and turns! 🌀',

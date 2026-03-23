@@ -196,24 +196,24 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
       </div>
 
       {field(
-        'HOH Winner',
+        'LOH Winner',
         <input
           className="dw-editor__input"
           type="text"
           value={hohWinner}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setHohWinner(e.target.value)}
-          placeholder="Houseguest name"
+          placeholder="Housemate name"
         />,
       )}
 
       {field(
-        'POV Winner',
+        'POS Winner',
         <input
           className="dw-editor__input"
           type="text"
           value={povWinner}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPovWinner(e.target.value)}
-          placeholder="Houseguest name"
+          placeholder="Housemate name"
         />,
       )}
 
@@ -230,18 +230,18 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
       )}
 
       {field(
-        'Replacement Nominee',
+        'Backup Nominee',
         <input
           className="dw-editor__input"
           type="text"
           value={replacementNominee}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setReplacementNominee(e.target.value)}
-          placeholder="Houseguest name (if any)"
+          placeholder="Housemate name (if any)"
         />,
       )}
 
       {field(
-        'Eviction Votes',
+        'Elimination Votes',
         <textarea
           className="dw-editor__textarea"
           rows={4}
@@ -249,7 +249,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setVotesText(e.target.value)}
           placeholder="voter:votedFor (one per line)"
         />,
-        'Format: VoterName:EvictedName — one vote per line.',
+        'Format: VoterName:EliminatedName — one vote per line.',
       )}
 
       {field(

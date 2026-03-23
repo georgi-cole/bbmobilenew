@@ -929,7 +929,7 @@ export default function BlackjackTournamentComp({
   // ── Complete phase ────────────────────────────────────────────────────────
   if (phase === 'complete') {
     const winnerName = bt.winnerId ? getName(bt.winnerId) : 'Unknown';
-    const prizeLabel = bt.competitionType === 'HOH' ? 'Head of Household' : 'Power of Veto';
+    const prizeLabel = bt.competitionType === 'HOH' ? 'Leader of the House' : 'Power of Safety';
 
     return (
       <div className="bjt-container bjt-complete" role="status" aria-live="assertive">

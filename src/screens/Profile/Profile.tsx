@@ -81,7 +81,7 @@ export default function Profile() {
     // HOH
     if (hohId === 'user') {
       chips.push(
-        <StatusPill key="hoh" variant="success" icon="👑" label="HOH" />,
+        <StatusPill key="hoh" variant="success" icon="👑" label="LOH" />,
       );
     }
 
@@ -102,11 +102,11 @@ export default function Profile() {
     // Status chips for evicted / jury / winner
     if (userPlayer?.status === 'evicted') {
       chips.push(
-        <StatusPill key="evicted" variant="neutral" icon="🚪" label="Evicted" />,
+        <StatusPill key="evicted" variant="neutral" icon="🚪" label="Eliminated" />,
       );
     } else if (userPlayer?.status === 'jury') {
       chips.push(
-        <StatusPill key="jury" variant="info" icon="⚖️" label="Jury" />,
+        <StatusPill key="jury" variant="info" icon="⚖️" label="Tribunal" />,
       );
     }
 
