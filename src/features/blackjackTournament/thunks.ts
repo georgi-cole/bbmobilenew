@@ -63,5 +63,5 @@ export const resolveBlackjackTournamentOutcome =
     // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
     // order shown in the competition UI.
     const lastPlaceId = bt.eliminatedPlayerIds[0] ?? null;
-    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId, lastPlaceType: 'survival' }));
   };

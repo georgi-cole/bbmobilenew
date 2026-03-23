@@ -59,5 +59,5 @@ export const resolveBiographyBlitzOutcome =
     // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
     // order shown in the competition UI.
     const lastPlaceId = bb.eliminatedContestantIds[0] ?? null;
-    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId, lastPlaceType: 'survival' }));
   };

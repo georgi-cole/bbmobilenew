@@ -62,5 +62,5 @@ export const resolveWildcardWesternOutcome =
     // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
     // order shown in the competition UI.
     const lastPlaceId = ww.eliminatedIds[0] ?? null;
-    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId, lastPlaceType: 'survival' }));
   };

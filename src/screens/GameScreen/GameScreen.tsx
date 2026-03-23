@@ -559,6 +559,13 @@ export default function GameScreen() {
 
   const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
 
+  // Compact label for the forced auto-nominee option in the nomination picker.
+  // 'survival' comps show "First out"; scored/unknown comps show "Lowest Score".
+  const autoNomineeLabel =
+    canUsePublicNomineeRule && game.lastHohCompFinisherType === 'survival'
+      ? 'First out'
+      : 'Lowest Score'
+
   // Human HOH confirmed nominees: pre-consume the AI key so the AI animation
   // path does not fire a second animation once commitNominees lands.
   const handleCommitNominees = useCallback(
@@ -1447,6 +1454,8 @@ export default function GameScreen() {
           options={nomineeOptions}
           maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
           onConfirm={handleCommitNominees}
+          autoNomineeId={canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? undefined) : undefined}
+          autoNomineeLabel={autoNomineeLabel}
         />
       )}
 
