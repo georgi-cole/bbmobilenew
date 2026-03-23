@@ -190,6 +190,11 @@ function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
 
+function formatNameList(names: string[]): string {
+  if (names.length <= 2) return names.join(' and ');
+  return names.join(', ');
+}
+
 function pushPovCompetitionAnnouncement(state: GameState) {
   pushEvent(
     state,
@@ -897,12 +902,12 @@ const gameSlice = createSlice({
       const allNomineePlayers = state.nomineeIds
         .map((id) => state.players.find((p) => p.id === id))
         .filter(Boolean);
-      const nameList = allNomineePlayers.map((n) => n!.name).join(', ');
+      const nameList = formatNameList(allNomineePlayers.map((n) => n!.name));
       const autoNomineePlayer = state.nominationContext?.autoNomineeId
         ? allNomineePlayers.find((player) => player?.id === state.nominationContext?.autoNomineeId)
         : null;
       const hohName = hohPlayer?.name ?? 'the HOH';
-      const hohNomineeNames = nominees.map((n) => n.name).join(' and ');
+      const hohNomineeNames = formatNameList(nominees.map((n) => n.name));
       const autoNomineeReason = autoNomineePlayer
         ? `${autoNomineePlayer.name} was automatically nominated for finishing last in the HOH competition`
         : null;
@@ -2695,9 +2700,9 @@ const gameSlice = createSlice({
           const allNominees = state.nomineeIds.map((id) => state.players.find((p) => p.id === id));
           const names = allNominees
             .filter(Boolean)
-            .map((n) => n!.name)
-            .join(isDoubleEviction ? ', ' : ' and ');
-          pushEvent(state, `${names} have been nominated for eviction. 🎯`, 'game');
+            .map((n) => n!.name);
+          const nameList = isDoubleEviction ? names.join(', ') : formatNameList(names);
+          pushEvent(state, `${nameList} have been nominated for eviction. 🎯`, 'game');
           break;
         }
         case 'pre_veto_public_save': {

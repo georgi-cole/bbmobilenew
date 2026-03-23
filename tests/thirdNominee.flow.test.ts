@@ -135,6 +135,27 @@ describe('third nominee — AI HOH normal week', () => {
     expect(state.nominationContext?.publicSaveApplied).toBe(false);
   });
 
+  it('formats AI public-mode nominee copy cleanly when a third nominee is auto-appended', () => {
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      lastHohCompFinisherId: 'p5',
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+    const nomineeNames = state.nomineeIds.map((id) => state.players.find((p) => p.id === id)?.name);
+
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(nomineeNames.every(Boolean)).toBe(true);
+    expect(state.tvFeed[0]?.text).toContain(
+      `${nomineeNames.join(', ')} have been nominated for eviction.`,
+    );
+    expect(state.tvFeed[0]?.text).not.toContain(
+      `${nomineeNames.join(' and ')} have been nominated for eviction.`,
+    );
+  });
+
   it('does not add a 4th nominee in double eviction weeks', () => {
     const store = makeStore({
       phase: 'nominations',
