@@ -62,4 +62,103 @@ export const publicOpinionConfig = {
   missionDirectProgressWeight: 70,
   /** Progress weight awarded for an indirect / social action toward a mission. */
   missionIndirectProgressWeight: 30,
+
+  // ── Event-driven update config ─────────────────────────────────────────────
+
+  /**
+   * Maximum number of visible Public Feed posts per in-game day.
+   * Approval deltas continue to apply even when the budget is exhausted;
+   * only the feed card is suppressed.
+   */
+  feedBudgetPerDay: 3,
+
+  /**
+   * Advisory priority level for each event type (higher = more important).
+   * This value is advisory and can be used by callers to prefer higher-priority
+   * events when enforcing the daily feed budget; the current budget gate itself
+   * does not reorder or reselect events by priority.
+   */
+  eventFeedPriority: {
+    eviction: 3,
+    nomination: 2,
+    public_save: 2,
+    pov_save: 1,
+    hoh_win: 1,
+    pov_win: 1,
+  } as Record<string, number>,
+
+  /**
+   * Per-event caps on the approval delta magnitude for event-driven reactions.
+   * These are applied in addition to the global MAX_CYCLE_DELTA guard.
+   */
+  maxDeltaPerEvent: {
+    nomination_reaction: 5,
+    eviction_reaction: 6,
+    pov_save_reaction: 4,
+    public_save_reaction: 4,
+  },
+
+  /**
+   * Approval-band thresholds used by the reaction engine to classify players as
+   * liked, beloved, disliked, or hated when computing event-driven reactions.
+   */
+  reactionThresholds: {
+    beloved: 80,
+    liked: 60,
+    disliked: 40,
+    hated: 20,
+  },
+
+  /**
+   * Approval deltas applied immediately after nominations, based on the approval
+   * band of the nominee at the time of nomination.
+   *
+   * Positive values are boosts (sympathy), negative values are penalties.
+   */
+  nominationReactions: {
+    /** HOH penalty for nominating a beloved player. */
+    hohBelovedNomineePenalty: -4,
+    /** HOH penalty for nominating a liked player. */
+    hohLikedNomineePenalty: -2,
+    /** Sympathy boost for a beloved player being nominated. */
+    nomineeSympathyBeloved: 3,
+    /** Sympathy boost for a liked player being nominated. */
+    nomineeSympathyLiked: 2,
+    /** No extra sympathy for mixed/disliked nominees (standard penalty already applies). */
+    nomineeSympathyMixed: 0,
+  },
+
+  /**
+   * Approval deltas applied immediately after an eviction is committed,
+   * based on the approval band of the evicted player.
+   *
+   * "Responsible actors" are the HOH and the POV holder (if used) — they are
+   * credited or blamed depending on who was evicted.
+   */
+  evictionReactions: {
+    /** HOH / responsible actor penalty when a beloved player is evicted. */
+    belovedEvictedResponsiblePenalty: -5,
+    /** HOH / responsible actor penalty when a liked player is evicted. */
+    likedEvictedResponsiblePenalty: -3,
+    /** HOH / responsible actor boost when a disliked player is evicted. */
+    dislikedEvictedResponsibleBoost: 4,
+    /** HOH / responsible actor boost when a hated player is evicted. */
+    hatedEvictedResponsibleBoost: 6,
+    /** Extra penalty applied to the evicted player when they are beloved (fan outrage). */
+    evictedBelovedFinalPenalty: -3,
+    /** Small sympathy boost applied to the evicted player when they are disliked/hated (underdog exit). */
+    evictedDislikedFinalBoost: 2,
+  },
+
+  /**
+   * Approval deltas for POV and public-save twist reactions.
+   */
+  povSaveReactions: {
+    /** Boost for the POV holder when they use it to save a liked/beloved player. */
+    saveLikedPlayerBoost: 3,
+    /** Penalty for the POV holder when they save a disliked/hated player. */
+    saveDislikedPlayerPenalty: -2,
+    /** Boost for the saved player when POV or public-save is used. */
+    savedPlayerBoost: 2,
+  },
 } as const;

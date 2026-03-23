@@ -6,11 +6,18 @@ import {
   addDirection,
   pruneExpiredDirections,
   updateMissionProgress,
+  resetDailyFeedBudget,
 } from './publicOpinionSlice';
 import { publicOpinionConfig } from './publicOpinionConfig';
 import { generateDirectionsForCycle } from './PublicDirectionService';
 import { generateDailyPublicUpdate } from './PublicHeadlineService';
 import { resolveEventMissionProgress, type MissionGameEvent } from './MissionActionMapper';
+import {
+  computeNominationReactions,
+  computeEvictionReactions,
+  computePovSaveReactions,
+  type ReactionDelta,
+} from './EventDrivenReactionService';
 import type { PublicDirection } from './types';
 
 interface GameState {
@@ -25,6 +32,45 @@ interface GameState {
   awaitingNominations?: boolean;
   /** Map of voterId → nomineeId set during live_vote. */
   votes?: Record<string, string>;
+  /** ID of the nominee saved by the POV holder (null if not used). */
+  povSavedId?: string | null;
+  /** ID of the nominee saved by the public-save twist (null if not triggered). */
+  publicSavedNomineeId?: string | null;
+}
+
+/** Helper: build a current approval map from public opinion profiles. */
+function buildApprovalMap(
+  profiles: Record<string, unknown> | undefined,
+): Record<string, number> {
+  if (!profiles) return {};
+  const map: Record<string, number> = {};
+  for (const [id, profile] of Object.entries(profiles)) {
+    const p = profile as { approval?: number };
+    if (typeof p?.approval === 'number') {
+      map[id] = p.approval;
+    }
+  }
+  return map;
+}
+
+/** Dispatch all reaction deltas from the EventDrivenReactionService. */
+function dispatchReactionDeltas(
+  store: MiddlewareAPI<Dispatch<UnknownAction>>,
+  reactions: ReactionDelta[],
+  week: number,
+): void {
+  for (const r of reactions) {
+    store.dispatch(
+      updateApproval({
+        playerId: r.playerId,
+        delta: r.delta,
+        reason: r.reason,
+        week,
+        eventType: r.eventType,
+        attributedToId: r.attributedToId,
+      }),
+    );
+  }
 }
 
 interface StateWithGame {
@@ -90,11 +136,25 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   // ── Mission action mapping for explicit gameplay actions ───────────────────
 
   if (actionType === 'game/commitNominees') {
-    // Human HOH nominated a set of players
+    // Human HOH nominated a set of players.
+    // Payload is the array of nominee IDs committed by the human player.
     const nominees = (actionPayload as string[] | undefined) ?? [];
     const week = game.week ?? 1;
     const hohId = game.hohId;
     if (hohId && nominees.length > 0) {
+      // Event-driven approval reactions: HOH backlash + nominee sympathy.
+      // Run against the updated game state so nomineeIds are current.
+      const profiles = nextState.publicOpinion?.profiles ?? {};
+      const approvals = buildApprovalMap(profiles);
+      const reactions = computeNominationReactions({
+        nomineeIds: nominees,
+        hohId,
+        approvals,
+        week,
+      });
+      dispatchReactionDeltas(store, reactions, week);
+
+      // Mission progress
       for (const targetId of nominees) {
         dispatchMissionProgress(store, {
           type: 'nominated_target',
@@ -214,6 +274,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
               delta: publicOpinionConfig.competitionImpact.hohWin,
               reason: 'hoh_win',
               week,
+              eventType: 'hoh_win',
             }),
           );
           // Mission progress: HOH win
@@ -233,6 +294,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
               delta: publicOpinionConfig.competitionImpact.povWin,
               reason: 'pov_win',
               week,
+              eventType: 'pov_win',
             }),
           );
           dispatchMissionProgress(store, {
@@ -275,18 +337,34 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         }
       }
 
-      // nomination_results: dispatch mission progress for AI HOH nominations.
-      // (Human HOH nominations are handled by game/commitNominees.)
+      // nomination_results: dispatch approval reactions and mission progress for AI HOH nominations.
+      // Human HOH reactions are handled earlier via `game/commitNominees`; firing them again here
+      // would double-apply backlash/sympathy. Only run when awaitingNominations is false
+      // (the AI HOH path: nominations were set automatically before this phase was entered).
       if (newPhase === 'nomination_results' && !game.awaitingNominations && game.hohId) {
-        for (const nomineeId of game.nomineeIds ?? []) {
-          dispatchMissionProgress(store, {
-            type: 'nominated_target',
-            actorId: game.hohId,
-            targetId: nomineeId,
+        const profiles = nextState.publicOpinion?.profiles ?? {};
+        const approvals = buildApprovalMap(profiles);
+        const nomineeIds = game.nomineeIds ?? [];
+
+        if (nomineeIds.length > 0) {
+          // Event-driven approval reactions: HOH backlash + nominee sympathy
+          const reactions = computeNominationReactions({
+            nomineeIds,
+            hohId: game.hohId,
+            approvals,
             week,
           });
-        }
-        if ((game.nomineeIds ?? []).length > 0) {
+          dispatchReactionDeltas(store, reactions, week);
+
+          // Mission progress
+          for (const nomineeId of nomineeIds) {
+            dispatchMissionProgress(store, {
+              type: 'nominated_target',
+              actorId: game.hohId,
+              targetId: nomineeId,
+              week,
+            });
+          }
           dispatchMissionProgress(store, {
             type: 'bold_move',
             actorId: game.hohId,
@@ -295,7 +373,25 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         }
       }
 
+      // pov_ceremony_results: if POV was used, apply save reactions.
+      if (newPhase === 'pov_ceremony_results' && game.povSavedId) {
+        const profiles = nextState.publicOpinion?.profiles ?? {};
+        const approvals = buildApprovalMap(profiles);
+        const reactions = computePovSaveReactions({
+          savedPlayerId: game.povSavedId,
+          saviorId: game.povWinnerId ?? null,
+          approvals,
+          week,
+          isPublicSave: false,
+        });
+        dispatchReactionDeltas(store, reactions, week);
+      }
+
       if (newPhase === 'week_start') {
+        // Reset daily feed budget at the start of a new day so event-driven reactions
+        // get a fresh slot budget.
+        store.dispatch(resetDailyFeedBudget({ week }));
+
         // Generate dramatic headline events + background drift for the new day
         const activePlayers = (game.players ?? [])
           .filter((p) => p.status !== 'evicted' && p.status !== 'jury')
@@ -357,6 +453,48 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           }
         }
       }
+    }
+  }
+
+  // ── Eviction commit: apply eviction reactions when a player is evicted ────────
+  // finalizePendingEviction commits the actual eviction (sets player status to
+  // 'evicted'/'jury'). We hook here to apply immediate event-driven reactions
+  // based on how liked/disliked the evicted player was at the time of eviction.
+  if (actionType === 'game/finalizePendingEviction') {
+    const evicteeId = actionPayload as string | undefined;
+    if (evicteeId) {
+      const week = game.week ?? 1;
+      // At this point `next(action)` has already run (game state updated with
+      // the evictee's new status), but publicOpinion profiles have not changed
+      // yet — so nextState.publicOpinion.profiles holds the correct pre-reaction
+      // approval standings.
+      const approvals = buildApprovalMap(nextState.publicOpinion?.profiles ?? {});
+      const reactions = computeEvictionReactions({
+        evicteeId,
+        hohId: game.hohId,
+        povHolderId: game.povSavedId ? (game.povWinnerId ?? null) : null,
+        approvals,
+        week,
+      });
+      dispatchReactionDeltas(store, reactions, week);
+    }
+  }
+
+  // ── Public-save twist: apply save reactions when commitPublicSave fires ───────
+  if (actionType === 'game/commitPublicSave') {
+    const savedId = actionPayload as string | undefined;
+    if (savedId) {
+      const week = game.week ?? 1;
+      const profiles = nextState.publicOpinion?.profiles ?? {};
+      const approvals = buildApprovalMap(profiles);
+      const reactions = computePovSaveReactions({
+        savedPlayerId: savedId,
+        saviorId: null, // public save has no individual savior
+        approvals,
+        week,
+        isPublicSave: true,
+      });
+      dispatchReactionDeltas(store, reactions, week);
     }
   }
 

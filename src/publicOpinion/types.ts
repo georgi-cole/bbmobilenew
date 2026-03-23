@@ -52,6 +52,18 @@ export interface PublicFeedEntry {
   timestamp: number;
   /** True when this entry was generated as a dramatic headline event. */
   isHeadline?: boolean;
+  /**
+   * The game event type that triggered this feed entry (e.g. 'nomination',
+   * 'eviction', 'hoh_win', 'pov_save', 'public_save').
+   * Used for attribution and deterministic tie-breaking.
+   */
+  eventType?: string;
+  /**
+   * ID of the player who caused this approval change (e.g. the HOH who
+   * nominated the subject, or the POV holder who saved someone).
+   * Undefined when the change is not attributable to a specific actor.
+   */
+  attributedToId?: string;
 }
 
 export interface PublicOpinionState {
@@ -59,4 +71,13 @@ export interface PublicOpinionState {
   directions: PublicDirection[];
   feed: PublicFeedEntry[];
   lastUpdatedWeek: number;
+  /**
+   * Number of visible feed posts added in the current in-game day.
+   * Resets each time the game enters `week_start`.
+   * When this reaches `publicOpinionConfig.feedBudgetPerDay`, further
+   * event-driven feed cards are suppressed (approval deltas still apply).
+   */
+  feedPostsThisDay: number;
+  /** The in-game week (day) for which the current `feedPostsThisDay` budget applies. */
+  currentFeedDay: number;
 }
