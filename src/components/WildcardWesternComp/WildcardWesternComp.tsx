@@ -1123,7 +1123,7 @@ export default function WildcardWesternComp({
             <h2>Sheriff Champion!</h2>
             <div className="ww-winner-name">{getParticipantName(state.winnerId ?? '')}</div>
             <p style={{ fontSize: '1.2rem', opacity: 0.9 }}>
-              The last outlaw standing claims the {prizeType === 'HOH' ? 'Head of Household' : 'Power of Veto'}!
+              The last outlaw standing claims the {prizeType === 'HOH' ? 'Leader of the House' : 'Power of Safety'}!
             </p>
             {standalone && !isSpectating && (
               <button

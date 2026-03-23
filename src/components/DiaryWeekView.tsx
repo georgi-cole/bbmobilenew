@@ -102,11 +102,11 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
         <h3 className="dw-view__section-title">🏠 Competitions</h3>
         <div className="dw-view__comps">
           <div className="dw-view__comp-block">
-            <span className="dw-view__comp-label">HOH</span>
+            <span className="dw-view__comp-label">LOH</span>
             <span className="dw-view__comp-value">{week.hohWinner ?? '—'}</span>
           </div>
           <div className="dw-view__comp-block">
-            <span className="dw-view__comp-label">POV</span>
+            <span className="dw-view__comp-label">POS</span>
             <span className="dw-view__comp-value">{week.povWinner ?? '—'}</span>
           </div>
         </div>
@@ -133,14 +133,14 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
         )}
         {week.replacementNominee && !week.nominees.includes(week.replacementNominee) && (
           <p className="dw-view__replacement-note">
-            🔄 Replacement nominee: <strong>{week.replacementNominee}</strong>
+            🔄 Backup nominee: <strong>{week.replacementNominee}</strong>
           </p>
         )}
       </section>
 
       {/* ── Eviction Votes ── */}
       <section className="dw-view__section">
-        <h3 className="dw-view__section-title">🗳️ Eviction Votes</h3>
+        <h3 className="dw-view__section-title">🗳️ Elimination Votes</h3>
         {week.evictionVotes.length === 0 ? (
           <p className="dw-view__empty">No votes recorded.</p>
         ) : (
@@ -149,7 +149,7 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
               <thead>
                 <tr>
                   <th>Voter</th>
-                  <th>Voted to Evict</th>
+                  <th>Voted to Eliminate</th>
                 </tr>
               </thead>
               <tbody>

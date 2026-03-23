@@ -219,7 +219,7 @@ describe('FloatingActionBar – layout', () => {
       'Social actions',
       'Advance to next phase',
       'Public meter',
-      'Diary Room',
+      'Confessional',
     ]);
   });
 
@@ -256,11 +256,11 @@ describe('FloatingActionBar – navigation buttons', () => {
     expect(screen.getByTestId('location').textContent).toBe('/public-meter?tab=requests');
   });
 
-  it('navigates to diary room when the Diary Room button is clicked', async () => {
+  it('navigates to diary room when the Confessional button is clicked', async () => {
     const store = makeStore();
     renderFAB(store, '/game');
     act(() => {
-      screen.getByRole('button', { name: 'Diary Room' }).click();
+      screen.getByRole('button', { name: 'Confessional' }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/diary-room');
   });

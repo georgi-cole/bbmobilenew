@@ -203,7 +203,7 @@ export default function FinalFaceoff() {
       {/* Jury-return notice */}
       {finale.returnedJurorId && (
         <div className="fo-jury-return">
-          🔁 Jury Return: {game.players.find((p) => p.id === finale.returnedJurorId)?.name ?? ''} rejoined the jury!
+          🔁 Tribunal Return: {game.players.find((p) => p.id === finale.returnedJurorId)?.name ?? ''} rejoined the Tribunal!
         </div>
       )}
 

@@ -621,49 +621,49 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
-  it('shows HOH Competition overlay when phase transitions to hoh_comp_announcement', () => {
+  it('shows LOH Competition overlay when phase transitions to hoh_comp_announcement', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: HOH Competition/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeDefined();
   });
 
-  it('shows Power of Veto overlay when phase transitions to pov_comp_announcement', () => {
+  it('shows Power of Safety overlay when phase transitions to pov_comp_announcement', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Power of Veto/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeDefined();
   });
 
-  it('HOH Competition overlay requires manual dismissal (no auto-dismiss)', () => {
+  it('LOH Competition overlay requires manual dismissal (no auto-dismiss)', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
 
     // The overlay for hoh_comp_announcement has autoDismissMs: null — no auto-dismiss
-    const overlay = screen.getByRole('dialog', { name: /Announcement: HOH Competition/i });
+    const overlay = screen.getByRole('dialog', { name: /Announcement: LOH Competition/i });
     expect(overlay).toBeDefined();
     // Dismiss via central FAB event
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-    expect(screen.queryByRole('dialog', { name: /Announcement: HOH Competition/i })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
   });
 
-  it('POV overlay requires manual dismissal (no auto-dismiss)', () => {
+  it('POS overlay requires manual dismissal (no auto-dismiss)', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
 
-    const overlay = screen.getByRole('dialog', { name: /Announcement: Power of Veto/i });
+    const overlay = screen.getByRole('dialog', { name: /Announcement: Power of Safety/i });
     expect(overlay).toBeDefined();
     // Dismiss via central FAB event
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-    expect(screen.queryByRole('dialog', { name: /Announcement: Power of Veto/i })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeNull();
   });
 
   it('does NOT show any overlay when phase transitions to final3_comp1', () => {

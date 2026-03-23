@@ -276,7 +276,7 @@ export default function Final3Ceremony() {
           skippable
           header={{ title: 'Final 3 🚪', subtitle: 'The Final LOH has made their decision.' }}
           onComplete={handleAnnounceComplete}
-          ariaLabel="Final 3 eviction announcement"
+          ariaLabel="Final 3 elimination announcement"
         />
       )}
 

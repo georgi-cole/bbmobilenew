@@ -12,7 +12,7 @@ export default function SelfEvicted() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const playerName = useAppSelector(
-    (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Houseguest',
+    (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Housemate',
   );
 
   function startNewSeason() {

@@ -64,18 +64,18 @@ export async function generateBigBrotherReply(
     });
 
     if (!res.ok) {
-      throw new Error(`Big Brother server responded with status ${res.status}.`);
+      throw new Error(`The Big Eye server responded with status ${res.status}.`);
     }
 
     let json: BigBrotherResponse;
     try {
       json = (await res.json()) as BigBrotherResponse;
     } catch {
-      throw new Error('Big Brother server returned an unexpected response.');
+      throw new Error('The Big Eye server returned an unexpected response.');
     }
 
     if (typeof json?.text !== 'string') {
-      throw new Error('Big Brother server response missing "text" field.');
+      throw new Error('The Big Eye server response missing "text" field.');
     }
 
     return json;

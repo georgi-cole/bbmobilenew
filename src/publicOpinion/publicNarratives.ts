@@ -93,9 +93,9 @@ type NarrativeKey = keyof typeof NARRATIVE_VARIANTS;
 
 const REASON_ALIASES: Record<string, NarrativeKey> = {
   hoh_win: 'hoh_win',
-  'Won Head of Household': 'hoh_win',
+  'Won Leader of the House': 'hoh_win',
   pov_win: 'pov_win',
-  'Won Power of Veto': 'pov_win',
+  'Won Power of Safety': 'pov_win',
   nominated: 'nominated',
   'Was on the block': 'nominated',
   direction_completed: 'direction_completed',

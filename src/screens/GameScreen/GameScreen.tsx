@@ -594,23 +594,23 @@ export default function GameScreen() {
     // nominationContext yet, so derive the pills from the pending picks.
     if (showHumanNomAnim && pendingNominees.length > 0) {
       pendingNominees.forEach((id) => {
-        labels[id] = 'HOH Nominee'
+        labels[id] = 'LOH Nominee'
       })
       if (
         canUsePublicNomineeRule &&
         game.lastHohCompFinisherId &&
         !pendingNominees.includes(game.lastHohCompFinisherId)
       ) {
-        labels[game.lastHohCompFinisherId] = 'Last in HOH Comp'
+        labels[game.lastHohCompFinisherId] = 'Last in LOH Comp'
       }
       return labels
     }
 
     const ctx = game.nominationContext
     if (!ctx) return labels
-    ctx.hohNomineeIds.forEach((id) => { labels[id] = 'HOH Nominee' })
+    ctx.hohNomineeIds.forEach((id) => { labels[id] = 'LOH Nominee' })
     if (ctx.autoNomineeId && !ctx.hohNomineeIds.includes(ctx.autoNomineeId)) {
-      labels[ctx.autoNomineeId] = 'Last in HOH Comp'
+      labels[ctx.autoNomineeId] = 'Last in LOH Comp'
     }
     return labels
   }, [
@@ -907,7 +907,7 @@ export default function GameScreen() {
       {
         id: 'f4-intro',
         role: 'host',
-        text: `${povHolder.name} holds the sole vote to evict. Nominees, it's time to make your pleas. 🎤`,
+        text: `${povHolder.name} holds the sole vote to eliminate. Nominees, it's time to make your pleas. 🎤`,
       },
       ...nominees.flatMap((nominee, idx): ChatLine[] => [
         {
@@ -993,7 +993,7 @@ export default function GameScreen() {
       {
         id: 'f4-evict-bb',
         role: 'host',
-        text: `${evicted.name}, by a vote of 1 to 0, you have been evicted from the Big Brother house. Please take a moment to say your goodbyes. 👋`,
+        text: `${evicted.name}, by a vote of 1 to 0, you have been eliminated from The Big Eye house. Please take a moment to say your goodbyes. 👋`,
       },
     ])
     setFinal4Stage('announcement')
@@ -1469,8 +1469,8 @@ export default function GameScreen() {
                 : `${nomAnimPlayers.map((n) => n.name).join(' & ')} have been nominated`
           }
           subtitle={
-            nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] === 'Last in HOH Comp'
-              ? '🎯 Nominations are set — including the HOH comp last-place finisher'
+            nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] === 'Last in LOH Comp'
+              ? '🎯 Nominations are set — including the LOH comp last-place finisher'
               : '🎯 Nominations are set'
           }
           onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
@@ -1491,7 +1491,7 @@ export default function GameScreen() {
       {/* ── Human POV holder Yes/No decision ────────────────────────────── */}
       {showPovDecisionModal && (
         <TvBinaryDecisionModal
-          title={specialVetoName ?? 'Power of Veto Ceremony'}
+          title={specialVetoName ?? 'Power of Safety Ceremony'}
           subtitle={
             activeSpecialVeto === 'vip'
               ? `${humanPlayer?.name}, will you use Double Trouble? You may use it twice this ceremony.`
@@ -1499,7 +1499,7 @@ export default function GameScreen() {
                 ? `${humanPlayer?.name}, will you use Halo Exchange and name the replacement yourself?`
                 : activeSpecialVeto === 'coup'
                   ? `${humanPlayer?.name}, will you use Detox and replace both nominees yourself?`
-                  : `${humanPlayer?.name}, will you use the Power of Veto?`
+                  : `${humanPlayer?.name}, will you use the Power of Safety?`
           }
           yesLabel={
             activeSpecialVeto === 'vip'
@@ -1543,7 +1543,7 @@ export default function GameScreen() {
               ? 'Double Trouble — Second Save'
               : specialVetoName
                 ? `${specialVetoName} — Save a Nominee`
-                : 'Power of Veto — Save a Nominee'
+                : 'Power of Safety — Save a Nominee'
           }
           subtitle={
             activeSpecialVeto === 'diamond'
@@ -1584,7 +1584,7 @@ export default function GameScreen() {
       {showDiamondReplacementModal && (
         <TvDecisionModal
           title="Halo Exchange — Name the Replacement"
-          subtitle={`${humanPlayer?.name}, choose the replacement nominee.`}
+          subtitle={`${humanPlayer?.name}, choose the backup nominee.`}
           options={holderReplacementOptions}
           onSelect={(id) => dispatch(submitDiamondReplacement(id))}
           stingerMessage="HALO EXCHANGE"
@@ -1596,8 +1596,8 @@ export default function GameScreen() {
           title="Detox — Name Replacement Nominees"
           subtitle={
             game.specialVeto?.awaitingCoupReplacement1
-              ? `${humanPlayer?.name}, choose the first replacement nominee.`
-              : `${humanPlayer?.name}, choose the second replacement nominee.`
+              ? `${humanPlayer?.name}, choose the first backup nominee.`
+              : `${humanPlayer?.name}, choose the second backup nominee.`
           }
           options={coupReplacementOptions}
           onSelect={(id) => dispatch(submitCoupReplacement(id))}
@@ -1608,8 +1608,8 @@ export default function GameScreen() {
       {/* ── Human live eviction vote ─────────────────────────────────────── */}
       {showLiveVoteModal && (
         <TvDecisionModal
-          title="Live Eviction Vote"
-          subtitle={`${humanPlayer?.name}, cast your vote to evict one of the nominees.`}
+          title="Live Elimination Vote"
+          subtitle={`${humanPlayer?.name}, cast your vote to eliminate one of the nominees.`}
           options={liveVoteOptions}
           onSelect={(id) => dispatch(submitHumanVote(id))}
           danger
@@ -1644,7 +1644,7 @@ export default function GameScreen() {
       {showFinal4Modal && (
         <TvDecisionModal
           title="Final 4 — Cast Your Vote"
-          subtitle={`${humanPlayer?.name}, you hold the sole vote to evict. Choose wisely.`}
+          subtitle={`${humanPlayer?.name}, you hold the sole vote to eliminate. Choose wisely.`}
           options={final4Options}
           onSelect={(id) => dispatch(finalizeFinal4Eviction(id))}
           danger
@@ -1659,7 +1659,7 @@ export default function GameScreen() {
           skippable
           header={{ title: 'Final 4 🚪', subtitle: 'The decision has been made.' }}
           onComplete={handleFinal4AnnounceComplete}
-          ariaLabel="Final 4 eviction announcement"
+          ariaLabel="Final 4 elimination announcement"
         />
       )}
 
@@ -1780,7 +1780,7 @@ export default function GameScreen() {
             // this callback fires.
             const isHohComp = capturedPrizeType === 'HOH';
             const winSymbol = isHohComp ? '👑' : '🛡️';
-            const winLabel = isHohComp ? 'Head of Household' : 'Power of Veto';
+            const winLabel = isHohComp ? 'Leader of the House' : 'Power of Safety';
 
             // Prefer the canonical winner already committed to the store by the
             // game's feature thunk.  storeRef gives the live Redux state — not
@@ -1898,10 +1898,10 @@ export default function GameScreen() {
               badgeLabel: `${replacementPlayer?.name ?? replacementId} nominated as replacement`,
             }]
           }}
-          caption="Replacement nominee named"
+          caption="Backup nominee named"
           subtitle="🎯 Nominations are set"
           onDone={handleAiReplacementDone}
-          ariaLabel="Replacement nominee ceremony"
+          ariaLabel="Backup nominee ceremony"
         />
       )}
 
@@ -1941,7 +1941,7 @@ export default function GameScreen() {
             <header className="tv-binary-modal__header">
               <h2 className="tv-binary-modal__title">⚖️ It&rsquo;s a Tie!</h2>
               <p className="tv-binary-modal__subtitle">
-                👑 HOH is breaking the tie&hellip;
+                👑 LOH is breaking the tie&hellip;
               </p>
             </header>
           </div>

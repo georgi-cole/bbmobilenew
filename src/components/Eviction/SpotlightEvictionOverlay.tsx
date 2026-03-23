@@ -193,7 +193,7 @@ export default function SpotlightEvictionOverlay({
   const isDev = import.meta.env.DEV || devSkip;
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
-  const labelText = isReturn ? 'RETURNED' : 'EVICTED';
+  const labelText = isReturn ? 'RETURNED' : 'ELIMINATED';
 
   return (
     <div
@@ -203,7 +203,7 @@ export default function SpotlightEvictionOverlay({
       aria-label={
         isReturn
           ? `${evictee.name} has returned to the house`
-          : `${evictee.name} has been evicted`
+          : `${evictee.name} has been eliminated`
       }
     >
       {/* Dim overlay — fades in immediately */}

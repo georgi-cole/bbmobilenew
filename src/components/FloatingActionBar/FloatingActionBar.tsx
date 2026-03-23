@@ -141,8 +141,8 @@ export default function FloatingActionBar() {
         <button
           className="fab__side-btn"
           type="button"
-          aria-label="Diary Room"
-          title="Diary Room"
+          aria-label="Confessional"
+          title="Confessional"
           onClick={() => navigate('/diary-room')}
         >
           🎤

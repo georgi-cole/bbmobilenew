@@ -40,7 +40,7 @@ export default function FinaleControls({
         onClick={onRevealNext}
         disabled={allRevealed}
       >
-        {allRevealed ? 'Tallying…' : 'Next Juror ▶'}
+        {allRevealed ? 'Tallying…' : 'Next Judge ▶'}
       </button>
     </div>
   );

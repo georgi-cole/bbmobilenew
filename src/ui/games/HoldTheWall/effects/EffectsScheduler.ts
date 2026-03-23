@@ -58,7 +58,7 @@ const EFFECT_MIN_DURATION_MS = 3_000;
 /** Random range on top of the minimum (ms). */
 const EFFECT_DURATION_RANGE_MS = 5_000;
 
-const CALLERS = ['Julie Chen', 'BB Production', 'Mom', 'Your Agent', 'CBS'];
+const CALLERS = ['The Host', 'Production', 'Mom', 'Your Agent', 'The Network'];
 
 // ─── Effect catalogue ─────────────────────────────────────────────────────────
 

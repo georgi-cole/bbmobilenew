@@ -4,28 +4,28 @@
 (function(g){
   'use strict';
 
-  // 100 numeric-answer trivia questions about Big Brother and general knowledge
+  // 100 numeric-answer trivia questions about The Big Eye and general knowledge
   const QUESTIONS = [
-    { q: 'How many houseguests typically compete in a season of Big Brother US?', a: 16 },
-    { q: 'In what year did Big Brother US first premiere?', a: 2000 },
-    { q: 'How many days does a typical Big Brother US season last?', a: 99 },
+    { q: 'How many housemates typically compete in a season of The Big Eye?', a: 16 },
+    { q: 'In what year did The Big Eye first premiere?', a: 2000 },
+    { q: 'How many days does a typical season of The Big Eye last?', a: 99 },
     { q: 'How many votes does it take to evict with a house of 10 remaining?', a: 5 },
-    { q: 'What is the maximum number of houseguests who can be nominated at once?', a: 2 },
-    { q: 'How many weeks typically occur in a full Big Brother season?', a: 13 },
+    { q: 'What is the maximum number of housemates who can be nominated at once?', a: 2 },
+    { q: 'How many weeks typically occur in a full season of The Big Eye?', a: 13 },
     { q: 'How many people vote in the finale to crown the winner?', a: 9 },
-    { q: 'What is the typical prize amount for winning Big Brother (in thousands)?', a: 500 },
+    { q: 'What is the typical prize amount for winning The Big Eye (in thousands)?', a: 500 },
     { q: 'How many houseguests make it to the final two?', a: 2 },
     { q: 'How many competition wins did Janelle Pierzina have in BB7?', a: 9 },
     
-    { q: 'In what season did the Power of Veto first appear?', a: 3 },
-    { q: 'How many seasons has Big Brother US aired (as of 2024)?', a: 26 },
-    { q: 'How many cameras are typically in the Big Brother house?', a: 94 },
-    { q: 'What is the age requirement to apply for Big Brother?', a: 21 },
-    { q: 'How many jury members typically vote in the finale?', a: 9 },
+    { q: 'In what season did the Power of Safety first appear?', a: 3 },
+    { q: 'How many seasons has The Big Eye aired (as of 2024)?', a: 26 },
+    { q: 'How many cameras are typically in The Big Eye house?', a: 94 },
+    { q: 'What is the age requirement to apply for The Big Eye?', a: 21 },
+    { q: 'How many Tribunal members typically vote in the finale?', a: 9 },
     { q: 'In Season 10, how old was Dan Gheesling when he won?', a: 24 },
     { q: 'How many competitions did Cody Calafiore win in BB22?', a: 8 },
-    { q: 'What week does the jury phase typically start?', a: 5 },
-    { q: 'How many houseguests were in the first season of Big Brother?', a: 10 },
+    { q: 'What week does the Tribunal phase typically start?', a: 5 },
+    { q: 'How many housemates were in the first season of The Big Eye?', a: 10 },
     { q: 'How many Battle Back competitions occurred in BB18?', a: 4 },
     
     { q: 'What is 7 x 8?', a: 56 },
@@ -102,7 +102,7 @@
     { q: 'What season introduced the Have/Have-Not twist?', a: 9 },
     { q: 'How many unanimous votes has there been in BB history (through S25)?', a: 38 },
     { q: 'In BB22, how many former winners competed?', a: 5 },
-    { q: 'How many seasons of Big Brother aired in 2020?', a: 1 },
+    { q: 'How many seasons of The Big Eye aired in 2020?', a: 1 },
     { q: 'What is the most common age range for BB houseguests (lower bound)?', a: 21 },
     
     { q: 'How many faces does a cube have?', a: 6 },

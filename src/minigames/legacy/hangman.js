@@ -14,7 +14,7 @@
 
   /**
    * Hangman minigame
-   * Guess letters to reveal a Big Brother related word
+   * Guess letters to reveal a game-related word
    * 
    * @param {HTMLElement} container - Container element for the game UI
    * @param {Function} onComplete - Callback function(score) when game ends
@@ -42,7 +42,7 @@
     
     // Instructions
     const instructions = document.createElement('p');
-    instructions.textContent = 'Guess the Big Brother word!';
+    instructions.textContent = 'Guess the game word!';
     instructions.style.cssText = 'margin:0;font-size:1rem;color:#95a9c0;text-align:center;';
     
     // Wrong count display

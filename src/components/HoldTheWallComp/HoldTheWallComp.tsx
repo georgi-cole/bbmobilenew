@@ -59,7 +59,7 @@ interface GamePlayer {
 
 const NARRATION = {
   start: [
-    "Alright houseguests — grip that wall like your life depends on it! 💪",
+    "Alright housemates — grip that wall like your life depends on it! 💪",
     "Welcome to the wall of pain. Hope you all had a good breakfast! 🏋️",
     "Let's see who has the strength… and who has the noodle arms! 🍝",
   ],
@@ -75,13 +75,13 @@ const NARRATION = {
     "{name} has hit the ground! That's gonna leave a mark! 💥",
     "{name} is out! Don't worry, we have ice packs! 🧊",
     "{name} couldn't hold on — the wall claims another victim! 😱",
-    "There goes {name}! Gravity: 1, Houseguest: 0! 🪂",
+    "There goes {name}! Gravity: 1, Housemate: 0! 🪂",
     "{name} drops! The competition just got tighter! 🔥",
   ],
   final_two: [
     "We're down to TWO! This is getting intense! 🔥",
     "Mano a mano! Who wants it more?! 💪",
-    "Two houseguests, one wall, zero mercy! 😤",
+    "Two housemates, one wall, zero mercy! 😤",
   ],
   victory: [
     "WE HAVE A WINNER! What an incredible performance! 🏆",
@@ -534,7 +534,7 @@ export default function HoldTheWallComp({
             Last player standing after {formatElapsed(elapsedMs)}
           </p>
           <p className="htw-complete-prize">
-            {prizeType === 'HOH' ? '👑 Head of Household' : '🔑 Power of Veto'} awarded!
+            {prizeType === 'HOH' ? '👑 Leader of the House' : '🔑 Power of Safety'} awarded!
           </p>
         </div>
       )}

@@ -17,16 +17,16 @@ interface TriviaVariantProps {
   getPlayerName: (id: string | undefined) => string;
 }
 
-// ── Big Brother–themed trivia questions shown during simulation ───────────────
+// ── Big Eye–themed trivia questions shown during simulation ───────────────
 
 const BB_QUESTIONS = [
   {
     q: 'What competition decides weekly nominations?',
-    answers: ['Veto', 'HoH', 'Battle Back', 'Have-Not'],
+    answers: ['Safety', 'LoH', 'Battle Back', 'Have-Not'],
     ai: 1,
   },
   {
-    q: 'How many jury members typically vote in a Final 2?',
+    q: 'How many Tribunal members typically vote in a Final 2?',
     answers: ['5', '7', '9', 'Varies'],
     ai: 1,
   },
@@ -36,13 +36,13 @@ const BB_QUESTIONS = [
     ai: 2,
   },
   {
-    q: 'What does "PoV" stand for?',
-    answers: ['Power of Veto', 'Part of Victory', 'Player Value', 'Proof of Win'],
+    q: 'What does "PoS" stand for?',
+    answers: ['Power of Safety', 'Part of Strategy', 'Player Score', 'Proof of Survival'],
     ai: 0,
   },
   {
-    q: 'Jury members live together in the ___ house.',
-    answers: ['Camp', 'Studio', 'Jury', 'Archive'],
+    q: 'Tribunal members live together in the ___ house.',
+    answers: ['Camp', 'Studio', 'Tribunal', 'Archive'],
     ai: 2,
   },
 ];

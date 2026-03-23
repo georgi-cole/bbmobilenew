@@ -5,9 +5,9 @@
   'use strict';
 
   /**
-   * Social Strings - Alliance matching game or houseguest trivia
-   * Players identify which houseguests are in alliances together (Week 5+)
-   * or answer trivia questions about the houseguests (earlier weeks)
+   * Social Strings - Alliance matching game or housemate trivia
+   * Players identify which housemates are in alliances together (Week 5+)
+   * or answer trivia questions about the housemates (earlier weeks)
    * 3 rounds with increasing difficulty
    * 
    * CLEAR PROMPTS:
@@ -41,7 +41,7 @@
     if(isAllianceMode){
       instructions.innerHTML = `
         <p style="margin:0 0 8px 0;font-size:0.95rem;color:#e3ecf5;text-align:center;">
-          <strong>Match houseguests who are in the same alliance!</strong>
+          <strong>Match housemates who are in the same alliance!</strong>
         </p>
         <p style="margin:0;font-size:0.85rem;color:#95a9c0;text-align:center;">
           An alliance is a secret group working together to advance in the game.
@@ -50,7 +50,7 @@
     } else {
       instructions.innerHTML = `
         <p style="margin:0 0 8px 0;font-size:0.95rem;color:#e3ecf5;text-align:center;">
-          <strong>Test your knowledge of the houseguests!</strong>
+          <strong>Test your knowledge of the housemates!</strong>
         </p>
         <p style="margin:0;font-size:0.85rem;color:#95a9c0;text-align:center;">
           Answer questions about the players in the house.
@@ -177,7 +177,7 @@
       const difficultyLabel = difficulty === 'easy' ? 'Round 1' : difficulty === 'medium' ? 'Round 2' : 'Round 3';
       
       return {
-        question: `Which houseguest is in an alliance with <strong>${anchor.name}</strong>?`,
+        question: `Which housemate is in an alliance with <strong>${anchor.name}</strong>?`,
         choices: choices,
         difficulty: difficultyLabel
       };
@@ -335,7 +335,7 @@
             }
             
             return {
-              question: `How many times has <strong>${target.name}</strong> won HOH?`,
+              question: `How many times has <strong>${target.name}</strong> won LOH?`,
               choices: choices.sort(() => Math.random() - 0.5),
               difficulty
             };
@@ -369,7 +369,7 @@
               }
               
               return {
-                question: 'Which houseguest is <strong>still in the house</strong>?',
+                question: 'Which housemate is <strong>still in the house</strong>?',
                 choices: choices.sort(() => Math.random() - 0.5),
                 difficulty
               };
@@ -394,7 +394,7 @@
               }
               
               return {
-                question: 'Which houseguest has been <strong>evicted</strong>?',
+                question: 'Which housemate has been <strong>eliminated</strong>?',
                 choices: choices.sort(() => Math.random() - 0.5),
                 difficulty
               };
@@ -423,7 +423,7 @@
       // Generic Big Brother alliance knowledge questions
       return [
         {
-          question: 'In Big Brother, which pair would MOST LIKELY be in an alliance?',
+          question: 'In the game, which pair would MOST LIKELY be in an alliance?',
           choices: [
             { text: 'Two players who trust each other', isCorrect: true },
             { text: 'The current nominees', isCorrect: false },

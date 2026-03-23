@@ -192,7 +192,7 @@ app.post('/api/ai/bigbrother', async (req, res) => {
   }
 
   const text = diaryText.trim().slice(0, MAX_DIARY_TEXT_LENGTH);
-  const name = typeof playerName === 'string' ? playerName.trim() : 'Houseguest';
+  const name = typeof playerName === 'string' ? playerName.trim() : 'Housemate';
   const gamePhase = typeof phase === 'string' ? phase : 'unknown';
   const rngSeed = typeof seed === 'number' ? seed : fnv32(text);
 
