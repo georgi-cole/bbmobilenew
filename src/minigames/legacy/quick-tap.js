@@ -1,6 +1,19 @@
-// MODULE: minigames/quick-tap.js
-// Quick Tap Race - Tap as many times as possible in 5 seconds
+// MODULE: minigames/legacy/quick-tap.js
+// ──────────────────────────────────────────────────────────────────────────────
+// DEPRECATED — no longer the active gameplay path.
 //
+// Quick Tap Race has been migrated to the native React minigame architecture:
+//   src/components/QuickTapRace/QuickTapRace.tsx
+//
+// The registry entry (src/minigames/registry.ts) now sets
+//   implementation: 'react', reactComponentKey: 'QuickTapRace', legacy: false
+// so this IIFE module is never loaded during normal gameplay.
+//
+// This file is retained only for historical reference and backward-compatibility
+// with any saved-state that might reference the legacy module path.
+// It MUST NOT be imported or required from active code.
+// ──────────────────────────────────────────────────────────────────────────────
+
 // SAFETY: All helper method calls are guarded with existence checks
 // - MinigameAccessibility methods: applyAria, makeAccessibleButton, announceToSR
 // - MinigameMobileUtils methods: addTapListener, vibrate

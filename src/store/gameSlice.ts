@@ -7,6 +7,7 @@ import type {
   TvEvent,
   MinigameResult,
   MinigameSession,
+  CompleteMinigamePayload,
   BattleBackState,
   SpectatorActiveState,
   SeasonFinaleState,
@@ -506,18 +507,33 @@ const gameSlice = createSlice({
      * Record the human player's final tap score, compute all participant scores,
      * determine the winner, update personal records, and advance the phase.
      *
-     * Called by the TapRace component when the timer expires and the player
+     * Called by the QuickTapRace component when the timer expires and the player
      * presses the "Done" / "Continue ▶" button.
+     *
+     * Accepts either a legacy numeric payload (backward-compat) or a rich
+     * `CompleteMinigamePayload` with `humanScore` and optional `lastPlaceId`.
+     * When `lastPlaceId` is supplied it is used directly as the canonical
+     * last-place finisher rather than re-deriving from scores, ensuring the
+     * results UI and nomination logic read from the same authoritative data.
      */
-    completeMinigame(state, action: PayloadAction<number>) {
+    completeMinigame(
+      state,
+      action: PayloadAction<number | CompleteMinigamePayload>,
+    ) {
       const session = state.pendingMinigame;
       if (!session) return;
+
+      // Normalise legacy number payload → rich payload
+      const payload: CompleteMinigamePayload =
+        typeof action.payload === 'number'
+          ? { humanScore: action.payload }
+          : action.payload;
 
       const humanPlayer = state.players.find((p) => p.isUser);
       // Merge human score with pre-computed AI scores
       const scores: Record<string, number> = { ...session.aiScores };
       if (humanPlayer && session.participants.includes(humanPlayer.id)) {
-        scores[humanPlayer.id] = action.payload;
+        scores[humanPlayer.id] = payload.humanScore;
       }
 
       // Determine winner: highest tap count wins
@@ -551,13 +567,21 @@ const gameSlice = createSlice({
       if (state.phase === 'hoh_comp') {
         applyHohWinner(state, winnerId);
         state.phase = 'hoh_results';
-        // Track the last-place HOH competition finisher for the third-nominee rule
+        // Track the last-place HOH competition finisher for the third-nominee rule.
+        // Priority:
+        //   1. lastPlaceId explicitly supplied by the game component (authoritative)
+        //   2. Score-based derivation (fallback)
         const nonWinners = session.participants.filter((id) => id !== winnerId);
         if (nonWinners.length > 0) {
-          state.lastHohCompFinisherId = nonWinners.reduce((worst, id) =>
-            (scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst,
-            nonWinners[0],
-          );
+          const explicitLastPlace =
+            payload.lastPlaceId != null && nonWinners.includes(payload.lastPlaceId)
+              ? payload.lastPlaceId
+              : null;
+          state.lastHohCompFinisherId = explicitLastPlace
+            ?? nonWinners.reduce(
+              (worst, id) => (scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst,
+              nonWinners[0],
+            );
         }
       } else if (state.phase === 'pov_comp') {
         state.phase = applyPovWinner(state, winnerId, alive);
