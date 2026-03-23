@@ -14,6 +14,7 @@ export {
   addDirection,
   resolveDirection,
   pruneExpiredDirections,
+  resetDailyFeedBudget,
   updateMissionProgress,
   selectPublicOpinion,
   selectPlayerProfile,
@@ -29,3 +30,14 @@ export { generateDailyPublicUpdate } from './PublicHeadlineService';
 export type { HeadlineEvent, DailyPublicUpdate, HeadlineSeverity, HeadlineTone } from './PublicHeadlineService';
 export { resolveEventMissionProgress } from './MissionActionMapper';
 export type { MissionGameEvent, MissionGameEventType, MissionProgressSignal } from './MissionActionMapper';
+export {
+  computeNominationReactions,
+  computeEvictionReactions,
+  computePovSaveReactions,
+} from './EventDrivenReactionService';
+export type {
+  ReactionDelta,
+  NominationReactionInput,
+  EvictionReactionInput,
+  PovSaveReactionInput,
+} from './EventDrivenReactionService';
