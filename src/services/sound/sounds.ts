@@ -472,6 +472,55 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     volume: 0.9,
   },
 
+  // ── Quick Tap Race minigame sounds ───────────────────────────────────────
+
+  /**
+   * Quick Tap Race looping background music — plays throughout the playing phase.
+   * Asset: public/assets/sounds/quicktaprace/minigame_quick_tap_race_main.mp3
+   */
+  'music:quicktap_main': {
+    key: 'music:quicktap_main',
+    category: 'music',
+    src: `${SOUNDS_BASE}quicktaprace/minigame_quick_tap_race_main.mp3`,
+    preload: false,
+    volume: 0.5,
+    loop: true,
+  },
+  /**
+   * Quick Tap Race tap sound — plays on every player tap.
+   * Asset: public/assets/sounds/quicktaprace/minigame_quick_tap_race_tap.mp3
+   */
+  'minigame:quicktap_tap': {
+    key: 'minigame:quicktap_tap',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}quicktaprace/minigame_quick_tap_race_tap.mp3`,
+    preload: false,
+    volume: 0.8,
+  },
+  /**
+   * Quick Tap Race booster stinger — plays when a beneficial multiplier (2×/3×)
+   * activates during the game.
+   * Asset: public/assets/sounds/quicktaprace/minigame_quick_tap_race_booster.mp3
+   */
+  'minigame:quicktap_booster': {
+    key: 'minigame:quicktap_booster',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}quicktaprace/minigame_quick_tap_race_booster.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+  /**
+   * Quick Tap Race half-tap stinger — plays when the ½× fumble multiplier activates.
+   * Asset: public/assets/sounds/quicktaprace/minigame_quick_tap_race_half_tap.mp3
+   */
+  'minigame:quicktap_half_tap': {
+    key: 'minigame:quicktap_half_tap',
+    category: 'minigame',
+    src: `${SOUNDS_BASE}quicktaprace/minigame_quick_tap_race_half_tap.mp3`,
+    preload: false,
+    volume: 0.9,
+  },
+
   // ── Wildcard Western minigame sounds ──────────────────────────────────────
 
   /**

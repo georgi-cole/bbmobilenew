@@ -24,6 +24,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
+import { useQuickTapRaceAudio } from '../../hooks/useQuickTapRaceAudio';
 import './QuickTapRace.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -163,6 +164,10 @@ export default function QuickTapRace({
   const appliedModifiersRef = useRef<string[]>([]);
   const particleTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
+  // ── Audio ──────────────────────────────────────────────────────────────────
+
+  const { playTap, playBooster, playHalfTap } = useQuickTapRaceAudio(gamePhase === 'playing');
+
   useEffect(() => {
     return () => {
       particleTimeoutsRef.current.forEach(clearTimeout);
@@ -185,6 +190,12 @@ export default function QuickTapRace({
         setTimeout(() => {
           setActiveMultiplier(event);
           activeMultiplierRef.current = event;
+          // Play booster stinger for beneficial events, half-tap stinger for debilitating ones
+          if (event.beneficial) {
+            playBooster();
+          } else {
+            playHalfTap();
+          }
         }, event.startsAt * 1000),
       );
 
@@ -203,7 +214,7 @@ export default function QuickTapRace({
     });
 
     return () => timeouts.forEach(clearTimeout);
-  }, [gamePhase]);
+  }, [gamePhase, playBooster, playHalfTap]);
 
   // ── Ready countdown ────────────────────────────────────────────────────────
 
@@ -272,6 +283,9 @@ export default function QuickTapRace({
     lastTapTime.current = now;
     recentTapTimes.current.push(now);
 
+    // Play tap sound
+    playTap();
+
     // Resolve multiplier
     const multiplier = activeMultiplierRef.current?.multiplier ?? 1;
     const taps = tapCountRef.current + 1;
@@ -303,7 +317,7 @@ export default function QuickTapRace({
       setParticles((prev) => prev.filter((p) => !ids.includes(p.id)));
     }, 700);
     particleTimeoutsRef.current.push(timeoutId);
-  }, [gamePhase]);
+  }, [gamePhase, playTap]);
 
   // ── Game finish ────────────────────────────────────────────────────────────
 
