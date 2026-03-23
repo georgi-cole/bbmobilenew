@@ -22,7 +22,7 @@ interface TriviaVariantProps {
 const BB_QUESTIONS = [
   {
     q: 'What competition decides weekly nominations?',
-    answers: ['Safety', 'LoH', 'Battle Back', 'Have-Not'],
+    answers: ['Safety', 'LOH', 'Battle Back', 'Have-Not'],
     ai: 1,
   },
   {
@@ -36,7 +36,7 @@ const BB_QUESTIONS = [
     ai: 2,
   },
   {
-    q: 'What does "PoS" stand for?',
+    q: 'What does "POS" stand for?',
     answers: ['Power of Safety', 'Part of Strategy', 'Player Score', 'Proof of Survival'],
     ai: 0,
   },

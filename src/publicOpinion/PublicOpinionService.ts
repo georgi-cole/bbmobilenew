@@ -30,7 +30,7 @@ function getEventDelta(type: CycleEventInput['type']): { delta: number; reason: 
   const { competitionImpact, socialImpact, strategyImpact, directionRewards } = publicOpinionConfig;
   switch (type) {
     case 'hoh_win':
-      return { delta: competitionImpact.hohWin, reason: 'Won Head of Household' };
+      return { delta: competitionImpact.hohWin, reason: 'Won Leader of the House' };
     case 'pov_win':
       return { delta: competitionImpact.povWin, reason: 'Won Power of Safety' };
     case 'nominated':

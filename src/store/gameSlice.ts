@@ -2170,7 +2170,7 @@ const gameSlice = createSlice({
           // set evictee.status and transition to final3 after the cinematic plays.
           state.pendingEviction = {
             evicteeId: evictee.id,
-            evictionMessage: `${povHolder?.name ?? 'The POV holder'} has chosen to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🚪`,
+            evictionMessage: `${povHolder?.name ?? 'The POS holder'} has chosen to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🚪`,
           };
         }
         return;
@@ -2397,7 +2397,7 @@ const gameSlice = createSlice({
           state.awaitingFinal3Eviction = false;
           pushEvent(
             state,
-            `${finalHoh?.name ?? 'The Final HOH'} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+            `${finalHoh?.name ?? 'The Final LOH'} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
             'game',
           );
           pushEvent(state, `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`, 'game');
@@ -2742,7 +2742,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'pov_ceremony': {
-          const povName = state.players.find((p) => p.id === state.povWinnerId)?.name ?? 'The veto holder';
+          const povName = state.players.find((p) => p.id === state.povWinnerId)?.name ?? 'The safety holder';
           pushEvent(state, `${povName} is holding the Safety Ceremony. ⚡`, 'game');
           break;
         }
@@ -3029,7 +3029,7 @@ const gameSlice = createSlice({
             );
           } else {
             // AI POV holder who is not a nominee: does not use the veto
-            const povName = povWinner?.name ?? 'The veto holder';
+            const povName = povWinner?.name ?? 'The safety holder';
             pushEvent(
               state,
               `${povName} has decided NOT to use the Power of Safety. The nominations remain the same. ⚡`,

@@ -28,13 +28,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏆',
     label: 'SAFETY COMP',
     category: 'Competition',
-    body: 'Six players compete for the Power of Safety — the most powerful item in the game. The winner decides whether to keep the nominations the same or pull a nominee off the block, forcing the LOH to name a replacement.',
+    body: 'Six players compete for the Power of Safety — the most powerful item in the game. The winner decides whether to keep the nominations the same or pull a nominee off the block, forcing the LOH to name a backup nominee.',
   },
   veto_ceremony: {
     icon: '🏅',
     label: 'SAFETY CEREMONY',
     category: 'Ceremony',
-    body: 'The Power of Safety holder announces their decision: use the Safety to save a nominee, or keep the nominations unchanged. When used, the LOH must immediately name a replacement nominee — and they cannot choose the outgoing LOH.',
+    body: 'The Power of Safety holder announces their decision: use the Safety to save a nominee, or keep the nominations unchanged. When used, the LOH must immediately name a backup nominee — and they cannot choose the outgoing LOH.',
   },
   live_eviction: {
     icon: '📺',
@@ -80,8 +80,8 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   },
   twist: {
     icon: '🌀',
-    label: 'TWIST',
-    category: 'Special Event',
+    label: 'SHOCK',
+    category: 'Shock',
     body: 'The Big Eye never plays by the same rules twice. A shock has been introduced that could change the course of the game. Pay close attention — nothing is certain, and the housemates may need to adapt quickly to survive.',
   },
   hoh_comp_announcement: {
