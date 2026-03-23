@@ -52,5 +52,15 @@ export const resolveFamousFiguresOutcome =
     }
 
     dispatch(markFamousFiguresOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // Derive the worst finisher from playerScores (lowest score = last place).
+    // This ensures the third-nominee auto-add matches the scoreboard shown in the UI.
+    const scores = ff.playerScores;
+    const nonWinnerIds = Object.keys(scores).filter((id) => id !== winnerId);
+    const lastPlaceId = nonWinnerIds.length > 0
+      ? nonWinnerIds.reduce((worst, id) =>
+          (scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst,
+          nonWinnerIds[0]!,
+        )
+      : null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

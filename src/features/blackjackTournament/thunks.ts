@@ -59,5 +59,9 @@ export const resolveBlackjackTournamentOutcome =
     // Mark resolved before dispatching so any synchronous re-render triggered
     // by applyMinigameWinner sees outcomeResolved = true.
     dispatch(markBlackjackTournamentOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // The first player in eliminatedPlayerIds was the first eliminated (worst finisher).
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
+    // order shown in the competition UI.
+    const lastPlaceId = bt.eliminatedPlayerIds[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

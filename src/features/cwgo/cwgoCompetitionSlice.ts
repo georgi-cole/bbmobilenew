@@ -69,6 +69,12 @@ export interface CwgoState {
   revealResults: CwgoResult[];
   /** IDs eliminated in the latest round. */
   lastEliminated: string[];
+  /**
+   * Cumulative elimination order across all rounds and duels.
+   * Index 0 = first player eliminated (worst finisher).
+   * Used to set lastHohCompFinisherId accurately for the third-nominee rule.
+   */
+  eliminationOrder: string[];
   /** Round counter (used for seeding RNG per-round). */
   round: number;
   /** IDs of the two players currently dueling. */
@@ -96,6 +102,7 @@ const initialState: CwgoState = {
   guesses: {},
   revealResults: [],
   lastEliminated: [],
+  eliminationOrder: [],
   round: 0,
   duelPair: null,
   duelWinnerId: null,
@@ -174,6 +181,7 @@ const cwgoSlice = createSlice({
       state.guesses = {};
       state.revealResults = [];
       state.lastEliminated = [];
+      state.eliminationOrder = [];
       state.duelPair = null;
       state.duelWinnerId = null;
       state.leaderId = null;
@@ -255,6 +263,7 @@ const cwgoSlice = createSlice({
       );
 
       state.lastEliminated = eliminated;
+      state.eliminationOrder.push(...eliminated);
       state.aliveIds = surviving;
       state.guesses = {};
       state.round += 1;
@@ -320,6 +329,7 @@ const cwgoSlice = createSlice({
       if (loser) {
         state.aliveIds = state.aliveIds.filter((id) => id !== loser);
         state.lastEliminated = [loser];
+        state.eliminationOrder.push(loser);
       }
 
       state.duelPair = null;

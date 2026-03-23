@@ -55,5 +55,9 @@ export const resolveSilentSaboteurOutcome =
     // Mark as resolved before dispatching so any synchronous re-render
     // triggered by applyMinigameWinner sees outcomeResolved = true.
     dispatch(markSilentSaboteurOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // The first player in eliminatedIds was the first eliminated (worst finisher).
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
+    // order shown in the competition UI.
+    const lastPlaceId = ss.eliminatedIds[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

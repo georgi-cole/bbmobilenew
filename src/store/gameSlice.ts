@@ -238,6 +238,16 @@ type ApplyMinigameWinnerPayload = {
   scores?: Record<string, number>;
   includePlacementBonuses?: boolean;
   skipSeasonUpdate?: boolean;
+  /**
+   * Explicitly identify the last-place finisher for this HOH competition.
+   * When provided (and valid), this takes precedence over score-based derivation
+   * and the arbitrary nonWinners[0] fallback, ensuring the nomination auto-nominee
+   * matches the result shown on the competition scoreboard.
+   *
+   * For last-player-standing comps, pass the first-eliminated player.
+   * For scored comps, pass the lowest-scoring player.
+   */
+  lastPlaceId?: string | null;
 };
 
 function applyCompetitionSeasonUpdateToState(
@@ -584,6 +594,7 @@ const gameSlice = createSlice({
         scores,
         includePlacementBonuses,
         skipSeasonUpdate,
+        lastPlaceId,
       } = action.payload;
       const alive = getAlivePlayers(state);
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state);
@@ -603,18 +614,26 @@ const gameSlice = createSlice({
         state.phase = 'hoh_results';
         winnerWasApplied = true;
         // Track the last-place HOH competition finisher for the third-nominee rule.
-        // When real scores are provided use them for accurate placement; otherwise
-        // fall back to the first non-winner so the feature is never silently
-        // disabled when the challenge flow omits scores (e.g. via CeremonyOverlay).
+        // Priority order:
+        //   1. lastPlaceId if explicitly provided by the caller (authoritative — from
+        //      elimination order or actual scores in the feature slice).
+        //   2. Score-based derivation when scores are available.
+        //   3. nonWinners[0] fallback (arbitrary, kept for backward compat).
         const nonWinners = resolvedParticipants.filter((id) => id !== winnerId);
         if (nonWinners.length > 0) {
-          state.lastHohCompFinisherId = hasScores
-            ? nonWinners.reduce(
-                (worst, id) =>
-                  (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
-                nonWinners[0],
-              )
-            : nonWinners[0];
+          const validLastPlace =
+            lastPlaceId != null &&
+            nonWinners.includes(lastPlaceId)
+              ? lastPlaceId
+              : null;
+          state.lastHohCompFinisherId = validLastPlace
+            ?? (hasScores
+              ? nonWinners.reduce(
+                  (worst, id) =>
+                    (resolvedScores[id] ?? 0) < (resolvedScores[worst] ?? 0) ? id : worst,
+                  nonWinners[0],
+                )
+              : nonWinners[0]);
         }
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.

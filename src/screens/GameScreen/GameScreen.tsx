@@ -1796,8 +1796,25 @@ export default function GameScreen() {
                 ? featureAppliedWinner
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
+            // Compute the last-place finisher for the HOH third-nominee rule.
+            // rawValue uses higher = better convention for all game types.
+            // For HOH comps we pass lastPlaceId so the auto-nominee matches the
+            // scoreboard shown in the challenge UI.  For POV comps this field is
+            // unused (applyMinigameWinner only uses it in the hoh_comp branch).
+            // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
+            // the feature thunk has already called applyMinigameWinner with its
+            // own lastPlaceId, so the idempotency guard will skip this call.
+            const nonWinnerRawResults = rawResults.filter((r) => r.playerId !== finalWinnerId);
+            const lastPlaceEntry = nonWinnerRawResults.length > 0
+              ? nonWinnerRawResults.reduce(
+                  (worst, r) => r.rawValue < worst.rawValue ? r : worst,
+                  nonWinnerRawResults[0]!,
+                )
+              : null;
+            const hohLastPlaceId = isHohComp ? (lastPlaceEntry?.playerId ?? null) : null;
+
             if (partial) {
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
 
@@ -1806,7 +1823,7 @@ export default function GameScreen() {
 
             if (!winnerPlayer || !sourceDomRect) {
               // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
@@ -1818,7 +1835,7 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
             pendingWinnerDispatchRef.current = () =>
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
             setPendingWinnerCeremony({
               tiles,
               caption: `${winnerPlayer.name} wins ${winLabel}!`,

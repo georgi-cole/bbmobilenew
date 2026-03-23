@@ -49,5 +49,8 @@ export const resolveGlassBridgeOutcome =
     }
 
     dispatch(markGlassBridgeOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // The first player eliminated from the bridge is the worst finisher ("last place").
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the UI.
+    const lastPlaceId = gb.eliminationOrder[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

@@ -59,8 +59,13 @@ export const resolveRiskWheelOutcome =
     // by applyMinigameWinner sees outcomeResolved = true and cannot re-enter.
     dispatch(markRiskWheelOutcomeResolved());
 
+    // The first player in eliminatedPlayerIds was the first eliminated (worst finisher).
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
+    // order shown in the competition UI.
+    const lastPlaceId = rw.eliminatedPlayerIds[0] ?? null;
     console.log('[riskWheel] resolveRiskWheelOutcome: dispatching applyMinigameWinner', {
       winnerId,
+      lastPlaceId,
     });
-    dispatch(applyMinigameWinner({ winnerId }));
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };
