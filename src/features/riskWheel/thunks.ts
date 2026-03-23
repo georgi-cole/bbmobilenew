@@ -68,3 +68,4 @@ export const resolveRiskWheelOutcome =
       lastPlaceId,
     });
     dispatch(applyMinigameWinner({ winnerId, lastPlaceId, lastPlaceType: 'survival' }));
+  };
