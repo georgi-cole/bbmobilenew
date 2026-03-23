@@ -19,7 +19,7 @@ import './SeasonFinaleOverlay.css';
 
 const HOST_PLAYER: Player = {
   id: 'host',
-  name: 'Julie',
+  name: 'Host',
   avatar: '🎤',
   status: 'active',
 };
@@ -90,7 +90,7 @@ function buildGoodbyeLines(players: Player[], season: number): ChatLine[] {
     id: 'goodbye-host',
     role: 'host',
     player: HOST_PLAYER,
-    text: `Season ${season} gave us blindsides, heartbreak, and a champion. One final message from the houseguests.`,
+    text: `Season ${season} gave us blindsides, heartbreak, and a champion. One final message from the housemates.`,
   };
 
   const playerLines = players.map((player, index) => ({
@@ -186,7 +186,7 @@ export default function SeasonFinaleOverlay() {
                 <span className="season-finale__trophy">🏆</span>
               </div>
               <h2>{winner.name}</h2>
-              <p>The jury has spoken. A new champion is crowned.</p>
+              <p>The Tribunal has spoken. A new champion is crowned.</p>
             </div>
             <button
               className="season-finale__button"

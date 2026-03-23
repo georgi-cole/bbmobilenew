@@ -20,22 +20,22 @@ import './TvZoneEnhancements.css';
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
   week_start:               'DAY START',
-  hoh_comp_announcement:    'HOH COMP',
-  hoh_comp:                 'HOH COMP',
-  hoh_results:              'HOH RESULTS',
+  hoh_comp_announcement:    'LOH COMP',
+  hoh_comp:                 'LOH COMP',
+  hoh_results:              'LOH RESULTS',
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
-  pov_comp_announcement:    'POV COMP',
-  pov_comp:                 'POV COMP',
-  pov_results:          'POV RESULTS',
-  pov_ceremony:         'VETO',
-  pov_ceremony_results: 'VETO RESULTS',
+  pov_comp_announcement:    'POS COMP',
+  pov_comp:                 'POS COMP',
+  pov_results:          'POS RESULTS',
+  pov_ceremony:         'SAFETY',
+  pov_ceremony_results: 'SAFETY RESULTS',
   social_2:             'SOCIAL',
   live_vote:            'VOTE',
-  eviction_results:     'EVICTION',
+  eviction_results:     'ELIM',
   week_end:             'DAY END',
-  final4_eviction:      'F4 EVICT',
+  final4_eviction:      'F4 ELIM',
   final3:               'FINAL 3',
   final3_comp1:         'F3 P1',
   final3_comp1_minigame: 'F3 P1',
@@ -43,8 +43,8 @@ const PHASE_LABELS: Record<string, string> = {
   final3_comp2_minigame: 'F3 P2',
   final3_comp3:         'F3 P3',
   final3_comp3_minigame: 'F3 P3',
-  final3_decision:      'FINAL HOH',
-  jury:                 'JURY',
+  final3_decision:      'FINAL LOH',
+  jury:                 'TRIBUNAL',
 };
 
 // ─── Announcement configuration ──────────────────────────────────────────────
@@ -76,22 +76,22 @@ const MAJOR_KEYS = new Set([
 
 /** Maps a major key to its announcement title and subtitle. */
 const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }> = {
-  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two houseguests are going on the block.',                      isLive: true,  autoDismissMs: null },
+  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two housemates are going on the block.',                      isLive: true,  autoDismissMs: null },
   veto_ceremony:        { title: 'Veto Ceremony',              subtitle: 'Will the veto be used?',                                       isLive: true,  autoDismissMs: null },
-  live_eviction:        { title: 'Live Eviction',              subtitle: 'The house votes to evict.',                                    isLive: true,  autoDismissMs: null },
+  live_eviction:        { title: 'Live Elimination',            subtitle: 'The house votes to eliminate.',                                isLive: true,  autoDismissMs: null },
   final4:               { title: 'Final 4 — Veto Ceremony',   subtitle: 'Only four players remain.',                                    isLive: true,  autoDismissMs: null },
-  final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final HOH begins.',      isLive: true,  autoDismissMs: null },
-  final_hoh:            { title: 'Final HOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
-  jury:                 { title: 'Jury Votes',                 subtitle: 'The jury decides the winner.',                                 isLive: true,  autoDismissMs: null },
-  battle_back:          { title: 'Battle Back',                subtitle: 'Evicted houseguests compete for a second chance.',              isLive: true,  autoDismissMs: null },
-  double_eviction:      { title: 'Double Eviction!',           subtitle: 'Tonight the HOH nominates three. Two will be evicted.',         isLive: true,  autoDismissMs: null },
+  final3_announcement:  { title: 'Final 3',                    subtitle: 'Three players remain — the three-part Final LOH begins.',      isLive: true,  autoDismissMs: null },
+  final_hoh:            { title: 'Final LOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
+  jury:                 { title: 'Tribunal Votes',             subtitle: 'The Tribunal decides the winner.',                             isLive: true,  autoDismissMs: null },
+  battle_back:          { title: 'Battle Back',                subtitle: 'Eliminated housemates compete for a second chance.',            isLive: true,  autoDismissMs: null },
+  double_eviction:      { title: 'Double Elimination!',        subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',      isLive: true,  autoDismissMs: null },
   vip_veto:             { title: 'Double Trouble!',            subtitle: 'The holder may use the power twice this ceremony. 👑',            isLive: true,  autoDismissMs: null },
   diamond_pov:          { title: 'Halo Exchange!',             subtitle: 'The holder may name the replacement nominee. 😇',                 isLive: true,  autoDismissMs: null },
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two replacements. ⚡',       isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
-  twist:                { title: 'Twist Alert!',               subtitle: 'Big Brother has a surprise.',                                  isLive: true,  autoDismissMs: null },
-  hoh_comp_announcement: { title: 'HOH Competition',           subtitle: 'Power is up for grabs — who will become Head of Household?',   isLive: true,  autoDismissMs: null },
-  pov_comp_announcement: { title: 'Power of Veto',             subtitle: 'It\'s time for the Power of Veto competition!',                isLive: true,  autoDismissMs: null },
+  twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
+  hoh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
+  pov_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
 };
 
 /**
@@ -455,14 +455,14 @@ export default function TvZone() {
             <div className="tv-zone__vignette"  aria-hidden="true" />
             <div className="tv-zone__glare"     aria-hidden="true" />
             <p className="tv-zone__now" style={(postDismissBlocked || !!activeAnnouncement) ? { opacity: 0 } : undefined}>
-              {latestEvent?.text ?? 'Welcome to Big Brother – AI Edition 🏠'}
+              {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
             </p>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
             {gameState.twistActive && (
               <div className="tv-zone__twist-badge" aria-hidden="true">
                 <span>🌀</span>
-                TWIST
+                SHOCK
               </div>
             )}
 

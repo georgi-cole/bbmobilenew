@@ -32,11 +32,11 @@ function getEventDelta(type: CycleEventInput['type']): { delta: number; reason: 
     case 'hoh_win':
       return { delta: competitionImpact.hohWin, reason: 'Won Head of Household' };
     case 'pov_win':
-      return { delta: competitionImpact.povWin, reason: 'Won Power of Veto' };
+      return { delta: competitionImpact.povWin, reason: 'Won Power of Safety' };
     case 'nominated':
-      return { delta: competitionImpact.nominated, reason: 'Was nominated for eviction' };
+      return { delta: competitionImpact.nominated, reason: 'Was nominated for elimination' };
     case 'evicted_vote':
-      return { delta: competitionImpact.evictionVotedOut, reason: 'Was evicted by the house' };
+      return { delta: competitionImpact.evictionVotedOut, reason: 'Was eliminated by the house' };
     case 'survived_block':
       return { delta: 1, reason: 'Survived being on the block' };
     case 'positive_social':

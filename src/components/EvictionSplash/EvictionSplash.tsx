@@ -102,7 +102,7 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
         className={`eviction-splash${fading ? ' eviction-splash--fading' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-label={`${evictee.name} has been evicted`}
+        aria-label={`${evictee.name} has been eliminated`}
         onClick={fire}
       >
         <div className="eviction-splash__overlay" />
@@ -114,9 +114,9 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
           )}
         </div>
         <div className="eviction-splash__content">
-          <p className="eviction-splash__label">EVICTED</p>
+          <p className="eviction-splash__label">ELIMINATED</p>
           <h1 className="eviction-splash__name">{evictee.name}</h1>
-          <p className="eviction-splash__goodbye">Goodbye from the Big Brother house 🚪</p>
+          <p className="eviction-splash__goodbye">Goodbye from The Big Eye house 🚪</p>
           <p className="eviction-splash__skip">tap to continue</p>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
       className="eviction-splash eviction-splash--matchcut"
       role="dialog"
       aria-modal="true"
-      aria-label={`${evictee.name} has been evicted`}
+      aria-label={`${evictee.name} has been eliminated`}
       onClick={fire}
     >
       {/* Dim overlay over the rest of the grid */}
@@ -182,9 +182,9 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
             exit={{ y: '110%', opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
           >
-            <p className="eviction-splash__label">EVICTED</p>
+            <p className="eviction-splash__label">ELIMINATED</p>
             <h1 className="eviction-splash__name">{evictee.name}</h1>
-            <p className="eviction-splash__goodbye">Goodbye from the Big Brother house 🚪</p>
+            <p className="eviction-splash__goodbye">Goodbye from The Big Eye house 🚪</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -200,7 +200,7 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
             transition={{ type: 'spring', stiffness: 340, damping: 22, delay: 0.06 }}
             aria-hidden="true"
           >
-            EVICTED
+            ELIMINATED
           </motion.div>
         )}
       </AnimatePresence>

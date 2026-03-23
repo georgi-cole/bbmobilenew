@@ -97,9 +97,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   triviaPulse: {
     key: 'triviaPulse',
     title: 'Trivia Pulse',
-    description: 'Time-pressured Big Brother trivia questions',
+    description: 'Time-pressured strategy trivia questions',
     instructions: [
-      'Questions appear about Big Brother history and gameplay',
+      'Questions appear about game history and gameplay',
       'Select from multiple choice answers',
       'Faster correct answers score more points',
       'Answer as many as possible before time runs out',
@@ -185,11 +185,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   wordAnagram: {
     key: 'wordAnagram',
     title: 'Word Anagram',
-    description: 'Unscramble Big Brother words',
+    description: 'Unscramble game words',
     instructions: [
       'Scrambled letters appear on screen',
       'Drag or tap letters to rearrange them',
-      'Form the correct Big Brother word',
+      'Form the correct game word',
       'Submit your answer',
     ],
     metricKind: 'accuracy',
@@ -255,7 +255,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'Press and HOLD the wall panel to stay in the competition.',
       'Releasing the wall means you drop out immediately.',
-      'AI houseguests will drop off at random times — outlast them all.',
+      'AI housemates will drop off at random times — outlast them all.',
       'Last player standing wins the prize.',
     ],
     resultMode: 'placement',
@@ -278,7 +278,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     description:
       'Trivia competition — answer questions about your housemates\' biographies. Wrong answer and you\'re out!',
     instructions: [
-      'Each round a question about a houseguest\'s biography is revealed.',
+      'Each round a question about a housemate\'s biography is revealed.',
       'Tap the correct answer before the timer runs out.',
       'Answer incorrectly and you are eliminated.',
       'Last player standing wins the prize.',
@@ -485,11 +485,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   socialStrings: {
     key: 'socialStrings',
     title: 'Social Strings',
-    description: 'Identify houseguests in alliances together',
+    description: 'Identify housemates in alliances together',
     instructions: [
-      'View a network of houseguest connections',
+      'View a network of housemate connections',
       'Identify alliance groups',
-      'Tap or connect houseguests in the same alliance',
+      'Tap or connect housemates in the same alliance',
       'Complete the social network map',
     ],
     metricKind: 'accuracy',

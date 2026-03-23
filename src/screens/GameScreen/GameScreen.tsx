@@ -807,7 +807,7 @@ export default function GameScreen() {
     pendingReplacementDispatchRef.current = () => dispatch(setReplacementNominee(id))
     setPendingReplacementCeremony({
       tiles,
-      caption: `${replacementPlayer.name} is the replacement nominee!`,
+      caption: `${replacementPlayer.name} is the backup nominee!`,
       subtitle: '🎯 Nominations are set',
     })
   }, [dispatch, game.players, game.povSavedId, game.hohId, getTileRect])
@@ -1415,10 +1415,10 @@ export default function GameScreen() {
           <div className="tv-binary-modal__card">
             <header className="tv-binary-modal__header">
               <h2 className="tv-binary-modal__title" id="outgoing-hoh-title">
-                👑 HOH Competition
+                👑 LOH Competition
               </h2>
               <p className="tv-binary-modal__subtitle">
-                As outgoing HOH, you are not eligible to compete.
+                As outgoing LOH, you are not eligible to compete.
               </p>
             </header>
             <div className="tv-binary-modal__body">
@@ -1440,8 +1440,8 @@ export default function GameScreen() {
           title="Nomination Ceremony"
           subtitle={
             game.doubleEviction?.weekActive
-              ? `${humanPlayer?.name}, choose THREE houseguests to nominate — Double Eviction tonight!`
-              : `${humanPlayer?.name}, choose two houseguests to nominate for eviction.`
+              ? `${humanPlayer?.name}, choose THREE housemates to nominate — Double Elimination tonight!`
+              : `${humanPlayer?.name}, choose two housemates to nominate for elimination.`
           }
           options={nomineeOptions}
           maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
@@ -1573,8 +1573,8 @@ export default function GameScreen() {
       {/* ── Human HOH replacement picker ────────────────────────────────── */}
       {showReplacementModal && (
         <TvDecisionModal
-          title="Name a Replacement Nominee"
-          subtitle={`${humanPlayer?.name}, you must name a replacement nominee.`}
+          title="Name a Backup Nominee"
+          subtitle={`${humanPlayer?.name}, you must name a backup nominee.`}
           options={replacementOptions}
           onSelect={handleReplacementNominee}
           stingerMessage="NOMINATIONS SET"
@@ -1620,8 +1620,8 @@ export default function GameScreen() {
       {/* ── Human HOH tie-break ──────────────────────────────────────────── */}
       {showTieBreakModal && (
         <TvDecisionModal
-          title="Tie-Break — HOH Casts the Deciding Vote"
-          subtitle={`${humanPlayer?.name}, the vote is tied! As HOH, you must break the tie.`}
+          title="Tie-Break — LOH Casts the Deciding Vote"
+          subtitle={`${humanPlayer?.name}, the vote is tied! As LOH, you must break the tie.`}
           options={tieBreakOptions}
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
@@ -1666,8 +1666,8 @@ export default function GameScreen() {
       {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
       {showFinal3Modal && (
         <TvDecisionModal
-          title="Final HOH — Evict a Houseguest"
-          subtitle={`${humanPlayer?.name}, as Final HOH you must directly evict one of the remaining houseguests.`}
+          title="Final LOH — Eliminate a Housemate"
+          subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining housemates.`}
           options={final3Options}
           onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
           danger
@@ -1860,13 +1860,13 @@ export default function GameScreen() {
               rect: getTileRect(winnerId),
               badge: '👑',
               badgeStart: 'center' as const,
-              badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Head of Household`,
+              badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
           }}
-          caption={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household!`}
+          caption={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A housemate'} wins Leader of the House!`}
           subtitle="👑"
           onDone={handleAdvanceHohCeremonyDone}
-          ariaLabel={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A houseguest'} wins Head of Household`}
+          ariaLabel={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A housemate'} wins Leader of the House`}
         />
       )}
 
@@ -1935,7 +1935,7 @@ export default function GameScreen() {
           style={{ zIndex: 8600 }}
           role="status"
           aria-live="assertive"
-          aria-label="HOH is breaking the tie"
+          aria-label="LOH is breaking the tie"
         >
           <div className="tv-binary-modal__card">
             <header className="tv-binary-modal__header">

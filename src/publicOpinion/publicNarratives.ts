@@ -62,7 +62,7 @@ const NARRATIVE_VARIANTS = {
     'The live-feed communities are absolutely obsessed with this storyline right now.',
     'That confrontation just crashed the fan forum servers.',
     'Chaos found a new spokesperson and the ratings suggest viewers love it.',
-    'Nobody saw that twist coming, and the audience has been screaming about it ever since.',
+    'Nobody saw that shock coming, and the audience has been screaming about it ever since.',
     'The drama hit a new level and the public is genuinely gripped.',
     'A bombshell just dropped and the reaction threads are moving at light speed.',
     'That moment will be dissected for weeks. The audience cannot look away.',

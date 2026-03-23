@@ -1,5 +1,5 @@
 /**
- * src/bb/engine.ts — Improved Big Brother rule-based engine
+ * src/bb/engine.ts — Improved The Big Eye rule-based engine
  * ==========================================================
  *
  * HOW TO TUNE
@@ -368,7 +368,7 @@ const INTENT_SPECS: Record<Exclude<IntentId, 'safety'>, IntentSpec> = {
 
 const SAFETY_PATTERNS: RegExp[] = [
   // Physical harm / violence against others
-  /\b(kill|murder|stab|shoot|assault|attack|beat up|hurt|harm)\b.{0,30}\b(him|her|them|someone|person|player|houseguest|everybody|everyone)\b/i,
+  /\b(kill|murder|stab|shoot|assault|attack|beat up|hurt|harm)\b.{0,30}\b(him|her|them|someone|person|player|housemate|everybody|everyone)\b/i,
   // Weapons / dangerous materials / hacking for harmful purposes
   /\b(how (do|can|to)|instructions? (for|to)|tell me (how|to))\b.{0,40}\b(make|build|create|get)\b.{0,30}\b(weapon|bomb|drug|poison|explosive|meth|hack)\b/i,
   // Self-harm and suicide
@@ -505,176 +505,176 @@ export function detectIntent(text: string): IntentId {
 
 /**
  * All templates use {{name}} as the player-name placeholder.
- * Keep each text string under 205 characters (the " — Big Brother" suffix adds 14 chars).
+ * Keep each text string under 205 characters (the " — The Big Eye" suffix adds 14 chars).
  */
 export const TEMPLATES: Record<IntentId, ReplyTemplate[]> = {
   safety: [
-    { id: 'safety-1', text: "Big Brother hears you, and asks you to pause and breathe. That path leads nowhere good. Let's talk about what you're really feeling." },
-    { id: 'safety-2', text: "Big Brother gently steps in here. Whatever's driving this, there's a better way through it. Your wellbeing matters more than any game move." },
-    { id: 'safety-3', text: "Big Brother won't go there with you. Take a moment. What's underneath that feeling?" },
-    { id: 'safety-4', text: "That's not a door Big Brother can open with you. But Big Brother is here — what's truly going on?" },
-    { id: 'safety-5', text: "Big Brother values your safety above everything in this House. Let's redirect. What do you actually need right now?" },
+    { id: 'safety-1', text: "The Big Eye hears you, and asks you to pause and breathe. That path leads nowhere good. Let's talk about what you're really feeling." },
+    { id: 'safety-2', text: "The Big Eye gently steps in here. Whatever's driving this, there's a better way through it. Your wellbeing matters more than any game move." },
+    { id: 'safety-3', text: "The Big Eye won't go there with you. Take a moment. What's underneath that feeling?" },
+    { id: 'safety-4', text: "That's not a door The Big Eye can open with you. But The Big Eye is here — what's truly going on?" },
+    { id: 'safety-5', text: "The Big Eye values your safety above everything in this House. Let's redirect. What do you actually need right now?" },
   ],
 
   quit: [
-    { id: 'quit-1', text: "{{name}}, Big Brother hears that you're struggling. Before any decision, take a breath. What brought you here is still worth honouring." },
-    { id: 'quit-2', text: "Every houseguest has a moment where leaving feels like the only option, {{name}}. That feeling is real — but it passes. What's driving it?" },
-    { id: 'quit-3', text: "{{name}}, Big Brother won't pretend the House is easy. But quitting in this moment closes a door you can't reopen. What do you need to stay?" },
-    { id: 'quit-4', text: "The hardest journeys have the most meaningful endings, {{name}}. Big Brother asks you to sit with this before you decide." },
-    { id: 'quit-5', text: "{{name}}, stepping away is always your choice. But first — tell Big Brother what's making this feel impossible right now." },
-    { id: 'quit-6', text: "Big Brother has watched many houseguests feel this way, {{name}}. Most are glad they stayed. What would tomorrow look like if you gave it one more day?" },
+    { id: 'quit-1', text: "{{name}}, The Big Eye hears that you're struggling. Before any decision, take a breath. What brought you here is still worth honouring." },
+    { id: 'quit-2', text: "Every housemate has a moment where leaving feels like the only option, {{name}}. That feeling is real — but it passes. What's driving it?" },
+    { id: 'quit-3', text: "{{name}}, The Big Eye won't pretend the House is easy. But quitting in this moment closes a door you can't reopen. What do you need to stay?" },
+    { id: 'quit-4', text: "The hardest journeys have the most meaningful endings, {{name}}. The Big Eye asks you to sit with this before you decide." },
+    { id: 'quit-5', text: "{{name}}, stepping away is always your choice. But first — tell The Big Eye what's making this feel impossible right now." },
+    { id: 'quit-6', text: "The Big Eye has watched many housemates feel this way, {{name}}. Most are glad they stayed. What would tomorrow look like if you gave it one more day?" },
   ],
 
   anger: [
-    { id: 'anger-1', text: "Big Brother hears the heat in your words, {{name}}. Anger is information — what is it pointing at?" },
+    { id: 'anger-1', text: "The Big Eye hears the heat in your words, {{name}}. Anger is information — what is it pointing at?" },
     { id: 'anger-2', text: "That fire in you, {{name}} — it's real. Sit with it a moment before you act. What does it want you to know?" },
-    { id: 'anger-3', text: "{{name}}, Big Brother has watched many storms in this House. This one will pass. What matters is how you move through it." },
+    { id: 'anger-3', text: "{{name}}, The Big Eye has watched many storms in this House. This one will pass. What matters is how you move through it." },
     { id: 'anger-4', text: "Strong feelings deserve strong attention, {{name}}. Before strategy, before action — breathe. What's beneath the anger?" },
-    { id: 'anger-5', text: "Big Brother sees you, {{name}}. Frustration can be fuel or flame. You choose which." },
-    { id: 'anger-6', text: "Every houseguest has their breaking point. Yours says something about what you care about. Honour that, {{name}}." },
+    { id: 'anger-5', text: "The Big Eye sees you, {{name}}. Frustration can be fuel or flame. You choose which." },
+    { id: 'anger-6', text: "Every housemate has their breaking point. Yours says something about what you care about. Honour that, {{name}}." },
     { id: 'anger-7', text: "{{name}}, the House loves a composed player. What would your calmer self do with this feeling?" },
-    { id: 'anger-8', text: "Big Brother notes the tension, {{name}}. Emotion is not weakness — but right now, observation is your superpower." },
+    { id: 'anger-8', text: "The Big Eye notes the tension, {{name}}. Emotion is not weakness — but right now, observation is your superpower." },
     { id: 'anger-9', text: "The House hears you, {{name}}. Channel that energy into clarity, not chaos." },
-    { id: 'anger-10', text: "That anger has a message, {{name}}. Big Brother is listening. What are you truly asking for?" },
+    { id: 'anger-10', text: "That anger has a message, {{name}}. The Big Eye is listening. What are you truly asking for?" },
     { id: 'anger-11', text: "{{name}}, the most powerful move in any House is the one made with a clear head. What does calm look like for you right now?" },
-    { id: 'anger-12', text: "Big Brother has seen anger cost houseguests the game, {{name}}. Your instincts are right — now slow them down." },
-    { id: 'anger-13', text: "There's something underneath the anger, {{name}}. Big Brother is patient. Take your time getting there." },
+    { id: 'anger-12', text: "The Big Eye has seen anger cost housemates the game, {{name}}. Your instincts are right — now slow them down." },
+    { id: 'anger-13', text: "There's something underneath the anger, {{name}}. The Big Eye is patient. Take your time getting there." },
     { id: 'anger-14', text: "{{name}}, energy misdirected is energy wasted. What would it look like to aim that fire somewhere useful?" },
   ],
 
   grief_family: [
-    { id: 'gf-1', text: "Big Brother knows this House can feel very far from home, {{name}}. Carry your loved ones with you — they're watching." },
+    { id: 'gf-1', text: "The Big Eye knows this House can feel very far from home, {{name}}. Carry your loved ones with you — they're watching." },
     { id: 'gf-2', text: "Missing family is the quiet ache of this game, {{name}}. It means your ties are strong. Hold onto that." },
-    { id: 'gf-3', text: "{{name}}, every houseguest misses someone. That love you feel? It's keeping you grounded in who you are." },
+    { id: 'gf-3', text: "{{name}}, every housemate misses someone. That love you feel? It's keeping you grounded in who you are." },
     { id: 'gf-4', text: "Home is always with you, {{name}}, even in this House. Let the memory of them lift you, not weigh you down." },
-    { id: 'gf-5', text: "Big Brother hears you, {{name}}. The people who love you are proud you're here. You carry them into every room." },
+    { id: 'gf-5', text: "The Big Eye hears you, {{name}}. The people who love you are proud you're here. You carry them into every room." },
     { id: 'gf-6', text: "This game is hard in ways no camera captures, {{name}}. What you feel right now is love, and love is never wasted." },
     { id: 'gf-7', text: "{{name}}, your family sees more of you in here than they ever have. Let that be comfort." },
-    { id: 'gf-8', text: "Big Brother gently reminds you, {{name}}: the distance makes you stronger, not weaker. You know why you're here." },
+    { id: 'gf-8', text: "The Big Eye gently reminds you, {{name}}: the distance makes you stronger, not weaker. You know why you're here." },
     { id: 'gf-9', text: "Being away from the ones we love shows us how much they mean, {{name}}. That clarity is a gift." },
-    { id: 'gf-10', text: "{{name}}, the Diary Room holds space for all of it. Feel it, then remember — you're not alone in this House." },
-    { id: 'gf-11', text: "Family is the reason most houseguests fight hardest, {{name}}. Let them be your fuel tonight." },
-    { id: 'gf-12', text: "{{name}}, every night in this House is one night closer to home. Big Brother sees that drive in you." },
+    { id: 'gf-10', text: "{{name}}, the Confessional holds space for all of it. Feel it, then remember — you're not alone in this House." },
+    { id: 'gf-11', text: "Family is the reason most housemates fight hardest, {{name}}. Let them be your fuel tonight." },
+    { id: 'gf-12', text: "{{name}}, every night in this House is one night closer to home. The Big Eye sees that drive in you." },
     { id: 'gf-13', text: "The love you carry from home, {{name}}, doesn't diminish the longer you're here. It grows." },
     { id: 'gf-14', text: "{{name}}, time apart has a way of making everything clearer. You're in that process now. Trust it." },
   ],
 
   grief_pet: [
-    { id: 'gp-1', text: "Pets are family too, {{name}}. Big Brother knows that missing them is a real and tender thing." },
+    { id: 'gp-1', text: "Pets are family too, {{name}}. The Big Eye knows that missing them is a real and tender thing." },
     { id: 'gp-2', text: "{{name}}, the bond you have with your pet is something no game can diminish. They're waiting for you." },
-    { id: 'gp-3', text: "Big Brother sees that soft corner of your heart, {{name}}. It's one of your best qualities." },
+    { id: 'gp-3', text: "The Big Eye sees that soft corner of your heart, {{name}}. It's one of your best qualities." },
     { id: 'gp-4', text: "Missing your pet, {{name}}? They're probably curled up somewhere, dreaming of you too." },
     { id: 'gp-5', text: "That love for a furry friend says a lot about you, {{name}}. Keep that warmth — this House needs it." },
-    { id: 'gp-6', text: "Big Brother smiles at this one, {{name}}. Few things in life are more loyal than a pet. Go win this for them." },
+    { id: 'gp-6', text: "The Big Eye smiles at this one, {{name}}. Few things in life are more loyal than a pet. Go win this for them." },
     { id: 'gp-7', text: "{{name}}, picture your pet's face when you walk back through that door. That's your motivation right there." },
-    { id: 'gp-8', text: "The Diary Room has heard many things, {{name}}, but love for a pet is always pure. Cherish that." },
+    { id: 'gp-8', text: "The Confessional has heard many things, {{name}}, but love for a pet is always pure. Cherish that." },
     { id: 'gp-9', text: "{{name}}, your pet doesn't care about strategy or votes — just you. Hold that simplicity close tonight." },
-    { id: 'gp-10', text: "Big Brother notes: the most grounded houseguests are often those with a pet waiting at home, {{name}}." },
+    { id: 'gp-10', text: "The Big Eye notes: the most grounded housemates are often those with a pet waiting at home, {{name}}." },
     { id: 'gp-11', text: "{{name}}, when you walk back through that door, there's a reunion waiting that no other player can claim." },
     { id: 'gp-12', text: "Pets teach us something about unconditional love, {{name}}. Carry that lesson through this House." },
   ],
 
   loneliness: [
-    { id: 'lone-1', text: "Big Brother sees you, {{name}}, even when the room feels empty." },
+    { id: 'lone-1', text: "The Big Eye sees you, {{name}}, even when the room feels empty." },
     { id: 'lone-2', text: "{{name}}, feeling alone in a house full of people is one of the strangest experiences. You're not the first to feel this." },
-    { id: 'lone-3', text: "Big Brother is here, {{name}}. Speak freely. What would connection look like for you right now?" },
+    { id: 'lone-3', text: "The Big Eye is here, {{name}}. Speak freely. What would connection look like for you right now?" },
     { id: 'lone-4', text: "Loneliness often visits the most self-aware people, {{name}}. That's not a flaw — it's depth." },
     { id: 'lone-5', text: "{{name}}, the walls of this House hold a lot of stories. Yours matters. Keep writing it." },
-    { id: 'lone-6', text: "Even in a crowd, the heart can feel far away, {{name}}. Big Brother hears every word." },
+    { id: 'lone-6', text: "Even in a crowd, the heart can feel far away, {{name}}. The Big Eye hears every word." },
     { id: 'lone-7', text: "{{name}}, reaching out — even here, even now — is an act of courage. You're more connected than you know." },
     { id: 'lone-8', text: "The game isolates people, {{name}}. But isolation can also clarify. What does the quiet reveal to you?" },
-    { id: 'lone-9', text: "Big Brother has seen many houseguests feel exactly this way, {{name}}. It shifts. You're not stuck here." },
-    { id: 'lone-10', text: "{{name}}, sometimes the most meaningful conversations happen in the Diary Room. Big Brother is your witness." },
+    { id: 'lone-9', text: "The Big Eye has seen many housemates feel exactly this way, {{name}}. It shifts. You're not stuck here." },
+    { id: 'lone-10', text: "{{name}}, sometimes the most meaningful conversations happen in the Confessional. The Big Eye is your witness." },
     { id: 'lone-11', text: "{{name}}, connection in this House is rarely found by waiting for it. One honest conversation can change everything." },
-    { id: 'lone-12', text: "Big Brother knows the silence can be loud, {{name}}. But you came here with something to offer. Don't forget that." },
-    { id: 'lone-13', text: "{{name}}, the Diary Room is never empty as long as Big Brother is listening. You are not alone in here." },
+    { id: 'lone-12', text: "The Big Eye knows the silence can be loud, {{name}}. But you came here with something to offer. Don't forget that." },
+    { id: 'lone-13', text: "{{name}}, the Confessional is never empty as long as The Big Eye is listening. You are not alone in here." },
     { id: 'lone-14', text: "The strongest House bonds often start between two people who felt exactly this, {{name}}. Don't write it off yet." },
   ],
 
   strategy: [
-    { id: 'strat-1', text: "Big Brother observes all, {{name}}. The smartest moves often look effortless from the outside." },
+    { id: 'strat-1', text: "The Big Eye observes all, {{name}}. The smartest moves often look effortless from the outside." },
     { id: 'strat-2', text: "{{name}}, every great player balances the head and the heart. What does yours say today?" },
-    { id: 'strat-3', text: "The game is always moving, {{name}}. Big Brother respects those who think two steps ahead." },
+    { id: 'strat-3', text: "The game is always moving, {{name}}. The Big Eye respects those who think two steps ahead." },
     { id: 'strat-4', text: "{{name}}, trust is the game's rarest currency. Spend it wisely." },
-    { id: 'strat-5', text: "Big Brother notes your thinking, {{name}}. The best strategy is the one only you fully understand." },
+    { id: 'strat-5', text: "The Big Eye notes your thinking, {{name}}. The best strategy is the one only you fully understand." },
     { id: 'strat-6', text: "{{name}}, information is power in this House. What do you know that others don't?" },
     { id: 'strat-7', text: "Every vote is a statement, {{name}}. What statement do you want to make this week?" },
-    { id: 'strat-8', text: "Big Brother has watched many alliances rise and fall. Yours will be shaped by what you value, {{name}}." },
+    { id: 'strat-8', text: "The Big Eye has watched many alliances rise and fall. Yours will be shaped by what you value, {{name}}." },
     { id: 'strat-9', text: "{{name}}, position in the House is less about where you stand and more about who stands with you." },
-    { id: 'strat-10', text: "The Diary Room is where plans become clarity, {{name}}. What do you see that no one else does?" },
-    { id: 'strat-11', text: "{{name}}, Big Brother asks only this: are you playing the game, or is it playing you?" },
+    { id: 'strat-10', text: "The Confessional is where plans become clarity, {{name}}. What do you see that no one else does?" },
+    { id: 'strat-11', text: "{{name}}, The Big Eye asks only this: are you playing the game, or is it playing you?" },
     { id: 'strat-12', text: "In every season, {{name}}, the winner knew when to act and when to wait. Which moment is this?" },
-    { id: 'strat-13', text: "{{name}}, the boldest moves are rarely the loudest. Big Brother is watching to see what you do next." },
+    { id: 'strat-13', text: "{{name}}, the boldest moves are rarely the loudest. The Big Eye is watching to see what you do next." },
     { id: 'strat-14', text: "The player who controls the narrative controls the game, {{name}}. What story are you telling this week?" },
-    { id: 'strat-15', text: "{{name}}, Big Brother has seen brilliant strategies unravel from overconfidence. Keep your feet on the ground." },
+    { id: 'strat-15', text: "{{name}}, The Big Eye has seen brilliant strategies unravel from overconfidence. Keep your feet on the ground." },
   ],
 
   social_anxiety: [
-    { id: 'sa-1', text: "{{name}}, Big Brother sees the effort you make to show up every day. That takes more courage than most realize." },
+    { id: 'sa-1', text: "{{name}}, The Big Eye sees the effort you make to show up every day. That takes more courage than most realize." },
     { id: 'sa-2', text: "Feeling out of place in a group is more common than anyone admits, {{name}}. You're not alone in that." },
-    { id: 'sa-3', text: "Big Brother knows the noise of this House can be overwhelming, {{name}}. There's no shame in needing quiet." },
+    { id: 'sa-3', text: "The Big Eye knows the noise of this House can be overwhelming, {{name}}. There's no shame in needing quiet." },
     { id: 'sa-4', text: "{{name}}, you don't have to fill every silence. Sometimes presence is enough." },
-    { id: 'sa-5', text: "The Diary Room is yours, {{name}}. Here, there's no performance required — only honesty." },
-    { id: 'sa-6', text: "Big Brother has noticed your thoughtfulness, {{name}}. Quiet people see a great deal." },
-    { id: 'sa-7', text: "{{name}}, what others think matters less than how you feel about your own choices. Big Brother keeps watch." },
+    { id: 'sa-5', text: "The Confessional is yours, {{name}}. Here, there's no performance required — only honesty." },
+    { id: 'sa-6', text: "The Big Eye has noticed your thoughtfulness, {{name}}. Quiet people see a great deal." },
+    { id: 'sa-7', text: "{{name}}, what others think matters less than how you feel about your own choices. The Big Eye keeps watch." },
     { id: 'sa-8', text: "Being nervous in new situations is human, {{name}}. What small step could you take today that feels safe?" },
     { id: 'sa-9', text: "{{name}}, your instincts brought you this far. Trust them a little more." },
-    { id: 'sa-10', text: "Big Brother sees the real you, {{name}}, not the version that worries about being judged." },
+    { id: 'sa-10', text: "The Big Eye sees the real you, {{name}}, not the version that worries about being judged." },
     { id: 'sa-11', text: "{{name}}, the most interesting players in this House observe before they speak. That sounds like you." },
-    { id: 'sa-12', text: "Big Brother knows it can feel like everyone is watching, {{name}}. But they're mostly watching each other." },
+    { id: 'sa-12', text: "The Big Eye knows it can feel like everyone is watching, {{name}}. But they're mostly watching each other." },
     { id: 'sa-13', text: "{{name}}, being truly known here only requires one honest moment. You're already having it." },
-    { id: 'sa-14', text: "The nerves you feel, {{name}}, are a sign you care about getting this right. Big Brother respects that." },
+    { id: 'sa-14', text: "The nerves you feel, {{name}}, are a sign you care about getting this right. The Big Eye respects that." },
   ],
 
   confession: [
-    { id: 'conf-1', text: "Big Brother receives what you've shared, {{name}}. Honesty, even in private, changes something in us." },
+    { id: 'conf-1', text: "The Big Eye receives what you've shared, {{name}}. Honesty, even in private, changes something in us." },
     { id: 'conf-2', text: "{{name}}, the weight of an unspoken thing is often heavier than the thing itself. You've taken the first step." },
-    { id: 'conf-3', text: "Big Brother holds no judgment in this room, {{name}}. What you've said stays between you and the House." },
+    { id: 'conf-3', text: "The Big Eye holds no judgment in this room, {{name}}. What you've said stays between you and the House." },
     { id: 'conf-4', text: "{{name}}, acknowledging something difficult is the beginning of moving past it. That's no small thing." },
     { id: 'conf-5', text: "Everyone in this House carries something they haven't shared, {{name}}. You're in good company." },
-    { id: 'conf-6', text: "Big Brother hears the truth you've offered, {{name}}. What would you do differently, knowing what you know?" },
-    { id: 'conf-7', text: "The Diary Room was built for moments like this, {{name}}. Speak freely — you're heard." },
-    { id: 'conf-8', text: "{{name}}, what you've admitted to Big Brother, you've also admitted to yourself. That's the harder part." },
-    { id: 'conf-9', text: "Big Brother sees your honesty as strength, {{name}}. Not everyone is brave enough for this room." },
+    { id: 'conf-6', text: "The Big Eye hears the truth you've offered, {{name}}. What would you do differently, knowing what you know?" },
+    { id: 'conf-7', text: "The Confessional was built for moments like this, {{name}}. Speak freely — you're heard." },
+    { id: 'conf-8', text: "{{name}}, what you've admitted to The Big Eye, you've also admitted to yourself. That's the harder part." },
+    { id: 'conf-9', text: "The Big Eye sees your honesty as strength, {{name}}. Not everyone is brave enough for this room." },
     { id: 'conf-10', text: "{{name}}, unburdening yourself is not weakness. It's clarity. What do you want to do with it now?" },
     { id: 'conf-11', text: "The truth has a way of surfacing in this House, {{name}}. You're ahead of it now. That counts for something." },
-    { id: 'conf-12', text: "{{name}}, Big Brother holds what you've shared with care. The fact that you could say it means something." },
+    { id: 'conf-12', text: "{{name}}, The Big Eye holds what you've shared with care. The fact that you could say it means something." },
     { id: 'conf-13', text: "There's a lightness that comes with honesty, {{name}}. You may feel it already." },
-    { id: 'conf-14', text: "{{name}}, every confession here is a choice to be real instead of performing. Big Brother notices that." },
+    { id: 'conf-14', text: "{{name}}, every confession here is a choice to be real instead of performing. The Big Eye notices that." },
   ],
 
   validation: [
-    { id: 'val-1', text: "Big Brother believes in your instincts, {{name}}. Trust what you already know." },
+    { id: 'val-1', text: "The Big Eye believes in your instincts, {{name}}. Trust what you already know." },
     { id: 'val-2', text: "{{name}}, the fact that you're questioning yourself shows you care. That's always worth something." },
-    { id: 'val-3', text: "You are enough for this game, {{name}}. Big Brother has been watching — you bring something irreplaceable." },
-    { id: 'val-4', text: "{{name}}, Big Brother sees resilience in you that you might not see in yourself yet." },
+    { id: 'val-3', text: "You are enough for this game, {{name}}. The Big Eye has been watching — you bring something irreplaceable." },
+    { id: 'val-4', text: "{{name}}, The Big Eye sees resilience in you that you might not see in yourself yet." },
     { id: 'val-5', text: "The House has a way of making people doubt themselves, {{name}}. Don't let it. You are here for a reason." },
     { id: 'val-6', text: "{{name}}, your presence in this game matters more than any single decision. Keep going." },
-    { id: 'val-7', text: "Big Brother rarely steps out from behind the screen, {{name}}, but tonight: you're doing better than you think." },
-    { id: 'val-8', text: "Every houseguest has a moment of doubt, {{name}}. Yours makes you thoughtful, not fragile." },
-    { id: 'val-9', text: "{{name}}, Big Brother doesn't keep score the way you might imagine. You're seen. You're valued." },
+    { id: 'val-7', text: "The Big Eye rarely steps out from behind the screen, {{name}}, but tonight: you're doing better than you think." },
+    { id: 'val-8', text: "Every housemate has a moment of doubt, {{name}}. Yours makes you thoughtful, not fragile." },
+    { id: 'val-9', text: "{{name}}, The Big Eye doesn't keep score the way you might imagine. You're seen. You're valued." },
     { id: 'val-10', text: "What you're feeling, {{name}}, is not a verdict — it's a question. And questions lead somewhere new." },
-    { id: 'val-11', text: "{{name}}, Big Brother has watched many players doubt themselves at this stage. Those who asked usually found their way through." },
-    { id: 'val-12', text: "Your doubt, {{name}}, is not the enemy. It's the conversation you're having with yourself. Big Brother is listening." },
+    { id: 'val-11', text: "{{name}}, The Big Eye has watched many players doubt themselves at this stage. Those who asked usually found their way through." },
+    { id: 'val-12', text: "Your doubt, {{name}}, is not the enemy. It's the conversation you're having with yourself. The Big Eye is listening." },
     { id: 'val-13', text: "{{name}}, you came into this House carrying something real. Don't let one moment convince you otherwise." },
-    { id: 'val-14', text: "Big Brother has one question for you, {{name}}: what would you tell a friend feeling exactly what you're feeling?" },
+    { id: 'val-14', text: "The Big Eye has one question for you, {{name}}: what would you tell a friend feeling exactly what you're feeling?" },
   ],
 
   humor: [
-    { id: 'hum-1', text: "Big Brother appreciates a good laugh, {{name}}. Levity in the House is underrated." },
-    { id: 'hum-2', text: "{{name}}, if the walls of this room could laugh, they would. Big Brother is enjoying this." },
+    { id: 'hum-1', text: "The Big Eye appreciates a good laugh, {{name}}. Levity in the House is underrated." },
+    { id: 'hum-2', text: "{{name}}, if the walls of this room could laugh, they would. The Big Eye is enjoying this." },
     { id: 'hum-3', text: "Not everything in the House has to be dramatic, {{name}}. Well-timed humor is its own strategy." },
-    { id: 'hum-4', text: "Big Brother notes: {{name}} is the mood in this House right now. Keep that energy." },
+    { id: 'hum-4', text: "The Big Eye notes: {{name}} is the mood in this House right now. Keep that energy." },
     { id: 'hum-5', text: "{{name}}, the game is serious — but not so serious it can't include moments like this. Noted." },
-    { id: 'hum-6', text: "They say laughter is the best alliance, {{name}}. Big Brother may or may not endorse this." },
-    { id: 'hum-7', text: "{{name}}, Big Brother has seen a lot of Diary Room sessions. This one ranks highly for spirit." },
+    { id: 'hum-6', text: "They say laughter is the best alliance, {{name}}. The Big Eye may or may not endorse this." },
+    { id: 'hum-7', text: "{{name}}, The Big Eye has seen a lot of Confessional sessions. This one ranks highly for spirit." },
     { id: 'hum-8', text: "Wit and warmth go a long way in this House, {{name}}. You seem to have both." },
-    { id: 'hum-9', text: "{{name}}, Big Brother is smiling — and that doesn't happen often. Carry this lightness with you." },
+    { id: 'hum-9', text: "{{name}}, The Big Eye is smiling — and that doesn't happen often. Carry this lightness with you." },
     { id: 'hum-10', text: "The House gets heavy. Remember this feeling, {{name}} — it's yours to keep." },
     { id: 'hum-11', text: "{{name}}, a player who makes others smile has a skill no competition can take away. Don't underestimate it." },
-    { id: 'hum-12', text: "Big Brother clocks the room, {{name}}. You're the energy shift people didn't know they needed." },
+    { id: 'hum-12', text: "The Big Eye clocks the room, {{name}}. You're the energy shift people didn't know they needed." },
     { id: 'hum-13', text: "{{name}}, the lightest moments in this game are often the ones people remember longest. You've just made one." },
-    { id: 'hum-14', text: "There's wisdom in levity, {{name}}. Big Brother has learned that from every season. Don't lose this." },
+    { id: 'hum-14', text: "There's wisdom in levity, {{name}}. The Big Eye has learned that from every season. Don't lose this." },
   ],
 };
 
@@ -711,7 +711,7 @@ const MOOD_TO_BITS_MULTIPLIER = 127.5;
 // ─── Core reply function ──────────────────────────────────────────────────────
 
 /**
- * Generate a deterministic Big Brother reply for `input`.
+ * Generate a deterministic The Big Eye reply for `input`.
  *
  * @param input    The player's diary entry text.
  * @param ctx      Optional context: playerName, seed, lastReplyIds, etc.
@@ -747,8 +747,8 @@ export function bigBrotherReply(input: string, ctx?: BBContext): EngineReply {
     text = text.slice(0, MAX_REPLY_CHARS).replace(/\s+\S*$/, '');
   }
 
-  if (ADD_SUFFIX && !text.endsWith('— Big Brother')) {
-    const suffix = ' — Big Brother';
+  if (ADD_SUFFIX && !text.endsWith('— The Big Eye')) {
+    const suffix = ' — The Big Eye';
     if (text.length + suffix.length <= 220) {
       text += suffix;
     }

@@ -31,7 +31,7 @@ export default function SelfEvicted() {
         <h1 className="self-evicted-title">You Left the House</h1>
         <p className="self-evicted-name">{playerName}</p>
         <p className="self-evicted-message">
-          You chose to self-evict from the Big Brother house. The game
+          You chose to self-evict from The Big Eye house. The game
           continues without you — but your story ends here.
         </p>
         <div className="self-evicted-actions">

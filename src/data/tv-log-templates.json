@@ -1,22 +1,22 @@
 {
   "game": {
     "teaser": "🎮 Something went DOWN in that competition…",
-    "full": "🎮 The houseguests battled it out — someone just levelled up their threat level!"
+    "full": "🎮 The housemates battled it out — someone just levelled up their threat level!"
   },
   "social": {
     "teaser": "💬 Whispers in the hallway — this is getting spicy…",
     "full": "💬 The social game is heating up. Alliances are shifting, loyalties are crumbling, and nobody is safe."
   },
   "vote": {
-    "teaser": "🗳️ The votes are IN. Julie is shook.",
+    "teaser": "🗳️ The votes are IN. Host is shook.",
     "full": "🗳️ By a vote of the house, someone's game just ended. Grab your suitcase, honey — it's time to go."
   },
   "twist": {
-    "teaser": "🌀 Julie just said 'expect the unexpected'… again.",
-    "full": "🌀 A TWIST has rocked the Big Brother house! Nothing will ever be the same. (Until next week.)"
+    "teaser": "🌀 Host just said 'expect the unexpected'… again.",
+    "full": "🌀 A SHOCK has rocked The Big Eye house! Nothing will ever be the same. (Until next week.)"
   },
   "diary": {
-    "teaser": "📖 Someone vented into the DR camera…",
-    "full": "📖 In the Diary Room, feelings were felt, tears were shed, and strategy was whispered dramatically."
+    "teaser": "📖 Someone vented into the Confessional camera…",
+    "full": "📖 In the Confessional, feelings were felt, tears were shed, and strategy was whispered dramatically."
   }
 }

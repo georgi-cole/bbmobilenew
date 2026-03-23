@@ -121,7 +121,7 @@ export default function VoteResultsPopup({
 
         {allRevealed && evictee && (
           <div className="vrp__evictee">
-            <span className="vrp__evictee-label">EVICTED</span>
+            <span className="vrp__evictee-label">ELIMINATED</span>
             <span className="vrp__evictee-name">{evictee.name}</span>
           </div>
         )}

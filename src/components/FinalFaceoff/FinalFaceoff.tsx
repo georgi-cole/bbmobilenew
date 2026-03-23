@@ -189,14 +189,14 @@ export default function FinalFaceoff() {
   }
 
   return (
-    <div className="fo-overlay" role="dialog" aria-label="Jury Finale">
+    <div className="fo-overlay" role="dialog" aria-label="Tribunal Finale">
       {/* Header */}
       <div className="fo-header">
-        <h2 className="fo-title">🏛️ The Final Jury</h2>
+        <h2 className="fo-title">🏛️ The Final Tribunal</h2>
         <p className="fo-subtitle">
           {finale.isComplete
-            ? `${winner ? `${winner.name} wins Big Brother!` : 'Winner declared!'} 🏆`
-            : `${finale.revealedCount} / ${finale.revealOrder.length} jurors revealed`}
+            ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
+            : `${finale.revealedCount} / ${finale.revealOrder.length} judges revealed`}
         </p>
       </div>
 
@@ -263,7 +263,7 @@ export default function FinalFaceoff() {
                 key={f.id}
                 type="button"
                 className="fo-human-vote__choice"
-                aria-label={`Cast jury vote for ${f.name}`}
+                aria-label={`Cast Tribunal vote for ${f.name}`}
                 onClick={() => handleCastVote(f.id)}
               >
                 <PlayerAvatar player={f} size="sm" showRelationshipOutline={false} />

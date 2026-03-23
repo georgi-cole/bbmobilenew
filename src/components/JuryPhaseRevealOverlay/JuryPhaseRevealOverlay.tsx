@@ -182,7 +182,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
       className={`jpro${instant ? ' jpro--instant' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="The Jury Takes Control"
+      aria-label="The Tribunal Takes Control"
     >
       {/* ── Backdrop & atmosphere ─────────────────────────────────────────── */}
       <div className="jpro__backdrop" aria-hidden="true" />
@@ -214,9 +214,9 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
         {showJurors && (
           <div className="jpro__jurors-section">
             <p className="jpro__jurors-label" aria-hidden="true">
-              THE JURY
+              THE TRIBUNAL
             </p>
-            <div className="jpro__jurors-row" role="list" aria-label="The Jury">
+            <div className="jpro__jurors-row" role="list" aria-label="The Tribunal">
               {jurors.map((juror, index) => {
                 const isLit = index < visibleJurorCount
                 return (
@@ -240,9 +240,9 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
           <div className="jpro__card">
             <div className="jpro__card-shimmer" aria-hidden="true" />
             <p className="jpro__overline">LIVE FINALE</p>
-            <h1 className="jpro__headline">The Jury Takes Control</h1>
+            <h1 className="jpro__headline">The Tribunal Takes Control</h1>
             <p className="jpro__subtext">
-              Two finalists remain. The jury will decide who wins the season.
+              Two finalists remain. The Tribunal will decide who wins the season.
             </p>
           </div>
         )}
@@ -255,7 +255,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
               type="button"
               onClick={onEnterVote}
             >
-              Enter Jury Vote
+              Enter Tribunal Vote
             </button>
             {onSpyJury && (
               <>
