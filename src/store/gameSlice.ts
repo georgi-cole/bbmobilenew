@@ -254,7 +254,8 @@ type ApplyMinigameWinnerPayload = {
    * used to pick the compact disabled-option label in the nomination UI:
    *   'scored'   → "Lowest Score"
    *   'survival' → "First out"
-   * When omitted, falls back to 'scored' as the UI default.
+   * When omitted, defaults to 'scored' when scores are provided; when no scores
+   * are provided, the stored value will be null and the UI may apply its own default.
    */
   lastPlaceType?: 'scored' | 'survival';
 };
