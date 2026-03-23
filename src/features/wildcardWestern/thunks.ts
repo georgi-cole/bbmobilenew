@@ -58,5 +58,9 @@ export const resolveWildcardWesternOutcome =
     }
 
     dispatch(markWildcardWesternOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // The first player in eliminatedIds was the first eliminated (worst finisher).
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the elimination
+    // order shown in the competition UI.
+    const lastPlaceId = ww.eliminatedIds[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

@@ -594,6 +594,78 @@ describe('HOH comp last-place tracking', () => {
 
     expect(state.lastHohCompFinisherId).toBe('p4');
   });
+
+  it('applyMinigameWinner with explicit lastPlaceId uses that player regardless of scores', () => {
+    // Regression: feature thunks (holdTheWall, glassBridge, etc.) pass lastPlaceId
+    // derived from elimination order. This should take priority over score-based logic.
+    const players = makePlayers(6);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      publicModeEnabled: true,
+      players,
+    });
+
+    // p3 has the lowest score, but p5 was explicitly first eliminated
+    const scores: Record<string, number> = {
+      p0: 100, p1: 80, p2: 60, p3: 10, p4: 40, p5: 30,
+    };
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: players.map((p) => p.id),
+      scores,
+      lastPlaceId: 'p5',
+    }));
+    const state = store.getState().game;
+
+    // lastPlaceId must win over score-based derivation
+    expect(state.lastHohCompFinisherId).toBe('p5');
+  });
+
+  it('applyMinigameWinner ignores lastPlaceId if it is the winner', () => {
+    // Defensive: caller should not pass the winner as lastPlaceId, but if they do,
+    // the system must fall back to score-based derivation.
+    const players = makePlayers(4);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      publicModeEnabled: true,
+      players,
+    });
+
+    const scores: Record<string, number> = { p0: 100, p1: 50, p2: 20, p3: 10 };
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: players.map((p) => p.id),
+      scores,
+      lastPlaceId: 'p0', // invalid: winner cannot be last place
+    }));
+    const state = store.getState().game;
+
+    // Should fall back to score-based → p3 (lowest score among non-winners)
+    expect(state.lastHohCompFinisherId).toBe('p3');
+  });
+
+  it('applyMinigameWinner without lastPlaceId or scores still sets lastHohCompFinisherId ' +
+     '(last-player-standing: matches scoreboard nominal case)', () => {
+    // Without any score/elimination data, falls back to first non-winner in participants array.
+    // This is acceptable for legacy paths where no data is available.
+    const players = makePlayers(4);
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: ['p0', 'p1', 'p2', 'p3'],
+    }));
+    const state = store.getState().game;
+
+    expect(state.lastHohCompFinisherId).not.toBeNull();
+    expect(state.lastHohCompFinisherId).not.toBe('p0');
+  });
 });
 
 describe('public mode endgame boundaries', () => {

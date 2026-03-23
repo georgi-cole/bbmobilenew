@@ -51,6 +51,7 @@ import TapRace from '../../components/TapRace/TapRace'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
+import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
@@ -1796,8 +1797,28 @@ export default function GameScreen() {
                 ? featureAppliedWinner
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
+            // Compute the last-place finisher for the HOH third-nominee rule.
+            // Use computeScores with the game's actual scoringAdapter so the canonical
+            // ranking matches the results screen (handles both lowerBetter and higherBetter).
+            // For POV comps this field is unused (applyMinigameWinner only uses it in hoh_comp branch).
+            // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
+            // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,
+            // so the idempotency guard will skip this call.
+            const hohLastPlaceId = (() => {
+              if (!isHohComp) return null;
+              const ranked = computeScores(
+                pendingChallenge.game.scoringAdapter,
+                rawResults,
+                pendingChallenge.game.scoringParams ?? {},
+              );
+              // ranked is sorted best → worst (highest canonical score first).
+              // Reverse to find the last non-winner (worst finisher).
+              const lastNonWinner = [...ranked].reverse().find((r) => r.playerId !== finalWinnerId);
+              return lastNonWinner?.playerId ?? null;
+            })();
+
             if (partial) {
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
 
@@ -1806,7 +1827,7 @@ export default function GameScreen() {
 
             if (!winnerPlayer || !sourceDomRect) {
               // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
@@ -1818,7 +1839,7 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
             pendingWinnerDispatchRef.current = () =>
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
             setPendingWinnerCeremony({
               tiles,
               caption: `${winnerPlayer.name} wins ${winLabel}!`,

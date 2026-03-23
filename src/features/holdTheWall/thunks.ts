@@ -55,5 +55,8 @@ export const resolveHoldTheWallOutcome =
     // Mark as resolved before dispatching so any synchronous re-render
     // triggered by applyMinigameWinner sees outcomeResolved = true.
     dispatch(markHoldTheWallOutcomeResolved());
-    dispatch(applyMinigameWinner({ winnerId }));
+    // The first player to drop off the wall is the worst finisher ("last place").
+    // Pass them as lastPlaceId so the third-nominee auto-add matches the UI.
+    const lastPlaceId = htw.droppedIds[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
   };

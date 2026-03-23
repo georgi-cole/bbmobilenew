@@ -57,5 +57,8 @@ export const resolveCompetitionOutcome =
 
     // applyMinigameWinner uses the current game phase (hoh_comp → applyHohWinner,
     // pov_comp → applyPovWinner) to apply the appropriate winner effect.
-    dispatch(applyMinigameWinner({ winnerId: champ }));
+    // Pass the first-eliminated player as lastPlaceId so the third-nominee
+    // auto-add matches the elimination order shown in the competition UI.
+    const lastPlaceId = cwgo.eliminationOrder[0] ?? null;
+    dispatch(applyMinigameWinner({ winnerId: champ, lastPlaceId }));
   };
