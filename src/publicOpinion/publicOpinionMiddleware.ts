@@ -16,6 +16,7 @@ import {
   computeNominationReactions,
   computeEvictionReactions,
   computePovSaveReactions,
+  type ReactionDelta,
 } from './EventDrivenReactionService';
 import type { PublicDirection } from './types';
 
@@ -55,7 +56,7 @@ function buildApprovalMap(
 /** Dispatch all reaction deltas from the EventDrivenReactionService. */
 function dispatchReactionDeltas(
   store: MiddlewareAPI<Dispatch<UnknownAction>>,
-  reactions: ReturnType<typeof computeNominationReactions>,
+  reactions: ReactionDelta[],
   week: number,
 ): void {
   for (const r of reactions) {
@@ -135,11 +136,25 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   // ── Mission action mapping for explicit gameplay actions ───────────────────
 
   if (actionType === 'game/commitNominees') {
-    // Human HOH nominated a set of players
+    // Human HOH nominated a set of players.
+    // Payload is the array of nominee IDs committed by the human player.
     const nominees = (actionPayload as string[] | undefined) ?? [];
     const week = game.week ?? 1;
     const hohId = game.hohId;
     if (hohId && nominees.length > 0) {
+      // Event-driven approval reactions: HOH backlash + nominee sympathy.
+      // Run against the updated game state so nomineeIds are current.
+      const profiles = nextState.publicOpinion?.profiles ?? {};
+      const approvals = buildApprovalMap(profiles);
+      const reactions = computeNominationReactions({
+        nomineeIds: nominees,
+        hohId,
+        approvals,
+        week,
+      });
+      dispatchReactionDeltas(store, reactions, week);
+
+      // Mission progress
       for (const targetId of nominees) {
         dispatchMissionProgress(store, {
           type: 'nominated_target',
@@ -322,11 +337,11 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         }
       }
 
-      // nomination_results: dispatch approval reactions and mission progress for HOH nominations.
-      // Approval reactions apply to both AI and human HOH (reactions are based on who was
-      // nominated, not who made the decision).
-      // Mission progress for AI HOH only — human HOH nominations are handled by game/commitNominees.
-      if (newPhase === 'nomination_results') {
+      // nomination_results: dispatch approval reactions and mission progress for AI HOH nominations.
+      // Human HOH reactions are handled earlier via `game/commitNominees`; firing them again here
+      // would double-apply backlash/sympathy. Only run when awaitingNominations is false
+      // (the AI HOH path: nominations were set automatically before this phase was entered).
+      if (newPhase === 'nomination_results' && !game.awaitingNominations && game.hohId) {
         const profiles = nextState.publicOpinion?.profiles ?? {};
         const approvals = buildApprovalMap(profiles);
         const nomineeIds = game.nomineeIds ?? [];
@@ -340,10 +355,8 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             week,
           });
           dispatchReactionDeltas(store, reactions, week);
-        }
 
-        // Mission progress: AI HOH nominations only
-        if (!game.awaitingNominations && game.hohId) {
+          // Mission progress
           for (const nomineeId of nomineeIds) {
             dispatchMissionProgress(store, {
               type: 'nominated_target',
@@ -352,13 +365,11 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
               week,
             });
           }
-          if (nomineeIds.length > 0) {
-            dispatchMissionProgress(store, {
-              type: 'bold_move',
-              actorId: game.hohId,
-              week,
-            });
-          }
+          dispatchMissionProgress(store, {
+            type: 'bold_move',
+            actorId: game.hohId,
+            week,
+          });
         }
       }
 

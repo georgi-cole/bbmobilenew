@@ -200,6 +200,96 @@ describe('event-driven approval: nomination_results', () => {
   });
 });
 
+describe('event-driven approval: game/commitNominees (human HOH)', () => {
+  it('applies HOH backlash when human HOH nominates a liked player via commitNominees', () => {
+    // Human HOH flow: phase stays nomination_results, awaitingNominations=true.
+    // Reactions should fire at commitNominees time, not at nomination_results phase entry.
+    const store = makeStore({
+      phase: 'nomination_results',
+      week: 1,
+      hohId: 'p1',
+      awaitingNominations: true,
+    });
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
+
+    // Set p2 to 75% (liked band)
+    store.dispatch(updateApproval({ playerId: 'p2', delta: 25, reason: 'test', week: 1, addToFeed: false }));
+
+    const beforeHohApproval = store.getState().publicOpinion.profiles.p1.approval;
+
+    // Human HOH commits nominees — no phase change occurs
+    store.dispatch({
+      type: 'game/commitNominees',
+      payload: ['p2'],
+    });
+
+    const afterHohApproval = store.getState().publicOpinion.profiles.p1.approval;
+    expect(afterHohApproval).toBeLessThan(beforeHohApproval);
+  });
+
+  it('gives a sympathy boost to a beloved player nominated by human HOH', () => {
+    const store = makeStore({
+      phase: 'nomination_results',
+      week: 1,
+      hohId: 'p1',
+      awaitingNominations: true,
+    });
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
+
+    // Set p3 to 85% (beloved band)
+    store.dispatch(updateApproval({ playerId: 'p3', delta: 35, reason: 'test', week: 1, addToFeed: false }));
+
+    const beforeNomineeApproval = store.getState().publicOpinion.profiles.p3.approval;
+
+    store.dispatch({
+      type: 'game/commitNominees',
+      payload: ['p3'],
+    });
+
+    const afterNomineeApproval = store.getState().publicOpinion.profiles.p3.approval;
+    expect(afterNomineeApproval).toBeGreaterThan(beforeNomineeApproval);
+  });
+
+  it('does not double-apply reactions when awaitingNominations is true (human HOH path)', () => {
+    // When awaitingNominations=true, nomination_results entry should NOT fire reactions
+    // (since they will be fired by commitNominees). The guard on nomination_results
+    // checks !awaitingNominations, so phase entry with awaitingNominations=true is a no-op.
+    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+    store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
+
+    // Set p2 to 75% (liked band)
+    store.dispatch(updateApproval({ playerId: 'p2', delta: 25, reason: 'test', week: 1, addToFeed: false }));
+
+    const beforeHohApproval = store.getState().publicOpinion.profiles.p1.approval;
+
+    // Phase transitions to nomination_results with awaitingNominations=true (human HOH)
+    store.dispatch({
+      type: 'game/advance',
+      payload: {
+        phase: 'nomination_results',
+        hohId: 'p1',
+        nomineeIds: [],  // not yet set — human hasn't committed
+        awaitingNominations: true,
+        week: 1,
+      },
+    });
+
+    // No reactions should have fired yet (nomineeIds empty + awaitingNominations=true)
+    const afterPhaseEntry = store.getState().publicOpinion.profiles.p1.approval;
+    expect(afterPhaseEntry).toBe(beforeHohApproval);
+
+    // Now human commits nominees
+    store.dispatch({
+      type: 'game/commitNominees',
+      payload: ['p2'],
+    });
+
+    const afterCommit = store.getState().publicOpinion.profiles.p1.approval;
+    // HOH backlash fires once at commitNominees
+    expect(afterCommit).toBeLessThan(afterPhaseEntry);
+  });
+});
+
 describe('event-driven approval: finalizePendingEviction', () => {
   it('responsible actors receive a boost when a disliked player is evicted', () => {
     const store = makeStore({ phase: 'eviction_results', week: 2, hohId: 'p1' });

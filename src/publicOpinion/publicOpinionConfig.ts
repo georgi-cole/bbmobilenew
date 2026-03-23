@@ -73,10 +73,10 @@ export const publicOpinionConfig = {
   feedBudgetPerDay: 3,
 
   /**
-   * Feed priority level for each event type (higher = more important).
-   * Events with priority ≥ 1 are eligible for a visible feed card.
-   * When the daily budget is full, only the highest-priority pending events
-   * are visible; lower-priority updates are applied silently.
+   * Advisory priority level for each event type (higher = more important).
+   * This value is advisory and can be used by callers to prefer higher-priority
+   * events when enforcing the daily feed budget; the current budget gate itself
+   * does not reorder or reselect events by priority.
    */
   eventFeedPriority: {
     eviction: 3,

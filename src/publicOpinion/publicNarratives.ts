@@ -41,12 +41,12 @@ const NARRATIVE_VARIANTS = {
     'Social media is in full mourning mode. That eviction hit hard.',
     'The backlash following that eviction is loud, sustained, and very pointed.',
   ],
-  eviction_villain_gone: [
-    'The crowd is celebrating. Sending that one home was exactly what viewers wanted.',
-    'Relief flooded the comment sections the moment that eviction was announced.',
-    'The public has been rooting for this moment for weeks. They got it.',
-    'A collective exhale just happened across every fan platform at once.',
-    'Viewers are calling it the best episode in a while. The house just got a lot more likeable.',
+  eviction_underdog_exit: [
+    'Even as they walked out the door, a small farewell wave of sympathy followed them out.',
+    'Not everyone wanted to see them go — a quiet pocket of viewers is sad to see the end of that storyline.',
+    'That exit earned a surprising amount of goodwill. Even the least popular houseguests get their goodbye moment.',
+    'The audience is complicated. Some fans are already missing the chaos that person brought.',
+    'A small but vocal part of the fanbase is already saying they miss the entertainment value.',
   ],
   eviction_reaction: [
     'The public already has opinions about who is responsible for that eviction.',
@@ -157,7 +157,7 @@ const REASON_ALIASES: Record<string, NarrativeKey> = {
   nomination_sympathy: 'nomination_sympathy',
   hoh_nomination_backlash: 'hoh_nomination_backlash',
   eviction_beloved: 'eviction_beloved',
-  eviction_villain_gone: 'eviction_villain_gone',
+  eviction_underdog_exit: 'eviction_underdog_exit',
   eviction_reaction: 'eviction_reaction',
   pov_save: 'pov_save',
   pov_save_reaction: 'pov_save_reaction',

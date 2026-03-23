@@ -23,12 +23,6 @@ export interface ReactionDelta {
   eventType: string;
   /** ID of the player whose action caused this reaction (optional). */
   attributedToId?: string;
-  /**
-   * Priority level for feed-budget tie-breaking:
-   * higher = more likely to be shown when budget is constrained.
-   * Uses the values from publicOpinionConfig.eventFeedPriority.
-   */
-  feedPriority: number;
 }
 
 type ApprovalBand = 'beloved' | 'liked' | 'mixed' | 'disliked' | 'hated';
@@ -71,7 +65,7 @@ export interface NominationReactionInput {
  */
 export function computeNominationReactions(input: NominationReactionInput): ReactionDelta[] {
   const { nomineeIds, hohId, approvals, week } = input;
-  const { nominationReactions, maxDeltaPerEvent, eventFeedPriority } = publicOpinionConfig;
+  const { nominationReactions, maxDeltaPerEvent } = publicOpinionConfig;
   const cap = maxDeltaPerEvent.nomination_reaction;
   const results: ReactionDelta[] = [];
 
@@ -94,7 +88,6 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
           reason: 'hoh_nomination_backlash',
           eventType: 'nomination',
           attributedToId: nomineeId,
-          feedPriority: eventFeedPriority.nomination ?? 2,
         });
       }
     }
@@ -115,7 +108,6 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
         reason: 'nomination_sympathy',
         eventType: 'nomination',
         attributedToId: hohId ?? undefined,
-        feedPriority: eventFeedPriority.nomination ?? 2,
       });
     }
   }
@@ -156,7 +148,7 @@ export interface EvictionReactionInput {
  */
 export function computeEvictionReactions(input: EvictionReactionInput): ReactionDelta[] {
   const { evicteeId, hohId, povHolderId, approvals, week } = input;
-  const { evictionReactions, maxDeltaPerEvent, eventFeedPriority } = publicOpinionConfig;
+  const { evictionReactions, maxDeltaPerEvent } = publicOpinionConfig;
   const cap = maxDeltaPerEvent.eviction_reaction;
   const results: ReactionDelta[] = [];
 
@@ -188,12 +180,15 @@ export function computeEvictionReactions(input: EvictionReactionInput): Reaction
         reason: 'eviction_reaction',
         eventType: 'eviction',
         attributedToId: evicteeId,
-        feedPriority: eventFeedPriority.eviction ?? 3,
       });
     }
   }
 
   // ── Evicted player final delta ───────────────────────────────────────────
+  // Beloved players receive a penalty (fan outrage at their exit).
+  // Disliked/hated players receive a small sympathy boost on departure —
+  // the underdog-exit narrative: even a villain gets a moment of farewell
+  // goodwill from a subset of viewers as they walk out the door.
   let evicteeDelta = 0;
   if (band === 'beloved') {
     evicteeDelta = evictionReactions.evictedBelovedFinalPenalty;
@@ -204,9 +199,8 @@ export function computeEvictionReactions(input: EvictionReactionInput): Reaction
     results.push({
       playerId: evicteeId,
       delta: clampDelta(evicteeDelta, cap),
-      reason: band === 'beloved' ? 'eviction_beloved' : 'eviction_villain_gone',
+      reason: band === 'beloved' ? 'eviction_beloved' : 'eviction_underdog_exit',
       eventType: 'eviction',
-      feedPriority: eventFeedPriority.eviction ?? 3,
     });
   }
 
@@ -240,14 +234,11 @@ export interface PovSaveReactionInput {
  */
 export function computePovSaveReactions(input: PovSaveReactionInput): ReactionDelta[] {
   const { savedPlayerId, saviorId, approvals, week, isPublicSave = false } = input;
-  const { povSaveReactions, maxDeltaPerEvent, eventFeedPriority } = publicOpinionConfig;
+  const { povSaveReactions, maxDeltaPerEvent } = publicOpinionConfig;
   const cap = isPublicSave
     ? maxDeltaPerEvent.public_save_reaction
     : maxDeltaPerEvent.pov_save_reaction;
   const eventType = isPublicSave ? 'public_save' : 'pov_save';
-  const priority = isPublicSave
-    ? (eventFeedPriority.public_save ?? 2)
-    : (eventFeedPriority.pov_save ?? 1);
   const results: ReactionDelta[] = [];
 
   const savedApproval = approvals[savedPlayerId] ?? publicOpinionConfig.DEFAULT_APPROVAL;
@@ -260,7 +251,6 @@ export function computePovSaveReactions(input: PovSaveReactionInput): ReactionDe
     reason: isPublicSave ? 'public_save' : 'pov_save',
     eventType,
     attributedToId: saviorId ?? undefined,
-    feedPriority: priority,
   });
 
   // Savior reactions (only for POV, not public save)
@@ -278,7 +268,6 @@ export function computePovSaveReactions(input: PovSaveReactionInput): ReactionDe
         reason: 'pov_save_reaction',
         eventType,
         attributedToId: savedPlayerId,
-        feedPriority: priority,
       });
     }
   }
