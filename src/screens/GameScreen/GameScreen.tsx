@@ -51,6 +51,7 @@ import TapRace from '../../components/TapRace/TapRace'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
+import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
@@ -1797,21 +1798,24 @@ export default function GameScreen() {
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
             // Compute the last-place finisher for the HOH third-nominee rule.
-            // rawValue uses higher = better convention for all game types.
-            // For HOH comps we pass lastPlaceId so the auto-nominee matches the
-            // scoreboard shown in the challenge UI.  For POV comps this field is
-            // unused (applyMinigameWinner only uses it in the hoh_comp branch).
+            // Use computeScores with the game's actual scoringAdapter so the canonical
+            // ranking matches the results screen (handles both lowerBetter and higherBetter).
+            // For POV comps this field is unused (applyMinigameWinner only uses it in hoh_comp branch).
             // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
-            // the feature thunk has already called applyMinigameWinner with its
-            // own lastPlaceId, so the idempotency guard will skip this call.
-            const nonWinnerRawResults = rawResults.filter((r) => r.playerId !== finalWinnerId);
-            const lastPlaceEntry = nonWinnerRawResults.length > 0
-              ? nonWinnerRawResults.reduce(
-                  (worst, r) => r.rawValue < worst.rawValue ? r : worst,
-                  nonWinnerRawResults[0]!,
-                )
-              : null;
-            const hohLastPlaceId = isHohComp ? (lastPlaceEntry?.playerId ?? null) : null;
+            // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,
+            // so the idempotency guard will skip this call.
+            const hohLastPlaceId = (() => {
+              if (!isHohComp) return null;
+              const ranked = computeScores(
+                pendingChallenge.game.scoringAdapter,
+                rawResults,
+                pendingChallenge.game.scoringParams ?? {},
+              );
+              // ranked is sorted best → worst (highest canonical score first).
+              // Reverse to find the last non-winner (worst finisher).
+              const lastNonWinner = [...ranked].reverse().find((r) => r.playerId !== finalWinnerId);
+              return lastNonWinner?.playerId ?? null;
+            })();
 
             if (partial) {
               dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));

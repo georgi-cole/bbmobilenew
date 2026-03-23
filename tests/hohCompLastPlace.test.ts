@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { applyMinigameWinner } from '../src/store/gameSlice';
+import gameReducer, { applyMinigameWinner, activateDoubleEviction, advance } from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import holdTheWallReducer, {
@@ -23,8 +23,12 @@ import holdTheWallReducer, {
 import glassBridgeReducer from '../src/features/glassBridge/glassBridgeSlice';
 import cwgoReducer, {
   startCwgoCompetition,
+  setGuesses,
+  revealMassResults,
+  confirmMassElimination,
 } from '../src/features/cwgo/cwgoCompetitionSlice';
 import { resolveHoldTheWallOutcome } from '../src/features/holdTheWall/thunks';
+import { resolveCompetitionOutcome } from '../src/features/cwgo/thunks';
 import type { GameState, Player } from '../src/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -205,14 +209,14 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
 
 describe('HOH comp last-place mismatch — CWGO (elimination tracking)', () => {
   it('first player eliminated in CWGO becomes lastHohCompFinisherId', () => {
-    // This test verifies that eliminationOrder is tracked in cwgoCompetitionSlice
-    // and the first-eliminated player is set as lastHohCompFinisherId when the
-    // resolveCompetitionOutcome thunk fires.
-    const store = makeGameStore({ players: makePlayers(3) });
+    // Deterministic test: 2 players, p0 guesses 999999 (way over any CWGO answer),
+    // p1 guesses 0 (always under). After mass round: p0 eliminated, p1 wins.
+    // resolveCompetitionOutcome must then set lastHohCompFinisherId = p0.
+    const players = makePlayers(3);
+    const store = makeGameStore({ players });
 
-    // Start CWGO
     store.dispatch(startCwgoCompetition({
-      participantIds: ['p0', 'p1', 'p2'],
+      participantIds: ['p0', 'p1'],
       prizeType: 'HOH',
       seed: 42,
     }));
@@ -220,22 +224,25 @@ describe('HOH comp last-place mismatch — CWGO (elimination tracking)', () => {
     // Verify eliminationOrder starts empty
     expect(store.getState().cwgo.eliminationOrder).toEqual([]);
 
-    // Submit guesses designed to guarantee at least one mass-round elimination:
-    // p0=0 (under any positive answer), p1=0, p2=99999 (way over any answer).
-    store.dispatch({ type: 'cwgo/setGuesses', payload: { p0: 0, p1: 0, p2: 99999 } });
-    store.dispatch({ type: 'cwgo/revealMassResults' });
-    store.dispatch({ type: 'cwgo/confirmMassElimination' });
+    // p0 goes over (999999 > any CWGO answer), p1 stays under → p0 eliminated
+    store.dispatch(setGuesses({ p0: 999999, p1: 0 }));
+    store.dispatch(revealMassResults());
+    store.dispatch(confirmMassElimination());
 
-    // After mass round, eliminationOrder must record any eliminated players.
-    const cwgoAfterMass = store.getState().cwgo;
-    if (cwgoAfterMass.eliminationOrder.length > 0) {
-      // The first entry in eliminationOrder is the first-eliminated player
-      const firstEliminated = cwgoAfterMass.eliminationOrder[0];
-      // Verify all entries are valid participant IDs
-      expect(['p0', 'p1', 'p2']).toContain(firstEliminated);
-    }
-    // Either way, the slice field exists and starts out correctly populated
-    expect(Array.isArray(cwgoAfterMass.eliminationOrder)).toBe(true);
+    // Verify CWGO reached 'complete' with p0 eliminated first
+    const cwgoState = store.getState().cwgo;
+    expect(cwgoState.status).toBe('complete');
+    expect(cwgoState.aliveIds).toEqual(['p1']);
+    expect(cwgoState.eliminationOrder).toEqual(['p0']);
+
+    // Dispatch outcome: resolveCompetitionOutcome passes eliminationOrder[0]='p0'
+    // as lastPlaceId to applyMinigameWinner
+    store.dispatch(resolveCompetitionOutcome() as never);
+
+    const gameState = store.getState().game;
+    expect(gameState.hohId).toBe('p1');
+    // The first-eliminated player must become the auto-third-nominee source
+    expect(gameState.lastHohCompFinisherId).toBe('p0');
   });
 });
 
@@ -264,29 +271,38 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     expect(state.awaitingPublicSave).toBe(true);
   });
 
-  it('double eviction skips pre_veto_public_save (no 4th nominee)', () => {
-    // Double eviction has 3 nominees already; system must not add a 4th
+  it('double eviction: no 4th nominee and no pre_veto_public_save', () => {
+    // Use activateDoubleEviction (the real action) and verify the nominations path:
+    // - DE uses 3 nominees (by twist rule), auto-third-nominee rule is SKIPPED
+    // - nomination_results → advances to next phase (NOT pre_veto_public_save)
     const players = makePlayers(8);
+    players[0].status = 'hoh';
     const store = makeGameStore({
       phase: 'nominations',
       hohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p5',
       players,
+      doubleEviction: { usedCount: 1, weekActive: false, pendingSecondEviction: null },
     });
 
-    // Activate double eviction twist flag
-    store.dispatch({
-      type: 'game/setDoubleEvictionActive',
-      payload: true,
-    });
+    // Activate double eviction using the real action
+    store.dispatch(activateDoubleEviction());
+    expect(store.getState().game.doubleEviction?.weekActive).toBe(true);
 
-    // During nominations, AI picks 3 nominees in DE weeks (not 2 + auto 3rd)
-    // After nominations, no pre_veto_public_save should trigger
-    // This test validates the store's DE gate; the exact behavior depends on
-    // whether isDoubleEviction is stored. We just verify no 4th nominee.
-    const state = store.getState().game;
-    // Nominees remain 0 (not yet nominated) — this test validates the DE gate exists
-    expect(state.nomineeIds).toHaveLength(0);
+    // Advance through nominations (AI HOH picks 3 by DE rule)
+    store.dispatch(advance()); // nominations → nomination_results (AI picks 3)
+    const afterNominations = store.getState().game;
+    expect(afterNominations.phase).toBe('nomination_results');
+    // DE: AI nominates exactly 3 — auto-third-nominee rule must NOT add a 4th
+    expect(afterNominations.nomineeIds).toHaveLength(3);
+
+    // Advance to next phase — must NOT be pre_veto_public_save in DE weeks
+    store.dispatch(advance()); // nomination_results → pov_comp_announcement (skips public save)
+    const afterNomResults = store.getState().game;
+    expect(afterNomResults.phase).not.toBe('pre_veto_public_save');
+    expect(afterNomResults.awaitingPublicSave).toBeFalsy();
+    // After nomination_results in DE, should proceed toward pov
+    expect(afterNomResults.phase).toBe('pov_comp_announcement');
   });
 });
