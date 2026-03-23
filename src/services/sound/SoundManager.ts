@@ -15,6 +15,8 @@
 
 import { SOUND_REGISTRY } from './sounds';
 import type { SoundCategory, SoundEntry } from './sounds';
+import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
+import { NATIVE_SFX_MAP } from '../../platform/cordova/nativeSfxMap';
 
 /** True in DEV builds, when VITE_AUDIO_DEBUG=true, or ?debugAudio=1 in URL. */
 const _audioDebug =
@@ -146,8 +148,25 @@ class _SoundManager {
       return;
     }
 
+    // Compute effective volume here so it is available to both the native
+    // fast-path (for gate checks) and the HTMLAudio fallback path below.
     const baseVol = opts?.volume ?? entry.volume ?? 1;
     const effectiveVol = Math.max(0, Math.min(1, baseVol * cat.volume));
+
+    // Native audio fast-path: when running inside a Cordova WebView with the
+    // nativeaudio plugin, use the native backend for mapped SFX keys.
+    // Note: native SFX volume is baked in at preload time (via preloadComplex)
+    // so real-time category volume changes do not affect already-preloaded SFX.
+    // The fast-path is skipped when effectiveVol is 0 (muted) so silence is honoured.
+    const nativeKey = NATIVE_SFX_MAP[key as keyof typeof NATIVE_SFX_MAP];
+    if (nativeKey && NativeAudioAdapter.isAvailable() && effectiveVol > 0) {
+      try {
+        NativeAudioAdapter.playSfx(nativeKey);
+        return;
+      } catch (err) {
+        console.warn('[SoundManager] NativeAudio play failed, falling back to HTMLAudio', err);
+      }
+    }
 
     // Get or lazily create a per-key pool
     let pool = this._sfxPools.get(key);
@@ -466,6 +485,53 @@ class _SoundManager {
     this._unlockHandler?.();
   }
 
+  /**
+   * Unlock audio from a user gesture but only replay queued music items.
+   *
+   * Use this instead of `unlockOnUserGesture()` from the "Enable sounds" handler
+   * on the hub screen so that SFX queued during page load are intentionally
+   * discarded and do not flood the user with sound at the moment they tap the
+   * consent button.
+   *
+   * - Primes SFX pool elements so future non-gesture SFX plays work on iOS.
+   * - Replays only queued music items (preserving latest-music semantics).
+   * - Drops all queued SFX so they are never replayed automatically.
+   */
+  unlockAndPlayMusicOnly(): void {
+    if (typeof document === 'undefined') return;
+    if (this._unlocked) {
+      if (_audioDebug) {
+        console.log('[SoundManager] unlockAndPlayMusicOnly() — already unlocked');
+      }
+      return;
+    }
+
+    // Remove any pending document-level unlock listeners if they were armed.
+    if (this._unlockHandler) {
+      document.removeEventListener('click', this._unlockHandler, true);
+      document.removeEventListener('keydown', this._unlockHandler, true);
+      document.removeEventListener('touchstart', this._unlockHandler, true);
+      this._unlockHandler = null;
+    }
+    this._unlocked = true;
+
+    if (_audioDebug) {
+      console.log('[SoundManager] audio unlocked via unlockAndPlayMusicOnly — draining music queue only');
+    }
+
+    // Prime SFX pools in this gesture context so future non-gesture plays work.
+    this._primeSfxForMobile();
+
+    // Replay only the queued music items; intentionally drop any queued SFX.
+    const queued = this._playQueue.splice(0);
+    for (const item of queued) {
+      if (item.isMusic) {
+        void this._doPlayMusic(item.key, item.opts);
+      }
+      // SFX items are intentionally discarded.
+    }
+  }
+
   private _drainQueue(): void {
     const q = this._playQueue.splice(0);
     if (_audioDebug && q.length > 0) {
@@ -518,13 +584,18 @@ class _SoundManager {
           }
         });
         pool.push(el);
+        // Mute during priming to avoid audible artifacts on mobile browsers.
+        // Setting muted=true is more reliable than volume=0 across WebView
+        // implementations (some still produce audible noise at volume=0).
+        el.muted = true;
         // Call play() synchronously in the gesture context — iOS cares about
         // the synchronous call, not the promise resolution.  Immediately pause
-        // and restore real volume in the callback.
+        // and restore real volume/unmute in the callback.
         // Use optional chaining: test envs may return undefined from play().
         el.play()?.then(() => {
           el.pause();
           el.currentTime = 0;
+          el.muted = false;
           el.volume = Math.max(0, Math.min(1, entry.volume ?? 1));
         }).catch((err) => {
           // Log priming failures in debug builds and mark the key as failed

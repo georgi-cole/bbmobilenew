@@ -10,6 +10,8 @@ import SoundConsentPopup, {
   HUB_MUSIC_CONSENT_KEY,
 } from '../../components/SoundConsentPopup/SoundConsentPopup';
 import { SoundManager } from '../../services/sound/SoundManager';
+import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
+import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
 import './HomeHub.css';
 
@@ -77,10 +79,35 @@ export default function HomeHub() {
   }, [bgUrl]);
 
   const handleSoundConsentEnable = () => {
-    // User gesture — unlock Web Audio API and start hub music.
-    SoundManager.unlockOnUserGesture();
+    // MUST remain synchronous so that iOS/Safari recognises the gesture context.
+    // HTMLAudio priming (inside unlockAndPlayMusicOnly) calls play() synchronously —
+    // awaiting before this call would break that requirement.
+
+    // Unlock and prime SFX pools in the gesture context; discard any queued SFX
+    // so users don't hear a flood of game sounds when tapping "Enable sounds".
+    SoundManager.unlockAndPlayMusicOnly();
+
+    // Start the hub ambient music (idempotent — no-op if already playing).
     void SoundManager.playMusic('music:intro_hub_loop');
     setSoundConsentHidden(true);
+
+    // Kick off native SFX preloads asynchronously in the background.
+    // These are non-critical — if preloading hasn't finished when a mapped SFX
+    // is triggered, SoundManager will fall back to HTMLAudio automatically.
+    void NativeAudioAdapter.init()
+      .then(() => {
+        if (!NativeAudioAdapter.isAvailable()) return;
+        const nativeKeys = Object.values(NATIVE_SFX_MAP) as Array<keyof typeof NATIVE_SFX_CONFIG>;
+        return Promise.all(
+          nativeKeys.map((nk) => {
+            const { path, volume } = NATIVE_SFX_CONFIG[nk];
+            return NativeAudioAdapter.preloadComplex(nk, path, volume);
+          }),
+        );
+      })
+      .catch((err) => {
+        console.warn('[HomeHub] NativeAudio init/preload failed, falling back to HTMLAudio', err);
+      });
   };
 
   const handleSoundConsentDismiss = () => {
