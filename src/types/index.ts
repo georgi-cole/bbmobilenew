@@ -391,6 +391,14 @@ export interface GameState {
    */
   lastHohCompFinisherId?: string | null;
   /**
+   * Competition type for the HOH comp that produced lastHohCompFinisherId.
+   * 'scored'   → ranked/scored game (label: "Lowest Score")
+   * 'survival' → last-player-standing game (label: "First out")
+   * null       → unknown / not set (UI falls back to "Lowest Score")
+   * Cleared at the start of each new week alongside lastHohCompFinisherId.
+   */
+  lastHohCompFinisherType?: 'scored' | 'survival' | null;
+  /**
    * Player ID of the nominee saved by the public during the pre-veto public
    * save phase (normal weeks only). Null until the phase resolves; cleared on
    * week reset.

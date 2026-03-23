@@ -16,6 +16,16 @@ interface Props {
   confirmLabel?: string;
   /** Message shown in the stinger overlay after confirming */
   stingerMessage?: string;
+  /**
+   * ID of the player who is already the forced auto-nominee (last in HOH comp).
+   * That option is shown but disabled and cannot be selected manually.
+   */
+  autoNomineeId?: string;
+  /**
+   * Compact badge text shown next to the forced auto-nominee.
+   * Defaults to "Lowest Score". Use "First out" for survival comps.
+   */
+  autoNomineeLabel?: string;
 }
 
 /**
@@ -36,11 +46,15 @@ export default function TvMultiSelectModal({
   onConfirm,
   confirmLabel = 'Confirm Nominees',
   stingerMessage = 'NOMINATIONS SET',
+  autoNomineeId,
+  autoNomineeLabel = 'Lowest Score',
 }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showStinger, setShowStinger] = useState(false);
 
   function togglePlayer(playerId: string) {
+    // Prevent selecting the forced auto-nominee.
+    if (playerId === autoNomineeId) return;
     setSelectedIds((prev) => {
       if (prev.includes(playerId)) {
         return prev.filter((id) => id !== playerId);
@@ -91,6 +105,7 @@ export default function TvMultiSelectModal({
               </p>
             ) : (
               options.map((player) => {
+                const isAutoNominee = player.id === autoNomineeId;
                 const isSelected = selectedIds.includes(player.id);
                 return (
                   <button
@@ -98,16 +113,23 @@ export default function TvMultiSelectModal({
                     className={[
                       'tv-ms-modal__option',
                       isSelected ? 'tv-ms-modal__option--selected' : '',
+                      isAutoNominee ? 'tv-ms-modal__option--auto-nominated' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
                     onClick={() => togglePlayer(player.id)}
                     aria-pressed={isSelected}
+                    aria-disabled={isAutoNominee}
+                    disabled={isAutoNominee}
                     type="button"
                   >
                     <PlayerAvatar player={player} selected={isSelected} size="md" />
                     <span className="tv-ms-modal__option-name">{player.name}</span>
-                    <span className="tv-ms-modal__option-tag">{player.status}</span>
+                    {isAutoNominee ? (
+                      <span className="tv-ms-modal__option-auto-label">{autoNomineeLabel}</span>
+                    ) : (
+                      <span className="tv-ms-modal__option-tag">{player.status}</span>
+                    )}
                     {isSelected && (
                       <span className="tv-ms-modal__check" aria-hidden="true">
                         ✓

@@ -196,10 +196,10 @@ describe('third nominee — AI HOH normal week', () => {
     expect(state.nominationContext?.autoNomineeId).toBe('p3');
   });
 
-  it('does not duplicate if lastHohCompFinisherId is already in HOH nominees', () => {
-    // We set lastHohCompFinisherId = 'p1' and submit nominees ['p1', 'p2'].
-    // The commitNominees guard should not append a third nominee when the
-    // would-be auto-nominee (p1) is already in the HOH's nominees.
+  it('rejects submission if forced auto-nominee is included in submitted IDs', () => {
+    // Defensive: if the payload includes lastHohCompFinisherId, it is stripped first.
+    // After stripping, only 1 ID remains — that is < expectedCount (2), so the
+    // action is rejected (no-op) to prevent ending up with only 2 nominees.
     const store = makeStore({
       phase: 'nomination_results',
       hohId: 'p0',
@@ -210,13 +210,9 @@ describe('third nominee — AI HOH normal week', () => {
     store.dispatch(commitNominees(['p1', 'p2']));
     const state = store.getState().game;
 
-    expect(state.nomineeIds).toHaveLength(2);
-    expect(state.nomineeIds.filter((id) => id === 'p1')).toHaveLength(1);
-    expect(state.nominationContext).toEqual({
-      hohNomineeIds: ['p1', 'p2'],
-      autoNomineeId: null,
-      publicSaveApplied: false,
-    });
+    // Submission rejected: nomineeIds unchanged (empty) and awaitingNominations still true.
+    expect(state.nomineeIds).toHaveLength(0);
+    expect(state.awaitingNominations).toBe(true);
   });
 });
 
@@ -267,7 +263,10 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
     expect(state.tvFeed[0]?.text).not.toContain('Player 1, Player 2, Player 5 have been nominated for eviction by Player 0');
   });
 
-  it('does not duplicate auto-nominee if human already picked them', () => {
+  it('rejects submission if forced auto-nominee is included in human picks', () => {
+    // Defensive: if the human somehow submits the forced auto-nominee as part of their 2 picks,
+    // commitNominees strips it first. Remaining count is 1, which is < 2, so the action
+    // is rejected (no-op). This prevents a 2-nominee result in normal public-mode weeks.
     const players = makePlayers(12, 0);
     players[0].status = 'hoh';
 
@@ -279,16 +278,12 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
       players,
     });
 
-    store.dispatch(commitNominees(['p1', 'p2'])); // p2 == auto-nominee
+    store.dispatch(commitNominees(['p1', 'p2'])); // p2 == auto-nominee (should be stripped)
     const state = store.getState().game;
 
-    expect(state.nomineeIds).toHaveLength(2); // no duplicate added
-    expect(state.nomineeIds.filter((id) => id === 'p2')).toHaveLength(1);
-    expect(state.nominationContext).toEqual({
-      hohNomineeIds: ['p1', 'p2'],
-      autoNomineeId: null,
-      publicSaveApplied: false,
-    });
+    // After stripping p2 only 1 ID remains — < expectedCount (2) → rejected.
+    expect(state.nomineeIds).toHaveLength(0);
+    expect(state.awaitingNominations).toBe(true);
   });
 
   it('still auto-appends a third nominee at final 4 for a human HOH', () => {
@@ -848,5 +843,251 @@ describe('backward compatibility', () => {
     const state = store.getState().game;
     expect(state.phase).toBe('pre_veto_public_save');
     expect(state.awaitingPublicSave).toBe(true);
+  });
+});
+
+// ── Forced auto-nominee UI and flow regression tests ──────────────────────────
+// Validates the behavior introduced for the forced auto-nominee:
+//  - UI label selection (scored vs survival)
+//  - AI pool excludes the forced auto-nominee
+//  - Defensive commitNominees strip
+//  - Final nominee count is always 3 unique nominees in normal public-mode weeks
+
+describe('forced auto-nominee: lastHohCompFinisherType', () => {
+  it('applyMinigameWinner stores lastPlaceType as lastHohCompFinisherType', () => {
+    const players = makePlayers(6);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: ['p0', 'p1', 'p2', 'p3', 'p4', 'p5'],
+      lastPlaceId: 'p5',
+      lastPlaceType: 'survival',
+    }));
+
+    const state = store.getState().game;
+    expect(state.lastHohCompFinisherId).toBe('p5');
+    expect(state.lastHohCompFinisherType).toBe('survival');
+  });
+
+  it('applyMinigameWinner stores scored type correctly', () => {
+    const players = makePlayers(6);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: ['p0', 'p1', 'p2', 'p3', 'p4', 'p5'],
+      lastPlaceId: 'p5',
+      lastPlaceType: 'scored',
+    }));
+
+    const state = store.getState().game;
+    expect(state.lastHohCompFinisherType).toBe('scored');
+  });
+
+  it('applyMinigameWinner derives scored type from scores when lastPlaceType is omitted', () => {
+    const players = makePlayers(4);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: ['p0', 'p1', 'p2', 'p3'],
+      scores: { p0: 100, p1: 80, p2: 60, p3: 40 },
+      // lastPlaceType omitted — should derive 'scored' from hasScores
+    }));
+
+    const state = store.getState().game;
+    expect(state.lastHohCompFinisherType).toBe('scored');
+    expect(state.lastHohCompFinisherId).toBe('p3');
+  });
+
+  it('applyMinigameWinner sets null type when neither lastPlaceType nor scores provided', () => {
+    const players = makePlayers(4);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'hoh_comp',
+      hohId: null,
+      players,
+    });
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: 'p0',
+      participants: ['p0', 'p1', 'p2', 'p3'],
+      // no scores, no lastPlaceType
+    }));
+
+    const state = store.getState().game;
+    expect(state.lastHohCompFinisherType).toBeNull();
+  });
+
+  it('week_start resets lastHohCompFinisherType to null', () => {
+    const store = makeStore({
+      phase: 'week_end',
+      lastHohCompFinisherId: 'p5',
+      lastHohCompFinisherType: 'survival',
+    });
+
+    store.dispatch(advance()); // week_end → week_start
+    const state = store.getState().game;
+
+    expect(state.lastHohCompFinisherId).toBeNull();
+    expect(state.lastHohCompFinisherType).toBeNull();
+  });
+});
+
+describe('forced auto-nominee: AI nomination pool exclusion', () => {
+  it('AI never picks the forced auto-nominee as one of its 2 manual picks in public mode', () => {
+    // Run many seeds to ensure the AI pool always excludes the forced auto-nominee.
+    // (Seed 42 is deterministic; we test multiple scenarios.)
+    const testCases = [42, 1, 99, 777, 12345];
+
+    testCases.forEach((seed) => {
+      const store = makeStore({
+        phase: 'nominations',
+        seed,
+        hohId: 'p0',
+        publicModeEnabled: true,
+        lastHohCompFinisherId: 'p5',
+      });
+
+      store.dispatch(advance());
+      const state = store.getState().game;
+
+      // 3 total nominees; p5 is the auto-appended one, not one of the 2 AI picks
+      expect(state.nomineeIds).toHaveLength(3);
+      expect(state.nomineeIds).toContain('p5');
+      expect(state.nominationContext?.autoNomineeId).toBe('p5');
+      expect(state.nominationContext?.hohNomineeIds).not.toContain('p5');
+      expect(state.nominationContext?.hohNomineeIds).toHaveLength(2);
+    });
+  });
+
+  it('AI pool exclusion does not affect double eviction weeks', () => {
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p5',
+      doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    // DE: exactly 3 nominees, no auto-nominee appended
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(state.nominationContext).toBeNull();
+  });
+});
+
+describe('forced auto-nominee: commitNominees defensive strip', () => {
+  it('strips forced auto-nominee from submitted IDs before validating count (public mode)', () => {
+    const players = makePlayers(12, 0);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      awaitingNominations: true,
+      lastHohCompFinisherId: 'p3',
+      publicModeEnabled: true,
+      players,
+    });
+
+    // Submit 3 IDs, one of which is the forced auto-nominee.
+    // After stripping p3, 2 valid IDs remain — accepted.
+    store.dispatch(commitNominees(['p1', 'p2', 'p3']));
+    const state = store.getState().game;
+
+    // p1 + p2 as HOH picks, p3 as auto-nominee = 3 total
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(state.nomineeIds).toContain('p1');
+    expect(state.nomineeIds).toContain('p2');
+    expect(state.nomineeIds).toContain('p3');
+    expect(state.nominationContext?.hohNomineeIds).toEqual(['p1', 'p2']);
+    expect(state.nominationContext?.autoNomineeId).toBe('p3');
+  });
+
+  it('does not strip forced nominee in double eviction (DE picks must all be valid)', () => {
+    const players = makePlayers(12, 0);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      awaitingNominations: true,
+      lastHohCompFinisherId: 'p3',
+      publicModeEnabled: true,
+      doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
+      players,
+    });
+
+    // DE: picks 3, forced-nominee strip does not apply — all 3 accepted as-is
+    store.dispatch(commitNominees(['p1', 'p2', 'p3']));
+    const state = store.getState().game;
+
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(state.nomineeIds).toContain('p3');
+    expect(state.nominationContext).toBeNull(); // no auto-nominee context in DE
+  });
+});
+
+describe('forced auto-nominee: 3 unique nominees guaranteed in normal public-mode weeks', () => {
+  it('final nominees are always 3 unique players (AI path)', () => {
+    const store = makeStore({
+      phase: 'nominations',
+      hohId: 'p0',
+      publicModeEnabled: true,
+      lastHohCompFinisherId: 'p5',
+    });
+
+    store.dispatch(advance());
+    const state = store.getState().game;
+
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(new Set(state.nomineeIds).size).toBe(3);
+    expect(state.nomineeIds).toContain('p5');
+  });
+
+  it('final nominees are always 3 unique players (human path)', () => {
+    const players = makePlayers(12, 0);
+    players[0].status = 'hoh';
+
+    const store = makeStore({
+      phase: 'nomination_results',
+      hohId: 'p0',
+      awaitingNominations: true,
+      lastHohCompFinisherId: 'p5',
+      publicModeEnabled: true,
+      players,
+    });
+
+    store.dispatch(commitNominees(['p1', 'p2']));
+    const state = store.getState().game;
+
+    expect(state.nomineeIds).toHaveLength(3);
+    expect(new Set(state.nomineeIds).size).toBe(3);
+    expect(state.nomineeIds).toContain('p1');
+    expect(state.nomineeIds).toContain('p2');
+    expect(state.nomineeIds).toContain('p5');
   });
 });

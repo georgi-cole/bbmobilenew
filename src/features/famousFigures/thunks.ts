@@ -62,5 +62,5 @@ export const resolveFamousFiguresOutcome =
           nonWinnerIds[0]!,
         )
       : null;
-    dispatch(applyMinigameWinner({ winnerId, lastPlaceId }));
+    dispatch(applyMinigameWinner({ winnerId, lastPlaceId, lastPlaceType: 'scored' }));
   };

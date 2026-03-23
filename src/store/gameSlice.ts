@@ -132,6 +132,7 @@ export function createInitialGameState(): GameState {
     awaitingPovDecision: false,
     awaitingPovSaveTarget: false,
     lastHohCompFinisherId: null,
+    lastHohCompFinisherType: null,
     publicSavedNomineeId: null,
     nominationContext: null,
     awaitingPublicSave: false,
@@ -248,6 +249,14 @@ type ApplyMinigameWinnerPayload = {
    * For scored comps, pass the lowest-scoring player.
    */
   lastPlaceId?: string | null;
+  /**
+   * Competition type for the HOH comp. Stored in state.lastHohCompFinisherType and
+   * used to pick the compact disabled-option label in the nomination UI:
+   *   'scored'   → "Lowest Score"
+   *   'survival' → "First out"
+   * When omitted, falls back to 'scored' as the UI default.
+   */
+  lastPlaceType?: 'scored' | 'survival';
 };
 
 function applyCompetitionSeasonUpdateToState(
@@ -595,6 +604,7 @@ const gameSlice = createSlice({
         includePlacementBonuses,
         skipSeasonUpdate,
         lastPlaceId,
+        lastPlaceType,
       } = action.payload;
       const alive = getAlivePlayers(state);
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state);
@@ -634,6 +644,9 @@ const gameSlice = createSlice({
                   nonWinners[0],
                 )
               : nonWinners[0]);
+          // Persist competition type for compact nomination-UI label selection.
+          // Explicit lastPlaceType wins; otherwise derive from whether scores were provided.
+          state.lastHohCompFinisherType = lastPlaceType ?? (hasScores ? 'scored' : null);
         }
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.
@@ -877,11 +890,18 @@ const gameSlice = createSlice({
      */
     commitNominees(state, action: PayloadAction<string[]>) {
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return;
-      const ids = action.payload;
       const isDoubleEviction = state.doubleEviction?.weekActive === true;
       const publicModeEnabled = state.publicModeEnabled === true;
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
       const canUsePublicNomineeRule = publicModeEnabled && !isDoubleEviction;
+
+      // Defensive: in public mode non-DE weeks, strip the forced auto-nominee from the
+      // submitted IDs before validating count. The UI disables that option, but if it
+      // somehow appears in the payload it must not reduce the total to only 2 nominees.
+      const ids = canUsePublicNomineeRule && state.lastHohCompFinisherId
+        ? action.payload.filter((id) => id !== state.lastHohCompFinisherId)
+        : action.payload;
+
       // Human always picks 2 in normal weeks (3rd is auto-appended); picks 3 in DE.
       const expectedCount = isDoubleEviction ? 3 : 2;
       if (ids.length !== expectedCount) return;
@@ -2209,6 +2229,7 @@ const gameSlice = createSlice({
         state.replacementNeeded = false;
         state.povSavedId = null;
         state.lastHohCompFinisherId = null;
+        state.lastHohCompFinisherType = null;
         state.publicSavedNomineeId = null;
         state.nominationContext = null;
         state.awaitingPublicSave = false;
@@ -2598,6 +2619,7 @@ const gameSlice = createSlice({
           state.awaitingPovDecision = false;
           state.awaitingPovSaveTarget = false;
           state.lastHohCompFinisherId = null;
+          state.lastHohCompFinisherType = null;
           state.publicSavedNomineeId = null;
           state.nominationContext = null;
           state.awaitingPublicSave = false;
@@ -2689,8 +2711,15 @@ const gameSlice = createSlice({
             break;
           }
 
-          // AI HOH: pick randomly (2 for normal weeks, 3 for DE)
-          const nominees = seededPickN(rng, pool, nomineeCount);
+          // AI HOH: pick randomly (2 for normal weeks, 3 for DE).
+          // In public mode non-DE weeks, exclude the forced auto-nominee from the AI pick
+          // pool so the AI always selects distinct nominees and the auto-nominee is reliably
+          // appended as the third nominee below.
+          const aiPool =
+            canUsePublicNomineeRule && state.lastHohCompFinisherId
+              ? pool.filter((p) => p.id !== state.lastHohCompFinisherId)
+              : pool;
+          const nominees = seededPickN(rng, aiPool, nomineeCount);
           state.nomineeIds = nominees.map((n) => n.id);
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id);
