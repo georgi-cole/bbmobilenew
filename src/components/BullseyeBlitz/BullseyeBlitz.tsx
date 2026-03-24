@@ -410,6 +410,13 @@ export default function BullseyeBlitz({
                   lifeFraction > 0.75
                     ? Math.max(0.3, 1 - (lifeFraction - 0.75) * 2.8)
                     : 1;
+                const targetTransformStyle: CSSProperties = t.kind === 'hazard'
+                  // Hazard targets animate `transform` in CSS for the wiggle,
+                  // so their shrink scale is passed through a CSS variable.
+                  ? { '--bbl-scale': scale.toFixed(3) } as CSSProperties
+                  : {
+                    transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,
+                  };
 
                 return (
                   <button
@@ -418,11 +425,7 @@ export default function BullseyeBlitz({
                     style={{
                       left: `${t.x}%`,
                       top: `${t.y}%`,
-                      ...(t.kind === 'hazard'
-                        ? { '--bbl-scale': scale.toFixed(3) } as CSSProperties
-                        : {
-                          transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,
-                        }),
+                      ...targetTransformStyle,
                       opacity,
                     }}
                     onClick={() => handleTargetTap(t)}
