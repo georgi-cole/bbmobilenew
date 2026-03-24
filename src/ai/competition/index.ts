@@ -92,6 +92,10 @@ const BASELINE_SKILL_KEYS: Array<keyof CompetitionSkillProfile> = [
 ];
 const PARTICIPANT_HASH_PREFIX = 'participant';
 const VOLATILITY_SCALE = 0.35;
+const MAX_BUCKET_SELECTION_ROLL = 0.999999;
+const BUCKET_SKILL_BIAS_MULTIPLIER = 0.5;
+const MIN_BUCKET_SKILL_BIAS = -0.2;
+const MAX_BUCKET_SKILL_BIAS = 0.2;
 
 export interface TapRaceAiSimulationArgs {
   minigameKey: string;
@@ -475,8 +479,12 @@ function maybeMapPerformanceToBucketedScore(
       : b.maxScore - a.maxScore
   ));
 
-  const skillBias = clamp((performance - 0.5) * 0.5, -0.2, 0.2);
-  let selectionRoll = clamp(rng() - skillBias, 0, 0.999999);
+  const skillBias = clamp(
+    (performance - 0.5) * BUCKET_SKILL_BIAS_MULTIPLIER,
+    MIN_BUCKET_SKILL_BIAS,
+    MAX_BUCKET_SKILL_BIAS,
+  );
+  let selectionRoll = clamp(rng() - skillBias, 0, MAX_BUCKET_SELECTION_ROLL);
   let chosenBucket: MinigameAiScoreBucket = orderedBuckets[orderedBuckets.length - 1];
 
   for (const bucket of orderedBuckets) {
