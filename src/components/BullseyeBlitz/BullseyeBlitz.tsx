@@ -187,11 +187,13 @@ export default function BullseyeBlitz({
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
 
+  const configuredDuration = session?.options?.timeLimit ?? GAME_DURATION;
+
   // ── State ──────────────────────────────────────────────────────────────────
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
   const [countdown, setCountdown] = useState(READY_COUNT);
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [timeLeft, setTimeLeft] = useState(configuredDuration);
   const [score, setScore] = useState(0);
   const [targets, setTargets] = useState<ActiveTarget[]>([]);
   const [hits, setHits] = useState({ standard: 0, bonus: 0, hazard: 0 });
