@@ -21,6 +21,7 @@ import CastleRescueGame from './castleRescue/CastleRescueGame';
 import QuickTapRace from '../components/QuickTapRace/QuickTapRace';
 import TravelingDots from '../components/TravelingDots/TravelingDots';
 import EstimationGame from '../components/EstimationGame/EstimationGame';
+import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -45,6 +46,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   QuickTapRace: QuickTapRace as ComponentType<GenericMinigameProps>,
   TravelingDots: TravelingDots as ComponentType<GenericMinigameProps>,
   EstimationGame: EstimationGame as ComponentType<GenericMinigameProps>,
+  BullseyeBlitz: BullseyeBlitz as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
