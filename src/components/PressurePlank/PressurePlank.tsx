@@ -329,7 +329,8 @@ export default function PressurePlank({
       );
 
       // Compute safe zone (shrinks over time)
-      const shrinkProgress = Math.min(1, elapsed / SAFE_ZONE_SHRINK_DURATION);
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const shrinkProgress = Math.min(1, elapsedSeconds / SAFE_ZONE_SHRINK_DURATION);
       const currentSafeZone =
         SAFE_ZONE_INITIAL - (SAFE_ZONE_INITIAL - SAFE_ZONE_MIN) * shrinkProgress;
 
