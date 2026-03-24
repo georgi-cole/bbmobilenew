@@ -2,9 +2,12 @@
  * FinalFaceoff — fullscreen overlay for the jury voting finale sequence.
  *
  * Mounted by AppShell when game.phase === 'jury'.
- * Coordinates juror reveals, human-vote UI, tally display, and winner banner.
+ * Coordinates:
+ *   1. SeasonRecapCinematic  — played once before vote reveal
+ *   2. Tribunal vote board   — clue-based juror reveals, staged vote chip, juror flash
+ *   3. Winner banner / tally
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { Player } from '../../types';
 import {
@@ -29,6 +32,7 @@ import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
 import './FinalFaceoff.css';
 
 export default function FinalFaceoff() {
@@ -40,6 +44,59 @@ export default function FinalFaceoff() {
   const publicOpinion = useAppSelector(selectPublicOpinion);
 
   const jurorListRef = useRef<HTMLDivElement>(null);
+
+  // ── Recap / cinematic gate ─────────────────────────────────────────────
+  const [recapDone, setRecapDone] = useState(false);
+  const handleRecapComplete = useCallback(() => setRecapDone(true), []);
+
+  // ── Staged vote reveal: track which jurors have their vote chip visible ─
+  // Keys are jurorIds; value = true once the chip appears (after ~2.4s delay).
+  const [voteVisible, setVoteVisible] = useState<Record<string, boolean>>({});
+  // Track the jurorId that was most recently attributed (triggers flash).
+  const [flashingJurorId, setFlashingJurorId] = useState<string | null>(null);
+  const prevRevealedCountRef = useRef(0);
+
+  useEffect(() => {
+    const newCount = revealed.length;
+    const prevCount = prevRevealedCountRef.current;
+    prevRevealedCountRef.current = newCount;
+
+    if (newCount <= prevCount) return;
+
+    const newlyRevealed = revealed.slice(prevCount);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    for (const r of newlyRevealed) {
+      const { jurorId } = r;
+      // Show clue immediately; reveal vote chip after 2.4 s
+      const voteTimer = setTimeout(() => {
+        setVoteVisible((prev) => ({ ...prev, [jurorId]: true }));
+        setFlashingJurorId(jurorId);
+        // Clear flash after 800 ms
+        const flashTimer = setTimeout(
+          () => setFlashingJurorId((cur) => (cur === jurorId ? null : cur)),
+          800,
+        );
+        timers.push(flashTimer);
+      }, 2400);
+      timers.push(voteTimer);
+    }
+
+    return () => {
+      for (const t of timers) clearTimeout(t);
+    };
+  }, [revealed]);
+
+  // When finale completes (skip-all or auto-finalize), make all votes visible
+  useEffect(() => {
+    if (!finale.isComplete) return;
+    const allVisible: Record<string, boolean> = {};
+    for (const r of revealed) {
+      allVisible[r.jurorId] = true;
+    }
+    const t = setTimeout(() => setVoteVisible(allVisible), 0);
+    return () => clearTimeout(t);
+  }, [finale.isComplete, revealed]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -148,6 +205,18 @@ export default function FinalFaceoff() {
 
   if (!finale.isActive) return null;
 
+  // Show season recap cinematic before the vote reveal
+  if (!recapDone) {
+    return (
+      <SeasonRecapCinematic
+        season={game.season}
+        week={game.week}
+        players={game.players}
+        onComplete={handleRecapComplete}
+      />
+    );
+  }
+
   // Build finalists list with proper type safety (no non-null assertion)
   const finalists: Player[] = [];
   for (const id of finale.finalistIds) {
@@ -234,13 +303,27 @@ export default function FinalFaceoff() {
               status: 'jury' as const,
             };
             return (
-              <JurorBubble key={PUBLIC_JUROR_ID} juror={publicJuror} finalist={finalist} reveal={r} />
+              <JurorBubble
+                key={PUBLIC_JUROR_ID}
+                juror={publicJuror}
+                finalist={finalist}
+                reveal={r}
+                voteVisible={voteVisible[PUBLIC_JUROR_ID] ?? false}
+                isFlashing={flashingJurorId === PUBLIC_JUROR_ID}
+              />
             );
           }
           const juror = game.players.find((p) => p.id === r.jurorId);
           if (!juror) return null;
           return (
-            <JurorBubble key={r.jurorId} juror={juror} finalist={finalist} reveal={r} />
+            <JurorBubble
+              key={r.jurorId}
+              juror={juror}
+              finalist={finalist}
+              reveal={r}
+              voteVisible={voteVisible[r.jurorId] ?? false}
+              isFlashing={flashingJurorId === r.jurorId}
+            />
           );
         })}
       </div>

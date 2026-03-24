@@ -15,6 +15,7 @@ import {
 import type { Player } from '../../types';
 import { resolveAvatar } from '../../utils/avatar';
 import { selectSettings } from '../../store/settingsSlice';
+import FinalLightsOutSequence from '../FinalLightsOutSequence/FinalLightsOutSequence';
 import './SeasonFinaleOverlay.css';
 
 const HOST_PLAYER: Player = {
@@ -23,8 +24,6 @@ const HOST_PLAYER: Player = {
   avatar: '🎤',
   status: 'active',
 };
-
-const LIGHTS_OFF_DURATION_MS = 2400;
 
 const INTERVIEW_BANKS = [
   [
@@ -139,16 +138,9 @@ export default function SeasonFinaleOverlay() {
 
   useEffect(() => {
     if (finale?.phase !== 'lightsOffTransition') return;
-    const noAnimations =
-      typeof document !== 'undefined' &&
-      !!document.body &&
-      document.body.classList.contains('no-animations');
-    const duration = noAnimations ? 0 : LIGHTS_OFF_DURATION_MS;
-    const timerId = window.setTimeout(() => {
-      dispatch(completeFinale());
-    }, duration);
-    return () => window.clearTimeout(timerId);
-  }, [dispatch, finale?.phase]);
+    // FinalLightsOutSequence handles its own timing and calls onComplete when done.
+    // The completeFinale dispatch is now triggered via the onComplete callback.
+  }, [finale?.phase]);
 
   useEffect(() => {
     if (finale?.phase !== 'seasonComplete' || location.pathname === '/game-over') return;
@@ -239,23 +231,10 @@ export default function SeasonFinaleOverlay() {
       )}
 
       {finale.phase === 'lightsOffTransition' && (
-        <div
-          className={`season-finale season-finale--lights-off${finale.isLightsOffAnimating ? ' season-finale--lights-off-active' : ''}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Lights off transition"
-        >
-          <div className="season-finale__lights-overlay" />
-          <div className="season-finale__lights-copy">
-            <p className="season-finale__lights-kicker">Finale Night</p>
-            <h2>Goodnight, House.</h2>
-            <p>
-              {publicFavoriteWinner
-                ? `${publicFavoriteWinner.name} takes Public's Favorite as the house fades to black.`
-                : 'The season slips into darkness one last time.'}
-            </p>
-          </div>
-        </div>
+        <FinalLightsOutSequence
+          publicFavoriteWinnerName={publicFavoriteWinner?.name}
+          onComplete={() => dispatch(completeFinale())}
+        />
       )}
     </>
   );
