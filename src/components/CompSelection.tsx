@@ -51,8 +51,8 @@ export default function CompSelection({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const buildPayload = (
-    nextMode: CompSelectionMode = mode,
-    nextSelectedGameId: string = selectedGameId,
+    nextMode: CompSelectionMode,
+    nextSelectedGameId: string,
   ): CompSelectionPayload => ({
     mode: nextMode,
     ...(nextMode === 'single-game' && { selectedGameId: nextSelectedGameId }),
@@ -82,7 +82,7 @@ export default function CompSelection({
 
   const handleSave = async () => {
     if (!onSave) return;
-    const payload = buildPayload();
+    const payload = buildPayload(mode, selectedGameId);
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -132,7 +132,7 @@ export default function CompSelection({
               const nextMode = e.target.value as CompSelectionMode;
               setMode(nextMode);
               setSaveSuccess(false);
-              onChange?.(buildPayload(nextMode));
+              onChange?.(buildPayload(nextMode, selectedGameId));
             }}
             aria-label="Selection mode"
           >

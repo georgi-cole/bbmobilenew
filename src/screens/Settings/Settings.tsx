@@ -10,7 +10,6 @@ import {
   setVisual,
   type ThemePreset,
 } from '../../store/settingsSlice';
-import { resetGame } from '../../store/gameSlice';
 import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
 import { getAllGames, type GameCategory } from '../../minigames/registry';
@@ -81,7 +80,7 @@ export default function Settings() {
   );
 
   // Persist comp selection changes immediately via setGameUX.
-  const handleCompSelectionSave = useCallback(
+  const handleCompSelectionChange = useCallback(
     (payload: CompSelectionPayload) => {
       dispatch(setGameUX({ compSelection: payload }));
     },
@@ -111,7 +110,6 @@ export default function Settings() {
   };
 
   const handleRestartNow = () => {
-    dispatch(resetGame());
     setShowRestartModal(false);
     restartApp('#/game');
   };
@@ -500,7 +498,7 @@ export default function Settings() {
             <p className="settings-section__heading">Comp Selection</p>
             <CompSelection
               fetchGames={fetchGames}
-              onChange={handleCompSelectionSave}
+              onChange={handleCompSelectionChange}
               initialPayload={settings.gameUX.compSelection}
             />
 
