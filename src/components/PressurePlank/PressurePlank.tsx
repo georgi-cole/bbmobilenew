@@ -57,6 +57,15 @@ const DANGER_THRESHOLD = 65;
 /** Warning zone threshold — caution visual when |balance| exceeds this. */
 const WARNING_THRESHOLD = 40;
 
+/** Keep one decimal place of safe-zone precision in the rendered UI. */
+const SAFE_ZONE_DISPLAY_PRECISION = 10;
+
+/** Danger styling begins once half of the out-of-zone grace has been consumed. */
+const OUT_OF_ZONE_DANGER_THRESHOLD_MS = OUT_OF_ZONE_GRACE_MS / 2;
+
+/** Fixed display label for the out-of-zone grace period. */
+const OUT_OF_ZONE_GRACE_LABEL = (OUT_OF_ZONE_GRACE_MS / 1000).toFixed(1);
+
 /** Spring constant — how strongly balance is pulled back toward 0. */
 const SPRING_K = 0.8;
 
@@ -352,7 +361,7 @@ export default function PressurePlank({
         lastReactUpdate = now;
         setBalance(Math.round(balanceRef.current));
         setSurvivalMs(Date.now() - startTime);
-        setSafeZone(Math.round(currentSafeZone * 10) / 10);
+        setSafeZone(Math.round(currentSafeZone * SAFE_ZONE_DISPLAY_PRECISION) / SAFE_ZONE_DISPLAY_PRECISION);
         setOutOfZoneMs(outOfZoneMsRef.current);
       }
 
@@ -408,7 +417,7 @@ export default function PressurePlank({
   const isOutOfZone = !isWithinSafeZone(balance, safeZone);
   const isWarning =
     isOutOfZone || (absBalance > WARNING_THRESHOLD && absBalance <= DANGER_THRESHOLD);
-  const isDanger = absBalance > DANGER_THRESHOLD || outOfZoneMs >= OUT_OF_ZONE_GRACE_MS / 2;
+  const isDanger = absBalance > DANGER_THRESHOLD || outOfZoneMs >= OUT_OF_ZONE_DANGER_THRESHOLD_MS;
   const survivalSeconds = (survivalMs / 1000).toFixed(1);
   /** Needle position as percentage (0 = far left, 50 = centre, 100 = far right). */
   const needlePct = ((balance + MAX_BALANCE) / (2 * MAX_BALANCE)) * 100;
@@ -560,7 +569,7 @@ export default function PressurePlank({
 
             {/* Safe zone width indicator */}
             <div className="pp__safe-hint">
-              Safe zone: <strong>{safeZoneWidthPct.toFixed(0)}%</strong> · Grace: <strong>{(OUT_OF_ZONE_GRACE_MS / 1000).toFixed(1)}s</strong> outside zone
+              Safe zone: <strong>{safeZoneWidthPct.toFixed(0)}%</strong> · Grace: <strong>{OUT_OF_ZONE_GRACE_LABEL}s</strong> outside zone
             </div>
           </div>
         )}
