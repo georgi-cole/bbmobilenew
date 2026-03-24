@@ -194,15 +194,18 @@ export default function PressurePlank({
 
   useEffect(() => {
     if (gamePhase !== 'ready') return;
-    if (countdown <= 0) {
-      setGamePhase('playing');
-      return;
-    }
-    if (autoStart && countdown === READY_COUNT) {
-      setCountdown(0);
-      return;
-    }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    const timeoutMs = countdown <= 0 || (autoStart && countdown === READY_COUNT) ? 0 : 1000;
+    const t = setTimeout(() => {
+      if (autoStart && countdown === READY_COUNT) {
+        setCountdown(0);
+        return;
+      }
+      if (countdown <= 0) {
+        setGamePhase('playing');
+        return;
+      }
+      setCountdown((c) => c - 1);
+    }, timeoutMs);
     return () => clearTimeout(t);
   }, [gamePhase, countdown, autoStart]);
 
@@ -294,8 +297,9 @@ export default function PressurePlank({
     balanceRef.current = 0;
     velocityRef.current = 0;
     const startTime = Date.now();
+    const startPerf = performance.now();
     startTimeRef.current = startTime;
-    lastFrameRef.current = performance.now();
+    lastFrameRef.current = startPerf;
 
     // Track when we last updated React state (throttle to ~20 fps for renders)
     let lastReactUpdate = 0;
@@ -305,7 +309,7 @@ export default function PressurePlank({
       lastFrameRef.current = now;
       const dt = Math.min(dtMs / 1000, 0.05); // cap delta to 50ms (handles tab blur)
 
-      const elapsed = (now - startTimeRef.current) / 1000;
+      const elapsed = (now - startPerf) / 1000;
 
       // Difficulty ramp: drift acceleration increases with time
       const difficultyMult = 1 + elapsed / 60; // doubles at 60s
@@ -500,7 +504,13 @@ export default function PressurePlank({
             <div className="pp__controls">
               <button
                 className="pp__btn pp__btn--left"
-                onPointerDown={handleTapLeft}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  handleTapLeft();
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) handleTapLeft();
+                }}
                 aria-label="Tap left to shift balance left"
                 type="button"
               >
@@ -508,7 +518,13 @@ export default function PressurePlank({
               </button>
               <button
                 className="pp__btn pp__btn--right"
-                onPointerDown={handleTapRight}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  handleTapRight();
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) handleTapRight();
+                }}
                 aria-label="Tap right to shift balance right"
                 type="button"
               >
