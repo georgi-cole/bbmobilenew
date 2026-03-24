@@ -20,6 +20,7 @@ import {
   getDefaultCompetitionSeasonState,
   getMinigameAiModel,
   simulateAiPerformance,
+  simulateQuickTapAiScore,
   updateCompetitionSeasonStateByPlayerId,
   type CompetitionSeasonUpdateInput,
 } from '../ai/competition';
@@ -521,10 +522,10 @@ const gameSlice = createSlice({
      * presses the "Done" / "Continue ▶" button.
      *
      * Accepts either a legacy numeric payload (backward-compat) or a rich
-     * `CompleteMinigamePayload` with `humanScore` and optional `lastPlaceId`.
-     * When `lastPlaceId` is supplied it is used directly as the canonical
-     * last-place finisher rather than re-deriving from scores, ensuring the
-     * results UI and nomination logic read from the same authoritative data.
+     * `CompleteMinigamePayload` with `humanScore` and optional canonical
+     * `winnerId` / `lastPlaceId` values. When supplied, those IDs are used
+     * directly rather than re-deriving from scores, ensuring the results UI
+     * and the applied state transition read from the same authoritative data.
      */
     completeMinigame(
       state,
@@ -546,8 +547,9 @@ const gameSlice = createSlice({
         scores[humanPlayer.id] = payload.humanScore;
       }
 
-      // Determine winner: highest tap count wins
-      const winnerId = determineWinner(session.participants, scores);
+      // Prefer a canonical winner supplied by the UI component so the
+      // displayed leaderboard and the applied state transition stay aligned.
+      const winnerId = payload.winnerId ?? determineWinner(session.participants, scores);
 
       // Update personal records for every participant
       const personalRecords: Record<string, number> = {};
@@ -3456,19 +3458,33 @@ export const startMinigame =
     // Pre-compute AI scores, respecting the configured timeLimit
     const aiScores: Record<string, number> = {};
     const model = getMinigameAiModel(opts.key);
+    const isQuickTap = opts.key === 'quickTap';
     opts.participants.forEach((id, index) => {
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
-        aiScores[id] = simulateAiPerformance({
-          minigameKey: opts.key,
-          minigameModel: model,
-          seed: opts.seed,
-          playerId: id,
-          participantIndex: index,
-          profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-          seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
-          options: { timeLimitSeconds: opts.options.timeLimit },
-        });
+        if (isQuickTap) {
+          // Quick Tap uses an archetype-based simulation that models booster
+          // decisions and interruption cost — more realistic than the generic
+          // linear model.
+          aiScores[id] = simulateQuickTapAiScore({
+            seed: opts.seed,
+            playerId: id,
+            participantIndex: index,
+            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+            timeLimitSeconds: opts.options.timeLimit,
+          });
+        } else {
+          aiScores[id] = simulateAiPerformance({
+            minigameKey: opts.key,
+            minigameModel: model,
+            seed: opts.seed,
+            playerId: id,
+            participantIndex: index,
+            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+            seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
+            options: { timeLimitSeconds: opts.options.timeLimit },
+          });
+        }
       }
     });
 

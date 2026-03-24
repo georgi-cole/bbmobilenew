@@ -76,6 +76,12 @@ export interface CompleteMinigamePayload {
   /** The human player's final effective score (after any multipliers). */
   humanScore: number;
   /**
+   * Canonical winner ID derived by the game component itself.
+   * When provided this is preferred over the store's score-based derivation
+   * so the results UI and final applied winner always stay aligned.
+   */
+  winnerId?: string;
+  /**
    * Canonical last-place player ID derived by the game component itself.
    * When provided this is preferred over the store's score-based derivation
    * so the results UI and nomination logic share the same authoritative source.
