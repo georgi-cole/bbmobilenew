@@ -106,6 +106,8 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  padding-inline: 2px;
+  box-sizing: border-box;
   /* subtle scroll indicator */
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 160, 255, 0.2) transparent;
@@ -125,19 +127,31 @@
 /* ── Card grid ───────────────────────────────────────────────────────────── */
 .hoc-board {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(6px, 1.8vw, 10px);
   width: 100%;
-  max-width: 380px;
-  padding: 4px 0 8px;
+  max-width: 500px;
+  padding: 4px 6px 10px;
+  box-sizing: border-box;
 }
 
 /* ── Individual card ─────────────────────────────────────────────────────── */
 .hoc-card {
   aspect-ratio: 2 / 3;
-  max-height: 88px;
+  min-height: 84px;
   perspective: 600px;
   cursor: pointer;
+}
+
+@media (min-width: 460px) {
+  .hoc-board {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    max-width: 560px;
+  }
+
+  .hoc-card {
+    min-height: 92px;
+  }
 }
 
 .hoc-card[data-locked="true"] {
