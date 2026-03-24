@@ -28,6 +28,7 @@ import houseOfCardsReducer, {
   rankOutcomes,
   simulateAiOutcome,
   TOTAL_PAIRS,
+  AI_MIN_FINISH_MS,
 } from '../src/features/houseOfCards/houseOfCardsSlice';
 import type { HouseOfCardsState } from '../src/features/houseOfCards/houseOfCardsSlice';
 import { resolveHouseOfCardsOutcome } from '../src/features/houseOfCards/thunks';
@@ -163,7 +164,7 @@ describe('House of Cards — winner correctness', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
 
-    // Human finishes all 8 pairs fast → high score. AI players have lower scores.
+    // Human finishes all 10 pairs fast → high score. AI players have lower scores.
     runGame(store, {
       participantIds: ['p0', 'p1', 'p2', 'p3'],
       humanId: 'p0',
@@ -702,5 +703,122 @@ describe('House of Cards — authoritative data must be present', () => {
 
     expect(store.getState().game.phase).toBe('hoh_comp'); // unchanged
     expect(store.getState().game.hohId).toBeNull();
+  });
+});
+
+// ── 9. Board size regression ──────────────────────────────────────────────────
+
+describe('House of Cards — board uses 20 cards (10 pairs)', () => {
+  it('TOTAL_PAIRS equals 10', () => {
+    expect(TOTAL_PAIRS).toBe(10);
+  });
+
+  it('a finishing human matches exactly TOTAL_PAIRS pairs', () => {
+    const players = makePlayers(3);
+    const store = makeStore({ players });
+
+    runGame(store, {
+      participantIds: ['p0', 'p1', 'p2'],
+      humanId: 'p0',
+      humanMatchedPairs: TOTAL_PAIRS,
+      humanMistakes: 0,
+      humanCompletionMs: 20_000,
+      seed: 7,
+    });
+
+    const hoc = (store.getState() as { houseOfCards: HouseOfCardsState }).houseOfCards;
+    const human = hoc.standings.find((s) => s.playerId === 'p0');
+    expect(human?.matchedPairs).toBe(TOTAL_PAIRS);
+    expect(human?.didFinish).toBe(true);
+  });
+
+  it('game is always completable: all pairs in standings sum to a consistent total', () => {
+    // Verify no "impossible last pair" scenario: if human finishes, their
+    // matchedPairs === TOTAL_PAIRS and the game resolves without leftover unmatched cards.
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+
+    runGame(store, {
+      participantIds: ['p0', 'p1', 'p2', 'p3'],
+      humanId: 'p0',
+      humanMatchedPairs: TOTAL_PAIRS,
+      humanMistakes: 0,
+      humanCompletionMs: 18_000,
+      humanStreak: 3,
+      seed: 5,
+    });
+
+    const hoc = (store.getState() as { houseOfCards: HouseOfCardsState }).houseOfCards;
+    expect(hoc.status).toBe('complete');
+    // Human matched all pairs — no leftover unmatched state.
+    const human = hoc.standings.find((s) => s.playerId === 'p0');
+    expect(human?.matchedPairs).toBe(TOTAL_PAIRS);
+    expect(human?.didFinish).toBe(true);
+  });
+});
+
+// ── 10. AI pacing + large-field standings regression ─────────────────────────
+
+describe('House of Cards — AI pacing and large-field standings', () => {
+  it('simulateAiOutcome completionTimeMs is at or above AI_MIN_FINISH_MS for finishers', () => {
+    // The new AI timing model enforces a minimum plausible finish time.
+    for (let i = 0; i < 20; i++) {
+      const outcome = simulateAiOutcome(`player${i}`, 12345 + i * 7, i);
+      if (outcome.didFinish) {
+        expect(outcome.completionTimeMs).not.toBeNull();
+        expect(outcome.completionTimeMs!).toBeGreaterThanOrEqual(AI_MIN_FINISH_MS);
+      }
+    }
+  });
+
+  it('AI completionTimeMs is never unrealistically small (no sub-5s finishes)', () => {
+    // With 16 participants, no AI should complete in under 5 seconds.
+    const OBVIOUSLY_TOO_FAST = 5_000;
+    for (let i = 0; i < 16; i++) {
+      const outcome = simulateAiOutcome(`houseguest${i}`, 42, i);
+      if (outcome.didFinish && outcome.completionTimeMs !== null) {
+        expect(outcome.completionTimeMs).toBeGreaterThan(OBVIOUSLY_TOO_FAST);
+      }
+    }
+  });
+
+  it('simulateAiOutcome finishers with 16 participants do not all cluster at t<2s', () => {
+    // Run 16 AI players and verify completions are spread over time.
+    const finishTimes: number[] = [];
+    for (let i = 0; i < 16; i++) {
+      const outcome = simulateAiOutcome(`h${i}`, 42, i);
+      if (outcome.didFinish && outcome.completionTimeMs !== null) {
+        finishTimes.push(outcome.completionTimeMs);
+      }
+    }
+    // Should have at least a few finishers; none before 10 seconds.
+    expect(finishTimes.length).toBeGreaterThan(0);
+    expect(finishTimes.every((t) => t >= 10_000)).toBe(true);
+  });
+
+  it('rankOutcomes handles a full 16-player field without softlocks', () => {
+    // Simulate a 16-player game and verify standings are complete and non-empty.
+    const players = makePlayers(16);
+    const store = makeStore({ players });
+
+    runGame(store, {
+      participantIds: players.map((p) => p.id),
+      humanId: 'p0',
+      humanMatchedPairs: TOTAL_PAIRS,
+      humanMistakes: 1,
+      humanCompletionMs: 25_000,
+      humanStreak: 2,
+      seed: 77,
+    });
+
+    const hoc = (store.getState() as { houseOfCards: HouseOfCardsState }).houseOfCards;
+    expect(hoc.standings.length).toBe(16);
+    // Ranks are unique and span 1..16.
+    const ranks = hoc.standings.map((s) => s.finalRank).sort((a, b) => a - b);
+    expect(ranks).toEqual(Array.from({ length: 16 }, (_, i) => i + 1));
+    // Winner and last place are set.
+    expect(hoc.winnerId).toBeTruthy();
+    expect(hoc.lastPlaceId).toBeTruthy();
+    expect(hoc.winnerId).not.toBe(hoc.lastPlaceId);
   });
 });

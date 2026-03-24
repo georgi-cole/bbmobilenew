@@ -3,8 +3,8 @@
  *
  * Hybrid gameplay:
  *   - Memory-card matching race (core gameplay)
- *   - Lane-race progress rail (spectator-friendly HUD)
- *   - Light power moments: Peek (brief reveal) and Combo Boost
+ *   - Compact event ticker showing AI progress (spectator-friendly)
+ *   - Streak-triggered Peek effect (once per game, auto at 2-pair streak)
  *
  * Phases: active → complete
  *
@@ -32,9 +32,15 @@ import type {
   PlayerOutcome,
 } from '../../features/houseOfCards/houseOfCardsSlice';
 import { resolveHouseOfCardsOutcome } from '../../features/houseOfCards/thunks';
-import { mulberry32 } from '../../store/rng';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
+import {
+  buildHouseOfCardsBoard,
+  PEEK_DURATION_MS,
+  PEEK_STREAK_TRIGGER,
+  type HouseOfCardsBoardCard,
+} from './houseOfCardsUtils';
+import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import './HouseOfCardsComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,54 +59,21 @@ interface Props {
   onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
-interface CardState {
-  index: number;
-  symbol: string;
-  /** Whether a power tile is hidden under this card */
-  power: 'peek' | 'boost' | null;
-  isFlipped: boolean;
-  isMatched: boolean;
-  isMismatch: boolean;
+interface TickerEvent {
+  id: string;
+  text: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_SYMBOLS = ['🌙', '⚡', '🎭', '🔮', '🃏', '♠️', '♥️', '♦️'];
-
 const MEDALS = ['🥇', '🥈', '🥉'];
-const RANK_ICONS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣'];
+
+function rankIcon(rank: number): string {
+  const ICONS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+  return ICONS[rank - 1] ?? `#${rank}`;
+}
 
 const MISMATCH_HIDE_MS = 900;
-const PEEK_DURATION_MS = 1800;
-
-// ─── Board builder ────────────────────────────────────────────────────────────
-
-/**
- * Build a seeded shuffled board of TOTAL_PAIRS × 2 cards.
- * Two random cards are assigned power tiles (peek / boost).
- */
-function buildBoard(seed: number): CardState[] {
-  const rng = mulberry32(seed ^ 0xdeadbeef);
-  const symbols = [...CARD_SYMBOLS, ...CARD_SYMBOLS]; // 16 cards, 8 pairs
-  // Fisher-Yates shuffle
-  for (let i = symbols.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
-  }
-  // Pick two distinct indices for power tiles
-  const peekIdx = Math.floor(rng() * symbols.length);
-  let boostIdx = Math.floor(rng() * (symbols.length - 1));
-  if (boostIdx >= peekIdx) boostIdx++;
-
-  return symbols.map((sym, i) => ({
-    index: i,
-    symbol: sym,
-    power: i === peekIdx ? 'peek' : i === boostIdx ? 'boost' : null,
-    isFlipped: false,
-    isMatched: false,
-    isMismatch: false,
-  }));
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -138,7 +111,7 @@ export default function HouseOfCardsComp({
   );
 
   // ── Local game state ─────────────────────────────────────────────────────
-  const [board, setBoard] = useState<CardState[]>([]);
+  const [board, setBoard] = useState<HouseOfCardsBoardCard[]>([]);
   const [locked, setLocked] = useState(false);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
@@ -147,8 +120,11 @@ export default function HouseOfCardsComp({
   const [timeLeft, setTimeLeft] = useState(GAME_TIME_LIMIT_MS / 1000);
   const [gameOver, setGameOver] = useState(false);
   const [peekActive, setPeekActive] = useState(false);
+  /** Whether the one-time streak-triggered peek has already been used. */
+  const [peekUsed, setPeekUsed] = useState(false);
   const [burstText, setBurstText] = useState<string | null>(null);
-  const [boostActive, setBoostActive] = useState(false);
+  /** Event ticker: latest events shown at the bottom of the screen. */
+  const [tickerEvents, setTickerEvents] = useState<TickerEvent[]>([]);
 
   const startTimeRef = useRef<number>(Date.now());
   const gameOverRef = useRef(false);
@@ -157,6 +133,11 @@ export default function HouseOfCardsComp({
   const turnsTakenRef = useRef(0);
   const streakBestRef = useRef(0);
   const finalisedRef = useRef(false);
+  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionSoundPlayedRef = useRef(false);
+  const { playFlip, playMatch, playMismatch, playPeek, playComplete } = useHouseOfCardsAudio(
+    hoc?.status === 'active' && !gameOver,
+  );
 
   // ── Initialise competition ───────────────────────────────────────────────
   useEffect(() => {
@@ -168,17 +149,62 @@ export default function HouseOfCardsComp({
         seed,
       }),
     );
-    setBoard(buildBoard(seed));
+    setBoard(buildHouseOfCardsBoard(seed));
     startTimeRef.current = Date.now();
     gameOverRef.current = false;
     finalisedRef.current = false;
     return () => {
+      if (peekTimeoutRef.current) {
+        clearTimeout(peekTimeoutRef.current);
+        peekTimeoutRef.current = null;
+      }
       dispatch(resetHouseOfCards());
     };
   // Intentionally run only on mount: participants/seed/prizeType define the competition
   // session and must not change mid-game (restart would require a remount).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Schedule AI ticker events from pre-computed outcomes ─────────────────
+  // Events fire at the AI's deterministic completion time so the ticker
+  // shows "X finished!" realistically spread over the game clock.
+  useEffect(() => {
+    if (!hoc || hoc.status !== 'active') return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const entries = Object.entries(hoc.aiOutcomes);
+
+    // Intermediate "found a match" events: fired at ~halfway through their run
+    entries.forEach(([id, outcome]) => {
+      const halfTime = outcome.didFinish && outcome.completionTimeMs !== null
+        ? outcome.completionTimeMs / 2
+        : 20_000;
+      const t1 = setTimeout(() => {
+        setTickerEvents((prev) => [
+          { id: `${id}-mid`, text: `${nameFor(id).split(' ')[0]} matched a pair` },
+          ...prev,
+        ].slice(0, 5));
+      }, halfTime);
+      timers.push(t1);
+
+      // "Finished" event
+      if (outcome.didFinish && outcome.completionTimeMs !== null) {
+        const t2 = setTimeout(() => {
+          setTickerEvents((prev) => [
+            { id: `${id}-done`, text: `${nameFor(id).split(' ')[0]} finished! 🏁` },
+            ...prev,
+          ].slice(0, 5));
+        }, outcome.completionTimeMs);
+        timers.push(t2);
+      }
+    });
+
+    return () => timers.forEach(clearTimeout);
+  // Re-run when the game starts (hoc.status flips to active) or when
+  // nameFor changes (participants updated). The effect captures nameFor
+  // at scheduling time so it must be in deps to avoid stale name lookups.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoc?.status, nameFor]);
 
   // ── Countdown timer ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,40 +244,25 @@ export default function HouseOfCardsComp({
     dispatch(resolveHouseOfCardsOutcome());
   }, [hoc, dispatch]);
 
+  useEffect(() => {
+    if (hoc?.status === 'complete' && !completionSoundPlayedRef.current) {
+      completionSoundPlayedRef.current = true;
+      playComplete();
+      return;
+    }
+
+    if (hoc?.status !== 'complete') {
+      completionSoundPlayedRef.current = false;
+    }
+  }, [hoc?.status, playComplete]);
+
   // ── Card flip handler ────────────────────────────────────────────────────
   const handleCardClick = useCallback(
     (cardIndex: number) => {
       if (locked || gameOver) return;
       const card = board[cardIndex];
       if (!card || card.isMatched || card.isFlipped) return;
-
-      // Trigger power tile effect if applicable.
-      if (card.power === 'peek' && !peekActive) {
-        setPeekActive(true);
-        // Reveal all unmatched cards briefly.
-        setBoard((prev) =>
-          prev.map((c) => (!c.isMatched ? { ...c, isFlipped: true } : c)),
-        );
-        // Snapshot the currently flipped indices in a Set for O(1) lookup when hiding.
-        const flippedSet = new Set(flippedIndices);
-        setTimeout(() => {
-          setBoard((prev) =>
-            prev.map((c) => (!c.isMatched && !flippedSet.has(c.index) ? { ...c, isFlipped: false } : c)),
-          );
-          setPeekActive(false);
-        }, PEEK_DURATION_MS);
-        return;
-      }
-
-      if (card.power === 'boost' && !boostActive) {
-        setBoostActive(true);
-        setBurstText('⚡ BOOST!');
-        setTimeout(() => {
-          setBurstText(null);
-          setBoostActive(false);
-        }, 1500);
-        // Continue normal flip logic below (the boost scores double next match).
-      }
+      playFlip();
 
       const newBoard = board.map((c, i) =>
         i === cardIndex ? { ...c, isFlipped: true } : c,
@@ -267,6 +278,7 @@ export default function HouseOfCardsComp({
 
         if (cardA.symbol === cardB.symbol) {
           // Match!
+          playMatch();
           const newMatched = matchedPairsRef.current + 1;
           matchedPairsRef.current = newMatched;
           const newStreak = streak + 1;
@@ -276,12 +288,7 @@ export default function HouseOfCardsComp({
           newBoard[a] = { ...newBoard[a], isMatched: true, isFlipped: true };
           newBoard[b] = { ...newBoard[b], isMatched: true, isFlipped: true };
 
-          const burstMsg =
-            newStreak >= 3
-              ? `🔥 ${newStreak}× STREAK!`
-              : boostActive
-              ? '⚡ DOUBLE MATCH!'
-              : '✓ MATCH!';
+          const burstMsg = newStreak >= 3 ? `🔥 ${newStreak}× STREAK!` : '✓ MATCH!';
           setBurstText(burstMsg);
           setTimeout(() => setBurstText(null), 600);
 
@@ -291,11 +298,37 @@ export default function HouseOfCardsComp({
           setFlippedIndices([]);
           setLocked(false);
 
+          // ── Streak-triggered Peek (once per game) ────────────────────
+          // Triggers the first time the player completes a streak of
+          // PEEK_STREAK_TRIGGER consecutive correct pairs.
+          if (newStreak >= PEEK_STREAK_TRIGGER && !peekUsed) {
+            setPeekUsed(true);
+            setPeekActive(true);
+            playPeek();
+            // Reveal all currently-unmatched cards for PEEK_DURATION_MS.
+            setBoard((prev) =>
+              prev.map((c) => (!c.isMatched ? { ...c, isFlipped: true } : c)),
+            );
+            // Capture indices that are currently flipped (not yet matched) so
+            // we only hide cards that the peek itself revealed.
+            const alreadyRevealedIndices = new Set(newBoard.filter((c) => c.isFlipped && !c.isMatched).map((c) => c.index));
+            peekTimeoutRef.current = setTimeout(() => {
+              setBoard((prev) =>
+                prev.map((c) =>
+                  !c.isMatched && !alreadyRevealedIndices.has(c.index) ? { ...c, isFlipped: false } : c,
+                ),
+              );
+              setPeekActive(false);
+              peekTimeoutRef.current = null;
+            }, PEEK_DURATION_MS);
+          }
+
           if (newMatched >= TOTAL_PAIRS) {
             setGameOver(true);
           }
         } else {
           // Mismatch
+          playMismatch();
           mistakesRef.current += 1;
           setMistakes((m) => m + 1);
           newBoard[a] = { ...newBoard[a], isMismatch: true };
@@ -320,7 +353,7 @@ export default function HouseOfCardsComp({
       setBoard(newBoard);
       setFlippedIndices(newFlipped);
     },
-    [board, locked, gameOver, flippedIndices, streak, boostActive, peekActive],
+    [board, locked, gameOver, flippedIndices, streak, peekUsed, playFlip, playMatch, playPeek, playMismatch],
   );
 
   // ── Results screen ──────────────────────────────────────────────────────
@@ -346,7 +379,7 @@ export default function HouseOfCardsComp({
               const isHuman = outcome.playerId === humanId;
               const isLast = outcome.playerId === lastPlace.playerId;
               const isWinner = outcome.playerId === winner.playerId;
-              const rankIcon = RANK_ICONS[outcome.finalRank - 1] ?? `${outcome.finalRank}`;
+              const icon = rankIcon(outcome.finalRank);
               const rowClass = [
                 'hoc-standing-row',
                 isWinner ? 'hoc-standing--winner' : '',
@@ -358,7 +391,7 @@ export default function HouseOfCardsComp({
 
               return (
                 <div key={outcome.playerId} className={rowClass} role="listitem">
-                  <span className="hoc-standing-rank">{rankIcon}</span>
+                  <span className="hoc-standing-rank">{icon}</span>
                   <span
                     className={`hoc-standing-name${isHuman ? ' hoc-standing-name--human' : ''}`}
                   >
@@ -395,16 +428,6 @@ export default function HouseOfCardsComp({
     );
   }
 
-  // ── Compute AI progress for rail ────────────────────────────────────────
-  const aiProgress = hoc?.aiOutcomes
-    ? Object.entries(hoc.aiOutcomes).map(([id, outcome]) => ({
-        id,
-        name: nameFor(id),
-        matched: outcome.matchedPairs,
-        done: outcome.didFinish,
-      }))
-    : [];
-
   // Timer formatting
   const timerClass =
     timeLeft <= 5
@@ -413,14 +436,9 @@ export default function HouseOfCardsComp({
       ? 'hoc-timer hoc-timer--warning'
       : 'hoc-timer';
 
-  const allParticipants = [
-    { id: humanId ?? '', name: nameFor(humanId ?? ''), matched: matchedPairs, done: matchedPairs >= TOTAL_PAIRS, isHuman: true },
-    ...aiProgress.map((a) => ({ ...a, isHuman: false })),
-  ].filter((p) => p.id);
-
   return (
     <div className="hoc-root">
-      {/* HUD */}
+      {/* HUD — compact stat bar */}
       <div className="hoc-hud" role="status" aria-label="Game stats">
         <div className="hoc-hud-stat">
           <strong className={timerClass}>{timeLeft}s</strong>
@@ -439,66 +457,71 @@ export default function HouseOfCardsComp({
         <div className={`hoc-streak${streak >= 2 ? ' hoc-streak--active' : ''}`}>
           🔥 {streak}×
         </div>
+        {!peekUsed && (
+          <div className="hoc-peek-hint" title="Match 2 pairs in a row to unlock Peek">
+            👁 ×1
+          </div>
+        )}
       </div>
 
-      {/* Progress rail */}
-      <div className="hoc-rail" aria-label="Competition progress">
-        <div className="hoc-rail-label">Progress</div>
-        {allParticipants.map((p) => (
-          <div key={p.id} className="hoc-rail-row">
-            <span className={`hoc-rail-name${p.isHuman ? ' hoc-rail-name--human' : ''}`}>
-              {p.isHuman ? 'You' : p.name.split(' ')[0]}
-            </span>
-            <div className="hoc-rail-bar-track">
-              <div
-                className={`hoc-rail-bar-fill${p.isHuman ? ' hoc-rail-bar--human' : ''}${p.done ? ' hoc-rail-bar--done' : ''}`}
-                style={{ width: `${(p.matched / TOTAL_PAIRS) * 100}%` }}
-              />
+      {/* Card board — primary interaction area, scrolls if needed */}
+      <div className="hoc-board-wrap">
+        <div className="hoc-board" role="grid" aria-label="Card grid">
+          {board.map((card, i) => (
+            <div
+              key={i}
+              className="hoc-card"
+              data-flipped={card.isFlipped ? 'true' : 'false'}
+              data-matched={card.isMatched ? 'true' : 'false'}
+              data-mismatch={card.isMismatch ? 'true' : 'false'}
+              data-locked={locked || card.isMatched ? 'true' : 'false'}
+              role="gridcell"
+              aria-label={card.isFlipped || card.isMatched ? card.symbol : 'Hidden card'}
+              onClick={() => handleCardClick(i)}
+              tabIndex={card.isMatched ? -1 : 0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleCardClick(i);
+              }}
+            >
+              <div className="hoc-card-inner">
+                <div className="hoc-card-face hoc-card-back">
+                  <div className="hoc-card-back-pattern" />
+                  {/* Subtle SVG eye mark — thematic, low-contrast */}
+                  <svg
+                    className="hoc-card-eye"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <ellipse cx="12" cy="12" rx="10" ry="6" />
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="12" cy="12" r="1.2" className="hoc-card-eye-pupil" />
+                  </svg>
+                </div>
+                <div className="hoc-card-face hoc-card-front" aria-hidden="true">
+                  {card.symbol}
+                </div>
+              </div>
             </div>
-            <span className="hoc-rail-pairs">{p.matched}/{TOTAL_PAIRS}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Card board */}
-      <div className="hoc-board" role="grid" aria-label="Card grid">
-        {board.map((card, i) => (
-          <div
-            key={i}
-            className="hoc-card"
-            data-flipped={card.isFlipped ? 'true' : 'false'}
-            data-matched={card.isMatched ? 'true' : 'false'}
-            data-mismatch={card.isMismatch ? 'true' : 'false'}
-            data-locked={locked || card.isMatched ? 'true' : 'false'}
-            data-power={card.power ?? undefined}
-            role="gridcell"
-            aria-label={card.isFlipped || card.isMatched ? card.symbol : 'Hidden card'}
-            onClick={() => handleCardClick(i)}
-            tabIndex={card.isMatched ? -1 : 0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') handleCardClick(i);
-            }}
-          >
-            <div className="hoc-card-inner">
-              <div className="hoc-card-face hoc-card-back">
-                <div className="hoc-card-back-pattern" />
-              </div>
-              <div className="hoc-card-face hoc-card-front" aria-hidden="true">
-                {card.symbol}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Compact event ticker — bottom, replaces bulky progress rail */}
+      {tickerEvents.length > 0 && (
+        <div className="hoc-ticker" aria-label="Competition updates" aria-live="polite">
+          {tickerEvents.slice(0, 3).map((ev) => (
+            <div key={ev.id} className="hoc-ticker-item">{ev.text}</div>
+          ))}
+        </div>
+      )}
 
       {/* Burst animation */}
       {burstText && (
         <div className="hoc-match-burst" aria-hidden="true">
           <div
             className={`hoc-match-burst-text${
-              burstText.includes('STREAK') || burstText.includes('BOOST')
-                ? ' hoc-burst--streak'
-                : ' hoc-burst--match'
+              burstText.includes('STREAK') ? ' hoc-burst--streak' : ' hoc-burst--match'
             }`}
           >
             {burstText}
