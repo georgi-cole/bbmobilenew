@@ -40,8 +40,8 @@ const ROUND_CONFIG = [
   { minCount: 50, maxCount: 90, exposureMs: 1000, label: 'Round 3', theme: 'gems'  as const },
 ];
 
-/** Time limit for entering a guess after the reveal (seconds). */
-const GUESS_TIME_LIMIT = 15;
+/** Time limit for entering a guess after the reveal (seconds). Increased by 80% from original 15s. */
+const GUESS_TIME_LIMIT = 27;
 
 // ── Seeded RNG helpers ────────────────────────────────────────────────────────
 
@@ -276,20 +276,6 @@ export default function EstimationGame({
     setPhase('feedback');
   }, [phase, guessValue, actualCount, roundIndex]);
 
-  // ── Proceed after feedback ─────────────────────────────────────────────────
-
-  const handleNextRound = useCallback(() => {
-    const nextIdx = roundIndex + 1;
-    if (nextIdx < NUM_ROUNDS) {
-      setRoundIndex(nextIdx);
-      startRound(nextIdx);
-    } else {
-      // All rounds done — compile results
-      finishGame();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roundIndex, roundResults, startRound]);
-
   // ── Finish game ────────────────────────────────────────────────────────────
 
   const finishGame = useCallback(() => {
@@ -317,16 +303,18 @@ export default function EstimationGame({
     }
   }, [roundResults, session, humanId, players, onFinish]);
 
-  // Trigger finishGame once roundResults has all 3 entries (avoids stale closure)
-  useEffect(() => {
-    if (roundResults.length === NUM_ROUNDS && phase === 'feedback') {
-      // finishGame reads roundResults — defer slightly to let state settle
-      const t = setTimeout(() => {
-        finishGame();
-      }, 0);
-      return () => clearTimeout(t);
+  // ── Proceed after feedback ─────────────────────────────────────────────────
+
+  const handleNextRound = useCallback(() => {
+    const nextIdx = roundIndex + 1;
+    if (nextIdx < NUM_ROUNDS) {
+      setRoundIndex(nextIdx);
+      startRound(nextIdx);
+    } else {
+      // All rounds done — show final scoreboard
+      finishGame();
     }
-  }, [roundResults, phase, finishGame]);
+  }, [roundIndex, startRound, finishGame]);
 
   // ── Done handler (dispatches to Redux) ────────────────────────────────────
 
@@ -485,7 +473,7 @@ export default function EstimationGame({
         )}
 
         {/* ── Feedback phase ──────────────────────────────────────────── */}
-        {phase === 'feedback' && roundResults.length > 0 && roundResults.length < NUM_ROUNDS && (
+        {phase === 'feedback' && roundResults.length > 0 && (
           <div className="eg__feedback">
             <div className={['eg__feedback-banner', roundResults[roundResults.length - 1].score >= 80 ? 'eg__feedback-banner--great' : roundResults[roundResults.length - 1].score >= 50 ? 'eg__feedback-banner--ok' : 'eg__feedback-banner--bad'].filter(Boolean).join(' ')}>
               <p className="eg__feedback-msg">{feedbackMsg}</p>
@@ -504,13 +492,13 @@ export default function EstimationGame({
               ))}
             </div>
             <button className="eg__next-btn" type="button" onClick={handleNextRound}>
-              Next Round →
+              {roundResults.length >= NUM_ROUNDS ? 'See Final Results →' : 'Next Round →'}
             </button>
           </div>
         )}
 
         {/* ── Results phase ───────────────────────────────────────────── */}
-        {(phase === 'results' || (phase === 'feedback' && roundResults.length >= NUM_ROUNDS)) && scores.length > 0 && (
+        {phase === 'results' && scores.length > 0 && (
           <div className="eg__results">
             <p className="eg__winner-line">
               🏆 {scores[0].name} wins!

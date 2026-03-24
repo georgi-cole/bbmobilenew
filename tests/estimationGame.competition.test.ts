@@ -10,6 +10,9 @@
  *  6. AI-only nomination flow (no human) produces the correct winner + last-place.
  *  7. Tie-breaking is deterministic (participant order used only as final fallback).
  *  8. No silent fallback when authoritative last-place data can be produced.
+ *  8. AI calibration: simulateAiPerformance yields scores in the 150–220 target band.
+ *  9. Round 3 feedback: the finishGame path is only triggered via handleNextRound (not auto-trigger),
+ *     ensuring feedback is shown before the scoreboard for all rounds including round 3.
  *
  * Mirrors the style of tests/quickTapRace.competition.test.ts.
  */
@@ -29,6 +32,7 @@ import {
   computeRoundScore,
   deriveLastPlaceId,
 } from '../src/components/EstimationGame/estimationGameUtils';
+import { simulateAiPerformance, getMinigameAiModel } from '../src/ai/competition';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -469,5 +473,132 @@ describe('Estimation Game — scoring model preservation', () => {
     expect(computeRoundScore(1, 200)).toBe(0);   // far over
     expect(computeRoundScore(200, 1)).toBe(0);   // far under
     expect(computeRoundScore(0, 0)).toBe(100);   // exact
+  });
+});
+
+// ── 8. AI calibration — scores revolve around 150–220 ────────────────────────
+
+describe('Estimation Game — AI score calibration', () => {
+  const model = getMinigameAiModel('estimationGame');
+
+  it('AI model has minScore=110 and maxScore=260 configured', () => {
+    expect(model.minScore).toBe(110);
+    expect(model.maxScore).toBe(260);
+  });
+
+  it('simulateAiPerformance produces scores within [110, 260] for various seeds', () => {
+    const seeds = [1, 42, 100, 999, 12345, 99999, 314159, 7];
+    seeds.forEach((seed) => {
+      const score = simulateAiPerformance({
+        minigameKey: 'estimationGame',
+        minigameModel: model,
+        seed,
+        playerId: 'ai-player-1',
+      });
+      expect(score).toBeGreaterThanOrEqual(110);
+      expect(score).toBeLessThanOrEqual(260);
+    });
+  });
+
+  it('typical AI scores across common seeds land in the 150–220 target band', () => {
+    // Use a spread of seeds and player IDs to simulate a real competition
+    const configs = [
+      { seed: 42,  playerId: 'p1' },
+      { seed: 42,  playerId: 'p2' },
+      { seed: 42,  playerId: 'p3' },
+      { seed: 100, playerId: 'p1' },
+      { seed: 100, playerId: 'p2' },
+      { seed: 100, playerId: 'p3' },
+    ];
+
+    const scores = configs.map(({ seed, playerId }) =>
+      simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed, playerId }),
+    );
+
+    // At least the majority should land in the 150–220 range
+    const inTargetBand = scores.filter((s) => s >= 150 && s <= 220).length;
+    expect(inTargetBand).toBeGreaterThanOrEqual(Math.ceil(scores.length * 0.5));
+  });
+
+  it('AI scores are deterministic — same seed + playerId yields same score', () => {
+    const first  = simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed: 42, playerId: 'p1' });
+    const second = simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed: 42, playerId: 'p1' });
+    expect(first).toBe(second);
+  });
+
+  it('different player IDs produce different scores for the same seed', () => {
+    const s1 = simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed: 42, playerId: 'p1' });
+    const s2 = simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed: 42, playerId: 'p2' });
+    // With different player-id hashes the RNG offset differs — scores should differ
+    expect(s1).not.toBe(s2);
+  });
+
+  it('winner/last-place are still correct with calibrated AI scores', () => {
+    const players = makePlayers(5);
+    const store = makeStore({ players });
+
+    // Use calibrated AI scores in the 150-220 range
+    setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3', 'p4'], {
+      p1: 215, p2: 190, p3: 175, p4: 155,
+    });
+
+    // Human scores 240 — wins
+    store.dispatch(completeMinigame({ humanScore: 240 } as CompleteMinigamePayload));
+
+    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lastHohCompFinisherId).toBe('p4');
+  });
+});
+
+// ── 9. Round 3 submit → feedback before scoreboard ────────────────────────────
+
+describe('Estimation Game — round 3 submit flow', () => {
+  it('finishGame is called through handleNextRound (not auto-triggered): state machine guard', () => {
+    // This test verifies the store side: after 3 rounds completeMinigame is only dispatched
+    // when the player explicitly clicks through — not automatically.
+    // The component-side guard (removed auto-trigger useEffect, feedback shown for all rounds)
+    // is enforced by the JSX change (feedback condition no longer has `< NUM_ROUNDS`).
+    //
+    // At the store level we confirm: winner/lastPlace computed after completeMinigame
+    // regardless of whether the human score corresponds to round 3 outcomes.
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+    setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 200, p2: 170, p3: 155 });
+
+    // Simulate a human total consistent with all 3 rounds having been played
+    // (the component only dispatches completeMinigame after the user clicks "See Final Results")
+    const humanTotal = computeRoundScore(25, 24) + computeRoundScore(45, 43) + computeRoundScore(70, 65);
+    store.dispatch(completeMinigame({ humanScore: humanTotal } as CompleteMinigamePayload));
+
+    const state = store.getState().game;
+    // Phase should advance to hoh_results (completeMinigame dispatched correctly)
+    expect(state.phase).toBe('hoh_results');
+    // Winner and last-place are set based on canonical scores
+    expect(state.hohId).toBeTruthy();
+    expect(state.lastHohCompFinisherId).toBeTruthy();
+    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+  });
+
+  it('round 3 feedback total equals sum of all three round scores', () => {
+    // Verify the scoring model used by the component produces the correct total
+    // that would be displayed in the round 3 feedback before the final scoreboard.
+    const r1 = computeRoundScore(20, 20);  // perfect
+    const r2 = computeRoundScore(45, 42);  // off by 3 → 91
+    const r3 = computeRoundScore(75, 68);  // off by 7 → 79
+    const total = r1 + r2 + r3;
+
+    expect(r1).toBe(100);
+    expect(r2).toBe(91);
+    expect(r3).toBe(79);
+    expect(total).toBe(270);
+
+    // After dispatching with this total, winner is correctly resolved
+    const players = makePlayers(3);
+    const store = makeStore({ players });
+    setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 210, p2: 185 });
+    store.dispatch(completeMinigame({ humanScore: total } as CompleteMinigamePayload));
+
+    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
   });
 });

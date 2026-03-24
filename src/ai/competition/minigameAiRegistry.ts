@@ -173,6 +173,8 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PRECISION,
     weights: WEIGHTS_MENTAL_PRECISION,
+    minScore: 110,
+    maxScore: 260,
   },
   holdWall: {
     key: 'holdWall',
