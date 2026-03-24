@@ -55,6 +55,8 @@ const VIGNETTE_CENTER_X_RATIO = 0.5;
 const VIGNETTE_CENTER_Y_RATIO = 0.35;
 const VIGNETTE_INNER_RADIUS_CELL_UNITS = 1.5;
 const VIGNETTE_OUTER_RADIUS_WIDTH_RATIO = 0.8;
+const BOARD_SHEEN_ALPHA = 0.12;
+const WALL_GLOW_WIDTH = 5;
 // Sub-pixel inset keeps the canvas border crisp around the maze area.
 const MAZE_BORDER_OFFSET = 0.75;
 const MAZE_BORDER_WIDTH = 1.5;
@@ -269,6 +271,34 @@ function generateMaze(cols: number, rows: number, rng: () => number): MazeCell[]
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
+function traceMazeWalls(ctx: CanvasRenderingContext2D, maze: MazeCell[][]): void {
+  ctx.beginPath();
+  for (let row = 0; row < MAZE_ROWS; row++) {
+    for (let col = 0; col < MAZE_COLS; col++) {
+      const x = col * CELL_PX;
+      const y = row * CELL_PX;
+      const cell = maze[row][col];
+
+      if (cell.walls.top) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + CELL_PX, y);
+      }
+      if (cell.walls.right) {
+        ctx.moveTo(x + CELL_PX, y);
+        ctx.lineTo(x + CELL_PX, y + CELL_PX);
+      }
+      if (cell.walls.bottom) {
+        ctx.moveTo(x, y + CELL_PX);
+        ctx.lineTo(x + CELL_PX, y + CELL_PX);
+      }
+      if (cell.walls.left) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + CELL_PX);
+      }
+    }
+  }
+}
+
 function drawMaze(
   ctx: CanvasRenderingContext2D,
   maze: MazeCell[][],
@@ -292,6 +322,26 @@ function drawMaze(
   vignette.addColorStop(0, 'rgba(22, 32, 58, 0.16)');
   vignette.addColorStop(1, 'rgba(4, 10, 24, 0.28)');
   ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, MAZE_W, MAZE_H);
+
+  const sheen = ctx.createLinearGradient(0, 0, 0, MAZE_H);
+  sheen.addColorStop(0, `rgba(125, 211, 252, ${BOARD_SHEEN_ALPHA})`);
+  sheen.addColorStop(0.2, 'rgba(125, 211, 252, 0.03)');
+  sheen.addColorStop(1, 'rgba(15, 23, 42, 0)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, MAZE_W, MAZE_H);
+
+  const ambientOrb = ctx.createRadialGradient(
+    MAZE_W * 0.72,
+    MAZE_H * 0.24,
+    0,
+    MAZE_W * 0.72,
+    MAZE_H * 0.24,
+    CELL_PX * 6,
+  );
+  ambientOrb.addColorStop(0, 'rgba(96, 165, 250, 0.1)');
+  ambientOrb.addColorStop(1, 'rgba(96, 165, 250, 0)');
+  ctx.fillStyle = ambientOrb;
   ctx.fillRect(0, 0, MAZE_W, MAZE_H);
 
   const pulse = 0.6 + 0.4 * Math.sin(elapsed / 300);
@@ -349,36 +399,17 @@ function drawMaze(
 
   // Walls
   ctx.save();
+  ctx.strokeStyle = 'rgba(99, 187, 255, 0.18)';
+  ctx.lineWidth = WALL_GLOW_WIDTH;
+  ctx.lineCap = 'round';
+  traceMazeWalls(ctx, maze);
+  ctx.stroke();
+
   ctx.strokeStyle = '#63bbff';
   ctx.lineWidth = WALL_THICKNESS;
   ctx.lineCap = 'square';
-
-  for (let row = 0; row < MAZE_ROWS; row++) {
-    for (let col = 0; col < MAZE_COLS; col++) {
-      const x = col * CELL_PX;
-      const y = row * CELL_PX;
-      const cell = maze[row][col];
-
-      ctx.beginPath();
-      if (cell.walls.top) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + CELL_PX, y);
-      }
-      if (cell.walls.right) {
-        ctx.moveTo(x + CELL_PX, y);
-        ctx.lineTo(x + CELL_PX, y + CELL_PX);
-      }
-      if (cell.walls.bottom) {
-        ctx.moveTo(x, y + CELL_PX);
-        ctx.lineTo(x + CELL_PX, y + CELL_PX);
-      }
-      if (cell.walls.left) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + CELL_PX);
-      }
-      ctx.stroke();
-    }
-  }
+  traceMazeWalls(ctx, maze);
+  ctx.stroke();
   ctx.strokeStyle = 'rgba(99, 187, 255, 0.16)';
   ctx.lineWidth = MAZE_BORDER_WIDTH;
   ctx.strokeRect(
@@ -436,6 +467,10 @@ function drawMaze(
   ctx.strokeStyle = 'rgba(255,255,255,0.6)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  ctx.fillStyle = 'rgba(255, 248, 220, 0.65)';
+  ctx.beginPath();
+  ctx.arc(ball.x - 2, ball.y - 2, 2.1, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // ─── Ball–wall collision ──────────────────────────────────────────────────────
