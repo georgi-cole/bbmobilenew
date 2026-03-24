@@ -49,6 +49,7 @@ import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectMo
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
 import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
@@ -1323,8 +1324,12 @@ export default function GameScreen() {
   const showMinigameHost = humanIsChallengeParticipant
   /** True whenever a native React HOH/LOH minigame overlay should be displayed. */
   const showHohMinigame = !showMinigameHost && humanIsParticipant
-  // Legacy alias kept so the boolean block below doesn't need renaming.
-  const showQuickTapRace = showHohMinigame
+  const showPressurePlank = showHohMinigame && pendingMinigame?.key === 'pressurePlank'
+  const showBullseyeBlitz = showHohMinigame && pendingMinigame?.key === 'targetPractice'
+  const showQuickTapRace =
+    showHohMinigame &&
+    pendingMinigame?.key !== 'pressurePlank' &&
+    pendingMinigame?.key !== 'targetPractice'
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1866,10 +1871,10 @@ export default function GameScreen() {
       )}
 
       {/* ── Native HOH/LOH minigame overlays (routed by session key) ────────── */}
-      {showHohMinigame && pendingMinigame && pendingMinigame.key !== 'pressurePlank' && (
+      {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
       )}
-      {showHohMinigame && pendingMinigame && pendingMinigame.key === 'pressurePlank' && (
+      {showPressurePlank && pendingMinigame && (
         <PressurePlank session={pendingMinigame} players={game.players} />
       )}
 
