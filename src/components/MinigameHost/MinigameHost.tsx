@@ -32,8 +32,8 @@ import type { BlackjackTournamentCompetitionType } from '../../features/blackjac
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
 import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
-import TetrisComp from '../TetrisComp/TetrisComp';
-import type { TetrisPrizeType } from '../../features/tetris/tetrisSlice';
+import HouseOfCardsComp from '../HouseOfCardsComp/HouseOfCardsComp';
+import type { HouseOfCardsPrizeType } from '../../features/houseOfCards/houseOfCardsSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -357,12 +357,12 @@ export default function MinigameHost({
                 />
               );
             }
-            if (game.implementation === 'react' && game.reactComponentKey === 'Tetris') {
+            if (game.implementation === 'react' && game.reactComponentKey === 'HouseOfCards') {
               return (
-                <TetrisComp
+                <HouseOfCardsComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as HouseOfCardsPrizeType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
