@@ -101,6 +101,9 @@ export default function MemoryColorsComp({
 
   /** Index of the color currently lit during reveal (-1 = none). */
   const [litColorIndex, setLitColorIndex] = useState<number>(-1);
+  /** Position (step index) of the currently lit color during reveal (-1 = none).
+   *  Tracked separately so repeated colors highlight the correct step. */
+  const [litStepIndex, setLitStepIndex] = useState<number>(-1);
   /** Index of the color just pressed by the player (for flash feedback). */
   const [pressedColor, setPressedColor] = useState<number>(-1);
   /** Whether last tap was wrong (for error flash). */

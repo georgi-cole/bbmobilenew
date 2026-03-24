@@ -10,7 +10,7 @@
  *              ├─ recordInput (correct, round complete) ──→ round_cleared
  *              │    └─ startNextRound ─────────────────→ showing
  *              ├─ recordInput (wrong, 1st mistake) ─────→ warning_beat
- *              │    └─ resumeAfterWarning ──────────────→ input
+ *              │    └─ resumeAfterWarning ──────────────→ showing
  *              └─ recordInput (wrong, 2nd mistake) ─────→ complete
  *
  * Rules:
@@ -151,9 +151,14 @@ export function computePlayerScore(result: Omit<MemoryColorsPlayerResult, 'score
  *  - Higher skill → more rounds cleared, fewer mistakes, faster responses.
  */
 export function simulateAiResult(seed: number, playerId: string): MemoryColorsPlayerResult {
-  const rng = mulberry32((seed ^ SALT_AI) >>> 0);
-  // Consume some RNG calls so different players diverge.
-  for (let i = 0; i < playerId.length; i++) rng();
+  // Hash the full playerId into the seed so players with same-length IDs
+  // (e.g. "p1" and "p2") still get distinct deterministic RNG streams.
+  let idHash = 0x811c9dc5; // FNV-1a offset basis
+  for (let i = 0; i < playerId.length; i++) {
+    idHash ^= playerId.charCodeAt(i);
+    idHash = (Math.imul(idHash, 0x01000193)) >>> 0;
+  }
+  const rng = mulberry32(((seed ^ SALT_AI) ^ idHash) >>> 0);
 
   // Skill in [0.5, 1.0]
   const skill = 0.5 + rng() * 0.5;
@@ -276,6 +281,14 @@ const memoryColorsSlice = createSlice({
         }
       }
       state.aiResults = aiResults;
+
+      // AI-only session: no human player to control the game. Immediately
+      // compute the canonical outcome and mark as complete so the outcome
+      // thunk can fire without waiting for a human run.
+      if (!humanPlayerId) {
+        state.phase = 'complete';
+        memoryColorsSlice.caseReducers._finalizeOutcome(state);
+      }
     },
 
     /**
@@ -392,11 +405,10 @@ const memoryColorsSlice = createSlice({
 
     /** Internal: compute finalRanking, winnerId, lastPlaceId. Called after humanResult is set. */
     _finalizeOutcome(state) {
-      if (!state.humanResult) return;
       const allResults: Record<string, MemoryColorsPlayerResult> = {
         ...state.aiResults,
       };
-      if (state.humanPlayerId) {
+      if (state.humanPlayerId && state.humanResult) {
         allResults[state.humanPlayerId] = state.humanResult;
       }
 
