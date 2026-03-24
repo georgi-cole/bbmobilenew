@@ -5,14 +5,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  min-height: 100%;
+  gap: 10px;
+  padding: 12px 12px 8px;
+  height: 100%;
+  max-height: 100%;
   background: linear-gradient(160deg, #0d1b2a 0%, #1a2a3d 60%, #0a1622 100%);
   color: #e3ecf5;
   font-family: inherit;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
@@ -22,29 +23,30 @@
   align-items: center;
   width: 100%;
   max-width: 480px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .hoc-hud-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  font-size: 0.75rem;
+  gap: 1px;
+  font-size: 0.7rem;
   color: #95a9c0;
 }
 
 .hoc-hud-stat strong {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #e3ecf5;
   font-weight: 700;
 }
 
 .hoc-timer {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
@@ -63,14 +65,14 @@
 .hoc-streak {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 16px;
+  font-size: 0.75rem;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  min-width: 60px;
+  min-width: 48px;
   justify-content: center;
   transition: background 0.2s;
 }
@@ -81,92 +83,59 @@
   color: #ffd166;
 }
 
-/* ── Progress rail ───────────────────────────────────────────────────────── */
-.hoc-rail {
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.hoc-rail-label {
-  font-size: 0.65rem;
-  color: #5b7185;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 2px;
-}
-
-.hoc-rail-row {
+/* Peek hint indicator in HUD */
+.hoc-peek-hint {
+  font-size: 0.7rem;
+  color: #6a8499;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 200, 80, 0.06);
+  border: 1px solid rgba(255, 200, 80, 0.15);
 }
 
-.hoc-rail-name {
-  font-size: 0.7rem;
-  color: #95a9c0;
-  width: 64px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.hoc-rail-name.hoc-rail-name--human {
-  color: #83bfff;
-  font-weight: 700;
-}
-
-.hoc-rail-bar-track {
+/* ── Board wrapper — scrollable, takes remaining vertical space ──────────── */
+.hoc-board-wrap {
   flex: 1;
-  background: rgba(255, 255, 255, 0.08);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* subtle scroll indicator */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 160, 255, 0.2) transparent;
+}
+
+.hoc-board-wrap::-webkit-scrollbar {
+  width: 4px;
+}
+.hoc-board-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hoc-board-wrap::-webkit-scrollbar-thumb {
+  background: rgba(100, 160, 255, 0.2);
   border-radius: 4px;
-  height: 8px;
-  overflow: hidden;
-}
-
-.hoc-rail-bar-fill {
-  height: 100%;
-  background: #3a7bd5;
-  border-radius: 4px;
-  transition: width 0.35s ease-out;
-}
-
-.hoc-rail-bar-fill.hoc-rail-bar--human {
-  background: linear-gradient(90deg, #4f9dff, #83bfff);
-}
-
-.hoc-rail-bar-fill.hoc-rail-bar--done {
-  background: linear-gradient(90deg, #56c97a, #74e48b);
-}
-
-.hoc-rail-pairs {
-  font-size: 0.65rem;
-  color: #6a8499;
-  width: 30px;
-  text-align: right;
-  flex-shrink: 0;
 }
 
 /* ── Card grid ───────────────────────────────────────────────────────────── */
 .hoc-board {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 7px;
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
+  padding: 4px 0 8px;
 }
 
 /* ── Individual card ─────────────────────────────────────────────────────── */
 .hoc-card {
   aspect-ratio: 2 / 3;
-  max-height: 90px;
+  max-height: 88px;
   perspective: 600px;
   cursor: pointer;
 }
@@ -196,7 +165,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -206,20 +175,37 @@
   background: linear-gradient(135deg, #1e3050 0%, #2c4468 100%);
   border: 2px solid rgba(100, 160, 255, 0.25);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
 }
 
 .hoc-card-back-pattern {
-  width: 60%;
-  height: 60%;
-  border: 2px solid rgba(100, 160, 255, 0.15);
-  border-radius: 4px;
+  position: absolute;
+  inset: 0;
   background: repeating-linear-gradient(
     45deg,
-    rgba(100, 160, 255, 0.05) 0px,
-    rgba(100, 160, 255, 0.05) 2px,
+    rgba(100, 160, 255, 0.04) 0px,
+    rgba(100, 160, 255, 0.04) 2px,
     transparent 2px,
-    transparent 8px
+    transparent 10px
   );
+}
+
+/* Subtle SVG eye mark on card back */
+.hoc-card-eye {
+  position: absolute;
+  width: 44%;
+  height: auto;
+  fill: none;
+  stroke: rgba(100, 160, 255, 0.18);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.hoc-card-eye .hoc-card-eye-pupil {
+  fill: rgba(100, 160, 255, 0.12);
+  stroke: none;
 }
 
 /* Card front */
@@ -242,13 +228,27 @@
   animation: hoc-shake 0.3s ease-in-out;
 }
 
-/* Power card variants */
-.hoc-card[data-power="peek"] .hoc-card-face.hoc-card-back {
-  border-color: rgba(255, 200, 80, 0.4);
+/* ── Compact event ticker ────────────────────────────────────────────────── */
+.hoc-ticker {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
-.hoc-card[data-power="boost"] .hoc-card-face.hoc-card-back {
-  border-color: rgba(80, 200, 255, 0.4);
+.hoc-ticker-item {
+  font-size: 0.68rem;
+  color: #6a8499;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border-left: 2px solid rgba(100, 160, 255, 0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: hoc-ticker-slide 0.3s ease forwards;
 }
 
 /* ── Flash overlay (peek power) ─────────────────────────────────────────── */
@@ -267,9 +267,9 @@
   color: #1a1a1a;
   font-weight: 800;
   font-size: 1rem;
-  padding: 8px 20px;
-  border-radius: 20px;
-  animation: hoc-peek-in-out 2s ease forwards;
+  padding: 7px 18px;
+  border-radius: 18px;
+  animation: hoc-peek-in-out 1.2s ease forwards;
 }
 
 /* ── Match burst overlay ─────────────────────────────────────────────────── */
@@ -511,3 +511,9 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+@keyframes hoc-ticker-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

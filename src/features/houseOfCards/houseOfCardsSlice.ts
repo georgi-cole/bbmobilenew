@@ -21,9 +21,14 @@ import { mulberry32 } from '../../store/rng';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Number of pairs on the board. */
-export const TOTAL_PAIRS = 8;
+export const TOTAL_PAIRS = 10;
 /** Time limit in milliseconds. */
 export const GAME_TIME_LIMIT_MS = 60_000;
+/** Minimum plausible AI finish time for a 20-card memory match game (ms).
+ * A fast human can clear 10 pairs in ~14s with solid pattern recall. */
+export const AI_MIN_FINISH_MS = 14_000;
+/** Maximum plausible AI finish time (ms). */
+export const AI_MAX_FINISH_MS = 55_000;
 
 /** Point values for scoring. */
 export const SCORE_MATCH = 100;
@@ -174,7 +179,7 @@ export function simulateAiOutcome(
   const finishChance = 0.4 + skill * 0.5; // 40%–90% chance of finishing
   const didFinish = rng() < finishChance;
 
-  // Matched pairs (1–8 for non-finishers, always 8 for finishers)
+  // Matched pairs (1–TOTAL_PAIRS for non-finishers, always TOTAL_PAIRS for finishers)
   const matchedPairs = didFinish ? TOTAL_PAIRS : Math.max(1, Math.floor(rng() * skill * TOTAL_PAIRS));
 
   // Mistakes (stronger players make fewer mistakes)
@@ -183,9 +188,17 @@ export function simulateAiOutcome(
   // Turns taken
   const turnsTaken = matchedPairs * 2 + mistakes * 2;
 
-  // Completion time (ms) — only set if finished
+  // Completion time (ms) — only set if finished.
+  // Clamped to [AI_MIN_FINISH_MS, AI_MAX_FINISH_MS] so completions never
+  // appear unrealistically fast at game start.
   const completionTimeMs = didFinish
-    ? Math.floor(GAME_TIME_LIMIT_MS * (0.25 + (1 - skill) * 0.6 + rng() * 0.1))
+    ? Math.min(
+        AI_MAX_FINISH_MS,
+        Math.max(
+          AI_MIN_FINISH_MS,
+          Math.floor(AI_MIN_FINISH_MS + (1 - skill) * (AI_MAX_FINISH_MS - AI_MIN_FINISH_MS) + rng() * 4_000),
+        ),
+      )
     : null;
 
   // Streak best (stronger players get longer streaks)
