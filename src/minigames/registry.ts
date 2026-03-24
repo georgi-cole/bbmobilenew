@@ -91,7 +91,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   triviaPulse: {
@@ -113,7 +113,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 2,
     category: 'trivia',
-    retired: false,
+    retired: true,
   },
 
   quickTap: {
@@ -206,7 +206,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   targetPractice: {
@@ -376,7 +376,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 1,
     category: 'endurance',
-    retired: false,
+    retired: true,
   },
 
   pressurePlank: {
@@ -422,7 +422,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'endurance',
-    retired: false,
+    retired: true,
   },
 
   memoryZipline: {
@@ -444,7 +444,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   swipeMaze: {
@@ -467,7 +467,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   colorMatch: {
@@ -511,7 +511,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   logicLocks: {
@@ -605,7 +605,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'arcade',
-    retired: false,
+    retired: true,
   },
 
   gridLock: {
@@ -627,7 +627,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   keyMaster: {
@@ -649,7 +649,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'logic',
-    retired: false,
+    retired: true,
   },
 
   hangman: {
@@ -809,7 +809,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'arcade',
-    retired: false,
+    retired: true,
   },
 
   confettiCannon: {
@@ -831,7 +831,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'arcade',
-    retired: false,
+    retired: true,
   },
 
   buzzerSprintRelay: {
@@ -854,7 +854,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: true,
     weight: 1,
     category: 'arcade',
-    retired: false,
+    retired: true,
   },
 
   dontGoOver: {
