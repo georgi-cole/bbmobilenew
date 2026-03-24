@@ -558,9 +558,14 @@ const gameSlice = createSlice({
         if (!p) continue;
         const score = scores[id] ?? 0;
         if (!p.stats) p.stats = { hohWins: 0, povWins: 0, timesNominated: 0 };
-        if (p.stats.tapRacePR == null || score > p.stats.tapRacePR) {
-          p.stats.tapRacePR = score;
-          personalRecords[id] = score;
+        // tapRacePR is specific to the Quick Tap Race minigame — only update it
+        // for that key so that TravelingDots (and other games sharing this reducer
+        // path) don't corrupt Quick Tap personal-record data.
+        if (session.key === 'quickTap') {
+          if (p.stats.tapRacePR == null || score > p.stats.tapRacePR) {
+            p.stats.tapRacePR = score;
+            personalRecords[id] = score;
+          }
         }
       }
 

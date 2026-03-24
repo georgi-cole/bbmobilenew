@@ -1321,8 +1321,11 @@ export default function GameScreen() {
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  const showQuickTapRace = !showMinigameHost && humanIsParticipant && pendingMinigame?.key === 'quickTap'
+  // TravelingDots is key-gated to its specific overlay component.
   const showTravelingDots = !showMinigameHost && humanIsParticipant && pendingMinigame?.key === 'travelingDots'
+  // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
+  // unrecognised pendingMinigame key, so the human is never left with no UI.
+  const showQuickTapRace = !showMinigameHost && humanIsParticipant && !showTravelingDots
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
