@@ -33,6 +33,7 @@ interface HouseguestProfileFields {
   sex?: string;
   location?: string;
   profession?: string;
+  zodiacSign?: string;
   motto?: string;
   funFact?: string;
   story?: string;

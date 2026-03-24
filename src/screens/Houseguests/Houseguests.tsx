@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useAppSelector } from '../../store/hooks'
+import { selectAlivePlayers } from '../../store/gameSlice'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import HouseguestProfile from '../../components/HouseguestProfile/HouseguestProfile'
+import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog'
 import { selectSettings } from '../../store/settingsSlice'
 import { resolveAvatar } from '../../utils/avatar'
 import type { Player } from '../../types'
@@ -10,8 +12,10 @@ import './Houseguests.css'
 export default function Houseguests() {
   const game = useAppSelector((s) => s.game)
   const players = game.players
+  const alivePlayers = useAppSelector(selectAlivePlayers)
   const { hohId, nomineeIds, povWinnerId } = game
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [longPressedPlayer, setLongPressedPlayer] = useState<Player | null>(null)
   const settings = useAppSelector(selectSettings)
 
   const { castSize } = settings.gameUX
@@ -39,20 +43,34 @@ export default function Houseguests() {
       isEvicted: p.status === 'evicted' || p.status === 'jury',
       isYou: p.isUser,
       onClick: () => setSelectedPlayer(p),
+      onLongPress: () => setLongPressedPlayer(p),
     }
   })
 
   // Pad with placeholder tiles to fill the grid
   const placeholderCount = Math.max(0, gridSize - houseguests.length)
 
+  // Occupancy label: alive / total
+  const occupancyLabel = `${alivePlayers.length}/${players.length}`
+
   return (
     <div className="placeholder-screen houseguests-screen">
-      <h1 className="placeholder-screen__title">👥 Houseguests</h1>
+      <h1 className="placeholder-screen__title">👥 Housemates</h1>
 
-      <HouseguestGrid houseguests={houseguests} gridSize={gridSize} placeholderCount={placeholderCount} compact={settings.gameUX.compactRoster} />
+      <HouseguestGrid
+        houseguests={houseguests}
+        gridSize={gridSize}
+        placeholderCount={placeholderCount}
+        compact={settings.gameUX.compactRoster}
+        occupancyLabel={occupancyLabel}
+      />
 
       {selectedPlayer && (
         <HouseguestProfile player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+      )}
+
+      {longPressedPlayer && (
+        <HouseguestInfoDialog player={longPressedPlayer} onClose={() => setLongPressedPlayer(null)} />
       )}
     </div>
   )

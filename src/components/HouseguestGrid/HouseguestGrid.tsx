@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import AvatarTile from './AvatarTile'
+import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
 
 export type Houseguest = {
@@ -9,6 +10,8 @@ export type Houseguest = {
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  /** Called when the user long-presses this tile on touch devices. */
+  onLongPress?: () => void
   /**
    * Game status string(s) to display as badge overlays.
    * Accepts a single PlayerStatus value (e.g. 'hoh', 'nominated+pov')
@@ -48,6 +51,11 @@ type Props = {
   placeholderCount?: number
   /** When true, reduces avatar/tile size and spacing for a denser layout. */
   compact?: boolean
+  /**
+   * Occupancy label shown as a transparent ghost chip next to the HOUSEMATES
+   * header (e.g. "12/16"). When omitted the chip is not rendered.
+   */
+  occupancyLabel?: string
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -65,6 +73,7 @@ export default function HouseguestGrid({
   gridSize,
   placeholderCount = 0,
   compact = false,
+  occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
 
@@ -100,10 +109,13 @@ export default function HouseguestGrid({
     <section ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} aria-labelledby="houseguests-heading">
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
-          HOUSEGUESTS
+          HOUSEMATES
           {showCountInHeader && <span className={styles.count}> ({houseguests.length})</span>}
           {!showCountInHeader && <span className="visually-hidden"> ({houseguests.length})</span>}
         </h3>
+        {occupancyLabel && (
+          <StatusPill variant="ghost" label={occupancyLabel} ariaLabel={`${occupancyLabel} housemates`} />
+        )}
       </div>
 
       <ul className={`${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`} role="list">
@@ -115,6 +127,7 @@ export default function HouseguestGrid({
               isEvicted={hg.isEvicted}
               isYou={hg.isYou}
               onClick={hg.onClick}
+              onLongPress={hg.onLongPress}
               statuses={hg.statuses}
               finalRank={hg.finalRank}
               showPermanentBadge={hg.showPermanentBadge}
