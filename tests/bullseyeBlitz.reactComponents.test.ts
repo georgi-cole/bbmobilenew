@@ -8,6 +8,9 @@ describe('BullseyeBlitz reactComponents wiring', () => {
 
     expect(game?.implementation).toBe('react');
     expect(game?.reactComponentKey).toBe('BullseyeBlitz');
-    expect(reactComponents[game!.reactComponentKey!]).toBeDefined();
+    const mappedComponent = game?.reactComponentKey
+      ? reactComponents[game.reactComponentKey]
+      : undefined;
+    expect(mappedComponent).toBeDefined();
   });
 });
