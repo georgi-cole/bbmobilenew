@@ -241,13 +241,13 @@ export default function EstimationGame({
     setPhase('reveal');
   }, [generateRound]);
 
-  // ── Effect: start first round when intro finishes ─────────────────────────
+  // ── Effect: auto-start first round when enabled ──────────────────────────
 
   useEffect(() => {
-    if (phase === 'intro' && autoStart) {
+    if (autoStart) {
       startRound(0);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoStart, startRound]);
 
   // ── Effect: auto-hide reveal after exposure time ──────────────────────────
 
