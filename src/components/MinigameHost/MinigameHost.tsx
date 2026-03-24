@@ -386,6 +386,7 @@ export default function MinigameHost({
             if (game.implementation === 'react' && game.reactComponentKey === 'TiltLabyrinth') {
               return (
                 <TiltLabyrinthComp
+                  key={`tilt-labyrinth:${seed}:${gameOptions?.prizeType as string ?? 'HOH'}:${participantIds.join(',')}`}
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as TiltLabyrinthPrizeType ?? 'HOH'}

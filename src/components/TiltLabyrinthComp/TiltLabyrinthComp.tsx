@@ -45,18 +45,27 @@ import './TiltLabyrinthComp.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MAZE_COLS = 13;
-const MAZE_ROWS = 13;
-const CELL_PX = 36;
+const MAZE_COLS = 19;
+const MAZE_ROWS = 19;
+const CELL_PX = 25;
 const MAZE_W = MAZE_COLS * CELL_PX;
 const MAZE_H = MAZE_ROWS * CELL_PX;
 const WALL_THICKNESS = 2;
 
-const BALL_RADIUS = 8;
+const BALL_RADIUS = 6;
 const FRICTION = 0.88;
 const KEYBOARD_ACCEL = 0.55;
 const TILT_ACCEL = 0.45;
 const MAX_VEL = 4.5;
+const HAZARD_COUNT = 4;
+const HAZARD_RADIUS = 7;
+const HAZARD_SPEED = 1.15;
+const HAZARD_HIT_COOLDOWN_MS = 650;
+const MAX_PLACEMENT_ATTEMPTS = 200;
+const MIN_HAZARD_SPACING_CELLS = 2.75;
+const KEY_RADIUS = 7;
+const DOOR_RADIUS = 12;
+const GOAL_RADIUS = 10;
 
 const TIME_LIMIT_MS = 60_000;
 
@@ -66,6 +75,26 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 interface MazeCell {
   walls: { top: boolean; right: boolean; bottom: boolean; left: boolean };
+}
+
+interface FeaturePoint {
+  x: number;
+  y: number;
+  col: number;
+  row: number;
+}
+
+interface Hazard {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  phase: number;
+}
+
+interface DeviceOrientationPermissionApi {
+  requestPermission?: () => Promise<string>;
 }
 
 interface GameState {
@@ -78,6 +107,14 @@ interface GameState {
   elapsed: number;
   finished: boolean;
   finishTime: number | null;
+  hasKey: boolean;
+  lockOpen: boolean;
+  keyPos: FeaturePoint;
+  doorPos: FeaturePoint;
+  goalPos: FeaturePoint;
+  hazards: Hazard[];
+  hazardHits: number;
+  lastHazardHitAt: number;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -98,6 +135,84 @@ function makeRng(seed: number): () => number {
     s = ((s * 1664525 + 1013904223) >>> 0);
     return s / 0x100000000;
   };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function distance(ax: number, ay: number, bx: number, by: number): number {
+  return Math.hypot(ax - bx, ay - by);
+}
+
+function cellCenter(col: number, row: number): FeaturePoint {
+  return {
+    col,
+    row,
+    x: (col + 0.5) * CELL_PX,
+    y: (row + 0.5) * CELL_PX,
+  };
+}
+
+function randomInt(rng: () => number, min: number, max: number): number {
+  return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+function pickFeaturePoint(
+  rng: () => number,
+  minCol: number,
+  maxCol: number,
+  minRow: number,
+  maxRow: number,
+  isValid: (point: FeaturePoint) => boolean,
+): FeaturePoint {
+  for (let i = 0; i < MAX_PLACEMENT_ATTEMPTS; i++) {
+    const point = cellCenter(randomInt(rng, minCol, maxCol), randomInt(rng, minRow, maxRow));
+    if (isValid(point)) return point;
+  }
+  return cellCenter(minCol, minRow);
+}
+
+function createHazards(
+  rng: () => number,
+  keyPos: FeaturePoint,
+  doorPos: FeaturePoint,
+  goalPos: FeaturePoint,
+): Hazard[] {
+  const hazards: Hazard[] = [];
+  const startPos = cellCenter(0, 0);
+
+  while (hazards.length < HAZARD_COUNT) {
+    const candidate = cellCenter(
+      randomInt(rng, 2, MAZE_COLS - 4),
+      randomInt(rng, 2, MAZE_ROWS - 4),
+    );
+    const tooCloseToGameplayPoints = [
+      startPos,
+      keyPos,
+      doorPos,
+      goalPos,
+      ...hazards.map((hazard) => ({ x: hazard.x, y: hazard.y })),
+    ].some(
+      (point) =>
+        distance(candidate.x, candidate.y, point.x, point.y) <
+        CELL_PX * MIN_HAZARD_SPACING_CELLS,
+    );
+
+    if (tooCloseToGameplayPoints) continue;
+
+    const angle = rng() * Math.PI * 2;
+    hazards.push({
+      x: candidate.x,
+      y: candidate.y,
+      vx: Math.cos(angle) * HAZARD_SPEED,
+      vy: Math.sin(angle) * HAZARD_SPEED,
+      radius: HAZARD_RADIUS,
+      phase: rng() * Math.PI * 2,
+    });
+  }
+
+  return hazards;
 }
 
 // ─── Maze generation ─────────────────────────────────────────────────────────
@@ -149,30 +264,79 @@ function generateMaze(cols: number, rows: number, rng: () => number): MazeCell[]
 function drawMaze(
   ctx: CanvasRenderingContext2D,
   maze: MazeCell[][],
-  ball: { x: number; y: number },
-  finishTime: number | null,
+  game: GameState,
   elapsed: number,
 ) {
-  const w = MAZE_COLS * CELL_PX;
-  const h = MAZE_ROWS * CELL_PX;
+  const { ball, finishTime, hasKey, lockOpen, keyPos, doorPos, goalPos, hazards } = game;
 
   // Background
-  ctx.fillStyle = '#0d1424';
-  ctx.fillRect(0, 0, w, h);
+  const bgGradient = ctx.createLinearGradient(0, 0, MAZE_W, MAZE_H);
+  bgGradient.addColorStop(0, '#0d1424');
+  bgGradient.addColorStop(1, '#121b34');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, MAZE_W, MAZE_H);
 
-  // Goal highlight (bottom-right cell)
-  const goalCX = (MAZE_COLS - 1) * CELL_PX;
-  const goalCY = (MAZE_ROWS - 1) * CELL_PX;
+  // Subtle cell shading to make the layout feel denser and more deliberate.
+  for (let row = 0; row < MAZE_ROWS; row++) {
+    for (let col = 0; col < MAZE_COLS; col++) {
+      const shade = (row + col) % 2 === 0 ? 0.04 : 0.02;
+      ctx.fillStyle = `rgba(125, 211, 252, ${shade})`;
+      ctx.fillRect(col * CELL_PX, row * CELL_PX, CELL_PX, CELL_PX);
+    }
+  }
+
   const pulse = 0.6 + 0.4 * Math.sin(elapsed / 300);
-  ctx.fillStyle = `rgba(34, 197, 94, ${0.25 * pulse})`;
-  ctx.fillRect(goalCX + 1, goalCY + 1, CELL_PX - 2, CELL_PX - 2);
 
-  // Goal icon
-  ctx.fillStyle = `rgba(34, 197, 94, ${0.8 * pulse})`;
-  ctx.font = `${Math.round(CELL_PX * 0.55)}px system-ui`;
+  // Key
+  if (!hasKey) {
+    ctx.fillStyle = `rgba(251, 191, 36, ${0.35 + 0.25 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(keyPos.x, keyPos.y, KEY_RADIUS + 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(keyPos.x, keyPos.y, KEY_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff8dc';
+    ctx.font = `${Math.round(CELL_PX * 0.52)}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔑', keyPos.x, keyPos.y + 0.5);
+  }
+
+  // Door / gate near the goal
+  const doorPulse = 0.65 + 0.35 * Math.sin(elapsed / 220 + 1);
+  ctx.fillStyle = lockOpen
+    ? `rgba(34, 197, 94, ${0.12 + 0.08 * doorPulse})`
+    : `rgba(244, 63, 94, ${0.12 + 0.08 * doorPulse})`;
+  ctx.beginPath();
+  ctx.arc(doorPos.x, doorPos.y, DOOR_RADIUS + 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = lockOpen ? 'rgba(74, 222, 128, 0.8)' : 'rgba(251, 113, 133, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(doorPos.x, doorPos.y, DOOR_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.font = `${Math.round(CELL_PX * 0.56)}px system-ui`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('🏁', goalCX + CELL_PX / 2, goalCY + CELL_PX / 2);
+  ctx.fillStyle = lockOpen ? '#dcfce7' : '#ffe4e6';
+  ctx.fillText(lockOpen ? '🟢' : '🔒', doorPos.x, doorPos.y + 0.5);
+
+  // Goal (only truly available once the lock opens)
+  ctx.fillStyle = lockOpen
+    ? `rgba(34, 197, 94, ${0.25 * pulse})`
+    : 'rgba(148, 163, 184, 0.12)';
+  ctx.fillRect(goalPos.col * CELL_PX + 1, goalPos.row * CELL_PX + 1, CELL_PX - 2, CELL_PX - 2);
+
+  ctx.fillStyle = lockOpen ? `rgba(34, 197, 94, ${0.8 * pulse})` : 'rgba(148, 163, 184, 0.6)';
+  ctx.font = `${Math.round(CELL_PX * 0.55)}px system-ui`;
+  ctx.fillText('🏁', goalPos.x, goalPos.y);
 
   // Walls
   ctx.strokeStyle = '#4ea8de';
@@ -206,6 +370,36 @@ function drawMaze(
     }
   }
 
+  // Hazards
+  hazards.forEach((hazard) => {
+    const glow = ctx.createRadialGradient(
+      hazard.x,
+      hazard.y,
+      0,
+      hazard.x,
+      hazard.y,
+      hazard.radius * 2.2,
+    );
+    glow.addColorStop(0, 'rgba(248, 113, 113, 0.7)');
+    glow.addColorStop(1, 'rgba(248, 113, 113, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(hazard.x, hazard.y, hazard.radius * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f87171';
+    ctx.beginPath();
+    ctx.arc(hazard.x, hazard.y, hazard.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff1f2';
+    ctx.font = `${Math.round(CELL_PX * 0.42)}px system-ui`;
+    ctx.fillText('✦', hazard.x, hazard.y + 0.5);
+  });
+
   // Ball glow
   const gradient = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, BALL_RADIUS * 2);
   gradient.addColorStop(0, 'rgba(251,191,36,0.5)');
@@ -233,8 +427,9 @@ function resolveCollisions(
   by: number,
   vx: number,
   vy: number,
+  radius = BALL_RADIUS,
 ): { bx: number; by: number; vx: number; vy: number } {
-  const r = BALL_RADIUS;
+  const r = radius;
   const cp = CELL_PX;
 
   const col = Math.floor(bx / cp);
@@ -304,12 +499,37 @@ export default function TiltLabyrinthComp({
   // Display timer (seconds, 1 decimal)
   const [displayTime, setDisplayTime] = useState(0);
   const [useTilt, setUseTilt] = useState(false);
+  const [hazardHits, setHazardHits] = useState(0);
+  const [hasKey, setHasKey] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
 
   // ── Initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
     const rng = makeRng((seed >>> 0) ^ 0xfeedcafe);
     const maze = generateMaze(MAZE_COLS, MAZE_ROWS, rng);
     mazeRef.current = maze;
+    const goalPos = cellCenter(MAZE_COLS - 1, MAZE_ROWS - 1);
+    const keyPos = pickFeaturePoint(
+      rng,
+      Math.floor(MAZE_COLS * 0.3),
+      Math.floor(MAZE_COLS * 0.55),
+      Math.floor(MAZE_ROWS * 0.18),
+      Math.floor(MAZE_ROWS * 0.55),
+      (point) =>
+        distance(point.x, point.y, CELL_PX / 2, CELL_PX / 2) > CELL_PX * 4 &&
+        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 5,
+    );
+    const doorPos = pickFeaturePoint(
+      rng,
+      MAZE_COLS - 5,
+      MAZE_COLS - 3,
+      MAZE_ROWS - 6,
+      MAZE_ROWS - 3,
+      (point) =>
+        distance(point.x, point.y, keyPos.x, keyPos.y) > CELL_PX * 4 &&
+        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 1.75,
+    );
+    const hazards = createHazards(rng, keyPos, doorPos, goalPos);
 
     // Compute AI scores (completion times in ms — lower is better)
     const aiScores: Record<string, number> = {};
@@ -375,7 +595,16 @@ export default function TiltLabyrinthComp({
       elapsed: 0,
       finished: false,
       finishTime: null,
+      hasKey: false,
+      lockOpen: false,
+      keyPos,
+      doorPos,
+      goalPos,
+      hazards,
+      hazardHits: 0,
+      lastHazardHitAt: -HAZARD_HIT_COOLDOWN_MS,
     };
+    resolvedRef.current = false;
 
     return () => {
       dispatch(resetTiltLabyrinth());
@@ -430,7 +659,7 @@ export default function TiltLabyrinthComp({
           gs.finishTime = TIME_LIMIT_MS;
           handleFinish(TIME_LIMIT_MS);
           // Final frame then stop — no more RAF scheduling
-          drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
+          drawMaze(ctx, maze, gs, gs.elapsed);
           return;
         }
 
@@ -481,21 +710,60 @@ export default function TiltLabyrinthComp({
         gs.ball.vx = resolved.vx;
         gs.ball.vy = resolved.vy;
 
-        // Check goal (bottom-right cell centre ± tolerance)
-        const goalX = (MAZE_COLS - 0.5) * CELL_PX;
-        const goalY = (MAZE_ROWS - 0.5) * CELL_PX;
-        const dist = Math.sqrt((gs.ball.x - goalX) ** 2 + (gs.ball.y - goalY) ** 2);
-        if (dist < CELL_PX * 0.65) {
+        // Key pickup
+        if (!gs.hasKey && distance(gs.ball.x, gs.ball.y, gs.keyPos.x, gs.keyPos.y) < KEY_RADIUS + BALL_RADIUS + 2) {
+          gs.hasKey = true;
+          setHasKey(true);
+        }
+
+        // Unlock the gate once the player brings the key to the lock.
+        if (gs.hasKey && !gs.lockOpen && distance(gs.ball.x, gs.ball.y, gs.doorPos.x, gs.doorPos.y) < DOOR_RADIUS + BALL_RADIUS) {
+          gs.lockOpen = true;
+          setLockOpen(true);
+        }
+
+        // Floating hazards
+        gs.hazards.forEach((hazard) => {
+          hazard.x += hazard.vx;
+          hazard.y += hazard.vy;
+
+          if (hazard.x - hazard.radius < 0 || hazard.x + hazard.radius > MAZE_W) {
+            hazard.vx *= -1;
+            hazard.x = clamp(hazard.x, hazard.radius, MAZE_W - hazard.radius);
+          }
+          if (hazard.y - hazard.radius < 0 || hazard.y + hazard.radius > MAZE_H) {
+            hazard.vy *= -1;
+            hazard.y = clamp(hazard.y, hazard.radius, MAZE_H - hazard.radius);
+          }
+
+          const hitDistance = distance(gs.ball.x, gs.ball.y, hazard.x, hazard.y);
+          if (
+            hitDistance < BALL_RADIUS + hazard.radius &&
+            gs.elapsed - gs.lastHazardHitAt > HAZARD_HIT_COOLDOWN_MS
+          ) {
+            gs.lastHazardHitAt = gs.elapsed;
+            gs.hazardHits += 1;
+            setHazardHits(gs.hazardHits);
+
+            const angle = Math.atan2(gs.ball.y - hazard.y, gs.ball.x - hazard.x);
+            gs.ball.vx += Math.cos(angle) * 2.6;
+            gs.ball.vy += Math.sin(angle) * 2.6;
+          }
+        });
+
+        // Check goal (only once the lock is open)
+        const dist = distance(gs.ball.x, gs.ball.y, gs.goalPos.x, gs.goalPos.y);
+        if (gs.lockOpen && dist < GOAL_RADIUS + BALL_RADIUS) {
           gs.finished = true;
           gs.finishTime = Math.round(gs.elapsed);
           handleFinish(gs.finishTime);
           // Draw final frame then stop — no RAF after goal reached
-          drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
+          drawMaze(ctx, maze, gs, gs.elapsed);
           return;
         }
       }
 
-      drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
+      drawMaze(ctx, maze, gs, gs.elapsed);
       // Only continue the loop while playing; stop once finished
       if (!gs.finished) {
         animId = requestAnimationFrame(tick);
@@ -550,11 +818,11 @@ export default function TiltLabyrinthComp({
 
     if (
       typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof (DeviceOrientationEvent as { requestPermission?: () => Promise<string> })
+      typeof (DeviceOrientationEvent as unknown as DeviceOrientationPermissionApi)
         .requestPermission === 'function'
     ) {
       // iOS 13+ requires explicit permission
-      (DeviceOrientationEvent as { requestPermission: () => Promise<string> })
+      (DeviceOrientationEvent as unknown as Required<DeviceOrientationPermissionApi>)
         .requestPermission()
         .then((perm) => {
           if (perm === 'granted') {
@@ -712,6 +980,11 @@ export default function TiltLabyrinthComp({
   const remainingMs = Math.max(0, TIME_LIMIT_MS - displayTime);
   const remainingSec = (remainingMs / 1000).toFixed(1);
   const timerWarning = remainingMs < 15_000;
+  const objectiveText = !hasKey
+    ? 'Find the key'
+    : !lockOpen
+      ? 'Unlock the gate'
+      : 'Reach the goal';
 
   return (
     <div className="tilt-labyrinth-host" aria-label="Tilt Labyrinth">
@@ -732,6 +1005,35 @@ export default function TiltLabyrinthComp({
         </div>
       </div>
 
+      <div className="tilt-labyrinth-status-bar" aria-label="Tilt Labyrinth status">
+        <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--objective">
+          🎯 {objectiveText}
+        </div>
+        <div
+          className={[
+            'tilt-labyrinth-status-chip',
+            hasKey ? 'tilt-labyrinth-status-chip--done' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          🔑 {hasKey ? 'Key found' : 'No key'}
+        </div>
+        <div
+          className={[
+            'tilt-labyrinth-status-chip',
+            lockOpen ? 'tilt-labyrinth-status-chip--done' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          🚪 {lockOpen ? 'Gate open' : 'Gate locked'}
+        </div>
+        <div className="tilt-labyrinth-status-chip tilt-labyrinth-status-chip--danger">
+          👾 Hits {hazardHits}
+        </div>
+      </div>
+
       <div className="tilt-labyrinth-canvas-wrap">
         <canvas
           ref={canvasRef}
@@ -743,7 +1045,7 @@ export default function TiltLabyrinthComp({
       </div>
 
       <p className="tilt-labyrinth-goal-hint">
-        Navigate the 🟡 ball to the 🏁 goal!
+        Find the 🔑 key, unlock the gate, and survive the floating hazards to reach the 🏁 goal.
       </p>
     </div>
   );
