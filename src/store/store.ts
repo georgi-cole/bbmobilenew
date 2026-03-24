@@ -27,7 +27,7 @@ import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
 import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternSlice';
-import memoryColorsReducer from '../features/memoryColors/memoryColorsSlice';
+import tetrisReducer from '../features/tetris/tetrisSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
@@ -51,7 +51,7 @@ export const store = configureStore({
     blackjackTournament: blackjackTournamentReducer,
     riskWheel: riskWheelReducer,
     wildcardWestern: wildcardWesternReducer,
-    memoryColors: memoryColorsReducer,
+    tetris: tetrisReducer,
     publicOpinion: publicOpinionReducer,
   },
   preloadedState: {
