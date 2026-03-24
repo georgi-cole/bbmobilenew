@@ -177,7 +177,10 @@ export default function MemoryColorsComp({
   // Trigger reveal when phase becomes 'showing'
   useEffect(() => {
     if (!mc || mc.phase !== 'showing') return;
-    runReveal(mc.sequence);
+    const revealStartTimeout = setTimeout(() => {
+      runReveal(mc.sequence);
+    }, 0);
+    return () => clearTimeout(revealStartTimeout);
   }, [mc?.phase, mc?.sequence, runReveal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Warning beat ───────────────────────────────────────────────────────────

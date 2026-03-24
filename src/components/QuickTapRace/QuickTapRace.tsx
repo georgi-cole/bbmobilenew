@@ -95,11 +95,16 @@ export default function QuickTapRace({
   session,
   players = [],
   onFinish,
+  seed,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
   const resolvedDuration = session?.options.timeLimit ?? GAME_DURATION;
+  // Keep `seed` threaded through the shared minigame signature even when this
+  // branch doesn't yet consume it directly, so the prop remains type-safe and
+  // the file stays `noUnusedLocals`-clean.
+  void seed;
 
   // ── State ──────────────────────────────────────────────────────────────────
 

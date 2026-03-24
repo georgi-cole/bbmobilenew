@@ -106,68 +106,6 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   });
 }
 
-type TestStore = ReturnType<typeof makeStore>;
-
-/**
- * Fully simulate a human player's run, returning the phase and relevant
- * final state. tapResult controls each input: 'correct' | 'wrong'.
- */
-function simulateHumanRun(
-  store: TestStore,
-  seed: number,
-  participantIds: string[],
-  humanPlayerId: string,
-  taps: Array<'correct' | 'wrong'>,
-) {
-  store.dispatch(
-    initMemoryColors({
-      participantIds,
-      competitionType: 'HOH',
-      seed,
-      humanPlayerId,
-    }),
-  );
-
-  let tapIndex = 0;
-  let round = 1;
-
-  while (tapIndex < taps.length) {
-    const mc = store.getState().memoryColors;
-    if (!mc || mc.phase === 'complete') break;
-
-    if (mc.phase === 'showing') {
-      store.dispatch(beginInput());
-      continue;
-    }
-
-    if (mc.phase === 'input') {
-      const mc2 = store.getState().memoryColors!;
-      const seq = mc2.sequence;
-      const expected = seq[mc2.inputIndex];
-      const tapCorrect = taps[tapIndex] === 'correct';
-      const colorIndex = tapCorrect ? expected : (expected + 1) % NUM_COLORS;
-      store.dispatch(recordInput({ colorIndex, now: tapIndex * 500 }));
-      tapIndex++;
-      continue;
-    }
-
-    if (mc.phase === 'warning_beat') {
-      store.dispatch(resumeAfterWarning());
-      continue;
-    }
-
-    if (mc.phase === 'round_cleared') {
-      round++;
-      store.dispatch(startNextRound());
-      continue;
-    }
-
-    break;
-  }
-
-  return store.getState().memoryColors!;
-}
-
 // ── 1. Slice state machine ────────────────────────────────────────────────────
 
 describe('MemoryColors slice — state machine', () => {
