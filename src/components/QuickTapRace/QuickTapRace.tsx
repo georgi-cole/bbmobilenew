@@ -10,7 +10,10 @@
  *  - 30-second game duration
  *  - Escalating heat / intensity visual system
  *  - Emoji burst particle effects on every tap
- *  - Special timed multipliers (2× boost and ½× fumble)
+ *  - Tap-to-activate booster prompts (exactly 3 per game):
+ *      players must explicitly tap the prompt to gain the effect,
+ *      creating a meaningful risk/reward tradeoff against tapping rhythm.
+ *  - Booster types: 2x, 3x, 0.5x, -1x, +3s, -3s
  *  - Competitive AI scoring via pre-computed `session.aiScores`
  *  - Canonical last-place derivation from effective scores
  */
@@ -25,6 +28,10 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import { useQuickTapRaceAudio } from '../../hooks/useQuickTapRaceAudio';
+import {
+  selectBoosterPrompts,
+} from '../../ai/competition/quickTapSimulation';
+import type { ScheduledBoosterPrompt } from '../../ai/competition/quickTapSimulation';
 import './QuickTapRace.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -34,52 +41,6 @@ const GAME_DURATION = 30;
 
 /** Ready-phase countdown start value. */
 const READY_COUNT = 3;
-
-/** Multiplier event definition. */
-interface MultiplierEvent {
-  id: number;
-  /** Human-readable label shown in the UI. */
-  label: string;
-  /** Emoji icon for the event badge. */
-  icon: string;
-  /** Multiplier applied to tap value while active (e.g. 2 = double, 0.5 = half). */
-  multiplier: number;
-  /** Time offset (seconds from game start) when the event appears. */
-  startsAt: number;
-  /** Duration in seconds the event stays active. */
-  duration: number;
-  /** Whether this is a beneficial (true) or debilitating (false) modifier. */
-  beneficial: boolean;
-}
-
-// Multiplier events are deterministic for each game instance: they are defined
-// in a fixed order and always appear regardless of the seed.
-const MULTIPLIER_EVENTS: Omit<MultiplierEvent, 'id'>[] = [
-  {
-    label: '2× FRENZY!',
-    icon: '⚡',
-    multiplier: 2,
-    startsAt: 8,
-    duration: 5,
-    beneficial: true,
-  },
-  {
-    label: '½ FUMBLE',
-    icon: '🥴',
-    multiplier: 0.5,
-    startsAt: 18,
-    duration: 4,
-    beneficial: false,
-  },
-  {
-    label: '3× TURBO!',
-    icon: '🔥',
-    multiplier: 3,
-    startsAt: 24,
-    duration: 4,
-    beneficial: true,
-  },
-];
 
 /** Particle emojis used on tap bursts, indexed by heat level [0-5]. */
 const HEAT_EMOJIS: string[][] = [
@@ -134,11 +95,16 @@ export default function QuickTapRace({
   session,
   players = [],
   onFinish,
+  seed,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
   const resolvedDuration = session?.options.timeLimit ?? GAME_DURATION;
+  // Keep `seed` threaded through the shared minigame signature even when this
+  // branch doesn't yet consume it directly, so the prop remains type-safe and
+  // the file stays `noUnusedLocals`-clean.
+  void seed;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -149,7 +115,11 @@ export default function QuickTapRace({
   const [effectiveScore, setEffectiveScore] = useState(0);
   const [heatLevel, setHeatLevel] = useState(0); // 0–5
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [activeMultiplier, setActiveMultiplier] = useState<MultiplierEvent | null>(null);
+  // Booster state ─────────────────────────────────────────────────────────────
+  /** The prompt currently displayed on screen (not yet tapped or expired). */
+  const [visibleBoosterPrompt, setVisibleBoosterPrompt] = useState<ScheduledBoosterPrompt | null>(null);
+  /** Active multiplier effect (after the player tapped a multiplier-type prompt). */
+  const [activeMultiplier, setActiveMultiplier] = useState<number | null>(null);
   const [appliedModifiers, setAppliedModifiers] = useState<string[]>([]);
   const [scores, setScores] = useState<ScoreEntry[]>([]);
 
@@ -160,9 +130,13 @@ export default function QuickTapRace({
   const recentTapTimes = useRef<number[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const particleIdRef = useRef(0);
-  const activeMultiplierRef = useRef<MultiplierEvent | null>(null);
+  const activeMultiplierRef = useRef<number | null>(null);
   const appliedModifiersRef = useRef<string[]>([]);
   const particleTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  /** Ref to the currently visible prompt so booster-tap and expiry handlers stay in sync. */
+  const visibleBoosterPromptRef = useRef<ScheduledBoosterPrompt | null>(null);
+  /** Timeouts for booster prompt show/hide scheduling. */
+  const boosterTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   // ── Audio ──────────────────────────────────────────────────────────────────
 
@@ -175,46 +149,53 @@ export default function QuickTapRace({
     };
   }, []);
 
-  // ── Multiplier events ──────────────────────────────────────────────────────
+  // ── Booster prompt scheduling ──────────────────────────────────────────────
 
-  // Attach multiplier events once the game starts
+  // Schedule all 3 booster prompts once the game starts.  Each prompt is shown
+  // on-screen for its `visibleFor` window; if the player ignores it, it quietly
+  // disappears.  The player must explicitly tap the prompt to activate its effect.
   useEffect(() => {
     if (gamePhase !== 'playing') return;
+
+    const effectiveSeed = session?.seed ?? seed ?? 0;
+    const prompts = selectBoosterPrompts(effectiveSeed);
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-    MULTIPLIER_EVENTS.forEach((ev, i) => {
-      const event: MultiplierEvent = { ...ev, id: i };
-
-      // Activate
+    prompts.forEach((prompt) => {
+      // Show the prompt
       timeouts.push(
         setTimeout(() => {
-          setActiveMultiplier(event);
-          activeMultiplierRef.current = event;
-          // Play booster stinger for beneficial events, half-tap stinger for debilitating ones
-          if (event.beneficial) {
-            playBooster();
-          } else {
-            playHalfTap();
-          }
-        }, event.startsAt * 1000),
+          setVisibleBoosterPrompt(prompt);
+          visibleBoosterPromptRef.current = prompt;
+        }, prompt.scheduleAt * 1000),
       );
 
-      // Deactivate
+      // Auto-expire the prompt if not tapped
       timeouts.push(
         setTimeout(() => {
-          setActiveMultiplier(null);
-          activeMultiplierRef.current = null;
-          setAppliedModifiers((prev) => {
-            const updated = [...prev, event.label];
-            appliedModifiersRef.current = updated;
-            return updated;
-          });
-        }, (event.startsAt + event.duration) * 1000),
+          if (visibleBoosterPromptRef.current?.type === prompt.type &&
+              visibleBoosterPromptRef.current?.scheduleAt === prompt.scheduleAt) {
+            setVisibleBoosterPrompt(null);
+            visibleBoosterPromptRef.current = null;
+          }
+        }, (prompt.scheduleAt + prompt.visibleFor) * 1000),
       );
     });
 
-    return () => timeouts.forEach(clearTimeout);
-  }, [gamePhase, playBooster, playHalfTap]);
+    boosterTimeoutsRef.current = timeouts;
+    return () => {
+      // Clear all booster-related timeouts: prompt show/expire and any deactivation
+      // timers that may have been pushed by handleBoosterTap after effect setup.
+      const allTimeouts = new Set([
+        ...timeouts,
+        ...(boosterTimeoutsRef.current ?? []),
+      ]);
+      allTimeouts.forEach((t) => clearTimeout(t));
+      boosterTimeoutsRef.current = [];
+    };
+    // session is stable for a single competition; intentionally excluded to avoid restart.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamePhase]);
 
   // ── Ready countdown ────────────────────────────────────────────────────────
 
@@ -274,6 +255,60 @@ export default function QuickTapRace({
     return () => clearInterval(decay);
   }, [gamePhase]);
 
+  // ── Booster tap handler ────────────────────────────────────────────────────
+
+  /**
+   * Called when the player taps the visible booster prompt button.
+   * This activates the booster effect and removes the prompt from view.
+   * The player had to stop tapping the main surface to tap this, which
+   * creates the intentional rhythm interruption.
+   */
+  const handleBoosterTap = useCallback(() => {
+    const prompt = visibleBoosterPromptRef.current;
+    if (!prompt) return;
+
+    // Remove prompt immediately
+    setVisibleBoosterPrompt(null);
+    visibleBoosterPromptRef.current = null;
+    // Note: do NOT clear boosterTimeoutsRef here — it contains timeouts that
+    // schedule future prompts.  Any auto-expire timeout for the current prompt
+    // will safely no-op once visibleBoosterPromptRef is cleared above.
+
+    if (prompt.kind === 'time' && typeof prompt.timeDelta === 'number') {
+      // Instant time effect
+      setTimeLeft((prev) => Math.max(0, prev + prompt.timeDelta!));
+      setAppliedModifiers((prev) => {
+        const updated = [...prev, prompt.label];
+        appliedModifiersRef.current = updated;
+        return updated;
+      });
+      if (prompt.beneficial) {
+        playBooster();
+      } else {
+        playHalfTap();
+      }
+    } else if (prompt.kind === 'multiplier' && typeof prompt.multiplier === 'number') {
+      // Multiplier effect for activeDuration seconds
+      activeMultiplierRef.current = prompt.multiplier;
+      setActiveMultiplier(prompt.multiplier);
+      if (prompt.beneficial) {
+        playBooster();
+      } else {
+        playHalfTap();
+      }
+      const deactivateTimeout = setTimeout(() => {
+        activeMultiplierRef.current = null;
+        setActiveMultiplier(null);
+        setAppliedModifiers((prev) => {
+          const updated = [...prev, prompt.label];
+          appliedModifiersRef.current = updated;
+          return updated;
+        });
+      }, prompt.activeDuration * 1000);
+      boosterTimeoutsRef.current.push(deactivateTimeout);
+    }
+  }, [playBooster, playHalfTap]);
+
   // ── Tap handler ────────────────────────────────────────────────────────────
 
   const handleTap = useCallback(() => {
@@ -286,8 +321,8 @@ export default function QuickTapRace({
     // Play tap sound
     playTap();
 
-    // Resolve multiplier
-    const multiplier = activeMultiplierRef.current?.multiplier ?? 1;
+    // Resolve multiplier (null = no active booster → each tap scores 1)
+    const multiplier = activeMultiplierRef.current ?? 1;
     const taps = tapCountRef.current + 1;
     tapCountRef.current = taps;
     const newEffective = effectiveScoreRef.current + multiplier;
@@ -367,9 +402,9 @@ export default function QuickTapRace({
 
   // ── Derived UI values ──────────────────────────────────────────────────────
 
-  const progressPct = (timeLeft / resolvedDuration) * 100;
+  const progressPct = Math.min(100, (timeLeft / resolvedDuration) * 100);
   const isUrgent = timeLeft <= 5;
-  const currentMultiplier = activeMultiplier?.multiplier ?? 1;
+  const currentMultiplier = activeMultiplier ?? 1;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -434,7 +469,7 @@ export default function QuickTapRace({
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={resolvedDuration}
+              aria-valuemax={Math.max(timeLeft, resolvedDuration)}
             >
               <div
                 className="qtr__progress-fill"
@@ -442,20 +477,21 @@ export default function QuickTapRace({
               />
             </div>
 
-            {/* Active multiplier badge */}
-            {activeMultiplier && (
+            {/* Active multiplier status badge (shown after prompt is tapped) */}
+            {activeMultiplier !== null && (
               <div
                 className={[
                   'qtr__multiplier-badge',
-                  activeMultiplier.beneficial ? 'qtr__multiplier-badge--good' : 'qtr__multiplier-badge--bad',
+                  activeMultiplier > 1 ? 'qtr__multiplier-badge--good' : 'qtr__multiplier-badge--bad',
                 ]
                   .filter(Boolean)
                   .join(' ')}
                 role="status"
                 aria-live="polite"
               >
-                <span className="qtr__multiplier-icon">{activeMultiplier.icon}</span>
-                <span className="qtr__multiplier-label">{activeMultiplier.label}</span>
+                <span className="qtr__multiplier-label">
+                  {activeMultiplier < 0 ? `${activeMultiplier}× DRAIN` : `${activeMultiplier}×`} active
+                </span>
               </div>
             )}
 
@@ -473,6 +509,29 @@ export default function QuickTapRace({
                 />
               ))}
             </div>
+
+            {/* Booster prompt — appears above TAP button; player must tap it to activate */}
+            {visibleBoosterPrompt && (
+              <button
+                className={[
+                  'qtr__booster-prompt',
+                  visibleBoosterPrompt.beneficial
+                    ? 'qtr__booster-prompt--good'
+                    : 'qtr__booster-prompt--bad',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={handleBoosterTap}
+                type="button"
+                aria-label={`Activate booster: ${visibleBoosterPrompt.label}`}
+              >
+                <span className="qtr__booster-icon" aria-hidden="true">
+                  {visibleBoosterPrompt.icon}
+                </span>
+                <span className="qtr__booster-label">{visibleBoosterPrompt.label}</span>
+                <span className="qtr__booster-cta">TAP TO GRAB!</span>
+              </button>
+            )}
 
             {/* TAP button + particles */}
             <div className="qtr__tap-area">
