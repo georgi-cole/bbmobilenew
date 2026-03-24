@@ -517,6 +517,19 @@ export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationAr
   });
 }
 
+export {
+  simulateQuickTapAiScore,
+  selectBoosterPrompts,
+  BOOSTER_POOL,
+  PROMPT_VISIBLE_FOR,
+} from './quickTapSimulation';
+export type {
+  BoosterDefinition,
+  BoosterType,
+  ScheduledBoosterPrompt,
+  SimulateQuickTapAiScoreArgs,
+} from './quickTapSimulation';
+
 export type {
   AiParticipantSnapshot,
   AiSimulationContext,
