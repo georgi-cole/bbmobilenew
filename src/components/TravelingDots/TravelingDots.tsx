@@ -533,7 +533,9 @@ export default function TravelingDots({ session, players = [], onFinish, seed = 
     if (!session || !breakdown) return;
     const lastPlaceId = leaderboard.length > 0 ? leaderboard[leaderboard.length - 1].id : undefined;
     const payload: CompleteMinigamePayload = { humanScore: breakdown.total, lastPlaceId };
-    dispatch(completeMinigame(payload));
+    if (session.key === 'quickTap') {
+      dispatch(completeMinigame(payload));
+    }
   }, [dispatch, session, breakdown, leaderboard]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
