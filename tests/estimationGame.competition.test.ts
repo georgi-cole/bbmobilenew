@@ -28,7 +28,7 @@ import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
 import {
   computeRoundScore,
   deriveLastPlaceId,
-} from '../src/components/EstimationGame/EstimationGame';
+} from '../src/components/EstimationGame/estimationGameUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

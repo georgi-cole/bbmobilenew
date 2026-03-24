@@ -26,6 +26,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import { mulberry32 } from '../../store/rng';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
+import { computeRoundScore, deriveLastPlaceId } from './estimationGameUtils';
 import './EstimationGame.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -38,12 +39,6 @@ const ROUND_CONFIG = [
   { minCount: 30, maxCount: 55, exposureMs: 1300, label: 'Round 2', theme: 'dots'  as const },
   { minCount: 50, maxCount: 90, exposureMs: 1000, label: 'Round 3', theme: 'gems'  as const },
 ];
-
-/** Penalty per item off from the actual count. */
-const PENALTY_PER_ITEM = 3;
-
-/** Maximum score per round. */
-const MAX_ROUND_SCORE = 100;
 
 /** Time limit for entering a guess after the reveal (seconds). */
 const GUESS_TIME_LIMIT = 15;
@@ -155,35 +150,6 @@ interface Props {
   seed?: number;
   /** When true the game begins immediately on mount (no intro screen). */
   autoStart?: boolean;
-}
-
-// ── Scoring helpers (pure / exportable for tests) ─────────────────────────────
-
-/**
- * Compute the score for a single round given the true count and the player's guess.
- * Returns a value in [0, MAX_ROUND_SCORE].
- */
-export function computeRoundScore(actual: number, guess: number): number {
-  const diff = Math.abs(actual - guess);
-  return Math.max(0, Math.round(MAX_ROUND_SCORE - diff * PENALTY_PER_ITEM));
-}
-
-/**
- * Given a full scores record and an ordered participant list, compute the
- * authoritative last-place player ID.
- * The winner is excluded from last-place consideration.
- */
-export function deriveLastPlaceId(
-  scores: Record<string, number>,
-  participants: string[],
-  winnerId: string,
-): string | undefined {
-  const nonWinners = participants.filter((id) => id !== winnerId);
-  if (nonWinners.length === 0) return undefined;
-  return nonWinners.reduce(
-    (worst, id) => (scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst,
-    nonWinners[0],
-  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -349,7 +315,6 @@ export default function EstimationGame({
       // MinigameHost path
       if (onFinish) onFinish(humanTotal);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundResults, session, humanId, players, onFinish]);
 
   // Trigger finishGame once roundResults has all 3 entries (avoids stale closure)
