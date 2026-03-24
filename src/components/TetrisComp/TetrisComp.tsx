@@ -364,12 +364,21 @@ export default function TetrisComp({
   }, []);
 
   const dequeue = useCallback((): PieceKey => {
-    refillBag();
-    const key = bagRef.current.shift()!;
-    // Ensure 3 upcoming pieces are always in the queue
+    // Ensure there is at least one piece available in the upcoming queue
+    while (upcomingRef.current.length < 1) {
+      refillBag();
+      if (bagRef.current.length === 0) break;
+      upcomingRef.current.push(bagRef.current.shift()!);
+    }
+
+    // Take the next active piece from the upcoming queue
+    const key = upcomingRef.current.shift()!;
+
+    // Replenish upcoming queue back to 3 preview pieces
     while (upcomingRef.current.length < 3) {
       refillBag();
-      if (bagRef.current.length > 0) upcomingRef.current.push(bagRef.current.shift()!);
+      if (bagRef.current.length === 0) break;
+      upcomingRef.current.push(bagRef.current.shift()!);
     }
     setUpcoming([...upcomingRef.current]);
     return key;
