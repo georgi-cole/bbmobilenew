@@ -1,0 +1,196 @@
+/* TiltLabyrinthComp styles */
+
+.tilt-labyrinth-host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 100%;
+  padding: 8px 8px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #0b1020, #0f1530);
+  color: #e8f3ff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* ── HUD ─────────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.tilt-labyrinth-timer {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #7dd3fc;
+  letter-spacing: 0.04em;
+  transition: color 0.3s ease;
+}
+
+.tilt-labyrinth-timer--warning {
+  color: #f87171;
+  animation: tiltLab-timer-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes tiltLab-timer-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-labyrinth-timer--warning {
+    animation: none;
+  }
+}
+
+.tilt-labyrinth-controls-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-align: right;
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-canvas-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 24px rgba(78, 168, 222, 0.25);
+  border: 1.5px solid rgba(78, 168, 222, 0.3);
+}
+
+.tilt-labyrinth-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: none;
+}
+
+/* ── Goal hint ───────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-goal-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-results {
+  background: linear-gradient(180deg, #0b1020, #0f1530);
+  color: #e8f3ff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.tilt-labyrinth-results-hero {
+  text-align: center;
+  padding: 16px 16px 8px;
+}
+
+.tilt-labyrinth-trophy {
+  font-size: 3rem;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.tilt-labyrinth-results-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fbbf24;
+  margin: 0 0 4px;
+}
+
+.tilt-labyrinth-results-subtitle {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.tilt-labyrinth-your-rank {
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+/* ── Placements list ─────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-placements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tilt-labyrinth-placement-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.tilt-labyrinth-placement-row--winner {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.tilt-labyrinth-placement-row--you {
+  background: rgba(125, 211, 252, 0.1);
+  border: 1px solid rgba(125, 211, 252, 0.3);
+}
+
+.tilt-labyrinth-placement-row--last {
+  opacity: 0.7;
+}
+
+.tilt-labyrinth-rank {
+  flex: 0 0 28px;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.tilt-labyrinth-pname {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tilt-labyrinth-you-tag {
+  font-size: 0.75rem;
+  color: #7dd3fc;
+  font-weight: 400;
+}
+
+.tilt-labyrinth-time {
+  flex: 0 0 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #7dd3fc;
+  font-size: 0.88rem;
+}

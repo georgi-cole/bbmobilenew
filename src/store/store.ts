@@ -28,6 +28,7 @@ import blackjackTournamentReducer from '../features/blackjackTournament/blackjac
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
 import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternSlice';
 import tetrisReducer from '../features/tetris/tetrisSlice';
+import tiltLabyrinthReducer from '../features/tiltLabyrinth/tiltLabyrinthSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
@@ -52,6 +53,7 @@ export const store = configureStore({
     riskWheel: riskWheelReducer,
     wildcardWestern: wildcardWesternReducer,
     tetris: tetrisReducer,
+    tiltLabyrinth: tiltLabyrinthReducer,
     publicOpinion: publicOpinionReducer,
   },
   preloadedState: {

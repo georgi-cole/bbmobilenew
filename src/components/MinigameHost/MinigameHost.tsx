@@ -34,6 +34,8 @@ import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWhee
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
 import TetrisComp from '../TetrisComp/TetrisComp';
 import type { TetrisPrizeType } from '../../features/tetris/tetrisSlice';
+import TiltLabyrinthComp from '../TiltLabyrinthComp/TiltLabyrinthComp';
+import type { TiltLabyrinthPrizeType } from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -363,6 +365,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'TiltLabyrinth') {
+              return (
+                <TiltLabyrinthComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as TiltLabyrinthPrizeType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
