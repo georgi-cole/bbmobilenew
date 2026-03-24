@@ -48,6 +48,9 @@ import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
 import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
+import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
+import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
@@ -1315,12 +1318,20 @@ export default function GameScreen() {
   const pendingMinigame = game.pendingMinigame
   const humanIsParticipant =
     !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id)
-  // MinigameHost takes priority over QuickTapRace when a challenge is pending
-  // and the human player is a participant in that challenge.
+  // MinigameHost takes priority over native HOH minigame overlays when a challenge
+  // is pending and the human player is a participant in that challenge.
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  const showQuickTapRace = !showMinigameHost && humanIsParticipant
+  /** True whenever a native React HOH/LOH minigame overlay should be displayed. */
+  const showHohMinigame = !showMinigameHost && humanIsParticipant
+  const showPressurePlank = showHohMinigame && pendingMinigame?.key === 'pressurePlank'
+  const showBullseyeBlitz = showHohMinigame && pendingMinigame?.key === 'targetPractice'
+  // TravelingDots is key-gated to its specific overlay component.
+  const showTravelingDots = showHohMinigame && pendingMinigame?.key === 'travelingDots'
+  // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
+  // unrecognised pendingMinigame key so the human is never left with no UI.
+  const showQuickTapRace = showHohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1403,6 +1414,8 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showQuickTapRace ||
+    showBullseyeBlitz ||
+    showTravelingDots ||
     aiTiebreakerPending ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -1860,9 +1873,22 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── QuickTapRace minigame overlay ────────────────────────────────── */}
+      {/* ── Native HOH/LOH minigame overlays (routed by session key) ────────── */}
       {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
+      )}
+      {showPressurePlank && pendingMinigame && (
+        <PressurePlank session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── BullseyeBlitz minigame overlay ───────────────────────────────── */}
+      {showBullseyeBlitz && pendingMinigame && (
+        <BullseyeBlitz session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── TravelingDots minigame overlay ───────────────────────────────── */}
+      {showTravelingDots && pendingMinigame && (
+        <TravelingDots session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}

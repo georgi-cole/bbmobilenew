@@ -1,6 +1,18 @@
 // MODULE: minigames/estimation-game.js
-// Estimation Game - Count dots on screen
-// Migrated from legacy minigames.js
+// ──────────────────────────────────────────────────────────────────────────────
+// DEPRECATED — no longer the active gameplay path.
+//
+// Estimation has been migrated to the native React minigame architecture:
+//   src/components/EstimationGame/EstimationGame.tsx
+//
+// The registry entry (src/minigames/registry.ts) now sets
+//   implementation: 'react', reactComponentKey: 'EstimationGame', legacy: false
+// so this IIFE module is never loaded during normal gameplay.
+//
+// This file is retained only for historical reference and backward-compatibility
+// with any saved-state that might reference the legacy module path.
+// It MUST NOT be imported or required from active code.
+// ──────────────────────────────────────────────────────────────────────────────
 
 (function(g){
   'use strict';
