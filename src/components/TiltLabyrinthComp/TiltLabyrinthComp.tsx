@@ -51,7 +51,14 @@ const CELL_PX = 25;
 const MAZE_W = MAZE_COLS * CELL_PX;
 const MAZE_H = MAZE_ROWS * CELL_PX;
 const WALL_THICKNESS = 2;
-const WALL_THICKNESS_BOOST = 0.35;
+const VIGNETTE_CENTER_X_RATIO = 0.5;
+const VIGNETTE_CENTER_Y_RATIO = 0.35;
+const VIGNETTE_INNER_RADIUS_CELL_UNITS = 1.5;
+const VIGNETTE_OUTER_RADIUS_WIDTH_RATIO = 0.8;
+// Sub-pixel inset keeps the canvas border crisp around the maze area.
+const MAZE_BORDER_OFFSET = 0.75;
+const MAZE_BORDER_WIDTH = 1.5;
+const MAZE_BORDER_INSET_TOTAL = MAZE_BORDER_OFFSET * 2;
 
 const BALL_RADIUS = 6;
 const FRICTION = 0.88;
@@ -64,8 +71,6 @@ const HAZARD_SPEED = 1.15;
 const HAZARD_HIT_COOLDOWN_MS = 650;
 const MAX_PLACEMENT_ATTEMPTS = 200;
 const MIN_HAZARD_SPACING_CELLS = 2.75;
-const GRID_OUTLINE_ALPHA = 0.13;
-const GRID_CORNER_ALPHA = 0.2;
 const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
@@ -273,39 +278,21 @@ function drawMaze(
   const { ball, finishTime, hasKey, lockOpen, keyPos, doorPos, goalPos, hazards } = game;
 
   // Background
-  const bgGradient = ctx.createLinearGradient(0, 0, MAZE_W, MAZE_H);
-  bgGradient.addColorStop(0, '#0d1424');
-  bgGradient.addColorStop(1, '#121b34');
-  ctx.fillStyle = bgGradient;
+  ctx.fillStyle = '#10192d';
   ctx.fillRect(0, 0, MAZE_W, MAZE_H);
 
-  // Subtle cell shading to make the layout feel denser and more deliberate.
-  for (let row = 0; row < MAZE_ROWS; row++) {
-    for (let col = 0; col < MAZE_COLS; col++) {
-      const shade = (row + col) % 2 === 0 ? 0.04 : 0.02;
-      ctx.fillStyle = `rgba(125, 211, 252, ${shade})`;
-      ctx.fillRect(col * CELL_PX, row * CELL_PX, CELL_PX, CELL_PX);
-    }
-  }
-
-  // Closed-grid underlay to preserve the original closed-grid labyrinth feel even
-  // where carved passages remove collision walls.
-  ctx.strokeStyle = `rgba(125, 211, 252, ${GRID_OUTLINE_ALPHA})`;
-  ctx.lineWidth = 1;
-  for (let row = 0; row < MAZE_ROWS; row++) {
-    for (let col = 0; col < MAZE_COLS; col++) {
-      ctx.strokeRect(col * CELL_PX + 0.5, row * CELL_PX + 0.5, CELL_PX, CELL_PX);
-    }
-  }
-
-  ctx.fillStyle = `rgba(148, 163, 184, ${GRID_CORNER_ALPHA})`;
-  for (let row = 0; row <= MAZE_ROWS; row++) {
-    for (let col = 0; col <= MAZE_COLS; col++) {
-      ctx.beginPath();
-      ctx.arc(col * CELL_PX, row * CELL_PX, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+  const vignette = ctx.createRadialGradient(
+    MAZE_W * VIGNETTE_CENTER_X_RATIO,
+    MAZE_H * VIGNETTE_CENTER_Y_RATIO,
+    CELL_PX * VIGNETTE_INNER_RADIUS_CELL_UNITS,
+    MAZE_W * VIGNETTE_CENTER_X_RATIO,
+    MAZE_H * VIGNETTE_CENTER_Y_RATIO,
+    MAZE_W * VIGNETTE_OUTER_RADIUS_WIDTH_RATIO,
+  );
+  vignette.addColorStop(0, 'rgba(22, 32, 58, 0.16)');
+  vignette.addColorStop(1, 'rgba(4, 10, 24, 0.28)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, MAZE_W, MAZE_H);
 
   const pulse = 0.6 + 0.4 * Math.sin(elapsed / 300);
 
@@ -362,10 +349,8 @@ function drawMaze(
 
   // Walls
   ctx.save();
-  ctx.shadowColor = 'rgba(96, 165, 250, 0.2)';
-  ctx.shadowBlur = 6;
-  ctx.strokeStyle = '#67c7ff';
-  ctx.lineWidth = WALL_THICKNESS + WALL_THICKNESS_BOOST;
+  ctx.strokeStyle = '#63bbff';
+  ctx.lineWidth = WALL_THICKNESS;
   ctx.lineCap = 'square';
 
   for (let row = 0; row < MAZE_ROWS; row++) {
@@ -394,6 +379,14 @@ function drawMaze(
       ctx.stroke();
     }
   }
+  ctx.strokeStyle = 'rgba(99, 187, 255, 0.16)';
+  ctx.lineWidth = MAZE_BORDER_WIDTH;
+  ctx.strokeRect(
+    MAZE_BORDER_OFFSET,
+    MAZE_BORDER_OFFSET,
+    MAZE_W - MAZE_BORDER_INSET_TOTAL,
+    MAZE_H - MAZE_BORDER_INSET_TOTAL,
+  );
   ctx.restore();
 
   // Hazards
