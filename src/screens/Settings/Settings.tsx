@@ -82,9 +82,13 @@ export default function Settings() {
   // Persist comp selection changes immediately via setGameUX.
   const handleCompSelectionChange = useCallback(
     (payload: CompSelectionPayload) => {
-      dispatch(setGameUX({ compSelection: payload }));
+      const mergedCompSelection = {
+        ...settings.gameUX.compSelection,
+        ...payload,
+      };
+      dispatch(setGameUX({ compSelection: mergedCompSelection }));
     },
-    [dispatch],
+    [dispatch, settings.gameUX.compSelection],
   );
 
   /**
