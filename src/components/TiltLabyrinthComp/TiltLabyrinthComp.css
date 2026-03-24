@@ -1,0 +1,279 @@
+/* TiltLabyrinthComp styles */
+
+.tilt-labyrinth-host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 100%;
+  padding: 8px 8px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #0b1020, #0f1530);
+  color: #e8f3ff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* ── HUD ─────────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-hud {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(125, 211, 252, 0.08);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(2, 6, 23, 0.22);
+  backdrop-filter: blur(6px);
+  font-size: 0.85rem;
+}
+
+.tilt-labyrinth-timer {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #7dd3fc;
+  letter-spacing: 0.04em;
+  transition: color 0.3s ease;
+}
+
+.tilt-labyrinth-timer--warning {
+  color: #f87171;
+  animation: tiltLab-timer-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes tiltLab-timer-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-labyrinth-timer--warning {
+    animation: none;
+  }
+}
+
+.tilt-labyrinth-controls-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-align: right;
+}
+
+.tilt-labyrinth-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 10px;
+}
+
+.tilt-labyrinth-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #dbeafe;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.tilt-labyrinth-status-chip--objective {
+  background: rgba(125, 211, 252, 0.12);
+  border-color: rgba(125, 211, 252, 0.3);
+  color: #7dd3fc;
+}
+
+.tilt-labyrinth-status-chip--done {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(74, 222, 128, 0.32);
+  color: #86efac;
+}
+
+.tilt-labyrinth-status-chip--danger {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+  color: #fca5a5;
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-canvas-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 22px 48px rgba(2, 6, 23, 0.42),
+    0 0 26px rgba(78, 168, 222, 0.2);
+  border: 1.5px solid rgba(96, 165, 250, 0.34);
+  background:
+    radial-gradient(circle at top, rgba(96, 165, 250, 0.16), rgba(15, 23, 42, 0.62));
+}
+
+.tilt-labyrinth-canvas {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: none;
+}
+
+.tilt-labyrinth-canvas-wrap::before,
+.tilt-labyrinth-canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tilt-labyrinth-canvas-wrap::before {
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 255, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 22%);
+  mix-blend-mode: screen;
+}
+
+.tilt-labyrinth-canvas-wrap::after {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(148, 163, 184, 0.05) 0,
+      rgba(148, 163, 184, 0.05) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+  opacity: 0.4;
+}
+
+/* ── Goal hint ───────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-goal-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 500px;
+}
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-results {
+  background: linear-gradient(180deg, #0b1020, #0f1530);
+  color: #e8f3ff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.tilt-labyrinth-results-hero {
+  text-align: center;
+  padding: 16px 16px 8px;
+}
+
+.tilt-labyrinth-trophy {
+  font-size: 3rem;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.tilt-labyrinth-results-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fbbf24;
+  margin: 0 0 4px;
+}
+
+.tilt-labyrinth-results-subtitle {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.tilt-labyrinth-your-rank {
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+/* ── Placements list ─────────────────────────────────────────────────────── */
+
+.tilt-labyrinth-placements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tilt-labyrinth-placement-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.tilt-labyrinth-placement-row--winner {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.tilt-labyrinth-placement-row--you {
+  background: rgba(125, 211, 252, 0.1);
+  border: 1px solid rgba(125, 211, 252, 0.3);
+}
+
+.tilt-labyrinth-placement-row--last {
+  opacity: 0.7;
+}
+
+.tilt-labyrinth-rank {
+  flex: 0 0 28px;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.tilt-labyrinth-pname {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tilt-labyrinth-you-tag {
+  font-size: 0.75rem;
+  color: #7dd3fc;
+  font-weight: 400;
+}
+
+.tilt-labyrinth-time {
+  flex: 0 0 60px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #7dd3fc;
+  font-size: 0.88rem;
+}

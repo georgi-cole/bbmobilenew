@@ -32,6 +32,10 @@ import type { BlackjackTournamentCompetitionType } from '../../features/blackjac
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
 import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
+import TetrisComp from '../TetrisComp/TetrisComp';
+import type { TetrisPrizeType } from '../../features/tetris/tetrisSlice';
+import TiltLabyrinthComp from '../TiltLabyrinthComp/TiltLabyrinthComp';
+import type { TiltLabyrinthPrizeType } from '../../features/tiltLabyrinth/tiltLabyrinthSlice';
 import HouseOfCardsComp from '../HouseOfCardsComp/HouseOfCardsComp';
 import type { HouseOfCardsPrizeType } from '../../features/houseOfCards/houseOfCardsSlice';
 import reactComponents from '../../minigames/reactComponents';
@@ -357,12 +361,35 @@ export default function MinigameHost({
                 />
               );
             }
+            if (game.implementation === 'react' && game.reactComponentKey === 'Tetris') {
+              return (
+                <TetrisComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
             if (game.implementation === 'react' && game.reactComponentKey === 'HouseOfCards') {
               return (
                 <HouseOfCardsComp
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as HouseOfCardsPrizeType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'TiltLabyrinth') {
+              return (
+                <TiltLabyrinthComp
+                  key={`tilt-labyrinth:${seed}:${gameOptions?.prizeType as string ?? 'HOH'}:${participantIds.join(',')}`}
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as TiltLabyrinthPrizeType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />

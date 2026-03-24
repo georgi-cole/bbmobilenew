@@ -1,6 +1,24 @@
 // MODULE: minigames/tilt-labyrinth.js
 // Tilt Labyrinth - HARD MODE (BitLife Escape from Jail style)
 // Tilt phone to move ball through complex maze with hazards and keys
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// DEPRECATED
+// This legacy containerized module is deprecated and will be removed in a
+// future cleanup PR.
+//
+// The authoritative implementation is now the native React component:
+//   • Component : src/components/TiltLabyrinthComp/TiltLabyrinthComp.tsx
+//   • Slice     : src/features/tiltLabyrinth/tiltLabyrinthSlice.ts
+//   • Thunks    : src/features/tiltLabyrinth/thunks.ts
+//
+// The minigame registry (src/minigames/registry.ts) already routes the
+// 'tiltLabyrinth' key to the React component via:
+//   implementation: 'react', reactComponentKey: 'TiltLabyrinth'
+//
+// Do NOT add new consumers of this module.  Migrate any remaining usages to
+// the React component above.
+// ─────────────────────────────────────────────────────────────────────────────
 
 (function(g){
   'use strict';
