@@ -412,7 +412,8 @@ export default function BullseyeBlitz({
                     : 1;
                 const targetTransformStyle: CSSProperties = t.kind === 'hazard'
                   // Hazard targets animate `transform` in CSS for the wiggle,
-                  // so their shrink scale is passed through a CSS variable.
+                  // so their shrink scale is passed through a CSS variable
+                  // consumed by `bbl-hazard-wiggle` in BullseyeBlitz.css.
                   ? { '--bbl-scale': scale.toFixed(3) } as CSSProperties
                   : {
                     transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,

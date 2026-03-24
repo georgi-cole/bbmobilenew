@@ -58,8 +58,6 @@ export interface ScoreEntry {
   isHuman: boolean;
 }
 
-type RankedEntry = ScoreEntry & { participantIndex: number };
-
 /**
  * Build a ranked leaderboard from raw scores + participant list.
  *
@@ -75,6 +73,8 @@ export function buildRankedLeaderboard(
   players: Player[],
   humanHits?: { standard: number; bonus: number; hazard: number },
 ): ScoreEntry[] {
+  type RankedEntry = ScoreEntry & { participantIndex: number };
+
   const entries: RankedEntry[] = participants.map((id, idx) => {
     const p = players.find((pl) => pl.id === id);
     const isHuman = id === humanId;
