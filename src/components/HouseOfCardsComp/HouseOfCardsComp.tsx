@@ -40,6 +40,7 @@ import {
   PEEK_STREAK_TRIGGER,
   type HouseOfCardsBoardCard,
 } from './houseOfCardsUtils';
+import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import './HouseOfCardsComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -133,6 +134,10 @@ export default function HouseOfCardsComp({
   const streakBestRef = useRef(0);
   const finalisedRef = useRef(false);
   const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionSoundPlayedRef = useRef(false);
+  const { playFlip, playMatch, playMismatch, playPeek, playComplete } = useHouseOfCardsAudio(
+    hoc?.status === 'active' && !gameOver,
+  );
 
   // ── Initialise competition ───────────────────────────────────────────────
   useEffect(() => {
@@ -239,12 +244,25 @@ export default function HouseOfCardsComp({
     dispatch(resolveHouseOfCardsOutcome());
   }, [hoc, dispatch]);
 
+  useEffect(() => {
+    if (hoc?.status === 'complete' && !completionSoundPlayedRef.current) {
+      completionSoundPlayedRef.current = true;
+      playComplete();
+      return;
+    }
+
+    if (hoc?.status !== 'complete') {
+      completionSoundPlayedRef.current = false;
+    }
+  }, [hoc?.status, playComplete]);
+
   // ── Card flip handler ────────────────────────────────────────────────────
   const handleCardClick = useCallback(
     (cardIndex: number) => {
       if (locked || gameOver) return;
       const card = board[cardIndex];
       if (!card || card.isMatched || card.isFlipped) return;
+      playFlip();
 
       const newBoard = board.map((c, i) =>
         i === cardIndex ? { ...c, isFlipped: true } : c,
@@ -260,6 +278,7 @@ export default function HouseOfCardsComp({
 
         if (cardA.symbol === cardB.symbol) {
           // Match!
+          playMatch();
           const newMatched = matchedPairsRef.current + 1;
           matchedPairsRef.current = newMatched;
           const newStreak = streak + 1;
@@ -285,6 +304,7 @@ export default function HouseOfCardsComp({
           if (newStreak >= PEEK_STREAK_TRIGGER && !peekUsed) {
             setPeekUsed(true);
             setPeekActive(true);
+            playPeek();
             // Reveal all currently-unmatched cards for PEEK_DURATION_MS.
             setBoard((prev) =>
               prev.map((c) => (!c.isMatched ? { ...c, isFlipped: true } : c)),
@@ -308,6 +328,7 @@ export default function HouseOfCardsComp({
           }
         } else {
           // Mismatch
+          playMismatch();
           mistakesRef.current += 1;
           setMistakes((m) => m + 1);
           newBoard[a] = { ...newBoard[a], isMismatch: true };
@@ -332,7 +353,7 @@ export default function HouseOfCardsComp({
       setBoard(newBoard);
       setFlippedIndices(newFlipped);
     },
-    [board, locked, gameOver, flippedIndices, streak, peekUsed],
+    [board, locked, gameOver, flippedIndices, streak, peekUsed, playFlip, playMatch, playPeek, playMismatch],
   );
 
   // ── Results screen ──────────────────────────────────────────────────────
