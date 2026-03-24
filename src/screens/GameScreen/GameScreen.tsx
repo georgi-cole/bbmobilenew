@@ -1316,8 +1316,8 @@ export default function GameScreen() {
   const pendingMinigame = game.pendingMinigame
   const humanIsParticipant =
     !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id)
-  // MinigameHost takes priority over QuickTapRace when a challenge is pending
-  // and the human player is a participant in that challenge.
+  // MinigameHost takes priority over native HOH minigame overlays when a challenge
+  // is pending and the human player is a participant in that challenge.
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
@@ -1863,9 +1863,17 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── QuickTapRace minigame overlay ────────────────────────────────── */}
+      {/* ── Native HOH/LOH minigame overlays (routed by session key) ────────── */}
       {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
+      )}
+      {showPressurePlank && pendingMinigame && (
+        <PressurePlank session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── BullseyeBlitz minigame overlay ───────────────────────────────── */}
+      {showBullseyeBlitz && pendingMinigame && (
+        <BullseyeBlitz session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── TravelingDots minigame overlay ───────────────────────────────── */}
