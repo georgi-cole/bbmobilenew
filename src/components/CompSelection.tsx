@@ -132,7 +132,24 @@ export default function CompSelection({
               const nextMode = e.target.value as CompSelectionMode;
               setMode(nextMode);
               setSaveSuccess(false);
-              onChange?.(buildPayload(nextMode, selectedGameId));
+
+              if (nextMode === 'single-game') {
+                // Ensure we never emit a single-game payload with an empty game id.
+                let effectiveGameId = selectedGameId;
+
+                // Auto-select a default game if none is currently selected.
+                if (!effectiveGameId && games.length > 0) {
+                  effectiveGameId = games[0].id;
+                  setSelectedGameId(effectiveGameId);
+                }
+
+                // Only emit onChange once we have a non-empty game id.
+                if (effectiveGameId) {
+                  onChange?.(buildPayload(nextMode, effectiveGameId));
+                }
+              } else {
+                onChange?.(buildPayload(nextMode, selectedGameId));
+              }
             }}
             aria-label="Selection mode"
           >
