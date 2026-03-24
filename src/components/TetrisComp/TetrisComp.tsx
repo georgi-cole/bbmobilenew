@@ -406,6 +406,19 @@ export default function TetrisComp({
     [dequeue],
   );
 
+  const endGame = useCallback(
+    (finalScore?: number) => {
+      setGamePhase('gameover');
+      gamePhaseRef.current = 'gameover';
+      const s = finalScore ?? scoreRef.current;
+      dispatch(setHumanScore(s));
+      dispatch(resolveTetrisOutcome());
+      // Show results after a brief pause
+      setTimeout(() => setShowResults(true), 800);
+    },
+    [dispatch],
+  );
+
   // ── Lock current piece and process line clears ────────────────────────────
 
   const lockCurrentPiece = useCallback(() => {
@@ -469,22 +482,7 @@ export default function TetrisComp({
     if (!spawned) {
       endGame(newScore);
     }
-  }, [spawnPiece]);
-
-  // ── End game ──────────────────────────────────────────────────────────────
-
-  const endGame = useCallback(
-    (finalScore?: number) => {
-      setGamePhase('gameover');
-      gamePhaseRef.current = 'gameover';
-      const s = finalScore ?? scoreRef.current;
-      dispatch(setHumanScore(s));
-      dispatch(resolveTetrisOutcome());
-      // Show results after a brief pause
-      setTimeout(() => setShowResults(true), 800);
-    },
-    [dispatch],
-  );
+  }, [endGame, spawnPiece]);
 
   // ── Movement helpers ──────────────────────────────────────────────────────
 

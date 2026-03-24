@@ -365,7 +365,6 @@ export default function MinigameHost({
                   prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
-                  autoStart={true}
                 />
               );
             }
