@@ -196,8 +196,8 @@ describe('MinigameHost — TiltedLedge routing', () => {
     expect(screen.queryByTestId('tilted-ledge-comp')).toBeNull();
   });
 
-  it('emits a console warning when reactComponentKey is not in the map', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('throws an error when reactComponentKey is not in the map (no legacy fallback)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const store = makeStore();
     const onDone = vi.fn();
 
@@ -219,16 +219,21 @@ describe('MinigameHost — TiltedLedge routing', () => {
       </Provider>,
     );
 
-    await act(async () => {
-      vi.runAllTimers();
-    });
+    // React 18 re-throws render errors from act(); catch and assert
+    let caughtError: Error | undefined;
+    try {
+      await act(async () => {
+        vi.runAllTimers();
+      });
+    } catch (err) {
+      caughtError = err as Error;
+    }
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("reactComponentKey 'NonExistentComponent' not found"),
-    );
-    // Falls back to LegacyMinigameWrapper
-    expect(screen.getByTestId('legacy-wrapper')).toBeTruthy();
+    expect(caughtError?.message).toMatch(/NonExistentComponent.*not found|not found.*NonExistentComponent/i);
 
-    warnSpy.mockRestore();
+    // LegacyMinigameWrapper must NOT be rendered for a react-implemented game
+    expect(screen.queryByTestId('legacy-wrapper')).toBeNull();
+
+    errorSpy.mockRestore();
   });
 });

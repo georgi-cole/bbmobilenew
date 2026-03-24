@@ -371,30 +371,30 @@ export default function MinigameHost({
             if (game.implementation === 'react') {
               const key = game.reactComponentKey;
               if (!key) {
-                console.warn(
-                  `[MinigameHost] game '${game.key}' has implementation 'react' but no reactComponentKey defined.`,
+                throw new Error(
+                  `[MinigameHost] game '${game.key}' has implementation 'react' but no reactComponentKey defined. ` +
+                    `React-implemented games must define reactComponentKey.`,
                 );
-              } else {
-                const GenericComp = reactComponents[key];
-                if (!GenericComp) {
-                  console.warn(
-                    `[MinigameHost] reactComponentKey '${key}' not found in reactComponents map. ` +
-                      `Add it to src/minigames/reactComponents.ts.`,
-                  );
-                } else {
-                  return (
-                    <GenericComp
-                      seed={seed}
-                      autoStart={true}
-                      onFinish={(value: number) => {
-                        setFinalValue(value);
-                        setWasPartial(false);
-                        setPhase('results');
-                      }}
-                    />
-                  );
-                }
               }
+              const GenericComp = reactComponents[key];
+              if (!GenericComp) {
+                throw new Error(
+                  `[MinigameHost] reactComponentKey '${key}' not found in reactComponents map. ` +
+                    `Add it to src/minigames/reactComponents.ts. ` +
+                    `React-implemented games (implementation === 'react') should not use LegacyMinigameWrapper.`,
+                );
+              }
+              return (
+                <GenericComp
+                  seed={seed}
+                  autoStart={true}
+                  onFinish={(value: number) => {
+                    setFinalValue(value);
+                    setWasPartial(false);
+                    setPhase('results');
+                  }}
+                />
+              );
             }
             return (
               <LegacyMinigameWrapper
