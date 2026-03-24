@@ -292,11 +292,7 @@ export default function TiltLabyrinthComp({
   onComplete,
 }: TiltLabyrinthCompProps) {
   const dispatch = useAppDispatch();
-  const labState = useAppSelector(
-    (s: RootState) =>
-      (s as RootState & { tiltLabyrinth?: ReturnType<typeof import('../../features/tiltLabyrinth/tiltLabyrinthSlice').default> })
-        .tiltLabyrinth,
-  );
+  const labState = useAppSelector((s: RootState) => s.tiltLabyrinth);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState | null>(null);
@@ -386,8 +382,9 @@ export default function TiltLabyrinthComp({
       cancelAnimationFrame(rafRef.current);
       orientationCleanupRef.current?.();
     };
-  // dispatch is stable (Redux guarantee) but included for exhaustive-deps correctness
-  }, [dispatch]);  // eslint-disable-line react-hooks/exhaustive-deps
+  // Include all props that affect maze generation and slice init so that
+  // if MinigameHost reuses the component instance the state stays fresh.
+  }, [dispatch, seed, participantIds, participants, prizeType]);
 
   // ── Finish handler ─────────────────────────────────────────────────────────
   const handleFinish = useCallback(
@@ -409,6 +406,8 @@ export default function TiltLabyrinthComp({
     if (!ctx) return;
 
     let animId = 0;
+    // Track the last displayed tenth-of-a-second to throttle React state updates
+    let lastDisplayedTenth = -1;
 
     const tick = () => {
       const gs = gameRef.current;
@@ -418,15 +417,19 @@ export default function TiltLabyrinthComp({
       if (!gs.finished) {
         gs.elapsed = performance.now() - gs.startTime;
 
-        // Update display timer every ~100ms
-        setDisplayTime(Math.min(gs.elapsed, TIME_LIMIT_MS));
+        // Throttle React state update to once per visible tenth-of-a-second
+        const tenth = Math.floor(Math.min(gs.elapsed, TIME_LIMIT_MS) / 100);
+        if (tenth !== lastDisplayedTenth) {
+          lastDisplayedTenth = tenth;
+          setDisplayTime(Math.min(gs.elapsed, TIME_LIMIT_MS));
+        }
 
         // Check timeout
         if (gs.elapsed >= TIME_LIMIT_MS) {
           gs.finished = true;
           gs.finishTime = TIME_LIMIT_MS;
           handleFinish(TIME_LIMIT_MS);
-          // Final frame
+          // Final frame then stop — no more RAF scheduling
           drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
           return;
         }
@@ -486,11 +489,17 @@ export default function TiltLabyrinthComp({
           gs.finished = true;
           gs.finishTime = Math.round(gs.elapsed);
           handleFinish(gs.finishTime);
+          // Draw final frame then stop — no RAF after goal reached
+          drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
+          return;
         }
       }
 
       drawMaze(ctx, maze, gs.ball, gs.finishTime, gs.elapsed);
-      animId = requestAnimationFrame(tick);
+      // Only continue the loop while playing; stop once finished
+      if (!gs.finished) {
+        animId = requestAnimationFrame(tick);
+      }
     };
 
     animId = requestAnimationFrame(tick);

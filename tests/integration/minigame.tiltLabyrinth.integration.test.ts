@@ -28,6 +28,7 @@ import { minigameAiRegistry } from '../../src/ai/competition/minigameAiRegistry'
 import gameReducer, {
   applyMinigameWinner,
   advance,
+  commitNominees,
 } from '../../src/store/gameSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
@@ -41,6 +42,7 @@ function makePlayers(count: number): Player[] {
     name: `Player ${i}`,
     avatar: '🧑',
     status: 'active' as const,
+    isUser: i === 0, // p0 is always the human unless overridden
   }));
 }
 
@@ -396,7 +398,18 @@ describe('Tilt Labyrinth — Public mode auto-nominee', () => {
     // hoh_results → social_1 → nominations → nomination_results
     store.dispatch(advance()); // hoh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
-    store.dispatch(advance()); // nominations → nomination_results
+    store.dispatch(advance()); // nominations → nomination_results (human HOH awaits commitNominees)
+
+    // p0 is human HOH, so awaitingNominations should be true
+    expect(store.getState().game.awaitingNominations).toBe(true);
+
+    // Human nominates two players
+    store.dispatch(commitNominees(['p1', 'p2']));
+
+    // In public mode, last-place finisher (p5) should be the auto-third nominee
+    const state = store.getState().game;
+    expect(state.nominationContext?.autoNomineeId).toBe('p5');
+    expect(state.nomineeIds).toContain('p5');
   });
 
   it('auto-nominee is NOT added when public mode is disabled', () => {

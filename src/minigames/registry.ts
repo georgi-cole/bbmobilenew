@@ -688,7 +688,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     metricLabel: 'Time (s)',
     timeLimitMs: 0,
     authoritative: true,
-    scoringAdapter: 'authoritative',
+    scoringAdapter: 'lowerBetter',
     scoringParams: { targetMs: 5000, maxMs: 60000 },
     implementation: 'react',
     reactComponentKey: 'TiltLabyrinth',
