@@ -414,7 +414,7 @@ describe('Traveling Dots — scoring model edge cases', () => {
 
   it('auto-nominee matches the scoreboard last-place (no silent fallback)', () => {
     // Ensure results UI and nomination logic read from the same canonical data.
-    // Component supplies lastPlaceId = 'p4' (first-hand knowledge of last place).
+    // Component supplies lastPlaceId = 'p5' (first-hand knowledge of last place).
     const players = makePlayers(6);
     const store = makeStore({ players, publicModeEnabled: true });
 
