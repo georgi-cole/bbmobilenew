@@ -11,7 +11,7 @@
  *  7. MinigameHost routes Snake to the React SnakeGame component (not legacy wrapper).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   launchMinigame,
