@@ -152,8 +152,9 @@ export function simulateQuickTapAiScore({
   const archetype = AI_ARCHETYPES[Math.floor(archetypeRng() * AI_ARCHETYPES.length)];
 
   // ── 2. Base tap rate (physical skill scales within archetype range) ────────
-  // Normalize profile.physical from [1, 99] → [0, 1].  Missing profile → 0.5.
-  const physicalSkill = ((profile?.physical ?? 50) - 1) / 98;
+  // Normalize profile.physical from [0, 100] → [0, 1], clamped. Missing profile → 0.5.
+  const rawPhysical = profile?.physical ?? 50;
+  const physicalSkill = Math.min(1, Math.max(0, rawPhysical / 100));
   const baseRate =
     archetype.baseRateMin + (archetype.baseRateMax - archetype.baseRateMin) * physicalSkill;
 

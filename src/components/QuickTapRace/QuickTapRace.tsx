@@ -152,8 +152,8 @@ export default function QuickTapRace({
   useEffect(() => {
     if (gamePhase !== 'playing') return;
 
-    const seed = session?.seed ?? 0;
-    const prompts = selectBoosterPrompts(seed);
+    const effectiveSeed = session?.seed ?? seed ?? 0;
+    const prompts = selectBoosterPrompts(effectiveSeed);
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     prompts.forEach((prompt) => {
@@ -178,7 +178,16 @@ export default function QuickTapRace({
     });
 
     boosterTimeoutsRef.current = timeouts;
-    return () => timeouts.forEach(clearTimeout);
+    return () => {
+      // Clear all booster-related timeouts: prompt show/expire and any deactivation
+      // timers that may have been pushed by handleBoosterTap after effect setup.
+      const allTimeouts = new Set([
+        ...timeouts,
+        ...(boosterTimeoutsRef.current ?? []),
+      ]);
+      allTimeouts.forEach((t) => clearTimeout(t));
+      boosterTimeoutsRef.current = [];
+    };
     // session is stable for a single competition; intentionally excluded to avoid restart.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase]);
@@ -256,9 +265,9 @@ export default function QuickTapRace({
     // Remove prompt immediately
     setVisibleBoosterPrompt(null);
     visibleBoosterPromptRef.current = null;
-    // Clear any pending auto-expire timeouts (they'll be no-ops anyway but keeps state clean)
-    boosterTimeoutsRef.current.forEach(clearTimeout);
-    boosterTimeoutsRef.current = [];
+    // Note: do NOT clear boosterTimeoutsRef here — it contains timeouts that
+    // schedule future prompts.  Any auto-expire timeout for the current prompt
+    // will safely no-op once visibleBoosterPromptRef is cleared above.
 
     if (prompt.kind === 'time' && typeof prompt.timeDelta === 'number') {
       // Instant time effect
@@ -455,7 +464,7 @@ export default function QuickTapRace({
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={resolvedDuration}
+              aria-valuemax={Math.max(timeLeft, resolvedDuration)}
             >
               <div
                 className="qtr__progress-fill"
