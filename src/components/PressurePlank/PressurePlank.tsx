@@ -27,6 +27,15 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import './PressurePlank.css';
+import {
+  computePlankDriftForce,
+  computeSafeZoneHalfWidth,
+  computeSafeZoneWidthPercent,
+  isWithinSafeZone,
+  OUT_OF_ZONE_GRACE_MS,
+  SAFE_ZONE_INITIAL,
+  updateOutOfZoneTimer,
+} from './pressurePlankUtils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -47,15 +56,6 @@ const DANGER_THRESHOLD = 65;
 
 /** Warning zone threshold — caution visual when |balance| exceeds this. */
 const WARNING_THRESHOLD = 40;
-
-/** Safe zone half-width at the start of the game. */
-const SAFE_ZONE_INITIAL = 28;
-
-/** Safe zone minimum half-width (asymptotically approached). */
-const SAFE_ZONE_MIN = 10;
-
-/** Seconds after which safe zone stops shrinking. */
-const SAFE_ZONE_SHRINK_DURATION = 90;
 
 /** Spring constant — how strongly balance is pulled back toward 0. */
 const SPRING_K = 0.8;
@@ -154,6 +154,7 @@ export default function PressurePlank({
   const [balance, setBalance] = useState(0);         // -100 to +100
   const [survivalMs, setSurvivalMs] = useState(0);
   const [safeZone, setSafeZone] = useState(SAFE_ZONE_INITIAL);
+  const [outOfZoneMs, setOutOfZoneMs] = useState(0);
   const [activeSurge, setActiveSurge] = useState<SurgeEvent | null>(null);
   const [results, setResults] = useState<ScoreEntry[]>([]);
 
@@ -164,6 +165,7 @@ export default function PressurePlank({
   const startTimeRef = useRef(0);
   const lastFrameRef = useRef(0);
   const activeSurgeRef = useRef<SurgeEvent | null>(null);
+  const outOfZoneMsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const surgeTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -296,6 +298,7 @@ export default function PressurePlank({
     // Initialise refs
     balanceRef.current = 0;
     velocityRef.current = 0;
+    outOfZoneMsRef.current = 0;
     const startTime = Date.now();
     const startPerf = performance.now();
     startTimeRef.current = startTime;
@@ -322,10 +325,12 @@ export default function PressurePlank({
       // Active surge
       const surge = activeSurgeRef.current;
       const surgeForce = surge ? surge.direction * surge.strength : 0;
-      // Small random perturbation — scales with difficulty
-      const perturbation = (Math.random() - 0.5) * driftAccel * 2;
+      // Continuous sway so the plank never becomes static.
+      const swayForce = computePlankDriftForce(elapsed, driftAccel);
+      // Small random perturbation layered on top of the sway.
+      const perturbation = (Math.random() - 0.5) * driftAccel * 0.7;
 
-      const acceleration = spring + damp + surgeForce + perturbation;
+      const acceleration = spring + damp + surgeForce + swayForce + perturbation;
       velocityRef.current += acceleration * dt;
       balanceRef.current = Math.max(
         -MAX_BALANCE,
@@ -334,21 +339,32 @@ export default function PressurePlank({
 
       // Compute safe zone (shrinks over time)
       const elapsedSeconds = (Date.now() - startTime) / 1000;
-      const shrinkProgress = Math.min(1, elapsedSeconds / SAFE_ZONE_SHRINK_DURATION);
-      const currentSafeZone =
-        SAFE_ZONE_INITIAL - (SAFE_ZONE_INITIAL - SAFE_ZONE_MIN) * shrinkProgress;
+      const currentSafeZone = computeSafeZoneHalfWidth(elapsedSeconds);
+      const insideSafeZone = isWithinSafeZone(balanceRef.current, currentSafeZone);
+      outOfZoneMsRef.current = updateOutOfZoneTimer(
+        outOfZoneMsRef.current,
+        dt * 1000,
+        insideSafeZone,
+      );
 
       // Throttle React state updates to ~20 fps
       if (now - lastReactUpdate >= 50) {
         lastReactUpdate = now;
         setBalance(Math.round(balanceRef.current));
         setSurvivalMs(Date.now() - startTime);
-        setSafeZone(Math.round(currentSafeZone));
+        setSafeZone(currentSafeZone);
+        setOutOfZoneMs(outOfZoneMsRef.current);
       }
 
       // Game over: fell off
       if (Math.abs(balanceRef.current) >= FALL_THRESHOLD) {
         setBalance(balanceRef.current > 0 ? FALL_THRESHOLD : -FALL_THRESHOLD);
+        setSurvivalMs(Date.now() - startTime);
+        endGame(startTime);
+        return;
+      }
+
+      if (outOfZoneMsRef.current >= OUT_OF_ZONE_GRACE_MS) {
         setSurvivalMs(Date.now() - startTime);
         endGame(startTime);
         return;
@@ -389,13 +405,17 @@ export default function PressurePlank({
   // ── Derived UI values ──────────────────────────────────────────────────────
 
   const absBalance = Math.abs(balance);
-  const isWarning = absBalance > WARNING_THRESHOLD && absBalance <= DANGER_THRESHOLD;
-  const isDanger = absBalance > DANGER_THRESHOLD;
+  const isOutOfZone = !isWithinSafeZone(balance, safeZone);
+  const isWarning =
+    isOutOfZone || (absBalance > WARNING_THRESHOLD && absBalance <= DANGER_THRESHOLD);
+  const isDanger = absBalance > DANGER_THRESHOLD || outOfZoneMs >= OUT_OF_ZONE_GRACE_MS / 2;
   const survivalSeconds = (survivalMs / 1000).toFixed(1);
   /** Needle position as percentage (0 = far left, 50 = centre, 100 = far right). */
   const needlePct = ((balance + MAX_BALANCE) / (2 * MAX_BALANCE)) * 100;
   const safeLeft = 50 - safeZone;
   const safeRight = 50 + safeZone;
+  const safeZoneWidthPct = computeSafeZoneWidthPercent(safeZone);
+  const graceRemainingSeconds = Math.max(0, (OUT_OF_ZONE_GRACE_MS - outOfZoneMs) / 1000);
 
   const medals = ['🥇', '🥈', '🥉'];
 
@@ -419,7 +439,7 @@ export default function PressurePlank({
         {/* ── Header ────────────────────────────────────────────────────── */}
         <header className="pp__header">
           <h2 className="pp__title">⚖️ Pressure Plank</h2>
-          <p className="pp__subtitle">Keep the needle in the safe zone!</p>
+          <p className="pp__subtitle">The plank never stays still — survive the shrinking safe zone.</p>
         </header>
 
         {/* ── Ready phase ───────────────────────────────────────────────── */}
@@ -497,7 +517,13 @@ export default function PressurePlank({
               aria-live="polite"
               aria-atomic="true"
             >
-              {isDanger ? '⚠️ DANGER!' : isWarning ? '⚠ CAUTION' : '✓ BALANCED'}
+              {isOutOfZone
+                ? `⚠ OUT OF ZONE · ${graceRemainingSeconds.toFixed(1)}s`
+                : isDanger
+                  ? '⚠️ DANGER!'
+                  : isWarning
+                    ? '⚠ CAUTION'
+                    : '✓ BALANCED'}
             </div>
 
             {/* Control buttons */}
@@ -534,7 +560,7 @@ export default function PressurePlank({
 
             {/* Safe zone width indicator */}
             <div className="pp__safe-hint">
-              Safe zone: <strong>{(safeZone * 2).toFixed(0)}%</strong>
+              Safe zone: <strong>{safeZoneWidthPct.toFixed(0)}%</strong> · Grace: <strong>1.0s</strong> outside zone
             </div>
           </div>
         )}
