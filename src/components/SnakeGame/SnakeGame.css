@@ -1,0 +1,296 @@
+/* ── SnakeGame overlay ───────────────────────────────────────────────────── */
+.snake-game {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 16px;
+}
+
+/* ── Nokia phone body ────────────────────────────────────────────────────── */
+.snake-phone {
+  width: 100%;
+  max-width: 340px;
+  background: #1a1a1a;
+  border-radius: 24px 24px 32px 32px;
+  padding: 16px 16px 24px;
+  box-shadow:
+    0 0 0 2px #333,
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+.snake-title-bar {
+  width: 100%;
+  text-align: center;
+}
+
+.snake-title-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+/* ── LCD screen ──────────────────────────────────────────────────────────── */
+.snake-lcd {
+  width: 100%;
+  background: #b7d378;
+  border: 2px solid #2d3a1e;
+  border-radius: 4px;
+  padding: 6px;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.35),
+    0 1px 0 rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Status line ─────────────────────────────────────────────────────────── */
+.snake-status {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #2d3a1e;
+  letter-spacing: 1px;
+  padding: 0 2px;
+}
+
+/* ── Canvas wrapper + overlays ───────────────────────────────────────────── */
+.snake-canvas-wrap {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  align-self: center;
+}
+
+.snake-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Scanline overlay */
+.snake-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 3px
+  );
+  border-radius: 2px;
+}
+
+/* ── Overlays (ready / results) ──────────────────────────────────────────── */
+.snake-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(183, 211, 120, 0.92);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.snake-overlay--results {
+  justify-content: flex-start;
+  padding: 12px 8px 10px;
+  overflow-y: auto;
+  gap: 8px;
+}
+
+.snake-overlay-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #2d3a1e;
+  letter-spacing: 4px;
+}
+
+.snake-overlay-game-over {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #2d3a1e;
+  letter-spacing: 3px;
+  text-align: center;
+}
+
+/* Start button */
+.snake-start-btn {
+  padding: 8px 22px;
+  border: 2px solid #2d3a1e;
+  border-radius: 4px;
+  background: #2d3a1e;
+  color: #b7d378;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.snake-start-btn:hover {
+  background: #b7d378;
+  color: #2d3a1e;
+}
+
+.snake-start-btn:active {
+  transform: scale(0.96);
+}
+
+/* Final score (generic mode) */
+.snake-final-score {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2d3a1e;
+  letter-spacing: 1px;
+}
+
+/* ── Leaderboard ─────────────────────────────────────────────────────────── */
+.snake-leaderboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snake-entry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: rgba(45, 58, 30, 0.08);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.7rem;
+}
+
+.snake-entry--winner {
+  background: rgba(45, 58, 30, 0.2);
+  border: 1px solid rgba(45, 58, 30, 0.4);
+}
+
+.snake-entry--you {
+  background: rgba(45, 58, 30, 0.14);
+  outline: 1px solid rgba(45, 58, 30, 0.3);
+}
+
+.snake-entry--last {
+  background: rgba(100, 30, 10, 0.1);
+  outline: 1px solid rgba(100, 30, 10, 0.2);
+}
+
+.snake-rank {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+}
+
+.snake-entry-name {
+  flex: 1;
+  font-weight: 700;
+  color: #2d3a1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snake-you-tag {
+  font-weight: 400;
+  font-size: 0.65rem;
+  color: #4a5e30;
+}
+
+.snake-entry-score {
+  font-weight: 700;
+  color: #2d3a1e;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Done button */
+.snake-done-btn {
+  width: 100%;
+  padding: 7px 0;
+  border: 2px solid #2d3a1e;
+  border-radius: 3px;
+  background: #2d3a1e;
+  color: #b7d378;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  margin-top: 2px;
+}
+
+.snake-done-btn:hover {
+  background: #b7d378;
+  color: #2d3a1e;
+}
+
+.snake-done-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── D-pad ───────────────────────────────────────────────────────────────── */
+.snake-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+}
+
+.snake-dpad-btn {
+  border: none;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #aaa;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s ease, transform 0.08s ease, color 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.snake-dpad-btn:hover  { background: #3a3a3a; color: #ddd; }
+.snake-dpad-btn:active { background: #111; transform: scale(0.91); color: #b7d378; }
+
+/* Grid placement */
+.snake-dpad-btn--up    { grid-column: 2; grid-row: 1; }
+.snake-dpad-btn--left  { grid-column: 1; grid-row: 2; }
+.snake-dpad-center     { grid-column: 2; grid-row: 2; background: #222; border-radius: 50%; }
+.snake-dpad-btn--right { grid-column: 3; grid-row: 2; }
+.snake-dpad-btn--down  { grid-column: 2; grid-row: 3; }
