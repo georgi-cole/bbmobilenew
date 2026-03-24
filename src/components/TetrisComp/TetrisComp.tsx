@@ -34,7 +34,6 @@ import { initTetris, setHumanScore, resetTetris } from '../../features/tetris/te
 import { resolveTetrisOutcome } from '../../features/tetris/thunks';
 import { simulateAiPerformance } from '../../ai/competition/index';
 import { mulberry32 } from '../../store/rng';
-import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
