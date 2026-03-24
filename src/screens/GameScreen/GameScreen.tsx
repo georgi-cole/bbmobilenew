@@ -48,6 +48,8 @@ import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
 import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
+import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
@@ -1321,11 +1323,15 @@ export default function GameScreen() {
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
+  /** True whenever a native React HOH/LOH minigame overlay should be displayed. */
+  const showHohMinigame = !showMinigameHost && humanIsParticipant
+  const showPressurePlank = showHohMinigame && pendingMinigame?.key === 'pressurePlank'
+  const showBullseyeBlitz = showHohMinigame && pendingMinigame?.key === 'targetPractice'
   // TravelingDots is key-gated to its specific overlay component.
-  const showTravelingDots = !showMinigameHost && humanIsParticipant && pendingMinigame?.key === 'travelingDots'
+  const showTravelingDots = showHohMinigame && pendingMinigame?.key === 'travelingDots'
   // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
-  // unrecognised pendingMinigame key, so the human is never left with no UI.
-  const showQuickTapRace = !showMinigameHost && humanIsParticipant && !showTravelingDots
+  // unrecognised pendingMinigame key so the human is never left with no UI.
+  const showQuickTapRace = showHohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1408,6 +1414,7 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showQuickTapRace ||
+    showBullseyeBlitz ||
     showTravelingDots ||
     aiTiebreakerPending ||
     spectatorF3Active ||
