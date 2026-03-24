@@ -29,7 +29,7 @@ import {
   buildRankedLeaderboard,
   pickTargetKind,
   TARGET_CONFIGS,
-} from '../src/components/BullseyeBlitz/BullseyeBlitz';
+} from '../src/components/BullseyeBlitz/bullseyeBlitzUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

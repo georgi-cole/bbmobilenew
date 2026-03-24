@@ -3,7 +3,8 @@
  *
  * Supports two rendering modes:
  *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
- *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
+ *     with a canonical `CompleteMinigamePayload`
+ *     (humanScore + winnerId + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(finalScore)`.
  *
  * Gameplay — "Bullseye Blitz":
@@ -16,6 +17,7 @@
  *  - Canonical last-place: lowest scorer, tie-broken by participant index
  */
 
+import type { CSSProperties } from 'react';
 import {
   useState,
   useEffect,
@@ -25,6 +27,15 @@ import {
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
+import {
+  TARGET_CONFIGS,
+  buildRankedLeaderboard,
+  pickTargetKind,
+} from './bullseyeBlitzUtils';
+import type {
+  ScoreEntry,
+  TargetKind,
+} from './bullseyeBlitzUtils';
 import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -42,107 +53,6 @@ const SPAWN_INTERVAL_MS = 600;
 const MAX_TARGETS = 7;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-
-// ── Target types ─────────────────────────────────────────────────────────────
-
-export type TargetKind = 'standard' | 'bonus' | 'hazard';
-
-interface TargetConfig {
-  emoji: string;
-  /** Base score delta when tapped. */
-  points: number;
-  /** Milliseconds the target lives before disappearing. */
-  lifetimeMs: number;
-  /** CSS class modifier. */
-  cls: string;
-  /** Tooltip / aria label. */
-  label: string;
-}
-
-export const TARGET_CONFIGS: Record<TargetKind, TargetConfig> = {
-  standard: {
-    emoji: '🎯',
-    points: 10,
-    lifetimeMs: 2200,
-    cls: 'bbl__target--standard',
-    label: 'Standard target +10',
-  },
-  bonus: {
-    emoji: '⭐',
-    points: 25,
-    lifetimeMs: 1300,
-    cls: 'bbl__target--bonus',
-    label: 'Bonus target +25',
-  },
-  hazard: {
-    emoji: '💣',
-    points: -15,
-    lifetimeMs: 2800,
-    cls: 'bbl__target--hazard',
-    label: 'Hazard! −15 if tapped',
-  },
-};
-
-/**
- * Select a random target kind using weighted distribution.
- *  standard:  60 %
- *  bonus:     25 %
- *  hazard:    15 %
- */
-export function pickTargetKind(random01: number): TargetKind {
-  if (random01 < 0.60) return 'standard';
-  if (random01 < 0.85) return 'bonus';
-  return 'hazard';
-}
-
-// ── Canonical scoring utilities ───────────────────────────────────────────────
-
-export interface ScoreEntry {
-  id: string;
-  name: string;
-  score: number;
-  hits: { standard: number; bonus: number; hazard: number };
-  isHuman: boolean;
-}
-
-/**
- * Build a ranked leaderboard from raw scores + participant list.
- *
- * Tie-breaking rule (deterministic):
- *   Equal scores → lower participant index wins (earlier in the participants array).
- *   This is explicit and documented so it is never silently falling back to
- *   arbitrary order.
- */
-export function buildRankedLeaderboard(
-  participants: string[],
-  scores: Record<string, number>,
-  humanId: string | undefined,
-  players: Player[],
-  humanHits?: { standard: number; bonus: number; hazard: number },
-): ScoreEntry[] {
-  const entries: ScoreEntry[] = participants.map((id, idx) => {
-    const p = players.find((pl) => pl.id === id);
-    const isHuman = id === humanId;
-    return {
-      id,
-      name: p?.name ?? id,
-      score: scores[id] ?? 0,
-      hits: isHuman && humanHits
-        ? humanHits
-        : { standard: 0, bonus: 0, hazard: 0 },
-      isHuman,
-      _idx: idx,
-    } as ScoreEntry & { _idx: number };
-  });
-
-  return entries.sort((a, b) => {
-    const diff = b.score - a.score;
-    if (diff !== 0) return diff;
-    // Tie-break: lower participant index ranks higher
-    return (a as ScoreEntry & { _idx: number })._idx -
-           (b as ScoreEntry & { _idx: number })._idx;
-  });
-}
 
 // ── Internal target state ─────────────────────────────────────────────────────
 
@@ -210,12 +120,15 @@ export default function BullseyeBlitz({
   const expireRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const popTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
+  const clearPopTimeouts = useCallback(() => {
+    popTimeoutsRef.current.forEach(clearTimeout);
+    popTimeoutsRef.current = [];
+  }, []);
+
   // Cleanup pop timeouts on unmount
   useEffect(() => {
-    return () => {
-      popTimeoutsRef.current.forEach(clearTimeout);
-    };
-  }, []);
+    return clearPopTimeouts;
+  }, [clearPopTimeouts]);
 
   // ── Ready countdown ────────────────────────────────────────────────────────
 
@@ -372,18 +285,23 @@ export default function BullseyeBlitz({
   const handleDone = useCallback(() => {
     if (!session) return;
     const humanFinalScore = scoreRef.current;
+    const winnerId = rankedScores.length > 0 ? rankedScores[0].id : undefined;
     const lastPlaceId =
       rankedScores.length > 0
         ? rankedScores[rankedScores.length - 1].id
         : undefined;
 
-    const payload: CompleteMinigamePayload = { humanScore: humanFinalScore, lastPlaceId };
+    const payload: CompleteMinigamePayload = {
+      humanScore: humanFinalScore,
+      winnerId,
+      lastPlaceId,
+    };
     dispatch(completeMinigame(payload));
   }, [dispatch, rankedScores, session]);
 
   // ── Derived UI ─────────────────────────────────────────────────────────────
 
-  const progressPct = (timeLeft / GAME_DURATION) * 100;
+  const progressPct = (timeLeft / configuredDuration) * 100;
   const isUrgent = timeLeft <= 5;
   const now = Date.now();
 
@@ -456,7 +374,7 @@ export default function BullseyeBlitz({
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={GAME_DURATION}
+              aria-valuemax={configuredDuration}
             >
               <div
                 className="bbl__progress-fill"
@@ -500,7 +418,11 @@ export default function BullseyeBlitz({
                     style={{
                       left: `${t.x}%`,
                       top: `${t.y}%`,
-                      transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,
+                      ...(t.kind === 'hazard'
+                        ? { '--bbl-scale': scale.toFixed(3) } as CSSProperties
+                        : {
+                          transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,
+                        }),
                       opacity,
                     }}
                     onClick={() => handleTargetTap(t)}
