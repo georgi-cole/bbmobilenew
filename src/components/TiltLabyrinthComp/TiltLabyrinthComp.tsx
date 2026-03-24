@@ -386,8 +386,8 @@ export default function TiltLabyrinthComp({
       cancelAnimationFrame(rafRef.current);
       orientationCleanupRef.current?.();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // dispatch is stable (Redux guarantee) but included for exhaustive-deps correctness
+  }, [dispatch]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Finish handler ─────────────────────────────────────────────────────────
   const handleFinish = useCallback(

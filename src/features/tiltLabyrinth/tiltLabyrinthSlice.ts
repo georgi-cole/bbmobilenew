@@ -75,6 +75,11 @@ const initialState: TiltLabyrinthState = {
 /**
  * Derive winner (lowest time) and last place (highest time) from a completion-time map.
  * Lower time = better performance for a timed maze game.
+ *
+ * When fewer than 2 eligible participants exist, or when all scores are identical
+ * (all players tied), lastPlaceId is returned as null to prevent it from equalling
+ * the winner. In practice this means the store falls back to score-based derivation,
+ * which is acceptable because authoritative data cannot distinguish tied finishers.
  */
 function deriveWinnerAndLastPlace(
   scores: Record<string, number>,
@@ -82,6 +87,7 @@ function deriveWinnerAndLastPlace(
 ): { winnerId: string | null; lastPlaceId: string | null } {
   const eligible = participantIds.filter((id) => id in scores);
   if (eligible.length === 0) return { winnerId: null, lastPlaceId: null };
+  if (eligible.length === 1) return { winnerId: eligible[0], lastPlaceId: null };
 
   let winnerId = eligible[0];
   let lastPlaceId = eligible[0];
@@ -92,6 +98,10 @@ function deriveWinnerAndLastPlace(
     // Higher score (time) = worse → last place has the maximum
     if (scores[id] > scores[lastPlaceId]) lastPlaceId = id;
   }
+
+  // Guard: winner and last place must differ; if all scores are identical they
+  // would be the same player. Return null so the store can fall back safely.
+  if (winnerId === lastPlaceId) return { winnerId, lastPlaceId: null };
 
   return { winnerId, lastPlaceId };
 }
