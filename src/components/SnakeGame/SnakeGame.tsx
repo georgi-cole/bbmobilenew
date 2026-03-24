@@ -13,7 +13,7 @@
  * Raw score is normalized to the 0–1000 scale the store expects.
  */
 
-import {
+import React, {
   useState,
   useEffect,
   useRef,
@@ -107,6 +107,10 @@ export default function SnakeGame({
   const gameOverRef = useRef(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gamePhaseRef = useRef<GamePhase>('ready');
+  /** Stable ref to the latest endGame function, used by tick to avoid circular deps. */
+  const endGameRef = useRef<(() => void) | null>(null);
+  /** Timeout id for the post-game-over delay in endGame; cleared on unmount. */
+  const endGameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep phaseRef in sync with React state for use inside event handlers
   useEffect(() => {
@@ -144,6 +148,11 @@ export default function SnakeGame({
   // ── Food placement ─────────────────────────────────────────────────────────
 
   const placeFood = useCallback(() => {
+    // If snake fills the entire grid, the player has won — end the game.
+    if (snakeRef.current.length >= GRID_SIZE * GRID_SIZE) {
+      endGameRef.current?.();
+      return;
+    }
     let candidate: Vec2;
     do {
       candidate = {
@@ -173,13 +182,13 @@ export default function SnakeGame({
       newHead.y < 0 ||
       newHead.y >= GRID_SIZE
     ) {
-      endGame();
+      endGameRef.current?.();
       return;
     }
 
     // Self collision
     if (snakeRef.current.some((s) => s.x === newHead.x && s.y === newHead.y)) {
-      endGame();
+      endGameRef.current?.();
       return;
     }
 
@@ -210,7 +219,7 @@ export default function SnakeGame({
 
     setGamePhase('over');
 
-    setTimeout(() => {
+    endGameTimeoutRef.current = setTimeout(() => {
       const humanFood = foodEatenRef.current;
       const humanScore = normaliseScore(humanFood);
 
@@ -248,10 +257,20 @@ export default function SnakeGame({
     }, 1200);
   }, [session, humanId, players, onFinish]);
 
+  // Keep endGameRef pointing to the latest endGame closure so tick can call
+  // it without capturing a stale reference (avoids circular useCallback deps).
+  useEffect(() => {
+    endGameRef.current = endGame;
+  }, [endGame]);
+
   // ── Start game ─────────────────────────────────────────────────────────────
 
   const startGame = useCallback(() => {
-    // Reset all game state
+    // Clear any existing interval to prevent concurrent game loops.
+    if (tickRef.current !== null) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
     snakeRef.current = [{ x: 10, y: 10 }];
     dirRef.current = { x: 1, y: 0 };
     nextDirRef.current = { x: 1, y: 0 };
@@ -274,6 +293,9 @@ export default function SnakeGame({
     return () => {
       if (tickRef.current !== null) {
         clearInterval(tickRef.current);
+      }
+      if (endGameTimeoutRef.current !== null) {
+        clearTimeout(endGameTimeoutRef.current);
       }
     };
   }, []);
