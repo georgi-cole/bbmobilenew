@@ -112,7 +112,7 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Live Eviction/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
   });
 
   it('applies the Battle Back styling when the major key is battle_back', () => {
@@ -494,7 +494,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDoubleEviction()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeNull();
-    expect(screen.getByRole('dialog', { name: /Announcement: Double Eviction!/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
   });
 
   it('plays a short Double Eviction spotlight intro, then returns the surrounding UI to normal', () => {
@@ -524,7 +524,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     // Default state has 12 alive players (GAME_ROSTER_SIZE); pov_ceremony → veto_ceremony
     act(() => { store.dispatch(setPhase('pov_ceremony')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Veto Ceremony/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Safety Ceremony/i })).toBeDefined();
   });
 
   it('shows Final 4 — Veto Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
@@ -550,7 +550,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     act(() => { store.dispatch(setPhase('live_vote')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Live Eviction/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
   });
 
   it('shows Final 3 overlay when phase transitions to final3 with exactly 3 alive players', () => {
@@ -570,22 +570,22 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Final 3/i })).toBeDefined();
   });
 
-  it('shows Final HOH Decision overlay when phase transitions to final3_decision', () => {
+  it('shows Final LOH Decision overlay when phase transitions to final3_decision', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('final3_decision')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Final HOH Decision/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Final LOH Decision/i })).toBeDefined();
   });
 
-  it('shows Jury Votes overlay when phase transitions to jury', () => {
+  it('shows Tribunal Votes overlay when phase transitions to jury', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('jury')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Jury Votes/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Tribunal Votes/i })).toBeDefined();
   });
 
   it('does NOT show any overlay when phase transitions to week_start', () => {
