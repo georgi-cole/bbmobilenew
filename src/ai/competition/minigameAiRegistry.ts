@@ -173,8 +173,17 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PRECISION,
     weights: WEIGHTS_MENTAL_PRECISION,
-    minScore: 110,
-    maxScore: 260,
+    minScore: 0,
+    maxScore: 300,
+    scoreBuckets: [
+      { minScore: 250, maxScore: 300, weight: 0.2 },
+      { minScore: 200, maxScore: 250, weight: 0.4 },
+      { minScore: 180, maxScore: 200, weight: 0.3 },
+      { minScore: 0, maxScore: 180, weight: 0.1 },
+    ],
+    notes:
+      'Estimation — normalize AI totals across 0–300 with a competitive distribution: ' +
+      '20% in 250–300, 40% in 200–250, 30% in 180–200, 10% below 180.',
   },
   holdWall: {
     key: 'holdWall',

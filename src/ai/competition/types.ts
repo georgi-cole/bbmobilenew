@@ -41,6 +41,12 @@ export interface CompetitionSkillWeights {
   chokeRisk?: number;
 }
 
+export interface MinigameAiScoreBucket {
+  minScore: number;
+  maxScore: number;
+  weight: number;
+}
+
 export interface MinigameAiModel {
   key: string;
   category: CompetitionCategory;
@@ -49,6 +55,7 @@ export interface MinigameAiModel {
   weights: CompetitionSkillWeights;
   minScore?: number;
   maxScore?: number;
+  scoreBuckets?: MinigameAiScoreBucket[];
   notes?: string;
 }
 

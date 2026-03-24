@@ -6,6 +6,7 @@ import type {
   CompetitionSeasonState,
   CompetitionSkillProfile,
   CompetitionSkillWeights,
+  MinigameAiScoreBucket,
   MinigameAiModel,
 } from './types';
 
@@ -91,6 +92,10 @@ const BASELINE_SKILL_KEYS: Array<keyof CompetitionSkillProfile> = [
 ];
 const PARTICIPANT_HASH_PREFIX = 'participant';
 const VOLATILITY_SCALE = 0.35;
+const MAX_BUCKET_SELECTION_ROLL = 0.999999;
+const BUCKET_SKILL_BIAS_MULTIPLIER = 0.5;
+const MIN_BUCKET_SKILL_BIAS = -0.2;
+const MAX_BUCKET_SKILL_BIAS = 0.2;
 
 export interface TapRaceAiSimulationArgs {
   minigameKey: string;
@@ -448,6 +453,95 @@ function mapPerformanceToScore(
   return minScore + performance * span;
 }
 
+function remapScoreToResolvedRange(
+  value: number,
+  sourceMin: number,
+  sourceMax: number,
+  targetMin: number,
+  targetMax: number,
+): number {
+  if (sourceMax <= sourceMin) {
+    return targetMin;
+  }
+
+  const ratio = clamp((value - sourceMin) / (sourceMax - sourceMin), 0, 1);
+  return targetMin + ratio * (targetMax - targetMin);
+}
+
+function maybeMapPerformanceToBucketedScore(
+  model: MinigameAiModel,
+  performance: number,
+  rng: () => number,
+  resolvedRange: { minScore: number; maxScore: number },
+): number | undefined {
+  const buckets = model.scoreBuckets;
+  if (!buckets || buckets.length === 0) return undefined;
+
+  const bucketBounds = buckets.flatMap((bucket) => [bucket.minScore, bucket.maxScore]);
+  const sourceMinScore = Math.min(...bucketBounds);
+  const sourceMaxScore = Math.max(...bucketBounds);
+
+  const normalizedBuckets = buckets
+    .filter((bucket) => bucket.weight > 0)
+    .map((bucket) => {
+      const remappedMinScore = remapScoreToResolvedRange(
+        bucket.minScore,
+        sourceMinScore,
+        sourceMaxScore,
+        resolvedRange.minScore,
+        resolvedRange.maxScore,
+      );
+      const remappedMaxScore = remapScoreToResolvedRange(
+        bucket.maxScore,
+        sourceMinScore,
+        sourceMaxScore,
+        resolvedRange.minScore,
+        resolvedRange.maxScore,
+      );
+
+      return {
+        ...bucket,
+        minScore: Math.min(remappedMinScore, remappedMaxScore),
+        maxScore: Math.max(remappedMinScore, remappedMaxScore),
+      };
+    });
+  if (normalizedBuckets.length === 0) return undefined;
+
+  const totalWeight = normalizedBuckets.reduce((sum, bucket) => sum + bucket.weight, 0);
+  if (totalWeight <= 0) return undefined;
+
+  const orderedBuckets = [...normalizedBuckets].sort((a, b) => (
+    model.scoreDirection === 'lower-is-better'
+      ? a.minScore - b.minScore
+      : b.maxScore - a.maxScore
+  ));
+
+  const skillBias = clamp(
+    (performance - 0.5) * BUCKET_SKILL_BIAS_MULTIPLIER,
+    MIN_BUCKET_SKILL_BIAS,
+    MAX_BUCKET_SKILL_BIAS,
+  );
+  let selectionRoll = clamp(rng() - skillBias, 0, MAX_BUCKET_SELECTION_ROLL);
+  let chosenBucket: MinigameAiScoreBucket = orderedBuckets[orderedBuckets.length - 1];
+
+  for (const bucket of orderedBuckets) {
+    selectionRoll -= bucket.weight / totalWeight;
+    if (selectionRoll <= 0) {
+      chosenBucket = bucket;
+      break;
+    }
+  }
+
+  const withinBucketRoll = clamp((rng() + performance) / 2, 0, 1);
+  const bucketScore = mapPerformanceToScore(
+    model.scoreDirection,
+    chosenBucket.minScore,
+    chosenBucket.maxScore,
+    withinBucketRoll,
+  );
+  return Math.round(bucketScore);
+}
+
 export function simulateAiPerformance({
   minigameKey,
   seed,
@@ -474,9 +568,19 @@ export function simulateAiPerformance({
   // Triangular distribution in [-1, 1] centered at 0 (Irwin-Hall n=2 shifted).
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
   const performance = clamp(expectedSkill + deviation + seasonAdjustment.totalAdjustment, 0, 1);
+  const resolvedRange = resolveScoreRange(model, options);
 
-  const { minScore, maxScore } = resolveScoreRange(model, options);
-  const rawScore = mapPerformanceToScore(model.scoreDirection, minScore, maxScore, performance);
+  const bucketedScore = maybeMapPerformanceToBucketedScore(model, performance, rng, resolvedRange);
+  if (typeof bucketedScore === 'number') {
+    return bucketedScore;
+  }
+
+  const rawScore = mapPerformanceToScore(
+    model.scoreDirection,
+    resolvedRange.minScore,
+    resolvedRange.maxScore,
+    performance,
+  );
 
   return Math.round(rawScore);
 }
