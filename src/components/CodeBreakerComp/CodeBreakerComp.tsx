@@ -34,6 +34,7 @@ import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import {
   CODE_LENGTH,
   DEFAULT_TIME_LIMIT_MS,
+  SOLVED_SCORE_FLOOR,
   evaluateGuess,
   generateSecretCode,
   computeSolvedScore,
@@ -88,13 +89,11 @@ export default function CodeBreakerComp({
   const timeLimitMs = DEFAULT_TIME_LIMIT_MS;
 
   // ── Secret code (stable for this mount) ───────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const secretCode = useRef<number[]>(generateSecretCode(seed));
 
   // ── AI scores (stable for this mount) ─────────────────────────────────────
   const humanParticipant = participants.find((p) => p.isHuman) ?? null;
   const humanId = humanParticipant?.id ?? null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const aiScores = useRef<Record<string, number>>(
     computeAllAiScores(seed, participantIds, humanId, timeLimitMs),
   );

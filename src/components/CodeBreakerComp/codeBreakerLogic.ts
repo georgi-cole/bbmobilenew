@@ -85,22 +85,6 @@ export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
     }
   }
 
-  // Second pass: count non-bull digits for cows using frequency counts so
- *
- * Note: Cows are computed using digit counts (Mastermind-style) so that guesses
- * with duplicate digits do not over-count matches against the unique-digit secret.
- */
-export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
-  let bulls = 0;
-  let cows = 0;
-
-  // First pass: count bulls.
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    if (guess[i] === secret[i]) {
-      bulls++;
-    }
-  }
-
   // Second pass: count non-bull digits for cows using frequency counts.
   const secretCounts = new Array(10).fill(0);
   const guessCounts = new Array(10).fill(0);
@@ -116,10 +100,6 @@ export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
         guessCounts[guessDigit]++;
       }
     }
-  }
-
-  for (let d = 0; d < 10; d++) {
-    cows += Math.min(secretCounts[d], guessCounts[d]);
   }
 
   for (let d = 0; d < 10; d++) {
