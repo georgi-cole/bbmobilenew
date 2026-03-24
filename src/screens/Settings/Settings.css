@@ -526,6 +526,28 @@ body.high-contrast {
   opacity: 0.85;
 }
 
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.settings-actions__save-btn {
+  background: var(--color-accent);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.8rem 1.5rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.settings-actions__save-btn:hover {
+  opacity: 0.85;
+}
+
 .settings-restart-modal__backdrop {
   position: fixed;
   inset: 0;
