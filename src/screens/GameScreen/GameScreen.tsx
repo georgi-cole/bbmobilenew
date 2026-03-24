@@ -50,6 +50,7 @@ import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBina
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
 import PressurePlank from '../../components/PressurePlank/PressurePlank'
 import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
+import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
@@ -1326,10 +1327,11 @@ export default function GameScreen() {
   const showHohMinigame = !showMinigameHost && humanIsParticipant
   const showPressurePlank = showHohMinigame && pendingMinigame?.key === 'pressurePlank'
   const showBullseyeBlitz = showHohMinigame && pendingMinigame?.key === 'targetPractice'
-  const showQuickTapRace =
-    showHohMinigame &&
-    pendingMinigame?.key !== 'pressurePlank' &&
-    pendingMinigame?.key !== 'targetPractice'
+  // TravelingDots is key-gated to its specific overlay component.
+  const showTravelingDots = showHohMinigame && pendingMinigame?.key === 'travelingDots'
+  // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
+  // unrecognised pendingMinigame key so the human is never left with no UI.
+  const showQuickTapRace = showHohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1413,6 +1415,7 @@ export default function GameScreen() {
     showAdvanceHohCeremony ||
     showQuickTapRace ||
     showBullseyeBlitz ||
+    showTravelingDots ||
     aiTiebreakerPending ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -1881,6 +1884,11 @@ export default function GameScreen() {
       {/* ── BullseyeBlitz minigame overlay ───────────────────────────────── */}
       {showBullseyeBlitz && pendingMinigame && (
         <BullseyeBlitz session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── TravelingDots minigame overlay ───────────────────────────────── */}
+      {showTravelingDots && pendingMinigame && (
+        <TravelingDots session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}

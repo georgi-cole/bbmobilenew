@@ -329,6 +329,14 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_MENTAL_PRECISION,
+    // Redesigned route-planning puzzle. Score = completion(200) + efficiency(0-500)
+    // + bonus nodes(0-180) + time bonus(0-150) - hazard penalties(0-160).
+    // Skilled play: 700-900. Average: 400-650. Poor play or time-out: 100-350.
+    minScore: 150,
+    maxScore: 880,
+    notes:
+      'Traveling Dots v2 — route-planning puzzle. Higher-is-better, range [150, 880]. ' +
+      'Score driven by path efficiency, bonus collection, hazard avoidance, and speed.',
   },
   minesweeps: {
     key: 'minesweeps',
