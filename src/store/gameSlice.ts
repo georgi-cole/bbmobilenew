@@ -20,6 +20,7 @@ import {
   getDefaultCompetitionSeasonState,
   getMinigameAiModel,
   simulateAiPerformance,
+  simulateQuickTapAiScore,
   updateCompetitionSeasonStateByPlayerId,
   type CompetitionSeasonUpdateInput,
 } from '../ai/competition';
@@ -3456,19 +3457,33 @@ export const startMinigame =
     // Pre-compute AI scores, respecting the configured timeLimit
     const aiScores: Record<string, number> = {};
     const model = getMinigameAiModel(opts.key);
+    const isQuickTap = opts.key === 'quickTap';
     opts.participants.forEach((id, index) => {
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
-        aiScores[id] = simulateAiPerformance({
-          minigameKey: opts.key,
-          minigameModel: model,
-          seed: opts.seed,
-          playerId: id,
-          participantIndex: index,
-          profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-          seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
-          options: { timeLimitSeconds: opts.options.timeLimit },
-        });
+        if (isQuickTap) {
+          // Quick Tap uses an archetype-based simulation that models booster
+          // decisions and interruption cost — more realistic than the generic
+          // linear model.
+          aiScores[id] = simulateQuickTapAiScore({
+            seed: opts.seed,
+            playerId: id,
+            participantIndex: index,
+            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+            timeLimitSeconds: opts.options.timeLimit,
+          });
+        } else {
+          aiScores[id] = simulateAiPerformance({
+            minigameKey: opts.key,
+            minigameModel: model,
+            seed: opts.seed,
+            playerId: id,
+            participantIndex: index,
+            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+            seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
+            options: { timeLimitSeconds: opts.options.timeLimit },
+          });
+        }
       }
     });
 
