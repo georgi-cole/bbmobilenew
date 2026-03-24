@@ -757,9 +757,9 @@ describe('House of Cards — board uses 20 cards (10 pairs)', () => {
   });
 });
 
-// ── 10. Peek behavior regression ──────────────────────────────────────────────
+// ── 10. AI pacing + large-field standings regression ─────────────────────────
 
-describe('House of Cards — peek behavior (streak-triggered, once per game)', () => {
+describe('House of Cards — AI pacing and large-field standings', () => {
   it('simulateAiOutcome completionTimeMs is at or above AI_MIN_FINISH_MS for finishers', () => {
     // The new AI timing model enforces a minimum plausible finish time.
     for (let i = 0; i < 20; i++) {

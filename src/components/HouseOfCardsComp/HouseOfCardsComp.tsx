@@ -32,9 +32,14 @@ import type {
   PlayerOutcome,
 } from '../../features/houseOfCards/houseOfCardsSlice';
 import { resolveHouseOfCardsOutcome } from '../../features/houseOfCards/thunks';
-import { mulberry32 } from '../../store/rng';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
+import {
+  buildHouseOfCardsBoard,
+  PEEK_DURATION_MS,
+  PEEK_STREAK_TRIGGER,
+  type HouseOfCardsBoardCard,
+} from './houseOfCardsUtils';
 import './HouseOfCardsComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,23 +58,12 @@ interface Props {
   onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
-interface CardState {
-  index: number;
-  symbol: string;
-  isFlipped: boolean;
-  isMatched: boolean;
-  isMismatch: boolean;
-}
-
 interface TickerEvent {
   id: string;
   text: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-/** 10 symbols — one per pair on the 20-card board. */
-const CARD_SYMBOLS = ['🌙', '⚡', '🎭', '🔮', '🃏', '♠️', '♥️', '♦️', '🌟', '💎'];
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -79,34 +73,6 @@ function rankIcon(rank: number): string {
 }
 
 const MISMATCH_HIDE_MS = 900;
-/** Duration of streak-triggered Peek reveal (ms). */
-const PEEK_DURATION_MS = 1000;
-/** Peek is auto-triggered after this many consecutive correct pairs. */
-const PEEK_STREAK_TRIGGER = 2;
-
-// ─── Board builder ────────────────────────────────────────────────────────────
-
-/**
- * Build a seeded shuffled board of TOTAL_PAIRS × 2 cards.
- * All cards are plain pairs — Peek is an effect, not a special card.
- */
-function buildBoard(seed: number): CardState[] {
-  const rng = mulberry32(seed ^ 0xdeadbeef);
-  const symbols = [...CARD_SYMBOLS, ...CARD_SYMBOLS]; // 20 cards, 10 pairs
-  // Fisher-Yates shuffle
-  for (let i = symbols.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
-  }
-
-  return symbols.map((sym, i) => ({
-    index: i,
-    symbol: sym,
-    isFlipped: false,
-    isMatched: false,
-    isMismatch: false,
-  }));
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -144,7 +110,7 @@ export default function HouseOfCardsComp({
   );
 
   // ── Local game state ─────────────────────────────────────────────────────
-  const [board, setBoard] = useState<CardState[]>([]);
+  const [board, setBoard] = useState<HouseOfCardsBoardCard[]>([]);
   const [locked, setLocked] = useState(false);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
@@ -166,6 +132,7 @@ export default function HouseOfCardsComp({
   const turnsTakenRef = useRef(0);
   const streakBestRef = useRef(0);
   const finalisedRef = useRef(false);
+  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Initialise competition ───────────────────────────────────────────────
   useEffect(() => {
@@ -177,11 +144,15 @@ export default function HouseOfCardsComp({
         seed,
       }),
     );
-    setBoard(buildBoard(seed));
+    setBoard(buildHouseOfCardsBoard(seed));
     startTimeRef.current = Date.now();
     gameOverRef.current = false;
     finalisedRef.current = false;
     return () => {
+      if (peekTimeoutRef.current) {
+        clearTimeout(peekTimeoutRef.current);
+        peekTimeoutRef.current = null;
+      }
       dispatch(resetHouseOfCards());
     };
   // Intentionally run only on mount: participants/seed/prizeType define the competition
@@ -321,13 +292,14 @@ export default function HouseOfCardsComp({
             // Capture indices that are currently flipped (not yet matched) so
             // we only hide cards that the peek itself revealed.
             const alreadyRevealedIndices = new Set(newBoard.filter((c) => c.isFlipped && !c.isMatched).map((c) => c.index));
-            setTimeout(() => {
+            peekTimeoutRef.current = setTimeout(() => {
               setBoard((prev) =>
                 prev.map((c) =>
                   !c.isMatched && !alreadyRevealedIndices.has(c.index) ? { ...c, isFlipped: false } : c,
                 ),
               );
               setPeekActive(false);
+              peekTimeoutRef.current = null;
             }, PEEK_DURATION_MS);
           }
 
