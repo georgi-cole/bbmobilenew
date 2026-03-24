@@ -100,7 +100,7 @@ export default function CodeBreakerComp({
   );
 
   // ── Game state ─────────────────────────────────────────────────────────────
-  const [currentDigits, setCurrentDigits] = useState<number[]>([0, 0, 0, 0]);
+  const [currentDigits, setCurrentDigits] = useState<number[]>(Array(CODE_LENGTH).fill(0));
   const [guessHistory, setGuessHistory] = useState<GuessResult[]>([]);
   const [phase, setPhase] = useState<GamePhase>('playing');
   const [timeRemainingMs, setTimeRemainingMs] = useState(timeLimitMs);
@@ -198,11 +198,13 @@ export default function CodeBreakerComp({
           lastPlaceId !== null && lastPlaceId !== winnerId ? lastPlaceId : null;
 
         const phase = prizeType === 'HOH' ? 'hoh_comp' : 'pov_comp';
-        console.log(`[CodeBreaker] Resolving ${phase}:`, {
-          winnerId,
-          lastPlaceId: validLastPlace,
-          scores: allScores,
-        });
+        if (import.meta.env.DEV) {
+          console.log(`[CodeBreaker] Resolving ${phase}:`, {
+            winnerId,
+            lastPlaceId: validLastPlace,
+            scores: allScores,
+          });
+        }
 
         dispatch(
           applyMinigameWinner({
@@ -272,7 +274,7 @@ export default function CodeBreakerComp({
 
         <div className="cb__results">
           <p className="cb__results-headline">
-            {humanScore >= 30 ? '🔓 Vault Cracked!' : '🔒 Time Expired'}
+            {humanScore >= SOLVED_SCORE_FLOOR ? '🔓 Vault Cracked!' : '🔒 Time Expired'}
           </p>
 
           <ol className="cb__leaderboard">

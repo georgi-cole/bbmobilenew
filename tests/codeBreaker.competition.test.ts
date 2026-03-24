@@ -236,17 +236,16 @@ describe('Vault Cracker — AI score determinism', () => {
     expect(a).toBe(b);
   });
 
-  it('different playerIds produce different scores for the same seed', () => {
+  it('different playerIds produce different scores for the same seed (seed=42: p1=64, p2=0)', () => {
     const a = computeAiScore(42, 'p1', DEFAULT_TIME_LIMIT_MS);
     const b = computeAiScore(42, 'p2', DEFAULT_TIME_LIMIT_MS);
-    // Not guaranteed to be different for every seed, but with 'p1' vs 'p2' they differ
-    expect(typeof a).toBe('number');
-    expect(typeof b).toBe('number');
     // Both must be in valid score range
     expect(a).toBeGreaterThanOrEqual(0);
     expect(a).toBeLessThanOrEqual(100);
     expect(b).toBeGreaterThanOrEqual(0);
     expect(b).toBeLessThanOrEqual(100);
+    // Verify actual inequality — these are known-different for seed 42
+    expect(a).not.toBe(b);
   });
 
   it('computeAllAiScores excludes the human', () => {

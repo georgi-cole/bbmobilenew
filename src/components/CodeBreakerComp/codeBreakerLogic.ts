@@ -70,16 +70,37 @@ export function generateSecretCode(seed: number): number[] {
 /**
  * Evaluate a player's guess against the secret code.
  * Returns bulls (right digit, right position) and cows (right digit, wrong position).
+ *
+ * Note: Cows are computed using digit counts (Mastermind-style) so that guesses
+ * with duplicate digits do not over-count matches against the unique-digit secret.
  */
 export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
   let bulls = 0;
   let cows = 0;
+
+  // First pass: count bulls.
   for (let i = 0; i < CODE_LENGTH; i++) {
-    if (guess[i] === secret[i]) bulls++;
+    if (guess[i] === secret[i]) {
+      bulls++;
+    }
   }
+
+  // Second pass: count non-bull digits for cows using frequency counts so
+  // duplicate digits in the guess don't inflate cow counts.
+  const secretCounts = new Array(10).fill(0);
+  const guessCounts = new Array(10).fill(0);
+
   for (let i = 0; i < CODE_LENGTH; i++) {
-    if (guess[i] !== secret[i] && secret.includes(guess[i])) cows++;
+    if (guess[i] !== secret[i]) {
+      secretCounts[secret[i]]++;
+      guessCounts[guess[i]]++;
+    }
   }
+
+  for (let d = 0; d < 10; d++) {
+    cows += Math.min(secretCounts[d], guessCounts[d]);
+  }
+
   return { digits: guess, bulls, cows };
 }
 
