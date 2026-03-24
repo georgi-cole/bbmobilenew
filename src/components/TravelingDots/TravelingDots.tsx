@@ -152,14 +152,22 @@ function generateBoard(seed: number): BoardNode[] {
   return positions.map((p, i) => ({ id: i, x: p.x, y: p.y, type: types[i] }));
 }
 
-/** Compute the "reference" optimal path length: nearest-neighbour through
- *  start + all required nodes + finish. Used to measure route efficiency. */
+/** Compute the "reference" optimal path length.
+ *  Uses nearest-neighbour over start + all required nodes, then adds the final
+ *  leg to finish so that finish is always visited last. Used to measure route
+ *  efficiency. */
 function computeOptimalLength(board: BoardNode[]): number {
   const start = board.find((n) => n.type === 'start')!;
   const finish = board.find((n) => n.type === 'finish')!;
   const required = board.filter((n) => n.type === 'required');
-  const { length } = nearestNeighborPath([start, ...required, finish]);
-  return length;
+
+  // Run nearest-neighbour over start + required only, to avoid selecting
+  // finish before all required nodes have been visited.
+  const { path, length: partialLength } = nearestNeighborPath([start, ...required]);
+  const lastNode = path[path.length - 1] ?? start;
+  const totalLength = partialLength + dist(lastNode, finish);
+
+  return totalLength;
 }
 
 // ── Score calculation ─────────────────────────────────────────────────────────
