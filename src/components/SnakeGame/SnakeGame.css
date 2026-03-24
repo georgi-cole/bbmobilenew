@@ -1,0 +1,400 @@
+/* SnakeGame — Nokia 3310-style retro presentation */
+
+/* ── Root ───────────────────────────────────────────────────────────────── */
+
+.snake-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 20px;
+  min-height: 100%;
+  background: #1a1f2e;
+}
+
+/* ── Phone body ─────────────────────────────────────────────────────────── */
+
+.snake-phone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 240px;
+  background: linear-gradient(160deg, #2b2b3b 0%, #1a1a28 100%);
+  border-radius: 24px 24px 40px 40px;
+  padding: 16px 16px 24px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  border: 1px solid #3a3a50;
+}
+
+/* ── LCD bezel ──────────────────────────────────────────────────────────── */
+
+.snake-lcd-bezel {
+  width: 100%;
+  background: #111118;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid #0a0a10;
+}
+
+.snake-lcd-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────────── */
+
+.snake-canvas {
+  display: block;
+  background: #b7d378;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* ── Status line ────────────────────────────────────────────────────────── */
+
+.snake-status-line {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 2;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  font-weight: bold;
+  color: #1a1a1a;
+  background: rgba(183, 211, 120, 0.85);
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+/* ── Scanlines ──────────────────────────────────────────────────────────── */
+
+.snake-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  border-radius: 4px;
+}
+
+/* ── Overlays (ready / game-over) ───────────────────────────────────────── */
+
+.snake-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(183, 211, 120, 0.92);
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.snake-overlay-title {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: bold;
+  color: #1a1a1a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.snake-overlay-hint {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 8px;
+  color: #2a2a2a;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.snake-btn {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 2px solid #1a1a1a;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: all 0.1s ease;
+}
+
+.snake-btn--start {
+  background: #1a1a1a;
+  color: #b7d378;
+}
+
+.snake-btn--start:hover {
+  background: #2d2d2d;
+}
+
+.snake-btn--done {
+  background: #4a9eff;
+  color: #fff;
+  border-color: #3a8eef;
+  font-size: 14px;
+  padding: 10px 28px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+.snake-btn--done:hover {
+  background: #3a8eef;
+}
+
+/* ── Brand strip ────────────────────────────────────────────────────────── */
+
+.snake-brand {
+  margin: 10px 0 6px;
+  padding: 2px 12px;
+  border-top: 1px solid #3a3a50;
+  border-bottom: 1px solid #3a3a50;
+  width: 80%;
+  text-align: center;
+}
+
+.snake-brand-text {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: #c0c0d0;
+  text-transform: uppercase;
+}
+
+/* ── D-pad ──────────────────────────────────────────────────────────────── */
+
+.snake-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 12px 0 8px;
+}
+
+.snake-dpad-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.snake-dpad-row--mid {
+  gap: 0;
+}
+
+.snake-dpad-btn {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  background: linear-gradient(135deg, #3a3a50 0%, #2a2a40 100%);
+  border: 2px solid #4a4a60;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.08s ease;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.snake-dpad-btn:hover {
+  background: linear-gradient(135deg, #4a4a60 0%, #3a3a50 100%);
+}
+
+.snake-dpad-btn:active {
+  background: linear-gradient(135deg, #2a2a40 0%, #1a1a30 100%);
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Arrow indicators */
+.snake-dpad-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.snake-dpad-up::after {
+  border-width: 0 10px 14px 10px;
+  border-color: transparent transparent #b7d378 transparent;
+}
+
+.snake-dpad-down::after {
+  border-width: 14px 10px 0 10px;
+  border-color: #b7d378 transparent transparent transparent;
+}
+
+.snake-dpad-left::after {
+  border-width: 10px 14px 10px 0;
+  border-color: transparent #b7d378 transparent transparent;
+}
+
+.snake-dpad-right::after {
+  border-width: 10px 0 10px 14px;
+  border-color: transparent transparent transparent #b7d378;
+}
+
+.snake-dpad-center {
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, #1a1a30 0%, #2a2a40 100%);
+  border: 2px solid #3a3a50;
+  border-radius: 50%;
+}
+
+/* ── Bottom action row ──────────────────────────────────────────────────── */
+
+.snake-action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.snake-action-btn {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, #3a3a50 0%, #2a2a40 100%);
+  border: 1px solid #4a4a60;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.snake-action-btn--main {
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle, #4a4a64 0%, #2a2a3c 100%);
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+
+.snake-results {
+  width: 100%;
+  max-width: 360px;
+  background: #1e2535;
+  border: 1px solid #2e3550;
+  border-radius: 12px;
+  padding: 20px 24px;
+  color: #e3ecf5;
+  text-align: center;
+}
+
+.snake-results-title {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+  font-family: 'Courier New', Courier, monospace;
+  color: #e3ecf5;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.snake-results-winner {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  color: #ffd700;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* ── Leaderboard ────────────────────────────────────────────────────────── */
+
+.snake-leaderboard {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.snake-leaderboard-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #252d3f;
+  border-radius: 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  color: #c0cfe0;
+  border: 1px solid #2e3a50;
+}
+
+.snake-leaderboard-entry--you {
+  background: #1e2f50;
+  border-color: #4a7aaf;
+  color: #e3ecf5;
+}
+
+.snake-leaderboard-entry--winner {
+  background: #2a2a1a;
+  border-color: #c0a020;
+  color: #ffd700;
+}
+
+.snake-leaderboard-entry--last {
+  border-color: #703030;
+}
+
+.snake-leaderboard-rank {
+  width: 28px;
+  text-align: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.snake-leaderboard-name {
+  flex: 1;
+  text-align: left;
+}
+
+.snake-leaderboard-score {
+  font-weight: bold;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── Responsive: smaller phones ─────────────────────────────────────────── */
+
+@media (max-width: 360px) {
+  .snake-phone {
+    width: 200px;
+  }
+
+  .snake-dpad-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .snake-dpad-center {
+    width: 36px;
+    height: 36px;
+  }
+}
