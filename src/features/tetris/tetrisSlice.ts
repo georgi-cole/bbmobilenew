@@ -9,7 +9,8 @@
  * Scoring:
  *  - Standard Tetris scoring: 1 line=100pts, 2=300, 3=500, 4=800 (Tetris!), × level.
  *  - Higher score = better. Winner = highest score. Last place = lowest score.
- *  - AI scores are pre-computed via simulateAiPerformance on slice init.
+ *  - AI scores are pre-computed (e.g., via simulateAiPerformance) before initTetris
+ *    and passed into the slice as aiScores.
  *
  * Authoritative outcome:
  *  - Once the human submits their score, setHumanScore computes winner + lastPlaceId
