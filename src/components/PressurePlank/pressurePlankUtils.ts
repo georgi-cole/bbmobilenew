@@ -28,9 +28,15 @@ export function computeSafeZoneWidthPercent(safeZoneHalfWidth: number): number {
   return safeZoneHalfWidth * 2;
 }
 
+/** Convert balance units (-100..100) to gauge percentage (0..100). */
+export function computeNeedlePercent(balance: number): number {
+  return ((balance + 100) / 200) * 100;
+}
+
 /** Whether the current balance is still inside the safe zone band. */
 export function isWithinSafeZone(balance: number, safeZoneHalfWidth: number): boolean {
-  return Math.abs(balance) <= computeSafeZoneWidthPercent(safeZoneHalfWidth);
+  const needlePct = computeNeedlePercent(balance);
+  return needlePct >= 50 - safeZoneHalfWidth && needlePct <= 50 + safeZoneHalfWidth;
 }
 
 /** Update out-of-zone grace time; instantly resets once the player recovers. */

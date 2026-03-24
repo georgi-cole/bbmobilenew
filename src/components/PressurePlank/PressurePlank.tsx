@@ -352,7 +352,7 @@ export default function PressurePlank({
         lastReactUpdate = now;
         setBalance(Math.round(balanceRef.current));
         setSurvivalMs(Date.now() - startTime);
-        setSafeZone(currentSafeZone);
+        setSafeZone(Math.round(currentSafeZone * 10) / 10);
         setOutOfZoneMs(outOfZoneMsRef.current);
       }
 
@@ -560,7 +560,7 @@ export default function PressurePlank({
 
             {/* Safe zone width indicator */}
             <div className="pp__safe-hint">
-              Safe zone: <strong>{safeZoneWidthPct.toFixed(0)}%</strong> · Grace: <strong>1.0s</strong> outside zone
+              Safe zone: <strong>{safeZoneWidthPct.toFixed(0)}%</strong> · Grace: <strong>{(OUT_OF_ZONE_GRACE_MS / 1000).toFixed(1)}s</strong> outside zone
             </div>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeNeedlePercent,
   computePlankDriftForce,
   computeSafeZoneHalfWidth,
   computeSafeZoneWidthPercent,
@@ -18,6 +19,8 @@ describe('pressurePlankUtils', () => {
   });
 
   it('treats the safe-zone boundary as inclusive', () => {
+    expect(computeNeedlePercent(0)).toBe(50);
+    expect(computeNeedlePercent(5)).toBe(52.5);
     expect(isWithinSafeZone(5, SAFE_ZONE_MIN)).toBe(true);
     expect(isWithinSafeZone(-5, SAFE_ZONE_MIN)).toBe(true);
     expect(isWithinSafeZone(5.01, SAFE_ZONE_MIN)).toBe(false);
