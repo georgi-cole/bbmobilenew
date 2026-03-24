@@ -86,7 +86,9 @@ export interface CompSelectionProps {
    * Called when the user saves their selection.
    * The component does not perform any persistence itself.
    */
-  onSave: (payload: CompSelectionPayload) => Promise<void> | void;
+  onSave?: (payload: CompSelectionPayload) => Promise<void> | void;
+  /** Optional live-change callback used when the parent handles persistence. */
+  onChange?: (payload: CompSelectionPayload) => void;
   /** Optional initial payload to pre-populate the form. */
   initialPayload?: Partial<CompSelectionPayload>;
 }

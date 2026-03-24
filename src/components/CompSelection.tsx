@@ -34,6 +34,7 @@ export type { CompGame, CompSelectionMode, CompSelectionPayload, CompSelectionPr
 export default function CompSelection({
   fetchGames,
   onSave,
+  onChange,
   initialPayload,
 }: CompSelectionProps) {
   const [games, setGames] = useState<CompGame[]>([]);
@@ -48,6 +49,14 @@ export default function CompSelection({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const buildPayload = (
+    nextMode: CompSelectionMode = mode,
+    nextSelectedGameId: string = selectedGameId,
+  ): CompSelectionPayload => ({
+    mode: nextMode,
+    ...(nextMode === 'single-game' && { selectedGameId: nextSelectedGameId }),
+  });
 
   // Load games on mount (needed to populate the single-game dropdown)
   useEffect(() => {
@@ -72,10 +81,8 @@ export default function CompSelection({
   }, [fetchGames]);
 
   const handleSave = async () => {
-    const payload: CompSelectionPayload = {
-      mode,
-      ...(mode === 'single-game' && { selectedGameId }),
-    };
+    if (!onSave) return;
+    const payload = buildPayload();
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -122,8 +129,10 @@ export default function CompSelection({
             className="comp-selection__mode-select"
             value={mode}
             onChange={(e) => {
-              setMode(e.target.value as CompSelectionMode);
+              const nextMode = e.target.value as CompSelectionMode;
+              setMode(nextMode);
               setSaveSuccess(false);
+              onChange?.(buildPayload(nextMode));
             }}
             aria-label="Selection mode"
           >
@@ -150,8 +159,10 @@ export default function CompSelection({
               className="comp-selection__single-select"
               value={selectedGameId}
               onChange={(e) => {
-                setSelectedGameId(e.target.value);
+                const nextSelectedGameId = e.target.value;
+                setSelectedGameId(nextSelectedGameId);
                 setSaveSuccess(false);
+                onChange?.(buildPayload(mode, nextSelectedGameId));
               }}
               aria-label="Single game key"
             >
@@ -167,23 +178,24 @@ export default function CompSelection({
       )}
 
       {/* ── Save feedback ─────────────────────────────────────────────── */}
-      {saveError && (
+      {onSave && saveError && (
         <p className="comp-selection__save-error" role="alert">⚠️ {saveError}</p>
       )}
-      {saveSuccess && (
+      {onSave && saveSuccess && (
         <p className="comp-selection__save-success" aria-live="polite">✅ Saved!</p>
       )}
 
       {/* ── Save button ───────────────────────────────────────────────── */}
-      <button
-        className="comp-selection__save-btn"
-        onClick={handleSave}
-        disabled={saving}
-        aria-busy={saving}
-      >
-        {saving ? 'Saving…' : 'Save Selection'}
-      </button>
+      {onSave && (
+        <button
+          className="comp-selection__save-btn"
+          onClick={handleSave}
+          disabled={saving}
+          aria-busy={saving}
+        >
+          {saving ? 'Saving…' : 'Save Selection'}
+        </button>
+      )}
     </div>
   );
 }
-

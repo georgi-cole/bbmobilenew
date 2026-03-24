@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -11,10 +11,10 @@ import {
   type ThemePreset,
 } from '../../store/settingsSlice';
 import { resetGame } from '../../store/gameSlice';
-import { getRestartRelevantSnapshotFromSettings, type RestartRelevantSettings } from '../../store/settingsHelpers';
 import CompSelection from '../../components/CompSelection';
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils';
 import { getAllGames, type GameCategory } from '../../minigames/registry';
+import { restartApp } from '../../utils/restartApp';
 import './Settings.css';
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
@@ -71,7 +71,6 @@ export default function Settings() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const settings = useAppSelector(selectSettings);
-  const game = useAppSelector((s) => s.game);
   const [castSizeInput, setCastSizeInput] = useState<string>(String(settings.gameUX.castSize));
   const [showRestartModal, setShowRestartModal] = useState(false);
 
@@ -89,20 +88,9 @@ export default function Settings() {
     [dispatch],
   );
 
-  // Snapshot live Redux settings on mount for restart-required detection.
-  // useRef's initial value is only used once — on the first render — so this
-  // captures settings as they were when Settings was opened, not from localStorage.
-  const settingsOnMount = useRef<RestartRelevantSettings>(getRestartRelevantSnapshotFromSettings(settings));
-
-  // A game is "in progress" if it has advanced past the initial fresh state.
-  const gameInProgress =
-    game.phase !== 'week_start' ||
-    game.week !== 1 ||
-    (Array.isArray(game.tvFeed) && game.tvFeed.length > 1);
-
   /**
    * Commit any pending cast-size input to Redux and return the committed value.
-   * Called before exit/restart checks so the user does not need to blur the
+   * Called before save/restart checks so the user does not need to blur the
    * numeric input for changes to be detected or applied.
    */
   const commitCastSizeInput = (): number => {
@@ -117,35 +105,19 @@ export default function Settings() {
     return clamped;
   };
 
-  const handleBack = () => {
-    // Commit any pending cast-size input before comparing, so the user does not
-    // need to blur the numeric field first.
-    const committedCastSize = commitCastSizeInput();
-    // Build the current snapshot from live Redux state, overriding castSize with
-    // the just-committed value (the Redux component state hasn't re-rendered yet).
-    const currentSnapshot = getRestartRelevantSnapshotFromSettings({
-      ...settings,
-      gameUX: { ...settings.gameUX, castSize: committedCastSize },
-    });
-    if (gameInProgress && JSON.stringify(settingsOnMount.current) !== JSON.stringify(currentSnapshot)) {
-      setShowRestartModal(true);
-    } else {
-      navigate(-1);
-    }
+  const handleSave = () => {
+    commitCastSizeInput();
+    setShowRestartModal(true);
   };
 
-  const handleRestartSeason = () => {
-    // Settings are already committed to Redux (and persisted to localStorage via
-    // the store subscription). Simply reset the game — resetGame() calls
-    // createInitialGameState() which reads the latest persisted config.
+  const handleRestartNow = () => {
     dispatch(resetGame());
     setShowRestartModal(false);
-    navigate('/game');
+    restartApp('#/game');
   };
 
-  const handleStay = () => {
+  const handleNotNow = () => {
     setShowRestartModal(false);
-    navigate(-1);
   };
 
   // Keep the viewport meta tag in sync with the enableZoom setting.
@@ -164,7 +136,7 @@ export default function Settings() {
       <header className="settings-screen__header">
         <button
           className="settings-screen__back"
-          onClick={handleBack}
+          onClick={() => navigate(-1)}
           aria-label="Go back"
         >
           ←
@@ -528,9 +500,18 @@ export default function Settings() {
             <p className="settings-section__heading">Comp Selection</p>
             <CompSelection
               fetchGames={fetchGames}
-              onSave={handleCompSelectionSave}
+              onChange={handleCompSelectionSave}
               initialPayload={settings.gameUX.compSelection}
             />
+
+            <div className="settings-actions">
+              <button
+                className="settings-actions__save-btn"
+                onClick={handleSave}
+              >
+                Save
+              </button>
+            </div>
           </section>
         )}
 
@@ -562,20 +543,20 @@ export default function Settings() {
             aria-labelledby="restart-modal-title"
           >
             <p id="restart-modal-title" className="settings-restart-modal__msg">
-              New settings detected. Start a new season to apply them now?
+              Settings saved. Restart the game now for the new settings to take effect?
             </p>
             <div className="settings-restart-modal__actions">
               <button
                 className="settings-restart-modal__btn settings-restart-modal__btn--primary"
-                onClick={handleRestartSeason}
+                onClick={handleRestartNow}
               >
-                Restart
+                OK
               </button>
               <button
                 className="settings-restart-modal__btn settings-restart-modal__btn--secondary"
-                onClick={handleStay}
+                onClick={handleNotNow}
               >
-                Stay
+                Not now
               </button>
             </div>
           </div>
