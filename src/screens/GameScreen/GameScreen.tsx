@@ -48,6 +48,7 @@ import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
 import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
+import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
 import { isPlacementRankingGame } from '../../minigames/registry'
@@ -1320,7 +1321,8 @@ export default function GameScreen() {
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  const showQuickTapRace = !showMinigameHost && humanIsParticipant
+  const showQuickTapRace = !showMinigameHost && humanIsParticipant && pendingMinigame?.key === 'quickTap'
+  const showTravelingDots = !showMinigameHost && humanIsParticipant && pendingMinigame?.key === 'travelingDots'
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel for the human player during social_1 and social_2.
@@ -1403,6 +1405,7 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showQuickTapRace ||
+    showTravelingDots ||
     aiTiebreakerPending ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -1863,6 +1866,11 @@ export default function GameScreen() {
       {/* ── QuickTapRace minigame overlay ────────────────────────────────── */}
       {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── TravelingDots minigame overlay ───────────────────────────────── */}
+      {showTravelingDots && pendingMinigame && (
+        <TravelingDots session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}
