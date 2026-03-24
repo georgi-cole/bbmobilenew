@@ -32,8 +32,8 @@ import type { BlackjackTournamentCompetitionType } from '../../features/blackjac
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
 import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
-import MemoryColorsComp from '../MemoryColorsComp/MemoryColorsComp';
-import type { MemoryColorsCompetitionType } from '../../features/memoryColors/memoryColorsSlice';
+import CodeBreakerComp from '../CodeBreakerComp/CodeBreakerComp';
+import type { CodeBreakerPrizeType } from '../CodeBreakerComp/CodeBreakerComp';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -357,14 +357,15 @@ export default function MinigameHost({
                 />
               );
             }
-            if (game.implementation === 'react' && game.reactComponentKey === 'MemoryColors') {
+            if (game.implementation === 'react' && game.reactComponentKey === 'CodeBreaker') {
               return (
-                <MemoryColorsComp
+                <CodeBreakerComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as MemoryColorsCompetitionType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as CodeBreakerPrizeType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
+                  autoStart={true}
                 />
               );
             }

@@ -522,10 +522,10 @@ const gameSlice = createSlice({
      * presses the "Done" / "Continue ▶" button.
      *
      * Accepts either a legacy numeric payload (backward-compat) or a rich
-     * `CompleteMinigamePayload` with `humanScore` and optional `lastPlaceId`.
-     * When `lastPlaceId` is supplied it is used directly as the canonical
-     * last-place finisher rather than re-deriving from scores, ensuring the
-     * results UI and nomination logic read from the same authoritative data.
+     * `CompleteMinigamePayload` with `humanScore` and optional canonical
+     * `winnerId` / `lastPlaceId` values. When supplied, those IDs are used
+     * directly rather than re-deriving from scores, ensuring the results UI
+     * and the applied state transition read from the same authoritative data.
      */
     completeMinigame(
       state,
@@ -547,8 +547,9 @@ const gameSlice = createSlice({
         scores[humanPlayer.id] = payload.humanScore;
       }
 
-      // Determine winner: highest tap count wins
-      const winnerId = determineWinner(session.participants, scores);
+      // Prefer a canonical winner supplied by the UI component so the
+      // displayed leaderboard and the applied state transition stay aligned.
+      const winnerId = payload.winnerId ?? determineWinner(session.participants, scores);
 
       // Update personal records for every participant
       const personalRecords: Record<string, number> = {};

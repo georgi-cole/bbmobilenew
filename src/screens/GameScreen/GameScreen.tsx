@@ -1407,6 +1407,7 @@ export default function GameScreen() {
     showWinnerCeremony ||
     showAdvanceHohCeremony ||
     showQuickTapRace ||
+    showBullseyeBlitz ||
     aiTiebreakerPending ||
     spectatorF3Active ||
     spectatorLegacyActive
@@ -1870,6 +1871,11 @@ export default function GameScreen() {
       )}
       {showHohMinigame && pendingMinigame && pendingMinigame.key === 'pressurePlank' && (
         <PressurePlank session={pendingMinigame} players={game.players} />
+      )}
+
+      {/* ── BullseyeBlitz minigame overlay ───────────────────────────────── */}
+      {showBullseyeBlitz && pendingMinigame && (
+        <BullseyeBlitz session={pendingMinigame} players={game.players} />
       )}
 
       {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}
