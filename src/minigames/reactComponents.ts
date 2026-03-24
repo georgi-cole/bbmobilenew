@@ -19,6 +19,7 @@ import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverCo
 import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
 import CastleRescueGame from './castleRescue/CastleRescueGame';
 import QuickTapRace from '../components/QuickTapRace/QuickTapRace';
+import PressurePlank from '../components/PressurePlank/PressurePlank';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -41,6 +42,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   HoldTheWall: HoldTheWallComp as ComponentType<GenericMinigameProps>,
   CastleRescue: CastleRescueGame as ComponentType<GenericMinigameProps>,
   QuickTapRace: QuickTapRace as ComponentType<GenericMinigameProps>,
+  PressurePlank: PressurePlank as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;

@@ -1,6 +1,21 @@
 // MODULE: minigames/pressure-plank.js
 // Endurance #2 — Pressure Plank Rhythm
 // Alternate hold/release to stay within a moving safe window
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// DEPRECATED — no longer the active gameplay path.
+//
+// Pressure Plank has been migrated to the native React minigame architecture:
+//   src/components/PressurePlank/PressurePlank.tsx
+//
+// The registry entry (src/minigames/registry.ts) now sets
+//   implementation: 'react', reactComponentKey: 'PressurePlank', legacy: false
+// so this IIFE module is never loaded during normal gameplay.
+//
+// This file is retained only for historical reference and backward-compatibility
+// with any saved-state that might reference the legacy module path.
+// It MUST NOT be imported or required from active code.
+// ─────────────────────────────────────────────────────────────────────────────
 
 (function(g){
   'use strict';
