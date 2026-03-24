@@ -90,9 +90,11 @@ export function buildRankedLeaderboard(
     };
   });
 
-  return entries.sort((a, b) => {
+  const rankedEntries = entries.sort((a, b) => {
     const diff = b.score - a.score;
     if (diff !== 0) return diff;
     return a.participantIndex - b.participantIndex;
   });
+
+  return rankedEntries.map(({ participantIndex: _participantIndex, ...entry }) => entry);
 }
