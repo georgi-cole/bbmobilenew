@@ -32,7 +32,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import { initTetris, setHumanScore, resetTetris } from '../../features/tetris/tetrisSlice';
 import { resolveTetrisOutcome } from '../../features/tetris/thunks';
-import { simulateAiPerformance } from '../../ai/competition/index';
+import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index';
 import { mulberry32 } from '../../store/rng';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
@@ -268,6 +268,12 @@ export default function TetrisComp({
 
     const rng = mulberry32((seed >>> 0) ^ 0xdeadcafe);
 
+    const tetrisAiModel = {
+      ...getMinigameAiModel('tetris'),
+      minScore: 0,
+      maxScore: 2000,
+    };
+
     participants?.forEach((p, idx) => {
       if (p.isHuman) return;
       aiScores[p.id] = simulateAiPerformance({
@@ -276,7 +282,7 @@ export default function TetrisComp({
         playerId: p.id,
         participantIndex: idx,
         profile: undefined,
-        options: { minScore: 0, maxScore: 2000 },
+        minigameModel: tetrisAiModel,
       });
     });
 
