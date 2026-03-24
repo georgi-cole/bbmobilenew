@@ -10,7 +10,7 @@
  *  6. AI-only nomination flow (no human) produces the correct winner + last-place.
  *  7. Tie-breaking is deterministic (participant order used only as final fallback).
  *  8. No silent fallback when authoritative last-place data can be produced.
- *  9. AI calibration: simulateAiPerformance yields scores in the 150–220 target band.
+ *  9. AI calibration: simulateAiPerformance yields a normalized competitive score spread.
  * 10. Round 3 feedback: the finishGame path is only triggered via handleNextRound (not auto-trigger),
  *     ensuring feedback is shown before the scoreboard for all rounds including round 3.
  *
@@ -476,17 +476,23 @@ describe('Estimation Game — scoring model preservation', () => {
   });
 });
 
-// ── 8. AI calibration — scores revolve around 150–220 ────────────────────────
+// ── 8. AI calibration — normalized competitive spread ────────────────────────
 
 describe('Estimation Game — AI score calibration', () => {
   const model = getMinigameAiModel('estimationGame');
 
-  it('AI model has minScore=110 and maxScore=260 configured', () => {
-    expect(model.minScore).toBe(110);
-    expect(model.maxScore).toBe(260);
+  it('AI model exposes the full 0–300 score space plus normalized buckets', () => {
+    expect(model.minScore).toBe(0);
+    expect(model.maxScore).toBe(300);
+    expect(model.scoreBuckets).toEqual([
+      { minScore: 250, maxScore: 300, weight: 0.2 },
+      { minScore: 200, maxScore: 250, weight: 0.4 },
+      { minScore: 180, maxScore: 200, weight: 0.3 },
+      { minScore: 0, maxScore: 180, weight: 0.1 },
+    ]);
   });
 
-  it('simulateAiPerformance produces scores within [110, 260] for various seeds', () => {
+  it('simulateAiPerformance produces scores within [0, 300] for various seeds', () => {
     const seeds = [1, 42, 100, 999, 12345, 99999, 314159, 7];
     seeds.forEach((seed) => {
       const score = simulateAiPerformance({
@@ -495,29 +501,40 @@ describe('Estimation Game — AI score calibration', () => {
         seed,
         playerId: 'ai-player-1',
       });
-      expect(score).toBeGreaterThanOrEqual(110);
-      expect(score).toBeLessThanOrEqual(260);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(300);
     });
   });
 
-  it('typical AI scores across common seeds land in the 150–220 target band', () => {
-    // Use a spread of seeds and player IDs to simulate a real competition
-    const configs = [
-      { seed: 42,  playerId: 'p1' },
-      { seed: 42,  playerId: 'p2' },
-      { seed: 42,  playerId: 'p3' },
-      { seed: 100, playerId: 'p1' },
-      { seed: 100, playerId: 'p2' },
-      { seed: 100, playerId: 'p3' },
-    ];
+  it('AI scores roughly follow the normalized target bands across many deterministic samples', () => {
+    const scores: number[] = [];
+    for (let seed = 1; seed <= 200; seed += 1) {
+      for (let player = 1; player <= 6; player += 1) {
+        scores.push(
+          simulateAiPerformance({
+            minigameKey: 'estimationGame',
+            minigameModel: model,
+            seed,
+            playerId: `p${player}`,
+          }),
+        );
+      }
+    }
 
-    const scores = configs.map(({ seed, playerId }) =>
-      simulateAiPerformance({ minigameKey: 'estimationGame', minigameModel: model, seed, playerId }),
-    );
+    const total = scores.length;
+    const topBand = scores.filter((score) => score >= 250 && score <= 300).length / total;
+    const upperMidBand = scores.filter((score) => score >= 200 && score < 250).length / total;
+    const lowerMidBand = scores.filter((score) => score >= 180 && score < 200).length / total;
+    const lowBand = scores.filter((score) => score < 180).length / total;
 
-    // At least the majority should land in the 150–220 range
-    const inTargetBand = scores.filter((s) => s >= 150 && s <= 220).length;
-    expect(inTargetBand).toBeGreaterThanOrEqual(Math.ceil(scores.length * 0.5));
+    expect(topBand).toBeGreaterThan(0.12);
+    expect(topBand).toBeLessThan(0.28);
+    expect(upperMidBand).toBeGreaterThan(0.32);
+    expect(upperMidBand).toBeLessThan(0.48);
+    expect(lowerMidBand).toBeGreaterThan(0.22);
+    expect(lowerMidBand).toBeLessThan(0.38);
+    expect(lowBand).toBeGreaterThan(0.04);
+    expect(lowBand).toBeLessThan(0.16);
   });
 
   it('AI scores are deterministic — same seed + playerId yields same score', () => {

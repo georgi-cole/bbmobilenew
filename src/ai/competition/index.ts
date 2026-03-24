@@ -6,6 +6,7 @@ import type {
   CompetitionSeasonState,
   CompetitionSkillProfile,
   CompetitionSkillWeights,
+  MinigameAiScoreBucket,
   MinigameAiModel,
 } from './types';
 
@@ -448,6 +449,54 @@ function mapPerformanceToScore(
   return minScore + performance * span;
 }
 
+function maybeMapPerformanceToBucketedScore(
+  model: MinigameAiModel,
+  performance: number,
+  rng: () => number,
+): number | undefined {
+  const buckets = model.scoreBuckets;
+  if (!buckets || buckets.length === 0) return undefined;
+
+  const normalizedBuckets = buckets
+    .filter((bucket) => bucket.weight > 0)
+    .map((bucket) => ({
+      ...bucket,
+      minScore: Math.min(bucket.minScore, bucket.maxScore),
+      maxScore: Math.max(bucket.minScore, bucket.maxScore),
+    }));
+  if (normalizedBuckets.length === 0) return undefined;
+
+  const totalWeight = normalizedBuckets.reduce((sum, bucket) => sum + bucket.weight, 0);
+  if (totalWeight <= 0) return undefined;
+
+  const orderedBuckets = [...normalizedBuckets].sort((a, b) => (
+    model.scoreDirection === 'lower-is-better'
+      ? a.minScore - b.minScore
+      : b.maxScore - a.maxScore
+  ));
+
+  const skillBias = clamp((performance - 0.5) * 0.5, -0.2, 0.2);
+  let selectionRoll = clamp(rng() - skillBias, 0, 0.999999);
+  let chosenBucket: MinigameAiScoreBucket = orderedBuckets[orderedBuckets.length - 1];
+
+  for (const bucket of orderedBuckets) {
+    selectionRoll -= bucket.weight / totalWeight;
+    if (selectionRoll <= 0) {
+      chosenBucket = bucket;
+      break;
+    }
+  }
+
+  const withinBucketRoll = clamp((rng() + performance) / 2, 0, 1);
+  const bucketScore = mapPerformanceToScore(
+    model.scoreDirection,
+    chosenBucket.minScore,
+    chosenBucket.maxScore,
+    withinBucketRoll,
+  );
+  return Math.round(bucketScore);
+}
+
 export function simulateAiPerformance({
   minigameKey,
   seed,
@@ -474,6 +523,11 @@ export function simulateAiPerformance({
   // Triangular distribution in [-1, 1] centered at 0 (Irwin-Hall n=2 shifted).
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
   const performance = clamp(expectedSkill + deviation + seasonAdjustment.totalAdjustment, 0, 1);
+
+  const bucketedScore = maybeMapPerformanceToBucketedScore(model, performance, rng);
+  if (typeof bucketedScore === 'number') {
+    return bucketedScore;
+  }
 
   const { minScore, maxScore } = resolveScoreRange(model, options);
   const rawScore = mapPerformanceToScore(model.scoreDirection, minScore, maxScore, performance);

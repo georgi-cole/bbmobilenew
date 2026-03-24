@@ -35,6 +35,22 @@ const STABLE_PRECISION_GAME: MinigameAiModel = {
   volatility: 0,
 };
 
+const BUCKETED_GAME: MinigameAiModel = {
+  key: 'bucketed-game',
+  category: 'mental',
+  scoreDirection: 'higher-is-better',
+  volatility: 0.3,
+  minScore: 0,
+  maxScore: 300,
+  weights: { physical: 0, mental: 1, precision: 0, nerve: 0, luck: 0 },
+  scoreBuckets: [
+    { minScore: 250, maxScore: 300, weight: 0.2 },
+    { minScore: 200, maxScore: 250, weight: 0.4 },
+    { minScore: 180, maxScore: 200, weight: 0.3 },
+    { minScore: 0, maxScore: 180, weight: 0.1 },
+  ],
+};
+
 describe('simulateAiPerformance', () => {
   it('returns deterministic results for identical inputs', () => {
     const scoreA = simulateAiPerformance({
@@ -301,5 +317,43 @@ describe('simulateAiPerformance', () => {
     });
 
     expect(profile).toEqual(snapshot);
+  });
+
+  it('supports bucket-normalized score distributions while keeping stronger profiles advantaged', () => {
+    const strongProfile: CompetitionSkillProfile = {
+      ...BASE_PROFILE,
+      overall: 90,
+      mental: 90,
+      precision: 80,
+      nerve: 80,
+    };
+    const weakProfile: CompetitionSkillProfile = {
+      ...BASE_PROFILE,
+      overall: 20,
+      mental: 20,
+      precision: 25,
+      nerve: 25,
+    };
+
+    const strongScore = simulateAiPerformance({
+      minigameKey: BUCKETED_GAME.key,
+      minigameModel: BUCKETED_GAME,
+      seed: 512,
+      playerId: 'bucket-player',
+      profile: strongProfile,
+    });
+    const weakScore = simulateAiPerformance({
+      minigameKey: BUCKETED_GAME.key,
+      minigameModel: BUCKETED_GAME,
+      seed: 512,
+      playerId: 'bucket-player',
+      profile: weakProfile,
+    });
+
+    expect(strongScore).toBeGreaterThan(weakScore);
+    expect(strongScore).toBeGreaterThanOrEqual(0);
+    expect(strongScore).toBeLessThanOrEqual(300);
+    expect(weakScore).toBeGreaterThanOrEqual(0);
+    expect(weakScore).toBeLessThanOrEqual(300);
   });
 });
