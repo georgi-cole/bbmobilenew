@@ -338,10 +338,8 @@ describe('MemoryColors — simulateAiResult', () => {
   it('different players get different results for the same seed', () => {
     const r1 = simulateAiResult(42, 'p1');
     const r2 = simulateAiResult(42, 'p2');
-    // Not guaranteed to differ in every metric, but score should often differ.
-    // Just check that they're valid results.
-    expect(typeof r1.score).toBe('number');
-    expect(typeof r2.score).toBe('number');
+    // Not guaranteed to differ in every metric, but score should differ for different players.
+    expect(r1.score).not.toBe(r2.score);
   });
 });
 

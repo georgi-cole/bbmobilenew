@@ -142,22 +142,26 @@ export default function MemoryColorsComp({
     (sequence: number[]) => {
       if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
       setLitColorIndex(-1);
+      setLitStepIndex(-1);
 
       let i = 0;
       function showNext() {
         if (i >= sequence.length) {
           // Reveal finished
           setLitColorIndex(-1);
+          setLitStepIndex(-1);
           revealTimeoutRef.current = setTimeout(() => {
             dispatch(beginInput());
             dispatch(setStepStartMs(Date.now()));
           }, animDelay(200));
           return;
         }
-        // Light up color i
+        // Light up color at step i
         setLitColorIndex(sequence[i]);
+        setLitStepIndex(i);
         revealTimeoutRef.current = setTimeout(() => {
           setLitColorIndex(-1);
+          setLitStepIndex(-1);
           revealTimeoutRef.current = setTimeout(() => {
             i += 1;
             showNext();
@@ -225,7 +229,6 @@ export default function MemoryColorsComp({
       }, 300);
 
       dispatch(recordInput({ colorIndex, now: Date.now() }));
-      dispatch(setStepStartMs(Date.now()));
     },
     [dispatch, mc],
   );
@@ -319,7 +322,9 @@ export default function MemoryColorsComp({
   const isRoundCleared = mc.phase === 'round_cleared';
 
   const sequenceLength = mc.sequence.length;
-  const progress = isInput ? mc.inputIndex : 0;
+  // During input: how many steps the player has confirmed so far.
+  // During showing: how far into the reveal we are (for aria-valuenow).
+  const progress = isInput ? mc.inputIndex : isShowing ? Math.max(litStepIndex, 0) : 0;
   const hasStrike = mc.mistakesUsed > 0;
 
   return (
@@ -340,7 +345,14 @@ export default function MemoryColorsComp({
       </div>
 
       {/* Sequence progress bar */}
-      <div className="mc-progress-bar" aria-label="Sequence progress" role="progressbar">
+      <div
+        className="mc-progress-bar"
+        aria-label="Sequence progress"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={sequenceLength}
+        aria-valuenow={Math.min(Math.max(progress, 0), sequenceLength)}
+      >
         {mc.sequence.map((colorIdx, i) => (
           <div
             key={i}
@@ -348,7 +360,7 @@ export default function MemoryColorsComp({
               'mc-progress-step',
               `mc-progress-step--${COLOR_CLASSES[colorIdx].replace('color-pad--', '')}`,
               i < progress ? 'mc-progress-step--done' : '',
-              isShowing && litColorIndex !== -1 && mc.sequence.indexOf(litColorIndex, 0) === i
+              isShowing && litStepIndex === i
                 ? 'mc-progress-step--active'
                 : '',
             ]
