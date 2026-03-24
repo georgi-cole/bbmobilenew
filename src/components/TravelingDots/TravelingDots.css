@@ -168,11 +168,11 @@
   flex-shrink: 0;
 }
 
-.td__legend-dot--start   { background: #22c55e; }
-.td__legend-dot--finish  { background: #a855f7; }
-.td__legend-dot--req     { background: #60a5fa; }
-.td__legend-dot--bonus   { background: #fbbf24; }
-.td__legend-dot--hazard  { background: #f87171; }
+.td__legend-dot--start     { background: #22c55e; }
+.td__legend-dot--finish    { background: #a855f7; }
+.td__legend-dot--required  { background: #60a5fa; }
+.td__legend-dot--bonus     { background: #fbbf24; }
+.td__legend-dot--hazard    { background: #f87171; }
 
 /* Canvas */
 .td__canvas-wrap {
