@@ -27,6 +27,8 @@ import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
 import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternSlice';
+import tetrisReducer from '../features/tetris/tetrisSlice';
+import tiltLabyrinthReducer from '../features/tiltLabyrinth/tiltLabyrinthSlice';
 import houseOfCardsReducer from '../features/houseOfCards/houseOfCardsSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
@@ -51,6 +53,8 @@ export const store = configureStore({
     blackjackTournament: blackjackTournamentReducer,
     riskWheel: riskWheelReducer,
     wildcardWestern: wildcardWesternReducer,
+    tetris: tetrisReducer,
+    tiltLabyrinth: tiltLabyrinthReducer,
     houseOfCards: houseOfCardsReducer,
     publicOpinion: publicOpinionReducer,
   },
