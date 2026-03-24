@@ -453,21 +453,58 @@ function mapPerformanceToScore(
   return minScore + performance * span;
 }
 
+function remapScoreToResolvedRange(
+  value: number,
+  sourceMin: number,
+  sourceMax: number,
+  targetMin: number,
+  targetMax: number,
+): number {
+  if (sourceMax <= sourceMin) {
+    return targetMin;
+  }
+
+  const ratio = clamp((value - sourceMin) / (sourceMax - sourceMin), 0, 1);
+  return targetMin + ratio * (targetMax - targetMin);
+}
+
 function maybeMapPerformanceToBucketedScore(
   model: MinigameAiModel,
   performance: number,
   rng: () => number,
+  resolvedRange: { minScore: number; maxScore: number },
 ): number | undefined {
   const buckets = model.scoreBuckets;
   if (!buckets || buckets.length === 0) return undefined;
 
+  const bucketBounds = buckets.flatMap((bucket) => [bucket.minScore, bucket.maxScore]);
+  const sourceMinScore = Math.min(...bucketBounds);
+  const sourceMaxScore = Math.max(...bucketBounds);
+
   const normalizedBuckets = buckets
     .filter((bucket) => bucket.weight > 0)
-    .map((bucket) => ({
-      ...bucket,
-      minScore: Math.min(bucket.minScore, bucket.maxScore),
-      maxScore: Math.max(bucket.minScore, bucket.maxScore),
-    }));
+    .map((bucket) => {
+      const remappedMinScore = remapScoreToResolvedRange(
+        bucket.minScore,
+        sourceMinScore,
+        sourceMaxScore,
+        resolvedRange.minScore,
+        resolvedRange.maxScore,
+      );
+      const remappedMaxScore = remapScoreToResolvedRange(
+        bucket.maxScore,
+        sourceMinScore,
+        sourceMaxScore,
+        resolvedRange.minScore,
+        resolvedRange.maxScore,
+      );
+
+      return {
+        ...bucket,
+        minScore: Math.min(remappedMinScore, remappedMaxScore),
+        maxScore: Math.max(remappedMinScore, remappedMaxScore),
+      };
+    });
   if (normalizedBuckets.length === 0) return undefined;
 
   const totalWeight = normalizedBuckets.reduce((sum, bucket) => sum + bucket.weight, 0);
@@ -531,14 +568,19 @@ export function simulateAiPerformance({
   // Triangular distribution in [-1, 1] centered at 0 (Irwin-Hall n=2 shifted).
   const deviation = (rng() + rng() - 1) * volatility * VOLATILITY_SCALE;
   const performance = clamp(expectedSkill + deviation + seasonAdjustment.totalAdjustment, 0, 1);
+  const resolvedRange = resolveScoreRange(model, options);
 
-  const bucketedScore = maybeMapPerformanceToBucketedScore(model, performance, rng);
+  const bucketedScore = maybeMapPerformanceToBucketedScore(model, performance, rng, resolvedRange);
   if (typeof bucketedScore === 'number') {
     return bucketedScore;
   }
 
-  const { minScore, maxScore } = resolveScoreRange(model, options);
-  const rawScore = mapPerformanceToScore(model.scoreDirection, minScore, maxScore, performance);
+  const rawScore = mapPerformanceToScore(
+    model.scoreDirection,
+    resolvedRange.minScore,
+    resolvedRange.maxScore,
+    performance,
+  );
 
   return Math.round(rawScore);
 }

@@ -528,8 +528,8 @@ describe('Estimation Game — AI score calibration', () => {
     const lowBand = scores.filter((score) => score < 180).length / total;
 
     // Allow a moderate tolerance around the configured 20/40/30/10 weights because
-    // deterministic skill bias nudges stronger samples upward and weaker samples
-    // downward instead of keeping every sample on the exact base proportions.
+    // per-sample performance (especially the deterministic RNG deviation) nudges
+    // some samples upward and others downward instead of preserving exact ratios.
     expect(topBand).toBeGreaterThan(0.12);
     expect(topBand).toBeLessThan(0.28);
     expect(upperMidBand).toBeGreaterThan(0.32);
