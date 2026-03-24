@@ -553,13 +553,13 @@ describe('Estimation Game — AI score calibration', () => {
 // ── 9. Round 3 submit → feedback before scoreboard ────────────────────────────
 
 describe('Estimation Game — round 3 submit flow', () => {
-  it('finishGame is called through handleNextRound (not auto-triggered): state machine guard', () => {
-    // This test verifies the store side: after 3 rounds completeMinigame is only dispatched
-    // when the player explicitly clicks through — not automatically.
-    // The component-side guard (removed auto-trigger useEffect, feedback shown for all rounds)
-    // is enforced by the JSX change (feedback condition no longer has `< NUM_ROUNDS`).
+  it('store resolves outcome after round 3 when completeMinigame is dispatched explicitly', () => {
+    // This test verifies the store-side behavior once completeMinigame is dispatched
+    // after 3 rounds. The UI is responsible for dispatching this action when the
+    // player clicks through to see the final results; that wiring is covered by
+    // component-level tests, not here.
     //
-    // At the store level we confirm: winner/lastPlace computed after completeMinigame
+    // At the store level we confirm: winner/lastPlace are computed after completeMinigame
     // regardless of whether the human score corresponds to round 3 outcomes.
     const players = makePlayers(4);
     const store = makeStore({ players });
