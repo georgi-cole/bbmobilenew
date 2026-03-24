@@ -464,7 +464,7 @@ export default function TetrisComp({
       gamePhaseRef.current = 'gameover';
       const s = finalScore ?? scoreRef.current;
       dispatch(setHumanScore(s));
-      dispatch(resolveTetrisOutcome() as never);
+      dispatch(resolveTetrisOutcome());
       // Show results after a brief pause
       setTimeout(() => setShowResults(true), 800);
     },
