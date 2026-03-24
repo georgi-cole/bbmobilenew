@@ -468,3 +468,10 @@ describe('Pressure Plank — backward-compat: legacy numeric payload', () => {
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 });
+
+describe('Pressure Plank — React registry wiring', () => {
+  it('PressurePlank is present in reactComponents map', async () => {
+    const { default: reactComponents } = await import('../src/minigames/reactComponents');
+    expect(reactComponents['PressurePlank']).toBeDefined();
+  });
+});
