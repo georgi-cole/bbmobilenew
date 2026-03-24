@@ -134,11 +134,13 @@ export default function QuickTapRace({
   session,
   players = [],
   onFinish,
+  seed,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
   const resolvedDuration = session?.options.timeLimit ?? GAME_DURATION;
+  void seed;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
