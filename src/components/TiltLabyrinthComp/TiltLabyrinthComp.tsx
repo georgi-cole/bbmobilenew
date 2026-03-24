@@ -51,6 +51,7 @@ const CELL_PX = 25;
 const MAZE_W = MAZE_COLS * CELL_PX;
 const MAZE_H = MAZE_ROWS * CELL_PX;
 const WALL_THICKNESS = 2;
+const WALL_THICKNESS_BOOST = 0.35;
 
 const BALL_RADIUS = 6;
 const FRICTION = 0.88;
@@ -63,6 +64,8 @@ const HAZARD_SPEED = 1.15;
 const HAZARD_HIT_COOLDOWN_MS = 650;
 const MAX_PLACEMENT_ATTEMPTS = 200;
 const MIN_HAZARD_SPACING_CELLS = 2.75;
+const GRID_OUTLINE_ALPHA = 0.13;
+const GRID_CORNER_ALPHA = 0.2;
 const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
@@ -285,6 +288,25 @@ function drawMaze(
     }
   }
 
+  // Closed-grid underlay to preserve the original closed-grid labyrinth feel even
+  // where carved passages remove collision walls.
+  ctx.strokeStyle = `rgba(125, 211, 252, ${GRID_OUTLINE_ALPHA})`;
+  ctx.lineWidth = 1;
+  for (let row = 0; row < MAZE_ROWS; row++) {
+    for (let col = 0; col < MAZE_COLS; col++) {
+      ctx.strokeRect(col * CELL_PX + 0.5, row * CELL_PX + 0.5, CELL_PX, CELL_PX);
+    }
+  }
+
+  ctx.fillStyle = `rgba(148, 163, 184, ${GRID_CORNER_ALPHA})`;
+  for (let row = 0; row <= MAZE_ROWS; row++) {
+    for (let col = 0; col <= MAZE_COLS; col++) {
+      ctx.beginPath();
+      ctx.arc(col * CELL_PX, row * CELL_PX, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   const pulse = 0.6 + 0.4 * Math.sin(elapsed / 300);
 
   // Key
@@ -339,8 +361,11 @@ function drawMaze(
   ctx.fillText('🏁', goalPos.x, goalPos.y);
 
   // Walls
-  ctx.strokeStyle = '#4ea8de';
-  ctx.lineWidth = WALL_THICKNESS;
+  ctx.save();
+  ctx.shadowColor = 'rgba(96, 165, 250, 0.2)';
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = '#67c7ff';
+  ctx.lineWidth = WALL_THICKNESS + WALL_THICKNESS_BOOST;
   ctx.lineCap = 'square';
 
   for (let row = 0; row < MAZE_ROWS; row++) {
@@ -369,6 +394,7 @@ function drawMaze(
       ctx.stroke();
     }
   }
+  ctx.restore();
 
   // Hazards
   hazards.forEach((hazard) => {
