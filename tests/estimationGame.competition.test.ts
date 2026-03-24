@@ -10,8 +10,8 @@
  *  6. AI-only nomination flow (no human) produces the correct winner + last-place.
  *  7. Tie-breaking is deterministic (participant order used only as final fallback).
  *  8. No silent fallback when authoritative last-place data can be produced.
- *  8. AI calibration: simulateAiPerformance yields scores in the 150–220 target band.
- *  9. Round 3 feedback: the finishGame path is only triggered via handleNextRound (not auto-trigger),
+ *  9. AI calibration: simulateAiPerformance yields scores in the 150–220 target band.
+ * 10. Round 3 feedback: the finishGame path is only triggered via handleNextRound (not auto-trigger),
  *     ensuring feedback is shown before the scoreboard for all rounds including round 3.
  *
  * Mirrors the style of tests/quickTapRace.competition.test.ts.
