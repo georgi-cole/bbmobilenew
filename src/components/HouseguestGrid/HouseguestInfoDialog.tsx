@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { Player } from '../../types';
 import { enrichPlayer } from '../../utils/houseguestLookup';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
@@ -18,6 +19,8 @@ function parseLocation(location?: string): { city: string; nationality: string }
 }
 
 export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfoDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
   const ep = enrichPlayer(player);
   const { city, nationality } = parseLocation(ep.location);
 
@@ -29,17 +32,39 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
     { label: 'Zodiac', value: ep.zodiacSign },
   ];
 
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onCloseRef.current();
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div
       className="hg-info-overlay"
-      role="dialog"
-      aria-label={`${ep.fullName ?? ep.name} details`}
-      aria-modal="true"
+      role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="hg-info-dialog">
+      <div
+        className="hg-info-dialog"
+        role="dialog"
+        aria-label={`${ep.fullName ?? ep.name} details`}
+        aria-modal="true"
+        tabIndex={-1}
+        ref={dialogRef}
+      >
         <button
           className="hg-info-dialog__close"
           onClick={onClose}

@@ -114,8 +114,8 @@ describe('TvZone — announcement overlay', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    expect(screen.getByRole('button', { name: /Mute music/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /Mute sound effects/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Music$/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Sound effects$/i })).toBeDefined();
   });
 
   it('exposes audio toggle pressed states', async () => {
@@ -123,8 +123,8 @@ describe('TvZone — announcement overlay', () => {
     const store = makeStoreWithSettings();
     renderTvZone(store);
 
-    const musicButton = screen.getByRole('button', { name: /Mute music/i });
-    const sfxButton = screen.getByRole('button', { name: /Mute sound effects/i });
+    const musicButton = screen.getByRole('button', { name: /^Music$/i });
+    const sfxButton = screen.getByRole('button', { name: /^Sound effects$/i });
 
     expect(musicButton).toHaveAttribute('aria-pressed', 'true');
     expect(sfxButton).toHaveAttribute('aria-pressed', 'true');
@@ -132,8 +132,8 @@ describe('TvZone — announcement overlay', () => {
     await user.click(musicButton);
     await user.click(sfxButton);
 
-    expect(screen.getByRole('button', { name: /Unmute music/i })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: /Unmute sound effects/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /^Music$/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('shows the overlay when the latest event has a top-level major field', () => {

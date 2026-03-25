@@ -437,9 +437,9 @@ export default function TvZone() {
           <button
             className="tv-zone__audio-btn"
             type="button"
-            aria-label={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
+            aria-label="Music"
             aria-pressed={audioSettings.musicOn}
-            title={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
+            title={audioSettings.musicOn ? 'Music on' : 'Music off'}
             onClick={() => dispatch(setAudio({ musicOn: !audioSettings.musicOn }))}
           >
             {audioSettings.musicOn ? '🎵' : '🔇'}
@@ -447,9 +447,9 @@ export default function TvZone() {
           <button
             className="tv-zone__audio-btn"
             type="button"
-            aria-label={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
+            aria-label="Sound effects"
             aria-pressed={audioSettings.sfxOn}
-            title={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
+            title={audioSettings.sfxOn ? 'Sound effects on' : 'Sound effects off'}
             onClick={() => dispatch(setAudio({ sfxOn: !audioSettings.sfxOn }))}
           >
             {audioSettings.sfxOn ? '🔊' : '🔕'}
