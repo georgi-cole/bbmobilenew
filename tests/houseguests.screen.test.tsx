@@ -54,7 +54,7 @@ describe('Houseguests screen', () => {
 
     await user.click(screen.getByRole('button', { name: new RegExp(player.name, 'i') }));
 
-    expect(screen.getByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} info`, 'i') })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i') })).toBeInTheDocument();
     expect(screen.getByText(/Age/i)).toBeInTheDocument();
     expect(screen.getByText(/Occupation/i)).toBeInTheDocument();
   });

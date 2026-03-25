@@ -433,6 +433,7 @@ export default function TvZone() {
           {gameState.isLive && (
             <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
           )}
+          {/* Alive/total moved to the Housemates occupancy chip so this header can host direct audio toggles. */}
           <button
             className="tv-zone__audio-btn"
             type="button"

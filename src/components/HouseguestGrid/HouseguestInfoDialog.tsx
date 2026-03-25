@@ -33,7 +33,7 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
     <div
       className="hg-info-overlay"
       role="dialog"
-      aria-label={`${ep.fullName ?? ep.name} info`}
+      aria-label={`${ep.fullName ?? ep.name} details`}
       aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

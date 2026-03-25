@@ -3,6 +3,8 @@ import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
 
+const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
+
 export type Houseguest = {
   id: string | number
   name: string
@@ -104,7 +106,7 @@ export default function HouseguestGrid({
     <section ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} aria-labelledby="houseguests-heading">
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
-          HOUSEMATES
+          {HOUSEMATES_SECTION_TITLE}
           {showCountInHeader && <span className={styles.count}> ({houseguests.length})</span>}
           {!showCountInHeader && <span className="visually-hidden"> ({houseguests.length})</span>}
         </h3>
