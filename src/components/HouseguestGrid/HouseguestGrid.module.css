@@ -49,6 +49,9 @@
   align-items: stretch;
   width: 100%;
   position: relative;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .avatarWrap {
@@ -89,6 +92,10 @@
   object-fit: cover;
   display: block;
   border-radius: 10px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .avatarPlaceholder {

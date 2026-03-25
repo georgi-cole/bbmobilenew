@@ -689,4 +689,5 @@ export type StatusPillVariant =
   | 'danger'
   | 'warning'
   | 'info'
-  | 'neutral';
+  | 'neutral'
+  | 'ghost';

@@ -2,9 +2,10 @@ import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, sta
 import { createPortal } from 'react-dom';
 import type { Phase } from '../../types';
 import { useStore } from 'react-redux';
-import { useAppSelector } from '../../store/hooks';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
 import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence';
+import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice';
 import type { RootState } from '../../store/store';
 import StatusPill from '../ui/StatusPill';
 import TVLog from '../TVLog/TVLog';
@@ -160,6 +161,7 @@ const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
  * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
 export default function TvZone() {
+  const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
@@ -167,6 +169,7 @@ export default function TvZone() {
   const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId);
   const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null);
   const reduxStore = useStore<RootState>();
+  const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio);
 
   // Filter entries for the TV viewport (excludes DR-only events).
   const tvVisibleFeed = useMemo(
@@ -423,14 +426,35 @@ export default function TvZone() {
 
         {/* Center: scrollable single-row status pills */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
-          <li><StatusPill variant="week"    icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
-          <li><StatusPill variant="players" icon="👥" label={`${alivePlayers.length}/${gameState.players.length}`} /></li>
+          <li><StatusPill variant="week" icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
           {gameState.isLive && (
             <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
           )}
+          {/* Music mute/unmute toggle */}
+          <button
+            className="tv-zone__audio-btn"
+            type="button"
+            aria-label={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
+            aria-pressed={audioSettings.musicOn}
+            title={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
+            onClick={() => dispatch(setAudio({ musicOn: !audioSettings.musicOn }))}
+          >
+            {audioSettings.musicOn ? '🎵' : '🔇'}
+          </button>
+          {/* SFX mute/unmute toggle */}
+          <button
+            className="tv-zone__audio-btn"
+            type="button"
+            aria-label={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
+            aria-pressed={audioSettings.sfxOn}
+            title={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
+            onClick={() => dispatch(setAudio({ sfxOn: !audioSettings.sfxOn }))}
+          >
+            {audioSettings.sfxOn ? '🔊' : '🔕'}
+          </button>
           <StatusPill
             variant={saveChipVariant}
             icon={saveChipIcon}

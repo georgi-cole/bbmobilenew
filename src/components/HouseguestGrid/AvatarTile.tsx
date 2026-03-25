@@ -4,12 +4,16 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
+const LONG_PRESS_DELAY_MS = 500
+
 type Props = {
   name: string
   avatarUrl?: string
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  /** Called when the user long-presses this tile on touch devices. */
+  onLongPress?: () => void
   /**
    * Game statuses to display as badge overlays on the avatar.
    * Accepts a single PlayerStatus string (e.g. 'hoh', 'nominated+pov')
@@ -43,16 +47,27 @@ type Props = {
   isEvicting?: boolean
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onLongPress, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressActiveRef = React.useRef(false)
 
   React.useEffect(() => {
     attemptRef.current = 0
     variantsRef.current = null
     exhaustedRef.current = false
   }, [avatarUrl])
+
+  // Clean up long-press timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current)
+      }
+    }
+  }, [])
 
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
     if (exhaustedRef.current) return
@@ -71,6 +86,51 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
     exhaustedRef.current = true
     img.src = '/avatars/placeholder.png'
+  }
+
+  // ── Long-press detection ───────────────────────────────────────────────────
+  function startLongPress() {
+    if (!onLongPress) return
+    longPressActiveRef.current = false
+    longPressTimerRef.current = setTimeout(() => {
+      longPressActiveRef.current = true
+      longPressTimerRef.current = null
+      onLongPress()
+    }, LONG_PRESS_DELAY_MS)
+  }
+
+  function cancelLongPress() {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    // Only single-finger touches
+    if (e.touches.length !== 1) return
+    startLongPress()
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (longPressActiveRef.current) {
+      e.preventDefault()
+      longPressActiveRef.current = false
+    }
+    cancelLongPress()
+  }
+
+  function handleTouchMove() {
+    cancelLongPress()
+  }
+
+  function handleClick() {
+    // If a long press just fired, swallow the synthetic click that follows.
+    if (longPressActiveRef.current) {
+      longPressActiveRef.current = false
+      return
+    }
+    onClick?.()
   }
 
   // Resolve badges: normalise statuses prop to a joined string then derive BadgeInfo[]
@@ -92,7 +152,11 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       title={name}
       role={onClick ? 'button' : 'group'}
       tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
+      onClick={handleClick}
+      onTouchStart={onLongPress ? handleTouchStart : undefined}
+      onTouchEnd={onLongPress ? handleTouchEnd : undefined}
+      onTouchMove={onLongPress ? handleTouchMove : undefined}
+      onContextMenu={(e) => e.preventDefault()}
       onKeyDown={
         onClick
           ? (e) => {
@@ -128,7 +192,13 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         )}
 
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className={styles.avatar} onError={handleImgError} />
+          <img
+            src={avatarUrl}
+            alt={name}
+            className={styles.avatar}
+            onError={handleImgError}
+            draggable={false}
+          />
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
@@ -157,6 +227,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             alt=""
             aria-hidden="true"
             className={styles.cross}
+            draggable={false}
           />
         )}
       </motion.div>
