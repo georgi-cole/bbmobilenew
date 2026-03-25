@@ -104,9 +104,10 @@ export default function FinalFaceoff() {
     });
   }, [phase, revealed, play, playMusic]);
 
-  // When finale completes (skip-all), make all vote chips visible immediately.
+  // When finale completes during 'revealVotes' (e.g. skip-all), flash all chips instantly.
   useEffect(() => {
     if (!finale.isComplete) return;
+    if (phase !== 'revealVotes') return;
     for (const timer of Object.values(voteTimersRef.current)) clearTimeout(timer);
     for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
     voteTimersRef.current = {};
@@ -117,7 +118,7 @@ export default function FinalFaceoff() {
     }
     const t = setTimeout(() => setVoteVisible(allVisible), 0);
     return () => clearTimeout(t);
-  }, [finale.isComplete, revealed]);
+  }, [finale.isComplete, phase, revealed]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -182,8 +183,12 @@ export default function FinalFaceoff() {
     humanIds,
   ]);
 
-  // ── Auto-finalize once all jurors revealed ─────────────────────────────
+  // ── Auto-finalize once all jurors revealed (only after recap) ─────────
+  // We deliberately defer this to 'revealVotes' so that:
+  //   - skipAllJurorsThunk doesn't accidentally skip the recap, and
+  //   - the normal 3-s auto-timer flow also goes through the recap.
   useEffect(() => {
+    if (phase !== 'revealVotes') return;
     if (
       finale.isActive &&
       finale.revealOrder.length > 0 &&
@@ -193,6 +198,7 @@ export default function FinalFaceoff() {
       dispatch(finalizeFinale({ seed: game.seed }));
     }
   }, [
+    phase,
     dispatch,
     finale.isActive,
     finale.revealedCount,
@@ -202,31 +208,41 @@ export default function FinalFaceoff() {
   ]);
 
   // ── Persist winner to game state once decided ──────────────────────────
+  // Only act in 'revealVotes' so that clues/recap phases aren't short-circuited.
+  // Delay dismissal until all vote chips have had time to pop in (+1.5 s grace).
   const winnerPersistedRef = useRef(false);
   useEffect(() => {
+    if (phase === 'clues' || phase === 'recap') return;
     if (finale.isComplete && finale.winnerId && finale.runnerUpId && !winnerPersistedRef.current) {
       winnerPersistedRef.current = true;
       const publicFavoriteEnabled =
         settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
-      stopMusic();
-      dispatch(
-        finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
-      );
-      dispatch(
-        startWinnerCinematic({
-          winnerId: finale.winnerId,
-          seed: game.seed,
-          publicFavoriteEnabled,
-        }),
-      );
-      dispatch(dismissFinale());
+      // Wait for all vote chips to animate in before showing the winner.
+      const chipDelay = 800 + revealed.length * 2000 + 1500;
+      const t = setTimeout(() => {
+        stopMusic();
+        dispatch(
+          finalizeGame({ winnerId: finale.winnerId!, runnerUpId: finale.runnerUpId! }),
+        );
+        dispatch(
+          startWinnerCinematic({
+            winnerId: finale.winnerId!,
+            seed: game.seed,
+            publicFavoriteEnabled,
+          }),
+        );
+        dispatch(dismissFinale());
+      }, chipDelay);
+      return () => clearTimeout(t);
     }
   }, [
+    phase,
     dispatch,
     game.seed,
     finale.isComplete,
     finale.winnerId,
     finale.runnerUpId,
+    revealed.length,
     settings.sim.enableFavoritePlayer,
     settings.sim.enableTwists,
     stopMusic,
@@ -299,8 +315,25 @@ export default function FinalFaceoff() {
     : null;
 
   function handleSkipAll() {
-    stopMusic();
-    dispatch(skipAllJurorsThunk(humanIds, game.seed));
+    if (phase === 'clues') {
+      // In clue phase: only reveal all jurors, then let the recap play normally.
+      // Do NOT call finalizeFinale here – that happens in revealVotes.
+      const finaleState = finale;
+      // Pre-fill AI votes for unvoted human jurors
+      for (const jurorId of finaleState.revealOrder) {
+        if (humanIds.includes(jurorId) && !finaleState.votes[jurorId]) {
+          dispatch(castVote({ jurorId, finalistId: aiJurorVote(jurorId, finaleState.finalistIds, game.seed) }));
+        }
+      }
+      const remaining = finaleState.revealOrder.length - finaleState.revealedCount;
+      for (let i = 0; i < remaining; i++) {
+        dispatch({ type: 'finale/revealNextJuror', payload: { humanPlayerIds: humanIds } });
+      }
+    } else {
+      // In revealVotes phase: skip the chip animations and go straight to winner.
+      stopMusic();
+      dispatch(skipAllJurorsThunk(humanIds, game.seed));
+    }
   }
 
   function handleCastVote(finalistId: string) {
