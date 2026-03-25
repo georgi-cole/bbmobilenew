@@ -20,7 +20,7 @@
  *   />
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './CeremonyOverlay.css';
 
 export interface CeremonyTile {
@@ -70,6 +70,70 @@ const FLY_DURATION = 500;
 const LAND_DELAY = FLY_DELAY + FLY_DURATION; // 1150
 const LAND_DURATION = 350;
 const HOLD_DELAY = LAND_DELAY + LAND_DURATION; // 1500
+const COMPACT_LABEL_BREAKPOINT = '(max-width: 560px)';
+const COMPACT_TILE_LABELS: Record<string, string> = {
+  'LOH Nominee': 'NOMINEE',
+  'Last in LOH Comp': 'LAST PLACE',
+};
+// Keep a small viewport margin so pills never clip against the screen edge.
+const LABEL_EDGE_MARGIN = 12;
+// Default vertical anchor for pills positioned just above a spotlight cutout.
+const LABEL_BASE_TOP = 30;
+// Minimum pill widths keep short labels visually balanced.
+const MIN_COMPACT_LABEL_WIDTH = 78;
+const MIN_FULL_LABEL_WIDTH = 96;
+// Approximate character widths used only for collision estimation.
+const COMPACT_LABEL_CHAR_WIDTH = 7;
+const FULL_LABEL_CHAR_WIDTH = 7.8;
+const LABEL_WIDTH_PADDING = 26;
+const LABEL_HEIGHT = 24;
+// Near the top edge, pills can only stack downward without clipping.
+const LABEL_STACKED_THRESHOLD = 18;
+const LABEL_VERTICAL_OFFSET_STEP = 28;
+const LABEL_VERTICAL_OFFSET_MAX = 56;
+// Safe small-screen fallback dimensions for non-browser/SSR rendering paths.
+const SSR_VIEWPORT_WIDTH = 390;
+const SSR_VIEWPORT_HEIGHT = 844;
+
+interface LabelLayout {
+  key: string;
+  label: string;
+  left: number;
+  top: number;
+}
+
+function getDisplayTileLabel(label: string, useCompactTileLabels: boolean): string {
+  if (!useCompactTileLabels) return label;
+  return COMPACT_TILE_LABELS[label] ?? label;
+}
+
+function labelRectsOverlap(
+  leftA: number,
+  topA: number,
+  widthA: number,
+  heightA: number,
+  leftB: number,
+  topB: number,
+  widthB: number,
+  heightB: number,
+  gap = 8,
+): boolean {
+  // leftA/leftB are center x-coordinates because pills are positioned with
+  // translateX(-50%) in CSS.
+  const aLeft = leftA - widthA / 2;
+  const aRight = leftA + widthA / 2;
+  const bLeft = leftB - widthB / 2;
+  const bRight = leftB + widthB / 2;
+  const horizontalOverlap = aLeft < bRight + gap && aRight + gap > bLeft;
+  const verticalOverlap = topA < topB + heightB + gap && topA + heightA + gap > topB;
+  return horizontalOverlap && verticalOverlap;
+}
+
+function calculateLabelWidth(label: string, useCompactTileLabels: boolean): number {
+  const minWidth = useCompactTileLabels ? MIN_COMPACT_LABEL_WIDTH : MIN_FULL_LABEL_WIDTH;
+  const charWidth = useCompactTileLabels ? COMPACT_LABEL_CHAR_WIDTH : FULL_LABEL_CHAR_WIDTH;
+  return Math.max(minWidth, label.length * charWidth + LABEL_WIDTH_PADDING);
+}
 
 type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
 
@@ -95,8 +159,36 @@ export default function CeremonyOverlay({
   const [resolvedTiles, setResolvedTiles] = useState<CeremonyTile[] | null>(
     resolveTiles ? null : tilesProp,
   );
+  const [useCompactTileLabels, setUseCompactTileLabels] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches;
+  });
 
   const tiles = resolvedTiles ?? tilesProp;
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+
+    const mediaQuery = window.matchMedia(COMPACT_LABEL_BREAKPOINT);
+    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setUseCompactTileLabels(event.matches);
+    };
+
+    handleChange(mediaQuery);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+    } else if (typeof mediaQuery.addListener === 'function') {
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else if (typeof mediaQuery.removeListener === 'function') {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   // Validate: at least one tile with a non-zero rect
   const validTiles = tiles.filter(
@@ -151,8 +243,6 @@ export default function CeremonyOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasValidTiles, durationMs, pendingResolve]);
 
-  if (pendingResolve || !hasValidTiles) return null;
-
   // Compute cutout rects for the SVG mask
   const cutouts = validTiles.map((t) => {
     const r = t.rect!;
@@ -164,9 +254,12 @@ export default function CeremonyOverlay({
     };
   });
 
+  const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight;
+
   // Caption placement: below the lowest cutout
-  const maxBottom = Math.max(...cutouts.map((c) => c.y + c.h));
-  const captionTop = Math.min(maxBottom + 16, window.innerHeight - 80);
+  const maxBottom = cutouts.length > 0 ? Math.max(...cutouts.map((c) => c.y + c.h)) : 0;
+  const captionTop = Math.min(maxBottom + 16, viewportHeight - 80);
 
   // Badge start/target positions
   const badgePositions = validTiles.map((t) => {
@@ -185,8 +278,8 @@ export default function CeremonyOverlay({
       startY = t.badgeStart.top;
     } else {
       // Centre of viewport
-      startX = window.innerWidth / 2;
-      startY = window.innerHeight / 2;
+      startX = viewportWidth / 2;
+      startY = viewportHeight / 2;
     }
     return { startX, startY, targetX, targetY };
   });
@@ -212,6 +305,63 @@ export default function CeremonyOverlay({
     if (phase === 'hidden') return '';
     return `ceremony-overlay__badge--${phase}`;
   };
+
+  const labelLayouts = useMemo(() => {
+    return validTiles.reduce<LabelLayout[]>((layouts, tile, i) => {
+      if (!tile.label) return layouts;
+
+      const cutout = cutouts[i];
+      const displayLabel = getDisplayTileLabel(tile.label, useCompactTileLabels);
+      const estimatedWidth = calculateLabelWidth(displayLabel, useCompactTileLabels);
+      const clampedLeft = Math.min(
+        Math.max(cutout.x + (cutout.w / 2), estimatedWidth / 2 + LABEL_EDGE_MARGIN),
+        viewportWidth - estimatedWidth / 2 - LABEL_EDGE_MARGIN,
+      );
+      const baseTop = Math.max(cutout.y - LABEL_BASE_TOP, LABEL_EDGE_MARGIN);
+      // If the base position is already near the top viewport edge, only move
+      // downward to avoid clipping the pill off-screen. Otherwise allow both
+      // upward and downward staggering to resolve collisions.
+      const offsets = baseTop <= LABEL_STACKED_THRESHOLD
+        ? [0, LABEL_VERTICAL_OFFSET_STEP, LABEL_VERTICAL_OFFSET_MAX]
+        : [
+            0,
+            -LABEL_VERTICAL_OFFSET_STEP,
+            LABEL_VERTICAL_OFFSET_STEP,
+            -LABEL_VERTICAL_OFFSET_MAX,
+            LABEL_VERTICAL_OFFSET_MAX,
+          ];
+
+      let placedTop = baseTop;
+      for (const offset of offsets) {
+        const candidateTop = Math.max(LABEL_EDGE_MARGIN, baseTop + offset);
+        const collides = layouts.some((layout) =>
+          labelRectsOverlap(
+            clampedLeft,
+            candidateTop,
+            estimatedWidth,
+            LABEL_HEIGHT,
+            layout.left,
+            layout.top,
+            calculateLabelWidth(layout.label, useCompactTileLabels),
+            LABEL_HEIGHT,
+          ));
+        if (!collides) {
+          placedTop = candidateTop;
+          break;
+        }
+      }
+
+      layouts.push({
+        key: `label-${i}`,
+        label: displayLabel,
+        left: clampedLeft,
+        top: placedTop,
+      });
+      return layouts;
+    }, []);
+  }, [cutouts, useCompactTileLabels, validTiles, viewportWidth]);
+
+  if (pendingResolve || !hasValidTiles) return null;
 
   return (
     <>
@@ -263,20 +413,16 @@ export default function CeremonyOverlay({
         ))}
 
         {/* Optional role/context pills above spotlighted tiles */}
-        {validTiles.map((tile, i) => {
-          if (!tile.label) return null;
-          const c = cutouts[i];
-          return (
-            <div
-              key={`label-${i}`}
-              className="ceremony-overlay__tile-label"
-              style={{ left: c.x + (c.w / 2), top: Math.max(c.y - 30, 12) }}
-              aria-hidden="true"
-            >
-              {tile.label}
-            </div>
-          );
-        })}
+        {labelLayouts.map((layout) => (
+          <div
+            key={layout.key}
+            className="ceremony-overlay__tile-label"
+            style={{ left: layout.left, top: layout.top }}
+            aria-hidden="true"
+          >
+            {layout.label}
+          </div>
+        ))}
 
         {/* Caption text */}
         <div

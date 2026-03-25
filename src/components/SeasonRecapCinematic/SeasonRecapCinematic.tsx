@@ -52,12 +52,12 @@ type TwistAccentStyle = CSSProperties & {
 };
 
 const DEFAULT_SCENE_TIMINGS: SceneTiming[] = [
-  { id: 'opening', durationMs: 2200 },
-  { id: 'stats', durationMs: 3000 },
-  { id: 'drama', durationMs: 3400 },
-  { id: 'twists', durationMs: 3400 },
-  { id: 'ladder', durationMs: 4200 },
-  { id: 'finale', durationMs: 2200 },
+  { id: 'opening', durationMs: 4400 },
+  { id: 'stats', durationMs: 6000 },
+  { id: 'drama', durationMs: 6800 },
+  { id: 'twists', durationMs: 6800 },
+  { id: 'ladder', durationMs: 8400 },
+  { id: 'finale', durationMs: 4400 },
 ];
 
 const MAX_LADDER_DISPLAY = 8;

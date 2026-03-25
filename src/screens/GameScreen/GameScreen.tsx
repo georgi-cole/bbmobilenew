@@ -2010,6 +2010,7 @@ export default function GameScreen() {
           <SpotlightEvictionOverlay
             key={pendingEvictionPlayer.id}
             evictee={pendingEvictionPlayer}
+            contextLabel={`Season ${game.season} · Day ${game.week}`}
             onDone={handleEvictionSplashDone}
             layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
             devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
@@ -2023,6 +2024,7 @@ export default function GameScreen() {
           <SpotlightEvictionOverlay
             key={`${battleBackReturnPlayer.id}-return`}
             evictee={battleBackReturnPlayer}
+            contextLabel={`Season ${game.season} · Day ${game.week}`}
             onDone={handleBattleBackReturnDone}
             layoutId={`avatar-tile-${battleBackReturnPlayer.id}`}
             devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
