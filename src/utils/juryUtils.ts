@@ -122,15 +122,26 @@ export function aiJurorVote(jurorId: string, finalistIds: string[], seed: number
 
 // ─── Phrase pools ─────────────────────────────────────────────────────────────
 
-/** Phrases used when a juror's envelope is revealed. */
+/**
+ * Clue-style jury vote lines — cryptic and cinematic, never naming the finalist.
+ * Each line is a dramatic statement the juror delivers before the vote is revealed.
+ */
 export const JURY_LOCKED_LINES: string[] = [
-  'My vote goes to…',
-  'I\'m voting for…',
-  'This season, I\'m casting my jury vote for…',
-  'After careful consideration, my vote is for…',
-  'The person I\'m voting to win Big Brother is…',
-  'I\'m awarding my jury vote to…',
+  'I vote for the person who survived the chopping block so many times I lost count.',
+  'My vote goes to the finalist who turned chaos into a strategy and never looked back.',
+  'I\'m casting my ballot for the player who was underestimated until it was far too late.',
+  'I vote for the one who played this game entirely on their own terms.',
+  'My jury vote belongs to the finalist who made the big move when it mattered most.',
+  'I vote for the person whose game I couldn\'t help but respect, even when it hurt me.',
+  'I\'m voting for the player who didn\'t just survive this house — they mastered it.',
+  'My vote goes to the finalist who showed me what it really means to want this.',
+  'I vote for the person who adapted every single week and never once panicked.',
+  'I\'m casting my vote for the one who walked into this house with a plan and executed it.',
 ];
+
+/** The line shown when the public casts the final vote. */
+export const PUBLIC_JURY_VOTE_LINE =
+  'The public has spoken. The nation rewards the finalist who owned the season in the ratings.';
 
 /** Plea templates used when POV holder asks nominees for their pleas at Final 4. */
 export const NOMINEE_PLEA_TEMPLATES: string[] = [

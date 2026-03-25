@@ -301,6 +301,7 @@
 
 /* ── JurorBubble ─────────────────────────────────────────────────────────── */
 .jb-bubble {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0.55rem;
@@ -309,11 +310,48 @@
   border-radius: 12px;
   padding: 0.6rem 0.85rem;
   animation: jb-slidein 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
 }
 @keyframes jb-slidein {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
+
+/* Public vote bubble — gold/global theme */
+.jb-bubble--public {
+  background: linear-gradient(135deg, rgba(30, 22, 48, 0.95) 0%, rgba(16, 12, 30, 0.95) 100%);
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 24px rgba(212, 175, 55, 0.12);
+}
+
+/* Flash ring animation when vote is attributed */
+.jb-bubble--flash {
+  animation: jb-flash 0.6s ease 0.3s;
+}
+.jb-flash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 2px solid rgba(165, 180, 252, 0.8);
+  pointer-events: none;
+  animation: jb-ring-expand 0.6s ease forwards;
+}
+@keyframes jb-ring-expand {
+  0%   { opacity: 1; inset: 0; }
+  100% { opacity: 0; inset: -8px; border-radius: 20px; }
+}
+@keyframes jb-flash {
+  0%, 100% { background: linear-gradient(135deg, rgba(20, 24, 44, 0.9) 0%, rgba(14, 17, 32, 0.9) 100%); }
+  30%       { background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%); }
+}
+.jb-bubble--public.jb-bubble--flash {
+  animation: jb-flash-public 0.6s ease 0.3s;
+}
+@keyframes jb-flash-public {
+  0%, 100% { box-shadow: 0 0 24px rgba(212, 175, 55, 0.12); }
+  30%       { box-shadow: 0 0 50px rgba(212, 175, 55, 0.55); }
+}
+
 .jb-avatar {
   font-size: 1.5rem;
   flex-shrink: 0;
@@ -326,18 +364,54 @@
   min-width: 0;
 }
 .jb-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 0.8rem;
   font-weight: 800;
   color: var(--color-text);
   letter-spacing: 0.02em;
 }
+.jb-public-badge {
+  font-size: 0.6rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  background: linear-gradient(135deg, #d4af37 0%, #f0c060 100%);
+  color: #1a0f00;
+  padding: 0.1rem 0.45rem;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
 .jb-phrase {
   font-size: 0.72rem;
   color: var(--color-text-muted);
   font-style: italic;
+  line-height: 1.4;
 }
 .jb-vote {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.84rem;
   color: #a5b4fc;
   font-weight: 700;
+  animation: jb-vote-reveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.jb-vote--public {
+  color: #d4af37;
+}
+@keyframes jb-vote-reveal {
+  from { opacity: 0; transform: scale(0.7) translateX(-8px); }
+  to   { opacity: 1; transform: scale(1) translateX(0); }
+}
+.jb-vote-pending {
+  font-size: 0.9rem;
+  color: rgba(165, 180, 252, 0.4);
+  letter-spacing: 0.2em;
+  animation: jb-pending-pulse 1.2s ease-in-out infinite;
+}
+@keyframes jb-pending-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
 }

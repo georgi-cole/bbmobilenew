@@ -427,3 +427,20 @@ describe('soundMiddleware — game/setEvictionOverlay eviction SFX', () => {
     expect(playMock).toHaveBeenCalledWith('player:evicted');
   });
 });
+
+describe('soundMiddleware — finale winner reveal', () => {
+  it('startWinnerCinematic plays tv:winner_reveal', () => {
+    const store = makeTestStore();
+    store.dispatch({
+      type: 'game/startWinnerCinematic',
+      payload: { winnerId: 'winner', seed: 42, publicFavoriteEnabled: false },
+    });
+    expect(playMock).toHaveBeenCalledWith('tv:winner_reveal');
+  });
+
+  it('finale/finalizeFinale does not play tv:winner_reveal directly', () => {
+    const store = makeTestStore();
+    store.dispatch({ type: 'finale/finalizeFinale', payload: { seed: 42 } });
+    expect(playMock).not.toHaveBeenCalledWith('tv:winner_reveal');
+  });
+});

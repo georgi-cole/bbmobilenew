@@ -3,9 +3,11 @@ import finaleReducer, {
   finalizeFinale,
   forceJurorVote,
   PUBLIC_JUROR_ID,
+  selectRevealedJurors,
   startFinale,
 } from '../../../src/store/finaleSlice';
 import type { PlayerPublicProfile } from '../../../src/publicOpinion/types';
+import { PUBLIC_JURY_VOTE_LINE } from '../../../src/utils/juryUtils';
 
 function makeProfile(
   playerId: string,
@@ -55,5 +57,39 @@ describe('finaleSlice public juror', () => {
     expect(state.votes[PUBLIC_JUROR_ID]).toBe('f2');
     expect(state.winnerId).toBe('f2');
     expect(state.runnerUpId).toBe('f1');
+  });
+
+  it('uses the dedicated public phrase for the public juror and normal phrases for regular jurors', () => {
+    const state = finaleReducer(
+      undefined,
+      startFinale({
+        finalistIds: ['f1', 'f2'],
+        jurorIds: ['j1', 'j2', 'j3'],
+        preJuryIds: [],
+        humanPlayerIds: [],
+        seed: 42,
+        publicApprovalProfiles: {
+          f1: makeProfile('f1', 60),
+          f2: makeProfile('f2', 75),
+        },
+      }),
+    );
+
+    const withReveals = {
+      game: { seed: 42 },
+      finale: {
+        ...state,
+        revealOrder: ['j1', PUBLIC_JUROR_ID],
+        revealedCount: 2,
+      },
+    };
+
+    const revealed = selectRevealedJurors(withReveals as never);
+    expect(revealed[0].jurorId).toBe('j1');
+    expect(revealed[0].phrase).not.toBe(PUBLIC_JURY_VOTE_LINE);
+    expect(revealed[1]).toMatchObject({
+      jurorId: PUBLIC_JUROR_ID,
+      phrase: PUBLIC_JURY_VOTE_LINE,
+    });
   });
 });

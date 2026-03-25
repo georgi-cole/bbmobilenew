@@ -20,6 +20,7 @@ import {
   juryReturnCandidate,
   pickPhrase,
   JURY_LOCKED_LINES,
+  PUBLIC_JURY_VOTE_LINE,
 } from '../utils/juryUtils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -420,7 +421,10 @@ export const selectRevealedJurors = createSelector(
   (finale, seed): JurorReveal[] => {
     return finale.revealOrder.slice(0, finale.revealedCount).map((jurorId, idx) => {
       const finalistId = finale.votes[jurorId] ?? '';
-      const phrase = pickPhrase(JURY_LOCKED_LINES, seed, idx);
+      const phrase =
+        jurorId === PUBLIC_JUROR_ID
+          ? PUBLIC_JURY_VOTE_LINE
+          : pickPhrase(JURY_LOCKED_LINES, seed, idx);
       return { jurorId, finalistId, phrase };
     });
   },

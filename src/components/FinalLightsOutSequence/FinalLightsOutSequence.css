@@ -1,0 +1,245 @@
+/* ─── FinalLightsOutSequence styles ───────────────────────────────────────────
+   Multi-stage dramatic house lights-out cinematic.
+   z-index: 7200 (above SeasonFinale 7050).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.flo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 7200;
+  background: #040609;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── House silhouette zones ── */
+.flo-house {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 4px;
+  padding: 4px;
+  pointer-events: none;
+}
+
+.flo-room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: rgba(30, 40, 80, 0.55);
+  border-radius: 8px;
+  border: 1px solid rgba(60, 80, 160, 0.3);
+  transition: background 0.8s ease, border-color 0.8s ease, opacity 0.8s ease;
+  overflow: hidden;
+}
+
+/* Each room has a subtle warm glow when "lit" */
+.flo-room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 220, 100, 0.18) 0%, transparent 60%);
+  transition: opacity 0.8s ease;
+}
+
+.flo-room--dark {
+  background: rgba(4, 6, 9, 0.85);
+  border-color: rgba(20, 25, 50, 0.2);
+}
+.flo-room--dark::before {
+  opacity: 0;
+}
+.flo-room--dark .flo-room__bulb {
+  opacity: 0;
+  filter: grayscale(1) brightness(0.3);
+}
+.flo-room--dark .flo-room__label {
+  color: rgba(100, 110, 140, 0.4);
+}
+
+.flo-room__bulb {
+  font-size: 1.4rem;
+  filter: drop-shadow(0 0 8px rgba(255, 230, 100, 0.7));
+  transition: opacity 0.6s ease, filter 0.6s ease;
+  animation: flo-bulb-flicker 3s ease-in-out infinite;
+}
+.flo-room--dark .flo-room__bulb {
+  animation: none;
+}
+@keyframes flo-bulb-flicker {
+  0%, 90%, 100% { opacity: 1; }
+  92%           { opacity: 0.4; }
+  94%           { opacity: 1; }
+  96%           { opacity: 0.2; }
+  98%           { opacity: 1; }
+}
+.flo-room:nth-child(2) .flo-room__bulb { animation-delay: 0.7s; }
+.flo-room:nth-child(3) .flo-room__bulb { animation-delay: 1.3s; }
+.flo-room:nth-child(4) .flo-room__bulb { animation-delay: 0.3s; }
+.flo-room:nth-child(5) .flo-room__bulb { animation-delay: 1.8s; }
+.flo-room:nth-child(6) .flo-room__bulb { animation-delay: 0.9s; }
+
+.flo-room__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(180, 200, 255, 0.6);
+  transition: color 0.8s ease;
+}
+
+/* ── Progressive blackout overlay ── */
+.flo-blackout-overlay {
+  position: absolute;
+  inset: 0;
+  background: #040609;
+  pointer-events: none;
+}
+
+.flo-stage-0 .flo-blackout-overlay { opacity: 0.1; }
+.flo-stage-1 .flo-blackout-overlay { opacity: 0.35; animation: flo-darken-1 1.8s ease forwards; }
+.flo-stage-2 .flo-blackout-overlay { opacity: 0.6;  animation: flo-darken-2 1.8s ease forwards; }
+.flo-stage-3 .flo-blackout-overlay { opacity: 0.88; }
+.flo-stage-4 .flo-blackout-overlay { opacity: 1; }
+
+@keyframes flo-darken-1 {
+  from { opacity: 0.1; }
+  to   { opacity: 0.35; }
+}
+@keyframes flo-darken-2 {
+  from { opacity: 0.35; }
+  to   { opacity: 0.6; }
+}
+
+/* ── TV Screen (stage 3) ── */
+.flo-tv-screen {
+  position: relative;
+  z-index: 2;
+  width: min(24rem, calc(100vw - 3rem));
+  background: #000;
+  border-radius: 16px;
+  border: 3px solid rgba(100, 120, 200, 0.4);
+  box-shadow:
+    0 0 60px rgba(100, 140, 255, 0.35),
+    0 0 120px rgba(80, 100, 200, 0.2),
+    0 0 200px rgba(60, 80, 160, 0.15),
+    inset 0 0 30px rgba(20, 40, 100, 0.3);
+  overflow: hidden;
+  animation: flo-tv-on 0.5s ease forwards;
+}
+@keyframes flo-tv-on {
+  0%   { opacity: 0; transform: scale(0.92); }
+  40%  { opacity: 0.7; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.flo-tv-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(80, 100, 180, 0.2);
+  pointer-events: none;
+}
+
+.flo-tv-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.12) 3px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.flo-tv-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem 1.75rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.flo-tv-logo {
+  font-size: 2.8rem;
+  filter: drop-shadow(0 0 20px rgba(100, 150, 255, 0.7));
+  animation: flo-logo-pulse 2s ease-in-out infinite;
+}
+@keyframes flo-logo-pulse {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(100, 150, 255, 0.7)); }
+  50%       { filter: drop-shadow(0 0 40px rgba(120, 180, 255, 1)); }
+}
+
+.flo-tv-message {
+  margin: 0;
+  font-size: clamp(1rem, 4vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1.55;
+  color: rgba(220, 235, 255, 0.95);
+  text-shadow: 0 0 20px rgba(100, 150, 255, 0.5);
+  animation: flo-message-reveal 1s ease forwards;
+  opacity: 0;
+}
+.flo-tv-message em {
+  display: block;
+  margin-top: 0.3rem;
+  font-style: italic;
+  color: rgba(165, 200, 255, 0.85);
+  font-size: 0.92em;
+}
+@keyframes flo-message-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.flo-tv-footnote {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(165, 180, 252, 0.6);
+  border-top: 1px solid rgba(100, 120, 200, 0.2);
+  padding-top: 0.8rem;
+  width: 100%;
+}
+
+/* ── Final blackout ── */
+.flo-final-black {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+  animation: flo-final-black 1.6s ease forwards;
+}
+@keyframes flo-final-black {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .flo-room,
+  .flo-room::before,
+  .flo-room__bulb,
+  .flo-room__label,
+  .flo-blackout-overlay,
+  .flo-tv-screen,
+  .flo-tv-logo,
+  .flo-tv-message,
+  .flo-final-black {
+    animation: none;
+    transition: none;
+  }
+  .flo-tv-message { opacity: 1; }
+}

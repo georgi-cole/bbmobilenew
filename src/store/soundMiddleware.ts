@@ -13,7 +13,7 @@
  *   - game/submitPovSaveTarget → ui:confirm
  *   - game/activateBattleBack  → tv:battleback
  *   - finale/castVote          → ui:jury_vote
- *   - finale/finalizeFinale    → tv:winner_reveal
+ *   - game/startWinnerCinematic→ tv:winner_reveal
  *   - social/openSocialPanel   → music:social_module (saves previous track)
  *   - social/closeSocialPanel  → stop social music, restore previous track
  *   - social/openIncomingInbox → music:social_module (saves previous track)
@@ -311,8 +311,8 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── Finale: winner declared ───────────────────────────────────────────────
-  if (type === 'finale/finalizeFinale') {
+  // ── Finale: winner cinematic opens ────────────────────────────────────────
+  if (type === 'game/startWinnerCinematic') {
     const result = next(action);
     void SoundManager.play('tv:winner_reveal');
     return result;
