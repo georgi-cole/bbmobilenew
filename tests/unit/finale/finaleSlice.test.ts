@@ -7,7 +7,7 @@ import finaleReducer, {
   startFinale,
 } from '../../../src/store/finaleSlice';
 import type { PlayerPublicProfile } from '../../../src/publicOpinion/types';
-import { PUBLIC_JURY_VOTE_LINE } from '../../../src/utils/juryUtils';
+import { pickPhrase, PUBLIC_JURY_VOTE_LINES } from '../../../src/utils/juryUtils';
 
 function makeProfile(
   playerId: string,
@@ -59,7 +59,7 @@ describe('finaleSlice public juror', () => {
     expect(state.runnerUpId).toBe('f1');
   });
 
-  it('uses the dedicated public phrase for the public juror and normal phrases for regular jurors', () => {
+  it('uses a dedicated rotating public phrase for the public juror and normal phrases for regular jurors', () => {
     const state = finaleReducer(
       undefined,
       startFinale({
@@ -85,11 +85,13 @@ describe('finaleSlice public juror', () => {
     };
 
     const revealed = selectRevealedJurors(withReveals as never);
+    const expectedPublicPhrase = pickPhrase(PUBLIC_JURY_VOTE_LINES, 42, 1);
     expect(revealed[0].jurorId).toBe('j1');
-    expect(revealed[0].phrase).not.toBe(PUBLIC_JURY_VOTE_LINE);
+    expect(PUBLIC_JURY_VOTE_LINES).not.toContain(revealed[0].phrase);
     expect(revealed[1]).toMatchObject({
       jurorId: PUBLIC_JUROR_ID,
-      phrase: PUBLIC_JURY_VOTE_LINE,
+      phrase: expectedPublicPhrase,
     });
+    expect(PUBLIC_JURY_VOTE_LINES).toContain(revealed[1].phrase);
   });
 });
