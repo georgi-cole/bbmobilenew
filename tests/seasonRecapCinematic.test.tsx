@@ -130,6 +130,6 @@ describe('SeasonRecapCinematic', () => {
     });
 
     expect(onComplete).not.toHaveBeenCalled();
-    expect(screen.getByText('The Road to the Finale')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 });
