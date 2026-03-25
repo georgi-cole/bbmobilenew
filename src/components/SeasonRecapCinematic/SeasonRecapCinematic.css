@@ -334,6 +334,67 @@
   color: #1a0f00;
 }
 
+/* ── Skip button — floating top-right ── */
+.src-skip-btn {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 0.5rem));
+  right: 1rem;
+  z-index: 7120;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, opacity 0.18s;
+  backdrop-filter: blur(6px);
+}
+.src-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.src-skip-btn:active {
+  opacity: 0.7;
+}
+
+/* ── Auto-progress bar at card bottom ── */
+.src-auto-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(90deg, #6366f1 0%, #c084fc 100%);
+  width: 0%;
+  animation: src-bar-fill var(--duration, 3000ms) linear forwards;
+}
+@keyframes src-bar-fill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ── Spotlight sweep overlay ── */
+.src-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 200deg at 50% 0%,
+    transparent 0deg,
+    rgba(165, 180, 252, 0.07) 30deg,
+    transparent 60deg
+  );
+  animation: src-spotlight-sweep 6s ease-in-out infinite;
+}
+@keyframes src-spotlight-sweep {
+  0%   { transform: rotate(0deg);   opacity: 0.6; }
+  50%  { transform: rotate(25deg);  opacity: 1; }
+  100% { transform: rotate(0deg);   opacity: 0.6; }
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .src-card--enter,
@@ -344,7 +405,12 @@
   .src-finalist-card,
   .src-ring,
   .src-pulse-ring,
-  .src-finalist-glow {
+  .src-finalist-glow,
+  .src-auto-bar,
+  .src-spotlight {
     animation: none;
+  }
+  .src-auto-bar {
+    width: 100%;
   }
 }

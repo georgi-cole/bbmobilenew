@@ -300,6 +300,58 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
     volume: 0.9,
   },
 
+  // ── Tribunal / Finale phase sounds ───────────────────────────────────────
+
+  /**
+   * Season recap cinematic background music — loops during the season recap.
+   * Asset: public/assets/sounds/tribunal_phase/season_recap_music.mp3
+   */
+  'music:season_recap': {
+    key: 'music:season_recap',
+    category: 'music',
+    src: `${SOUNDS_BASE}tribunal_phase/season_recap_music.mp3`,
+    preload: false,
+    volume: 0.7,
+    loop: true,
+  },
+
+  /**
+   * Tribunal voting background music — loops during the jury vote board.
+   * Asset: public/assets/sounds/tribunal_phase/Jury_voting_backgound_music.mp3
+   */
+  'music:jury_voting_bg': {
+    key: 'music:jury_voting_bg',
+    category: 'music',
+    src: `${SOUNDS_BASE}tribunal_phase/Jury_voting_backgound_music.mp3`,
+    preload: false,
+    volume: 0.6,
+    loop: true,
+  },
+
+  /**
+   * Tribunal vote reveal sting — plays for each vote chip that pops in.
+   * Asset: public/assets/sounds/tribunal_phase/Jury_each_vote_reveal_sound.mp3
+   */
+  'ui:tribunal_vote_reveal': {
+    key: 'ui:tribunal_vote_reveal',
+    category: 'ui',
+    src: `${SOUNDS_BASE}tribunal_phase/Jury_each_vote_reveal_sound.mp3`,
+    preload: false,
+    volume: 0.85,
+  },
+
+  /**
+   * Finale winner stinger — plays once when the winner is declared.
+   * Asset: public/assets/sounds/tribunal_phase/Final_modal_winner_play once.mp3
+   */
+  'music:finale_winner_stinger': {
+    key: 'music:finale_winner_stinger',
+    category: 'music',
+    src: `${SOUNDS_BASE}tribunal_phase/Final_modal_winner_play once.mp3`,
+    preload: false,
+    volume: 1.0,
+  },
+
   // ── Social module music ───────────────────────────────────────────────────
 
   /**
@@ -630,6 +682,11 @@ export const FILENAME_ALIAS_MAP: Readonly<Record<string, string>> = {
   Hoh_competition_and_general_competition:               'music:hoh_comp_general',
   // Wildcard Western — non-prefix filename that doesn't auto-derive
   western_new_round:                                     'ui:western_new_round',
+  // Tribunal / Finale phase — capitalised filenames in tribunal_phase/
+  season_recap_music:                                    'music:season_recap',
+  Jury_voting_backgound_music:                           'music:jury_voting_bg',
+  Jury_each_vote_reveal_sound:                           'ui:tribunal_vote_reveal',
+  // Note: "Final_modal_winner_play once" stem has a space, must use bracket notation
 };
 
 /**

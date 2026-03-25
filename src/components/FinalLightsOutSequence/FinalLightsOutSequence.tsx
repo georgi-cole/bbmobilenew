@@ -1,12 +1,16 @@
 /**
- * FinalLightsOutSequence — dramatic multi-stage house lights-out cinematic.
+ * FinalLightsOutSequence — dramatic lights-out cinematic using the main screen as canvas.
+ *
+ * Overlays the existing game UI rather than replacing it with abstract room tiles.
  *
  * Stages:
- *   0  → overhead lights start flickering off room by room
- *   1  → main hallway and kitchen go dark
- *   2  → bedrooms and diary room go dark
- *   3  → only the main TV remains lit with the farewell message
- *   4  → full blackout → calls onComplete
+ *   0  → overlay fades in; left/right light rails visible
+ *   1  → top pair of side lights go dark
+ *   2  → middle pairs go dark (left & right simultaneously)
+ *   3  → bottom pairs go dark — only the central TV frame remains lit
+ *   4  → TV displays farewell message: "This is not a Goodbye, it's see you soon from the Big Eye."
+ *   5  → TV also dims to black
+ *   6  → full blackout → calls onComplete
  */
 import { useState, useEffect, useCallback } from 'react';
 import './FinalLightsOutSequence.css';
@@ -16,7 +20,10 @@ export interface FinalLightsOutSequenceProps {
   onComplete: () => void;
 }
 
-const STAGE_DURATIONS = [2000, 1800, 1800, 3200, 1600];
+// Number of light rows on each side (each pair goes off together)
+const LIGHT_ROWS = 5;
+// Durations for each stage (ms)
+const STAGE_DURATIONS = [800, 1400, 1400, 1400, 3000, 1800, 1400];
 
 export default function FinalLightsOutSequence({
   publicFavoriteWinnerName,
@@ -34,7 +41,6 @@ export default function FinalLightsOutSequence({
     setStage((s) => s + 1);
   }, []);
 
-  // Auto-advance through all stages
   useEffect(() => {
     if (stage >= STAGE_DURATIONS.length) {
       onComplete();
@@ -45,56 +51,71 @@ export default function FinalLightsOutSequence({
     return () => clearTimeout(t);
   }, [stage, noAnim, advance, onComplete]);
 
-  const roomLabels = ['Living Room', 'Kitchen', 'Diary Room', 'Bedroom', 'HOH Suite', 'Backyard'];
+  // How many light rows are currently dark: stage 1 → row 0, stage 2 → rows 0-1, etc.
+  const darkRows = Math.max(0, stage - 1);
 
   return (
     <div
-      className={`flo-overlay flo-stage-${Math.min(stage, 4)}`}
+      className={`flo-overlay flo-stage-${Math.min(stage, STAGE_DURATIONS.length - 1)}`}
       role="dialog"
       aria-modal="true"
       aria-label="Season finale lights out"
       aria-live="polite"
     >
-      {/* House silhouette zones — each dims as stages advance */}
-      <div className="flo-house" aria-hidden="true">
-        {roomLabels.map((room, i) => (
+      {/* Progressive dark overlay — deepens as stages advance */}
+      <div className="flo-bg-overlay" aria-hidden="true" />
+
+      {/* ── Left light rail ── */}
+      <div className="flo-light-rail flo-light-rail--left" aria-hidden="true">
+        {Array.from({ length: LIGHT_ROWS }).map((_, i) => (
           <div
-            key={room}
-            className={`flo-room flo-room--${i + 1}${stage > i ? ' flo-room--dark' : ''}`}
+            key={i}
+            className={`flo-light-row${i < darkRows ? ' flo-light-row--off' : ''}`}
           >
-            <span className="flo-room__bulb">💡</span>
-            <span className="flo-room__label">{room}</span>
+            <span className="flo-light flo-light--a" />
+            <span className="flo-light flo-light--b" />
           </div>
         ))}
       </div>
 
-      {/* Stage 0–2: Progressive blackout overlay */}
-      <div className="flo-blackout-overlay" aria-hidden="true" />
-
-      {/* Stage 3: TV still lit — farewell message */}
-      {stage === 3 && (
-        <div className="flo-tv-screen" aria-label="Big Eye farewell message">
-          <div className="flo-tv-frame" aria-hidden="true">
-            <div className="flo-tv-scanlines" />
+      {/* ── Right light rail ── */}
+      <div className="flo-light-rail flo-light-rail--right" aria-hidden="true">
+        {Array.from({ length: LIGHT_ROWS }).map((_, i) => (
+          <div
+            key={i}
+            className={`flo-light-row${i < darkRows ? ' flo-light-row--off' : ''}`}
+          >
+            <span className="flo-light flo-light--a" />
+            <span className="flo-light flo-light--b" />
           </div>
-          <div className="flo-tv-content">
-            <span className="flo-tv-logo" aria-hidden="true">👁</span>
-            <p className="flo-tv-message">
-              This is not a Goodbye,<br />
-              it's see you soon<br />
-              <em>from the Big Eye.</em>
-            </p>
-            {publicFavoriteWinnerName && (
-              <p className="flo-tv-footnote">
-                Public's Favorite: <strong>{publicFavoriteWinnerName}</strong>
+        ))}
+      </div>
+
+      {/* ── Central TV frame — visible in stages 0-4, dims in stage 5 ── */}
+      <div className={`flo-tv-frame${stage >= 5 ? ' flo-tv-frame--off' : ''}`} aria-hidden={stage < 4 ? 'true' : undefined}>
+        <div className="flo-tv-screen-inner">
+          <div className="flo-tv-scanlines" />
+          {/* Farewell message appears at stage 4 */}
+          {stage >= 4 && (
+            <div className="flo-tv-content">
+              <span className="flo-tv-logo" aria-hidden="true">👁</span>
+              <p className="flo-tv-message">
+                This is not a Goodbye,<br />
+                it's see you soon<br />
+                <em>from the Big Eye.</em>
               </p>
-            )}
-          </div>
+              {publicFavoriteWinnerName && (
+                <p className="flo-tv-footnote">
+                  Public's Favorite: <strong>{publicFavoriteWinnerName}</strong>
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Stage 4+: Complete blackout */}
-      {stage >= 4 && (
+      {/* Stage 6+: Complete blackout */}
+      {stage >= 6 && (
         <div className="flo-final-black" aria-hidden="true" />
       )}
     </div>
