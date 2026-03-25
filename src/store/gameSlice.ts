@@ -223,6 +223,24 @@ function evictedStatus(state: GameState): 'evicted' | 'jury' {
 }
 
 /**
+ * Stamp the explicit season placement for a player at the moment they leave
+ * the house. This gives finale recap / archive views a reliable ordering
+ * source instead of inferring placement from the current array order.
+ */
+function assignSeasonPlacementOnExit(state: GameState, playerId: string) {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player || typeof player.seasonPlacement === 'number') return;
+
+  // Count houseguests still in the game at the moment the player leaves.
+  // Callers invoke this *before* mutating the player's status, so the exiting
+  // player is included in the count: 6 alive → evicted player finishes 6th.
+  const aliveCount = state.players.filter(
+    (p) => p.status !== 'evicted' && p.status !== 'jury',
+  ).length;
+  player.seasonPlacement = aliveCount;
+}
+
+/**
  * Increment timesNominated for a player by ID.
  * Initializes stats if not already present.
  */
@@ -785,6 +803,7 @@ const gameSlice = createSlice({
           const evictee = seededPick(aiRng, nominees);
           const evicteePlayer = state.players.find((p) => p.id === evictee.id);
           if (evicteePlayer) {
+            assignSeasonPlacementOnExit(state, evictee.id);
             evicteePlayer.status = evictedStatus(state);
             state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           }
@@ -1289,6 +1308,7 @@ const gameSlice = createSlice({
       const msg = state.pendingEviction.evictionMessage;
       const isFinal4 = state.phase === 'final4_eviction';
 
+      assignSeasonPlacementOnExit(state, evicteeId);
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       state.pendingEviction = null;
@@ -1325,6 +1345,7 @@ const gameSlice = createSlice({
       if (!player) return;
 
       // Always 'evicted', never 'jury', for self-evictions.
+      assignSeasonPlacementOnExit(state, playerId);
       player.status = 'evicted';
       state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId);
 
@@ -1401,6 +1422,7 @@ const gameSlice = createSlice({
       const finalHoh = state.players.find((p) => p.id === state.hohId);
       if (!evictee || !finalHoh) return;
 
+      assignSeasonPlacementOnExit(state, evicteeId);
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
       state.awaitingFinal3Eviction = false;
@@ -1914,6 +1936,7 @@ const gameSlice = createSlice({
       }
 
       // Evict the chosen player.
+      assignSeasonPlacementOnExit(state, evicteeId);
       evictee.status = evictedStatus(state);
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId);
 
@@ -2467,6 +2490,7 @@ const gameSlice = createSlice({
         const finalHoh = state.players.find((p) => p.id === state.hohId);
         if (nominees.length > 0) {
           const evictee = seededPick(rng, nominees);
+          assignSeasonPlacementOnExit(state, evictee.id);
           evictee.status = evictedStatus(state);
           state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id);
           state.awaitingFinal3Eviction = false;

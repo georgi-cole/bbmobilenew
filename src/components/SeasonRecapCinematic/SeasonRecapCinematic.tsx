@@ -7,6 +7,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { Player } from '../../types';
+import useSound from '../../hooks/useSound';
 import { resolveAvatar } from '../../utils/avatar';
 import './SeasonRecapCinematic.css';
 
@@ -35,18 +36,46 @@ function totalCompWins(p: Player): number {
   return (p.stats?.hohWins ?? 0) + (p.stats?.povWins ?? 0);
 }
 
-function buildEvictionList(players: Player[]): Player[] {
-  // Evicted players (pre-jury) then jury members, finalists at the end.
-  // We can approximate order by using the array order in game.players
-  // (players are added in draft order and status changes reflect eviction time).
-  const evicted = players.filter((p) => p.status === 'evicted');
-  const jury = players.filter((p) => p.status === 'jury');
-  const finalists = players.filter(
-    (p) => p.status === 'active' || p.status === 'hoh' || p.status === 'pov' ||
-           p.status === 'nominated' || p.status === 'hoh+pov' || p.status === 'nominated+pov',
+function getPlacementValue(player: Player): number | null {
+  if (typeof player.seasonPlacement === 'number') return player.seasonPlacement;
+  if (typeof player.finalRank === 'number') return player.finalRank;
+  return null;
+}
+
+function isFinalistStatus(status: Player['status']): boolean {
+  return (
+    status === 'active' ||
+    status === 'hoh' ||
+    status === 'pov' ||
+    status === 'nominated' ||
+    status === 'hoh+pov' ||
+    status === 'nominated+pov'
   );
-  // Order: evicted first (earliest evicted first) then jury (earliest first)
-  return [...evicted, ...jury, ...finalists];
+}
+
+function buildEvictionList(players: Player[]): Player[] {
+  const ordered = players.map((player, index) => ({ player, index }));
+
+  return ordered
+    .filter(({ player }) => player.status === 'evicted' || player.status === 'jury')
+    .sort((a, b) => {
+      const aPlacement = getPlacementValue(a.player);
+      const bPlacement = getPlacementValue(b.player);
+
+      if (aPlacement != null && bPlacement != null) {
+        // Intentional reverse-chronological recap order:
+        // 16th, 15th, 14th ... down to 3rd, then finalists get their own card.
+        return bPlacement - aPlacement;
+      }
+      if (aPlacement != null) return -1;
+      if (bPlacement != null) return 1;
+      return a.index - b.index;
+    })
+    .map(({ player }) => player);
+}
+
+function buildFinalists(players: Player[]): Player[] {
+  return players.filter((player) => isFinalistStatus(player.status)).slice(0, 2);
 }
 
 function getTopCompetitor(players: Player[]): Player | null {
@@ -74,14 +103,16 @@ const MOMENT_CARDS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SeasonRecapCinematic({ season, week, players, onComplete }: SeasonRecapProps) {
+  const { play } = useSound();
   const [stage, setStage] = useState<RecapStage>('intro');
   const [evictionIdx, setEvictionIdx] = useState(0);
   const [momentIdx, setMomentIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
   const evictionList = buildEvictionList(players);
+  const finalists = buildFinalists(players);
   const totalPlayers = players.length;
-  const totalEvictions = evictionList.length - 2; // last two are finalists
+  const totalEvictions = evictionList.length;
   const topComp = getTopCompetitor(players);
   const mostNom = getMostNominated(players);
 
@@ -100,6 +131,10 @@ export default function SeasonRecapCinematic({ season, week, players, onComplete
     return () => clearTimeout(t);
   }, [stage, advance]);
 
+  useEffect(() => {
+    play('tv:event');
+  }, [play]);
+
   // Handle done → fade out → call onComplete
   useEffect(() => {
     if (stage !== 'done') return;
@@ -111,15 +146,14 @@ export default function SeasonRecapCinematic({ season, week, players, onComplete
     };
   }, [stage, onComplete]);
 
-  const placement = (idx: number): string => {
-    const n = totalPlayers - idx;
-    const mod100 = n % 100;
-    const mod10 = n % 10;
-    if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
-    if (mod10 === 1) return `${n}st`;
-    if (mod10 === 2) return `${n}nd`;
-    if (mod10 === 3) return `${n}rd`;
-    return `${n}th`;
+  const placement = (placementNumber: number): string => {
+    const mod100 = placementNumber % 100;
+    const mod10 = placementNumber % 10;
+    if (mod100 >= 11 && mod100 <= 13) return `${placementNumber}th`;
+    if (mod10 === 1) return `${placementNumber}st`;
+    if (mod10 === 2) return `${placementNumber}nd`;
+    if (mod10 === 3) return `${placementNumber}rd`;
+    return `${placementNumber}th`;
   };
 
   return (
@@ -228,7 +262,7 @@ export default function SeasonRecapCinematic({ season, week, players, onComplete
           {evictionIdx < evictionList.length ? (
             <>
               <div className="src-evict-placement">
-                {placement(evictionIdx)}
+                {placement(getPlacementValue(evictionList[evictionIdx]) ?? totalPlayers - evictionIdx)}
               </div>
               <div className="src-evict-avatar">
                 <img
@@ -272,7 +306,7 @@ export default function SeasonRecapCinematic({ season, week, players, onComplete
         <div className="src-card src-card--finalists src-card--enter" key="finalists">
           <span className="src-eyebrow">The Final Tribunal Awaits</span>
           <div className="src-finalist-row">
-            {evictionList.slice(-2).map((f) => (
+            {finalists.map((f) => (
               <div key={f.id} className="src-finalist-card">
                 <div className="src-finalist-glow" aria-hidden="true" />
                 <img

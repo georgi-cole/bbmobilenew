@@ -64,8 +64,6 @@
   color: rgba(100, 110, 140, 0.4);
 }
 
-/* Staggered darkness for each room */
-.flo-stage-1 .flo-blackout-overlay { opacity: 0.35; animation: flo-darken-1 1.8s ease forwards; }
 .flo-room__bulb {
   font-size: 1.4rem;
   filter: drop-shadow(0 0 8px rgba(255, 230, 100, 0.7));

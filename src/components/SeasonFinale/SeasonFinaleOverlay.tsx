@@ -137,12 +137,6 @@ export default function SeasonFinaleOverlay() {
   }, [dispatch, finale?.phase, game.favoritePlayer, game.players, settings.sim.favoritePlayerAwardAmount]);
 
   useEffect(() => {
-    if (finale?.phase !== 'lightsOffTransition') return;
-    // FinalLightsOutSequence handles its own timing and calls onComplete when done.
-    // The completeFinale dispatch is now triggered via the onComplete callback.
-  }, [finale?.phase]);
-
-  useEffect(() => {
     if (finale?.phase !== 'seasonComplete' || location.pathname === '/game-over') return;
     navigate('/game-over');
   }, [finale?.phase, location.pathname, navigate]);

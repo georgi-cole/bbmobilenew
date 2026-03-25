@@ -40,6 +40,12 @@ export interface Player {
     /** Per-game personal-record scores keyed by game key (raw rounded score reported by the game). */
     gamePRs?: Record<string, number>;
   };
+  /**
+   * Explicit placement captured at elimination time.
+   * Uses Big Brother style numbering where 1 = winner, 2 = runner-up,
+   * 3 = third place, etc.
+   */
+  seasonPlacement?: number;
   /** Set to 1 for the winner, 2 for runner-up after finale. */
   finalRank?: number;
   /** True once the player is confirmed season winner. */

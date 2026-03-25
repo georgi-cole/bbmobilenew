@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { Player } from '../../types';
+import useSound from '../../hooks/useSound';
 import {
   startFinale,
   revealNextJurorThunk,
@@ -42,6 +43,7 @@ export default function FinalFaceoff() {
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
   const publicOpinion = useAppSelector(selectPublicOpinion);
+  const { play } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,18 @@ export default function FinalFaceoff() {
   // Track the jurorId that was most recently attributed (triggers flash).
   const [flashingJurorId, setFlashingJurorId] = useState<string | null>(null);
   const prevRevealedCountRef = useRef(0);
+  const voteTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(
+    () => () => {
+      for (const timer of Object.values(voteTimersRef.current)) clearTimeout(timer);
+      for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
+      voteTimersRef.current = {};
+      flashTimersRef.current = {};
+    },
+    [],
+  );
 
   useEffect(() => {
     const newCount = revealed.length;
@@ -64,32 +78,33 @@ export default function FinalFaceoff() {
     if (newCount <= prevCount) return;
 
     const newlyRevealed = revealed.slice(prevCount);
-    const timers: ReturnType<typeof setTimeout>[] = [];
 
     for (const r of newlyRevealed) {
       const { jurorId } = r;
-      // Show clue immediately; reveal vote chip after 2.4 s
-      const voteTimer = setTimeout(() => {
+      play('tv:event');
+      voteTimersRef.current[jurorId] = setTimeout(() => {
+        delete voteTimersRef.current[jurorId];
         setVoteVisible((prev) => ({ ...prev, [jurorId]: true }));
+        play('ui:jury_vote');
         setFlashingJurorId(jurorId);
-        // Clear flash after 800 ms
-        const flashTimer = setTimeout(
-          () => setFlashingJurorId((cur) => (cur === jurorId ? null : cur)),
+        flashTimersRef.current[jurorId] = setTimeout(
+          () => {
+            delete flashTimersRef.current[jurorId];
+            setFlashingJurorId((cur) => (cur === jurorId ? null : cur));
+          },
           800,
         );
-        timers.push(flashTimer);
       }, 2400);
-      timers.push(voteTimer);
     }
-
-    return () => {
-      for (const t of timers) clearTimeout(t);
-    };
-  }, [revealed]);
+  }, [play, revealed]);
 
   // When finale completes (skip-all or auto-finalize), make all votes visible
   useEffect(() => {
     if (!finale.isComplete) return;
+    for (const timer of Object.values(voteTimersRef.current)) clearTimeout(timer);
+    for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
+    voteTimersRef.current = {};
+    flashTimersRef.current = {};
     const allVisible: Record<string, boolean> = {};
     for (const r of revealed) {
       allVisible[r.jurorId] = true;
@@ -202,6 +217,11 @@ export default function FinalFaceoff() {
       jurorListRef.current.scrollTop = jurorListRef.current.scrollHeight;
     }
   }, [revealed.length]);
+
+  useEffect(() => {
+    if (!recapDone) return;
+    play('tv:event');
+  }, [play, recapDone]);
 
   if (!finale.isActive) return null;
 
