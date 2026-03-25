@@ -2,10 +2,11 @@
  * FinalFaceoff — fullscreen overlay for the jury voting finale sequence.
  *
  * Mounted by AppShell when game.phase === 'jury'.
- * Coordinates:
- *   1. SeasonRecapCinematic  — played once before vote reveal
- *   2. Tribunal vote board   — clue-based juror reveals, staged vote chip, juror flash
- *   3. Winner banner / tally
+ * Orchestrates three cinematic acts:
+ *   Act 1  'clues'       — Jurors auto-reveal cryptic clue messages every 3 s.
+ *                          No finalist names, no vote chips, no counters.
+ *   Act 2  'recap'       — SeasonRecapCinematic plays (movie-like, auto-advancing).
+ *   Act 3  'revealVotes' — Return to tribunal; vote chips + counters animate in.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -13,7 +14,7 @@ import type { Player } from '../../types';
 import useSound from '../../hooks/useSound';
 import {
   startFinale,
-  revealNextJurorThunk,
+  revealNextJuror,
   skipAllJurorsThunk,
   castVote,
   finalizeFinale,
@@ -36,6 +37,9 @@ import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic';
 import './FinalFaceoff.css';
 
+/** Delay between automatic juror clue reveals (ms). */
+const CLUE_AUTO_INTERVAL_MS = 3000;
+
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
@@ -43,20 +47,25 @@ export default function FinalFaceoff() {
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
   const publicOpinion = useAppSelector(selectPublicOpinion);
-  const { play } = useSound();
+  const { play, playMusic, stopMusic } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);
 
-  // ── Recap / cinematic gate ─────────────────────────────────────────────
-  const [recapDone, setRecapDone] = useState(false);
-  const handleRecapComplete = useCallback(() => setRecapDone(true), []);
+  // ── Phase management ───────────────────────────────────────────────────
+  // 'clues'       → auto-reveal juror messages (no vote chips)
+  // 'recap'       → season recap cinematic
+  // 'revealVotes' → vote chips + tally animate in
+  type Phase = 'clues' | 'recap' | 'revealVotes';
+  const [phase, setPhase] = useState<Phase>('clues');
+  const handleRecapComplete = useCallback(() => {
+    setPhase('revealVotes');
+  }, []);
 
-  // ── Staged vote reveal: track which jurors have their vote chip visible ─
-  // Keys are jurorIds; value = true once the chip appears (after ~2.4s delay).
+  // ── Staged vote reveal: tracks which jurors have their chip visible ────
+  // During 'clues' phase this stays empty. On entering 'revealVotes' we
+  // schedule reveals one-by-one with staggered delays.
   const [voteVisible, setVoteVisible] = useState<Record<string, boolean>>({});
-  // Track the jurorId that was most recently attributed (triggers flash).
   const [flashingJurorId, setFlashingJurorId] = useState<string | null>(null);
-  const prevRevealedCountRef = useRef(0);
   const voteTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -66,41 +75,40 @@ export default function FinalFaceoff() {
       for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
       voteTimersRef.current = {};
       flashTimersRef.current = {};
+      stopMusic();
     },
-    [],
+    [stopMusic],
   );
 
+  // When entering 'revealVotes', stagger vote-chip reveals for all jurors.
+  const revealVotesStartedRef = useRef(false);
   useEffect(() => {
-    const newCount = revealed.length;
-    const prevCount = prevRevealedCountRef.current;
-    prevRevealedCountRef.current = newCount;
+    if (phase !== 'revealVotes') return;
+    if (revealVotesStartedRef.current) return;
+    revealVotesStartedRef.current = true;
 
-    if (newCount <= prevCount) return;
+    play('tv:event');
+    playMusic('music:jury_voting_bg');
 
-    const newlyRevealed = revealed.slice(prevCount);
+    revealed.forEach((r, idx) => {
+      const delay = 800 + idx * 2000;
+      voteTimersRef.current[r.jurorId] = setTimeout(() => {
+        delete voteTimersRef.current[r.jurorId];
+        setVoteVisible((prev) => ({ ...prev, [r.jurorId]: true }));
+        play('ui:tribunal_vote_reveal');
+        setFlashingJurorId(r.jurorId);
+        flashTimersRef.current[r.jurorId] = setTimeout(() => {
+          delete flashTimersRef.current[r.jurorId];
+          setFlashingJurorId((cur) => (cur === r.jurorId ? null : cur));
+        }, 800);
+      }, delay);
+    });
+  }, [phase, revealed, play, playMusic]);
 
-    for (const r of newlyRevealed) {
-      const { jurorId } = r;
-      play('tv:event');
-      voteTimersRef.current[jurorId] = setTimeout(() => {
-        delete voteTimersRef.current[jurorId];
-        setVoteVisible((prev) => ({ ...prev, [jurorId]: true }));
-        play('ui:jury_vote');
-        setFlashingJurorId(jurorId);
-        flashTimersRef.current[jurorId] = setTimeout(
-          () => {
-            delete flashTimersRef.current[jurorId];
-            setFlashingJurorId((cur) => (cur === jurorId ? null : cur));
-          },
-          800,
-        );
-      }, 2400);
-    }
-  }, [play, revealed]);
-
-  // When finale completes (skip-all or auto-finalize), make all votes visible
+  // When finale completes during 'revealVotes' (e.g. skip-all), flash all chips instantly.
   useEffect(() => {
     if (!finale.isComplete) return;
+    if (phase !== 'revealVotes') return;
     for (const timer of Object.values(voteTimersRef.current)) clearTimeout(timer);
     for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
     voteTimersRef.current = {};
@@ -111,7 +119,7 @@ export default function FinalFaceoff() {
     }
     const t = setTimeout(() => setVoteVisible(allVisible), 0);
     return () => clearTimeout(t);
-  }, [finale.isComplete, revealed]);
+  }, [finale.isComplete, phase, revealed]);
 
   // ── Initialise finale on first render ──────────────────────────────────
   useEffect(() => {
@@ -124,7 +132,6 @@ export default function FinalFaceoff() {
     const preJury = game.players.filter((p) => p.status === 'evicted');
     const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id);
 
-    // Pass public approval profiles to enable the Public's jury vote
     const hasPublicProfiles = Object.keys(publicOpinion.profiles).length > 0;
 
     dispatch(
@@ -143,8 +150,46 @@ export default function FinalFaceoff() {
     );
   }, [dispatch, finale.hasStarted, game.players, game.seed, game.cfg, publicOpinion.profiles]);
 
-  // ── Auto-finalize once all jurors revealed ─────────────────────────────
+  // ── ACT 1: Auto-advance juror clue reveals every 3 s ──────────────────
+  // Pauses while waiting for a human juror to cast their vote.
+  // Transitions to 'recap' once all jurors are revealed.
+  const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id);
   useEffect(() => {
+    if (phase !== 'clues') return;
+    if (!finale.isActive) return;
+
+    // All clues revealed → move to recap cinematic
+    if (
+      finale.revealOrder.length > 0 &&
+      finale.revealedCount >= finale.revealOrder.length
+    ) {
+      const t = setTimeout(() => setPhase('recap'), 800);
+      return () => clearTimeout(t);
+    }
+
+    // Pause auto-advance while human juror needs to vote
+    if (finale.awaitingHumanJurorId) return;
+
+    const t = setTimeout(() => {
+      dispatch(revealNextJuror({ humanPlayerIds: humanIds }));
+    }, CLUE_AUTO_INTERVAL_MS);
+    return () => clearTimeout(t);
+  }, [
+    phase,
+    finale.isActive,
+    finale.revealedCount,
+    finale.revealOrder.length,
+    finale.awaitingHumanJurorId,
+    dispatch,
+    humanIds,
+  ]);
+
+  // ── Auto-finalize once all jurors revealed (only after recap) ─────────
+  // We deliberately defer this to 'revealVotes' so that:
+  //   - skipAllJurorsThunk doesn't accidentally skip the recap, and
+  //   - the normal 3-s auto-timer flow also goes through the recap.
+  useEffect(() => {
+    if (phase !== 'revealVotes') return;
     if (
       finale.isActive &&
       finale.revealOrder.length > 0 &&
@@ -154,42 +199,54 @@ export default function FinalFaceoff() {
       dispatch(finalizeFinale({ seed: game.seed }));
     }
   }, [
+    phase,
     dispatch,
     finale.isActive,
     finale.revealedCount,
     finale.revealOrder.length,
     finale.isComplete,
     game.seed,
-    game.cfg?.americasVoteEnabled,
   ]);
 
   // ── Persist winner to game state once decided ──────────────────────────
+  // Only act in 'revealVotes' so that clues/recap phases aren't short-circuited.
+  // Delay dismissal until all vote chips have had time to pop in (+1.5 s grace).
   const winnerPersistedRef = useRef(false);
   useEffect(() => {
+    if (phase === 'clues' || phase === 'recap') return;
     if (finale.isComplete && finale.winnerId && finale.runnerUpId && !winnerPersistedRef.current) {
       winnerPersistedRef.current = true;
       const publicFavoriteEnabled =
         settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
-      dispatch(
-        finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
-      );
-      dispatch(
-        startWinnerCinematic({
-          winnerId: finale.winnerId,
-          seed: game.seed,
-          publicFavoriteEnabled,
-        }),
-      );
-      dispatch(dismissFinale());
+      // Wait for all vote chips to animate in before showing the winner.
+      const chipDelay = 800 + revealed.length * 2000 + 1500;
+      const t = setTimeout(() => {
+        stopMusic();
+        dispatch(
+          finalizeGame({ winnerId: finale.winnerId!, runnerUpId: finale.runnerUpId! }),
+        );
+        dispatch(
+          startWinnerCinematic({
+            winnerId: finale.winnerId!,
+            seed: game.seed,
+            publicFavoriteEnabled,
+          }),
+        );
+        dispatch(dismissFinale());
+      }, chipDelay);
+      return () => clearTimeout(t);
     }
   }, [
+    phase,
     dispatch,
     game.seed,
     finale.isComplete,
     finale.winnerId,
     finale.runnerUpId,
+    revealed.length,
     settings.sim.enableFavoritePlayer,
     settings.sim.enableTwists,
+    stopMusic,
   ]);
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
@@ -211,22 +268,17 @@ export default function FinalFaceoff() {
     game.seed,
   ]);
 
-  // ── Auto-scroll jury list to bottom on new reveals ─────────────────────
+  // ── Auto-scroll jury list ──────────────────────────────────────────────
   useEffect(() => {
     if (jurorListRef.current) {
       jurorListRef.current.scrollTop = jurorListRef.current.scrollHeight;
     }
   }, [revealed.length]);
 
-  useEffect(() => {
-    if (!recapDone) return;
-    play('tv:event');
-  }, [play, recapDone]);
-
   if (!finale.isActive) return null;
 
-  // Show season recap cinematic before the vote reveal
-  if (!recapDone) {
+  // ── ACT 2: Season recap cinematic ────────────────────────────────────
+  if (phase === 'recap') {
     return (
       <SeasonRecapCinematic
         season={game.season}
@@ -237,21 +289,24 @@ export default function FinalFaceoff() {
     );
   }
 
-  // Build finalists list with proper type safety (no non-null assertion)
+  // Build finalists with type safety
   const finalists: Player[] = [];
   for (const id of finale.finalistIds) {
     const player = game.players.find((p) => p.id === id);
     if (player) finalists.push(player);
   }
-  // Only tally votes for jurors that have already been revealed
+
+  // Tally only revealed votes, but only show tally during revealVotes phase
   const revealedVotesMap: Record<string, string> = {};
   for (const r of revealed) {
     revealedVotesMap[r.jurorId] = r.finalistId;
   }
-  const tally = finale.isComplete ? tallyVotes(finale.votes) : tallyVotes(revealedVotesMap);
+  const tally =
+    phase === 'revealVotes'
+      ? (finale.isComplete ? tallyVotes(finale.votes) : tallyVotes(revealedVotesMap))
+      : {};
+
   const winner = game.players.find((p) => p.id === finale.winnerId);
-  const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id);
-  // allRevealed: true when all jurors are revealed OR when there are none (skip to tally)
   const allRevealed =
     finale.revealOrder.length === 0 ||
     finale.revealedCount >= finale.revealOrder.length;
@@ -260,12 +315,26 @@ export default function FinalFaceoff() {
     ? game.players.find((p) => p.id === awaitingHuman)
     : null;
 
-  function handleRevealNext() {
-    dispatch(revealNextJurorThunk(humanIds));
-  }
-
   function handleSkipAll() {
-    dispatch(skipAllJurorsThunk(humanIds, game.seed));
+    if (phase === 'clues') {
+      // In clue phase: only reveal all jurors, then let the recap play normally.
+      // Do NOT call finalizeFinale here – that happens in revealVotes.
+      const finaleState = finale;
+      // Pre-fill AI votes for unvoted human jurors
+      for (const jurorId of finaleState.revealOrder) {
+        if (humanIds.includes(jurorId) && !finaleState.votes[jurorId]) {
+          dispatch(castVote({ jurorId, finalistId: aiJurorVote(jurorId, finaleState.finalistIds, game.seed) }));
+        }
+      }
+      const remaining = finaleState.revealOrder.length - finaleState.revealedCount;
+      for (let i = 0; i < remaining; i++) {
+        dispatch(revealNextJuror({ humanPlayerIds: humanIds }));
+      }
+    } else {
+      // In revealVotes phase: skip the chip animations and go straight to winner.
+      stopMusic();
+      dispatch(skipAllJurorsThunk(humanIds, game.seed));
+    }
   }
 
   function handleCastVote(finalistId: string) {
@@ -274,8 +343,15 @@ export default function FinalFaceoff() {
   }
 
   function handleDismiss() {
+    stopMusic();
     dispatch(dismissFinale());
   }
+
+  // ── ACT 1 header text ─────────────────────────────────────────────────
+  const isCluesPhase = phase === 'clues';
+  const cluesRemaining = isCluesPhase
+    ? finale.revealOrder.length - finale.revealedCount
+    : 0;
 
   return (
     <div className="fo-overlay" role="dialog" aria-label="Tribunal Finale">
@@ -283,9 +359,13 @@ export default function FinalFaceoff() {
       <div className="fo-header">
         <h2 className="fo-title">🏛️ The Final Tribunal</h2>
         <p className="fo-subtitle">
-          {finale.isComplete
-            ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
-            : `${finale.revealedCount} / ${finale.revealOrder.length} judges revealed`}
+          {isCluesPhase
+            ? cluesRemaining > 0
+              ? `The judges deliberate… (${finale.revealedCount} / ${finale.revealOrder.length})`
+              : 'All judges have spoken'
+            : finale.isComplete
+              ? `${winner ? `${winner.name} wins The Big Eye!` : 'Winner declared!'} 🏆`
+              : `${finale.revealedCount} / ${finale.revealOrder.length} votes revealed`}
         </p>
       </div>
 
@@ -296,7 +376,7 @@ export default function FinalFaceoff() {
         </div>
       )}
 
-      {/* Finalists */}
+      {/* Finalists — vote counter only shown during revealVotes */}
       <div className="fo-finalists">
         {finalists.map((f) => (
           <div
@@ -306,7 +386,9 @@ export default function FinalFaceoff() {
             {finale.winnerId === f.id && <span className="fo-winner-badge">WINNER</span>}
             <PlayerAvatar player={f} size="md" showRelationshipOutline={false} />
             <span className="fo-finalist__name">{f.name}</span>
-            <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
+            {phase === 'revealVotes' && (
+              <span className="fo-finalist__votes">{tally[f.id] ?? 0}</span>
+            )}
           </div>
         ))}
       </div>
@@ -314,7 +396,8 @@ export default function FinalFaceoff() {
       {/* Juror reveal list */}
       <div className="fo-jurors" ref={jurorListRef}>
         {revealed.map((r) => {
-          const finalist = game.players.find((p) => p.id === r.finalistId);
+          // During clues phase vote chips are always hidden
+          const chipVisible = isCluesPhase ? false : (voteVisible[r.jurorId] ?? false);
           if (r.jurorId === PUBLIC_JUROR_ID) {
             const publicJuror = {
               id: PUBLIC_JUROR_ID,
@@ -326,10 +409,10 @@ export default function FinalFaceoff() {
               <JurorBubble
                 key={PUBLIC_JUROR_ID}
                 juror={publicJuror}
-                finalist={finalist}
+                finalist={game.players.find((p) => p.id === r.finalistId)}
                 reveal={r}
-                voteVisible={voteVisible[PUBLIC_JUROR_ID] ?? false}
-                isFlashing={flashingJurorId === PUBLIC_JUROR_ID}
+                voteVisible={chipVisible}
+                isFlashing={!isCluesPhase && flashingJurorId === PUBLIC_JUROR_ID}
               />
             );
           }
@@ -339,20 +422,22 @@ export default function FinalFaceoff() {
             <JurorBubble
               key={r.jurorId}
               juror={juror}
-              finalist={finalist}
+              finalist={game.players.find((p) => p.id === r.finalistId)}
               reveal={r}
-              voteVisible={voteVisible[r.jurorId] ?? false}
-              isFlashing={flashingJurorId === r.jurorId}
+              voteVisible={chipVisible}
+              isFlashing={!isCluesPhase && flashingJurorId === r.jurorId}
             />
           );
         })}
       </div>
 
-      {/* Tally panel */}
-      <FinalTallyPanel finalists={finalists} tally={tally} />
+      {/* Tally panel — only during revealVotes */}
+      {phase === 'revealVotes' && (
+        <FinalTallyPanel finalists={finalists} tally={tally} />
+      )}
 
-      {/* Human vote UI */}
-      {awaitingHumanPlayer && !finale.isComplete && (
+      {/* Human vote UI — only in clues phase when awaiting */}
+      {awaitingHumanPlayer && !finale.isComplete && phase === 'clues' && (
         <div className="fo-human-vote">
           <span className="fo-human-vote__prompt">
             <PlayerAvatar player={awaitingHumanPlayer} size="sm" showRelationshipOutline={false} />
@@ -379,9 +464,9 @@ export default function FinalFaceoff() {
 
       {/* Controls */}
       <FinaleControls
+        phase={phase}
         allRevealed={allRevealed}
         isComplete={finale.isComplete}
-        onRevealNext={handleRevealNext}
         onSkipAll={handleSkipAll}
         onDismiss={handleDismiss}
       />
