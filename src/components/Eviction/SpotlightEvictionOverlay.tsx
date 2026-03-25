@@ -31,6 +31,7 @@ const RETURN_DONE_AT      = 1900;
 
 // Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600;
+const ELIMINATED_STAMP_SRC = `${import.meta.env.BASE_URL}assets/eliminated_stamp.svg`;
 
 // Cinematic filter applied to the portrait during the holding phase
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)';
@@ -101,6 +102,9 @@ export default function SpotlightEvictionOverlay({
   const [showLiveBug, setShowLiveBug] = useState(isReturn);
   const [showLowerThird, setShowLowerThird] = useState(isReturn);
   const [desaturated, setDesaturated] = useState(isReturn);
+  const [stampAssetState, setStampAssetState] = useState<'loading' | 'ready' | 'error'>(
+    isReturn ? 'error' : 'loading',
+  );
 
   const firedRef = useRef(false);
 
@@ -137,6 +141,27 @@ export default function SpotlightEvictionOverlay({
   // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (isReturn || typeof window === 'undefined') {
+      setStampAssetState('error');
+      return undefined;
+    }
+
+    let active = true;
+    const stampImage = new window.Image();
+    stampImage.onload = () => {
+      if (active) setStampAssetState('ready');
+    };
+    stampImage.onerror = () => {
+      if (active) setStampAssetState('error');
+    };
+    stampImage.src = ELIMINATED_STAMP_SRC;
+
+    return () => {
+      active = false;
+    };
+  }, [isReturn]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -315,7 +340,7 @@ export default function SpotlightEvictionOverlay({
       <AnimatePresence>
         {showLowerThird && (
           <motion.div
-            className="seo__stamp"
+            className={`seo__stamp${!isReturn && stampAssetState === 'ready' ? ' seo__stamp--asset' : ''}`}
             initial={isReturn ? false : { scale: 2.4, opacity: 0, rotate: -14 }}
             animate={{ scale: 1, opacity: 1, rotate: -12 }}
             exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
@@ -324,7 +349,15 @@ export default function SpotlightEvictionOverlay({
             }
             aria-hidden="true"
           >
-            {labelText}
+            {!isReturn && stampAssetState === 'ready' ? (
+              <img
+                className="seo__stamp-image"
+                src={ELIMINATED_STAMP_SRC}
+                alt=""
+              />
+            ) : (
+              labelText
+            )}
           </motion.div>
         )}
       </AnimatePresence>

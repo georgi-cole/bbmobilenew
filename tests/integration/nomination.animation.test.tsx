@@ -304,10 +304,77 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
       await act(async () => {});
 
-      expect(screen.getAllByText('BY LOH')).toHaveLength(2);
-      expect(screen.getByText('LAST')).toBeTruthy();
+      expect(screen.getAllByText('NOMINEE')).toHaveLength(2);
+      expect(screen.getByText('LAST PLACE')).toBeTruthy();
     } finally {
       window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it('stagger-guards adjacent mobile nomination pills to avoid overlap', async () => {
+    const TILE_TOP = 100;
+    const TILE_WIDTH = 60;
+    const TILE_HEIGHT = 80;
+    const PLAYER_TWO_LEFT = 44;
+    const PLAYER_THREE_LEFT = 102;
+    const PLAYER_FOUR_LEFT = 160;
+    const originalMatchMedia = window.matchMedia;
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const title = this.getAttribute('title');
+      const left =
+        title === 'Player 2'
+          ? PLAYER_TWO_LEFT
+          : title === 'Player 3'
+            ? PLAYER_THREE_LEFT
+            : title === 'Player 4'
+              ? PLAYER_FOUR_LEFT
+              : PLAYER_TWO_LEFT;
+      return {
+        x: left, y: TILE_TOP, width: TILE_WIDTH, height: TILE_HEIGHT,
+        top: TILE_TOP,
+        left,
+        bottom: TILE_TOP + TILE_HEIGHT,
+        right: left + TILE_WIDTH,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-width: 560px'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      const store = makeStore({
+        hohId: 'p1',
+        nomineeIds: ['p2', 'p3', 'p4'],
+        awaitingNominations: false,
+        nominationContext: {
+          hohNomineeIds: ['p2', 'p3'],
+          autoNomineeId: 'p4',
+          publicSaveApplied: false,
+        },
+      });
+      const view = renderWithStore(store);
+
+      await act(async () => {});
+
+      const labelTops = Array.from(
+        view.container.querySelectorAll<HTMLElement>('.ceremony-overlay__tile-label'),
+      ).map((node) => node.style.top);
+
+      expect(new Set(labelTops).size).toBeGreaterThan(1);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      rectSpy.mockRestore();
     }
   });
 

@@ -167,6 +167,70 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
     expect(screen.getByText('ELIMINATED')).toBeTruthy();
   });
 
+  it('uses the shared eliminated stamp asset when it loads', async () => {
+    const OriginalImage = window.Image;
+    class ReadyImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) {
+        this.onload?.();
+      }
+    }
+    window.Image = ReadyImage as unknown as typeof Image;
+
+    try {
+      const onDone = vi.fn();
+      const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+      const view = renderOverlay(
+        <SpotlightEvictionOverlay
+          evictee={evictee}
+          contextLabel="Season 4 · Day 9"
+          layoutId="avatar-tile-p2"
+          onDone={onDone}
+        />,
+      );
+
+      await act(async () => { vi.advanceTimersByTime(LOWER_THIRD_AT + 50); });
+
+      expect(view.container.querySelector('.seo__stamp-image')).toBeTruthy();
+      expect(screen.queryByText('ELIMINATED')).toBeNull();
+    } finally {
+      window.Image = OriginalImage;
+    }
+  });
+
+  it('falls back to the text stamp when the shared asset is unavailable', async () => {
+    const OriginalImage = window.Image;
+    class ErrorImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) {
+        this.onerror?.();
+      }
+    }
+    window.Image = ErrorImage as unknown as typeof Image;
+
+    try {
+      const onDone = vi.fn();
+      const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+      const view = renderOverlay(
+        <SpotlightEvictionOverlay
+          evictee={evictee}
+          contextLabel="Season 4 · Day 9"
+          layoutId="avatar-tile-p2"
+          onDone={onDone}
+        />,
+      );
+
+      await act(async () => { vi.advanceTimersByTime(LOWER_THIRD_AT + 50); });
+
+      expect(view.container.querySelector('.seo__stamp-image')).toBeNull();
+      expect(screen.getByText('ELIMINATED')).toBeTruthy();
+    } finally {
+      window.Image = OriginalImage;
+    }
+  });
+
   it('does NOT fire onDone before DONE_AT ms', async () => {
     const onDone = vi.fn();
     const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };

@@ -184,6 +184,23 @@
   white-space: nowrap;
 }
 
+.seo__stamp--asset {
+  width: min(42vw, 24rem);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  white-space: normal;
+}
+
+.seo__stamp-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.32));
+}
+
 .seo--return .seo__stamp {
   -webkit-text-stroke: 3px rgba(34, 197, 94, 0.9);
   text-stroke: 3px rgba(34, 197, 94, 0.9);
@@ -217,6 +234,10 @@
     letter-spacing: 0.05em;
     -webkit-text-stroke: 2px rgba(220, 38, 38, 0.9);
     text-stroke: 2px rgba(220, 38, 38, 0.9);
+  }
+
+  .seo__stamp--asset {
+    width: min(calc(100vw - 2rem), 18rem);
   }
 
   .seo--return .seo__stamp {
