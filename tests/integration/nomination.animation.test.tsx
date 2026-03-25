@@ -278,35 +278,37 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
   it('uses shorter nomination pills on mobile-sized viewports', async () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === '(max-width: 560px)',
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-width: 560px'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
 
-    const store = makeStore({
-      hohId: 'p1',
-      nomineeIds: ['p2', 'p3', 'p4'],
-      awaitingNominations: false,
-      nominationContext: {
-        hohNomineeIds: ['p2', 'p3'],
-        autoNomineeId: 'p4',
-        publicSaveApplied: false,
-      },
-    });
-    renderWithStore(store);
+      const store = makeStore({
+        hohId: 'p1',
+        nomineeIds: ['p2', 'p3', 'p4'],
+        awaitingNominations: false,
+        nominationContext: {
+          hohNomineeIds: ['p2', 'p3'],
+          autoNomineeId: 'p4',
+          publicSaveApplied: false,
+        },
+      });
+      renderWithStore(store);
 
-    await act(async () => {});
+      await act(async () => {});
 
-    expect(screen.getAllByText('BY LOH')).toHaveLength(2);
-    expect(screen.getByText('LAST')).toBeTruthy();
-
-    window.matchMedia = originalMatchMedia;
+      expect(screen.getAllByText('BY LOH')).toHaveLength(2);
+      expect(screen.getByText('LAST')).toBeTruthy();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   it('does not include an auto-third nominee in the human animation when public mode is off', async () => {

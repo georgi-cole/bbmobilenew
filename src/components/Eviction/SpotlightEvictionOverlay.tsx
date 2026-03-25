@@ -41,6 +41,14 @@ const PORTRAIT_SPRING = { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as [numb
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done';
 type OverlayVariant = 'eviction' | 'return';
 
+function getLowerThirdLabel(
+  isReturn: boolean,
+  labelText: string,
+  contextLabel?: string,
+): string {
+  return isReturn || !contextLabel ? labelText : contextLabel;
+}
+
 interface Props {
   /** Player being evicted. */
   evictee: Player;
@@ -197,7 +205,7 @@ export default function SpotlightEvictionOverlay({
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
   const labelText = isReturn ? 'RETURNED' : 'ELIMINATED';
-  const lowerThirdLabel = !isReturn && contextLabel ? contextLabel : labelText;
+  const lowerThirdLabel = getLowerThirdLabel(isReturn, labelText, contextLabel);
 
   return (
     <div

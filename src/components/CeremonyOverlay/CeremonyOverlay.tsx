@@ -76,6 +76,11 @@ const COMPACT_TILE_LABELS: Record<string, string> = {
   'Last in LOH Comp': 'LAST',
 };
 
+function getDisplayTileLabel(label: string, useCompactTileLabels: boolean): string {
+  if (!useCompactTileLabels) return label;
+  return COMPACT_TILE_LABELS[label] ?? label;
+}
+
 type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
 
 /** Cutout padding (px) around each tile rect */
@@ -100,12 +105,36 @@ export default function CeremonyOverlay({
   const [resolvedTiles, setResolvedTiles] = useState<CeremonyTile[] | null>(
     resolveTiles ? null : tilesProp,
   );
+  const [useCompactTileLabels, setUseCompactTileLabels] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches;
+  });
 
   const tiles = resolvedTiles ?? tilesProp;
-  const useCompactTileLabels =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches;
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+
+    const mediaQuery = window.matchMedia(COMPACT_LABEL_BREAKPOINT);
+    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setUseCompactTileLabels(event.matches);
+    };
+
+    handleChange(mediaQuery);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+    } else if (typeof mediaQuery.addListener === 'function') {
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else if (typeof mediaQuery.removeListener === 'function') {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   // Validate: at least one tile with a non-zero rect
   const validTiles = tiles.filter(
@@ -280,9 +309,9 @@ export default function CeremonyOverlay({
               key={`label-${i}`}
               className="ceremony-overlay__tile-label"
               style={{ left: c.x + (c.w / 2), top: Math.max(c.y - 30, 12) }}
-              aria-label={tile.label}
+              aria-hidden="true"
             >
-              {useCompactTileLabels ? (COMPACT_TILE_LABELS[tile.label] ?? tile.label) : tile.label}
+              {getDisplayTileLabel(tile.label, useCompactTileLabels)}
             </div>
           );
         })}
