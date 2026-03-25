@@ -254,9 +254,11 @@ export default function CeremonyOverlay({
     };
   });
 
+  const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight;
+
   // Caption placement: below the lowest cutout
   const maxBottom = cutouts.length > 0 ? Math.max(...cutouts.map((c) => c.y + c.h)) : 0;
-  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight;
   const captionTop = Math.min(maxBottom + 16, viewportHeight - 80);
 
   // Badge start/target positions
@@ -276,8 +278,8 @@ export default function CeremonyOverlay({
       startY = t.badgeStart.top;
     } else {
       // Centre of viewport
-      startX = window.innerWidth / 2;
-      startY = window.innerHeight / 2;
+      startX = viewportWidth / 2;
+      startY = viewportHeight / 2;
     }
     return { startX, startY, targetX, targetY };
   });
@@ -305,8 +307,6 @@ export default function CeremonyOverlay({
   };
 
   const labelLayouts = useMemo(() => {
-    const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth;
-
     return validTiles.reduce<LabelLayout[]>((layouts, tile, i) => {
       if (!tile.label) return layouts;
 
@@ -359,7 +359,7 @@ export default function CeremonyOverlay({
       });
       return layouts;
     }, []);
-  }, [cutouts, useCompactTileLabels, validTiles]);
+  }, [cutouts, useCompactTileLabels, validTiles, viewportWidth]);
 
   if (pendingResolve || !hasValidTiles) return null;
 
