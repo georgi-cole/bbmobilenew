@@ -286,6 +286,7 @@ export default function Final3Ceremony() {
           <SpotlightEvictionOverlay
             key={evicteePlayer.id}
             evictee={evicteePlayer}
+            contextLabel={`Season ${game.season} · Day ${game.week}`}
             layoutId={`avatar-tile-${evicteePlayer.id}`}
             onDone={handleEvictionSplashDone}
             devSkip={DEV_SKIP}

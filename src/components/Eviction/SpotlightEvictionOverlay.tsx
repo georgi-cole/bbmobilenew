@@ -44,6 +44,8 @@ type OverlayVariant = 'eviction' | 'return';
 interface Props {
   /** Player being evicted. */
   evictee: Player;
+  /** Optional contextual kicker shown above the evictee name in the lower-third. */
+  contextLabel?: string;
   /**
    * Framer Motion layoutId matching the AvatarTile's avatarWrap.
    * When provided, enables the shared-layout match-cut animation.
@@ -75,6 +77,7 @@ interface Props {
  */
 export default function SpotlightEvictionOverlay({
   evictee,
+  contextLabel,
   layoutId,
   onDone,
   devSkip,
@@ -194,6 +197,7 @@ export default function SpotlightEvictionOverlay({
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined;
 
   const labelText = isReturn ? 'RETURNED' : 'ELIMINATED';
+  const lowerThirdLabel = !isReturn && contextLabel ? contextLabel : labelText;
 
   return (
     <div
@@ -293,7 +297,7 @@ export default function SpotlightEvictionOverlay({
             exit={{ y: '110%', opacity: 0 }}
             transition={noMotion ?? { duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
           >
-            <p className="seo__label">{labelText}</p>
+            <p className="seo__label">{lowerThirdLabel}</p>
             <h1 className="seo__name">{evictee.name}</h1>
           </motion.div>
         )}

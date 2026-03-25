@@ -70,6 +70,11 @@ const FLY_DURATION = 500;
 const LAND_DELAY = FLY_DELAY + FLY_DURATION; // 1150
 const LAND_DURATION = 350;
 const HOLD_DELAY = LAND_DELAY + LAND_DURATION; // 1500
+const COMPACT_LABEL_BREAKPOINT = '(max-width: 560px)';
+const COMPACT_TILE_LABELS: Record<string, string> = {
+  'LOH Nominee': 'BY LOH',
+  'Last in LOH Comp': 'LAST',
+};
 
 type BadgePhase = 'hidden' | 'appearing' | 'flying' | 'landed' | 'holding';
 
@@ -97,6 +102,10 @@ export default function CeremonyOverlay({
   );
 
   const tiles = resolvedTiles ?? tilesProp;
+  const useCompactTileLabels =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(COMPACT_LABEL_BREAKPOINT).matches;
 
   // Validate: at least one tile with a non-zero rect
   const validTiles = tiles.filter(
@@ -271,9 +280,9 @@ export default function CeremonyOverlay({
               key={`label-${i}`}
               className="ceremony-overlay__tile-label"
               style={{ left: c.x + (c.w / 2), top: Math.max(c.y - 30, 12) }}
-              aria-hidden="true"
+              aria-label={tile.label}
             >
-              {tile.label}
+              {useCompactTileLabels ? (COMPACT_TILE_LABELS[tile.label] ?? tile.label) : tile.label}
             </div>
           );
         })}

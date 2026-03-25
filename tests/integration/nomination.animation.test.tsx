@@ -272,8 +272,41 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
     await act(async () => {});
 
-    expect(screen.getAllByText('HOH Nominee')).toHaveLength(2);
-    expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
+    expect(screen.getAllByText('LOH Nominee')).toHaveLength(2);
+    expect(screen.getByText('Last in LOH Comp')).toBeTruthy();
+  });
+
+  it('uses shorter nomination pills on mobile-sized viewports', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 560px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const store = makeStore({
+      hohId: 'p1',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      awaitingNominations: false,
+      nominationContext: {
+        hohNomineeIds: ['p2', 'p3'],
+        autoNomineeId: 'p4',
+        publicSaveApplied: false,
+      },
+    });
+    renderWithStore(store);
+
+    await act(async () => {});
+
+    expect(screen.getAllByText('BY LOH')).toHaveLength(2);
+    expect(screen.getByText('LAST')).toBeTruthy();
+
+    window.matchMedia = originalMatchMedia;
   });
 
   it('does not include an auto-third nominee in the human animation when public mode is off', async () => {
@@ -326,10 +359,10 @@ describe('NominationAnimator wiring in GameScreen', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(screen.getAllByText('HOH Nominee')).toHaveLength(2);
-    expect(screen.getByText('Last in HOH Comp')).toBeTruthy();
+    expect(screen.getAllByText('LOH Nominee')).toHaveLength(2);
+    expect(screen.getByText('Last in LOH Comp')).toBeTruthy();
     expect(
-      screen.getByText('🎯 Nominations are set — including the HOH comp last-place finisher'),
+      screen.getByText('🎯 Nominations are set — including the LOH comp last-place finisher'),
     ).toBeTruthy();
 
     expect(store.getState().game.nominationContext).toBeNull();

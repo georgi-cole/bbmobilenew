@@ -48,6 +48,8 @@ const PLAYERS: Player[] = [
 ];
 
 describe('SeasonRecapCinematic', () => {
+  const PREVIOUS_TOTAL_RECAP_DURATION_MS = 2200 + 3000 + 3400 + 3400 + 4200 + 2200 + 420;
+
   beforeEach(() => {
     vi.useFakeTimers();
     playMusic.mockClear();
@@ -109,5 +111,25 @@ describe('SeasonRecapCinematic', () => {
     expect(playMusic).toHaveBeenCalledWith('music:season_recap');
     expect(stopMusic).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the recap on screen beyond the previous shorter timing', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(PREVIOUS_TOTAL_RECAP_DURATION_MS + 500);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('The Road to the Finale')).toBeTruthy();
   });
 });

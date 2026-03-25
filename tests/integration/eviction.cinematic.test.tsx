@@ -105,6 +105,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 // Timing constants mirrored from the component for assertion purposes.
 const DONE_AT = 5400;
 const RETURN_DONE_AT = 1900;
+const LOWER_THIRD_AT = 2100;
 
 // Helper: wrap SpotlightEvictionOverlay in a Provider so useAppDispatch works.
 function renderOverlay(ui: JSX.Element) {
@@ -130,7 +131,7 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
         onDone={onDone}
       />,
     );
-    expect(screen.getByRole('dialog', { name: /Alice has been evicted/i })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: /Alice has been eliminated/i })).toBeTruthy();
   });
 
   it('renders the return aria-label when variant is return', () => {
@@ -145,6 +146,25 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
       />,
     );
     expect(screen.getByRole('dialog', { name: /Alice has returned/i })).toBeTruthy();
+  });
+
+  it('shows a season/day lower-third while keeping the eliminated stamp copy', async () => {
+    const onDone = vi.fn();
+    const evictee: Player = { id: 'p2', name: 'Alice', avatar: '🧑', status: 'active', isUser: false };
+    renderOverlay(
+      <SpotlightEvictionOverlay
+        evictee={evictee}
+        contextLabel="Season 4 · Day 9"
+        layoutId="avatar-tile-p2"
+        onDone={onDone}
+      />,
+    );
+
+    await act(async () => { vi.advanceTimersByTime(LOWER_THIRD_AT + 50); });
+
+    expect(screen.getByText('Season 4 · Day 9')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Alice' })).toBeTruthy();
+    expect(screen.getByText('ELIMINATED')).toBeTruthy();
   });
 
   it('does NOT fire onDone before DONE_AT ms', async () => {
@@ -298,7 +318,10 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
     expect(store.getState().game.pendingEviction).not.toBeNull();
 
     // The SpotlightEvictionOverlay dialog must be visible for the evictee.
-    expect(screen.getByRole('dialog', { name: /Alice has been evicted/i })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: /Alice has been eliminated/i })).toBeTruthy();
+
+    await act(async () => { vi.advanceTimersByTime(LOWER_THIRD_AT + 50); });
+    expect(screen.getByText('Season 1 · Day 1')).toBeTruthy();
 
     // Alice's status must still be 'nominated' — the commit is deferred.
     const aliceBefore = store.getState().game.players.find((p) => p.id === 'p2');
