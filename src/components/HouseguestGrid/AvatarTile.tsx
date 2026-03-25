@@ -94,6 +94,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     longPressActiveRef.current = false
     longPressTimerRef.current = setTimeout(() => {
       longPressActiveRef.current = true
+      longPressTimerRef.current = null
       onLongPress()
     }, LONG_PRESS_DELAY_MS)
   }
@@ -111,7 +112,11 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     startLongPress()
   }
 
-  function handleTouchEnd() {
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (longPressActiveRef.current) {
+      e.preventDefault()
+      longPressActiveRef.current = false
+    }
     cancelLongPress()
   }
 

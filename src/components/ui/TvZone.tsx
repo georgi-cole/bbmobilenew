@@ -5,7 +5,7 @@ import { useStore } from 'react-redux';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
 import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence';
-import { setAudio, selectSettings } from '../../store/settingsSlice';
+import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice';
 import type { RootState } from '../../store/store';
 import StatusPill from '../ui/StatusPill';
 import TVLog from '../TVLog/TVLog';
@@ -169,7 +169,7 @@ export default function TvZone() {
   const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId);
   const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null);
   const reduxStore = useStore<RootState>();
-  const audioSettings = useAppSelector((s) => selectSettings(s).audio);
+  const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio);
 
   // Filter entries for the TV viewport (excludes DR-only events).
   const tvVisibleFeed = useMemo(
@@ -427,6 +427,7 @@ export default function TvZone() {
         {/* Center: scrollable single-row status pills */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
           <li><StatusPill variant="week" icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
+          <li><StatusPill variant="ghost" label={`${alivePlayers.length}/${gameState.players.length}`} ariaLabel={`${alivePlayers.length} of ${gameState.players.length} housemates remaining`} /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
@@ -438,6 +439,7 @@ export default function TvZone() {
             className="tv-zone__audio-btn"
             type="button"
             aria-label={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
+            aria-pressed={audioSettings.musicOn}
             title={audioSettings.musicOn ? 'Mute music' : 'Unmute music'}
             onClick={() => dispatch(setAudio({ musicOn: !audioSettings.musicOn }))}
           >
@@ -448,6 +450,7 @@ export default function TvZone() {
             className="tv-zone__audio-btn"
             type="button"
             aria-label={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
+            aria-pressed={audioSettings.sfxOn}
             title={audioSettings.sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
             onClick={() => dispatch(setAudio({ sfxOn: !audioSettings.sfxOn }))}
           >
