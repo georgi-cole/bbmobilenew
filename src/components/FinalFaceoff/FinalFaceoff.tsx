@@ -39,6 +39,8 @@ import './FinalFaceoff.css';
 
 /** Delay between automatic juror clue reveals (ms). */
 const CLUE_AUTO_INTERVAL_MS = 3000;
+const RECAP_TRANSITION_DELAY_MS = 800;
+const PUBLIC_VOTE_RECAP_HOLD_MS = 3000;
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
@@ -163,7 +165,12 @@ export default function FinalFaceoff() {
       finale.revealOrder.length > 0 &&
       finale.revealedCount >= finale.revealOrder.length
     ) {
-      const t = setTimeout(() => setPhase('recap'), 800);
+      const lastRevealedJurorId = finale.revealOrder[finale.revealedCount - 1];
+      const recapDelayMs =
+        lastRevealedJurorId === PUBLIC_JUROR_ID
+          ? PUBLIC_VOTE_RECAP_HOLD_MS
+          : RECAP_TRANSITION_DELAY_MS;
+      const t = setTimeout(() => setPhase('recap'), recapDelayMs);
       return () => clearTimeout(t);
     }
 
@@ -178,6 +185,7 @@ export default function FinalFaceoff() {
     phase,
     finale.isActive,
     finale.revealedCount,
+    finale.revealOrder,
     finale.revealOrder.length,
     finale.awaitingHumanJurorId,
     dispatch,

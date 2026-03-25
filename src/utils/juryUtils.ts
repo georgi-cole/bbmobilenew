@@ -139,9 +139,14 @@ export const JURY_LOCKED_LINES: string[] = [
   'I\'m casting my vote for the one who walked into this house with a plan and executed it.',
 ];
 
-/** The line shown when the public casts the final vote. */
-export const PUBLIC_JURY_VOTE_LINE =
-  'The public has spoken. The nation rewards the finalist who owned the season in the ratings.';
+/** Variations shown when the public casts the final vote. */
+export const PUBLIC_JURY_VOTE_LINES: string[] = [
+  'The public has also cast their vote for the person who made this season great.',
+  'The public has made their choice for the finalist who made this season unforgettable.',
+  'The public has delivered their vote for the player who made this season special.',
+  'The public has weighed in for the finalist who made this season one to remember.',
+  'The public has cast their vote for the person who made this season shine.',
+];
 
 /** Plea templates used when POV holder asks nominees for their pleas at Final 4. */
 export const NOMINEE_PLEA_TEMPLATES: string[] = [
