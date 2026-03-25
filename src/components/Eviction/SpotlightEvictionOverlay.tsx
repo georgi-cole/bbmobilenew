@@ -341,9 +341,19 @@ export default function SpotlightEvictionOverlay({
         {showLowerThird && (
           <motion.div
             className={`seo__stamp${!isReturn && stampAssetState === 'ready' ? ' seo__stamp--asset' : ''}`}
-            initial={isReturn ? false : { scale: 2.4, opacity: 0, rotate: -14 }}
-            animate={{ scale: 1, opacity: 1, rotate: -12 }}
-            exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }}
+            initial={
+              isReturn
+                ? false
+                : { scale: 2.4, opacity: 0, rotate: -14, x: '-50%', y: '-50%' }
+            }
+            animate={{ scale: 1, opacity: 1, rotate: -12, x: '-50%', y: '-50%' }}
+            exit={{
+              scale: 0,
+              opacity: 0,
+              x: '-50%',
+              y: '-50%',
+              transition: { duration: 0.12 },
+            }}
             transition={
               noMotion ?? { type: 'spring', stiffness: 340, damping: 22, delay: 0.06 }
             }
