@@ -14,7 +14,7 @@ import type { Player } from '../../types';
 import useSound from '../../hooks/useSound';
 import {
   startFinale,
-  revealNextJurorThunk,
+  revealNextJuror,
   skipAllJurorsThunk,
   castVote,
   finalizeFinale,
@@ -75,8 +75,9 @@ export default function FinalFaceoff() {
       for (const timer of Object.values(flashTimersRef.current)) clearTimeout(timer);
       voteTimersRef.current = {};
       flashTimersRef.current = {};
+      stopMusic();
     },
-    [],
+    [stopMusic],
   );
 
   // When entering 'revealVotes', stagger vote-chip reveals for all jurors.
@@ -170,7 +171,7 @@ export default function FinalFaceoff() {
     if (finale.awaitingHumanJurorId) return;
 
     const t = setTimeout(() => {
-      dispatch(revealNextJurorThunk(humanIds));
+      dispatch(revealNextJuror({ humanPlayerIds: humanIds }));
     }, CLUE_AUTO_INTERVAL_MS);
     return () => clearTimeout(t);
   }, [
@@ -327,7 +328,7 @@ export default function FinalFaceoff() {
       }
       const remaining = finaleState.revealOrder.length - finaleState.revealedCount;
       for (let i = 0; i < remaining; i++) {
-        dispatch({ type: 'finale/revealNextJuror', payload: { humanPlayerIds: humanIds } });
+        dispatch(revealNextJuror({ humanPlayerIds: humanIds }));
       }
     } else {
       // In revealVotes phase: skip the chip animations and go straight to winner.

@@ -38,9 +38,9 @@ export default function FinaleControls({
       <button
         className="fo-btn fo-btn--secondary"
         onClick={onSkipAll}
-        disabled={allRevealed}
+        disabled={phase === 'clues' && allRevealed}
       >
-        {allRevealed ? 'Tallying…' : 'Skip All ▶▶'}
+        {phase === 'clues' && allRevealed ? 'Starting recap…' : 'Skip All ▶▶'}
       </button>
     </div>
   );
