@@ -118,13 +118,10 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('button', { name: /Mute sound effects/i })).toBeDefined();
   });
 
-  it('shows occupancy in the HUD and exposes audio toggle pressed states', async () => {
+  it('exposes audio toggle pressed states', async () => {
     const user = userEvent.setup();
     const store = makeStoreWithSettings();
     renderTvZone(store);
-
-    const game = store.getState().game;
-    expect(screen.getByLabelText(/housemates remaining/i)).toHaveTextContent(`${game.players.length}/${game.players.length}`);
 
     const musicButton = screen.getByRole('button', { name: /Mute music/i });
     const sfxButton = screen.getByRole('button', { name: /Mute sound effects/i });

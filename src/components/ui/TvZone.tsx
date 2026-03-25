@@ -427,7 +427,6 @@ export default function TvZone() {
         {/* Center: scrollable single-row status pills */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
           <li><StatusPill variant="week" icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
-          <li><StatusPill variant="ghost" label={`${alivePlayers.length}/${gameState.players.length}`} ariaLabel={`${alivePlayers.length} of ${gameState.players.length} housemates remaining`} /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
