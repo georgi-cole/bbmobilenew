@@ -2128,6 +2128,7 @@ export default function GameScreen() {
         houseguests={game.players.map(playerToHouseguest)}
         headerSelector=".tv-zone"
         footerSelector=".nav-bar"
+        occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
       />
     </div>
     </LayoutGroup>

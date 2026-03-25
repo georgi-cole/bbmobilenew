@@ -20,6 +20,7 @@ export function enrichPlayer(player: Player): EnrichedPlayer {
     sex: profile?.sex,
     location: profile?.location,
     profession: profile?.profession,
+    zodiacSign: profile?.zodiacSign,
     motto: profile?.motto,
     funFact: profile?.funFact,
     story: profile?.story,

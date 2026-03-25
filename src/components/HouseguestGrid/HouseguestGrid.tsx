@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import AvatarTile from './AvatarTile'
+import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
 
 export type Houseguest = {
@@ -48,6 +49,8 @@ type Props = {
   placeholderCount?: number
   /** When true, reduces avatar/tile size and spacing for a denser layout. */
   compact?: boolean
+  /** Optional alive/total chip shown beside the section heading. */
+  occupancyLabel?: string
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -65,6 +68,7 @@ export default function HouseguestGrid({
   gridSize,
   placeholderCount = 0,
   compact = false,
+  occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
 
@@ -100,10 +104,13 @@ export default function HouseguestGrid({
     <section ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} aria-labelledby="houseguests-heading">
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
-          HOUSEGUESTS
+          HOUSEMATES
           {showCountInHeader && <span className={styles.count}> ({houseguests.length})</span>}
           {!showCountInHeader && <span className="visually-hidden"> ({houseguests.length})</span>}
         </h3>
+        {occupancyLabel && (
+          <StatusPill variant="ghost" label={occupancyLabel} ariaLabel={`${occupancyLabel} housemates`} />
+        )}
       </div>
 
       <ul className={`${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`} role="list">
