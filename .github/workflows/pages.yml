@@ -1,4 +1,5 @@
 name: Build and deploy Pages
+# Deployment marker – updated to retrigger Pages build after PR #383 merge
 
 on:
   push:
