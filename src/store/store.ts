@@ -30,6 +30,7 @@ import wildcardWesternReducer from '../features/wildcardWestern/wildcardWesternS
 import tetrisReducer from '../features/tetris/tetrisSlice';
 import tiltLabyrinthReducer from '../features/tiltLabyrinth/tiltLabyrinthSlice';
 import houseOfCardsReducer from '../features/houseOfCards/houseOfCardsSlice';
+import memoryColorsReducer from '../features/memoryColors/memoryColorsSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
@@ -56,6 +57,7 @@ export const store = configureStore({
     tetris: tetrisReducer,
     tiltLabyrinth: tiltLabyrinthReducer,
     houseOfCards: houseOfCardsReducer,
+    memoryColors: memoryColorsReducer,
     publicOpinion: publicOpinionReducer,
   },
   preloadedState: {

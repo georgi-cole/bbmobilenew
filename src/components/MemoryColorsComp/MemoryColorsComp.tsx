@@ -47,9 +47,9 @@ const WARNING_BEAT_MS = 1800;
 const ROUND_CLEARED_MS = 1400;
 /** How long the results screen shows before auto-completing (ms, 0 = user must click). */
 
-const COLOR_NAMES = ['Red', 'Blue', 'Green', 'Yellow'] as const;
-const COLOR_CLASSES = ['color-pad--red', 'color-pad--blue', 'color-pad--green', 'color-pad--yellow'] as const;
-const COLOR_EMOJIS = ['🔴', '🔵', '🟢', '🟡'] as const;
+const COLOR_NAMES = ['Scarlet', 'Baby Blue', 'Milky Grass', 'Blood Orange'] as const;
+const COLOR_CLASSES = ['color-pad--scarlet', 'color-pad--babyblue', 'color-pad--milkygrass', 'color-pad--bloodorange'] as const;
+const COLOR_EMOJIS = ['🔴', '🩵', '🌿', '🟠'] as const;
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');

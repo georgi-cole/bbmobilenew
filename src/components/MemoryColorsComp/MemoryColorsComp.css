@@ -102,15 +102,15 @@
   flex-shrink: 0;
 }
 
-.mc-progress-step--red    { background: #2c3a4d; border-color: #ff6b6b44; }
-.mc-progress-step--blue   { background: #2c3a4d; border-color: #6fd3ff44; }
-.mc-progress-step--green  { background: #2c3a4d; border-color: #6bffb844; }
-.mc-progress-step--yellow { background: #2c3a4d; border-color: #ffd56b44; }
+.mc-progress-step--scarlet     { background: #2c3a4d; border-color: #e6353544; }
+.mc-progress-step--babyblue    { background: #2c3a4d; border-color: #6bcfff44; }
+.mc-progress-step--milkygrass  { background: #2c3a4d; border-color: #a3d96b44; }
+.mc-progress-step--bloodorange { background: #2c3a4d; border-color: #ff7a3044; }
 
-.mc-progress-step--done.mc-progress-step--red    { background: #ff6b6b; border-color: #ff6b6b; }
-.mc-progress-step--done.mc-progress-step--blue   { background: #6fd3ff; border-color: #6fd3ff; }
-.mc-progress-step--done.mc-progress-step--green  { background: #6bffb8; border-color: #6bffb8; }
-.mc-progress-step--done.mc-progress-step--yellow { background: #ffd56b; border-color: #ffd56b; }
+.mc-progress-step--done.mc-progress-step--scarlet     { background: #e63535; border-color: #e63535; }
+.mc-progress-step--done.mc-progress-step--babyblue    { background: #6bcfff; border-color: #6bcfff; }
+.mc-progress-step--done.mc-progress-step--milkygrass  { background: #a3d96b; border-color: #a3d96b; }
+.mc-progress-step--done.mc-progress-step--bloodorange { background: #ff7a30; border-color: #ff7a30; }
 
 .mc-progress-step--active {
   transform: scale(1.3);
@@ -279,28 +279,28 @@
 
 /* Color variants */
 
-.color-pad--red {
-  background: linear-gradient(135deg, #ff4444 0%, #cc2222 100%);
-  border-color: #ff6b6b55;
-  box-shadow: 0 4px 18px rgba(255, 70, 70, 0.3);
+.color-pad--scarlet {
+  background: linear-gradient(135deg, #e63535 0%, #aa1111 100%);
+  border-color: #ff5a5a55;
+  box-shadow: 0 4px 18px rgba(230, 53, 53, 0.35);
 }
 
-.color-pad--blue {
-  background: linear-gradient(135deg, #3388ff 0%, #1155cc 100%);
-  border-color: #6fd3ff55;
-  box-shadow: 0 4px 18px rgba(51, 136, 255, 0.3);
+.color-pad--babyblue {
+  background: linear-gradient(135deg, #4db8f0 0%, #2080c8 100%);
+  border-color: #6bcfff55;
+  box-shadow: 0 4px 18px rgba(77, 184, 240, 0.3);
 }
 
-.color-pad--green {
-  background: linear-gradient(135deg, #33cc77 0%, #1a8844 100%);
-  border-color: #6bffb855;
-  box-shadow: 0 4px 18px rgba(51, 204, 119, 0.3);
+.color-pad--milkygrass {
+  background: linear-gradient(135deg, #7ec853 0%, #4e8c28 100%);
+  border-color: #a3d96b55;
+  box-shadow: 0 4px 18px rgba(126, 200, 83, 0.3);
 }
 
-.color-pad--yellow {
-  background: linear-gradient(135deg, #ffcc22 0%, #cc8800 100%);
-  border-color: #ffd56b55;
-  box-shadow: 0 4px 18px rgba(255, 204, 34, 0.3);
+.color-pad--bloodorange {
+  background: linear-gradient(135deg, #ff7020 0%, #cc4400 100%);
+  border-color: #ff9a5055;
+  box-shadow: 0 4px 18px rgba(255, 112, 32, 0.35);
 }
 
 /* Lit state during reveal */
@@ -310,10 +310,10 @@
   filter: brightness(1.5) saturate(1.3);
 }
 
-.color-pad--red.mc-pad--lit    { box-shadow: 0 0 28px 8px rgba(255, 100, 100, 0.7), 0 4px 18px rgba(255, 70, 70, 0.4); border-color: #ff8888; }
-.color-pad--blue.mc-pad--lit   { box-shadow: 0 0 28px 8px rgba(100, 180, 255, 0.7), 0 4px 18px rgba(51, 136, 255, 0.4); border-color: #88ccff; }
-.color-pad--green.mc-pad--lit  { box-shadow: 0 0 28px 8px rgba(100, 255, 150, 0.7), 0 4px 18px rgba(51, 204, 119, 0.4); border-color: #88ffcc; }
-.color-pad--yellow.mc-pad--lit { box-shadow: 0 0 28px 8px rgba(255, 230, 100, 0.7), 0 4px 18px rgba(255, 204, 34, 0.4); border-color: #ffe888; }
+.color-pad--scarlet.mc-pad--lit     { box-shadow: 0 0 28px 8px rgba(255, 80, 80, 0.75), 0 4px 18px rgba(230, 53, 53, 0.45); border-color: #ff8888; }
+.color-pad--babyblue.mc-pad--lit    { box-shadow: 0 0 28px 8px rgba(100, 200, 255, 0.75), 0 4px 18px rgba(77, 184, 240, 0.45); border-color: #88dfff; }
+.color-pad--milkygrass.mc-pad--lit  { box-shadow: 0 0 28px 8px rgba(150, 230, 100, 0.75), 0 4px 18px rgba(126, 200, 83, 0.45); border-color: #c0ea88; }
+.color-pad--bloodorange.mc-pad--lit { box-shadow: 0 0 28px 8px rgba(255, 140, 60, 0.75), 0 4px 18px rgba(255, 112, 32, 0.45); border-color: #ffb070; }
 
 /* Pressed / correct / error states */
 
