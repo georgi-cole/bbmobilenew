@@ -38,7 +38,7 @@ export interface SettingsState {
     allowSelfEvict: boolean;
     /** Probability (0–100) that the Battle Back twist activates after an eligible eviction. */
     battleBackChance: number;
-    /** Probability (0–100) that a special veto twist activates after the POV winner is revealed (week > 2, ≥6 players, not DE week). */
+    /** Probability (0–100) that a special veto twist activates after the POV winner is revealed on eligible weeks (after ≥5 evictions, with more than 5 players still in, and only if no other twist has already fired via `twistActivatedThisWeek`). */
     specialVetoChance: number;
     /** Probability (0–100) that a Double Eviction activates on each eligible week (after 5 evictions, above final 5). */
     doubleEvictionChance: number;
