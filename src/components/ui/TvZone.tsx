@@ -13,6 +13,7 @@ import TvAnnouncementOverlay, {
   type Announcement,
 } from './TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
+import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
 import './TvZone.css';
@@ -208,6 +209,9 @@ export default function TvZone() {
   // Short-lived TV spotlight effect for Double Eviction special announcements.
   const [deSpotlightActive, setDeSpotlightActive] = useState(false);
   const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null);
+  // Save feedback dialog — shows a mobile-friendly confirmation after save.
+  const [saveFeedbackOpen, setSaveFeedbackOpen] = useState(false);
+  const [saveFeedbackIsError, setSaveFeedbackIsError] = useState(false);
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -400,6 +404,8 @@ export default function TvZone() {
       social: currentState.social,
     });
     setSaveStatus(ok ? 'saved' : 'error');
+    setSaveFeedbackIsError(!ok);
+    setSaveFeedbackOpen(true);
 
     if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current);
     saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
@@ -517,6 +523,17 @@ export default function TvZone() {
           onClose={handleModalClose}
         />
       )}
+
+      {/* ── Save feedback dialog ──────────────────────────────────────────── */}
+      <ConfirmExitModal
+        open={saveFeedbackOpen}
+        title={saveFeedbackIsError ? 'Save failed' : 'Saved'}
+        description={saveFeedbackIsError ? 'Please try again.' : 'Your season is ready to resume later.'}
+        confirmLabel="OK"
+        showCancel={false}
+        onConfirm={() => setSaveFeedbackOpen(false)}
+        onCancel={() => setSaveFeedbackOpen(false)}
+      />
     </section>
   );
 }

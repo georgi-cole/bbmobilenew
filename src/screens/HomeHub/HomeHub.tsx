@@ -1,5 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { resetGame, hydrateGame } from '../../store/gameSlice';
+import { hydrateFinale } from '../../store/finaleSlice';
+import { hydrateSocial } from '../../social/socialSlice';
+import { loadSeasonArchives } from '../../store/archivePersistence';
+import {
+  selectActiveProfileId,
+  selectIsGuest,
+  archiveKeyForProfile,
+} from '../../store/profilesSlice';
+import {
+  savedStateKeyForProfile,
+  loadSeasonSnapshot,
+  clearSeasonSnapshot,
+} from '../../store/saveStatePersistence';
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import useBackgroundTheme from '../../hooks/useBackgroundTheme';
 import useLoadIntroHub from '../../hooks/useLoadIntroHub';
 import useIntroHubMusic from '../../hooks/useIntroHubMusic';
@@ -51,6 +67,9 @@ function shouldShowSoundConsent(): boolean {
 
 export default function HomeHub() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const activeProfileId = useAppSelector(selectActiveProfileId);
+  const isGuest = useAppSelector(selectIsGuest);
   const { url: bgUrl } = useBackgroundTheme();
   const [splashDone, setSplashDone] = useState(false);
   // Track whether the hub background has loaded so buttons are never shown
@@ -61,6 +80,8 @@ export default function HomeHub() {
   const [soundConsentHidden, setSoundConsentHidden] = useState(false);
   const [needsSoundConsent] = useState(() => shouldShowSoundConsent());
   const showSoundConsent = splashDone && needsSoundConsent && !soundConsentHidden;
+  // Resume-season prompt state for the Play flow.
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
 
   // Load the intro hub overlay assets only while HomeHub is mounted.
   useLoadIntroHub();
@@ -126,8 +147,53 @@ export default function HomeHub() {
     // game-phase music and cause overlap (e.g. intro hub loop restarting during
     // pov_ceremony).  The hub music is managed exclusively by useIntroHubMusic
     // and handleSoundConsentEnable.
+
+    // Check for a saved in-progress season for the active profile.
+    if (!isGuest && activeProfileId) {
+      const saveKey = savedStateKeyForProfile(activeProfileId);
+      const snapshot = loadSeasonSnapshot(saveKey);
+      if (snapshot && snapshot.profileId === activeProfileId) {
+        setShowResumePrompt(true);
+        return;
+      }
+    }
     setPreloading(true);
   };
+
+  function handleResume() {
+    setShowResumePrompt(false);
+    if (!activeProfileId) {
+      setPreloading(true);
+      return;
+    }
+    const saveKey = savedStateKeyForProfile(activeProfileId);
+    const snapshot = loadSeasonSnapshot(saveKey);
+    if (!snapshot || snapshot.profileId !== activeProfileId) {
+      // Snapshot vanished — fall back to fresh start.
+      handleNewSeason();
+      return;
+    }
+    try {
+      dispatch(hydrateGame(snapshot.game));
+      dispatch(hydrateFinale(snapshot.finale));
+      dispatch(hydrateSocial(snapshot.social));
+      navigate('/game');
+    } catch {
+      // Hydration failed — clear the bad snapshot and start fresh.
+      clearSeasonSnapshot(saveKey);
+      handleNewSeason();
+    }
+  }
+
+  function handleNewSeason() {
+    setShowResumePrompt(false);
+    if (!isGuest && activeProfileId) {
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
+      const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? [];
+      dispatch(resetGame(archives));
+    }
+    setPreloading(true);
+  }
 
   return (
     <>
@@ -153,8 +219,19 @@ export default function HomeHub() {
         />
       )}
 
-      {/* Asset preloader overlay — shown when Play is pressed */}
+      {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay />}
+
+      {/* Resume saved season prompt — shown when Play is pressed and a save exists */}
+      <ConfirmExitModal
+        open={showResumePrompt}
+        title="Resume season?"
+        description="Pick up where you left off, or start fresh."
+        confirmLabel="Resume"
+        cancelLabel="New Season"
+        onConfirm={handleResume}
+        onCancel={handleNewSeason}
+      />
 
       <div className="homehub-shell">
         <div className="homehub-frame">
