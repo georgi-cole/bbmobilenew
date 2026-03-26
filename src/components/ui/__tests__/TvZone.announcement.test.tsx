@@ -28,6 +28,7 @@ import socialReducer from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
 import finaleReducer from '../../../store/finaleSlice';
+import settingsReducer from '../../../store/settingsSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
@@ -43,6 +44,19 @@ function makeStore() {
       profiles: profilesReducer,
       challenge: challengeReducer,
       finale: finaleReducer,
+    },
+  });
+}
+
+function makeStoreWithSettings() {
+  return configureStore({
+    reducer: {
+      game: gameReducer,
+      social: socialReducer,
+      profiles: profilesReducer,
+      challenge: challengeReducer,
+      finale: finaleReducer,
+      settings: settingsReducer,
     },
   });
 }
@@ -94,6 +108,32 @@ describe('TvZone — announcement overlay', () => {
 
     // Overlay should be visible with the correct title
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+  });
+
+  it('renders without a settings reducer by falling back to default audio settings', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    expect(screen.getByRole('button', { name: /^Music$/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Sound effects$/i })).toBeDefined();
+  });
+
+  it('exposes audio toggle pressed states', async () => {
+    const user = userEvent.setup();
+    const store = makeStoreWithSettings();
+    renderTvZone(store);
+
+    const musicButton = screen.getByRole('button', { name: /^Music$/i });
+    const sfxButton = screen.getByRole('button', { name: /^Sound effects$/i });
+
+    expect(musicButton).toHaveAttribute('aria-pressed', 'true');
+    expect(sfxButton).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(musicButton);
+    await user.click(sfxButton);
+
+    expect(screen.getByRole('button', { name: /^Music$/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('shows the overlay when the latest event has a top-level major field', () => {

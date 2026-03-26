@@ -115,6 +115,15 @@ button.status-pill:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.status-pill--ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .status-pill {
