@@ -3632,7 +3632,7 @@ export const tryActivateBattleBack =
  * Activation rules (eviction-count pacing):
  *  - Does not attempt until at least 5 evictions have happened this season.
  *  - Does not attempt at final 5 or fewer alive players.
- *  - Attempts at most once per eligible week.
+ *  - Typically attempted at most once per eligible week by the main UI.
  *  - Each eligible attempt rolls against `settings.sim.doubleEvictionChance` (default 35%).
  *  - May activate up to 2 times per season; failed attempts do not consume a use.
  *  - Cannot activate during the same week as a Special Veto.
