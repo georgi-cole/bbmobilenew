@@ -40,6 +40,8 @@ export interface SettingsState {
     battleBackChance: number;
     /** Probability (0–100) that a special veto twist activates after the POV winner is revealed (week > 2, ≥6 players, not DE week). */
     specialVetoChance: number;
+    /** Probability (0–100) that a Double Eviction activates on each eligible week (after 5 evictions, above final 5). */
+    doubleEvictionChance: number;
     /** When true, show the "Public's Favorite Player" vote after the finale winner reveal. */
     enableFavoritePlayer: boolean;
     /** Cash prize (USD) awarded to the Public's Favorite Player winner. */
@@ -86,6 +88,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     allowSelfEvict: false,
     battleBackChance: 30,
     specialVetoChance: 25,
+    doubleEvictionChance: 35,
     enableFavoritePlayer: false,
     favoritePlayerAwardAmount: 25000,
   },

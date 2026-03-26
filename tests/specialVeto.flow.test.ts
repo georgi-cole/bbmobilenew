@@ -39,6 +39,28 @@ function makePlayers(count: number, userIndex = -1): Player[] {
   }));
 }
 
+/**
+ * Build a player list with `evictedCount` evicted players followed by
+ * `aliveCount` active players. Used to test eviction-count pacing.
+ */
+function makePlayersWithEvictions(aliveCount: number, evictedCount: number): Player[] {
+  const evicted: Player[] = Array.from({ length: evictedCount }, (_, i) => ({
+    id: `evicted${i}`,
+    name: `Evicted ${i}`,
+    avatar: '🧑',
+    status: 'evicted' as const,
+    isUser: false,
+  }));
+  const alive: Player[] = Array.from({ length: aliveCount }, (_, i) => ({
+    id: `p${i}`,
+    name: `Player ${i}`,
+    avatar: '🧑',
+    status: 'active' as const,
+    isUser: false,
+  }));
+  return [...evicted, ...alive];
+}
+
 const INITIAL_SPECIAL_VETO: SpecialVetoState = {
   seasonUsed: false,
   activeType: null,
@@ -82,7 +104,7 @@ function makeStore(
     voteResults: null,
     evictionSplashId: null,
     pendingEviction: null,
-    players: makePlayers(8),
+    players: makePlayersWithEvictions(8, 5),
     tvFeed: [],
     isLive: false,
     doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
@@ -181,18 +203,20 @@ describe('tryActivateSpecialVeto eligibility', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false when week <= 2', () => {
+  it('returns false when fewer than 5 evictions have happened (early game)', () => {
+    // Only 4 evictions — too early for special veto
     const store = makeStore(
-      { week: 2, phase: 'pov_results' },
+      { phase: 'pov_results', players: makePlayersWithEvictions(8, 4) },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
   });
 
-  it('returns false when fewer than 6 alive players', () => {
+  it('returns false when at final 5 or fewer alive players (endgame)', () => {
+    // 5 evictions, but only 5 alive — too close to the end
     const store = makeStore(
-      { phase: 'pov_results', week: 3, players: makePlayers(5) },
+      { phase: 'pov_results', players: makePlayersWithEvictions(5, 5) },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
@@ -205,6 +229,18 @@ describe('tryActivateSpecialVeto eligibility', () => {
         phase: 'pov_results',
         week: 3,
         doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
+      },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+    );
+    const result = store.dispatch(tryActivateSpecialVeto());
+    expect(result).toBe(false);
+  });
+
+  it('returns false when twistActivatedThisWeek is true (same-week guard)', () => {
+    const store = makeStore(
+      {
+        phase: 'pov_results',
+        twistActivatedThisWeek: true,
       },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
     );
@@ -244,6 +280,15 @@ describe('tryActivateSpecialVeto eligibility', () => {
     expect(result).toBe(true);
     expect(store.getState().game.specialVeto?.seasonUsed).toBe(true);
     expect(store.getState().game.specialVeto?.activeType).not.toBeNull();
+  });
+
+  it('sets twistActivatedThisWeek=true when activated', () => {
+    const store = makeStore(
+      { phase: 'pov_results', week: 3 },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+    );
+    store.dispatch(tryActivateSpecialVeto());
+    expect(store.getState().game.twistActivatedThisWeek).toBe(true);
   });
 });
 
