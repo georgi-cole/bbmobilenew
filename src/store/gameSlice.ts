@@ -182,6 +182,7 @@ export function createInitialGameState(): GameState {
     spectatorActive: null,
     seasonFinale: null,
     doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
+    twistActivatedThisWeek: false,
     specialVeto: {
       seasonUsed: false,
       activeType: null,
@@ -1571,6 +1572,7 @@ const gameSlice = createSlice({
       state.doubleEviction.usedCount += 1;
       state.doubleEviction.pendingSecondEviction = null;
       state.twistActive = true;
+      state.twistActivatedThisWeek = true;
       // Push event WITH major: 'double_eviction' so TvZone shows the overlay.
       const ts = Date.now();
       const event: TvEvent = {
@@ -1608,6 +1610,7 @@ const gameSlice = createSlice({
       state.specialVeto.activatedWeek = week;
       state.specialVeto.vipUseStage = 0;
       state.twistActive = true;
+      state.twistActivatedThisWeek = true;
 
       const typeLabels: Record<SpecialVetoType, string> = {
         vip: 'DOUBLE TROUBLE! This week, the holder may use the power TWICE! 👑',
@@ -2730,6 +2733,7 @@ const gameSlice = createSlice({
             state.specialVeto.awaitingVipSecondSaveTarget = false;
             state.twistActive = false;
           }
+          state.twistActivatedThisWeek = false;
           state.players.forEach((p) => {
             if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
               p.status = 'active';
@@ -3625,15 +3629,19 @@ export const tryActivateBattleBack =
 /**
  * Attempt to activate the Double Eviction twist for the current week.
  *
- * Activation rules (based on alive player count):
- *  - 13–16 alive: up to 2 times per season
- *  - 10–12 alive: guaranteed once; second time at 35%
- *  - 5–9 alive:   once at 60%
+ * Activation rules (eviction-count pacing):
+ *  - Does not attempt until at least 5 evictions have happened this season.
+ *  - Does not attempt at final 5 or fewer alive players.
+ *  - Typically attempted at most once per eligible week by the main UI.
+ *  - Each eligible attempt rolls against `settings.sim.doubleEvictionChance` (default 35%).
+ *  - May activate up to 2 times per season; failed attempts do not consume a use.
+ *  - Cannot activate during the same week as a Special Veto.
  *
  * Eligibility:
  *  - `settings.sim.enableTwists` must be true
  *  - current phase must be `nominations`
  *  - double eviction must not already be active this week
+ *  - no other twist has already activated this week (`twistActivatedThisWeek`)
  *
  * Returns `true` if the twist was activated; `false` otherwise.
  */
@@ -3646,38 +3654,32 @@ export const tryActivateDoubleEviction =
     if (game.phase !== 'nominations') return false;
     // Don't activate twice in the same week
     if (game.doubleEviction?.weekActive) return false;
+    // No two twists in the same week
+    if (game.twistActivatedThisWeek) return false;
 
+    const evictionsSoFar = game.players.filter(
+      (p) => p.status === 'evicted' || p.status === 'jury',
+    ).length;
     const alive = game.players.filter(
       (p) => p.status !== 'evicted' && p.status !== 'jury',
     );
     const aliveCount = alive.length;
     const usedCount = game.doubleEviction?.usedCount ?? 0;
 
+    // Only attempt mid-season: after 5 evictions and above final 5
+    if (evictionsSoFar < 5) return false;
+    if (aliveCount <= 5) return false;
+    // Cap at 2 uses per season
+    if (usedCount >= 2) return false;
+
+    const chance = settings.sim.doubleEvictionChance ?? 35;
+
     // Use a twist-specific RNG offset so this roll is independent of the main
     // game seed sequence and does not perturb future HOH/POV/vote outcomes.
     const rng = mulberry32((game.seed ^ 0xde1cef01) >>> 0);
-    const roll = rng(); // [0, 1)
+    const roll = rng() * 100; // [0, 100)
 
-    let shouldActivate = false;
-
-    if (aliveCount >= 13 && aliveCount <= 16) {
-      // Up to 2 times per season; always activates until cap is reached.
-      if (usedCount < 2) shouldActivate = true;
-    } else if (aliveCount >= 10 && aliveCount <= 12) {
-      // Guaranteed once; second time at 35%.
-      if (usedCount === 0) {
-        shouldActivate = true;
-      } else if (usedCount === 1) {
-        shouldActivate = roll < 0.35;
-      }
-    } else if (aliveCount >= 5 && aliveCount <= 9) {
-      // Once at 60% chance.
-      if (usedCount === 0) {
-        shouldActivate = roll < 0.60;
-      }
-    }
-
-    if (!shouldActivate) return false;
+    if (roll >= chance) return false;
 
     dispatch(activateDoubleEviction());
     return true;
@@ -3689,9 +3691,10 @@ export const tryActivateDoubleEviction =
  * Activation rules:
  *  - `settings.sim.enableTwists` must be true
  *  - current phase must be `pov_results`
- *  - week must be > 2
- *  - at least 6 alive players
+ *  - at least 5 evictions must have happened this season
+ *  - at least 6 alive players (above final 5)
  *  - not a Double Eviction week
+ *  - no other twist has already activated this week (`twistActivatedThisWeek`)
  *  - the season must not already have had a special veto activated
  *
  * If eligible, rolls `settings.sim.specialVetoChance` (0-100, default 25) and
@@ -3706,14 +3709,21 @@ export const tryActivateSpecialVeto =
 
     if (!settings.sim.enableTwists) return false;
     if (game.phase !== 'pov_results') return false;
-    if (game.week <= 2) return false;
     if (game.doubleEviction?.weekActive) return false;
+    // No two twists in the same week
+    if (game.twistActivatedThisWeek) return false;
     if (game.specialVeto?.seasonUsed) return false;
 
     const alive = game.players.filter(
       (p) => p.status !== 'evicted' && p.status !== 'jury',
     );
-    if (alive.length < 6) return false;
+    if (alive.length <= 5) return false;
+
+    // Only attempt mid-season: after 5 evictions
+    const evictionsSoFar = game.players.filter(
+      (p) => p.status === 'evicted' || p.status === 'jury',
+    ).length;
+    if (evictionsSoFar < 5) return false;
 
     const chance = settings.sim.specialVetoChance ?? 25;
     // Use a twist-specific RNG offset so this roll is independent of the main game seed

@@ -3,7 +3,7 @@
  *
  * Validates:
  *  1. activateDoubleEviction sets the correct state and pushes a TV event.
- *  2. tryActivateDoubleEviction thunk respects eligibility rules and probability bands.
+ *  2. tryActivateDoubleEviction thunk respects eligibility rules and eviction-count pacing.
  *  3. advance() nominates 3 players during a Double Eviction week (AI HOH).
  *  4. commitNominees accepts 3 nominees during a Double Eviction week.
  *  5. advance() queues two evictions during a Double Eviction week.
@@ -35,6 +35,28 @@ function makePlayers(count: number, userIndex = 0): Player[] {
     status: 'active' as const,
     isUser: i === userIndex,
   }));
+}
+
+/**
+ * Build a player list with `evictedCount` evicted players followed by
+ * `aliveCount` active players. Used to test eviction-count pacing.
+ */
+function makePlayersWithEvictions(aliveCount: number, evictedCount: number): Player[] {
+  const evicted: Player[] = Array.from({ length: evictedCount }, (_, i) => ({
+    id: `evicted${i}`,
+    name: `Evicted ${i}`,
+    avatar: '🧑',
+    status: 'evicted' as const,
+    isUser: false,
+  }));
+  const alive: Player[] = Array.from({ length: aliveCount }, (_, i) => ({
+    id: `p${i}`,
+    name: `Player ${i}`,
+    avatar: '🧑',
+    status: 'active' as const,
+    isUser: i === 0,
+  }));
+  return [...evicted, ...alive];
 }
 
 const DE_INITIAL: DoubleEvictionState = {
@@ -97,20 +119,21 @@ function makeStore(
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('activateDoubleEviction', () => {
-  it('sets weekActive=true, increments usedCount, and pushes a TV event', () => {
+  it('sets weekActive=true, increments usedCount, twistActivatedThisWeek=true, and pushes a TV event', () => {
     const store = makeStore();
     store.dispatch(activateDoubleEviction());
-    const { doubleEviction, tvFeed, twistActive } = store.getState().game;
+    const { doubleEviction, tvFeed, twistActive, twistActivatedThisWeek } = store.getState().game;
 
     expect(doubleEviction?.weekActive).toBe(true);
     expect(doubleEviction?.usedCount).toBe(1);
     expect(doubleEviction?.pendingSecondEviction).toBeNull();
     expect(twistActive).toBe(true);
+    expect(twistActivatedThisWeek).toBe(true);
 
     const event = tvFeed.find((e) => e.major === 'double_eviction');
     expect(event).toBeDefined();
     expect(event!.type).toBe('twist');
-    expect(event!.text).toMatch(/DOUBLE EVICTION/i);
+    expect(event!.text).toMatch(/DOUBLE ELIMINATION/i);
   });
 
   it('initialises doubleEviction when the field is absent (legacy state)', () => {
@@ -137,7 +160,7 @@ describe('activateDoubleEviction', () => {
 describe('tryActivateDoubleEviction', () => {
   it('returns false when enableTwists is false', () => {
     const store = makeStore(
-      { phase: 'nominations', players: makePlayers(14) },
+      { phase: 'nominations', players: makePlayersWithEvictions(10, 5) },
       { sim: { enableTwists: false } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
@@ -147,7 +170,7 @@ describe('tryActivateDoubleEviction', () => {
 
   it('returns false when phase is not nominations', () => {
     const store = makeStore(
-      { phase: 'week_start', players: makePlayers(14) },
+      { phase: 'week_start', players: makePlayersWithEvictions(10, 5) },
       { sim: { enableTwists: true } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
@@ -158,7 +181,7 @@ describe('tryActivateDoubleEviction', () => {
     const store = makeStore(
       {
         phase: 'nominations',
-        players: makePlayers(14),
+        players: makePlayersWithEvictions(10, 5),
         doubleEviction: { usedCount: 0, weekActive: true, pendingSecondEviction: null },
       },
       { sim: { enableTwists: true } },
@@ -169,66 +192,93 @@ describe('tryActivateDoubleEviction', () => {
     expect(store.getState().game.doubleEviction?.usedCount).toBe(0);
   });
 
-  it('always activates in the 13-16 band when usedCount < 2', () => {
-    // 14 alive players, usedCount 0 → should always activate
+  it('returns false when fewer than 5 evictions have happened (early game)', () => {
+    // Only 4 evictions so far — too early for DE
     const store = makeStore(
-      { phase: 'nominations', players: makePlayers(14), seed: 999 },
-      { sim: { enableTwists: true } },
+      { phase: 'nominations', players: makePlayersWithEvictions(12, 4), seed: 999 },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
+    );
+    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
+    expect(result).toBe(false);
+  });
+
+  it('returns false at final 5 or fewer alive players (endgame)', () => {
+    // 5 evictions done, but only 5 alive — too close to the end
+    const store = makeStore(
+      { phase: 'nominations', players: makePlayersWithEvictions(5, 5), seed: 999 },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
+    );
+    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
+    expect(result).toBe(false);
+  });
+
+  it('activates when all conditions are met (chance=100)', () => {
+    // 5 evictions, 10 alive — eligible mid-season window
+    const store = makeStore(
+      { phase: 'nominations', players: makePlayersWithEvictions(10, 5), seed: 999 },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
     expect(result).toBe(true);
     expect(store.getState().game.doubleEviction?.weekActive).toBe(true);
+    expect(store.getState().game.twistActivatedThisWeek).toBe(true);
   });
 
-  it('does NOT activate in the 13-16 band when usedCount >= 2', () => {
+  it('does NOT activate when chance roll fails (chance=0)', () => {
+    const store = makeStore(
+      { phase: 'nominations', players: makePlayersWithEvictions(10, 5), seed: 999 },
+      { sim: { enableTwists: true, doubleEvictionChance: 0 } },
+    );
+    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
+    expect(result).toBe(false);
+    expect(store.getState().game.doubleEviction?.weekActive).toBe(false);
+  });
+
+  it('does NOT activate when usedCount >= 2 (season cap reached)', () => {
     const store = makeStore(
       {
         phase: 'nominations',
-        players: makePlayers(14),
+        players: makePlayersWithEvictions(10, 5),
         doubleEviction: { usedCount: 2, weekActive: false, pendingSecondEviction: null },
       },
-      { sim: { enableTwists: true } },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
     expect(result).toBe(false);
   });
 
-  it('always activates in the 10-12 band when usedCount === 0', () => {
-    // 11 alive players
+  it('does NOT activate when twistActivatedThisWeek is true (same-week guard)', () => {
     const store = makeStore(
-      { phase: 'nominations', players: makePlayers(11), seed: 999 },
-      { sim: { enableTwists: true } },
+      {
+        phase: 'nominations',
+        players: makePlayersWithEvictions(10, 5),
+        twistActivatedThisWeek: true,
+      },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
+    );
+    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
+    expect(result).toBe(false);
+  });
+
+  it('activates a second time in the same season when usedCount === 1 and chance=100', () => {
+    const store = makeStore(
+      {
+        phase: 'nominations',
+        players: makePlayersWithEvictions(10, 5),
+        doubleEviction: { usedCount: 1, weekActive: false, pendingSecondEviction: null },
+      },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
     expect(result).toBe(true);
+    expect(store.getState().game.doubleEviction?.usedCount).toBe(2);
   });
 
-  it('does NOT activate in the 10-12 band when usedCount >= 2', () => {
+  it('does NOT activate outside the eligible range (3 alive, 5 evictions)', () => {
+    // 3 alive is final 3 — well below the final-5 cutoff
     const store = makeStore(
-      {
-        phase: 'nominations',
-        players: makePlayers(11),
-        doubleEviction: { usedCount: 2, weekActive: false, pendingSecondEviction: null },
-      },
-      { sim: { enableTwists: true } },
-    );
-    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
-    expect(result).toBe(false);
-  });
-
-  it('does NOT activate outside the 5-16 range (3 alive)', () => {
-    const store = makeStore(
-      { phase: 'nominations', players: makePlayers(3) },
-      { sim: { enableTwists: true } },
-    );
-    const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
-    expect(result).toBe(false);
-  });
-
-  it('does NOT activate outside the 5-16 range (17 alive)', () => {
-    const store = makeStore(
-      { phase: 'nominations', players: makePlayers(17) },
-      { sim: { enableTwists: true } },
+      { phase: 'nominations', players: makePlayersWithEvictions(3, 5) },
+      { sim: { enableTwists: true, doubleEvictionChance: 100 } },
     );
     const result = store.dispatch(tryActivateDoubleEviction()) as unknown as boolean;
     expect(result).toBe(false);

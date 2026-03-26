@@ -29,6 +29,18 @@ function makePlayers(count: number): Player[] {
   }))
 }
 
+function makePlayersWithEvictions(aliveCount: number, evictedCount: number): Player[] {
+  const evicted: Player[] = Array.from({ length: evictedCount }, (_, i) => ({
+    id: `evicted${i}`,
+    name: `Evicted ${i}`,
+    avatar: '🧑',
+    status: 'evicted' as const,
+    isUser: false,
+  }))
+  const alive = makePlayers(aliveCount)
+  return [...evicted, ...alive]
+}
+
 function makeStore(gameOverrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
@@ -58,7 +70,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     voteResults: null,
     evictionSplashId: null,
     pendingEviction: null,
-    players: makePlayers(8),
+    players: makePlayersWithEvictions(8, 5),
     tvFeed: [],
     isLive: false,
     twistActive: false,

@@ -563,6 +563,12 @@ export interface GameState {
    */
   twistActive?: boolean;
   /**
+   * Tracks whether a twist (Double Eviction or Special Veto) has already activated
+   * during the current week. Reset to false at week_start so no two twists can
+   * fire in the same week regardless of phase order.
+   */
+  twistActivatedThisWeek?: boolean;
+  /**
    * Battle Back / Jury Return twist state.
    * Undefined until the twist is first attempted.
    */

@@ -395,6 +395,29 @@ export default function Settings() {
             {settings.sim.enableTwists && (
               <div className="settings-row settings-row--col">
                 <label className="settings-row__label">
+                  Double Eviction Chance — {settings.sim.doubleEvictionChance ?? 35}%
+                </label>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={settings.sim.doubleEvictionChance ?? 35}
+                  onChange={(e) =>
+                    dispatch(setSim({ doubleEvictionChance: Number(e.target.value) }))
+                  }
+                  aria-label="Double Eviction chance percentage"
+                />
+                <p className="settings-helper-text">
+                  Per-week chance that a Double Eviction activates (mid-season only, after 5 evictions and above final 5). Up to 2 per season.
+                </p>
+              </div>
+            )}
+
+            {settings.sim.enableTwists && (
+              <div className="settings-row settings-row--col">
+                <label className="settings-row__label">
                   Special Veto Chance — {settings.sim.specialVetoChance ?? 25}%
                 </label>
                 <input
@@ -410,7 +433,7 @@ export default function Settings() {
                   aria-label="Special Veto chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Daily chance (after Day 2, with 6+ players, no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
+                  Per-week chance (checked during PoV results, after 5 evictions, with 6+ players and no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
                 </p>
               </div>
             )}
