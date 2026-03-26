@@ -345,7 +345,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
         {phase === 'feedback' && (
           <div className="cm__feedback" aria-live="assertive">
             {timedOut ? (
-              <span className="cm__feedback-text cm__feedback-text--timeout">⏱ Time&apos;s up! +0</span>
+              <span className="cm__feedback-text cm__feedback-text--timeout">⏱ Time's up! +0</span>
             ) : (
               <span className="cm__feedback-text">{feedbackLabel} — {lastScore}%</span>
             )}

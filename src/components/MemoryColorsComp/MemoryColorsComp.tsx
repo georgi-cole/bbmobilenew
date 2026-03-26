@@ -160,7 +160,7 @@ export default function MemoryColorsComp({
     if (!mc || mc.phase !== 'showing') return;
     const revealStartTimeout = setTimeout(() => runReveal(mc.sequence), 0);
     return () => clearTimeout(revealStartTimeout);
-  }, [mc?.phase, mc?.sequence, runReveal]);
+  }, [mc, mc?.phase, mc?.sequence, runReveal]);
 
   useEffect(() => {
     if (!mc || mc.phase !== 'warning_beat') return;
@@ -168,7 +168,7 @@ export default function MemoryColorsComp({
     warningTimeoutRef.current = setTimeout(() => {
       dispatch(resumeAfterWarning());
     }, animDelay(WARNING_BEAT_MS));
-  }, [dispatch, mc?.phase]);
+  }, [dispatch, mc, mc?.phase]);
 
   useEffect(() => {
     if (!mc || mc.phase !== 'round_cleared') return;
@@ -176,14 +176,14 @@ export default function MemoryColorsComp({
     roundClearedTimeoutRef.current = setTimeout(() => {
       dispatch(startNextRound());
     }, animDelay(ROUND_CLEARED_MS));
-  }, [dispatch, mc?.phase]);
+  }, [dispatch, mc, mc?.phase]);
 
   useEffect(() => {
     if (!mc || mc.phase !== 'complete') return;
     if (outcomeDispatchedRef.current) return;
     outcomeDispatchedRef.current = true;
     dispatch(resolveMemoryColorsOutcome());
-  }, [dispatch, mc?.phase]);
+  }, [dispatch, mc, mc?.phase]);
 
   useEffect(() => {
     if (!mc || mc.phase !== 'complete' || winnerPlayedRef.current) return;
@@ -308,7 +308,7 @@ export default function MemoryColorsComp({
       <div className="mc-progress-bar" aria-label="Sequence progress" role="progressbar" aria-valuemin={0} aria-valuemax={sequenceLength} aria-valuenow={Math.min(Math.max(progress, 0), sequenceLength)}>
         {mc.sequence.map((colorIdx, i) => (
           <div
-            key={`${i}:${colorIdx}`}
+            key={i}
             className={[
               'mc-progress-step',
               i < (isInput ? mc.inputIndex : litStepIndex + (litColorIndex === -1 ? 0 : 1)) ? 'mc-progress-step--done' : '',
