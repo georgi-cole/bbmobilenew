@@ -25,7 +25,7 @@ import {
   type CompetitionSeasonUpdateInput,
 } from '../ai/competition';
 import HOUSEGUESTS from '../data/houseguests';
-import { loadActiveProfile, archiveKeyForActiveProfile } from './profilesSlice';
+import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from './profilesSlice';
 import { loadSettings } from './settingsSlice';
 import { getConfiguredCastSize, DEFAULT_ROSTER_SIZE } from './settingsHelpers';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../utils/juryUtils';
@@ -109,6 +109,20 @@ function buildInitialCompetitionSeasonState(players: Player[]): Record<string, R
 export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 
 /**
+ * Derive the next season number from an array of season archives.
+ * Uses the maximum archived `seasonIndex` rather than array length so the
+ * result remains correct after the 50-entry archive cap truncates history
+ * or if entries are ever non-contiguous / out of order.
+ *
+ * Returns 1 when no archives exist yet.
+ */
+function nextSeasonNumber(archives: SeasonArchive[]): number {
+  if (archives.length === 0) return 1;
+  const maxIndex = archives.reduce((max, a) => Math.max(max, a.seasonIndex ?? 0), 0);
+  return maxIndex + 1;
+}
+
+/**
  * Build a fresh initial game state from the current settings and profile.
  * Called both at store initialization and on every manual game reset, so that
  * each new season always uses the latest persisted configuration rather than
@@ -117,8 +131,13 @@ export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 export function createInitialGameState(): GameState {
   const freshPlayers = buildInitialPlayers();
   const freshSettings = loadSettings();
-  const seasonArchives = loadSeasonArchives(archiveKeyForActiveProfile()) ?? [];
-  const season = seasonArchives.length + 1;
+  // Guest mode never persists archives — treat as an empty history so guest
+  // sessions always start at Season 1 regardless of any logged-in user data.
+  const isGuest = loadProfilesState().isGuest;
+  const seasonArchives: SeasonArchive[] = isGuest
+    ? []
+    : loadSeasonArchives(archiveKeyForActiveProfile()) ?? [];
+  const season = nextSeasonNumber(seasonArchives);
   return {
     season,
     week: 1,
@@ -2162,8 +2181,9 @@ const gameSlice = createSlice({
       const seasonArchives = action.payload !== undefined
         ? action.payload
         : (state.seasonArchives ?? []);
-      // Derive the next season number from completed archived seasons.
-      const season = seasonArchives.length + 1;
+      // Derive the next season number from the maximum archived seasonIndex so the
+      // result is stable even after the 50-entry archive cap or non-contiguous entries.
+      const season = nextSeasonNumber(seasonArchives);
       // Use the factory to build a fully fresh initial state from the latest
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = { ...createInitialGameState(), seed, seasonArchives, season };

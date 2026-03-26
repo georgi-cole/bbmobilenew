@@ -8,6 +8,8 @@
  *  4. resetGame() without explicit archives falls back to current state archives.
  *  5. hydrateGame() preserves the saved season number unchanged.
  *  6. Welcome tvFeed message reflects the actual season number.
+ *  7. Season number is derived from max(seasonIndex)+1, not length+1 (handles cap/gaps).
+ *  8. Non-contiguous season indices use the highest index.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -65,7 +67,7 @@ describe('season numbering', () => {
     const store = makeStore();
     // Dispatch archiveSeason to add an archive to in-memory state.
     store.dispatch(archiveSeason(buildArchive(1)));
-    // Now resetGame() without args should use state.seasonArchives (length=1).
+    // Now resetGame() without args should use state.seasonArchives.
     store.dispatch(resetGame());
     expect(store.getState().game.season).toBe(2);
   });
@@ -91,5 +93,23 @@ describe('season numbering', () => {
     const store = makeStore();
     store.dispatch(resetGame(archives));
     expect(store.getState().game.seasonArchives).toHaveLength(2);
+  });
+
+  it('uses max(seasonIndex)+1 even when archives are capped at 50 entries (e.g. season 60 history)', () => {
+    // Simulate: archives are capped at 50 but the last archived season was #60.
+    // The array contains entries 11–60 (50 items) — length=50 but max=60.
+    const archives = Array.from({ length: 50 }, (_, i) => buildArchive(i + 11));
+    const store = makeStore();
+    store.dispatch(resetGame(archives));
+    // Expected: max(11..60)=60 → next = 61, not length+1=51.
+    expect(store.getState().game.season).toBe(61);
+  });
+
+  it('uses max(seasonIndex)+1 for non-contiguous archive indices', () => {
+    // E.g. manually created or partially migrated data with gaps.
+    const archives = [buildArchive(1), buildArchive(5), buildArchive(3)];
+    const store = makeStore();
+    store.dispatch(resetGame(archives));
+    expect(store.getState().game.season).toBe(6);
   });
 });
