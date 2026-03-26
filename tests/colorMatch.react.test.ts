@@ -11,6 +11,11 @@
 import { describe, it, expect } from 'vitest';
 import { getGame } from '../src/minigames/registry';
 import reactComponents from '../src/minigames/reactComponents';
+import {
+  applyHintPenalty,
+  buildHintMessage,
+  calculateColorMatchAccuracy,
+} from '../src/components/ColorMatchComp/colorMatchUtils';
 
 // ── 1. Registry checks ────────────────────────────────────────────────────────
 
@@ -50,40 +55,48 @@ describe('reactComponents map', () => {
 // ── 3. Accuracy helper logic ──────────────────────────────────────────────────
 
 describe('Color Match accuracy calculation', () => {
-  // Replicate the accuracy formula from ColorMatchComp to test it directly.
-  const MAX_RGB_DIST = Math.sqrt(255 * 255 * 3);
-
-  function rgbDist(a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }) {
-    return Math.sqrt((a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2);
-  }
-
-  function accuracy(
-    target: { r: number; g: number; b: number },
-    player: { r: number; g: number; b: number },
-  ) {
-    return Math.max(0, 100 - (rgbDist(target, player) / MAX_RGB_DIST) * 100);
-  }
-
   it('returns 100% for an exact match', () => {
     const color = { r: 100, g: 150, b: 200 };
-    expect(Math.round(accuracy(color, color))).toBe(100);
+    expect(Math.round(calculateColorMatchAccuracy(color, color))).toBe(100);
   });
 
   it('returns 0% for maximum possible distance (black vs white)', () => {
     const black = { r: 0, g: 0, b: 0 };
     const white = { r: 255, g: 255, b: 255 };
-    expect(Math.round(accuracy(black, white))).toBe(0);
+    expect(Math.round(calculateColorMatchAccuracy(black, white))).toBe(0);
   });
 
   it('returns > 50% for a reasonably close match', () => {
     const target = { r: 100, g: 100, b: 100 };
     const close  = { r: 110, g:  95, b: 105 };
-    expect(accuracy(target, close)).toBeGreaterThan(90);
+    expect(calculateColorMatchAccuracy(target, close)).toBeGreaterThan(90);
   });
 
   it('accuracy is symmetric', () => {
     const a = { r: 50,  g: 100, b: 200 };
     const b = { r: 180, g:  30, b:  10 };
-    expect(accuracy(a, b)).toBeCloseTo(accuracy(b, a), 5);
+    expect(calculateColorMatchAccuracy(a, b)).toBeCloseTo(calculateColorMatchAccuracy(b, a), 5);
+  });
+});
+
+describe('Color Match hints', () => {
+  it('builds directional RGB hint copy', () => {
+    const hint = buildHintMessage(
+      { r: 200, g: 110, b: 50 },
+      { r: 150, g: 112, b: 100 },
+    );
+    expect(hint).toMatch(/increase red/i);
+    expect(hint).toMatch(/green level is accurate/i);
+    expect(hint).toMatch(/decrease blue/i);
+  });
+
+  it('applies 5 points per hint to final score', () => {
+    expect(applyHintPenalty(88, 0)).toBe(88);
+    expect(applyHintPenalty(88, 1)).toBe(83);
+    expect(applyHintPenalty(88, 2)).toBe(78);
+  });
+
+  it('never drops final score below zero', () => {
+    expect(applyHintPenalty(4, 2)).toBe(0);
   });
 });

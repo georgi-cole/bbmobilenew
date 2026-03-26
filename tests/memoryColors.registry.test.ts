@@ -9,6 +9,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { getGame } from '../src/minigames/registry';
+import {
+  INITIAL_SEQUENCE_LENGTH,
+  MAX_MISTAKES,
+  MEMORY_COLOR_POOL,
+} from '../src/features/memoryColors/memoryColorsSlice';
 
 // ── 1. Registry checks ────────────────────────────────────────────────────────
 
@@ -51,17 +56,15 @@ describe('memoryColors store registration', () => {
 // ── 3. Color names are creative / non-standard ───────────────────────────────
 
 describe('MemoryColorsComp color names', () => {
-  it('uses non-standard, creative color names (not plain primary colors)', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const src: string = fs.readFileSync(
-      path.resolve(__dirname, '../src/components/MemoryColorsComp/MemoryColorsComp.tsx'),
-      'utf-8',
+  it('exports a 20-color creative palette', () => {
+    expect(MEMORY_COLOR_POOL).toHaveLength(20);
+    expect(MEMORY_COLOR_POOL.map((c) => c.name)).toEqual(
+      expect.arrayContaining(['Scarlet', 'Baby Blue', 'Milky Grass', 'Blood Orange']),
     );
-    // Should NOT contain plain 'Red', 'Blue', 'Green', 'Yellow' in the COLOR_NAMES array
-    expect(src).not.toMatch(/COLOR_NAMES\s*=\s*\[.*'Red'.*\]/s);
-    expect(src).not.toMatch(/COLOR_NAMES\s*=\s*\[.*'Blue'.*\]/s);
-    // Should contain creative names from the requested palette
-    expect(src).toMatch(/Scarlet|Baby Blue|Milky Grass|Blood Orange/);
+  });
+
+  it('starts at 5 colors and allows 3 mistakes', () => {
+    expect(INITIAL_SEQUENCE_LENGTH).toBe(5);
+    expect(MAX_MISTAKES).toBe(3);
   });
 });

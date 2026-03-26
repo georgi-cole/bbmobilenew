@@ -5,29 +5,28 @@
  *  - A target color swatch is displayed with a creative color name.
  *  - The player adjusts R, G, B sliders to match the target color.
  *  - Live similarity % updates as sliders change, creating real-time feedback.
+ *  - The player can buy up to 2 hints for the whole game; each hint costs 5
+ *    points off the final average score and shows directional RGB guidance.
  *  - Each round has a time limit; missing it scores 0 for that round.
- *  - 5 rounds total. Score = average accuracy across rounds (0–100 scale).
- *
- * Challenge improvements over legacy:
- *  - Player sliders start at a random offset so 128/128/128 is no longer free.
- *  - Per-round countdown adds time pressure.
- *  - Live accuracy display rewards fine-tuning and punishes lazy guessing.
- *  - More rounds (5 vs 3) for a more comprehensive test.
+ *  - 5 rounds total. Final score = average accuracy - hint penalties.
  *
  * Supports generic MinigameHost path: calls onFinish(score) when done.
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { mulberry32 } from '../../store/rng';
+import useSound from '../../hooks/useSound';
+import {
+  type RGB,
+  HINT_PENALTY_POINTS,
+  applyHintPenalty,
+  buildHintMessage,
+  calculateColorMatchAccuracy,
+  randomStartColor,
+  rgbToHex,
+  seededPick,
+} from './colorMatchUtils';
 import './ColorMatchComp.css';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
 
 type GamePhase = 'playing' | 'feedback' | 'results';
 
@@ -35,74 +34,39 @@ interface RoundResult {
   score: number;
   targetColor: RGB;
   playerColor: RGB;
+  hintCount: number;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+interface PendingHintWarning {
+  nextHintNumber: number;
+}
 
 const MAX_ROUNDS = 5;
-/** Seconds per round */
 const ROUND_TIME_S = 25;
-/** Max Euclidean distance in RGB space = sqrt(255^2 * 3) ≈ 441.67 */
-const MAX_RGB_DIST = Math.sqrt(255 * 255 * 3);
+const MAX_HINTS_TOTAL = 2;
 
-/** Named colors with non-standard, creative names. */
+const CLICK_SOUND_KEY = 'ui:navigate';
+const CORRECT_SOUND_KEY = 'ui:confirm';
+const INCORRECT_SOUND_KEY = 'ui:error';
+const WINNER_SOUND_KEY = 'minigame:results';
+
 const NAMED_COLORS: Array<{ name: string; rgb: RGB }> = [
-  { name: 'Scarlet',        rgb: { r: 196, g: 30,  b: 58  } },
-  { name: 'Baby Blue',      rgb: { r: 137, g: 207, b: 240 } },
-  { name: 'Milky Grass',    rgb: { r: 134, g: 187, b: 95  } },
-  { name: 'Blood Orange',   rgb: { r: 212, g: 81,  b: 19  } },
-  { name: 'Sky Cyan',       rgb: { r: 55,  g: 195, b: 220 } },
-  { name: 'Lavender Mist',  rgb: { r: 170, g: 140, b: 210 } },
-  { name: 'Honey Gold',     rgb: { r: 230, g: 170, b: 35  } },
-  { name: 'Coral Reef',     rgb: { r: 248, g: 131, b: 121 } },
-  { name: 'Midnight Plum',  rgb: { r: 88,  g: 38,  b: 110 } },
-  { name: 'Sea Foam',       rgb: { r: 78,  g: 200, b: 175 } },
-  { name: 'Dusty Rose',     rgb: { r: 210, g: 145, b: 155 } },
-  { name: 'Tangerine',      rgb: { r: 242, g: 133, b: 0   } },
-  { name: 'Steel Teal',     rgb: { r: 42,  g: 135, b: 145 } },
-  { name: 'Amber Dusk',     rgb: { r: 200, g: 120, b: 40  } },
-  { name: 'Sage Whisper',   rgb: { r: 150, g: 180, b: 140 } },
+  { name: 'Scarlet', rgb: { r: 196, g: 30, b: 58 } },
+  { name: 'Baby Blue', rgb: { r: 137, g: 207, b: 240 } },
+  { name: 'Milky Grass', rgb: { r: 134, g: 187, b: 95 } },
+  { name: 'Blood Orange', rgb: { r: 212, g: 81, b: 19 } },
+  { name: 'Sky Cyan', rgb: { r: 55, g: 195, b: 220 } },
+  { name: 'Lavender Mist', rgb: { r: 170, g: 140, b: 210 } },
+  { name: 'Honey Gold', rgb: { r: 230, g: 170, b: 35 } },
+  { name: 'Coral Reef', rgb: { r: 248, g: 131, b: 121 } },
+  { name: 'Midnight Plum', rgb: { r: 88, g: 38, b: 110 } },
+  { name: 'Sea Foam', rgb: { r: 78, g: 200, b: 175 } },
+  { name: 'Dusty Rose', rgb: { r: 210, g: 145, b: 155 } },
+  { name: 'Tangerine', rgb: { r: 242, g: 133, b: 0 } },
+  { name: 'Steel Teal', rgb: { r: 42, g: 135, b: 145 } },
+  { name: 'Amber Dusk', rgb: { r: 200, g: 120, b: 40 } },
+  { name: 'Sage Whisper', rgb: { r: 150, g: 180, b: 140 } },
 ];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function rgbToHex({ r, g, b }: RGB): string {
-  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function rgbDist(a: RGB, b: RGB): number {
-  return Math.sqrt((a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2);
-}
-
-function accuracy(target: RGB, player: RGB): number {
-  return Math.max(0, 100 - (rgbDist(target, player) / MAX_RGB_DIST) * 100);
-}
-
-/**
- * Pick a random starting offset for the player sliders.
- * Offset by ±40–120 per channel so the answer is never trivially close,
- * but the sliders don't start out-of-range.
- */
-function randomStartColor(target: RGB, rng: () => number): RGB {
-  function offsetChannel(v: number): number {
-    const delta = 40 + Math.floor(rng() * 80); // 40–120
-    const sign = rng() < 0.5 ? 1 : -1;
-    return Math.min(255, Math.max(0, v + sign * delta));
-  }
-  return { r: offsetChannel(target.r), g: offsetChannel(target.g), b: offsetChannel(target.b) };
-}
-
-/** Seeded shuffled selection of `count` unique indices from an array. */
-function seededPick<T>(arr: T[], count: number, rng: () => number): T[] {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, count);
-}
-
-// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   onFinish?: (value: number) => void;
@@ -110,10 +74,9 @@ interface Props {
   autoStart?: boolean;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }: Props) {
-  // Build seeded round data once on mount
+  const { play } = useSound();
+
   const rounds = useMemo(() => {
     const rng = mulberry32((seed ^ 0x7f3da812) >>> 0);
     const picked = seededPick(NAMED_COLORS, MAX_ROUNDS, rng);
@@ -131,14 +94,22 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const [results, setResults] = useState<RoundResult[]>([]);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const [hintWarning, setHintWarning] = useState<PendingHintWarning | null>(null);
+  const [hintMessage, setHintMessage] = useState('');
+  const [hintsUsedTotal, setHintsUsedTotal] = useState(0);
+  const [hintsUsedThisRound, setHintsUsedThisRound] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const roundStartedRef = useRef(false);
+  const winnerPlayedRef = useRef(false);
 
   const currentRound = rounds[roundIndex];
-  const liveAccuracy = Math.round(accuracy(currentRound.target, playerColor));
+  const liveAccuracy = Math.round(calculateColorMatchAccuracy(currentRound.target, playerColor));
+  const hintsRemaining = MAX_HINTS_TOTAL - hintsUsedTotal;
 
-  // ── Timer ─────────────────────────────────────────────────────────────────
+  const playClick = useCallback(() => play(CLICK_SOUND_KEY), [play]);
+  const playCorrect = useCallback(() => play(CORRECT_SOUND_KEY), [play]);
+  const playIncorrect = useCallback(() => play(INCORRECT_SOUND_KEY), [play]);
+  const playWinner = useCallback(() => play(WINNER_SOUND_KEY), [play]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -150,28 +121,37 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const submitRound = useCallback(
     (color: RGB, didTimeOut: boolean) => {
       stopTimer();
-      const score = didTimeOut ? 0 : Math.round(accuracy(currentRound.target, color));
+      const score = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(currentRound.target, color));
+      if (didTimeOut || score < 80) {
+        playIncorrect();
+      } else {
+        playCorrect();
+      }
       setLastScore(score);
       setTimedOut(didTimeOut);
       setResults((prev) => [
         ...prev,
-        { score, targetColor: currentRound.target, playerColor: color },
+        {
+          score,
+          targetColor: currentRound.target,
+          playerColor: color,
+          hintCount: hintsUsedThisRound,
+        },
       ]);
       setPhase('feedback');
     },
-    [currentRound.target, stopTimer],
+    [currentRound.target, hintsUsedThisRound, playCorrect, playIncorrect, stopTimer],
   );
 
-  // Start timer when playing
   useEffect(() => {
     if (phase !== 'playing') return;
-    roundStartedRef.current = true;
     setTimeLeft(ROUND_TIME_S);
+    setHintMessage('');
+    setHintsUsedThisRound(0);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // time's up — capture current color via state updater trick
           setPlayerColor((pc) => {
             submitRound(pc, true);
             return pc;
@@ -183,16 +163,24 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     }, 1000);
 
     return stopTimer;
-    // submitRound/stopTimer are stable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, roundIndex]);
+  }, [phase, roundIndex, stopTimer, submitRound]);
 
-  // Seed player color when round changes
   useEffect(() => {
     setPlayerColor(rounds[roundIndex].startColor);
   }, [roundIndex, rounds]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'results' || winnerPlayedRef.current) return;
+    winnerPlayedRef.current = true;
+    playWinner();
+    const total = results.reduce((sum, r) => sum + r.score, 0);
+    const rawAverage = Math.round(total / results.length);
+    const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
+    const timeoutId = setTimeout(() => {
+      if (onFinish) onFinish(finalScore);
+    }, autoStart ? 0 : 2000);
+    return () => clearTimeout(timeoutId);
+  }, [autoStart, hintsUsedTotal, onFinish, phase, playWinner, results]);
 
   const handleSliderChange = useCallback(
     (channel: keyof RGB, value: number) => {
@@ -204,13 +192,15 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
 
   const handleSubmit = useCallback(() => {
     if (phase !== 'playing') return;
+    playClick();
     setPlayerColor((pc) => {
       submitRound(pc, false);
       return pc;
     });
-  }, [phase, submitRound]);
+  }, [phase, playClick, submitRound]);
 
   const handleNext = useCallback(() => {
+    playClick();
     const nextIndex = roundIndex + 1;
     if (nextIndex >= MAX_ROUNDS) {
       setPhase('results');
@@ -218,22 +208,27 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
       setRoundIndex(nextIndex);
       setPhase('playing');
     }
-  }, [roundIndex]);
+  }, [playClick, roundIndex]);
 
-  // ── Final score & finish ──────────────────────────────────────────────────
+  const handleHintPress = useCallback(() => {
+    if (phase !== 'playing' || hintsRemaining <= 0) return;
+    playClick();
+    setHintWarning({ nextHintNumber: hintsUsedTotal + 1 });
+  }, [hintsRemaining, hintsUsedTotal, phase, playClick]);
 
-  useEffect(() => {
-    if (phase !== 'results') return;
-    const total = results.reduce((sum, r) => sum + r.score, 0);
-    const avg = Math.round(total / results.length);
-    setTimeout(() => {
-      if (onFinish) onFinish(avg);
-    }, autoStart ? 0 : 2000);
-    // only fire once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  const confirmHintPurchase = useCallback(() => {
+    if (!hintWarning || phase !== 'playing' || hintsRemaining <= 0) return;
+    playClick();
+    setHintsUsedTotal((prev) => prev + 1);
+    setHintsUsedThisRound((prev) => prev + 1);
+    setHintMessage(buildHintMessage(currentRound.target, playerColor));
+    setHintWarning(null);
+  }, [currentRound.target, hintWarning, hintsRemaining, phase, playClick, playerColor]);
 
-  // ── Derived values ────────────────────────────────────────────────────────
+  const cancelHintPurchase = useCallback(() => {
+    playClick();
+    setHintWarning(null);
+  }, [playClick]);
 
   const targetHex = rgbToHex(currentRound.target);
   const playerHex = rgbToHex(playerColor);
@@ -253,38 +248,42 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               : '❌ Way off'
       : '';
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   if (phase === 'results') {
     const total = results.reduce((sum, r) => sum + r.score, 0);
-    const avg = Math.round(total / results.length);
+    const rawAverage = Math.round(total / results.length);
+    const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
     return (
       <div className="cm" data-testid="color-match-comp">
         <div className="cm__card cm__card--results">
           <div className="cm__title">🎨 Color Match</div>
           <div className="cm__subtitle">Final Results</div>
-          <div className="cm__final-score">{avg}<span className="cm__final-unit">%</span></div>
-          <p className="cm__final-label">Average Accuracy</p>
+          <div className="cm__final-score">{finalScore}<span className="cm__final-unit">%</span></div>
+          <p className="cm__final-label">Final Accuracy After Hint Penalties</p>
+          <div className="cm__summary-grid">
+            <div className="cm__summary-chip">
+              <span className="cm__summary-label">Raw Avg</span>
+              <strong>{rawAverage}%</strong>
+            </div>
+            <div className="cm__summary-chip">
+              <span className="cm__summary-label">Hints Used</span>
+              <strong>{hintsUsedTotal}</strong>
+            </div>
+            <div className="cm__summary-chip cm__summary-chip--penalty">
+              <span className="cm__summary-label">Penalty</span>
+              <strong>-{hintsUsedTotal * HINT_PENALTY_POINTS}%</strong>
+            </div>
+          </div>
           <ol className="cm__round-list">
             {results.map((r, i) => (
               <li key={i} className="cm__round-item">
                 <span className="cm__round-num">Round {i + 1}</span>
-                <span
-                  className="cm__round-swatch"
-                  style={{ background: rgbToHex(r.targetColor) }}
-                  title={rounds[i].name}
-                />
-                <span
-                  className="cm__round-swatch"
-                  style={{ background: rgbToHex(r.playerColor) }}
-                  title="Your color"
-                />
-                <span
-                  className={[
-                    'cm__round-score',
-                    r.score >= 80 ? 'cm__round-score--great' : r.score >= 50 ? 'cm__round-score--ok' : 'cm__round-score--poor',
-                  ].join(' ')}
-                >
+                <span className="cm__round-swatch" style={{ background: rgbToHex(r.targetColor) }} title={rounds[i].name} />
+                <span className="cm__round-swatch" style={{ background: rgbToHex(r.playerColor) }} title="Your color" />
+                {r.hintCount > 0 && <span className="cm__round-hints">💡×{r.hintCount}</span>}
+                <span className={[
+                  'cm__round-score',
+                  r.score >= 80 ? 'cm__round-score--great' : r.score >= 50 ? 'cm__round-score--ok' : 'cm__round-score--poor',
+                ].join(' ')}>
                   {r.score}%
                 </span>
               </li>
@@ -298,82 +297,61 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   return (
     <div className="cm" data-testid="color-match-comp">
       <div className="cm__card">
-        {/* Header */}
         <header className="cm__header">
-          <span className="cm__round-label">
-            Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}
-          </span>
-          <span
-            className={['cm__timer', isUrgent ? 'cm__timer--urgent' : ''].filter(Boolean).join(' ')}
-            aria-live={isUrgent ? 'assertive' : 'off'}
-            aria-atomic="true"
-          >
+          <span className="cm__round-label">Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</span>
+          <span className={['cm__timer', isUrgent ? 'cm__timer--urgent' : ''].filter(Boolean).join(' ')} aria-live={isUrgent ? 'assertive' : 'off'} aria-atomic="true">
             {timeLeft}s
           </span>
         </header>
 
-        {/* Timer bar */}
-        <div
-          className="cm__timer-bar"
-          role="progressbar"
-          aria-valuenow={timeLeft}
-          aria-valuemin={0}
-          aria-valuemax={ROUND_TIME_S}
-        >
-          <div
-            className={['cm__timer-fill', isUrgent ? 'cm__timer-fill--urgent' : ''].filter(Boolean).join(' ')}
-            style={{ width: `${progressPct}%` }}
-          />
+        <div className="cm__timer-bar" role="progressbar" aria-valuenow={timeLeft} aria-valuemin={0} aria-valuemax={ROUND_TIME_S}>
+          <div className={['cm__timer-fill', isUrgent ? 'cm__timer-fill--urgent' : ''].filter(Boolean).join(' ')} style={{ width: `${progressPct}%` }} />
         </div>
 
-        {/* Color name */}
-        <div className="cm__color-name" aria-label="Target color name">
-          {currentRound.name}
+        <div className="cm__color-name" aria-label="Target color name">{currentRound.name}</div>
+
+        <div className="cm__meta-row">
+          <div className="cm__hint-stock">💡 {hintsRemaining} hint{hintsRemaining === 1 ? '' : 's'} left</div>
+          <div className="cm__penalty-chip">-{hintsUsedTotal * HINT_PENALTY_POINTS}% final score</div>
         </div>
 
-        {/* Swatches */}
         <div className="cm__swatches">
           <div className="cm__swatch-col">
-            <div
-              className="cm__swatch cm__swatch--target"
-              style={{ background: targetHex }}
-              aria-label={`Target: ${currentRound.name}`}
-            />
+            <div className="cm__swatch cm__swatch--target" style={{ background: targetHex }} aria-label={`Target: ${currentRound.name}`} />
             <span className="cm__swatch-label">Target</span>
           </div>
           <div className="cm__accuracy-meter" aria-live="polite" aria-atomic="true">
-            <span
-              className={[
-                'cm__accuracy-val',
-                liveAccuracy >= 80 ? 'cm__accuracy-val--great' : liveAccuracy >= 50 ? 'cm__accuracy-val--ok' : 'cm__accuracy-val--poor',
-              ].join(' ')}
-            >
+            <span className={[
+              'cm__accuracy-val',
+              liveAccuracy >= 80 ? 'cm__accuracy-val--great' : liveAccuracy >= 50 ? 'cm__accuracy-val--ok' : 'cm__accuracy-val--poor',
+            ].join(' ')}>
               {phase === 'playing' ? liveAccuracy : (lastScore ?? liveAccuracy)}%
             </span>
             <span className="cm__accuracy-sub">match</span>
           </div>
           <div className="cm__swatch-col">
-            <div
-              className="cm__swatch cm__swatch--player"
-              style={{ background: playerHex }}
-              aria-label="Your color"
-            />
+            <div className="cm__swatch cm__swatch--player" style={{ background: playerHex }} aria-label="Your color" />
             <span className="cm__swatch-label">Yours</span>
           </div>
         </div>
 
-        {/* Feedback overlay on feedback phase */}
+        {hintMessage && phase === 'playing' && (
+          <div className="cm__hint-panel" aria-live="polite">
+            <div className="cm__hint-panel-title">Hint {hintsUsedThisRound}</div>
+            <div className="cm__hint-panel-body">{hintMessage}</div>
+          </div>
+        )}
+
         {phase === 'feedback' && (
           <div className="cm__feedback" aria-live="assertive">
             {timedOut ? (
-              <span className="cm__feedback-text cm__feedback-text--timeout">⏱ Time's up! +0</span>
+              <span className="cm__feedback-text cm__feedback-text--timeout">⏱ Time&apos;s up! +0</span>
             ) : (
               <span className="cm__feedback-text">{feedbackLabel} — {lastScore}%</span>
             )}
           </div>
         )}
 
-        {/* Sliders */}
         <div className="cm__sliders" aria-label="RGB color controls">
           {(['r', 'g', 'b'] as const).map((ch) => {
             const labels: Record<typeof ch, string> = { r: 'Red', g: 'Green', b: 'Blue' };
@@ -399,11 +377,15 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
           })}
         </div>
 
-        {/* Action button */}
         {phase === 'playing' && (
-          <button className="cm__btn cm__btn--submit" onClick={handleSubmit} type="button">
-            Submit Match
-          </button>
+          <div className="cm__action-row">
+            <button className="cm__btn cm__btn--hint" onClick={handleHintPress} type="button" disabled={hintsRemaining <= 0}>
+              Buy Hint (-5%)
+            </button>
+            <button className="cm__btn cm__btn--submit" onClick={handleSubmit} type="button">
+              Submit Match
+            </button>
+          </div>
         )}
         {phase === 'feedback' && (
           <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
@@ -411,6 +393,24 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
           </button>
         )}
       </div>
+
+      {hintWarning && (
+        <div className="cm__modal-backdrop" role="presentation">
+          <div className="cm__modal" role="dialog" aria-modal="true" aria-label="Hint purchase warning">
+            <h3 className="cm__modal-title">Buy Hint {hintWarning.nextHintNumber}?</h3>
+            <p className="cm__modal-copy">
+              This hint will reduce your final score by <strong>{HINT_PENALTY_POINTS}%</strong>.
+            </p>
+            <p className="cm__modal-copy cm__modal-copy--muted">
+              You can use both hints in one round or save one for later.
+            </p>
+            <div className="cm__modal-actions">
+              <button className="cm__btn cm__btn--ghost" type="button" onClick={cancelHintPurchase}>Cancel</button>
+              <button className="cm__btn cm__btn--hint" type="button" onClick={confirmHintPurchase}>Buy Hint</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
