@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame, archiveSeason } from '../../store/gameSlice';
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
+import { savedStateKeyForProfile, clearSeasonSnapshot } from '../../store/saveStatePersistence';
 import type { Player } from '../../types';
 import type { SeasonArchive, PlayerSeasonSummary } from '../../store/seasonArchive';
 import { computeLeaderboardScore, computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
@@ -63,6 +65,8 @@ export default function GameOver() {
   const season = useAppSelector((s) => s.game.season);
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null);
+  const activeProfileId = useAppSelector(selectActiveProfileId);
+  const isGuest = useAppSelector(selectIsGuest);
   // Use a ref so the guard is synchronously readable and prevents double-archiving
   // even if the button is clicked multiple times before React re-renders.
   const archivedRef = useRef(false);
@@ -90,6 +94,11 @@ export default function GameOver() {
     if (!archivedRef.current) {
       archivedRef.current = true;
       dispatch(archiveSeason(buildArchive(season, summaries)));
+    }
+    // Clear any stale mid-season snapshot so the Play prompt won't offer
+    // to resume an outdated save after the season has been completed.
+    if (!isGuest && activeProfileId) {
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
     }
     dispatch(resetGame());
     navigate('/');

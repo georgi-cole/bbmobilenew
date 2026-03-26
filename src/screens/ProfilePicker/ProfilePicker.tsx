@@ -203,7 +203,6 @@ export default function ProfilePicker() {
 
   const deleteTarget = profiles.find((p) => p.id === pendingDeleteId);
   const switchTarget = profiles.find((p) => p.id === pendingSwitchId);
-  const resumeTarget = profiles.find((p) => p.id === pendingResumeId);
 
   function renderAvatar(p: StoredProfile) {
     const url = photoCache[p.id];
@@ -377,10 +376,10 @@ export default function ProfilePicker() {
       {/* Resume saved season prompt */}
       <ConfirmExitModal
         open={Boolean(pendingResumeId)}
-        title="Resume Saved Season?"
-        description={`"${resumeTarget?.name ?? ''}" has a saved season in progress. Would you like to pick up where you left off?`}
+        title="Resume season?"
+        description="Pick up where you left off, or start fresh."
         confirmLabel="Resume"
-        cancelLabel="Start Fresh"
+        cancelLabel="New Season"
         onConfirm={() => {
           if (pendingResumeId) commitResume(pendingResumeId);
           setPendingResumeId(null);

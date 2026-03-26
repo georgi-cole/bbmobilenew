@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { resetGame } from '../../store/gameSlice';
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
+import { savedStateKeyForProfile, clearSeasonSnapshot } from '../../store/saveStatePersistence';
 import './SelfEvicted.css';
 
 /**
@@ -14,8 +16,15 @@ export default function SelfEvicted() {
   const playerName = useAppSelector(
     (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Housemate',
   );
+  const activeProfileId = useAppSelector(selectActiveProfileId);
+  const isGuest = useAppSelector(selectIsGuest);
 
   function startNewSeason() {
+    // Clear any stale mid-season snapshot so the Play prompt won't offer to
+    // resume an outdated save after a self-eviction.
+    if (!isGuest && activeProfileId) {
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
+    }
     dispatch(resetGame());
     navigate('/');
   }

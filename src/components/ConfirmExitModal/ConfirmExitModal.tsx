@@ -7,6 +7,8 @@ interface Props {
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** When false, only the confirm button is rendered (info/notification dialogs). Defaults to true. */
+  showCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,6 +23,7 @@ export default function ConfirmExitModal({
   description,
   confirmLabel = 'Exit',
   cancelLabel = 'Stay',
+  showCancel = true,
   onConfirm,
   onCancel,
 }: Props) {
@@ -58,9 +61,11 @@ export default function ConfirmExitModal({
         <h2 id={titleId} className="confirm-modal__title">{title}</h2>
         {description && <p id={descId} className="confirm-modal__desc">{description}</p>}
         <div className="confirm-modal__actions">
-          <button type="button" className="confirm-modal__btn confirm-modal__btn--ghost" onClick={onCancel}>
-            {cancelLabel}
-          </button>
+          {showCancel && (
+            <button type="button" className="confirm-modal__btn confirm-modal__btn--ghost" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          )}
           <button type="button" className="confirm-modal__btn confirm-modal__btn--primary" onClick={onConfirm}>
             {confirmLabel}
           </button>

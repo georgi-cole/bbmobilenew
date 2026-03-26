@@ -117,8 +117,10 @@ export const FINALE_INTERVIEW_VARIANT_COUNT = 3;
 export function createInitialGameState(): GameState {
   const freshPlayers = buildInitialPlayers();
   const freshSettings = loadSettings();
+  const seasonArchives = loadSeasonArchives(archiveKeyForActiveProfile()) ?? [];
+  const season = seasonArchives.length + 1;
   return {
-    season: 1,
+    season,
     week: 1,
     phase: 'week_start',
     seed: 42,
@@ -154,10 +156,10 @@ export function createInitialGameState(): GameState {
     players: freshPlayers,
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
-      { id: 'e0', text: 'Welcome to The Big Eye home! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },
+      { id: 'e0', text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`, type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
-    seasonArchives: loadSeasonArchives(archiveKeyForActiveProfile()) ?? [],
+    seasonArchives,
     spectatorActive: null,
     seasonFinale: null,
     doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
@@ -2160,9 +2162,19 @@ const gameSlice = createSlice({
       const seasonArchives = action.payload !== undefined
         ? action.payload
         : (state.seasonArchives ?? []);
+      // Derive the next season number from completed archived seasons.
+      const season = seasonArchives.length + 1;
       // Use the factory to build a fully fresh initial state from the latest
-      // persisted settings/profile, then override seed and seasonArchives.
-      return { ...createInitialGameState(), seed, seasonArchives };
+      // persisted settings/profile, then override seed, seasonArchives, and season.
+      const fresh = { ...createInitialGameState(), seed, seasonArchives, season };
+      // Update the welcome message to reflect the actual season number.
+      fresh.tvFeed = [{
+        id: 'e0',
+        text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
+        type: 'game' as const,
+        timestamp: Date.now(),
+      }];
+      return fresh;
     },
     /**
      * Restore a previously saved in-progress game state (manual save/resume).
