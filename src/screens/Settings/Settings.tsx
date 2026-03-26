@@ -433,7 +433,7 @@ export default function Settings() {
                   aria-label="Special Veto chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Daily chance (after 5 evictions, with 6+ players, no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
+                  Per-week chance (checked during PoV results, after 5 evictions, with 6+ players and no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
                 </p>
               </div>
             )}
