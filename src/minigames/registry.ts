@@ -214,11 +214,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     title: 'Bullseye Blitz',
     description: 'Pop targets, dodge the bombs!',
     instructions: [
+      'Bullseye Blitz is now a knockout bracket — survive each round to stay alive',
       'Targets appear on the arena — tap them before they shrink away',
       '🎯 Standard targets are worth +10 pts',
       '⭐ Bonus targets are worth +25 pts but disappear faster',
       '💣 Hazard targets penalise you −15 pts if tapped — avoid them!',
-      'Highest score after 20 seconds wins',
+      'Each new round gets faster and more dangerous, and results are revealed before the next round begins',
     ],
     metricKind: 'points',
     metricLabel: 'Points',

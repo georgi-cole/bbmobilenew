@@ -1,6 +1,17 @@
 import type { Player } from '../../types';
+import { mulberry32 } from '../../store/rng';
 
 export type TargetKind = 'standard' | 'bonus' | 'hazard';
+
+export interface BullseyeRoundConfig {
+  roundNumber: number;
+  durationSeconds: number;
+  spawnIntervalMs: number;
+  maxTargets: number;
+  targetWeights: Record<TargetKind, number>;
+  targetLifetimes: Record<TargetKind, number>;
+  difficultyLabel: string;
+}
 
 interface TargetConfig {
   emoji: string;
@@ -38,16 +49,102 @@ export const TARGET_CONFIGS: Record<TargetKind, TargetConfig> = {
   },
 };
 
+const DEFAULT_TARGET_WEIGHTS: Record<TargetKind, number> = {
+  standard: 0.6,
+  bonus: 0.25,
+  hazard: 0.15,
+};
+
+const ROUND_PRESETS = [
+  {
+    durationSeconds: 18,
+    spawnIntervalMs: 560,
+    maxTargets: 6,
+    targetWeights: { standard: 0.58, bonus: 0.27, hazard: 0.15 },
+    lifetimeMultiplier: 1,
+    difficultyLabel: 'Opening round — balanced targets and a steady pace.',
+  },
+  {
+    durationSeconds: 17,
+    spawnIntervalMs: 500,
+    maxTargets: 7,
+    targetWeights: { standard: 0.54, bonus: 0.24, hazard: 0.22 },
+    lifetimeMultiplier: 0.94,
+    difficultyLabel: 'Round heats up — faster spawns and more hazards.',
+  },
+  {
+    durationSeconds: 16,
+    spawnIntervalMs: 450,
+    maxTargets: 8,
+    targetWeights: { standard: 0.5, bonus: 0.22, hazard: 0.28 },
+    lifetimeMultiplier: 0.88,
+    difficultyLabel: 'Pressure round — targets vanish faster and bombs pile up.',
+  },
+  {
+    durationSeconds: 15,
+    spawnIntervalMs: 410,
+    maxTargets: 8,
+    targetWeights: { standard: 0.46, bonus: 0.21, hazard: 0.33 },
+    lifetimeMultiplier: 0.82,
+    difficultyLabel: 'Semi-final pace — dense spawns and very little breathing room.',
+  },
+  {
+    durationSeconds: 14,
+    spawnIntervalMs: 370,
+    maxTargets: 9,
+    targetWeights: { standard: 0.42, bonus: 0.2, hazard: 0.38 },
+    lifetimeMultiplier: 0.76,
+    difficultyLabel: 'Final sprint — relentless spawns and danger everywhere.',
+  },
+] as const;
+
+const AI_BASELINE_MULTIPLIER = 1.15;
+const AI_BASELINE_OFFSET = 24;
+const AI_VOLATILITY_MIN = 0.9;
+const AI_VOLATILITY_RANGE = 0.24;
+const AI_ROUND_PRESSURE_DROP = 0.04;
+const AI_HAZARD_PENALTY_MULTIPLIER = 0.18;
+
 /**
  * Select a random target kind using weighted distribution.
+ * Defaults to:
  *  standard:  60 %
  *  bonus:     25 %
  *  hazard:    15 %
+ * Callers can override the default weights for harder tournament rounds.
  */
-export function pickTargetKind(random01: number): TargetKind {
-  if (random01 < 0.60) return 'standard';
-  if (random01 < 0.85) return 'bonus';
+export function pickTargetKind(
+  random01: number,
+  weights: Record<TargetKind, number> = DEFAULT_TARGET_WEIGHTS,
+): TargetKind {
+  const standardThreshold = weights.standard;
+  const bonusThreshold = standardThreshold + weights.bonus;
+  if (random01 < standardThreshold) return 'standard';
+  if (random01 < bonusThreshold) return 'bonus';
   return 'hazard';
+}
+
+export function getBullseyeRoundConfig(roundNumber: number): BullseyeRoundConfig {
+  const preset = ROUND_PRESETS[Math.min(Math.max(roundNumber - 1, 0), ROUND_PRESETS.length - 1)];
+
+  return {
+    roundNumber,
+    durationSeconds: preset.durationSeconds,
+    spawnIntervalMs: preset.spawnIntervalMs,
+    maxTargets: preset.maxTargets,
+    targetWeights: preset.targetWeights,
+    targetLifetimes: {
+      standard: Math.round(TARGET_CONFIGS.standard.lifetimeMs * preset.lifetimeMultiplier),
+      bonus: Math.round(TARGET_CONFIGS.bonus.lifetimeMs * preset.lifetimeMultiplier),
+      hazard: Math.round(TARGET_CONFIGS.hazard.lifetimeMs * preset.lifetimeMultiplier),
+    },
+    difficultyLabel: preset.difficultyLabel,
+  };
+}
+
+export function getBullseyeEliminationCount(activeCount: number): number {
+  if (activeCount <= 2) return 0;
+  return Math.min(activeCount - 2, Math.max(1, Math.round(activeCount / 2) - 1));
 }
 
 export interface ScoreEntry {
@@ -97,4 +194,30 @@ export function buildRankedLeaderboard(
   });
 
   return rankedEntries.map(({ participantIndex: _participantIndex, ...entry }) => entry);
+}
+
+function hashTournamentSeed(seed: number, participantId: string, roundNumber: number): number {
+  let hash = seed ^ (roundNumber * 0x9e3779b9);
+  for (let i = 0; i < participantId.length; i += 1) {
+    hash = Math.imul(hash ^ participantId.charCodeAt(i), 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function simulateBullseyeAiRoundScore(
+  baseScore: number,
+  roundNumber: number,
+  seed: number,
+  participantId: string,
+): number {
+  const rng = mulberry32(hashTournamentSeed(seed, participantId, roundNumber));
+  const roundConfig = getBullseyeRoundConfig(roundNumber);
+  const adjustedBaseScore = baseScore * AI_BASELINE_MULTIPLIER + AI_BASELINE_OFFSET;
+  const volatility = AI_VOLATILITY_MIN + rng() * AI_VOLATILITY_RANGE;
+  const pressureAdjustment = 1 - Math.max(0, roundNumber - 1) * AI_ROUND_PRESSURE_DROP;
+  const hazardPenalty = roundConfig.targetWeights.hazard * AI_HAZARD_PENALTY_MULTIPLIER;
+  return Math.max(
+    0,
+    Math.round(adjustedBaseScore * volatility * pressureAdjustment * (1 - hazardPenalty)),
+  );
 }
