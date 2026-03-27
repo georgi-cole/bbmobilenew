@@ -274,14 +274,9 @@
   to   { transform: scale(1.04); box-shadow: 0 0 28px 4px currentColor; }
 }
 
-.qtr__booster-prompt--good {
-  color: #facc15;
-  background: rgba(250, 204, 21, 0.12);
-}
-
-.qtr__booster-prompt--bad {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
+.qtr__booster-prompt {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.14);
 }
 
 .qtr__booster-icon {

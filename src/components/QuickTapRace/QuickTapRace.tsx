@@ -513,22 +513,15 @@ export default function QuickTapRace({
             {/* Booster prompt — appears above TAP button; player must tap it to activate */}
             {visibleBoosterPrompt && (
               <button
-                className={[
-                  'qtr__booster-prompt',
-                  visibleBoosterPrompt.beneficial
-                    ? 'qtr__booster-prompt--good'
-                    : 'qtr__booster-prompt--bad',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
+                className="qtr__booster-prompt"
                 onClick={handleBoosterTap}
                 type="button"
-                aria-label={`Activate booster: ${visibleBoosterPrompt.label}`}
+                aria-label="Grab mystery booster"
               >
                 <span className="qtr__booster-icon" aria-hidden="true">
-                  {visibleBoosterPrompt.icon}
+                  🎁
                 </span>
-                <span className="qtr__booster-label">{visibleBoosterPrompt.label}</span>
+                <span className="qtr__booster-label">MYSTERY BOOSTER</span>
                 <span className="qtr__booster-cta">TAP TO GRAB!</span>
               </button>
             )}
