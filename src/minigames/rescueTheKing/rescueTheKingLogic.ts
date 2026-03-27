@@ -56,10 +56,15 @@ export function mulberry32(seed: number): () => number {
 
 /**
  * Build the initial board from a LevelConfig.
- * Blockers are placed as defined; normal tiles are assigned symbols
- * using `config.seed ^ runtimeSeed` (defaults to config.seed when runtimeSeed
- * is 0) so the board varies deterministically per session while remaining
- * fully reproducible.  The algorithm avoids placing 3-in-a-row at startup.
+ *
+ * Symbol resolution priority (per cell):
+ *  1. If `config.tileLayout[r][c]` is a non-empty valid symbol → use it directly.
+ *     This allows fully deterministic, hand-validated levels.
+ *  2. Otherwise fall back to the seeded RNG with the 3-in-a-row avoidance algorithm.
+ *
+ * The combined seed is `config.seed ^ runtimeSeed` (defaults to config.seed when
+ * runtimeSeed is 0) so the board varies deterministically per session while
+ * remaining fully reproducible.
  *
  * @param config       - Level configuration with blocker layout and base seed.
  * @param runtimeSeed  - Optional per-session seed XOR'd with config.seed.
@@ -83,7 +88,12 @@ export function buildBoard(config: LevelConfig, runtimeSeed = 0): Board {
       } else if (code === 'W') {
         row[c] = { kind: 'blocker', blockerKind: 'stone', hitsRemaining: 2 };
       } else {
-        const symbol = pickSymbol(rng, board, r, c);
+        // Resolve symbol: use tileLayout if provided and valid, else RNG.
+        const layoutSym = config.tileLayout?.[r]?.[c] ?? '';
+        const isValidLayoutSym = (SYMBOLS as readonly string[]).includes(layoutSym);
+        const symbol = isValidLayoutSym
+          ? (layoutSym as TileSymbol)
+          : pickSymbol(rng, board, r, c);
         row[c] = { kind: 'normal', symbol };
       }
     }
@@ -423,7 +433,89 @@ export function shuffleNormalTiles(board: Board, rng: () => number): Board {
   return newBoard;
 }
 
-// ── Utility ───────────────────────────────────────────────────────────────────
+// ── Level validation ──────────────────────────────────────────────────────────
+
+export interface LevelValidationResult {
+  valid: boolean;
+  /** True when the initial board (with runtimeSeed = 0) has at least one valid swap. */
+  hasInitialMove: boolean;
+  /** Number of normal tiles on the initial board. */
+  normalTileCount: number;
+  /**
+   * True when every column segment (the contiguous run of non-blocker rows within
+   * a column, split by blockers) contains at least 3 normal tiles OR the board has
+   * enough connectivity for a match to be reachable via gravity.
+   *
+   * A segment with ≤ 2 normal tiles and no adjacent open cells cannot produce a
+   * match on its own; however the board-level shuffle safeguard can still recover
+   * from this at runtime.  This flag is purely informational.
+   */
+  noTinyIsolatedSegments: boolean;
+  /** First error message if invalid, empty string if valid. */
+  message: string;
+}
+
+/**
+ * Validate that a level configuration is playable.
+ *
+ * Checks performed:
+ * 1. The initial board (runtimeSeed = 0) has at least one valid move.
+ * 2. The board has a meaningful number of normal tiles (≥ 30 % of cells).
+ * 3. No column segment isolated by blockers has fewer than 3 normal cells
+ *    (informational — the runtime shuffle safeguard can still recover, but
+ *    well-designed levels should not need it on the first move).
+ *
+ * Usage in tests:
+ *   import { validateLevel } from './rescueTheKingLogic';
+ *   const result = validateLevel(LEVELS[0]);
+ *   expect(result.valid).toBe(true);
+ */
+export function validateLevel(config: LevelConfig): LevelValidationResult {
+  const board = buildBoard(config, 0);
+  const normalTileCount = countNormalTiles(board);
+  const totalCells = config.rows * config.cols;
+  const hasInitialMove = hasAnyValidMove(board);
+
+  // Check for tiny isolated column segments.
+  let noTinyIsolatedSegments = true;
+  for (let c = 0; c < config.cols; c++) {
+    let segmentSize = 0;
+    for (let r = 0; r < config.rows; r++) {
+      const cell = board[r][c];
+      if (cell.kind === 'blocker') {
+        if (segmentSize > 0 && segmentSize < 3) {
+          noTinyIsolatedSegments = false;
+        }
+        segmentSize = 0;
+      } else if (cell.kind === 'normal') {
+        segmentSize++;
+      }
+      // empty cells (gaps in the initial board) are treated as passable;
+      // they do not increment segmentSize and do not end the current segment.
+    }
+    if (segmentSize > 0 && segmentSize < 3) {
+      noTinyIsolatedSegments = false;
+    }
+  }
+
+  const minTiles = Math.floor(totalCells * 0.3);
+  let message = '';
+  if (!hasInitialMove) {
+    message = `Level ${config.id}: initial board has no valid move (runtimeSeed=0). Adjust tileLayout or seed.`;
+  } else if (normalTileCount < minTiles) {
+    message = `Level ${config.id}: only ${normalTileCount} normal tiles (< ${minTiles} min). Add more normal cells.`;
+  }
+
+  return {
+    valid: hasInitialMove && normalTileCount >= minTiles,
+    hasInitialMove,
+    normalTileCount,
+    noTinyIsolatedSegments,
+    message,
+  };
+}
+
+
 
 /** Count normal tiles remaining on the board. */
 export function countNormalTiles(board: Board): number {

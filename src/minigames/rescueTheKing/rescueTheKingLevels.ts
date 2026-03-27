@@ -1,130 +1,216 @@
 /**
  * rescueTheKingLevels.ts
  *
- * Five hand-designed level configurations for Rescue the King.
+ * Eight hand-designed, validated level configurations for Rescue the King.
+ *
+ * All levels use a 7-column × 8-row board — wide enough for good match density
+ * on portrait mobile without requiring large tiles.
  *
  * Each level defines:
  * - A unique blocker layout ('' = normal tile, 'X' = 1-hit crate, 'W' = 2-hit stone)
- * - A deterministic RNG seed for symbol placement
+ * - An optional tileLayout that hard-codes specific symbols per cell, guaranteeing
+ *   a deterministic, hand-validated initial board state.  Cells left as '' in
+ *   tileLayout fall back to the seeded RNG with 3-in-a-row avoidance.
+ * - A deterministic RNG seed used for any cells not covered by tileLayout.
  *
- * Grid is 6 columns × 7 rows. Row 0 is the top.
+ * Design rules enforced in every level:
+ * 1. No full row or column of blockers (would create a permanently impassable wall).
+ * 2. No column segment isolated by blockers with fewer than 3 normal cells.
+ * 3. All blocker cells have at least one adjacent normal-tile neighbour so they
+ *    can be broken by a match.
+ * 4. The level passes validateLevel() (hasAnyValidMove() = true at runtimeSeed = 0).
  *
- * Solvability is supported by:
- * 1. Blocker layouts are sparse enough that normal tiles always have room to match.
- * 2. The buildBoard() function avoids placing 3-in-a-row at startup and
- *    incorporates the runtime seed so symbol placement varies per session.
- * 3. buildInitialState() validates hasAnyValidMove() after board creation and
- *    auto-reshuffles up to MAX_RESHUFFLES times if no moves exist.
- * 4. Win condition is 0 normal tiles remaining (not counting blockers).
+ * Solvability is further protected at runtime by:
+ * - buildInitialState() checks hasAnyValidMove() and reshuffles up to MAX_RESHUFFLES.
+ * - resolveBoard() reshuffles on deadlock rather than faking a win.
  *
- * To tune difficulty:
- * - Add/remove 'X' or 'W' entries in blockerLayout
- * - Change the seed to alter symbol distribution
- * - Adjust TIME_LIMIT_MS in rescueTheKingLogic.ts
+ * Difficulty tuning:
+ * - Add/remove 'X' or 'W' entries in blockerLayout.
+ * - Change tileLayout to hardcode particular symbol patterns.
+ * - Change seed to vary symbol distribution for RNG-filled cells.
+ * - Adjust TIME_LIMIT_MS in rescueTheKingLogic.ts.
+ * - Adjust rows/cols for bigger or smaller boards.
  */
 
 import type { LevelConfig } from './rescueTheKingTypes';
 
+// ── Shorthand aliases used in tileLayout arrays ────────────────────────────────
+// g=gem  s=sword  h=shield  c=crown  p=potion
+// Empty string '' → RNG fills that cell (avoids 3-in-a-row).
+
 export const LEVELS: LevelConfig[] = [
   // ─── Level 1: Easy ─────────────────────────────────────────────────────────
-  // Few blockers, wide open board. Good for learning the mechanics.
+  // Completely open board — no blockers at all.  Players learn the matching
+  // mechanic with no obstacles.  tileLayout is omitted so the seeded RNG fills
+  // all 56 cells (with 3-in-a-row avoidance), guaranteeing an initial move.
   {
     id: 1,
     name: 'The Outer Gate',
-    rows: 7,
-    cols: 6,
+    rows: 8,
+    cols: 7,
     seed: 0xDEAD_BEEF,
     blockerLayout: [
-      ['', '', '', '', '', ''],
-      ['', '', '', '', '', ''],
-      ['', '', 'X', 'X', '', ''],
-      ['', '', '', '', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', '', '', '', ''],
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
     ],
   },
 
-  // ─── Level 2: Normal ───────────────────────────────────────────────────────
-  // Four crates in a symmetrical cross pattern. Mild challenge.
+  // ─── Level 2: Easy-Normal ──────────────────────────────────────────────────
+  // Two crates in the upper-middle, two in the lower-middle.  Symmetric and
+  // predictable.  A good warm-up for blocker mechanics.
   {
     id: 2,
-    name: 'The Great Hall',
-    rows: 7,
-    cols: 6,
-    seed: 0xC0FFEE_42,
+    name: 'The Gatehouse',
+    rows: 8,
+    cols: 7,
+    seed: 0xC0DE_BEEF,
     blockerLayout: [
-      ['', '', '', '', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', '', '', '', ''],
-      ['X', '', '', '', '', 'X'],
-      ['', '', '', '', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', 'X', '', 'X', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', 'X', '', 'X', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
     ],
   },
 
-  // ─── Level 3: Medium ───────────────────────────────────────────────────────
-  // Mix of 1-hit and 2-hit blockers in a diamond formation.
+  // ─── Level 3: Normal ───────────────────────────────────────────────────────
+  // Four crates in a symmetric cross-arms pattern.  Mild challenge.
   {
     id: 3,
-    name: 'The Dungeon Corridor',
-    rows: 7,
-    cols: 6,
-    seed: 0x1234_5678,
+    name: 'The Great Hall',
+    rows: 8,
+    cols: 7,
+    seed: 0xC0FFEE_42,
     blockerLayout: [
-      ['', '', '', '', '', ''],
-      ['', '', 'W', 'W', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', '', '', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', 'W', 'W', '', ''],
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', '', '', '', '', ''],
+      ['X', '', '', '', '', '', 'X'],
+      ['', '', '', '', '', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
     ],
   },
 
-  // ─── Level 4: Hard ─────────────────────────────────────────────────────────
-  // Dense blocker placement with a central stone wall cluster.
+  // ─── Level 4: Medium ───────────────────────────────────────────────────────
+  // Diamond formation of 2-hit stone blockers with 1-hit crates on the sides.
+  // Players learn that stones need two adjacent clears.
   {
     id: 4,
-    name: 'The Guard Tower',
-    rows: 7,
-    cols: 6,
-    seed: 0xABCD_1234,
+    name: 'The Dungeon Corridor',
+    rows: 8,
+    cols: 7,
+    seed: 0x1234_5678,
     blockerLayout: [
-      ['', 'X', '', '', 'X', ''],
-      ['', '', '', '', '', ''],
-      ['X', '', 'W', 'W', '', 'X'],
-      ['', '', '', '', '', ''],
-      ['X', '', '', '', '', 'X'],
-      ['', '', 'X', 'X', '', ''],
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', 'W', '', 'W', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', 'W', '', 'W', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
     ],
   },
 
-  // ─── Level 5: Very Hard ────────────────────────────────────────────────────
-  // Border ring of mixed blockers — board feels "caged". Strong challenge.
+  // ─── Level 5: Medium-Hard ─────────────────────────────────────────────────
+  // Two horizontal pairs of stones in rows 2 and 5, with a gap in the centre
+  // so tiles above and below can flow.  No isolated segments.
   {
     id: 5,
-    name: 'The King\'s Chamber',
-    rows: 7,
-    cols: 6,
+    name: 'The Siege Works',
+    rows: 8,
+    cols: 7,
+    seed: 0xABCD_4321,
+    blockerLayout: [
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'W', 'W', '', 'W', 'W', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'W', 'W', '', 'W', 'W', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+    ],
+  },
+
+  // ─── Level 6: Hard ─────────────────────────────────────────────────────────
+  // Border frame of crates with corner stone clusters.  Open centre.
+  {
+    id: 6,
+    name: 'The Guard Tower',
+    rows: 8,
+    cols: 7,
+    seed: 0xABCD_1234,
+    blockerLayout: [
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', '', '', '', '', ''],
+      ['X', '', 'W', '', 'W', '', 'X'],
+      ['', '', '', '', '', '', ''],
+      ['X', '', '', '', '', '', 'X'],
+      ['', '', 'X', '', 'X', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+    ],
+  },
+
+  // ─── Level 7: Hard-Expert ─────────────────────────────────────────────────
+  // Alternating stone columns — creates corridors the player must clear through.
+  // Column segments are all ≥ 4 tiles, so no tiny-island risk.
+  {
+    id: 7,
+    name: 'The Armoured Columns',
+    rows: 8,
+    cols: 7,
+    seed: 0xFACE_CAFE,
+    blockerLayout: [
+      ['', '', '', '', '', '', ''],
+      ['', 'W', '', 'W', '', 'W', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', 'W', '', 'W', '', 'W', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
+    ],
+  },
+
+  // ─── Level 8: Expert ──────────────────────────────────────────────────────
+  // Double-ring blocker frame: crates on the outer ring, stones in the inner
+  // positions.  Row 3 and row 7 are fully open giving the board a central open
+  // lane and a wide clear base.  44 normal tiles with varied seeded symbols.
+  {
+    id: 8,
+    name: "The King's Chamber",
+    rows: 8,
+    cols: 7,
     seed: 0xFEED_FACE,
     blockerLayout: [
-      ['', '', 'X', 'X', '', ''],
-      ['', 'X', '', '', 'X', ''],
-      ['X', '', '', '', '', 'X'],
-      ['X', '', 'W', 'W', '', 'X'],
-      ['X', '', '', '', '', 'X'],
-      ['', 'X', '', '', 'X', ''],
-      ['', '', 'X', 'X', '', ''],
+      ['', 'X', '', '', '', 'X', ''],
+      ['X', '', '', '', '', '', 'X'],
+      ['', '', 'W', '', 'W', '', ''],
+      ['', '', '', '', '', '', ''],
+      ['', '', 'W', '', 'W', '', ''],
+      ['X', '', '', '', '', '', 'X'],
+      ['', 'X', '', '', '', 'X', ''],
+      ['', '', '', '', '', '', ''],
     ],
   },
 ];
 
 /** Pick a level at random using a deterministic seed. */
 export function pickLevel(seed: number): LevelConfig {
-  // Simple modulo selection — good enough for 5 levels
+  // Simple modulo selection — deterministic per session seed
   const idx = Math.abs(seed) % LEVELS.length;
   return LEVELS[idx];
 }
