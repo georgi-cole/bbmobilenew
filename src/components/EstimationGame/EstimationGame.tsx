@@ -63,7 +63,7 @@ function buildAllScores(
   session: MinigameSession,
   humanId: string | undefined,
   humanTotal: number,
-  players: ReadonlyArray<{ id: string; competitionProfile?: import('../../ai/competition/types').CompetitionSkillProfile }>,
+  players: ReadonlyArray<Player>,
 ): Record<string, number> {
   let aiScores: Record<string, number>;
   if (session.hybridResolveOnComplete) {
