@@ -217,15 +217,19 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       }
 
       if (!hasAnyValidMove(board)) {
-        if (accState.reshuffleCount < MAX_RESHUFFLES) {
-          // Reshuffle and verify the result is playable before resuming.
-          const newBoard = shuffleNormalTiles(board, rngRef.current);
-          if (hasAnyValidMove(newBoard)) {
+        // Consume the remaining reshuffle budget, incrementing the count on
+        // every attempt (successful or not) so the limit is always honoured.
+        let currentBoard = board;
+        let reshuffleCount = accState.reshuffleCount;
+        while (reshuffleCount < MAX_RESHUFFLES) {
+          const candidate = shuffleNormalTiles(currentBoard, rngRef.current);
+          reshuffleCount++;
+          if (hasAnyValidMove(candidate)) {
             const newState: GameState = {
               ...accState,
-              board: newBoard,
+              board: candidate,
               phase: 'playing',
-              reshuffleCount: accState.reshuffleCount + 1,
+              reshuffleCount,
               selectedCell: null,
             };
             setState(newState);
@@ -237,12 +241,13 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
             }, 0);
             return;
           }
+          currentBoard = candidate;
         }
-        // Reshuffles exhausted or no playable arrangement found.
+        // Reshuffles exhausted — no playable arrangement found.
         // End as a loss — never set boardCleared: true when tiles remain.
         const loseState: GameState = {
           ...accState,
-          board,
+          board: currentBoard,
           phase: 'lose',
           boardCleared: false,
           selectedCell: null,

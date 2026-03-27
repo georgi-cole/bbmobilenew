@@ -470,20 +470,12 @@ describe('deadlock regression', () => {
     expect(hasAnyValidMove(board)).toBe(false);
   });
 
-  it('boardCleared must only be true when countNormalTiles returns 0', () => {
-    // A board with tiles must not be considered cleared
-    const tiledBoard = makeBoard([
-      ['gem',    'sword'],
-      ['shield', 'crown'],
-    ]);
-    expect(countNormalTiles(tiledBoard)).toBeGreaterThan(0);
-
-    // An all-empty board is considered cleared
-    const emptyBoard = makeBoard([
-      [null, null],
-      [null, null],
-    ]);
-    expect(countNormalTiles(emptyBoard)).toBe(0);
+  it('computeFinalScore does not award board-clear bonus when tiles remain', () => {
+    // A deadlocked board has tiles remaining — boardCleared must be false,
+    // so the final score must not include SCORE_BOARD_CLEAR or the time bonus.
+    const score = computeFinalScore({ score: 200, boardCleared: false, timeRemainingMs: 60_000 });
+    expect(score).toBe(200);
+    expect(score).toBeLessThan(computeFinalScore({ score: 200, boardCleared: true, timeRemainingMs: 60_000 }));
   });
 
   it('shuffleNormalTiles on a 2×2 board still has no valid move (structural deadlock)', () => {
@@ -498,16 +490,6 @@ describe('deadlock regression', () => {
     expect(hasAnyValidMove(shuffled)).toBe(false);
     // And it still has the same number of normal tiles
     expect(countNormalTiles(shuffled)).toBe(countNormalTiles(board));
-  });
-
-  it('deadlocked board with tiles remaining does not satisfy the win condition', () => {
-    const board = makeBoard([
-      ['gem',    'sword'],
-      ['shield', 'crown'],
-    ]);
-    // Win condition: 0 normal tiles remaining AND board is cleared
-    const isActualWin = countNormalTiles(board) === 0;
-    expect(isActualWin).toBe(false);
   });
 });
 
