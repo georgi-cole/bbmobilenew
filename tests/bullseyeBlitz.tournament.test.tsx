@@ -96,7 +96,6 @@ function renderBullseyeChallenge(
   return render(
     <Provider store={makeStore(players)}>
       <BullseyeBlitz
-        players={players}
         onFinish={options.onFinish}
         autoStart={options.autoStart}
       />
@@ -131,7 +130,7 @@ describe('BullseyeBlitz tournament flow', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps challenge mode multiround and only reports the cumulative total after the final results screen', async () => {
+  it('keeps challenge mode multiround and only reports the cumulative total after the final results screen when mounted without players', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(3), { onFinish, autoStart: true });
 
@@ -159,6 +158,19 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith(0);
+  });
+
+  it('runs challenge mode without passing players, matching MinigameHost mounting', async () => {
+    const onFinish = vi.fn();
+    renderBullseyeChallenge(makePlayers(2), { onFinish, autoStart: true });
+
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+
+    expect(screen.getByText(/Round 1 • Solo challenge • Bank every point/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'You (You)'),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
   });
 
   it('offers skip or spectator mode when the human is eliminated', async () => {

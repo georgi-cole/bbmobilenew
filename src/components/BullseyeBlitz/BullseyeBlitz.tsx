@@ -50,6 +50,7 @@ const READY_COUNT = 3;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const EMPTY_HITS = { standard: 0, bonus: 0, hazard: 0 };
+const EMPTY_PLAYERS: Player[] = [];
 const FINAL_SHOWDOWN_THRESHOLD = 2;
 const SPECTATOR_ROUND_DELAY_MS = 2200;
 const SPECTATOR_RESULTS_DELAY_MS = 2400;
@@ -272,7 +273,7 @@ function getReadyHintText(isKnockoutMode: boolean, activeCount: number, roundNum
 
 export default function BullseyeBlitz({
   session,
-  players = [],
+  players = EMPTY_PLAYERS,
   onFinish,
   autoStart = false,
 }: Props) {
@@ -387,8 +388,30 @@ export default function BullseyeBlitz({
     const humanFinalHits = { ...hitsRef.current };
 
     if (!session) {
-      // MinigameHost challenge path — just report the score
-      if (onFinish) onFinish(humanFinalScore);
+      const challengeOutcome: RoundOutcome = {
+        roundNumber,
+        activeParticipantIds: [challengeParticipantId],
+        rankedScores: buildRankedLeaderboard(
+          [challengeParticipantId],
+          { [challengeParticipantId]: humanFinalScore },
+          challengeParticipantId,
+          challengePlayers,
+          humanFinalHits,
+        ),
+        advancingIds: roundNumber < BULLSEYE_CHALLENGE_ROUNDS ? [challengeParticipantId] : [],
+        eliminatedIds: [],
+        eliminatedEntries: [],
+        isFinal: roundNumber >= BULLSEYE_CHALLENGE_ROUNDS,
+      };
+      setTournamentScoreTotal((prev) => prev + humanFinalScore);
+      setRoundOutcome(challengeOutcome);
+      setRankedScores(challengeOutcome.rankedScores);
+      if (challengeOutcome.isFinal) {
+        setFinalStandings(challengeOutcome.rankedScores);
+        setGamePhase('final_results');
+        return;
+      }
+      setGamePhase('round_results');
       return;
     }
 
