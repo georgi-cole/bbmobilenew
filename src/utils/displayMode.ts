@@ -26,9 +26,13 @@ export function applyDisplayModeClasses(): void {
 
   // ── Capacitor native WebView ─────────────────────────────────────────────
   // Capacitor injects window.Capacitor when running inside a native shell.
+  // Use isNativePlatform() to confirm we are in the actual native context;
+  // the global may also exist on web when @capacitor/core is imported there.
   const isCapacitor =
     typeof window !== 'undefined' &&
-    !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    (
+      window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }
+    ).Capacitor?.isNativePlatform?.() === true;
 
   if (isCapacitor) {
     html.classList.add('is-capacitor');

@@ -12,7 +12,7 @@ using [Capacitor](https://capacitorjs.com/), and how to continue from here.
 |---|---|
 | `capacitor.config.ts` | Capacitor configuration (bundle ID, app name, web dir) |
 | `package.json` — new scripts | `build:capacitor`, `cap:sync`, `cap:open` |
-| `vite.config.ts` — base path | Environment-aware base: `./` for Capacitor, `/bbmobilenew/` for GitHub Pages |
+| `vite.config.ts` — base path | `build:capacitor` passes `--base ./`; web/GitHub Pages build keeps `/bbmobilenew/` |
 | `src/utils/displayMode.ts` | Detects `window.Capacitor` and adds `is-capacitor` / `is-standalone` CSS classes |
 | `index.html` — title | Changed from `bbmobilenew` to `Big Brother` |
 | `.gitignore` | Added Capacitor cache entry |
@@ -21,9 +21,9 @@ using [Capacitor](https://capacitorjs.com/), and how to continue from here.
 **Dependencies added:**
 
 ```
-@capacitor/core   8.x  (runtime)
-@capacitor/cli    8.x  (runtime – provides npx cap commands)
-@capacitor/ios    8.x  (devDependency – iOS native project template)
+@capacitor/core   8.x  (dependencies – runtime)
+@capacitor/cli    8.x  (devDependencies – provides npx cap commands)
+@capacitor/ios    8.x  (devDependencies – iOS native project template)
 ```
 
 ---
@@ -44,12 +44,20 @@ Then deploy `dist/` to GitHub Pages as before.
 npm run build:capacitor   # → dist/ with base path ./  (required for WKWebView)
 ```
 
-> The only difference is the `VITE_BUILD_TARGET=capacitor` environment variable
-> which tells Vite to use `./` as the asset base path instead of `/bbmobilenew/`.
+> `build:capacitor` passes `--base ./` directly to the Vite CLI, which overrides
+> the config file base for that build only. This is fully cross-platform (works on
+> macOS, Linux, and Windows).
 
 ---
 
 ## Next steps to create the iOS project
+
+> **Requirement:** Node.js **>=22** is required by `@capacitor/cli` 8.x.
+> The project CI and all workflows have been updated to Node 22.
+> Make sure you are running Node 22 locally before proceeding:
+> ```bash
+> node --version   # should print v22.x.x
+> ```
 
 You only need to run these **once** on a Mac with Xcode installed:
 

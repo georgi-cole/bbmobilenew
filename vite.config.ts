@@ -4,14 +4,11 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 //
 // Base-path strategy
-//   VITE_BUILD_TARGET=capacitor  →  "./"   (Capacitor/native WebView)
-//   (default / GitHub Pages)     →  "/bbmobilenew/"
-//
-// Run `npm run build:capacitor` for the native build.
-const isCapacitorBuild = process.env.VITE_BUILD_TARGET === 'capacitor';
-
+//   npm run build             →  "/bbmobilenew/"  (GitHub Pages deployment)
+//   npm run build:capacitor   →  "./"             (passed via --base ./ CLI flag,
+//                                                   required for Capacitor/WKWebView)
 export default defineConfig({
-  base: isCapacitorBuild ? './' : '/bbmobilenew/',
+  base: '/bbmobilenew/',
   plugins: [react()],
   server: {
     proxy: {

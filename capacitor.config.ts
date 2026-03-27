@@ -18,14 +18,6 @@ const config: CapacitorConfig = {
    * Must match `build.outDir` in vite.config.ts (defaults to "dist").
    */
   webDir: 'dist',
-
-  server: {
-    /**
-     * Allow the Capacitor WebView to follow any same-host redirects your app
-     * makes (e.g., hash-router navigation).
-     */
-    allowNavigation: [],
-  },
 };
 
 export default config;
