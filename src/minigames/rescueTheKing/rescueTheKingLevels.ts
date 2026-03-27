@@ -13,12 +13,16 @@
  *   tileLayout fall back to the seeded RNG with 3-in-a-row avoidance.
  * - A deterministic RNG seed used for any cells not covered by tileLayout.
  *
- * Design rules enforced in every level:
+ * Design rules for every hand-authored level:
  * 1. No full row or column of blockers (would create a permanently impassable wall).
  * 2. No column segment isolated by blockers with fewer than 3 normal cells.
  * 3. All blocker cells have at least one adjacent normal-tile neighbour so they
  *    can be broken by a match.
  * 4. The level passes validateLevel() (hasAnyValidMove() = true at runtimeSeed = 0).
+ *
+ * Notes:
+ * - Rules 1–3 are design-time guidelines that are checked when levels are authored.
+ * - Rule 4 is enforced automatically via validateLevel() in tests/CI.
  *
  * Solvability is further protected at runtime by:
  * - buildInitialState() checks hasAnyValidMove() and reshuffles up to MAX_RESHUFFLES.

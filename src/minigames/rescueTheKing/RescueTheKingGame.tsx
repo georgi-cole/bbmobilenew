@@ -111,7 +111,9 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const level = useMemo(() => pickLevel(seed), [seed]);
 
   // Debug: validate the selected level (only computes once per level in DEV)
-  const levelValidation = useMemo(() => DEBUG ? validateLevel(level) : null, [level]);
+  // DEBUG is a module-level compile-time constant (import.meta.env.DEV); it
+  // never changes at runtime so it doesn't need to be in the deps array.
+  const levelValidation = useMemo(() => (DEBUG ? validateLevel(level) : null), [level]);
 
   // Debug: allow regenerating with a new runtime seed
   const [debugSeedOffset, setDebugSeedOffset] = useState(0);

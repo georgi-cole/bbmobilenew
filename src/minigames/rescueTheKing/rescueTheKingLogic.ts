@@ -89,8 +89,11 @@ export function buildBoard(config: LevelConfig, runtimeSeed = 0): Board {
         row[c] = { kind: 'blocker', blockerKind: 'stone', hitsRemaining: 2 };
       } else {
         // Resolve symbol: use tileLayout if provided and valid, else RNG.
+        // A non-empty, invalid tileLayout symbol (e.g. a typo) is surfaced via
+        // validateLevel() so authors discover it before shipping.  At runtime we
+        // fall back to the RNG rather than throwing, which is safe in production.
         const layoutSym = config.tileLayout?.[r]?.[c] ?? '';
-        const isValidLayoutSym = (SYMBOLS as readonly string[]).includes(layoutSym);
+        const isValidLayoutSym = layoutSym !== '' && (SYMBOLS as readonly string[]).includes(layoutSym);
         const symbol = isValidLayoutSym
           ? (layoutSym as TileSymbol)
           : pickSymbol(rng, board, r, c);
@@ -442,13 +445,16 @@ export interface LevelValidationResult {
   /** Number of normal tiles on the initial board. */
   normalTileCount: number;
   /**
-   * True when every column segment (the contiguous run of non-blocker rows within
-   * a column, split by blockers) contains at least 3 normal tiles OR the board has
-   * enough connectivity for a match to be reachable via gravity.
+   * True when every column segment (the contiguous run of non-blocker, non-empty
+   * rows within a column, split by blockers) contains at least 3 normal tiles.
    *
-   * A segment with ≤ 2 normal tiles and no adjacent open cells cannot produce a
-   * match on its own; however the board-level shuffle safeguard can still recover
-   * from this at runtime.  This flag is purely informational.
+   * A segment with fewer than 3 normal tiles cannot independently form a match-3
+   * run.  This flag is purely informational — the runtime shuffle safeguard can
+   * recover from a deadlock caused by tiny segments, but well-designed levels
+   * should not need it on the very first move.
+   *
+   * Note: only normal tiles count toward segment size.  Empty cells within a
+   * segment are treated as passable gaps (they do not end the segment count).
    */
   noTinyIsolatedSegments: boolean;
   /** First error message if invalid, empty string if valid. */
@@ -476,6 +482,21 @@ export function validateLevel(config: LevelConfig): LevelValidationResult {
   const totalCells = config.rows * config.cols;
   const hasInitialMove = hasAnyValidMove(board);
 
+  // Detect invalid (misspelled) symbols in tileLayout.  A non-empty value that
+  // is not a valid TileSymbol silently falls back to RNG in buildBoard, making
+  // the board non-deterministic.  Catch it here so authors see the error early.
+  const invalidTileLayoutCells: string[] = [];
+  if (config.tileLayout) {
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        const sym = config.tileLayout[r]?.[c] ?? '';
+        if (sym !== '' && !(SYMBOLS as readonly string[]).includes(sym)) {
+          invalidTileLayoutCells.push(`[${r},${c}]="${sym}"`);
+        }
+      }
+    }
+  }
+
   // Check for tiny isolated column segments.
   let noTinyIsolatedSegments = true;
   for (let c = 0; c < config.cols; c++) {
@@ -498,16 +519,19 @@ export function validateLevel(config: LevelConfig): LevelValidationResult {
     }
   }
 
-  const minTiles = Math.floor(totalCells * 0.3);
+  // Use Math.ceil so the threshold is a strict ≥ 30 % check for all board sizes.
+  const minTiles = Math.ceil(totalCells * 0.3);
   let message = '';
-  if (!hasInitialMove) {
+  if (invalidTileLayoutCells.length > 0) {
+    message = `Level ${config.id}: invalid tileLayout symbol(s) at ${invalidTileLayoutCells.join(', ')}. Check for typos.`;
+  } else if (!hasInitialMove) {
     message = `Level ${config.id}: initial board has no valid move (runtimeSeed=0). Adjust tileLayout or seed.`;
   } else if (normalTileCount < minTiles) {
     message = `Level ${config.id}: only ${normalTileCount} normal tiles (< ${minTiles} min). Add more normal cells.`;
   }
 
   return {
-    valid: hasInitialMove && normalTileCount >= minTiles,
+    valid: invalidTileLayoutCells.length === 0 && hasInitialMove && normalTileCount >= minTiles,
     hasInitialMove,
     normalTileCount,
     noTinyIsolatedSegments,

@@ -569,6 +569,19 @@ describe('validateLevel', () => {
     expect(result.normalTileCount).toBe(0);
   });
 
+  it('uses Math.ceil so the ≥30% threshold is never under-reported', () => {
+    // 9-cell board: Math.ceil(9 * 0.3) = 3, not 2 (Math.floor would give 2)
+    // Build a level with exactly 2 normal tiles (rest blockers) — should be invalid
+    const level: LevelConfig = {
+      id: 99, name: 'Edge', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['X','X','X'],['X','',''],['X','X','X']],
+    };
+    const result = validateLevel(level);
+    // 2 normal tiles out of 9: Math.ceil(9 * 0.3) = 3, so 2 < 3 → invalid
+    expect(result.normalTileCount).toBe(2);
+    expect(result.valid).toBe(false);
+  });
+
   it('detects tiny isolated column segments', () => {
     // A single normal tile sandwiched between two crates in col 0 cannot match.
     // col 0: X (row 0), normal (row 1), X (row 2), normal (row 3), normal (row 4)
@@ -585,6 +598,18 @@ describe('validateLevel', () => {
     const result = validateLevel(level);
     // col 0 segment above lower blocker has exactly 1 normal tile → tiny island
     expect(result.noTinyIsolatedSegments).toBe(false);
+  });
+
+  it('returns invalid and reports the typo when tileLayout has an invalid symbol', () => {
+    const level: LevelConfig = {
+      id: 99, name: 'Typo', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['','',''],['','',''],['','','']],
+      // 'dimond' is a misspelling of 'gem'
+      tileLayout: [['gem','sword','gem'],['shield','dimond','crown'],['gem','sword','gem']],
+    };
+    const result = validateLevel(level);
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('[1,1]="dimond"');
   });
 });
 

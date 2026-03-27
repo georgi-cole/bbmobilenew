@@ -64,7 +64,7 @@ export interface LevelConfig {
    * hasAnyValidMove() returns true on the resulting board.  Use validateLevel()
    * in rescueTheKingLogic.ts to verify before shipping a level.
    */
-  tileLayout?: string[][];
+  tileLayout?: (TileSymbol | '')[][];
   /** Deterministic RNG seed for symbol placement (used when tileLayout is absent or has '' cells). */
   seed: number;
 }
