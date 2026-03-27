@@ -23,8 +23,8 @@ vi.mock('../src/hooks/useSound', () => ({
 /** Render the component and advance past the mixing animation. */
 function renderAndPlay(onFinish = vi.fn()) {
   const result = render(<ColorMatchComp seed={42} autoStart={false} onFinish={onFinish} />);
-  // Flush all pending timers (mixing animation + any initial setStates)
-  act(() => { vi.runAllTimers(); });
+  // Advance only past the mixing animation timeout (without draining the round timer interval)
+  act(() => { vi.advanceTimersByTime(1600); });
   return result;
 }
 
