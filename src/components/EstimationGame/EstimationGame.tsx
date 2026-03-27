@@ -3,7 +3,7 @@
  *
  * Supports two rendering modes:
  *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
- *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
+ *     with a canonical `CompleteMinigamePayload` (humanScore + winnerId + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(effectiveScore)`.
  *
  * Game design:
@@ -348,7 +348,7 @@ export default function EstimationGame({
           winnerId,
         )
       : undefined;
-    const payload: CompleteMinigamePayload = { humanScore: humanTotal, lastPlaceId };
+    const payload: CompleteMinigamePayload = { humanScore: humanTotal, lastPlaceId, winnerId };
     dispatch(completeMinigame(payload));
   }, [dispatch, roundResults, scores, session]);
 
