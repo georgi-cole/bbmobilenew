@@ -24,7 +24,8 @@ export interface RawResult {
   authoritativeWinner?: boolean;
   /**
    * Optional secondary sort key for tie-breaking when canonical scores are equal.
-   * Lower value wins (e.g. faster completion time in ms). Defaults to 0 when absent.
+   * Lower value wins (e.g. faster completion time in ms). If omitted, it is treated
+   * as +Infinity (i.e. the worst possible tiebreaker value).
    */
   tiebreaker?: number;
 }
