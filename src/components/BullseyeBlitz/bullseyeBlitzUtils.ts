@@ -97,6 +97,13 @@ const ROUND_PRESETS = [
   },
 ] as const;
 
+const AI_BASELINE_MULTIPLIER = 1.15;
+const AI_BASELINE_OFFSET = 24;
+const AI_VOLATILITY_MIN = 0.9;
+const AI_VOLATILITY_RANGE = 0.24;
+const AI_ROUND_PRESSURE_DROP = 0.04;
+const AI_HAZARD_PENALTY_MULTIPLIER = 0.18;
+
 /**
  * Select a random target kind using weighted distribution.
  *  standard:  60 %
@@ -187,6 +194,8 @@ export function buildRankedLeaderboard(
 }
 
 function createSeededRandom(seed: number): () => number {
+  // Lightweight mulberry32-style PRNG so Bullseye tournament AI scores stay
+  // deterministic per seed/player/round without pulling in another utility.
   let t = seed >>> 0;
   return () => {
     t += 0x6D2B79F5;
@@ -212,12 +221,12 @@ export function simulateBullseyeAiRoundScore(
 ): number {
   const rng = createSeededRandom(hashTournamentSeed(seed, participantId, roundNumber));
   const roundConfig = getBullseyeRoundConfig(roundNumber);
-  const baselineBoost = baseScore * 1.15 + 24;
-  const volatility = 0.9 + rng() * 0.24;
-  const pressureAdjustment = 1 - Math.max(0, roundNumber - 1) * 0.04;
-  const hazardPenalty = roundConfig.targetWeights.hazard * 0.18;
+  const adjustedBaseScore = baseScore * AI_BASELINE_MULTIPLIER + AI_BASELINE_OFFSET;
+  const volatility = AI_VOLATILITY_MIN + rng() * AI_VOLATILITY_RANGE;
+  const pressureAdjustment = 1 - Math.max(0, roundNumber - 1) * AI_ROUND_PRESSURE_DROP;
+  const hazardPenalty = roundConfig.targetWeights.hazard * AI_HAZARD_PENALTY_MULTIPLIER;
   return Math.max(
     0,
-    Math.round(baselineBoost * volatility * pressureAdjustment * (1 - hazardPenalty)),
+    Math.round(adjustedBaseScore * volatility * pressureAdjustment * (1 - hazardPenalty)),
   );
 }

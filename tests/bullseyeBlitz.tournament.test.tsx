@@ -4,6 +4,11 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 
 vi.mock('../src/components/BullseyeBlitz/BullseyeBlitz.css', () => ({}));
+const TEST_ROUND_DURATION = 1;
+// Keep spawns just under the shortened test round length so timers advance
+// naturally without introducing random target buttons we do not need here.
+const TEST_SPAWN_INTERVAL_MS = 999;
+
 vi.mock('../src/components/BullseyeBlitz/bullseyeBlitzUtils', async () => {
   const actual = await vi.importActual<typeof import('../src/components/BullseyeBlitz/bullseyeBlitzUtils')>(
     '../src/components/BullseyeBlitz/bullseyeBlitzUtils',
@@ -12,8 +17,8 @@ vi.mock('../src/components/BullseyeBlitz/bullseyeBlitzUtils', async () => {
     ...actual,
     getBullseyeRoundConfig: (roundNumber: number) => ({
       ...actual.getBullseyeRoundConfig(roundNumber),
-      durationSeconds: 1,
-      spawnIntervalMs: 999,
+      durationSeconds: TEST_ROUND_DURATION,
+      spawnIntervalMs: TEST_SPAWN_INTERVAL_MS,
     }),
   };
 });

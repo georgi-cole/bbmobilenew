@@ -50,8 +50,10 @@ const READY_COUNT = 3;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const EMPTY_HITS = { standard: 0, bonus: 0, hazard: 0 };
-const SPECTATOR_PLAYBACK_MS = 2200;
-const SPECTATOR_RESULTS_MS = 2400;
+const SPECTATOR_ROUND_DELAY_MS = 2200;
+const SPECTATOR_RESULTS_DELAY_MS = 2400;
+const READY_TICK_MS = 1000;
+const READY_GO_MS = 200;
 
 // ── Internal target state ─────────────────────────────────────────────────────
 
@@ -102,7 +104,8 @@ interface Props {
 
 function formatNameList(entries: ScoreEntry[]): string {
   const names = entries.map((entry) => entry.name);
-  if (names.length <= 1) return names[0] ?? 'Nobody';
+  if (names.length === 0) return 'Nobody';
+  if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
@@ -161,7 +164,7 @@ function buildRoundOutcome(params: {
       rankedScores,
       advancingIds: rankedScores.slice(0, 1).map((entry) => entry.id),
       eliminatedIds: rankedScores.slice(1).map((entry) => entry.id),
-      eliminatedEntries: [],
+      eliminatedEntries: rankedScores.slice(1),
       isFinal: true,
     };
   }
@@ -239,6 +242,7 @@ export default function BullseyeBlitz({
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
   const isTournamentMode = !!session;
+  const [autoStartEnabled] = useState(autoStart);
   const initialRoundConfig = isTournamentMode
     ? getBullseyeRoundConfig(1)
     : {
@@ -249,7 +253,7 @@ export default function BullseyeBlitz({
   const [roundNumber, setRoundNumber] = useState(1);
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(session?.participants ?? []);
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
-  const [countdown, setCountdown] = useState(autoStart ? 0 : READY_COUNT);
+  const [countdown, setCountdown] = useState(autoStartEnabled ? 0 : READY_COUNT);
   const [timeLeft, setTimeLeft] = useState(initialRoundConfig.durationSeconds);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [score, setScore] = useState(0);
@@ -312,8 +316,8 @@ export default function BullseyeBlitz({
     setPopEffects([]);
     setTimeLeft(nextConfig.durationSeconds);
     setNowMs(Date.now());
-    setCountdown(autoStart ? 0 : READY_COUNT);
-  }, [autoStart, clearPopTimeouts, clearRoundTimers, isTournamentMode]);
+    setCountdown(autoStartEnabled ? 0 : READY_COUNT);
+  }, [autoStartEnabled, clearPopTimeouts, clearRoundTimers, isTournamentMode]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -327,7 +331,7 @@ export default function BullseyeBlitz({
 
   useEffect(() => {
     if (gamePhase !== 'ready') return;
-    const delay = countdown <= 0 ? 200 : 1000;
+    const delay = countdown <= 0 ? READY_GO_MS : READY_TICK_MS;
     const t = setTimeout(() => {
       if (countdown <= 0) {
         setGamePhase('playing');
@@ -336,7 +340,7 @@ export default function BullseyeBlitz({
       setCountdown((c) => c - 1);
     }, delay);
     return () => clearTimeout(t);
-  }, [autoStart, countdown, gamePhase]);
+  }, [countdown, gamePhase]);
 
   const finishGame = useCallback(() => {
     clearRoundTimers();
@@ -461,7 +465,7 @@ export default function BullseyeBlitz({
       setRoundOutcome(upcomingRound);
       setRankedScores(upcomingRound.rankedScores);
       setGamePhase('round_results');
-    }, upcomingRound ? SPECTATOR_PLAYBACK_MS : 0);
+    }, upcomingRound ? SPECTATOR_ROUND_DELAY_MS : 0);
 
     return () => clearTimeout(t);
   }, [gamePhase, spectatorPlan]);
@@ -476,14 +480,17 @@ export default function BullseyeBlitz({
       }
 
       setActiveParticipantIds(roundOutcome.advancingIds);
-      setSpectatorPlan((prev) => prev
-        ? { ...prev, currentIndex: prev.currentIndex + 1 }
-        : prev);
+      if (spectatorPlan) {
+        setSpectatorPlan({
+          ...spectatorPlan,
+          currentIndex: spectatorPlan.currentIndex + 1,
+        });
+      }
       setGamePhase('spectating');
-    }, SPECTATOR_RESULTS_MS);
+    }, SPECTATOR_RESULTS_DELAY_MS);
 
     return () => clearTimeout(t);
-  }, [gamePhase, isSpectatorMode, roundOutcome]);
+  }, [gamePhase, isSpectatorMode, roundOutcome, spectatorPlan]);
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 
