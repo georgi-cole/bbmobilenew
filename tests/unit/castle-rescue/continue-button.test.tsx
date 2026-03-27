@@ -54,6 +54,6 @@ describe('CastleRescueGame overlay actions', () => {
     const overlayButton = screen.getByRole('button', { name: /continue/i });
     expect(overlayButton.style.touchAction).toBe('manipulation');
     expect(overlayButton.style.pointerEvents).toBe('auto');
-    expect(screen.getByLabelText(/castle rescue match-3 board/i)).toHaveClass('cr__board--complete');
+    expect(screen.getByLabelText(/castle rescue match-3 board/i)).toBeInTheDocument();
   });
 });

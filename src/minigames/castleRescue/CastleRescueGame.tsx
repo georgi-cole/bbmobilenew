@@ -125,7 +125,6 @@ export default function CastleRescueGame({
   const [selected, setSelected] = useState<Position | null>(null);
   const [busy, setBusy] = useState(false);
   const [matchedKeys, setMatchedKeys] = useState<string[]>([]);
-  const [hintMove, setHintMove] = useState<MoveCandidate | null>(null);
   const [statusText, setStatusText] = useState('Swap adjacent crests to break the floodgate.');
   const [swapFeedback, setSwapFeedback] = useState<SwapFeedback | null>(null);
   const [startTimeMs, setStartTimeMs] = useState(() => performance.now());
@@ -203,7 +202,6 @@ export default function CastleRescueGame({
     syncScore(0);
     setMatchedKeys([]);
     setSelected(null);
-    setHintMove(null);
     setStatusText('Swap adjacent crests to break the floodgate.');
     setBusy(false);
     setSwapFeedback(null);
@@ -217,7 +215,10 @@ export default function CastleRescueGame({
   }, [clearTimers, seed, syncBoard, syncScore]);
 
   useEffect(() => {
-    beginRun(seed, autoStart ? 'playing' : 'ready');
+    const timeoutId = window.setTimeout(() => {
+      beginRun(seed, autoStart ? 'playing' : 'ready');
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [autoStart, beginRun, seed]);
 
   useEffect(() => () => {
@@ -231,7 +232,6 @@ export default function CastleRescueGame({
     syncScore(finalScore);
     setBusy(false);
     setSelected(null);
-    setHintMove(null);
     setMatchedKeys([]);
     setSwapFeedback(null);
     setFinale({ rescued, score: finalScore, timeRemainingMs });
@@ -263,17 +263,14 @@ export default function CastleRescueGame({
     return () => cancelAnimationFrame(frameId);
   }, [finishRun, phase, timeLimitMs]);
 
-  useEffect(() => {
+  const hintMove = useMemo<MoveCandidate | null>(() => {
     if (phase !== 'playing' || busy) {
-      setHintMove(null);
-      return;
+      return null;
     }
     if (nowMs - lastInteractionMs < HINT_DELAY_MS) {
-      setHintMove(null);
-      return;
+      return null;
     }
-    const [nextHint] = findAvailableMoves(board);
-    setHintMove(nextHint ?? null);
+    return findAvailableMoves(board)[0] ?? null;
   }, [board, busy, lastInteractionMs, nowMs, phase]);
 
   const maybeReshuffle = useCallback(async (candidateBoard: PuzzleBoard): Promise<PuzzleBoard> => {
@@ -300,7 +297,6 @@ export default function CastleRescueGame({
   const resolveValidSwap = useCallback(async (from: Position, to: Position) => {
     setBusy(true);
     setSelected(null);
-    setHintMove(null);
     setStatusText('The wall cracks — keep the cascade flowing.');
 
     const swappedBoard = swapBoardCells(boardRef.current, from, to);
@@ -539,7 +535,11 @@ export default function CastleRescueGame({
           </div>
 
           <div className="cr__board-wrap">
-            <div className={boardClassName} aria-label="Castle Rescue match-3 board">
+            <div
+              className={boardClassName}
+              aria-label="Castle Rescue match-3 board"
+              style={{ pointerEvents: phase === 'won' || phase === 'lost' ? 'none' : 'auto' }}
+            >
               <div
                 className="cr__board-grid"
                 style={{
