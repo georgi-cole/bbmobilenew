@@ -1,11 +1,10 @@
 /**
- * Color Match — unit tests for the React component.
+ * Color Match — unit tests for registry wiring and game utilities.
  *
  * Covers:
- *  1. Registry: colorMatch is active, has React implementation, and correct reactComponentKey.
- *  2. Component logic: accuracy calculation, seeded round generation.
- *  3. Component renders and submits a round correctly.
- *  4. Final score is the average accuracy across rounds.
+ *  1. Registry: colorMatch is active, uses React implementation, and has the correct reactComponentKey.
+ *  2. React components map: ColorMatch is registered in the reactComponents map.
+ *  3. Utility logic: color match accuracy calculation and hint-related helpers.
  */
 
 import { describe, it, expect } from 'vitest';
