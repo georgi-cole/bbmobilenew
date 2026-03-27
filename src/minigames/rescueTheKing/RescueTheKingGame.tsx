@@ -32,7 +32,7 @@
 import React, {
   useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
-import type { GameState, Cell, Board } from './rescueTheKingTypes';
+import type { GameState, Cell, Board, LoseReason } from './rescueTheKingTypes';
 import { SYMBOL_EMOJI, SYMBOL_COLOR } from './rescueTheKingTypes';
 import {
   buildBoard,
@@ -110,6 +110,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       reshuffleCount,
       initialNormalTileCount: countNormalTiles(board),
       boardCleared: false,
+      loseReason: null,
     };
   }, [level, autoStart, seed]);
 
@@ -160,7 +161,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
         if (prev.phase !== 'playing') return prev;
         const next = prev.timeRemainingMs - 100;
         if (next <= 0) {
-          const loseState: GameState = { ...prev, timeRemainingMs: 0, phase: 'lose' };
+          const loseState: GameState = { ...prev, timeRemainingMs: 0, phase: 'lose', loseReason: 'timeout' as LoseReason };
           setTimeout(() => finishGame(loseState), 50);
           return loseState;
         }
@@ -250,6 +251,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
           board: currentBoard,
           phase: 'lose',
           boardCleared: false,
+          loseReason: 'deadlock',
           selectedCell: null,
         };
         setState(loseState);
@@ -592,7 +594,9 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
           <div className="rtk-overlay-emoji">💀</div>
           <div className="rtk-overlay-title">The King Drowned!</div>
           <div className="rtk-overlay-body">
-            Time ran out before the board was cleared. The king is gone…
+            {state.loseReason === 'deadlock'
+              ? 'No more moves could be found. The board is stuck and the king is lost…'
+              : 'Time ran out before the board was cleared. The king is gone…'}
           </div>
           <div className="rtk-overlay-score">Score: {finalScore.toLocaleString()}</div>
           <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={startGame}>

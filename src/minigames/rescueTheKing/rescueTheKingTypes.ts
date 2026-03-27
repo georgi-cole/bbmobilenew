@@ -36,7 +36,10 @@ export type GamePhase =
   | 'playing'    // Active gameplay, waiting for player input
   | 'animating'  // Resolving matches / gravity (no input allowed)
   | 'win'        // Board cleared
-  | 'lose';      // Timer expired
+  | 'lose';      // Timer expired or board deadlocked
+
+/** Distinguishes why the game ended in a loss. */
+export type LoseReason = 'timeout' | 'deadlock';
 
 // ── Level definition ──────────────────────────────────────────────────────────
 
@@ -71,6 +74,7 @@ export interface GameState {
   reshuffleCount: number;
   initialNormalTileCount: number;
   boardCleared: boolean;
+  loseReason: LoseReason | null;
 }
 
 // ── Display helpers ───────────────────────────────────────────────────────────
