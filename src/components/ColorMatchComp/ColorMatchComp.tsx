@@ -11,7 +11,7 @@
  *  - 5 rounds total. Final score = average accuracy across rounds − hint penalties (≤ 100).
  *  - Ties on final score break by total time taken (faster is better).
  *
- * Supports generic MinigameHost path: calls onFinish(score) when done.
+ * Supports generic MinigameHost path: calls onFinish(finalScore, tiebreakerMs) when done.
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -276,13 +276,15 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     if (!hintWarning || phase !== 'playing' || hintsRemaining <= 0) return;
     playClick();
     setHintsUsedTotal((prev) => prev + 1);
-    const nextHintsThisRound = hintsUsedThisRound + 1;
-    setHintsUsedThisRound(nextHintsThisRound);
-    hintsUsedThisRoundRef.current = nextHintsThisRound;
+    setHintsUsedThisRound((prev) => {
+      const next = prev + 1;
+      hintsUsedThisRoundRef.current = next;
+      return next;
+    });
     setAccuracyRevealed(true);
     setHintMessage(buildHintMessage(currentRound.target, playerColor));
     setHintWarning(null);
-  }, [currentRound.target, hintWarning, hintsRemaining, hintsUsedThisRound, phase, playClick, playerColor]);
+  }, [currentRound.target, hintWarning, hintsRemaining, phase, playClick, playerColor]);
 
   const cancelHintPurchase = useCallback(() => {
     playClick();
@@ -407,7 +409,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
             <span className="cm__swatch-label">Target</span>
           </div>
           <div className="cm__accuracy-meter" aria-live="polite" aria-atomic="true">
-            {accuracyRevealed || phase === 'feedback' ? (
+            {accuracyRevealed ? (
               <>
                 <span className={[
                   'cm__accuracy-val',

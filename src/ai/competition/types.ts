@@ -56,6 +56,13 @@ export interface MinigameAiModel {
   minScore?: number;
   maxScore?: number;
   scoreBuckets?: MinigameAiScoreBucket[];
+  /**
+   * Maximum possible elapsed time in ms for the game (e.g. numRounds × perRoundLimit).
+   * When set, `startChallenge` generates a simulated tiebreaker time for each AI
+   * and stores it alongside `aiScores`.  A higher AI score produces a proportionally
+   * shorter simulated elapsed time.
+   */
+  tiebreakerMaxMs?: number;
   notes?: string;
 }
 

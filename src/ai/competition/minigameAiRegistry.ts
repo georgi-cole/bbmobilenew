@@ -259,6 +259,9 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     // 25-second round) cannot produce impossible accuracy values.
     minScore: 0,
     maxScore: 100,
+    // 5 rounds × 25 s each = 125 000 ms maximum total elapsed time.
+    // Used to generate a simulated elapsed-time tiebreaker for AI players.
+    tiebreakerMaxMs: 125_000,
     notes: 'Color Match — 5-round average accuracy in [0, 100]. AI produces realistic match percentages.',
   },
   socialStrings: {
