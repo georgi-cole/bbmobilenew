@@ -6,6 +6,8 @@
  *
  * Classes applied:
  *   is-standalone      — launched from iOS/Android home-screen (A2HS / PWA)
+ *                        OR running inside a Capacitor native WebView
+ *   is-capacitor       — running inside a Capacitor native WebView
  *   is-webkit          — running inside a WebKit-based browser (Safari, iOS Chrome,
  *                        iOS WebView); NOT set for desktop Chrome/Edge/Firefox
  *   is-chrome-android  — Chrome on Android (supports backdrop-filter well, but may
@@ -22,8 +24,23 @@ export function applyDisplayModeClasses(): void {
   const html = document.documentElement;
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 
-  // ── Standalone (A2HS / PWA) ──────────────────────────────────────────────
+  // ── Capacitor native WebView ─────────────────────────────────────────────
+  // Capacitor injects window.Capacitor when running inside a native shell.
+  // Use isNativePlatform() to confirm we are in the actual native context;
+  // the global may also exist on web when @capacitor/core is imported there.
+  const isCapacitor =
+    typeof window !== 'undefined' &&
+    (
+      window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }
+    ).Capacitor?.isNativePlatform?.() === true;
+
+  if (isCapacitor) {
+    html.classList.add('is-capacitor');
+  }
+
+  // ── Standalone (A2HS / PWA / Capacitor native) ───────────────────────────
   const isStandalone =
+    isCapacitor ||
     (typeof window.navigator !== 'undefined' &&
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true) ||
     window.matchMedia('(display-mode: standalone)').matches;
