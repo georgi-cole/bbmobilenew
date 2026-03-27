@@ -72,7 +72,7 @@ export interface MemoryColorsState {
 }
 
 export const MEMORY_COLOR_POOL: readonly MemoryColorDef[] = [
-  { name: 'Scarlet', hex: '#d62839', emoji: '��' },
+  { name: 'Scarlet', hex: '#d62839', emoji: '🟥' },
   { name: 'Baby Blue', hex: '#7ec8f5', emoji: '🩵' },
   { name: 'Milky Grass', hex: '#8ccf63', emoji: '🌿' },
   { name: 'Blood Orange', hex: '#f25c1d', emoji: '🟠' },
