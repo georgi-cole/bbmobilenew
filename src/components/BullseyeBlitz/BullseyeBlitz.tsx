@@ -5,11 +5,12 @@
  *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload`
  *     (humanScore + winnerId + lastPlaceId).
- *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(finalScore)`.
+ *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same escalating
+ *     multiround gauntlet and calls `onFinish(totalScore)` after the final round.
  *
  * Gameplay — "Bullseye Blitz":
  *  - HOH/LOH mode now runs as a knockout bracket with progressively harder rounds.
- *  - Challenge mode keeps the original single-round score callback flow.
+ *  - Challenge mode runs as a solo multiround gauntlet with a cumulative total.
  *  - Canonical scoring: sum of all scored hits (including penalties)
  *  - Canonical last-place: lowest overall finisher from the knockout bracket
  */
@@ -26,6 +27,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import {
+  BULLSEYE_CHALLENGE_ROUNDS,
   TARGET_CONFIGS,
   buildRankedLeaderboard,
   getBullseyeEliminationCount,
@@ -43,14 +45,12 @@ import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Total gameplay duration in seconds for standalone challenge mode. */
-const GAME_DURATION = 20;
-
 /** Ready countdown start value. */
 const READY_COUNT = 3;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const EMPTY_HITS = { standard: 0, bonus: 0, hazard: 0 };
+const EMPTY_PLAYERS: Player[] = [];
 const FINAL_SHOWDOWN_THRESHOLD = 2;
 const SPECTATOR_ROUND_DELAY_MS = 2200;
 const SPECTATOR_RESULTS_DELAY_MS = 2400;
@@ -96,7 +96,7 @@ interface Props {
   session?: MinigameSession;
   /** HOH/LOH minigame path: all game players (for name lookup). */
   players?: Player[];
-  /** MinigameHost path: called with the human's final score. */
+  /** MinigameHost path: called with the human's final cumulative score. */
   onFinish?: (value: number) => void;
   /** MinigameHost path: competition seed (reserved for future seeded RNG). */
   seed?: number;
@@ -225,6 +225,11 @@ function simulateRemainingRounds(params: {
 }
 
 function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFinalRound: boolean): string {
+  if (activeCount <= 1) {
+    return config.roundNumber >= BULLSEYE_CHALLENGE_ROUNDS
+      ? `Round ${config.roundNumber} • Final solo sprint • Bank your last points`
+      : `Round ${config.roundNumber} • Solo challenge • Bank every point`;
+  }
   if (isFinalRound) {
     return `Round ${config.roundNumber} • Final duel • Winner takes the challenge`;
   }
@@ -252,9 +257,11 @@ function getDisplayedRoundNumber(params: {
   return roundNumber;
 }
 
-function getReadyHintText(isTournamentMode: boolean, activeCount: number): string {
-  if (!isTournamentMode) {
-    return 'Tap the bullseyes, avoid the bombs — rack up the highest score you can!';
+function getReadyHintText(isKnockoutMode: boolean, activeCount: number, roundNumber: number): string {
+  if (!isKnockoutMode) {
+    return roundNumber >= BULLSEYE_CHALLENGE_ROUNDS
+      ? 'Final round — bank every point and dodge every bomb.'
+      : 'Tap the bullseyes, avoid the bombs, and carry your score into the next round!';
   }
   if (activeCount <= FINAL_SHOWDOWN_THRESHOLD) {
     return 'Final showdown — the highest score wins it all.';
@@ -266,23 +273,27 @@ function getReadyHintText(isTournamentMode: boolean, activeCount: number): strin
 
 export default function BullseyeBlitz({
   session,
-  players = [],
+  players = EMPTY_PLAYERS,
   onFinish,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
-  const isTournamentMode = !!session;
+  const isKnockoutMode = !!session;
+  const challengeParticipantId = humanId ?? 'human';
+  const challengePlayers = useMemo(
+    () => (players.length > 0
+      ? players
+      : [{ id: challengeParticipantId, name: 'You', avatar: '🧑', status: 'active', isUser: true } satisfies Player]),
+    [challengeParticipantId, players],
+  );
   const [autoStartEnabled] = useState(autoStart);
-  const initialRoundConfig = isTournamentMode
-    ? getBullseyeRoundConfig(1)
-    : {
-      ...getBullseyeRoundConfig(1),
-      durationSeconds: GAME_DURATION,
-    };
+  const initialRoundConfig = getBullseyeRoundConfig(1);
 
   const [roundNumber, setRoundNumber] = useState(1);
-  const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(session?.participants ?? []);
+  const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
+    session?.participants ?? [challengeParticipantId],
+  );
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
   const [countdown, setCountdown] = useState(autoStartEnabled ? 0 : READY_COUNT);
   const [timeLeft, setTimeLeft] = useState(initialRoundConfig.durationSeconds);
@@ -299,15 +310,7 @@ export default function BullseyeBlitz({
   const [isSpectatorMode, setIsSpectatorMode] = useState(false);
   const [tournamentScoreTotal, setTournamentScoreTotal] = useState(0);
 
-  const currentRoundConfig = useMemo(
-    () => (isTournamentMode
-      ? getBullseyeRoundConfig(roundNumber)
-      : {
-        ...getBullseyeRoundConfig(1),
-        durationSeconds: GAME_DURATION,
-      }),
-    [isTournamentMode, roundNumber],
-  );
+  const currentRoundConfig = useMemo(() => getBullseyeRoundConfig(roundNumber), [roundNumber]);
 
   // Stable refs for values accessed in intervals/callbacks
   const scoreRef = useRef(0);
@@ -339,12 +342,7 @@ export default function BullseyeBlitz({
   }, []);
 
   const resetRoundState = useCallback((nextRoundNumber: number) => {
-    const nextConfig = isTournamentMode
-      ? getBullseyeRoundConfig(nextRoundNumber)
-      : {
-        ...getBullseyeRoundConfig(1),
-        durationSeconds: GAME_DURATION,
-      };
+    const nextConfig = getBullseyeRoundConfig(nextRoundNumber);
     clearRoundTimers();
     clearPopTimeouts();
     scoreRef.current = 0;
@@ -356,7 +354,7 @@ export default function BullseyeBlitz({
     setTimeLeft(nextConfig.durationSeconds);
     setNowMs(Date.now());
     setCountdown(autoStartEnabled ? 0 : READY_COUNT);
-  }, [autoStartEnabled, clearPopTimeouts, clearRoundTimers, isTournamentMode]);
+  }, [autoStartEnabled, clearPopTimeouts, clearRoundTimers]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -390,8 +388,30 @@ export default function BullseyeBlitz({
     const humanFinalHits = { ...hitsRef.current };
 
     if (!session) {
-      // MinigameHost challenge path — just report the score
-      if (onFinish) onFinish(humanFinalScore);
+      const challengeOutcome: RoundOutcome = {
+        roundNumber,
+        activeParticipantIds: [challengeParticipantId],
+        rankedScores: buildRankedLeaderboard(
+          [challengeParticipantId],
+          { [challengeParticipantId]: humanFinalScore },
+          challengeParticipantId,
+          challengePlayers,
+          humanFinalHits,
+        ),
+        advancingIds: roundNumber < BULLSEYE_CHALLENGE_ROUNDS ? [challengeParticipantId] : [],
+        eliminatedIds: [],
+        eliminatedEntries: [],
+        isFinal: roundNumber >= BULLSEYE_CHALLENGE_ROUNDS,
+      };
+      setTournamentScoreTotal((prev) => prev + humanFinalScore);
+      setRoundOutcome(challengeOutcome);
+      setRankedScores(challengeOutcome.rankedScores);
+      if (challengeOutcome.isFinal) {
+        setFinalStandings(challengeOutcome.rankedScores);
+        setGamePhase('final_results');
+        return;
+      }
+      setGamePhase('round_results');
       return;
     }
 
@@ -446,11 +466,12 @@ export default function BullseyeBlitz({
     setGamePhase('round_results');
   }, [
     activeParticipantIds,
+    challengeParticipantId,
+    challengePlayers,
     clearPopTimeouts,
     clearRoundTimers,
     eliminationHistory,
     humanId,
-    onFinish,
     players,
     roundNumber,
     session,
@@ -638,7 +659,10 @@ export default function BullseyeBlitz({
   }, [eliminationHistory, players, roundOutcome, session]);
 
   const handleDone = useCallback(() => {
-    if (!session) return;
+    if (!session) {
+      if (onFinish) onFinish(tournamentScoreTotal);
+      return;
+    }
     const resolvedStandings = finalStandings.length > 0 ? finalStandings : rankedScores;
     const payload: CompleteMinigamePayload = {
       humanScore: tournamentScoreTotal,
@@ -646,19 +670,19 @@ export default function BullseyeBlitz({
       lastPlaceId: resolvedStandings[resolvedStandings.length - 1]?.id,
     };
     dispatch(completeMinigame(payload));
-  }, [dispatch, finalStandings, rankedScores, session, tournamentScoreTotal]);
+  }, [dispatch, finalStandings, onFinish, rankedScores, session, tournamentScoreTotal]);
 
   // ── Derived UI ─────────────────────────────────────────────────────────────
 
   const progressPct = (timeLeft / currentRoundConfig.durationSeconds) * 100;
   const isUrgent = timeLeft <= 5;
   const now = nowMs;
-  const activeCount = isTournamentMode ? activeParticipantIds.length : 1;
-  const headerSubtitle = isTournamentMode
+  const activeCount = activeParticipantIds.length;
+  const headerSubtitle = isKnockoutMode
     ? gamePhase === 'spectating'
       ? '📹 Spectator mode — the remaining rounds advance automatically.'
       : 'Survive each knockout round as the arena gets tougher.'
-    : 'Pop targets, dodge the bombs — 20 seconds!';
+    : 'Clear every round and build the highest cumulative score you can.';
   // Used both for spectator-mode rendering and for keeping the round banner in
   // sync with the currently displayed tournament phase.
   const spectatorRound = spectatorPlan ? spectatorPlan.rounds[spectatorPlan.currentIndex] : null;
@@ -682,7 +706,7 @@ export default function BullseyeBlitz({
       displayedActiveCount <= FINAL_SHOWDOWN_THRESHOLD,
     )
     : null;
-  const showRoundBanner = isTournamentMode && displayedRoundConfig != null && roundBanner != null;
+  const showRoundBanner = displayedRoundConfig != null && roundBanner != null;
   const currentHumanEntry = roundOutcome?.rankedScores.find((entry) => entry.isHuman)
     ?? finalStandings.find((entry) => entry.isHuman)
     ?? rankedScores.find((entry) => entry.isHuman);
@@ -722,7 +746,7 @@ export default function BullseyeBlitz({
             <span className="bbl__countdown" aria-live="assertive">
               {countdown === 0 ? 'GO!' : countdown}
             </span>
-            <p className="bbl__hint">{getReadyHintText(isTournamentMode, activeCount)}</p>
+              <p className="bbl__hint">{getReadyHintText(isKnockoutMode, activeCount, roundNumber)}</p>
           </div>
         )}
 
@@ -848,8 +872,12 @@ export default function BullseyeBlitz({
           <div className="bbl__results">
             <p className="bbl__winner-line">
               {roundOutcome.isFinal
-                ? `🏆 ${roundOutcome.rankedScores[0]?.name ?? 'Unknown'} wins the final round!`
-                : `Round ${roundOutcome.roundNumber} complete — ${formatNameList(roundOutcome.eliminatedEntries)} ${roundOutcome.eliminatedEntries.length === 1 ? 'is' : 'are'} eliminated.`}
+                ? isKnockoutMode
+                  ? `🏆 ${roundOutcome.rankedScores[0]?.name ?? 'Unknown'} wins the final round!`
+                  : `🏁 Round ${roundOutcome.roundNumber} complete — your final total is locked in.`
+                : roundOutcome.eliminatedEntries.length > 0
+                  ? `Round ${roundOutcome.roundNumber} complete — ${formatNameList(roundOutcome.eliminatedEntries)} ${roundOutcome.eliminatedEntries.length === 1 ? 'is' : 'are'} eliminated.`
+                  : `Round ${roundOutcome.roundNumber} complete — your score carries into the next round.`}
             </p>
             <ol className="bbl__leaderboard">
               {roundOutcome.rankedScores.map((entry, i) => {
@@ -876,7 +904,7 @@ export default function BullseyeBlitz({
                       )}
                     </span>
                     <span className="bbl__entry-score">{entry.score} pts</span>
-                    {!roundOutcome.isFinal && (
+                    {!roundOutcome.isFinal && roundOutcome.rankedScores.length > 1 && (
                       <span
                         className={[
                           'bbl__status-tag',
@@ -936,7 +964,9 @@ export default function BullseyeBlitz({
         {gamePhase === 'final_results' && finalStandings.length > 0 && (
           <div className="bbl__results">
             <p className="bbl__winner-line">
-              🏆 {finalStandings[0].name} wins Bullseye Blitz!
+              {isKnockoutMode
+                ? `🏆 ${finalStandings[0].name} wins Bullseye Blitz!`
+                : '🏆 Bullseye Blitz complete!'}
             </p>
             <ol className="bbl__leaderboard">
               {finalStandings.map((entry, i) => (
@@ -971,7 +1001,7 @@ export default function BullseyeBlitz({
             </ol>
             {currentHumanEntry && (
               <p className="bbl__hit-summary">
-                Your tournament total: {tournamentScoreTotal} pts.
+                Your total score: {tournamentScoreTotal} pts.
               </p>
             )}
             <button
