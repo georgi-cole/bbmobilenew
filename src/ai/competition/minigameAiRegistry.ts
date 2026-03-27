@@ -156,16 +156,14 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PRECISION,
     weights: WEIGHTS_PRECISION,
-    // Bullseye Blitz — 20s game.
-    // Standard (+10), Bonus (+25), Hazard (−15 if hit).
-    // An average competitor hits ~6-8 standard + 2-3 bonus targets while
-    // avoiding most hazards → ~100-160 pts.
-    // Strong players can reach ~220+ pts; weak/unlucky players ~30-50 pts.
-    minScore: 30,
-    maxScore: 220,
+    // Bullseye Blitz now runs as a knockout bracket.
+    // Strong competitors should remain threatening across multiple rounds instead
+    // of trailing far behind a typical human score.
+    minScore: 70,
+    maxScore: 260,
     notes:
-      'Bullseye Blitz — 20s game. Standard=+10, Bonus=+25, Hazard=−15. ' +
-      'AI scores in [30, 220] matching expected human performance range.',
+      'Bullseye Blitz — knockout rounds with escalating difficulty. ' +
+      'AI scores in [70, 260] so surviving opponents stay competitive with human play.',
   },
   estimationGame: {
     key: 'estimationGame',
