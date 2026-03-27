@@ -592,14 +592,29 @@ export default function BullseyeBlitz({
       ? '📹 Spectator mode — the remaining rounds advance automatically.'
       : 'Survive each knockout round as the arena gets tougher.'
     : 'Pop targets, dodge the bombs — 20 seconds!';
-  const roundBanner = isTournamentMode
-    ? buildRoundBanner(currentRoundConfig, activeCount, activeCount <= 2)
-    : 'Classic blitz round';
+  const spectatorRound = spectatorPlan ? spectatorPlan.rounds[spectatorPlan.currentIndex] : null;
+  const displayedRoundNumber =
+    spectatorRound?.roundNumber
+    ?? roundOutcome?.roundNumber
+    ?? (gamePhase === 'final_results' ? null : roundNumber);
+  const displayedRoundConfig = displayedRoundNumber != null
+    ? getBullseyeRoundConfig(displayedRoundNumber)
+    : null;
+  const displayedActiveCount =
+    spectatorRound?.activeParticipantIds.length
+    ?? roundOutcome?.activeParticipantIds.length
+    ?? activeCount;
+  const roundBanner = displayedRoundConfig
+    ? buildRoundBanner(
+      displayedRoundConfig,
+      displayedActiveCount,
+      displayedActiveCount <= 2,
+    )
+    : null;
   const currentHumanEntry = roundOutcome?.rankedScores.find((entry) => entry.isHuman)
     ?? finalStandings.find((entry) => entry.isHuman)
     ?? rankedScores.find((entry) => entry.isHuman);
   const humanWasEliminated = !!roundOutcome && !!humanId && roundOutcome.eliminatedIds.includes(humanId);
-  const spectatorRound = spectatorPlan ? spectatorPlan.rounds[spectatorPlan.currentIndex] : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -623,10 +638,10 @@ export default function BullseyeBlitz({
           <span className="bbl__legend-item bbl__legend-item--hazard">💣 −15</span>
         </div>
 
-        {isTournamentMode && (
+        {isTournamentMode && displayedRoundConfig && roundBanner && (
           <div className="bbl__round-banner" aria-live="polite">
             <strong>{roundBanner}</strong>
-            <span>{currentRoundConfig.difficultyLabel}</span>
+            <span>{displayedRoundConfig.difficultyLabel}</span>
           </div>
         )}
 
@@ -636,9 +651,11 @@ export default function BullseyeBlitz({
               {countdown === 0 ? 'GO!' : countdown}
             </span>
             <p className="bbl__hint">
-              {activeCount <= 2
-                ? 'Final showdown — the highest score wins it all.'
-                : `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`}
+              {!isTournamentMode
+                ? 'Tap the bullseyes, avoid the bombs — rack up the highest score you can!'
+                : activeCount <= 2
+                  ? 'Final showdown — the highest score wins it all.'
+                  : `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`}
             </p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import type { Player } from '../../types';
+import { mulberry32 } from '../../store/rng';
 
 export type TargetKind = 'standard' | 'bonus' | 'hazard';
 
@@ -106,9 +107,11 @@ const AI_HAZARD_PENALTY_MULTIPLIER = 0.18;
 
 /**
  * Select a random target kind using weighted distribution.
+ * Defaults to:
  *  standard:  60 %
  *  bonus:     25 %
  *  hazard:    15 %
+ * Callers can override the default weights for harder tournament rounds.
  */
 export function pickTargetKind(
   random01: number,
@@ -193,18 +196,6 @@ export function buildRankedLeaderboard(
   return rankedEntries.map(({ participantIndex: _participantIndex, ...entry }) => entry);
 }
 
-function createSeededRandom(seed: number): () => number {
-  // Lightweight mulberry32-style PRNG so Bullseye tournament AI scores stay
-  // deterministic per seed/player/round without pulling in another utility.
-  let t = seed >>> 0;
-  return () => {
-    t += 0x6D2B79F5;
-    let value = Math.imul(t ^ (t >>> 15), t | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 function hashTournamentSeed(seed: number, participantId: string, roundNumber: number): number {
   let hash = seed ^ (roundNumber * 0x9e3779b9);
   for (let i = 0; i < participantId.length; i += 1) {
@@ -219,7 +210,7 @@ export function simulateBullseyeAiRoundScore(
   seed: number,
   participantId: string,
 ): number {
-  const rng = createSeededRandom(hashTournamentSeed(seed, participantId, roundNumber));
+  const rng = mulberry32(hashTournamentSeed(seed, participantId, roundNumber));
   const roundConfig = getBullseyeRoundConfig(roundNumber);
   const adjustedBaseScore = baseScore * AI_BASELINE_MULTIPLIER + AI_BASELINE_OFFSET;
   const volatility = AI_VOLATILITY_MIN + rng() * AI_VOLATILITY_RANGE;

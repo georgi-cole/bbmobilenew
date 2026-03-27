@@ -88,6 +88,14 @@ function renderTournament(session: MinigameSession, players: Player[]) {
   );
 }
 
+function renderChallenge(players: Player[]) {
+  return render(
+    <Provider store={makeStore(players)}>
+      <BullseyeBlitz players={players} />
+    </Provider>,
+  );
+}
+
 async function advanceUntil(assertion: () => boolean, maxSteps = 250) {
   for (let i = 0; i < maxSteps; i += 1) {
     if (assertion()) return;
@@ -105,6 +113,14 @@ describe('BullseyeBlitz tournament flow', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('keeps the classic ready hint in challenge mode', () => {
+    renderChallenge(makePlayers(3));
+
+    expect(
+      screen.getByText(/tap the bullseyes, avoid the bombs — rack up the highest score you can!/i),
+    ).toBeInTheDocument();
   });
 
   it('offers skip or spectator mode when the human is eliminated', async () => {
@@ -145,6 +161,8 @@ describe('BullseyeBlitz tournament flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /keep watching/i }));
 
     expect(screen.getAllByText(/spectator mode/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Round 2 • 3 players • 1 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round heats up — faster spawns and more hazards./i)).toBeInTheDocument();
     expect(screen.queryByText(/skip to final results/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/continue to round/i)).not.toBeInTheDocument();
 
