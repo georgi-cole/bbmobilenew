@@ -14,7 +14,8 @@
  *      players must explicitly tap the prompt to gain the effect,
  *      creating a meaningful risk/reward tradeoff against tapping rhythm.
  *  - Booster types: 2x, 3x, 0.5x, -1x, +3s, -3s
- *  - Competitive AI scoring via pre-computed `session.aiScores`
+ *  - Hybrid AI scoring: AI scores are resolved after the human finishes, not
+ *    precomputed. Uses `resolveHybridAiScores` with the human score as anchor.
  *  - Canonical last-place derivation from effective scores
  */
 
@@ -32,6 +33,7 @@ import {
   selectBoosterPrompts,
 } from '../../ai/competition/quickTapSimulation';
 import type { ScheduledBoosterPrompt } from '../../ai/competition/quickTapSimulation';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './QuickTapRace.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -362,9 +364,30 @@ export default function QuickTapRace({
     const modifiers = appliedModifiersRef.current;
 
     if (session) {
-      // HOH/LOH path — build full leaderboard and dispatch to Redux
+      // HOH/LOH path — build full leaderboard and dispatch to Redux.
+      // For hybrid sessions, resolve AI scores NOW (after human score is known)
+      // using the same pure resolver that completeMinigame will call, so the
+      // displayed results are identical to the authoritative Redux outcome.
+      let resolvedAiScores: Record<string, number>;
+      if (session.hybridResolveOnComplete) {
+        const aiParticipants = session.participants
+          .filter((id) => id !== humanId)
+          .map((id) => {
+            const p = players.find((pl) => pl.id === id);
+            return { id, profile: p?.competitionProfile };
+          });
+        resolvedAiScores = resolveHybridAiScores({
+          gameKey: session.key,
+          humanScore: humanEffective,
+          aiParticipants,
+          seed: session.seed,
+        });
+      } else {
+        resolvedAiScores = session.aiScores;
+      }
+
       const allScores: Record<string, number> = {
-        ...session.aiScores,
+        ...resolvedAiScores,
         ...(humanId ? { [humanId]: humanEffective } : {}),
       };
 

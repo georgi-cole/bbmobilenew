@@ -101,8 +101,20 @@ export interface MinigameSession {
   participants: string[];
   seed: number;
   options: { timeLimit: number };
-  /** Pre-simulated deterministic scores for every non-human participant. */
+  /**
+   * Pre-simulated deterministic scores for every non-human participant.
+   * Empty (`{}`) for sessions created by the hybrid resolver path
+   * (`hybridResolveOnComplete: true`).
+   */
   aiScores: Record<string, number>;
+  /**
+   * When true, AI scores are NOT precomputed. Instead, `completeMinigame`
+   * calls the central hybrid score resolver after the human score is known.
+   * Set by `startMinigame` for all score-based (non-endurance) games with a
+   * human participant. Legacy sessions and test fixtures that pre-supply
+   * `aiScores` via `launchMinigame` leave this false/undefined.
+   */
+  hybridResolveOnComplete?: boolean;
 }
 
 /**

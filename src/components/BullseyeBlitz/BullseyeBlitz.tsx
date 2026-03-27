@@ -38,6 +38,7 @@ import type {
   ScoreEntry,
   TargetKind,
 } from './bullseyeBlitzUtils';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -317,6 +318,14 @@ export default function BullseyeBlitz({
   const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const expireRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const popTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  /**
+   * Cached hybrid-resolved AI scores, computed once when the human finishes
+   * round 1 of the tournament.  Stored in a ref so every subsequent round and
+   * the "skip / keep watching" simulation paths all use the same per-player
+   * baseline — keeping the displayed leaderboards consistent with the Redux
+   * outcome that `completeMinigame` will derive.
+   */
+  const resolvedAiScoresRef = useRef<Record<string, number> | null>(null);
 
   const clearPopTimeouts = useCallback(() => {
     popTimeoutsRef.current.forEach(clearTimeout);
@@ -381,13 +390,40 @@ export default function BullseyeBlitz({
     const humanFinalHits = { ...hitsRef.current };
 
     if (!session) {
+      // MinigameHost challenge path — just report the score
       if (onFinish) onFinish(humanFinalScore);
       return;
     }
 
+    // HOH/LOH tournament path.
+    // For hybrid sessions, resolve per-player AI base scores once (round 1 only),
+    // using the cumulative total that will ultimately be dispatched to the store.
+    // `tournamentScoreTotal` at this point holds all previous rounds' scores;
+    // adding `humanFinalScore` gives the same value that `handleDone` will pass
+    // to `completeMinigame` as `humanScore`.
+    if (session.hybridResolveOnComplete && resolvedAiScoresRef.current === null) {
+      const finalTotal = tournamentScoreTotal + humanFinalScore;
+      const aiParticipants = session.participants
+        .filter((id) => id !== humanId)
+        .map((id) => {
+          const p = players.find((pl) => pl.id === id);
+          return { id, profile: p?.competitionProfile };
+        });
+      resolvedAiScoresRef.current = resolveHybridAiScores({
+        gameKey: session.key,
+        humanScore: finalTotal,
+        aiParticipants,
+        seed: session.seed,
+      });
+    }
+
+    // Use the hybrid-resolved scores when available; fall back to precomputed
+    // session scores for non-hybrid (legacy / endurance) sessions.
+    const effectiveAiScores = resolvedAiScoresRef.current ?? session.aiScores;
+
     const outcome = buildRoundOutcome({
       activeParticipantIds,
-      aiScores: session.aiScores,
+      aiScores: effectiveAiScores,
       humanId,
       humanScore: humanFinalScore,
       humanHits: humanFinalHits,
@@ -418,6 +454,7 @@ export default function BullseyeBlitz({
     players,
     roundNumber,
     session,
+    tournamentScoreTotal,
   ]);
 
   // ── Playing — game timer ───────────────────────────────────────────────────
@@ -572,7 +609,7 @@ export default function BullseyeBlitz({
     if (!session || !roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
-      aiScores: session.aiScores,
+      aiScores: resolvedAiScoresRef.current ?? session.aiScores,
       players,
       roundNumber: roundOutcome.roundNumber + 1,
       seed: session.seed,
@@ -586,7 +623,7 @@ export default function BullseyeBlitz({
     if (!session || !roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
-      aiScores: session.aiScores,
+      aiScores: resolvedAiScoresRef.current ?? session.aiScores,
       players,
       roundNumber: roundOutcome.roundNumber + 1,
       seed: session.seed,
