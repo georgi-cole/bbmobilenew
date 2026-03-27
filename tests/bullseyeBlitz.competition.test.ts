@@ -27,7 +27,10 @@ import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
 import {
   buildRankedLeaderboard,
+  getBullseyeEliminationCount,
+  getBullseyeRoundConfig,
   pickTargetKind,
+  simulateBullseyeAiRoundScore,
   TARGET_CONFIGS,
 } from '../src/components/BullseyeBlitz/bullseyeBlitzUtils';
 
@@ -443,6 +446,36 @@ describe('Bullseye Blitz — pickTargetKind', () => {
   it('returns hazard for values >= 0.85', () => {
     expect(pickTargetKind(0.85)).toBe('hazard');
     expect(pickTargetKind(1.0)).toBe('hazard');
+  });
+});
+
+describe('Bullseye Blitz — tournament helpers', () => {
+  it('eliminates roughly half minus one entrants while always leaving at least two', () => {
+    expect(getBullseyeEliminationCount(15)).toBe(7);
+    expect(getBullseyeEliminationCount(8)).toBe(3);
+    expect(getBullseyeEliminationCount(5)).toBe(2);
+    expect(getBullseyeEliminationCount(3)).toBe(1);
+    expect(getBullseyeEliminationCount(2)).toBe(0);
+  });
+
+  it('later rounds are harder than earlier rounds', () => {
+    const roundOne = getBullseyeRoundConfig(1);
+    const roundFour = getBullseyeRoundConfig(4);
+
+    expect(roundFour.spawnIntervalMs).toBeLessThan(roundOne.spawnIntervalMs);
+    expect(roundFour.targetLifetimes.standard).toBeLessThan(roundOne.targetLifetimes.standard);
+    expect(roundFour.targetWeights.hazard).toBeGreaterThan(roundOne.targetWeights.hazard);
+  });
+
+  it('AI round scores stay deterministic and competitive across rounds', () => {
+    const baseScore = 160;
+    const roundOneA = simulateBullseyeAiRoundScore(baseScore, 1, 42, 'p1');
+    const roundOneB = simulateBullseyeAiRoundScore(baseScore, 1, 42, 'p1');
+    const roundThree = simulateBullseyeAiRoundScore(baseScore, 3, 42, 'p1');
+
+    expect(roundOneA).toBe(roundOneB);
+    expect(roundOneA).toBeGreaterThan(150);
+    expect(roundThree).toBeGreaterThan(120);
   });
 });
 

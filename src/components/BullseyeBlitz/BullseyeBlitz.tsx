@@ -8,13 +8,10 @@
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(finalScore)`.
  *
  * Gameplay — "Bullseye Blitz":
- *  - 20-second game with targets that appear and shrink at random positions
- *  - Three target types with distinct risk/reward:
- *      Standard (🎯)  +10 pts   —  medium lifetime, appears most often
- *      Bonus    (⭐)  +25 pts   —  shorter lifetime, less frequent
- *      Hazard   (💣) −15 pts   —  long lifetime, penalises greedy tapping
+ *  - HOH/LOH mode now runs as a knockout bracket with progressively harder rounds.
+ *  - Challenge mode keeps the original single-round score callback flow.
  *  - Canonical scoring: sum of all scored hits (including penalties)
- *  - Canonical last-place: lowest scorer, tie-broken by participant index
+ *  - Canonical last-place: lowest overall finisher from the knockout bracket
  */
 
 import type { CSSProperties } from 'react';
@@ -23,6 +20,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
@@ -30,9 +28,13 @@ import type { CompleteMinigamePayload, MinigameSession, Player } from '../../typ
 import {
   TARGET_CONFIGS,
   buildRankedLeaderboard,
+  getBullseyeEliminationCount,
+  getBullseyeRoundConfig,
   pickTargetKind,
+  simulateBullseyeAiRoundScore,
 } from './bullseyeBlitzUtils';
 import type {
+  BullseyeRoundConfig,
   ScoreEntry,
   TargetKind,
 } from './bullseyeBlitzUtils';
@@ -40,19 +42,16 @@ import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Total gameplay duration in seconds. */
+/** Total gameplay duration in seconds for standalone challenge mode. */
 const GAME_DURATION = 20;
 
 /** Ready countdown start value. */
 const READY_COUNT = 3;
 
-/** How often (ms) to attempt spawning a new target. */
-const SPAWN_INTERVAL_MS = 600;
-
-/** Maximum number of targets visible at once. */
-const MAX_TARGETS = 7;
-
 const MEDALS = ['🥇', '🥈', '🥉'];
+const EMPTY_HITS = { standard: 0, bonus: 0, hazard: 0 };
+const SPECTATOR_PLAYBACK_MS = 2200;
+const SPECTATOR_RESULTS_MS = 2400;
 
 // ── Internal target state ─────────────────────────────────────────────────────
 
@@ -69,7 +68,22 @@ interface ActiveTarget {
   lifetimeMs: number;
 }
 
-type GamePhase = 'ready' | 'playing' | 'results';
+interface RoundOutcome {
+  roundNumber: number;
+  activeParticipantIds: string[];
+  rankedScores: ScoreEntry[];
+  advancingIds: string[];
+  eliminatedIds: string[];
+  eliminatedEntries: ScoreEntry[];
+  isFinal: boolean;
+}
+
+interface SpectatorPlan {
+  rounds: RoundOutcome[];
+  currentIndex: number;
+}
+
+type GamePhase = 'ready' | 'playing' | 'round_results' | 'spectating' | 'final_results';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -86,6 +100,134 @@ interface Props {
   autoStart?: boolean;
 }
 
+function formatNameList(entries: ScoreEntry[]): string {
+  const names = entries.map((entry) => entry.name);
+  if (names.length <= 1) return names[0] ?? 'Nobody';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+function buildFinalStandings(finalists: ScoreEntry[], eliminationHistory: ScoreEntry[][]): ScoreEntry[] {
+  const seen = new Set<string>();
+  return [...finalists, ...[...eliminationHistory].reverse().flat()].filter((entry) => {
+    if (seen.has(entry.id)) return false;
+    seen.add(entry.id);
+    return true;
+  });
+}
+
+function buildRoundOutcome(params: {
+  activeParticipantIds: string[];
+  aiScores: Record<string, number>;
+  humanId?: string;
+  humanScore?: number;
+  humanHits?: { standard: number; bonus: number; hazard: number };
+  players: Player[];
+  roundNumber: number;
+  seed: number;
+}): RoundOutcome {
+  const {
+    activeParticipantIds,
+    aiScores,
+    humanId,
+    humanScore,
+    humanHits,
+    players,
+    roundNumber,
+    seed,
+  } = params;
+
+  const roundScores: Record<string, number> = {};
+  activeParticipantIds.forEach((id) => {
+    if (humanId && id === humanId && typeof humanScore === 'number') {
+      roundScores[id] = humanScore;
+      return;
+    }
+    roundScores[id] = simulateBullseyeAiRoundScore(aiScores[id] ?? 0, roundNumber, seed, id);
+  });
+
+  const rankedScores = buildRankedLeaderboard(
+    activeParticipantIds,
+    roundScores,
+    humanId,
+    players,
+    humanHits,
+  );
+
+  if (activeParticipantIds.length <= 2) {
+    return {
+      roundNumber,
+      activeParticipantIds,
+      rankedScores,
+      advancingIds: rankedScores.slice(0, 1).map((entry) => entry.id),
+      eliminatedIds: rankedScores.slice(1).map((entry) => entry.id),
+      eliminatedEntries: [],
+      isFinal: true,
+    };
+  }
+
+  const eliminationCount = getBullseyeEliminationCount(activeParticipantIds.length);
+  const survivingCount = rankedScores.length - eliminationCount;
+
+  return {
+    roundNumber,
+    activeParticipantIds,
+    rankedScores,
+    advancingIds: rankedScores.slice(0, survivingCount).map((entry) => entry.id),
+    eliminatedIds: rankedScores.slice(survivingCount).map((entry) => entry.id),
+    eliminatedEntries: rankedScores.slice(survivingCount),
+    isFinal: false,
+  };
+}
+
+function simulateRemainingRounds(params: {
+  activeParticipantIds: string[];
+  aiScores: Record<string, number>;
+  players: Player[];
+  roundNumber: number;
+  seed: number;
+  eliminationHistory: ScoreEntry[][];
+}): { rounds: RoundOutcome[]; finalStandings: ScoreEntry[] } {
+  const { aiScores, players, seed } = params;
+  let activeParticipantIds = [...params.activeParticipantIds];
+  let roundNumber = params.roundNumber;
+  const eliminationHistory = [...params.eliminationHistory];
+  const rounds: RoundOutcome[] = [];
+
+  while (activeParticipantIds.length >= 2) {
+    const outcome = buildRoundOutcome({
+      activeParticipantIds,
+      aiScores,
+      players,
+      roundNumber,
+      seed,
+    });
+    rounds.push(outcome);
+
+    if (outcome.isFinal) {
+      return {
+        rounds,
+        finalStandings: buildFinalStandings(outcome.rankedScores, eliminationHistory),
+      };
+    }
+
+    eliminationHistory.push(outcome.eliminatedEntries);
+    activeParticipantIds = outcome.advancingIds;
+    roundNumber += 1;
+  }
+
+  return { rounds, finalStandings: [] };
+}
+
+function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFinalRound: boolean): string {
+  if (isFinalRound) {
+    return `Round ${config.roundNumber} • Final duel • Winner takes the challenge`;
+  }
+
+  const eliminated = getBullseyeEliminationCount(activeCount);
+  return `Round ${config.roundNumber} • ${activeCount} players • ${eliminated} eliminated`;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BullseyeBlitz({
@@ -96,23 +238,45 @@ export default function BullseyeBlitz({
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
+  const isTournamentMode = !!session;
+  const initialRoundConfig = isTournamentMode
+    ? getBullseyeRoundConfig(1)
+    : {
+      ...getBullseyeRoundConfig(1),
+      durationSeconds: GAME_DURATION,
+    };
 
-  const configuredDuration = session?.options?.timeLimit ?? GAME_DURATION;
-
-  // ── State ──────────────────────────────────────────────────────────────────
-
+  const [roundNumber, setRoundNumber] = useState(1);
+  const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(session?.participants ?? []);
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
-  const [countdown, setCountdown] = useState(READY_COUNT);
-  const [timeLeft, setTimeLeft] = useState(configuredDuration);
+  const [countdown, setCountdown] = useState(autoStart ? 0 : READY_COUNT);
+  const [timeLeft, setTimeLeft] = useState(initialRoundConfig.durationSeconds);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [score, setScore] = useState(0);
   const [targets, setTargets] = useState<ActiveTarget[]>([]);
-  const [hits, setHits] = useState({ standard: 0, bonus: 0, hazard: 0 });
+  const [hits, setHits] = useState(EMPTY_HITS);
   const [popEffects, setPopEffects] = useState<{ id: number; emoji: string; x: number; y: number; kind: TargetKind }[]>([]);
   const [rankedScores, setRankedScores] = useState<ScoreEntry[]>([]);
+  const [roundOutcome, setRoundOutcome] = useState<RoundOutcome | null>(null);
+  const [finalStandings, setFinalStandings] = useState<ScoreEntry[]>([]);
+  const [eliminationHistory, setEliminationHistory] = useState<ScoreEntry[][]>([]);
+  const [spectatorPlan, setSpectatorPlan] = useState<SpectatorPlan | null>(null);
+  const [isSpectatorMode, setIsSpectatorMode] = useState(false);
+  const [tournamentScoreTotal, setTournamentScoreTotal] = useState(0);
+
+  const currentRoundConfig = useMemo(
+    () => (isTournamentMode
+      ? getBullseyeRoundConfig(roundNumber)
+      : {
+        ...getBullseyeRoundConfig(1),
+        durationSeconds: GAME_DURATION,
+      }),
+    [isTournamentMode, roundNumber],
+  );
 
   // Stable refs for values accessed in intervals/callbacks
   const scoreRef = useRef(0);
-  const hitsRef = useRef({ standard: 0, bonus: 0, hazard: 0 });
+  const hitsRef = useRef(EMPTY_HITS);
   const targetIdRef = useRef(0);
   const popIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -125,67 +289,113 @@ export default function BullseyeBlitz({
     popTimeoutsRef.current = [];
   }, []);
 
-  // Cleanup pop timeouts on unmount
+  const clearRoundTimers = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (spawnRef.current) clearInterval(spawnRef.current);
+    if (expireRef.current) clearInterval(expireRef.current);
+  }, []);
+
+  const resetRoundState = useCallback((nextRoundNumber: number) => {
+    const nextConfig = isTournamentMode
+      ? getBullseyeRoundConfig(nextRoundNumber)
+      : {
+        ...getBullseyeRoundConfig(1),
+        durationSeconds: GAME_DURATION,
+      };
+    clearRoundTimers();
+    clearPopTimeouts();
+    scoreRef.current = 0;
+    hitsRef.current = EMPTY_HITS;
+    setScore(0);
+    setHits(EMPTY_HITS);
+    setTargets([]);
+    setPopEffects([]);
+    setTimeLeft(nextConfig.durationSeconds);
+    setNowMs(Date.now());
+    setCountdown(autoStart ? 0 : READY_COUNT);
+  }, [autoStart, clearPopTimeouts, clearRoundTimers, isTournamentMode]);
+
+  // Cleanup timers on unmount
   useEffect(() => {
-    return clearPopTimeouts;
-  }, [clearPopTimeouts]);
+    return () => {
+      clearRoundTimers();
+      clearPopTimeouts();
+    };
+  }, [clearPopTimeouts, clearRoundTimers]);
 
   // ── Ready countdown ────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (gamePhase !== 'ready') return;
-    if (countdown <= 0) {
-      setGamePhase('playing');
-      return;
-    }
-    if (autoStart && countdown === READY_COUNT) {
-      setCountdown(0);
-      return;
-    }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    const delay = countdown <= 0 ? 200 : 1000;
+    const t = setTimeout(() => {
+      if (countdown <= 0) {
+        setGamePhase('playing');
+        return;
+      }
+      setCountdown((c) => c - 1);
+    }, delay);
     return () => clearTimeout(t);
-  }, [gamePhase, countdown, autoStart]);
-
-  // ── Playing — game timer ───────────────────────────────────────────────────
+  }, [autoStart, countdown, gamePhase]);
 
   const finishGame = useCallback(() => {
-    if (spawnRef.current) clearInterval(spawnRef.current);
-    if (expireRef.current) clearInterval(expireRef.current);
+    clearRoundTimers();
+    clearPopTimeouts();
     setTargets([]);
 
     const humanFinalScore = scoreRef.current;
     const humanFinalHits = { ...hitsRef.current };
 
-    if (session) {
-      const allScores: Record<string, number> = {
-        ...session.aiScores,
-        ...(humanId ? { [humanId]: humanFinalScore } : {}),
-      };
-      const ranked = buildRankedLeaderboard(
-        session.participants,
-        allScores,
-        humanId,
-        players,
-        humanFinalHits,
-      );
-      setRankedScores(ranked);
-      setGamePhase('results');
-    } else {
+    if (!session) {
       if (onFinish) onFinish(humanFinalScore);
+      return;
     }
-    // finishGame is called from the timer interval; session/humanId/players/onFinish
-    // are stable for a single competition run.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    const outcome = buildRoundOutcome({
+      activeParticipantIds,
+      aiScores: session.aiScores,
+      humanId,
+      humanScore: humanFinalScore,
+      humanHits: humanFinalHits,
+      players,
+      roundNumber,
+      seed: session.seed,
+    });
+
+    setTournamentScoreTotal((prev) => prev + humanFinalScore);
+    setRoundOutcome(outcome);
+    setRankedScores(outcome.rankedScores);
+
+    if (outcome.isFinal) {
+      setFinalStandings(buildFinalStandings(outcome.rankedScores, eliminationHistory));
+      setGamePhase('final_results');
+      return;
+    }
+
+    setEliminationHistory((prev) => [...prev, outcome.eliminatedEntries]);
+    setGamePhase('round_results');
+  }, [
+    activeParticipantIds,
+    clearPopTimeouts,
+    clearRoundTimers,
+    eliminationHistory,
+    humanId,
+    onFinish,
+    players,
+    roundNumber,
+    session,
+  ]);
+
+  // ── Playing — game timer ───────────────────────────────────────────────────
 
   useEffect(() => {
     if (gamePhase !== 'playing') return;
 
     timerRef.current = setInterval(() => {
+      setNowMs(Date.now());
       setTimeLeft((prev) => {
         const next = Math.round((prev - 0.1) * 10) / 10;
         if (next <= 0) {
-          clearInterval(timerRef.current!);
           finishGame();
           return 0;
         }
@@ -196,9 +406,7 @@ export default function BullseyeBlitz({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // finishGame is stable via useCallback
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gamePhase]);
+  }, [finishGame, gamePhase]);
 
   // ── Playing — target spawner ───────────────────────────────────────────────
 
@@ -207,26 +415,25 @@ export default function BullseyeBlitz({
 
     spawnRef.current = setInterval(() => {
       setTargets((prev) => {
-        if (prev.length >= MAX_TARGETS) return prev;
+        if (prev.length >= currentRoundConfig.maxTargets) return prev;
         targetIdRef.current += 1;
-        const kind = pickTargetKind(Math.random());
-        const cfg = TARGET_CONFIGS[kind];
+        const kind = pickTargetKind(Math.random(), currentRoundConfig.targetWeights);
         const newTarget: ActiveTarget = {
           id: targetIdRef.current,
           kind,
-          x: 5 + Math.random() * 82, // keep off the edge
+          x: 5 + Math.random() * 82,
           y: 5 + Math.random() * 82,
           spawnedAt: Date.now(),
-          lifetimeMs: cfg.lifetimeMs,
+          lifetimeMs: currentRoundConfig.targetLifetimes[kind],
         };
         return [...prev, newTarget];
       });
-    }, SPAWN_INTERVAL_MS);
+    }, currentRoundConfig.spawnIntervalMs);
 
     return () => {
       if (spawnRef.current) clearInterval(spawnRef.current);
     };
-  }, [gamePhase]);
+  }, [currentRoundConfig.maxTargets, currentRoundConfig.spawnIntervalMs, currentRoundConfig.targetLifetimes, currentRoundConfig.targetWeights, gamePhase]);
 
   // ── Playing — target expiry ────────────────────────────────────────────────
 
@@ -243,6 +450,41 @@ export default function BullseyeBlitz({
     };
   }, [gamePhase]);
 
+  useEffect(() => {
+    if (gamePhase !== 'spectating' || !spectatorPlan) return;
+    const upcomingRound = spectatorPlan.rounds[spectatorPlan.currentIndex];
+    const t = setTimeout(() => {
+      if (!upcomingRound) {
+        setGamePhase('final_results');
+        return;
+      }
+      setRoundOutcome(upcomingRound);
+      setRankedScores(upcomingRound.rankedScores);
+      setGamePhase('round_results');
+    }, upcomingRound ? SPECTATOR_PLAYBACK_MS : 0);
+
+    return () => clearTimeout(t);
+  }, [gamePhase, spectatorPlan]);
+
+  useEffect(() => {
+    if (gamePhase !== 'round_results' || !isSpectatorMode || !roundOutcome) return;
+
+    const t = setTimeout(() => {
+      if (roundOutcome.isFinal) {
+        setGamePhase('final_results');
+        return;
+      }
+
+      setActiveParticipantIds(roundOutcome.advancingIds);
+      setSpectatorPlan((prev) => prev
+        ? { ...prev, currentIndex: prev.currentIndex + 1 }
+        : prev);
+      setGamePhase('spectating');
+    }, SPECTATOR_RESULTS_MS);
+
+    return () => clearTimeout(t);
+  }, [gamePhase, isSpectatorMode, roundOutcome]);
+
   // ── Tap handler ────────────────────────────────────────────────────────────
 
   const handleTargetTap = useCallback(
@@ -251,18 +493,15 @@ export default function BullseyeBlitz({
 
       const cfg = TARGET_CONFIGS[target.kind];
 
-      // Update score ref
       scoreRef.current += cfg.points;
       setScore(scoreRef.current);
 
-      // Update hits ref
       hitsRef.current = {
         ...hitsRef.current,
         [target.kind]: hitsRef.current[target.kind] + 1,
       };
       setHits({ ...hitsRef.current });
 
-      // Pop effect
       popIdRef.current += 1;
       const popId = popIdRef.current;
       setPopEffects((prev) => [
@@ -274,36 +513,86 @@ export default function BullseyeBlitz({
       }, 600);
       popTimeoutsRef.current.push(tId);
 
-      // Remove tapped target
       setTargets((prev) => prev.filter((t) => t.id !== target.id));
     },
     [gamePhase],
   );
 
-  // ── Done handler (results → Redux) ─────────────────────────────────────────
+  // ── Round / completion handlers ─────────────────────────────────────────────
+
+  const handleContinueRound = useCallback(() => {
+    if (!roundOutcome) return;
+    const nextRoundNumber = roundOutcome.roundNumber + 1;
+    resetRoundState(nextRoundNumber);
+    setRoundOutcome(null);
+    setRankedScores([]);
+    setActiveParticipantIds(roundOutcome.advancingIds);
+    setRoundNumber(nextRoundNumber);
+    setGamePhase('ready');
+  }, [resetRoundState, roundOutcome]);
+
+  const handleSkipToFinal = useCallback(() => {
+    if (!session || !roundOutcome) return;
+    const simulation = simulateRemainingRounds({
+      activeParticipantIds: roundOutcome.advancingIds,
+      aiScores: session.aiScores,
+      players,
+      roundNumber: roundOutcome.roundNumber + 1,
+      seed: session.seed,
+      eliminationHistory,
+    });
+    setFinalStandings(simulation.finalStandings);
+    setGamePhase('final_results');
+  }, [eliminationHistory, players, roundOutcome, session]);
+
+  const handleKeepWatching = useCallback(() => {
+    if (!session || !roundOutcome) return;
+    const simulation = simulateRemainingRounds({
+      activeParticipantIds: roundOutcome.advancingIds,
+      aiScores: session.aiScores,
+      players,
+      roundNumber: roundOutcome.roundNumber + 1,
+      seed: session.seed,
+      eliminationHistory,
+    });
+
+    setIsSpectatorMode(true);
+    setFinalStandings(simulation.finalStandings);
+    setSpectatorPlan({ rounds: simulation.rounds, currentIndex: 0 });
+    setActiveParticipantIds(roundOutcome.advancingIds);
+    setGamePhase('spectating');
+  }, [eliminationHistory, players, roundOutcome, session]);
 
   const handleDone = useCallback(() => {
     if (!session) return;
-    const humanFinalScore = scoreRef.current;
-    const winnerId = rankedScores.length > 0 ? rankedScores[0].id : undefined;
-    const lastPlaceId =
-      rankedScores.length > 0
-        ? rankedScores[rankedScores.length - 1].id
-        : undefined;
-
+    const resolvedStandings = finalStandings.length > 0 ? finalStandings : rankedScores;
     const payload: CompleteMinigamePayload = {
-      humanScore: humanFinalScore,
-      winnerId,
-      lastPlaceId,
+      humanScore: tournamentScoreTotal,
+      winnerId: resolvedStandings[0]?.id,
+      lastPlaceId: resolvedStandings[resolvedStandings.length - 1]?.id,
     };
     dispatch(completeMinigame(payload));
-  }, [dispatch, rankedScores, session]);
+  }, [dispatch, finalStandings, rankedScores, session, tournamentScoreTotal]);
 
   // ── Derived UI ─────────────────────────────────────────────────────────────
 
-  const progressPct = (timeLeft / configuredDuration) * 100;
+  const progressPct = (timeLeft / currentRoundConfig.durationSeconds) * 100;
   const isUrgent = timeLeft <= 5;
-  const now = Date.now();
+  const now = nowMs;
+  const activeCount = isTournamentMode ? activeParticipantIds.length : 1;
+  const headerSubtitle = isTournamentMode
+    ? gamePhase === 'spectating'
+      ? '📹 Spectator mode — the remaining rounds advance automatically.'
+      : 'Survive each knockout round as the arena gets tougher.'
+    : 'Pop targets, dodge the bombs — 20 seconds!';
+  const roundBanner = isTournamentMode
+    ? buildRoundBanner(currentRoundConfig, activeCount, activeCount <= 2)
+    : 'Classic blitz round';
+  const currentHumanEntry = roundOutcome?.rankedScores.find((entry) => entry.isHuman)
+    ?? finalStandings.find((entry) => entry.isHuman)
+    ?? rankedScores.find((entry) => entry.isHuman);
+  const humanWasEliminated = !!roundOutcome && !!humanId && roundOutcome.eliminatedIds.includes(humanId);
+  const spectatorRound = spectatorPlan ? spectatorPlan.rounds[spectatorPlan.currentIndex] : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -316,33 +605,39 @@ export default function BullseyeBlitz({
       data-testid="bullseye-blitz-comp"
     >
       <div className="bbl__card">
-        {/* ── Header ──────────────────────────────────────────────────── */}
         <header className="bbl__header">
           <h2 className="bbl__title">🎯 Bullseye Blitz</h2>
-          <p className="bbl__subtitle">Pop targets, dodge the bombs — 20 seconds!</p>
+          <p className="bbl__subtitle">{headerSubtitle}</p>
         </header>
 
-        {/* ── Legend (always visible) ──────────────────────────────────── */}
         <div className="bbl__legend" aria-label="Target legend">
           <span className="bbl__legend-item bbl__legend-item--standard">🎯 +10</span>
           <span className="bbl__legend-item bbl__legend-item--bonus">⭐ +25</span>
           <span className="bbl__legend-item bbl__legend-item--hazard">💣 −15</span>
         </div>
 
-        {/* ── Ready phase ──────────────────────────────────────────────── */}
+        {isTournamentMode && (
+          <div className="bbl__round-banner" aria-live="polite">
+            <strong>{roundBanner}</strong>
+            <span>{currentRoundConfig.difficultyLabel}</span>
+          </div>
+        )}
+
         {gamePhase === 'ready' && (
           <div className="bbl__ready">
             <span className="bbl__countdown" aria-live="assertive">
               {countdown === 0 ? 'GO!' : countdown}
             </span>
-            <p className="bbl__hint">Tap 🎯 &amp; ⭐ — avoid 💣!</p>
+            <p className="bbl__hint">
+              {activeCount <= 2
+                ? 'Final showdown — the highest score wins it all.'
+                : `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`}
+            </p>
           </div>
         )}
 
-        {/* ── Playing phase ─────────────────────────────────────────────── */}
         {gamePhase === 'playing' && (
           <div className="bbl__playing">
-            {/* Stats row */}
             <div className="bbl__stats">
               <div className="bbl__score-block">
                 <span
@@ -368,13 +663,12 @@ export default function BullseyeBlitz({
               </span>
             </div>
 
-            {/* Progress bar */}
             <div
               className="bbl__progress-bar"
               role="progressbar"
               aria-valuenow={timeLeft}
               aria-valuemin={0}
-              aria-valuemax={configuredDuration}
+              aria-valuemax={currentRoundConfig.durationSeconds}
             >
               <div
                 className="bbl__progress-fill"
@@ -382,9 +676,7 @@ export default function BullseyeBlitz({
               />
             </div>
 
-            {/* Game arena */}
             <div className="bbl__arena" aria-label="Target arena">
-              {/* Pop effects layer */}
               <div className="bbl__pops" aria-hidden="true">
                 {popEffects.map((p) => (
                   <span
@@ -398,22 +690,16 @@ export default function BullseyeBlitz({
                 ))}
               </div>
 
-              {/* Active targets */}
               {targets.map((t) => {
                 const cfg = TARGET_CONFIGS[t.kind];
                 const age = now - t.spawnedAt;
                 const lifeFraction = Math.min(1, age / t.lifetimeMs);
-                // Scale shrinks from 1 → 0.4 as target ages
                 const scale = Math.max(0.4, 1 - lifeFraction * 0.6);
-                // Opacity fades from 1 → 0.3 in last quarter of lifetime
                 const opacity =
                   lifeFraction > 0.75
                     ? Math.max(0.3, 1 - (lifeFraction - 0.75) * 2.8)
                     : 1;
                 const targetTransformStyle: CSSProperties = t.kind === 'hazard'
-                  // Hazard targets animate `transform` in CSS for the wiggle,
-                  // so their shrink scale is passed through a CSS variable
-                  // consumed by `bbl-hazard-wiggle` in BullseyeBlitz.css.
                   ? { '--bbl-scale': scale.toFixed(3) } as CSSProperties
                   : {
                     transform: `translate(-50%, -50%) scale(${scale.toFixed(3)})`,
@@ -439,7 +725,6 @@ export default function BullseyeBlitz({
               })}
             </div>
 
-            {/* Mini hit counters */}
             <div className="bbl__hit-row" aria-label="Hit counters">
               <span className="bbl__hit-item bbl__hit-item--standard">
                 🎯 ×{hits.standard}
@@ -454,21 +739,124 @@ export default function BullseyeBlitz({
           </div>
         )}
 
-        {/* ── Results phase ─────────────────────────────────────────────── */}
-        {gamePhase === 'results' && rankedScores.length > 0 && (
+        {gamePhase === 'spectating' && spectatorRound && (
+          <div className="bbl__spectating">
+            <span className="bbl__spectator-pill">📹 Spectator mode</span>
+            <h3 className="bbl__spectating-title">Round {spectatorRound.roundNumber} recording</h3>
+            <p className="bbl__spectating-copy">
+              {spectatorRound.activeParticipantIds.length} players remain. The next summary will appear automatically.
+            </p>
+            <div className="bbl__spectating-pulse" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        )}
+
+        {gamePhase === 'round_results' && roundOutcome && (
           <div className="bbl__results">
             <p className="bbl__winner-line">
-              🏆 {rankedScores[0].name} wins with {rankedScores[0].score} pts!
+              {roundOutcome.isFinal
+                ? `🏆 ${roundOutcome.rankedScores[0]?.name ?? 'Unknown'} wins the final round!`
+                : `Round ${roundOutcome.roundNumber} complete — ${formatNameList(roundOutcome.eliminatedEntries)} ${roundOutcome.eliminatedEntries.length === 1 ? 'is' : 'are'} eliminated.`}
             </p>
             <ol className="bbl__leaderboard">
-              {rankedScores.map((entry, i) => (
+              {roundOutcome.rankedScores.map((entry, i) => {
+                const isEliminated = !roundOutcome.isFinal && roundOutcome.eliminatedIds.includes(entry.id);
+                return (
+                  <li
+                    key={entry.id}
+                    className={[
+                      'bbl__entry',
+                      entry.isHuman ? 'bbl__entry--you' : '',
+                      i === 0 ? 'bbl__entry--winner' : '',
+                      isEliminated ? 'bbl__entry--last' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <span className="bbl__rank">
+                      {i < 3 ? MEDALS[i] : `${i + 1}.`}
+                    </span>
+                    <span className="bbl__entry-name">
+                      {entry.name}
+                      {entry.isHuman && (
+                        <span className="bbl__you-tag"> (You)</span>
+                      )}
+                    </span>
+                    <span className="bbl__entry-score">{entry.score} pts</span>
+                    {!roundOutcome.isFinal && (
+                      <span
+                        className={[
+                          'bbl__status-tag',
+                          isEliminated ? 'bbl__status-tag--out' : 'bbl__status-tag--safe',
+                        ].join(' ')}
+                      >
+                        {isEliminated ? 'OUT' : 'SAFE'}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+            {currentHumanEntry && (
+              <p className="bbl__hit-summary">
+                Your round: 🎯 ×{currentHumanEntry.hits.standard} ⭐ ×{currentHumanEntry.hits.bonus} 💣 ×{currentHumanEntry.hits.hazard}
+              </p>
+            )}
+            {humanWasEliminated && !isSpectatorMode && (
+              <p className="bbl__spectator-copy">
+                You&apos;ve been eliminated. Skip ahead or keep watching the rest of the bracket in spectator mode.
+              </p>
+            )}
+            {isSpectatorMode && !roundOutcome.isFinal && (
+              <p className="bbl__spectator-copy">Auto-advancing to the next recorded round…</p>
+            )}
+            {!roundOutcome.isFinal && !humanWasEliminated && !isSpectatorMode && (
+              <button
+                className="bbl__done-btn"
+                onClick={handleContinueRound}
+                type="button"
+              >
+                Continue to Round {roundOutcome.roundNumber + 1} ▶
+              </button>
+            )}
+            {!roundOutcome.isFinal && humanWasEliminated && !isSpectatorMode && (
+              <div className="bbl__btn-row">
+                <button
+                  className="bbl__done-btn bbl__done-btn--secondary"
+                  onClick={handleSkipToFinal}
+                  type="button"
+                >
+                  Skip to final results
+                </button>
+                <button
+                  className="bbl__done-btn"
+                  onClick={handleKeepWatching}
+                  type="button"
+                >
+                  Keep watching ▶
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {gamePhase === 'final_results' && finalStandings.length > 0 && (
+          <div className="bbl__results">
+            <p className="bbl__winner-line">
+              🏆 {finalStandings[0].name} wins Bullseye Blitz!
+            </p>
+            <ol className="bbl__leaderboard">
+              {finalStandings.map((entry, i) => (
                 <li
                   key={entry.id}
                   className={[
                     'bbl__entry',
                     entry.isHuman ? 'bbl__entry--you' : '',
                     i === 0 ? 'bbl__entry--winner' : '',
-                    i === rankedScores.length - 1 ? 'bbl__entry--last' : '',
+                    i === finalStandings.length - 1 ? 'bbl__entry--last' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -483,7 +871,7 @@ export default function BullseyeBlitz({
                     )}
                   </span>
                   <span className="bbl__entry-score">{entry.score} pts</span>
-                  {i === rankedScores.length - 1 && (
+                  {i === finalStandings.length - 1 && (
                     <span className="bbl__last-tag" aria-label="Last place">
                       💔
                     </span>
@@ -491,12 +879,9 @@ export default function BullseyeBlitz({
                 </li>
               ))}
             </ol>
-            {/* Human hit breakdown */}
-            {rankedScores.some((e) => e.isHuman) && (
+            {currentHumanEntry && (
               <p className="bbl__hit-summary">
-                Your hits: 🎯 ×{rankedScores.find((e) => e.isHuman)?.hits.standard ?? 0}{' '}
-                ⭐ ×{rankedScores.find((e) => e.isHuman)?.hits.bonus ?? 0}{' '}
-                💣 ×{rankedScores.find((e) => e.isHuman)?.hits.hazard ?? 0}
+                Your tournament total: {tournamentScoreTotal} pts.
               </p>
             )}
             <button
