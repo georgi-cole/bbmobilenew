@@ -31,7 +31,7 @@
 import React, {
   useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
-import type { GameState, Cell } from './rescueTheKingTypes';
+import type { GameState, Cell, Board } from './rescueTheKingTypes';
 import { SYMBOL_EMOJI, SYMBOL_COLOR } from './rescueTheKingTypes';
 import {
   buildBoard,
@@ -123,8 +123,6 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   // ── Refs for timer & finish guard ────────────────────────────────────────
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishedRef = useRef(false);
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   // ── Board cell size (computed from viewport) ─────────────────────────────
   const cellSize = useMemo(() => {
@@ -179,8 +177,12 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   }, []);
 
   // ── Resolution loop (recursive cascade) ──────────────────────────────────
+  // Use a ref to allow the callback to call itself recursively without triggering
+  // the no-use-before-define ESLint rule on the const declaration.
+  const resolveBoardRef = useRef<(board: Board, accState: GameState, comboDepth: number) => void>(() => undefined);
+
   const resolveBoard = useCallback((
-    board: typeof state.board,
+    board: Board,
     accState: GameState,
     comboDepth: number
   ) => {
@@ -311,11 +313,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       setState(nextAccState);
 
       setTimeout(() => {
-        resolveBoard(board4, nextAccState, newCombo);
+        resolveBoardRef.current(board4, nextAccState, newCombo);
       }, FALL_ANIM_MS);
 
     }, MATCH_ANIM_MS);
   }, [finishGame, spawnScorePop, triggerShake]);
+
+  // Keep the ref in sync so the recursive call always uses the latest version.
+  useEffect(() => {
+    resolveBoardRef.current = resolveBoard;
+  }, [resolveBoard]);
 
   // ── Handle cell press ────────────────────────────────────────────────────
   const handleCellPress = useCallback((row: number, col: number) => {
@@ -350,7 +357,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
           };
           // Schedule resolution after swap animation
           setTimeout(() => {
-            resolveBoard(swappedBoard, animatingState, 0);
+            resolveBoardRef.current(swappedBoard, animatingState, 0);
           }, SWAP_ANIM_MS);
           return animatingState;
         } else {
@@ -365,7 +372,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       // Non-adjacent — select new cell
       return { ...prev, selectedCell: [row, col] };
     });
-  }, [resolveBoard]);
+  }, []);
 
   // ── Touch support ─────────────────────────────────────────────────────────
   const touchStartRef = useRef<{ row: number; col: number } | null>(null);

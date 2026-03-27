@@ -105,7 +105,7 @@ export const LEVELS: LevelConfig[] = [
   // Border ring of mixed blockers — board feels "caged". Strong challenge.
   {
     id: 5,
-    name: "The King's Chamber",
+    name: 'The King\'s Chamber',
     rows: 7,
     cols: 6,
     seed: 0xFEED_FACE,
