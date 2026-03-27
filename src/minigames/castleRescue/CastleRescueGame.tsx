@@ -30,6 +30,7 @@ import type {
 
 const DEFAULT_TIME_LIMIT_MS = 120_000;
 const INVALID_SWAP_BUMP_PX = 12;
+const SWIPE_THRESHOLD_PX = 18;
 const INVALID_SWAP_DURATION_MS = 220;
 const MATCH_FLASH_MS = 220;
 const CASCADE_SETTLE_MS = 170;
@@ -102,6 +103,10 @@ function areAdjacent(a: Position, b: Position): boolean {
   return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
 }
 
+function getRemainingWholeSeconds(remainingMs: number): number {
+  return Math.floor(remainingMs / 1000);
+}
+
 export default function CastleRescueGame({
   seed,
   autoStart = true,
@@ -165,8 +170,10 @@ export default function CastleRescueGame({
     timeoutIdsRef.current.push(timeoutId);
   }), []);
 
-  const remainingMs = finale?.timeRemainingMs
-    ?? Math.max(0, timeLimitMs - (nowMs - startTimeMs));
+  const remainingMs = useMemo(() => (
+    finale?.timeRemainingMs
+    ?? Math.max(0, timeLimitMs - (nowMs - startTimeMs))
+  ), [finale?.timeRemainingMs, nowMs, startTimeMs, timeLimitMs]);
   const objectiveTotal = useMemo(() => getObjectiveUnitTotal(level), [level]);
   const remainingUnits = useMemo(() => countRemainingObjectiveUnits(board), [board]);
   const clearedUnits = objectiveTotal - remainingUnits;
@@ -324,8 +331,11 @@ export default function CastleRescueGame({
 
     let settledBoard = resolution.board;
     if (isBoardCleared(settledBoard)) {
-      const finalScore = currentScore + RESCUE_BONUS + Math.floor(remainingMs / 1000) * TIME_BONUS_PER_SECOND;
-      finishRun(true, finalScore, remainingMs);
+      const awardedRemainingMs = Math.max(0, timeLimitMs - (performance.now() - startTimeRef.current));
+      // Time bonus intentionally rounds down to full remaining seconds so quick
+      // clears are rewarded consistently without fractional-score noise.
+      const finalScore = currentScore + RESCUE_BONUS + getRemainingWholeSeconds(awardedRemainingMs) * TIME_BONUS_PER_SECOND;
+      finishRun(true, finalScore, awardedRemainingMs);
       return;
     }
 
@@ -333,7 +343,7 @@ export default function CastleRescueGame({
     syncBoard(settledBoard);
     setBusy(false);
     setStatusText('The king still needs a path — keep clearing the board.');
-  }, [finishRun, maybeReshuffle, remainingMs, syncBoard, syncScore, waitFor]);
+  }, [finishRun, maybeReshuffle, syncBoard, syncScore, timeLimitMs, waitFor]);
 
   const triggerInvalidSwap = useCallback(async (from: Position, to: Position) => {
     const vector = computeSwapVector(from, to);
@@ -407,7 +417,7 @@ export default function CastleRescueGame({
 
     const deltaX = event.clientX - pointerStart.clientX;
     const deltaY = event.clientY - pointerStart.clientY;
-    if (Math.abs(deltaX) > 18 || Math.abs(deltaY) > 18) {
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD_PX || Math.abs(deltaY) > SWIPE_THRESHOLD_PX) {
       const swipeDirection = Math.abs(deltaX) > Math.abs(deltaY)
         ? { row: 0, col: deltaX > 0 ? 1 : -1 }
         : { row: deltaY > 0 ? 1 : -1, col: 0 };
@@ -539,12 +549,14 @@ export default function CastleRescueGame({
               className={boardClassName}
               aria-label="Castle Rescue match-3 board"
               style={{ pointerEvents: phase === 'won' || phase === 'lost' ? 'none' : 'auto' }}
+              data-complete={phase === 'won' || phase === 'lost' ? 'true' : 'false'}
             >
               <div
                 className="cr__board-grid"
                 style={{
                   gridTemplateColumns: `repeat(${level.width}, minmax(0, 1fr))`,
                   gridTemplateRows: `repeat(${level.height}, minmax(0, 1fr))`,
+                  aspectRatio: `${level.width} / ${level.height}`,
                 }}
               >
                 {cellSlots.map((slot) => (

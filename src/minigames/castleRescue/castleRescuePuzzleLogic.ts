@@ -115,7 +115,7 @@ export function pickCastleRescueLevel(seed: number | undefined): CastleRescueLev
 
 export function getObjectiveUnitTotal(level: CastleRescueLevelDefinition): number {
   return level.rows.join('').split('').reduce((total, cellCode) => {
-    if (cellCode === '.' ) return total;
+    if (cellCode === '.') return total;
     if (cellCode === '1' || cellCode === '2') return total + Number(cellCode);
     return total + 1;
   }, 0);

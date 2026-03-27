@@ -17,4 +17,10 @@ describe('Castle Rescue finite match-3 levels', () => {
       expect(solveBoard(board, 500_000)).toBe(true);
     });
   }
+
+  it('returns false when the solver budget is exhausted before searching', () => {
+    const board = createBoardFromLevel(CASTLE_RESCUE_LEVELS[0]);
+
+    expect(solveBoard(board, 0)).toBe(false);
+  });
 });
