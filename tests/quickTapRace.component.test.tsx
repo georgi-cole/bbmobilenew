@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import QuickTapRace from '../src/components/QuickTapRace/QuickTapRace';
@@ -53,9 +53,10 @@ describe('QuickTapRace mystery booster prompt', () => {
       vi.advanceTimersByTime(FIRST_BOOSTER_PROMPT_MS);
     });
 
-    expect(screen.getByRole('button', { name: /grab mystery booster/i })).toBeInTheDocument();
-    expect(screen.getByText('MYSTERY BOOSTER')).toBeInTheDocument();
-    expect(screen.queryByText(firstPrompt.label)).not.toBeInTheDocument();
-    expect(screen.queryByText(firstPrompt.icon)).not.toBeInTheDocument();
+    const boosterButton = screen.getByRole('button', { name: /grab mystery booster/i });
+    expect(boosterButton).toBeInTheDocument();
+    expect(within(boosterButton).getByText('MYSTERY BOOSTER')).toBeInTheDocument();
+    expect(boosterButton).not.toHaveTextContent(firstPrompt.label);
+    expect(boosterButton).not.toHaveTextContent(firstPrompt.icon);
   });
 });
