@@ -450,12 +450,14 @@ describe('Bullseye Blitz — pickTargetKind', () => {
 });
 
 describe('Bullseye Blitz — tournament helpers', () => {
-  it('eliminates roughly half minus one entrants while always leaving at least two', () => {
-    expect(getBullseyeEliminationCount(15)).toBe(7);
-    expect(getBullseyeEliminationCount(8)).toBe(3);
-    expect(getBullseyeEliminationCount(5)).toBe(2);
-    expect(getBullseyeEliminationCount(3)).toBe(1);
-    expect(getBullseyeEliminationCount(2)).toBe(0);
+  it('eliminates the lower half each round until only one player can remain', () => {
+    expect(getBullseyeEliminationCount(15)).toBe(8);
+    expect(getBullseyeEliminationCount(8)).toBe(4);
+    expect(getBullseyeEliminationCount(7)).toBe(4);
+    expect(getBullseyeEliminationCount(5)).toBe(3);
+    expect(getBullseyeEliminationCount(3)).toBe(2);
+    expect(getBullseyeEliminationCount(2)).toBe(1);
+    expect(getBullseyeEliminationCount(1)).toBe(0);
   });
 
   it('later rounds are harder than earlier rounds', () => {
@@ -465,6 +467,7 @@ describe('Bullseye Blitz — tournament helpers', () => {
     expect(roundFour.spawnIntervalMs).toBeLessThan(roundOne.spawnIntervalMs);
     expect(roundFour.targetLifetimes.standard).toBeLessThan(roundOne.targetLifetimes.standard);
     expect(roundFour.targetWeights.hazard).toBeGreaterThan(roundOne.targetWeights.hazard);
+    expect(roundFour.hazardPenalty).toBeLessThan(roundOne.hazardPenalty);
   });
 
   it('AI round scores stay deterministic and competitive across rounds', () => {

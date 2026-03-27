@@ -105,11 +105,33 @@ interface Props {
 }
 
 function formatNameList(entries: ScoreEntry[]): string {
-  const names = entries.map((entry) => entry.name);
+  const names = entries.map((entry) => (entry.isHuman && entry.name !== 'You' ? `${entry.name} (You)` : entry.name));
   if (names.length === 0) return 'Nobody';
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+function getHazardLabel(hazardPenalty: number): string {
+  return `💣 ${hazardPenalty}`;
+}
+
+function buildNextRoundPreview(roundNumber: number): string[] {
+  const currentConfig = getBullseyeRoundConfig(roundNumber);
+  const nextConfig = getBullseyeRoundConfig(roundNumber + 1);
+  const preview: string[] = [];
+
+  if (nextConfig.spawnIntervalMs < currentConfig.spawnIntervalMs) {
+    preview.push(`Targets spawn ${currentConfig.spawnIntervalMs - nextConfig.spawnIntervalMs}ms faster.`);
+  }
+  if (nextConfig.targetWeights.hazard > currentConfig.targetWeights.hazard) {
+    preview.push(`Hazards rise to ${Math.round(nextConfig.targetWeights.hazard * 100)}% of spawns.`);
+  }
+  if (nextConfig.hazardPenalty < currentConfig.hazardPenalty) {
+    preview.push(`Bomb taps drop to ${nextConfig.hazardPenalty} pts.`);
+  }
+
+  return preview;
 }
 
 function buildFinalStandings(finalists: ScoreEntry[], eliminationHistory: ScoreEntry[][]): ScoreEntry[] {
@@ -159,20 +181,21 @@ function buildRoundOutcome(params: {
     humanHits,
   );
 
-  if (activeParticipantIds.length <= 2) {
+  if (activeParticipantIds.length <= 1) {
     return {
       roundNumber,
       activeParticipantIds,
       rankedScores,
       advancingIds: rankedScores.slice(0, 1).map((entry) => entry.id),
-      eliminatedIds: rankedScores.slice(1).map((entry) => entry.id),
-      eliminatedEntries: rankedScores.slice(1),
+      eliminatedIds: [],
+      eliminatedEntries: [],
       isFinal: true,
     };
   }
 
   const eliminationCount = getBullseyeEliminationCount(activeParticipantIds.length);
   const survivingCount = rankedScores.length - eliminationCount;
+  const isFinal = survivingCount <= 1;
 
   return {
     roundNumber,
@@ -181,7 +204,7 @@ function buildRoundOutcome(params: {
     advancingIds: rankedScores.slice(0, survivingCount).map((entry) => entry.id),
     eliminatedIds: rankedScores.slice(survivingCount).map((entry) => entry.id),
     eliminatedEntries: rankedScores.slice(survivingCount),
-    isFinal: false,
+    isFinal,
   };
 }
 
@@ -587,8 +610,9 @@ export default function BullseyeBlitz({
       if (gamePhase !== 'playing') return;
 
       const cfg = TARGET_CONFIGS[target.kind];
+      const points = target.kind === 'hazard' ? currentRoundConfig.hazardPenalty : cfg.points;
 
-      scoreRef.current += cfg.points;
+      scoreRef.current += points;
       setScore(scoreRef.current);
 
       hitsRef.current = {
@@ -610,7 +634,7 @@ export default function BullseyeBlitz({
 
       setTargets((prev) => prev.filter((t) => t.id !== target.id));
     },
-    [gamePhase],
+    [currentRoundConfig.hazardPenalty, gamePhase],
   );
 
   // ── Round / completion handlers ─────────────────────────────────────────────
@@ -711,6 +735,15 @@ export default function BullseyeBlitz({
     ?? finalStandings.find((entry) => entry.isHuman)
     ?? rankedScores.find((entry) => entry.isHuman);
   const humanWasEliminated = !!roundOutcome && !!humanId && roundOutcome.eliminatedIds.includes(humanId);
+  const advancingEntries = roundOutcome
+    ? roundOutcome.rankedScores.filter((entry) => roundOutcome.advancingIds.includes(entry.id))
+    : [];
+  const nextRoundConfig = roundOutcome && !roundOutcome.isFinal
+    ? getBullseyeRoundConfig(roundOutcome.roundNumber + 1)
+    : null;
+  const nextRoundPreview = roundOutcome && !roundOutcome.isFinal
+    ? buildNextRoundPreview(roundOutcome.roundNumber)
+    : [];
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -731,7 +764,7 @@ export default function BullseyeBlitz({
         <div className="bbl__legend" aria-label="Target legend">
           <span className="bbl__legend-item bbl__legend-item--standard">🎯 +10</span>
           <span className="bbl__legend-item bbl__legend-item--bonus">⭐ +25</span>
-          <span className="bbl__legend-item bbl__legend-item--hazard">💣 −15</span>
+          <span className="bbl__legend-item bbl__legend-item--hazard">{getHazardLabel(currentRoundConfig.hazardPenalty)}</span>
         </div>
 
         {showRoundBanner && (
@@ -831,7 +864,7 @@ export default function BullseyeBlitz({
                     }}
                     onClick={() => handleTargetTap(t)}
                     type="button"
-                    aria-label={cfg.label}
+                    aria-label={t.kind === 'hazard' ? `Hazard! ${currentRoundConfig.hazardPenalty} if tapped` : cfg.label}
                   >
                     {cfg.emoji}
                   </button>
@@ -922,6 +955,32 @@ export default function BullseyeBlitz({
               <p className="bbl__hit-summary">
                 Your round: 🎯 ×{currentHumanEntry.hits.standard} ⭐ ×{currentHumanEntry.hits.bonus} 💣 ×{currentHumanEntry.hits.hazard}
               </p>
+            )}
+            {!roundOutcome.isFinal && (
+              <div className="bbl__round-feedback" aria-label="Round recap">
+                <p className="bbl__spectator-copy">
+                  Advancing: {formatNameList(advancingEntries)}.
+                </p>
+                {roundOutcome.eliminatedEntries.length > 0 && (
+                  <p className="bbl__spectator-copy">
+                    Eliminated: {formatNameList(roundOutcome.eliminatedEntries)}.
+                  </p>
+                )}
+                {nextRoundConfig && (
+                  <div className="bbl__next-round-preview">
+                    <p className="bbl__spectator-copy">
+                      Next round: {nextRoundConfig.difficultyLabel}
+                    </p>
+                    {nextRoundPreview.length > 0 && (
+                      <ul className="bbl__preview-list">
+                        {nextRoundPreview.map((preview) => (
+                          <li key={preview}>{preview}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {humanWasEliminated && !isSpectatorMode && (
               <p className="bbl__spectator-copy">
