@@ -22,6 +22,17 @@ import { computeScores } from '../minigames/scoring';
 import type { RawResult } from '../minigames/scoring';
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Simple DJB2 string hash, returns an unsigned 32-bit integer. */
+function hashStringU32(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface ChallengeRun {
@@ -64,6 +75,12 @@ export interface PendingChallenge {
   phase: 'rules' | 'countdown' | 'playing' | 'done';
   /** Pre-simulated deterministic scores for every non-human participant. */
   aiScores: Record<string, number>;
+  /**
+   * Pre-simulated tiebreaker times (ms) for non-human participants.
+   * Only populated for games whose AI model defines `tiebreakerMaxMs`.
+   * Lower value = faster = better rank when canonical scores are equal.
+   */
+  aiTiebreakers?: Record<string, number>;
   /** Prize type captured at challenge creation (HOH or POV). */
   prizeType?: CwgoPrizeType | string;
 }
@@ -315,6 +332,28 @@ export const startChallenge =
       }
     });
 
+    // Pre-compute AI tiebreakers for games whose model defines tiebreakerMaxMs.
+    // Better score → shorter simulated elapsed time; includes minor RNG jitter.
+    let aiTiebreakers: Record<string, number> | undefined;
+    if (typeof minigameModel.tiebreakerMaxMs === 'number' && minigameModel.tiebreakerMaxMs > 0) {
+      const minScore = minigameModel.minScore ?? 0;
+      const maxScore = minigameModel.maxScore ?? 100;
+      const scoreRange = Math.max(1, maxScore - minScore);
+      const maxMs = minigameModel.tiebreakerMaxMs;
+      aiTiebreakers = {};
+      participants.forEach((pid) => {
+        if (pid === humanId || aiScores[pid] == null) return;
+        // Seed the jitter RNG differently from the score RNG by XOR-ing a fixed salt.
+        const rng = mulberry32(((perChallengeSeed >>> 0) ^ (hashStringU32(pid) ^ 0xbeef_cafe)) >>> 0);
+        const normalizedScore = Math.max(0, Math.min(1, (aiScores[pid] - minScore) / scoreRange));
+        // jitter in [-0.1, +0.1] of maxMs
+        const jitter = (rng() - 0.5) * 0.2 * maxMs;
+        // Better score → fraction closer to 0.15 (fast); worse score → closer to 0.95 (slow)
+        const fraction = 0.15 + (1 - normalizedScore) * 0.8;
+        aiTiebreakers![pid] = Math.round(Math.max(maxMs * 0.05, Math.min(maxMs * 0.99, fraction * maxMs + jitter)));
+      });
+    }
+
     const id = `challenge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const pending: PendingChallenge = {
       id,
@@ -323,6 +362,7 @@ export const startChallenge =
       participants,
       phase: 'rules',
       aiScores,
+      aiTiebreakers,
       prizeType: opts.prizeType,
     };
 

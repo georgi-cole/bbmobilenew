@@ -2,15 +2,16 @@
  * ColorMatchComp — React minigame component for Color Match.
  *
  * Gameplay:
- *  - A target color swatch is displayed with a creative color name.
+ *  - A brief "color mixing" animation transitions into the target color swatch.
  *  - The player adjusts R, G, B sliders to match the target color.
- *  - Live similarity % updates as sliders change, creating real-time feedback.
- *  - The player can buy up to 2 hints for the whole game; each hint costs 5
- *    points off the final average score and shows directional RGB guidance.
+ *  - Live similarity % is hidden by default; buying a hint reveals it for that round.
+ *  - Each hint also shows directional RGB guidance (too high / too low per channel).
+ *  - The player can buy up to 2 hints total; each hint costs 5 points off the final average.
  *  - Each round has a time limit; missing it scores 0 for that round.
- *  - 5 rounds total. Final score = average accuracy - hint penalties.
+ *  - 5 rounds total. Final score = average accuracy across rounds − hint penalties (≤ 100).
+ *  - Ties on final score break by total time taken (faster is better).
  *
- * Supports generic MinigameHost path: calls onFinish(score) when done.
+ * Supports generic MinigameHost path: calls onFinish(finalScore, tiebreakerMs) when done.
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -28,13 +29,16 @@ import {
 } from './colorMatchUtils';
 import './ColorMatchComp.css';
 
-type GamePhase = 'playing' | 'feedback' | 'results';
+/** 'mixing' = pre-reveal color-mixing animation; 'playing' = active round */
+type GamePhase = 'mixing' | 'playing' | 'feedback' | 'results';
 
 interface RoundResult {
   score: number;
   targetColor: RGB;
   playerColor: RGB;
   hintCount: number;
+  /** Time in ms the player spent actively adjusting sliders for this round. */
+  roundElapsedMs: number;
 }
 
 interface PendingHintWarning {
@@ -44,6 +48,7 @@ interface PendingHintWarning {
 const MAX_ROUNDS = 5;
 const ROUND_TIME_S = 25;
 const MAX_HINTS_TOTAL = 2;
+const MIXING_DURATION_MS = 1600;
 
 const CLICK_SOUND_KEY = 'ui:navigate';
 const CORRECT_SOUND_KEY = 'ui:confirm';
@@ -69,7 +74,7 @@ const NAMED_COLORS: Array<{ name: string; rgb: RGB }> = [
 ];
 
 interface Props {
-  onFinish?: (value: number) => void;
+  onFinish?: (value: number, tiebreakerMs?: number) => void;
   seed?: number;
   autoStart?: boolean;
 }
@@ -88,7 +93,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   }, [seed]);
 
   const [roundIndex, setRoundIndex] = useState(0);
-  const [phase, setPhase] = useState<GamePhase>('playing');
+  const [phase, setPhase] = useState<GamePhase>('mixing');
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME_S);
   const [playerColor, setPlayerColor] = useState<RGB>(rounds[0].startColor);
   const [results, setResults] = useState<RoundResult[]>([]);
@@ -98,13 +103,29 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const [hintMessage, setHintMessage] = useState('');
   const [hintsUsedTotal, setHintsUsedTotal] = useState(0);
   const [hintsUsedThisRound, setHintsUsedThisRound] = useState(0);
+  /** Whether the accuracy % has been revealed for the current round (via hint). */
+  const [accuracyRevealed, setAccuracyRevealed] = useState(false);
+  /** Mixing colors shown in the pre-reveal animation blob */
+  const [mixColors, setMixColors] = useState<[string, string, string]>(['#ff0000', '#00ff00', '#0000ff']);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const winnerPlayedRef = useRef(false);
+  const mixingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roundStartTimeRef = useRef<number>(Date.now());
+  const totalElapsedMsRef = useRef<number>(0);
+
+  // Refs for values used inside timer callback — prevents recreating submitRound
+  // every time these change (which would cause the round-start effect to re-run).
+  const hintsUsedThisRoundRef = useRef(0);
+  const currentRoundTargetRef = useRef(rounds[0].target);
 
   const currentRound = rounds[roundIndex];
   const liveAccuracy = Math.round(calculateColorMatchAccuracy(currentRound.target, playerColor));
   const hintsRemaining = MAX_HINTS_TOTAL - hintsUsedTotal;
+
+  // Keep refs in sync with latest values.
+  useEffect(() => { hintsUsedThisRoundRef.current = hintsUsedThisRound; }, [hintsUsedThisRound]);
+  useEffect(() => { currentRoundTargetRef.current = currentRound.target; }, [currentRound.target]);
 
   const playClick = useCallback(() => play(CLICK_SOUND_KEY), [play]);
   const playCorrect = useCallback(() => play(CORRECT_SOUND_KEY), [play]);
@@ -118,42 +139,76 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     }
   }, []);
 
+  // submitRound no longer depends on hintsUsedThisRound (uses ref instead),
+  // which breaks the cycle: buying hint → state update → submitRound recreated
+  // → round-start effect re-runs → hint cleared.
   const submitRound = useCallback(
     (color: RGB, didTimeOut: boolean) => {
       stopTimer();
-      const score = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(currentRound.target, color));
+      const target = currentRoundTargetRef.current;
+      const score = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(target, color));
       if (didTimeOut || score < 80) {
         playIncorrect();
       } else {
         playCorrect();
       }
+      const roundElapsedMs = Date.now() - roundStartTimeRef.current;
+      totalElapsedMsRef.current += roundElapsedMs;
       setLastScore(score);
       setTimedOut(didTimeOut);
       setResults((prev) => [
         ...prev,
         {
           score,
-          targetColor: currentRound.target,
+          targetColor: target,
           playerColor: color,
-          hintCount: hintsUsedThisRound,
+          hintCount: hintsUsedThisRoundRef.current,
+          roundElapsedMs,
         },
       ]);
       setPhase('feedback');
     },
-    [currentRound.target, hintsUsedThisRound, playCorrect, playIncorrect, stopTimer],
+    [playCorrect, playIncorrect, stopTimer],
   );
 
+  // Keep submitRound available via ref so the interval can always call the latest.
+  const submitRoundRef = useRef(submitRound);
+  useEffect(() => { submitRoundRef.current = submitRound; }, [submitRound]);
+
+  // ── Pre-reveal mixing animation ──────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'mixing') return;
+    const t = currentRound.target;
+    // Generate two "component" colors from the target to make a plausible mix preview.
+    const c1 = rgbToHex({ r: Math.min(255, t.r + 60), g: Math.max(0, t.g - 40), b: Math.max(0, t.b - 30) });
+    const c2 = rgbToHex({ r: Math.max(0, t.r - 50), g: Math.min(255, t.g + 50), b: Math.min(255, t.b + 40) });
+    const c3 = rgbToHex({ r: Math.max(0, t.r - 20), g: Math.max(0, t.g - 20), b: Math.min(255, t.b + 80) });
+    setMixColors([c1, c2, c3]);
+    mixingTimeoutRef.current = setTimeout(() => {
+      setPhase('playing');
+    }, MIXING_DURATION_MS);
+    return () => {
+      if (mixingTimeoutRef.current) clearTimeout(mixingTimeoutRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, roundIndex]);
+
+  // ── Round timer ──────────────────────────────────────────────────────────────
+  // Note: submitRound is intentionally absent from deps — we use the ref instead.
   useEffect(() => {
     if (phase !== 'playing') return;
     setTimeLeft(ROUND_TIME_S);
     setHintMessage('');
     setHintsUsedThisRound(0);
+    hintsUsedThisRoundRef.current = 0;
+    setAccuracyRevealed(false);
+    roundStartTimeRef.current = Date.now();
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setPlayerColor((pc) => {
-            submitRound(pc, true);
+            submitRoundRef.current(pc, true);
             return pc;
           });
           return 0;
@@ -163,7 +218,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     }, 1000);
 
     return stopTimer;
-  }, [phase, roundIndex, stopTimer, submitRound]);
+  }, [phase, roundIndex, stopTimer]);
 
   useEffect(() => {
     setPlayerColor(rounds[roundIndex].startColor);
@@ -176,8 +231,9 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     const total = results.reduce((sum, r) => sum + r.score, 0);
     const rawAverage = Math.round(total / results.length);
     const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
+    const tiebreakerMs = totalElapsedMsRef.current;
     const timeoutId = setTimeout(() => {
-      if (onFinish) onFinish(finalScore);
+      if (onFinish) onFinish(finalScore, tiebreakerMs);
     }, autoStart ? 0 : 2000);
     return () => clearTimeout(timeoutId);
   }, [autoStart, hintsUsedTotal, onFinish, phase, playWinner, results]);
@@ -194,10 +250,10 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     if (phase !== 'playing') return;
     playClick();
     setPlayerColor((pc) => {
-      submitRound(pc, false);
+      submitRoundRef.current(pc, false);
       return pc;
     });
-  }, [phase, playClick, submitRound]);
+  }, [phase, playClick]);
 
   const handleNext = useCallback(() => {
     playClick();
@@ -206,7 +262,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
       setPhase('results');
     } else {
       setRoundIndex(nextIndex);
-      setPhase('playing');
+      setPhase('mixing');
     }
   }, [playClick, roundIndex]);
 
@@ -220,7 +276,12 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     if (!hintWarning || phase !== 'playing' || hintsRemaining <= 0) return;
     playClick();
     setHintsUsedTotal((prev) => prev + 1);
-    setHintsUsedThisRound((prev) => prev + 1);
+    setHintsUsedThisRound((prev) => {
+      const next = prev + 1;
+      hintsUsedThisRoundRef.current = next;
+      return next;
+    });
+    setAccuracyRevealed(true);
     setHintMessage(buildHintMessage(currentRound.target, playerColor));
     setHintWarning(null);
   }, [currentRound.target, hintWarning, hintsRemaining, phase, playClick, playerColor]);
@@ -248,10 +309,12 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               : '❌ Way off'
       : '';
 
+  // ── Results screen ───────────────────────────────────────────────────────────
   if (phase === 'results') {
     const total = results.reduce((sum, r) => sum + r.score, 0);
     const rawAverage = Math.round(total / results.length);
     const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
+    const totalSecs = (totalElapsedMsRef.current / 1000).toFixed(1);
     return (
       <div className="cm" data-testid="color-match-comp">
         <div className="cm__card cm__card--results">
@@ -265,11 +328,11 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               <strong>{rawAverage}%</strong>
             </div>
             <div className="cm__summary-chip">
-              <span className="cm__summary-label">Hints Used</span>
-              <strong>{hintsUsedTotal}</strong>
+              <span className="cm__summary-label">Time</span>
+              <strong>{totalSecs}s</strong>
             </div>
             <div className="cm__summary-chip cm__summary-chip--penalty">
-              <span className="cm__summary-label">Penalty</span>
+              <span className="cm__summary-label">Hint Penalty</span>
               <strong>-{hintsUsedTotal * HINT_PENALTY_POINTS}%</strong>
             </div>
           </div>
@@ -294,6 +357,31 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     );
   }
 
+  // ── Mixing animation screen ──────────────────────────────────────────────────
+  if (phase === 'mixing') {
+    return (
+      <div className="cm" data-testid="color-match-comp">
+        <div className="cm__card">
+          <header className="cm__header">
+            <span className="cm__round-label">Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</span>
+            <span className="cm__timer" />
+          </header>
+          <div className="cm__mixing-stage" aria-label="Color mixing animation">
+            <div className="cm__mixing-label">Mixing your color…</div>
+            <div className="cm__mixing-blobs">
+              <div className="cm__mix-blob cm__mix-blob--1" style={{ background: mixColors[0] }} />
+              <div className="cm__mix-blob cm__mix-blob--2" style={{ background: mixColors[1] }} />
+              <div className="cm__mix-blob cm__mix-blob--3" style={{ background: mixColors[2] }} />
+              <div className="cm__mix-blob cm__mix-blob--reveal" style={{ background: targetHex }} />
+            </div>
+            <div className="cm__mixing-name">{currentRound.name}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Playing / feedback screen ────────────────────────────────────────────────
   return (
     <div className="cm" data-testid="color-match-comp">
       <div className="cm__card">
@@ -321,13 +409,22 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
             <span className="cm__swatch-label">Target</span>
           </div>
           <div className="cm__accuracy-meter" aria-live="polite" aria-atomic="true">
-            <span className={[
-              'cm__accuracy-val',
-              liveAccuracy >= 80 ? 'cm__accuracy-val--great' : liveAccuracy >= 50 ? 'cm__accuracy-val--ok' : 'cm__accuracy-val--poor',
-            ].join(' ')}>
-              {phase === 'playing' ? liveAccuracy : (lastScore ?? liveAccuracy)}%
-            </span>
-            <span className="cm__accuracy-sub">match</span>
+            {accuracyRevealed ? (
+              <>
+                <span className={[
+                  'cm__accuracy-val',
+                  liveAccuracy >= 80 ? 'cm__accuracy-val--great' : liveAccuracy >= 50 ? 'cm__accuracy-val--ok' : 'cm__accuracy-val--poor',
+                ].join(' ')}>
+                  {phase === 'playing' ? liveAccuracy : (lastScore ?? liveAccuracy)}%
+                </span>
+                <span className="cm__accuracy-sub">match</span>
+              </>
+            ) : (
+              <>
+                <span className="cm__accuracy-val cm__accuracy-val--hidden">?</span>
+                <span className="cm__accuracy-sub">buy hint to reveal</span>
+              </>
+            )}
           </div>
           <div className="cm__swatch-col">
             <div className="cm__swatch cm__swatch--player" style={{ background: playerHex }} aria-label="Your color" />
@@ -336,8 +433,8 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
         </div>
 
         {hintMessage && phase === 'playing' && (
-          <div className="cm__hint-panel" aria-live="polite">
-            <div className="cm__hint-panel-title">Hint {hintsUsedThisRound}</div>
+          <div className="cm__hint-panel" aria-live="polite" data-testid="hint-panel">
+            <div className="cm__hint-panel-title">💡 Hint {hintsUsedThisRound}</div>
             <div className="cm__hint-panel-body">{hintMessage}</div>
           </div>
         )}
@@ -400,6 +497,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
             <h3 className="cm__modal-title">Buy Hint {hintWarning.nextHintNumber}?</h3>
             <p className="cm__modal-copy">
               This hint will reduce your final score by <strong>{HINT_PENALTY_POINTS}%</strong>.
+              It will also <strong>reveal your % match</strong> for this round.
             </p>
             <p className="cm__modal-copy cm__modal-copy--muted">
               You can use both hints in one round or save one for later.

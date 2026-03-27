@@ -22,6 +22,12 @@ export interface RawResult {
   rawValue: number;
   /** When true the game itself nominated this player as winner. */
   authoritativeWinner?: boolean;
+  /**
+   * Optional secondary sort key for tie-breaking when canonical scores are equal.
+   * Lower value wins (e.g. faster completion time in ms). If omitted, it is treated
+   * as +Infinity (i.e. the worst possible tiebreaker value).
+   */
+  tiebreaker?: number;
 }
 
 export interface ScoringOptions {
@@ -141,11 +147,14 @@ export function computeScores(
     return { ...r, score, points };
   });
 
-  // Sort: authoritative winner first; then by score descending.
+  // Sort: authoritative winner first; then by score descending; then by tiebreaker ascending (lower = faster = better).
+  // Entries with no tiebreaker use Infinity so they never artificially win ties against entries that do supply one.
   withScores.sort((a, b) => {
     if (a.authoritativeWinner && !b.authoritativeWinner) return -1;
     if (!a.authoritativeWinner && b.authoritativeWinner) return 1;
-    return b.score - a.score;
+    const scoreDiff = b.score - a.score;
+    if (scoreDiff !== 0) return scoreDiff;
+    return (a.tiebreaker ?? Infinity) - (b.tiebreaker ?? Infinity);
   });
 
   return withScores.map((r, i) => ({ ...r, rank: i + 1 }));

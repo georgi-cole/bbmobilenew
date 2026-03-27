@@ -6,11 +6,14 @@
   min-height: 100%;
   width: 100%;
   background: radial-gradient(ellipse at 60% 20%, #1a2540 0%, #0e1726 60%, #070d1a 100%);
-  padding: 16px 12px 24px;
+  padding: 14px 10px 24px;
   box-sizing: border-box;
-  gap: 14px;
+  gap: 12px;
   color: #e3ecf5;
   font-family: inherit;
+  /* B1: Scrollable when content overflows the viewport */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mc-host--warning {
@@ -92,14 +95,14 @@
 .mc-reveal-panel {
   width: 100%;
   max-width: 420px;
-  min-height: 180px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
   text-align: center;
-  padding: 18px;
+  padding: 14px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -113,14 +116,20 @@
 }
 
 .mc-reveal-swatch {
-  width: 92px;
-  height: 92px;
-  border-radius: 22px;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
   border: 4px solid rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.16);
+  animation: mc-swatch-appear 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes mc-swatch-appear {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
 }
 
 .mc-reveal-emoji {
@@ -172,23 +181,28 @@
 
 .mc-tile {
   --mc-color: #466381;
-  min-height: 96px;
+  /* B1: Reduced from 96px to fit more tiles on screen */
+  min-height: 72px;
   border: 2px solid rgba(255, 255, 255, 0.16);
   background: linear-gradient(145deg, var(--mc-color) 0%, #1a2130 100%);
   color: #fff;
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 10px;
+  gap: 5px;
+  padding: 8px 6px;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.14s ease, filter 0.14s ease;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
   border: 2px solid color-mix(in srgb, var(--mc-color) 50%, white 12%);
   background: linear-gradient(145deg, color-mix(in srgb, var(--mc-color) 88%, white 10%) 0%, color-mix(in srgb, var(--mc-color) 88%, black 20%) 100%);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--mc-color) 30%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--mc-color) 30%, transparent);
+  position: relative;
+  overflow: hidden;
+  /* B3: Subtle entrance animation for the color grid */
+  animation: mc-tile-appear 0.3s ease both;
 }
 
 .mc-tile:hover:enabled {
@@ -201,7 +215,28 @@
 }
 
 .mc-tile--pressed {
-  transform: scale(0.97);
+  transform: scale(0.95);
+}
+
+/* B3: Paint-splash animation on tap */
+.mc-tile--splat::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%);
+  border-radius: inherit;
+  animation: mc-splat 0.32s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes mc-splat {
+  0%   { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(2);   opacity: 0; }
+}
+
+@keyframes mc-tile-appear {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 .mc-tile--correct {
@@ -213,13 +248,13 @@
 }
 
 .mc-tile-emoji {
-  font-size: 1.55rem;
+  font-size: 1.3rem;
   line-height: 1;
 }
 
 .mc-tile-name {
   text-align: center;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.04em;
@@ -391,10 +426,77 @@
   }
 
   .mc-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
   }
 
   .mc-tile {
-    min-height: 88px;
+    min-height: 60px;
+    padding: 6px 4px;
+    border-radius: 12px;
   }
+
+  .mc-tile-emoji {
+    font-size: 1.1rem;
+  }
+
+  .mc-tile-name {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .mc-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .mc-tile {
+    min-height: 54px;
+    border-radius: 10px;
+  }
+}
+
+/* ── Color-mix animation shown after a correct tap ─────────────────────────── */
+
+.mc-mixing-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: mc-mix-appear 0.2s ease both;
+}
+
+@keyframes mc-mix-appear {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.mc-mix-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+}
+
+.mc-mix-plus,
+.mc-mix-arrow {
+  font-size: 1rem;
+  color: #8ab0d0;
+  font-weight: 700;
+}
+
+.mc-mix-result {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  animation: mc-mix-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes mc-mix-pop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
 }

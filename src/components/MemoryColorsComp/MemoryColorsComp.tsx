@@ -33,8 +33,8 @@ import type {
 import HOUSEGUESTS from '../../data/houseguests';
 import './MemoryColorsComp.css';
 
-const SHOW_DURATION_MS = 680;
-const SHOW_GAP_MS = 220;
+const SHOW_DURATION_MS = 900;
+const SHOW_GAP_MS = 300;
 const WARNING_BEAT_MS = 1400;
 const ROUND_CLEARED_MS = 1200;
 
@@ -93,10 +93,16 @@ export default function MemoryColorsComp({
   const [pressedColor, setPressedColor] = useState<number>(-1);
   const [flashError, setFlashError] = useState(false);
   const [flashCorrect, setFlashCorrect] = useState(false);
+  /** Index of a recently-tapped chip to trigger the paint-splash animation */
+  const [splatColor, setSplatColor] = useState<number>(-1);
+  /** When set, shows a brief color-mix animation for a correct sequence step */
+  const [mixingPair, setMixingPair] = useState<[string, string] | null>(null);
 
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundClearedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mixingPairTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outcomeDispatchedRef = useRef(false);
   const winnerPlayedRef = useRef(false);
   const initDoneRef = useRef(false);
@@ -122,6 +128,8 @@ export default function MemoryColorsComp({
       if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       if (roundClearedTimeoutRef.current) clearTimeout(roundClearedTimeoutRef.current);
+      if (pressResetTimeoutRef.current) clearTimeout(pressResetTimeoutRef.current);
+      if (mixingPairTimeoutRef.current) clearTimeout(mixingPairTimeoutRef.current);
     };
   }, [dispatch, humanPlayerId, participantIds, prizeType, seed]);
 
@@ -198,20 +206,30 @@ export default function MemoryColorsComp({
     const expected = mc.sequence[mc.inputIndex];
     const isCorrect = colorIndex === expected;
     setPressedColor(colorIndex);
+    setSplatColor(colorIndex);
     if (isCorrect) {
       playCorrect();
       setFlashCorrect(true);
       setFlashError(false);
+      // Show a quick 2-color mix animation using the previous and current color
+      const prevIndex = mc.inputIndex > 0 ? mc.sequence[mc.inputIndex - 1] : -1;
+      if (prevIndex >= 0) {
+        if (mixingPairTimeoutRef.current) clearTimeout(mixingPairTimeoutRef.current);
+        setMixingPair([MEMORY_COLOR_POOL[prevIndex].hex, MEMORY_COLOR_POOL[colorIndex].hex]);
+        mixingPairTimeoutRef.current = setTimeout(() => setMixingPair(null), 700);
+      }
     } else {
       playIncorrect();
       setFlashError(true);
       setFlashCorrect(false);
     }
-    setTimeout(() => {
+    if (pressResetTimeoutRef.current) clearTimeout(pressResetTimeoutRef.current);
+    pressResetTimeoutRef.current = setTimeout(() => {
       setPressedColor(-1);
       setFlashCorrect(false);
       setFlashError(false);
-    }, 260);
+      setSplatColor(-1);
+    }, 320);
 
     dispatch(recordInput({ colorIndex, now: Date.now() }));
   }, [dispatch, mc, playClick, playCorrect, playIncorrect]);
@@ -328,6 +346,17 @@ export default function MemoryColorsComp({
             </div>
             <div className="mc-reveal-name">{litColor.name}</div>
           </>
+        ) : mixingPair ? (
+          <div className="mc-mixing-row" aria-live="polite" aria-label="Colors mixing">
+            <div className="mc-mix-chip" style={{ background: mixingPair[0] }} />
+            <span className="mc-mix-plus">+</span>
+            <div className="mc-mix-chip" style={{ background: mixingPair[1] }} />
+            <span className="mc-mix-arrow">→</span>
+            <div
+              className="mc-mix-result"
+              style={{ background: `linear-gradient(135deg, ${mixingPair[0]}, ${mixingPair[1]})` }}
+            />
+          </div>
         ) : isInput ? (
           <div className="mc-reveal-copy">Tap the <strong>{ordinal(mc.inputIndex + 1)}</strong> color in the same order</div>
         ) : isWarning ? (
@@ -346,6 +375,7 @@ export default function MemoryColorsComp({
               pressedColor === i && flashCorrect ? 'mc-tile--correct' : '',
               pressedColor === i && flashError ? 'mc-tile--error' : '',
               pressedColor === i ? 'mc-tile--pressed' : '',
+              splatColor === i ? 'mc-tile--splat' : '',
             ].filter(Boolean).join(' ')}
             style={{ '--mc-color': color.hex } as CSSProperties}
             onClick={() => handleColorTap(i)}

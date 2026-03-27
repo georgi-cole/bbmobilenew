@@ -1767,6 +1767,12 @@ export default function GameScreen() {
                   id === humanPlayer?.id
                     ? rawValue
                     : (pendingChallenge.aiScores[id] ?? rawValue),
+                // Forward time-based tiebreaker: human's comes from the minigame
+                // (via reactCompletion.tiebreakerMs); AI tiebreakers are pre-simulated
+                // in startChallenge and stored alongside aiScores.
+                ...(id === humanPlayer?.id
+                  ? (reactCompletion?.tiebreakerMs != null ? { tiebreaker: reactCompletion.tiebreakerMs } : {})
+                  : (pendingChallenge.aiTiebreakers?.[id] != null ? { tiebreaker: pendingChallenge.aiTiebreakers[id] } : {})),
               }))
             const explicitWinnerId =
               reactCompletion?.authoritativeWinnerId != null &&

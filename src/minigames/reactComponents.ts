@@ -9,7 +9,9 @@
 // Component contract for generic mounting
 // ─────────────────────────────────────────
 // Each component in this map must accept (at minimum):
-//   onFinish?: (value: number) => void
+//   onFinish?: (value: number, tiebreakerMs?: number) => void
+//                        — called with the final score; tiebreakerMs is an
+//                          optional secondary sort key (lower = faster = better)
 //   seed?: number        — competition seed forwarded from gameOptions.seed
 //   autoStart?: boolean  — when true the game begins immediately on mount
 
@@ -34,7 +36,7 @@ import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
  * seeded-RNG games start deterministically without an extra user click.
  */
 export interface GenericMinigameProps {
-  onFinish?: (value: number) => void;
+  onFinish?: (value: number, tiebreakerMs?: number) => void;
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number;
   /** When true the game starts immediately on mount (no Start button needed). */

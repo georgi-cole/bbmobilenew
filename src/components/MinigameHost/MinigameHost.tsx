@@ -61,6 +61,8 @@ export interface MinigameParticipant {
 export interface ReactMinigameCompletion {
   authoritativeWinnerId?: string | null;
   rawValue?: number;
+  /** Optional time-based tie-breaker in ms (lower = faster = better rank). */
+  tiebreakerMs?: number;
 }
 
 interface Props {
@@ -115,6 +117,7 @@ export default function MinigameHost({
   const [phase, setPhase] = useState<HostPhase>(skipRules ? 'countdown' : 'rules');
   const [countdown, setCountdown] = useState(3);
   const [finalValue, setFinalValue] = useState<number | null>(null);
+  const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
 
@@ -180,8 +183,10 @@ export default function MinigameHost({
 
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
-    onDone(finalValue ?? 0, wasPartial);
-  }, [onDone, finalValue, wasPartial]);
+    const completion: ReactMinigameCompletion | undefined =
+      finalTiebreakerMs != null ? { tiebreakerMs: finalTiebreakerMs } : undefined;
+    onDone(finalValue ?? 0, wasPartial, completion);
+  }, [onDone, finalValue, finalTiebreakerMs, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────
   const leaderboard = useMemo(() => {
@@ -428,8 +433,9 @@ export default function MinigameHost({
                 <GenericComp
                   seed={seed}
                   autoStart={true}
-                  onFinish={(value: number) => {
+                  onFinish={(value: number, tiebreakerMs?: number) => {
                     setFinalValue(value);
+                    setFinalTiebreakerMs(tiebreakerMs ?? null);
                     setWasPartial(false);
                     setPhase('results');
                   }}
