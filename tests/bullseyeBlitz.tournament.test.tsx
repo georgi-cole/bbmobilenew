@@ -26,6 +26,7 @@ vi.mock('../src/components/BullseyeBlitz/bullseyeBlitzUtils', async () => {
 import BullseyeBlitz from '../src/components/BullseyeBlitz/BullseyeBlitz';
 import gameReducer from '../src/store/gameSlice';
 import type { MinigameSession, Player } from '../src/types';
+import { BULLSEYE_CHALLENGE_ROUNDS } from '../src/components/BullseyeBlitz/bullseyeBlitzUtils';
 
 function makePlayers(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -88,10 +89,17 @@ function renderTournament(session: MinigameSession, players: Player[]) {
   );
 }
 
-function renderBullseyeChallenge(players: Player[]) {
+function renderBullseyeChallenge(
+  players: Player[],
+  options: { onFinish?: (value: number) => void; autoStart?: boolean } = {},
+) {
   return render(
     <Provider store={makeStore(players)}>
-      <BullseyeBlitz players={players} />
+      <BullseyeBlitz
+        players={players}
+        onFinish={options.onFinish}
+        autoStart={options.autoStart}
+      />
     </Provider>,
   );
 }
@@ -119,8 +127,38 @@ describe('BullseyeBlitz tournament flow', () => {
     renderBullseyeChallenge(makePlayers(3));
 
     expect(
-      screen.getByText(/tap the bullseyes, avoid the bombs — rack up the highest score you can!/i),
+      screen.getByText(/tap the bullseyes, avoid the bombs, and carry your score into the next round!/i),
     ).toBeInTheDocument();
+  });
+
+  it('keeps challenge mode multiround and only reports the cumulative total after the final results screen', async () => {
+    const onFinish = vi.fn();
+    renderBullseyeChallenge(makePlayers(3), { onFinish, autoStart: true });
+
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+
+    expect(screen.getByText(/Round 1 • Solo challenge • Bank every point/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 complete — your score carries into the next round\./i)).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+
+    for (let round = 2; round <= BULLSEYE_CHALLENGE_ROUNDS; round += 1) {
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(`continue to round ${round}`, 'i') }));
+
+      if (round < BULLSEYE_CHALLENGE_ROUNDS) {
+        await advanceUntil(() => !!screen.queryByRole('button', { name: new RegExp(`continue to round ${round + 1}`, 'i') }));
+      }
+    }
+
+    await advanceUntil(() => !!screen.queryByText(/Bullseye Blitz complete!/i));
+
+    expect(screen.getByText(/Bullseye Blitz complete!/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your total score: 0 pts\./i)).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish).toHaveBeenCalledWith(0);
   });
 
   it('offers skip or spectator mode when the human is eliminated', async () => {

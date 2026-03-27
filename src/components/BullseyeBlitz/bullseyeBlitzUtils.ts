@@ -98,6 +98,8 @@ const ROUND_PRESETS = [
   },
 ] as const;
 
+export const BULLSEYE_CHALLENGE_ROUNDS = ROUND_PRESETS.length;
+
 const AI_BASELINE_MULTIPLIER = 1.15;
 const AI_BASELINE_OFFSET = 24;
 const AI_VOLATILITY_MIN = 0.9;
