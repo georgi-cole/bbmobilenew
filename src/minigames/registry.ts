@@ -1016,6 +1016,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'endurance',
     retired: false,
   },
+
+  rescueTheKing: {
+    key: 'rescueTheKing',
+    title: 'Rescue the King',
+    description: 'Clear the match-3 board before rising water drowns the king',
+    instructions: [
+      'Swap adjacent tiles to create matches of 3 or more identical symbols.',
+      'Matched tiles are removed — remaining tiles fall downward.',
+      'Destroy crates and stone blockers by matching tiles next to them.',
+      'Clear all tiles from the board before the 3-minute timer runs out.',
+      'Big combos earn bonus points — chain cascades for maximum score!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 180_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 8000 },
+    implementation: 'react',
+    reactComponentKey: 'RescueTheKing',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────

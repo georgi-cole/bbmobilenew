@@ -1,0 +1,524 @@
+/* RescueTheKingGame.css — Mobile-first portrait styles for Rescue the King */
+
+/* ── Container ─────────────────────────────────────────────────────────────── */
+
+.rtk-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #1a237e 0%, #283593 40%, #1565c0 100%);
+  color: #fff;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+
+/* ── HUD ───────────────────────────────────────────────────────────────────── */
+
+.rtk-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.rtk-hud-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.rtk-hud-timer {
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.5s;
+}
+
+.rtk-hud-timer.rtk-timer-danger {
+  color: #ff5252;
+  animation: rtk-pulse-danger 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes rtk-pulse-danger {
+  from { opacity: 1; }
+  to   { opacity: 0.55; }
+}
+
+.rtk-hud-combo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.85;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ── Water danger bar (thin strip below HUD) ─────────────────────────────── */
+
+.rtk-water-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.rtk-water-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #29b6f6, #039be5);
+  transition: width 1s linear;
+}
+
+.rtk-water-bar-fill.rtk-water-critical {
+  background: linear-gradient(90deg, #ef5350, #b71c1c);
+}
+
+/* ── Board wrapper ─────────────────────────────────────────────────────────── */
+
+.rtk-board-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 8px 0;
+}
+
+/* ── Board grid ────────────────────────────────────────────────────────────── */
+
+.rtk-board {
+  display: grid;
+  gap: 3px;
+  /* grid-template-columns set inline via style prop */
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+}
+
+/* ── Individual cells ──────────────────────────────────────────────────────── */
+
+.rtk-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    opacity 0.2s ease,
+    box-shadow 0.12s ease;
+  font-size: 1.5rem;
+  line-height: 1;
+  aspect-ratio: 1;
+}
+
+/* Normal tile */
+.rtk-cell-normal {
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.rtk-cell-normal:hover {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.rtk-cell-normal.rtk-cell-selected {
+  border-color: #ffeb3b;
+  background: rgba(255, 235, 59, 0.28);
+  box-shadow: 0 0 8px 2px rgba(255, 235, 59, 0.6);
+  transform: scale(1.1);
+  z-index: 2;
+}
+
+.rtk-cell-normal.rtk-cell-matching {
+  animation: rtk-match-pop 0.35s ease-out forwards;
+}
+
+@keyframes rtk-match-pop {
+  0%   { transform: scale(1);   opacity: 1; }
+  40%  { transform: scale(1.3); opacity: 0.8; }
+  100% { transform: scale(0);   opacity: 0; }
+}
+
+.rtk-cell-normal.rtk-cell-invalid-swap {
+  animation: rtk-shake 0.3s ease-in-out;
+}
+
+@keyframes rtk-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-4px); }
+  60%       { transform: translateX(4px); }
+}
+
+.rtk-cell-normal.rtk-cell-falling {
+  animation: rtk-fall 0.2s ease-in;
+}
+
+@keyframes rtk-fall {
+  from { transform: translateY(-20px); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Blocker cells */
+.rtk-cell-blocker {
+  cursor: default;
+  border: 2px solid rgba(120, 80, 40, 0.5);
+}
+
+.rtk-cell-blocker-crate {
+  background: linear-gradient(135deg, #8d6e63, #6d4c41);
+}
+
+.rtk-cell-blocker-stone {
+  background: linear-gradient(135deg, #607d8b, #455a64);
+}
+
+.rtk-cell-blocker-damaged {
+  opacity: 0.7;
+}
+
+.rtk-cell-blocker.rtk-cell-hit-flash {
+  animation: rtk-hit-flash 0.3s ease-out;
+}
+
+@keyframes rtk-hit-flash {
+  0%   { filter: brightness(1) }
+  50%  { filter: brightness(2.5) }
+  100% { filter: brightness(1) }
+}
+
+/* Empty cell */
+.rtk-cell-empty {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Blocker icon text */
+.rtk-cell-blocker-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* ── King + water zone (below board) ───────────────────────────────────────── */
+
+.rtk-scene {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rtk-king {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.5s;
+  z-index: 3;
+}
+
+.rtk-king-emoji {
+  font-size: 2.8rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 235, 59, 0.8));
+  transition: transform 0.4s, filter 0.4s;
+}
+
+.rtk-king.rtk-king-panic .rtk-king-emoji {
+  animation: rtk-king-panic 0.4s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 12px rgba(255, 82, 82, 0.9));
+}
+
+@keyframes rtk-king-panic {
+  from { transform: rotate(-8deg) scale(1); }
+  to   { transform: rotate(8deg) scale(1.05); }
+}
+
+.rtk-king.rtk-king-rescued .rtk-king-emoji {
+  animation: rtk-king-rescued 0.6s ease-out forwards;
+}
+
+@keyframes rtk-king-rescued {
+  0%   { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-20px) scale(1.3); }
+  100% { transform: translateY(-10px) scale(1.2); }
+}
+
+.rtk-king-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.rtk-water {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, rgba(3, 155, 229, 0.75) 0%, rgba(1, 87, 155, 0.85) 100%);
+  transition: height 1s linear;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.rtk-water-critical .rtk-water {
+  background: linear-gradient(180deg, rgba(198, 40, 40, 0.75) 0%, rgba(183, 28, 28, 0.85) 100%);
+}
+
+.rtk-water::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -20%;
+  width: 140%;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  animation: rtk-wave 2.5s ease-in-out infinite;
+}
+
+.rtk-water::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 10%;
+  width: 110%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  animation: rtk-wave 3.5s ease-in-out infinite reverse;
+}
+
+@keyframes rtk-wave {
+  0%   { transform: translateX(-10%); }
+  50%  { transform: translateX(5%); }
+  100% { transform: translateX(-10%); }
+}
+
+/* ── Reshuffle toast ───────────────────────────────────────────────────────── */
+
+.rtk-reshuffle-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  background: rgba(30, 30, 60, 0.95);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  z-index: 20;
+  opacity: 0;
+  animation: rtk-toast-appear 1.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes rtk-toast-appear {
+  0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.8); }
+  15%  { opacity: 1;   transform: translate(-50%, -50%) scale(1.05); }
+  70%  { opacity: 1;   transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0;   transform: translate(-50%, -50%) scale(0.9); }
+}
+
+/* ── Score pop ─────────────────────────────────────────────────────────────── */
+
+.rtk-score-pop {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffeb3b;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  z-index: 15;
+  animation: rtk-score-float 0.9s ease-out forwards;
+}
+
+@keyframes rtk-score-float {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
+}
+
+/* ── Overlay screens ───────────────────────────────────────────────────────── */
+
+.rtk-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 24px;
+  text-align: center;
+}
+
+.rtk-overlay-win {
+  background: radial-gradient(circle, rgba(255,235,59,0.2) 0%, rgba(0,0,0,0.85) 100%);
+  animation: rtk-overlay-in 0.4s ease-out;
+}
+
+.rtk-overlay-lose {
+  background: radial-gradient(circle, rgba(244,67,54,0.15) 0%, rgba(0,0,0,0.9) 100%);
+  animation: rtk-overlay-in 0.4s ease-out;
+}
+
+@keyframes rtk-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.rtk-overlay-title {
+  font-size: 2rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.rtk-overlay-win .rtk-overlay-title {
+  color: #ffeb3b;
+  text-shadow: 0 0 20px rgba(255,235,59,0.8);
+}
+
+.rtk-overlay-lose .rtk-overlay-title {
+  color: #ef5350;
+  text-shadow: 0 0 20px rgba(239,83,80,0.8);
+}
+
+.rtk-overlay-emoji {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  animation: rtk-overlay-emoji 1s ease-out;
+}
+
+@keyframes rtk-overlay-emoji {
+  0%  { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100%{ transform: scale(1); }
+}
+
+.rtk-overlay-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.9;
+  margin-bottom: 20px;
+  max-width: 280px;
+}
+
+.rtk-overlay-score {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+.rtk-overlay-btn {
+  padding: 14px 32px;
+  border-radius: 12px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.5px;
+}
+
+.rtk-overlay-btn:active {
+  transform: scale(0.96);
+}
+
+.rtk-overlay-btn-primary {
+  background: #ffeb3b;
+  color: #1a237e;
+  box-shadow: 0 4px 12px rgba(255,235,59,0.4);
+}
+
+/* ── Idle / start screen ───────────────────────────────────────────────────── */
+
+.rtk-start-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 24px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.rtk-start-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffeb3b;
+  text-shadow: 0 0 16px rgba(255,235,59,0.6);
+  margin-bottom: 8px;
+}
+
+.rtk-start-subtitle {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  max-width: 280px;
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+
+/* ── Screen shake ──────────────────────────────────────────────────────────── */
+
+.rtk-root.rtk-shake {
+  animation: rtk-board-shake 0.35s ease-in-out;
+}
+
+@keyframes rtk-board-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
+}
+
+/* ── Progress bar (tiles remaining) ───────────────────────────────────────── */
+
+.rtk-progress {
+  width: 100%;
+  padding: 4px 12px 0;
+  flex-shrink: 0;
+}
+
+.rtk-progress-bar-bg {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.rtk-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #66bb6a, #43a047);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
