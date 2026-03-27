@@ -36,6 +36,7 @@ import type {
   ScoreEntry,
   TargetKind,
 } from './bullseyeBlitzUtils';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -157,8 +158,26 @@ export default function BullseyeBlitz({
     const humanFinalHits = { ...hitsRef.current };
 
     if (session) {
+      // For hybrid sessions, resolve AI scores after the human score is known.
+      let resolvedAiScores: Record<string, number>;
+      if (session.hybridResolveOnComplete) {
+        const aiParticipants = session.participants
+          .filter((id) => id !== humanId)
+          .map((id) => {
+            const p = players.find((pl) => pl.id === id);
+            return { id, profile: p?.competitionProfile };
+          });
+        resolvedAiScores = resolveHybridAiScores({
+          gameKey: session.key,
+          humanScore: humanFinalScore,
+          aiParticipants,
+          seed: session.seed,
+        });
+      } else {
+        resolvedAiScores = session.aiScores;
+      }
       const allScores: Record<string, number> = {
-        ...session.aiScores,
+        ...resolvedAiScores,
         ...(humanId ? { [humanId]: humanFinalScore } : {}),
       };
       const ranked = buildRankedLeaderboard(

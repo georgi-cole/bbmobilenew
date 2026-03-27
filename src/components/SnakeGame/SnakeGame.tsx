@@ -22,6 +22,7 @@ import React, {
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './SnakeGame.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -224,9 +225,28 @@ export default function SnakeGame({
       const humanScore = normaliseScore(humanFood);
 
       if (session) {
-        // HOH/LOH path — build ranked leaderboard
+        // HOH/LOH path — build ranked leaderboard.
+        // For hybrid sessions, resolve AI scores after the human score is known.
+        let resolvedAiScores: Record<string, number>;
+        if (session.hybridResolveOnComplete) {
+          const aiParticipants = session.participants
+            .filter((id) => id !== humanId)
+            .map((id) => {
+              const p = players.find((pl) => pl.id === id);
+              return { id, profile: p?.competitionProfile };
+            });
+          resolvedAiScores = resolveHybridAiScores({
+            gameKey: session.key,
+            humanScore,
+            aiParticipants,
+            seed: session.seed,
+          });
+        } else {
+          resolvedAiScores = session.aiScores;
+        }
+
         const allScores: Record<string, number> = {
-          ...session.aiScores,
+          ...resolvedAiScores,
           ...(humanId ? { [humanId]: humanScore } : {}),
         };
 

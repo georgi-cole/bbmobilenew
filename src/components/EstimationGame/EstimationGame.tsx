@@ -27,6 +27,7 @@ import { completeMinigame } from '../../store/gameSlice';
 import { mulberry32 } from '../../store/rng';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import { computeRoundScore, deriveLastPlaceId } from './estimationGameUtils';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './EstimationGame.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -54,16 +55,34 @@ function genPositions(rng: () => number, count: number, w: number, h: number, pa
 }
 
 /**
- * Derive AI total scores deterministically from the session seed.
- * AI scores are pre-computed once from the registry entry's aiScores map,
- * which is produced by the competition skill profile system.
+ * Build the scores map for all participants, resolving AI scores via the
+ * hybrid resolver when the session uses the post-human-score resolution path,
+ * or falling back to precomputed `session.aiScores` for legacy/endurance sessions.
  */
 function buildAllScores(
   session: MinigameSession,
   humanId: string | undefined,
   humanTotal: number,
+  players: ReadonlyArray<{ id: string; competitionProfile?: import('../../ai/competition/types').CompetitionSkillProfile }>,
 ): Record<string, number> {
-  const result: Record<string, number> = { ...session.aiScores };
+  let aiScores: Record<string, number>;
+  if (session.hybridResolveOnComplete) {
+    const aiParticipants = session.participants
+      .filter((id) => id !== humanId)
+      .map((id) => {
+        const p = players.find((pl) => pl.id === id);
+        return { id, profile: p?.competitionProfile };
+      });
+    aiScores = resolveHybridAiScores({
+      gameKey: session.key,
+      humanScore: humanTotal,
+      aiParticipants,
+      seed: session.seed,
+    });
+  } else {
+    aiScores = { ...session.aiScores };
+  }
+  const result = { ...aiScores };
   if (humanId) result[humanId] = humanTotal;
   return result;
 }
@@ -282,7 +301,7 @@ export default function EstimationGame({
     const humanTotal = roundResults.reduce((sum, r) => sum + r.score, 0);
 
     if (session) {
-      const allScores = buildAllScores(session, humanId, humanTotal);
+      const allScores = buildAllScores(session, humanId, humanTotal, players);
       const ranked = rankParticipants(allScores, session.participants);
 
       const entries: ScoreEntry[] = ranked.map((id) => {
