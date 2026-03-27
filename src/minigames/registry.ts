@@ -484,7 +484,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     ],
     metricKind: 'accuracy',
     metricLabel: 'Accuracy %',
-    timeLimitMs: 0,
+    timeLimitMs: 25_000,
     authoritative: false,
     scoringAdapter: 'raw',
     implementation: 'react' as const,
