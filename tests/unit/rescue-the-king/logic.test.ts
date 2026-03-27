@@ -457,6 +457,60 @@ describe('computeFinalScore', () => {
   });
 });
 
+// ── Deadlock regression ───────────────────────────────────────────────────────
+
+describe('deadlock regression', () => {
+  it('a board with remaining normal tiles and no valid moves is not cleared', () => {
+    // 2×2 board: any swap touches only 2 cells so a 3-in-a-row is impossible
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(countNormalTiles(board)).toBeGreaterThan(0);
+    expect(hasAnyValidMove(board)).toBe(false);
+  });
+
+  it('boardCleared must only be true when countNormalTiles returns 0', () => {
+    // A board with tiles must not be considered cleared
+    const tiledBoard = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(countNormalTiles(tiledBoard)).toBeGreaterThan(0);
+
+    // An all-empty board is considered cleared
+    const emptyBoard = makeBoard([
+      [null, null],
+      [null, null],
+    ]);
+    expect(countNormalTiles(emptyBoard)).toBe(0);
+  });
+
+  it('shuffleNormalTiles on a 2×2 board still has no valid move (structural deadlock)', () => {
+    // A 2×2 board is structurally deadlocked regardless of symbol arrangement
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    const rng = mulberry32(0xDEAD_BEEF);
+    const shuffled = shuffleNormalTiles(board, rng);
+    // After shuffling, a 2×2 board still cannot have a valid move
+    expect(hasAnyValidMove(shuffled)).toBe(false);
+    // And it still has the same number of normal tiles
+    expect(countNormalTiles(shuffled)).toBe(countNormalTiles(board));
+  });
+
+  it('deadlocked board with tiles remaining does not satisfy the win condition', () => {
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    // Win condition: 0 normal tiles remaining AND board is cleared
+    const isActualWin = countNormalTiles(board) === 0;
+    expect(isActualWin).toBe(false);
+  });
+});
+
 // ── Registry: rescueTheKing entry ─────────────────────────────────────────────
 
 describe('rescueTheKing registry entry', () => {

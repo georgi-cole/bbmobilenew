@@ -217,34 +217,38 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       }
 
       if (!hasAnyValidMove(board)) {
-        if (accState.reshuffleCount >= MAX_RESHUFFLES) {
-          // Safety net: declare win anyway to avoid infinite lock
-          const winState: GameState = {
-            ...accState,
-            board,
-            phase: 'win',
-            boardCleared: true,
-          };
-          setState(winState);
-          setTimeout(() => finishGame(winState), 200);
-          return;
+        if (accState.reshuffleCount < MAX_RESHUFFLES) {
+          // Reshuffle and verify the result is playable before resuming.
+          const newBoard = shuffleNormalTiles(board, rngRef.current);
+          if (hasAnyValidMove(newBoard)) {
+            const newState: GameState = {
+              ...accState,
+              board: newBoard,
+              phase: 'playing',
+              reshuffleCount: accState.reshuffleCount + 1,
+              selectedCell: null,
+            };
+            setState(newState);
+            setShowReshuffle(false);
+            setTimeout(() => {
+              setReshuffleKey(k => k + 1);
+              setShowReshuffle(true);
+              setTimeout(() => setShowReshuffle(false), RESHUFFLE_TOAST_MS);
+            }, 0);
+            return;
+          }
         }
-        // Reshuffle
-        const newBoard = shuffleNormalTiles(board, rngRef.current);
-        const newState: GameState = {
+        // Reshuffles exhausted or no playable arrangement found.
+        // End as a loss — never set boardCleared: true when tiles remain.
+        const loseState: GameState = {
           ...accState,
-          board: newBoard,
-          phase: 'playing',
-          reshuffleCount: accState.reshuffleCount + 1,
+          board,
+          phase: 'lose',
+          boardCleared: false,
           selectedCell: null,
         };
-        setState(newState);
-        setShowReshuffle(false);
-        setTimeout(() => {
-          setReshuffleKey(k => k + 1);
-          setShowReshuffle(true);
-          setTimeout(() => setShowReshuffle(false), RESHUFFLE_TOAST_MS);
-        }, 0);
+        setState(loseState);
+        setTimeout(() => finishGame(loseState), 200);
         return;
       }
 
