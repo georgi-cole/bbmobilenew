@@ -185,7 +185,7 @@ describe('MemoryColors slice — state machine', () => {
     expect(store.getState().memoryColors!.phase).toBe('showing');
   });
 
-  it('second wrong input → complete (run ends)', () => {
+  it('third wrong input → complete (run ends)', () => {
     const store = makeStore();
     store.dispatch(
       initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
@@ -196,11 +196,16 @@ describe('MemoryColors slice — state machine', () => {
     const wrong1 = (mc.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: wrong1, now: 100 }));
     store.dispatch(resumeAfterWarning());
-    // Now input phase again — make second mistake
+    // Now input phase again — make second and third mistakes
     store.dispatch(beginInput());
     const mc2 = store.getState().memoryColors!;
     const wrong2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: wrong2, now: 300 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const wrong3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: wrong3, now: 500 }));
     expect(store.getState().memoryColors!.phase).toBe('complete');
   });
 
@@ -360,7 +365,7 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
 
     // Manually set a decisive result in state via the slice
     // We'll do this by running the full human simulation instead.
-    // p0 (human) makes 2 mistakes immediately → roundsCleared = 0, ends
+    // p0 (human) makes 3 mistakes immediately → roundsCleared = 0, ends
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
     const wrong = (mc.sequence[0] + 1) % NUM_COLORS;
@@ -369,7 +374,12 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     store.dispatch(beginInput());
     const mc2 = store.getState().memoryColors!;
     const wrong2 = (mc2.sequence[0] + 1) % NUM_COLORS;
-    store.dispatch(recordInput({ colorIndex: wrong2, now: 300 }));  // mistake 2 → complete
+    store.dispatch(recordInput({ colorIndex: wrong2, now: 300 }));  // mistake 2
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const wrong3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: wrong3, now: 500 }));  // mistake 3 → complete
 
     expect(store.getState().memoryColors!.phase).toBe('complete');
 
@@ -402,6 +412,11 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     const mc2 = store.getState().memoryColors!;
     const wrong2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: wrong2, now: 300 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const wrong3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: wrong3, now: 500 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
 
@@ -428,6 +443,11 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     const mc2 = store.getState().memoryColors!;
     const wrong2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: wrong2, now: 200 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const wrong3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: wrong3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
 
@@ -450,6 +470,11 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     const mc2 = store.getState().memoryColors!;
     const wrong2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: wrong2, now: 200 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const wrong3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: wrong3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
     const hohId1 = store.getState().game.hohId;
@@ -579,6 +604,11 @@ describe('MemoryColors — human HOH nomination flow', () => {
     const mc2 = store.getState().memoryColors!;
     const w2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: w2, now: 200 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const w3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: w3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
 
@@ -696,6 +726,11 @@ describe('MemoryColors — authoritative outcome handling', () => {
     const mc2 = store.getState().memoryColors!;
     const w2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: w2, now: 200 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const w3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: w3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
 
@@ -729,6 +764,11 @@ describe('MemoryColors — authoritative outcome handling', () => {
     const mc2 = store.getState().memoryColors!;
     const w2 = (mc2.sequence[0] + 1) % NUM_COLORS;
     store.dispatch(recordInput({ colorIndex: w2, now: 200 }));
+    store.dispatch(resumeAfterWarning());
+    store.dispatch(beginInput());
+    const mc3 = store.getState().memoryColors!;
+    const w3 = (mc3.sequence[0] + 1) % NUM_COLORS;
+    store.dispatch(recordInput({ colorIndex: w3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
 
