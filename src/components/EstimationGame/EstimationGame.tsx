@@ -348,7 +348,7 @@ export default function EstimationGame({
           winnerId,
         )
       : undefined;
-    const payload: CompleteMinigamePayload = { humanScore: humanTotal, lastPlaceId };
+    const payload: CompleteMinigamePayload = { humanScore: humanTotal, lastPlaceId, winnerId };
     dispatch(completeMinigame(payload));
   }, [dispatch, roundResults, scores, session]);
 

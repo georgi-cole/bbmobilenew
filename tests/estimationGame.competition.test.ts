@@ -199,6 +199,38 @@ describe('Estimation Game — winner correctness', () => {
 
     expect(store.getState().game.phase).toBe('hoh_results');
   });
+
+  it('explicit winnerId from component overrides score-based derivation', () => {
+    // Regression test for the Estimation winner sync bug:
+    // The component computes the leaderboard winner and must pass it explicitly
+    // so the applied HOH matches the results screen — even if the reducer would
+    // derive a different winner from scores alone (e.g. due to tie-breaking differences).
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+    // p1 has the highest AI score — score-based derivation would pick p1
+    setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 280, p2: 180, p3: 150 });
+
+    // Component explicitly supplies p2 as the canonical winner (as shown on its leaderboard)
+    store.dispatch(completeMinigame({ humanScore: 200, winnerId: 'p2' } as CompleteMinigamePayload));
+
+    // The explicit winnerId must be respected, not overridden by score derivation
+    expect(store.getState().game.hohId).toBe('p2');
+  });
+
+  it('non-human AI winner is applied when component passes explicit winnerId (leaderboard sync)', () => {
+    // Mirrors the reported bug: Lux (p1) scored 274, human (p0) scored 246.
+    // The component's leaderboard shows p1 as winner and must pass that winnerId
+    // so the crown animation crowns p1, not p0.
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+    setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 274, p2: 210, p3: 190 });
+
+    // Human scored 246 (3rd on leaderboard) — component passes p1 as explicit winner
+    store.dispatch(completeMinigame({ humanScore: 246, winnerId: 'p1' } as CompleteMinigamePayload));
+
+    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.hohId).not.toBe('p0');
+  });
 });
 
 // ── 2. Last-place finisher correctness ────────────────────────────────────────
