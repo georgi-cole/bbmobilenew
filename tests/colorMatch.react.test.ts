@@ -120,11 +120,23 @@ describe('Color Match scoring invariants', () => {
   });
 
   it('average is capped to 100 when individual rounds score at most 100', () => {
-    // Individual round accuracy is computed as [0, 100] via calculateColorMatchAccuracy
+    // Individual round accuracy is computed as [0, 100] via calculateColorMatchAccuracy.
+    // Even with a mix of perfect and worst-case guesses, the averaged score must stay ≤ 100.
     const target = { r: 128, g: 128, b: 128 };
-    const exact  = { r: 128, g: 128, b: 128 };
-    const roundScore = Math.round(calculateColorMatchAccuracy(target, exact));
-    expect(roundScore).toBeLessThanOrEqual(100);
+    const guesses = [
+      { r: 128, g: 128, b: 128 }, // perfect match
+      { r: 0,   g: 0,   b: 0   }, // extreme miss
+      { r: 255, g: 255, b: 255 }, // opposite extreme
+      { r: 128, g: 0,   b: 255 }, // mixed error
+      { r: 100, g: 150, b: 200 }, // partial match
+    ];
+    const roundScores = guesses.map((guess) =>
+      Math.round(calculateColorMatchAccuracy(target, guess)),
+    );
+    const avg = Math.round(
+      roundScores.reduce((sum, value) => sum + value, 0) / roundScores.length,
+    );
+    expect(avg).toBeLessThanOrEqual(100);
   });
 
   it('hint penalty applied after average still stays ≤ 100', () => {
