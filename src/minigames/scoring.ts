@@ -147,12 +147,13 @@ export function computeScores(
   });
 
   // Sort: authoritative winner first; then by score descending; then by tiebreaker ascending (lower = faster = better).
+  // Entries with no tiebreaker use Infinity so they never artificially win ties against entries that do supply one.
   withScores.sort((a, b) => {
     if (a.authoritativeWinner && !b.authoritativeWinner) return -1;
     if (!a.authoritativeWinner && b.authoritativeWinner) return 1;
     const scoreDiff = b.score - a.score;
     if (scoreDiff !== 0) return scoreDiff;
-    return (a.tiebreaker ?? 0) - (b.tiebreaker ?? 0);
+    return (a.tiebreaker ?? Infinity) - (b.tiebreaker ?? Infinity);
   });
 
   return withScores.map((r, i) => ({ ...r, rank: i + 1 }));

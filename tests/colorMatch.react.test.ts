@@ -107,9 +107,14 @@ describe('Color Match hints', () => {
 // ── 4. Scoring invariants ─────────────────────────────────────────────────────
 
 describe('Color Match scoring invariants', () => {
-  it('average of 5 rounds never exceeds 100', () => {
-    // Even if all rounds score 100, average = 100 ≤ 100
-    const rounds = [100, 100, 100, 100, 100];
+  it('average of 5 perfect rounds via the real accuracy helper never exceeds 100', () => {
+    // Each round uses calculateColorMatchAccuracy, which returns 0–100.
+    // Even when every round is a perfect match the average must stay ≤ 100.
+    const target = { r: 128, g: 128, b: 128 };
+    const guess  = { r: 128, g: 128, b: 128 };
+    const rounds = Array.from({ length: 5 }, () =>
+      Math.round(calculateColorMatchAccuracy(target, guess)),
+    );
     const avg = Math.round(rounds.reduce((s, v) => s + v, 0) / rounds.length);
     expect(avg).toBeLessThanOrEqual(100);
   });
@@ -170,13 +175,13 @@ describe('computeScores time-based tie-breaking', () => {
     expect(ranked[0].playerId).toBe('higher-score-slow');
   });
 
-  it('tiebreaker defaults to 0 when absent', () => {
+  it('absent tiebreaker defaults to Infinity — cannot beat a real time', () => {
     const results = [
       { playerId: 'no-tie', rawValue: 75 },
       { playerId: 'with-tie', rawValue: 75, tiebreaker: 50_000 },
     ];
     const ranked = computeScores('raw', results);
-    // 'no-tie' has implicit tiebreaker=0 which is lower → ranks first
-    expect(ranked[0].playerId).toBe('no-tie');
+    // 'with-tie' has an explicit tiebreaker of 50 000 ms < Infinity → ranks first
+    expect(ranked[0].playerId).toBe('with-tie');
   });
 });

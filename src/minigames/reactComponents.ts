@@ -32,7 +32,7 @@ import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp';
  * seeded-RNG games start deterministically without an extra user click.
  */
 export interface GenericMinigameProps {
-  onFinish?: (value: number) => void;
+  onFinish?: (value: number, tiebreakerMs?: number) => void;
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number;
   /** When true the game starts immediately on mount (no Start button needed). */

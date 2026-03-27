@@ -101,6 +101,8 @@ export default function MemoryColorsComp({
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundClearedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mixingPairTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outcomeDispatchedRef = useRef(false);
   const winnerPlayedRef = useRef(false);
   const initDoneRef = useRef(false);
@@ -126,6 +128,8 @@ export default function MemoryColorsComp({
       if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       if (roundClearedTimeoutRef.current) clearTimeout(roundClearedTimeoutRef.current);
+      if (pressResetTimeoutRef.current) clearTimeout(pressResetTimeoutRef.current);
+      if (mixingPairTimeoutRef.current) clearTimeout(mixingPairTimeoutRef.current);
     };
   }, [dispatch, humanPlayerId, participantIds, prizeType, seed]);
 
@@ -210,15 +214,17 @@ export default function MemoryColorsComp({
       // Show a quick 2-color mix animation using the previous and current color
       const prevIndex = mc.inputIndex > 0 ? mc.sequence[mc.inputIndex - 1] : -1;
       if (prevIndex >= 0) {
+        if (mixingPairTimeoutRef.current) clearTimeout(mixingPairTimeoutRef.current);
         setMixingPair([MEMORY_COLOR_POOL[prevIndex].hex, MEMORY_COLOR_POOL[colorIndex].hex]);
-        setTimeout(() => setMixingPair(null), 700);
+        mixingPairTimeoutRef.current = setTimeout(() => setMixingPair(null), 700);
       }
     } else {
       playIncorrect();
       setFlashError(true);
       setFlashCorrect(false);
     }
-    setTimeout(() => {
+    if (pressResetTimeoutRef.current) clearTimeout(pressResetTimeoutRef.current);
+    pressResetTimeoutRef.current = setTimeout(() => {
       setPressedColor(-1);
       setFlashCorrect(false);
       setFlashError(false);

@@ -1767,6 +1767,11 @@ export default function GameScreen() {
                   id === humanPlayer?.id
                     ? rawValue
                     : (pendingChallenge.aiScores[id] ?? rawValue),
+                // Forward the human's time-based tiebreaker when the minigame
+                // provided one (e.g. Color Match encodes total elapsed ms).
+                ...(id === humanPlayer?.id && reactCompletion?.tiebreakerMs != null
+                  ? { tiebreaker: reactCompletion.tiebreakerMs }
+                  : {}),
               }))
             const explicitWinnerId =
               reactCompletion?.authoritativeWinnerId != null &&

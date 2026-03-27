@@ -74,7 +74,7 @@ const NAMED_COLORS: Array<{ name: string; rgb: RGB }> = [
 ];
 
 interface Props {
-  onFinish?: (value: number) => void;
+  onFinish?: (value: number, tiebreakerMs?: number) => void;
   seed?: number;
   autoStart?: boolean;
 }
@@ -186,7 +186,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     setMixColors([c1, c2, c3]);
     mixingTimeoutRef.current = setTimeout(() => {
       setPhase('playing');
-    }, autoStart ? 0 : MIXING_DURATION_MS);
+    }, MIXING_DURATION_MS);
     return () => {
       if (mixingTimeoutRef.current) clearTimeout(mixingTimeoutRef.current);
     };
@@ -231,8 +231,9 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     const total = results.reduce((sum, r) => sum + r.score, 0);
     const rawAverage = Math.round(total / results.length);
     const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
+    const tiebreakerMs = totalElapsedMsRef.current;
     const timeoutId = setTimeout(() => {
-      if (onFinish) onFinish(finalScore);
+      if (onFinish) onFinish(finalScore, tiebreakerMs);
     }, autoStart ? 0 : 2000);
     return () => clearTimeout(timeoutId);
   }, [autoStart, hintsUsedTotal, onFinish, phase, playWinner, results]);
