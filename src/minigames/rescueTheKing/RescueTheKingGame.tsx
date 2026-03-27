@@ -32,7 +32,7 @@
 import React, {
   useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
-import type { GameState, Cell, Board } from './rescueTheKingTypes';
+import type { GameState, Cell, Board, LoseReason } from './rescueTheKingTypes';
 import { SYMBOL_EMOJI, SYMBOL_COLOR } from './rescueTheKingTypes';
 import {
   buildBoard,
@@ -110,6 +110,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       reshuffleCount,
       initialNormalTileCount: countNormalTiles(board),
       boardCleared: false,
+      loseReason: null,
     };
   }, [level, autoStart, seed]);
 
@@ -160,7 +161,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
         if (prev.phase !== 'playing') return prev;
         const next = prev.timeRemainingMs - 100;
         if (next <= 0) {
-          const loseState: GameState = { ...prev, timeRemainingMs: 0, phase: 'lose' };
+          const loseState: GameState = { ...prev, timeRemainingMs: 0, phase: 'lose', loseReason: 'timeout' as LoseReason };
           setTimeout(() => finishGame(loseState), 50);
           return loseState;
         }
@@ -217,34 +218,44 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       }
 
       if (!hasAnyValidMove(board)) {
-        if (accState.reshuffleCount >= MAX_RESHUFFLES) {
-          // Safety net: declare win anyway to avoid infinite lock
-          const winState: GameState = {
-            ...accState,
-            board,
-            phase: 'win',
-            boardCleared: true,
-          };
-          setState(winState);
-          setTimeout(() => finishGame(winState), 200);
-          return;
+        // Consume the remaining reshuffle budget, incrementing the count on
+        // every attempt (successful or not) so the limit is always honoured.
+        let currentBoard = board;
+        let reshuffleCount = accState.reshuffleCount;
+        while (reshuffleCount < MAX_RESHUFFLES) {
+          const candidate = shuffleNormalTiles(currentBoard, rngRef.current);
+          reshuffleCount++;
+          if (hasAnyValidMove(candidate)) {
+            const newState: GameState = {
+              ...accState,
+              board: candidate,
+              phase: 'playing',
+              reshuffleCount,
+              selectedCell: null,
+            };
+            setState(newState);
+            setShowReshuffle(false);
+            setTimeout(() => {
+              setReshuffleKey(k => k + 1);
+              setShowReshuffle(true);
+              setTimeout(() => setShowReshuffle(false), RESHUFFLE_TOAST_MS);
+            }, 0);
+            return;
+          }
+          currentBoard = candidate;
         }
-        // Reshuffle
-        const newBoard = shuffleNormalTiles(board, rngRef.current);
-        const newState: GameState = {
+        // Reshuffles exhausted — no playable arrangement found.
+        // End as a loss — never set boardCleared: true when tiles remain.
+        const loseState: GameState = {
           ...accState,
-          board: newBoard,
-          phase: 'playing',
-          reshuffleCount: accState.reshuffleCount + 1,
+          board: currentBoard,
+          phase: 'lose',
+          boardCleared: false,
+          loseReason: 'deadlock',
           selectedCell: null,
         };
-        setState(newState);
-        setShowReshuffle(false);
-        setTimeout(() => {
-          setReshuffleKey(k => k + 1);
-          setShowReshuffle(true);
-          setTimeout(() => setShowReshuffle(false), RESHUFFLE_TOAST_MS);
-        }, 0);
+        setState(loseState);
+        setTimeout(() => finishGame(loseState), 200);
         return;
       }
 
@@ -583,7 +594,9 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
           <div className="rtk-overlay-emoji">💀</div>
           <div className="rtk-overlay-title">The King Drowned!</div>
           <div className="rtk-overlay-body">
-            Time ran out before the board was cleared. The king is gone…
+            {state.loseReason === 'deadlock'
+              ? 'No more moves could be found. The board is stuck and the king is lost…'
+              : 'Time ran out before the board was cleared. The king is gone…'}
           </div>
           <div className="rtk-overlay-score">Score: {finalScore.toLocaleString()}</div>
           <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={startGame}>

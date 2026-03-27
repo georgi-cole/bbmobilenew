@@ -457,6 +457,42 @@ describe('computeFinalScore', () => {
   });
 });
 
+// ── Deadlock regression ───────────────────────────────────────────────────────
+
+describe('deadlock regression', () => {
+  it('a board with remaining normal tiles and no valid moves is not cleared', () => {
+    // 2×2 board: any swap touches only 2 cells so a 3-in-a-row is impossible
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(countNormalTiles(board)).toBeGreaterThan(0);
+    expect(hasAnyValidMove(board)).toBe(false);
+  });
+
+  it('computeFinalScore does not award board-clear bonus when tiles remain', () => {
+    // A deadlocked board has tiles remaining — boardCleared must be false,
+    // so the final score must not include SCORE_BOARD_CLEAR or the time bonus.
+    const score = computeFinalScore({ score: 200, boardCleared: false, timeRemainingMs: 60_000 });
+    expect(score).toBe(200);
+    expect(score).toBeLessThan(computeFinalScore({ score: 200, boardCleared: true, timeRemainingMs: 60_000 }));
+  });
+
+  it('shuffleNormalTiles on a 2×2 board still has no valid move (structural deadlock)', () => {
+    // A 2×2 board is structurally deadlocked regardless of symbol arrangement
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    const rng = mulberry32(0xDEAD_BEEF);
+    const shuffled = shuffleNormalTiles(board, rng);
+    // After shuffling, a 2×2 board still cannot have a valid move
+    expect(hasAnyValidMove(shuffled)).toBe(false);
+    // And it still has the same number of normal tiles
+    expect(countNormalTiles(shuffled)).toBe(countNormalTiles(board));
+  });
+});
+
 // ── Registry: rescueTheKing entry ─────────────────────────────────────────────
 
 describe('rescueTheKing registry entry', () => {
