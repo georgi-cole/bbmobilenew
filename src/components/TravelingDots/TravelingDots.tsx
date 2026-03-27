@@ -17,6 +17,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './TravelingDots.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -416,8 +417,26 @@ export default function TravelingDots({ session, players = [], onFinish, seed = 
     pathRef.current = finalPath;
 
     if (session) {
+      // For hybrid sessions, resolve AI scores after the human score is known.
+      let resolvedAiScores: Record<string, number>;
+      if (session.hybridResolveOnComplete) {
+        const aiParticipants = session.participants
+          .filter((id) => id !== humanId)
+          .map((id) => {
+            const p = players.find((pl) => pl.id === id);
+            return { id, profile: p?.competitionProfile };
+          });
+        resolvedAiScores = resolveHybridAiScores({
+          gameKey: session.key,
+          humanScore: bd.total,
+          aiParticipants,
+          seed: session.seed,
+        });
+      } else {
+        resolvedAiScores = session.aiScores;
+      }
       const allScores: Record<string, number> = {
-        ...session.aiScores,
+        ...resolvedAiScores,
         ...(humanId ? { [humanId]: bd.total } : {}),
       };
       const entries: ScoreEntry[] = session.participants.map((id) => {

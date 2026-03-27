@@ -24,6 +24,10 @@ import {
   updateCompetitionSeasonStateByPlayerId,
   type CompetitionSeasonUpdateInput,
 } from '../ai/competition';
+import {
+  isHybridScoredGame,
+  resolveHybridAiScores,
+} from '../ai/competition/hybridScoreResolver';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from './profilesSlice';
 import { loadSettings } from './settingsSlice';
@@ -581,14 +585,43 @@ const gameSlice = createSlice({
           : action.payload;
 
       const humanPlayer = state.players.find((p) => p.isUser);
-      // Merge human score with pre-computed AI scores
-      const scores: Record<string, number> = { ...session.aiScores };
-      if (humanPlayer && session.participants.includes(humanPlayer.id)) {
-        scores[humanPlayer.id] = payload.humanScore;
+
+      let scores: Record<string, number>;
+
+      if (session.hybridResolveOnComplete) {
+        // ── Hybrid resolver path (score-based games) ─────────────────────────
+        // AI scores are computed NOW, after the human score is known.
+        // This prevents precomputed scores from collapsing near a very low human score.
+        const aiParticipants = session.participants
+          .filter((id) => id !== humanPlayer?.id)
+          .map((id) => {
+            const p = state.players.find((pl) => pl.id === id);
+            return { id, profile: p?.competitionProfile };
+          });
+
+        const resolvedAiScores = resolveHybridAiScores({
+          gameKey: session.key,
+          humanScore: payload.humanScore,
+          aiParticipants,
+          seed: session.seed,
+        });
+
+        scores = { ...resolvedAiScores };
+        if (humanPlayer && session.participants.includes(humanPlayer.id)) {
+          scores[humanPlayer.id] = payload.humanScore;
+        }
+      } else {
+        // ── Legacy / precomputed path (endurance, special games, test fixtures) ──
+        scores = { ...session.aiScores };
+        if (humanPlayer && session.participants.includes(humanPlayer.id)) {
+          scores[humanPlayer.id] = payload.humanScore;
+        }
       }
 
       // Prefer a canonical winner supplied by the UI component so the
       // displayed leaderboard and the applied state transition stay aligned.
+      // When using the hybrid resolver the component also calls it with the
+      // same inputs, so the winnerId it supplies will be consistent.
       const winnerId = payload.winnerId ?? determineWinner(session.participants, scores);
 
       // Update personal records for every participant
@@ -3510,9 +3543,17 @@ export const fastForwardToEviction =
 /**
  * Public minigame API — startMinigame thunk.
  *
- * For human participants: pre-computes AI scores and dispatches launchMinigame
- * so the GameScreen can render the TapRace overlay.
- * For AI-only participants: immediately dispatches a complete result (no UI).
+ * Score-based (non-endurance) games with a human participant:
+ *   AI scores are NOT precomputed here. Instead the session is flagged with
+ *   `hybridResolveOnComplete: true` and the central hybrid resolver in
+ *   `completeMinigame` generates AI scores after the human score is known.
+ *   This prevents a predictable outcome before the human has finished playing.
+ *
+ * Endurance / non-hybrid games with a human participant:
+ *   AI scores ARE precomputed and stored in `session.aiScores` as before.
+ *
+ * AI-only games (no human participant):
+ *   Precomputed scores are used immediately to derive the winner — no UI needed.
  *
  * Returns the MinigameResult for AI-only runs; undefined when human UI is shown.
  */
@@ -3520,50 +3561,50 @@ export const startMinigame =
   (opts: { key: string; participants: string[]; seed: number; options: { timeLimit: number } }) =>
   (dispatch: AppDispatch, getState: () => RootState): MinigameResult | undefined => {
     const state = getState().game;
-    // Pre-compute AI scores, respecting the configured timeLimit
-    const aiScores: Record<string, number> = {};
     const model = getMinigameAiModel(opts.key);
-    const isQuickTap = opts.key === 'quickTap';
-    opts.participants.forEach((id, index) => {
-      const p = state.players.find((pl) => pl.id === id);
-      if (p && !p.isUser) {
-        if (isQuickTap) {
-          // Quick Tap uses its own weighted score-band simulation so AI results
-          // stay competitive without reusing the generic linear model.
-          aiScores[id] = simulateQuickTapAiScore({
-            seed: opts.seed,
-            playerId: id,
-            participantIndex: index,
-            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-            timeLimitSeconds: opts.options.timeLimit,
-          });
-        } else {
-          aiScores[id] = simulateAiPerformance({
-            minigameKey: opts.key,
-            minigameModel: model,
-            seed: opts.seed,
-            playerId: id,
-            participantIndex: index,
-            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-            seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
-            options: { timeLimitSeconds: opts.options.timeLimit },
-          });
-        }
-      }
-    });
+    const isHybrid = isHybridScoredGame(opts.key);
 
-    const session = {
-      key: opts.key,
-      participants: opts.participants,
-      seed: opts.seed,
-      options: opts.options,
-      aiScores,
-    };
+    // Always precompute AI scores for AI-only runs (no UI is involved) and for
+    // endurance/non-hybrid games (which keep the old precomputed path).
+    // For hybrid games with a human participant, precomputation is skipped.
+    const aiScores: Record<string, number> = {};
 
     const hasHuman = opts.participants.some((id) => {
       const p = state.players.find((pl) => pl.id === id);
       return !!p?.isUser;
     });
+
+    if (!isHybrid || !hasHuman) {
+      // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games
+      const isQuickTap = opts.key === 'quickTap';
+      opts.participants.forEach((id, index) => {
+        const p = state.players.find((pl) => pl.id === id);
+        if (p && !p.isUser) {
+          if (isQuickTap) {
+            // Quick Tap had a bespoke band-based simulator; keep it for AI-only runs.
+            // Human-present Quick Tap is hybrid-resolved (isHybrid=true, hasHuman=true).
+            aiScores[id] = simulateQuickTapAiScore({
+              seed: opts.seed,
+              playerId: id,
+              participantIndex: index,
+              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+              timeLimitSeconds: opts.options.timeLimit,
+            });
+          } else {
+            aiScores[id] = simulateAiPerformance({
+              minigameKey: opts.key,
+              minigameModel: model,
+              seed: opts.seed,
+              playerId: id,
+              participantIndex: index,
+              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+              seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
+              options: { timeLimitSeconds: opts.options.timeLimit },
+            });
+          }
+        }
+      });
+    }
 
     if (!hasHuman) {
       // AI-only: determine winner immediately and return the result directly.
@@ -3575,7 +3616,16 @@ export const startMinigame =
       return result;
     }
 
-    // Human present: launch UI and return undefined (UI resolves via completeMinigame)
+    // Human present: launch UI and return undefined (UI resolves via completeMinigame).
+    // For hybrid (scored) games, flag the session so completeMinigame resolves AI scores.
+    const session = {
+      key: opts.key,
+      participants: opts.participants,
+      seed: opts.seed,
+      options: opts.options,
+      aiScores,
+      ...(isHybrid ? { hybridResolveOnComplete: true } : {}),
+    };
     dispatch(launchMinigame(session));
     return undefined;
   };

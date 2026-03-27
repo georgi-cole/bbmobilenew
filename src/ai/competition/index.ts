@@ -634,6 +634,15 @@ export type {
   SimulateQuickTapAiScoreArgs,
 } from './quickTapSimulation';
 
+export {
+  isHybridScoredGame,
+  resolveHybridAiScores,
+} from './hybridScoreResolver';
+export type {
+  HybridAiParticipant,
+  ResolveHybridAiScoresArgs,
+} from './hybridScoreResolver';
+
 export type {
   AiParticipantSnapshot,
   AiSimulationContext,
