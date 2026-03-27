@@ -88,7 +88,7 @@ function renderTournament(session: MinigameSession, players: Player[]) {
   );
 }
 
-function renderChallenge(players: Player[]) {
+function renderBullseyeChallenge(players: Player[]) {
   return render(
     <Provider store={makeStore(players)}>
       <BullseyeBlitz players={players} />
@@ -115,8 +115,8 @@ describe('BullseyeBlitz tournament flow', () => {
     vi.useRealTimers();
   });
 
-  it('keeps the classic ready hint in challenge mode', () => {
-    renderChallenge(makePlayers(3));
+  it('displays challenge mode hint text on ready screen', () => {
+    renderBullseyeChallenge(makePlayers(3));
 
     expect(
       screen.getByText(/tap the bullseyes, avoid the bombs — rack up the highest score you can!/i),

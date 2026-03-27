@@ -50,6 +50,7 @@ const READY_COUNT = 3;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const EMPTY_HITS = { standard: 0, bonus: 0, hazard: 0 };
+const FINAL_SHOWDOWN_THRESHOLD = 2;
 const SPECTATOR_ROUND_DELAY_MS = 2200;
 const SPECTATOR_RESULTS_DELAY_MS = 2400;
 const READY_TICK_MS = 1000;
@@ -229,6 +230,35 @@ function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFi
 
   const eliminated = getBullseyeEliminationCount(activeCount);
   return `Round ${config.roundNumber} • ${activeCount} players • ${eliminated} eliminated`;
+}
+
+function getDisplayedRoundNumber(params: {
+  spectatorRound: RoundOutcome | null;
+  roundOutcome: RoundOutcome | null;
+  gamePhase: GamePhase;
+  roundNumber: number;
+}): number | null {
+  const {
+    spectatorRound,
+    roundOutcome,
+    gamePhase,
+    roundNumber,
+  } = params;
+
+  if (spectatorRound) return spectatorRound.roundNumber;
+  if (roundOutcome) return roundOutcome.roundNumber;
+  if (gamePhase === 'final_results') return null;
+  return roundNumber;
+}
+
+function getReadyHintText(isTournamentMode: boolean, activeCount: number): string {
+  if (!isTournamentMode) {
+    return 'Tap the bullseyes, avoid the bombs — rack up the highest score you can!';
+  }
+  if (activeCount <= FINAL_SHOWDOWN_THRESHOLD) {
+    return 'Final showdown — the highest score wins it all.';
+  }
+  return `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -592,11 +622,15 @@ export default function BullseyeBlitz({
       ? '📹 Spectator mode — the remaining rounds advance automatically.'
       : 'Survive each knockout round as the arena gets tougher.'
     : 'Pop targets, dodge the bombs — 20 seconds!';
+  // Used both for spectator-mode rendering and for keeping the round banner in
+  // sync with the currently displayed tournament phase.
   const spectatorRound = spectatorPlan ? spectatorPlan.rounds[spectatorPlan.currentIndex] : null;
-  const displayedRoundNumber =
-    spectatorRound?.roundNumber
-    ?? roundOutcome?.roundNumber
-    ?? (gamePhase === 'final_results' ? null : roundNumber);
+  const displayedRoundNumber = getDisplayedRoundNumber({
+    spectatorRound,
+    roundOutcome,
+    gamePhase,
+    roundNumber,
+  });
   const displayedRoundConfig = displayedRoundNumber != null
     ? getBullseyeRoundConfig(displayedRoundNumber)
     : null;
@@ -608,9 +642,10 @@ export default function BullseyeBlitz({
     ? buildRoundBanner(
       displayedRoundConfig,
       displayedActiveCount,
-      displayedActiveCount <= 2,
+      displayedActiveCount <= FINAL_SHOWDOWN_THRESHOLD,
     )
     : null;
+  const showRoundBanner = isTournamentMode && displayedRoundConfig != null && roundBanner != null;
   const currentHumanEntry = roundOutcome?.rankedScores.find((entry) => entry.isHuman)
     ?? finalStandings.find((entry) => entry.isHuman)
     ?? rankedScores.find((entry) => entry.isHuman);
@@ -638,7 +673,7 @@ export default function BullseyeBlitz({
           <span className="bbl__legend-item bbl__legend-item--hazard">💣 −15</span>
         </div>
 
-        {isTournamentMode && displayedRoundConfig && roundBanner && (
+        {showRoundBanner && (
           <div className="bbl__round-banner" aria-live="polite">
             <strong>{roundBanner}</strong>
             <span>{displayedRoundConfig.difficultyLabel}</span>
@@ -650,13 +685,7 @@ export default function BullseyeBlitz({
             <span className="bbl__countdown" aria-live="assertive">
               {countdown === 0 ? 'GO!' : countdown}
             </span>
-            <p className="bbl__hint">
-              {!isTournamentMode
-                ? 'Tap the bullseyes, avoid the bombs — rack up the highest score you can!'
-                : activeCount <= 2
-                  ? 'Final showdown — the highest score wins it all.'
-                  : `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`}
-            </p>
+            <p className="bbl__hint">{getReadyHintText(isTournamentMode, activeCount)}</p>
           </div>
         )}
 
