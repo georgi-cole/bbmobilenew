@@ -14,6 +14,10 @@ vi.mock('../src/hooks/useQuickTapRaceAudio', () => ({
   }),
 }));
 
+// autoStart skips the long ready state, then the first Quick Tap booster is
+// scheduled for 6 seconds into play. A small buffer ensures the prompt is visible.
+const FIRST_BOOSTER_PROMPT_MS = 6200;
+
 function renderQuickTapRace() {
   const store = configureStore({
     reducer: {
@@ -46,7 +50,7 @@ describe('QuickTapRace mystery booster prompt', () => {
     renderQuickTapRace();
 
     act(() => {
-      vi.advanceTimersByTime(6200);
+      vi.advanceTimersByTime(FIRST_BOOSTER_PROMPT_MS);
     });
 
     expect(screen.getByRole('button', { name: /grab mystery booster/i })).toBeInTheDocument();
