@@ -10,13 +10,11 @@
  *  6. simulateQuickTapAiScore — output is non-negative integer
  *  7. simulateQuickTapAiScore — deterministic for identical inputs
  *  8. simulateQuickTapAiScore — different players get different scores
- *  9. simulateQuickTapAiScore — scores are realistically competitive (not 85–90 range)
- * 10. simulateQuickTapAiScore — distribution shows variance across players
- * 11. simulateQuickTapAiScore — stronger physical profile produces higher scores on average
- * 12. simulateQuickTapAiScore — AI can produce scores competitive with a strong human
- * 13. simulateQuickTapAiScore — AI can produce low scores (weak archetype / bad luck)
- * 14. startMinigame thunk — uses simulateQuickTapAiScore for quickTap (scores in new range)
- * 15. Booster activation effect on component score: booster tap adds multiplier bonus
+ *  9. simulateQuickTapAiScore — default 30-second scores stay in the requested bands
+ * 10. simulateQuickTapAiScore — weighted band distribution matches the requested odds
+ * 11. simulateQuickTapAiScore — stronger physical profile produces higher average scores
+ * 12. simulateQuickTapAiScore — can still reach the top competitive band
+ * 13. simulateQuickTapAiScore — can still produce lower-band outcomes
  */
 
 import { describe, it, expect } from 'vitest';
@@ -182,42 +180,65 @@ describe('simulateQuickTapAiScore — basic correctness', () => {
 });
 
 describe('simulateQuickTapAiScore — realism and competitiveness', () => {
-  it('scores are substantially above the old 85–90 range (median > 130)', () => {
-    const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
+  it('30-second scores stay inside the requested competitive range', () => {
+    const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: `p${seed}`, profile: DEFAULT_PROFILE }),
     );
-    const median = scores.slice().sort((a, b) => a - b)[Math.floor(scores.length / 2)];
-    expect(median).toBeGreaterThan(130);
+    expect(Math.min(...scores)).toBeGreaterThanOrEqual(50);
+    expect(Math.max(...scores)).toBeLessThanOrEqual(280);
   });
 
-  it('strong AI can reach scores competitive with a strong human (≥ 200)', () => {
-    // A strong human can reach 280–300 with favorable boosters.
-    // At least some strong AI outcomes should reach 200+.
-    const seeds = Array.from({ length: 30 }, (_, i) => i * 7 + 3);
+  it('weighted band distribution matches the requested odds closely', () => {
+    const seeds = Array.from({ length: 1000 }, (_, i) => i + 1);
+    const scores = seeds.map((seed) =>
+      simulateQuickTapAiScore({ seed, playerId: 'distribution-check', profile: DEFAULT_PROFILE }),
+    );
+    const counts = {
+      low: scores.filter((score) => score >= 50 && score <= 99).length,
+      midLow: scores.filter((score) => score >= 100 && score <= 149).length,
+      mid: scores.filter((score) => score >= 150 && score <= 199).length,
+      high: scores.filter((score) => score >= 200 && score <= 249).length,
+      elite: scores.filter((score) => score >= 250 && score <= 280).length,
+    };
+
+    expect(counts.low).toBeGreaterThanOrEqual(70);
+    expect(counts.low).toBeLessThanOrEqual(130);
+    expect(counts.midLow).toBeGreaterThanOrEqual(360);
+    expect(counts.midLow).toBeLessThanOrEqual(440);
+    expect(counts.mid).toBeGreaterThanOrEqual(310);
+    expect(counts.mid).toBeLessThanOrEqual(390);
+    expect(counts.high).toBeGreaterThanOrEqual(70);
+    expect(counts.high).toBeLessThanOrEqual(130);
+    expect(counts.elite).toBeGreaterThanOrEqual(25);
+    expect(counts.elite).toBeLessThanOrEqual(75);
+  });
+
+  it('strong AI can still reach the 250–280 top band', () => {
+    const seeds = Array.from({ length: 200 }, (_, i) => i * 7 + 3);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'strong-ai', profile: STRONG_PROFILE }),
     );
-    const over200 = scores.filter((s) => s >= 200);
-    expect(over200.length).toBeGreaterThan(0);
+    const topBand = scores.filter((s) => s >= 250 && s <= 280);
+    expect(topBand.length).toBeGreaterThan(0);
   });
 
-  it('weak AI can still produce scores below 120', () => {
-    const seeds = Array.from({ length: 30 }, (_, i) => i * 13 + 5);
+  it('weak AI can still produce lower-band results', () => {
+    const seeds = Array.from({ length: 200 }, (_, i) => i * 13 + 5);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'weak-ai', profile: WEAK_PROFILE }),
     );
-    const under120 = scores.filter((s) => s < 120);
-    expect(under120.length).toBeGreaterThan(0);
+    const lowBand = scores.filter((s) => s >= 50 && s <= 99);
+    expect(lowBand.length).toBeGreaterThan(0);
   });
 
-  it('distribution shows meaningful variance (max − min > 80 across 20 runs)', () => {
+  it('distribution shows meaningful variance (max − min > 120 across 20 runs)', () => {
     const seeds = Array.from({ length: 20 }, (_, i) => i + 100);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'p0', profile: DEFAULT_PROFILE }),
     );
     const range = Math.max(...scores) - Math.min(...scores);
-    expect(range).toBeGreaterThan(80);
+    expect(range).toBeGreaterThan(120);
   });
 
   it('stronger physical profile produces higher average scores', () => {
@@ -241,7 +262,6 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
   });
 
   it('scores can exceed 200 for favorable seed + profile combinations', () => {
-    // At least some AI outcomes should exceed 200 (matching competitive human range)
     const seeds = Array.from({ length: 50 }, (_, i) => i + 1);
     const players = ['p1', 'p2', 'p3', 'p4', 'p5'];
     const over200 = seeds.flatMap((seed) =>

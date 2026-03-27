@@ -3528,9 +3528,8 @@ export const startMinigame =
       const p = state.players.find((pl) => pl.id === id);
       if (p && !p.isUser) {
         if (isQuickTap) {
-          // Quick Tap uses an archetype-based simulation that models booster
-          // decisions and interruption cost — more realistic than the generic
-          // linear model.
+          // Quick Tap uses its own weighted score-band simulation so AI results
+          // stay competitive without reusing the generic linear model.
           aiScores[id] = simulateQuickTapAiScore({
             seed: opts.seed,
             playerId: id,
