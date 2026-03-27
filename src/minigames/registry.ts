@@ -1030,7 +1030,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     ],
     metricKind: 'points',
     metricLabel: 'Score',
-    timeLimitMs: 0,
+    timeLimitMs: 180_000,
     authoritative: false,
     scoringAdapter: 'raw',
     scoringParams: { minRaw: 0, maxRaw: 8000 },

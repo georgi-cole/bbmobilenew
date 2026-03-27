@@ -9,11 +9,12 @@
  *
  * Grid is 6 columns × 7 rows. Row 0 is the top.
  *
- * Solvability is ensured by:
+ * Solvability is supported by:
  * 1. Blocker layouts are sparse enough that normal tiles always have room to match.
- * 2. The buildBoard() function avoids placing 3-in-a-row at startup.
- * 3. hasAnyValidMove() is checked after board creation; auto-reshuffle up to
- *    MAX_RESHUFFLES times if no moves exist.
+ * 2. The buildBoard() function avoids placing 3-in-a-row at startup and
+ *    incorporates the runtime seed so symbol placement varies per session.
+ * 3. buildInitialState() validates hasAnyValidMove() after board creation and
+ *    auto-reshuffles up to MAX_RESHUFFLES times if no moves exist.
  * 4. Win condition is 0 normal tiles remaining (not counting blockers).
  *
  * To tune difficulty:

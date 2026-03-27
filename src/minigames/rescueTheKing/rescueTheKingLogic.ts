@@ -46,7 +46,9 @@ export function mulberry32(seed: number): () => number {
     let z = s;
     z = ((z ^ (z >>> 15)) * (z | 1)) >>> 0;
     z = (z ^ (z + ((z ^ (z >>> 7)) * (z | 61)))) >>> 0;
-    return (z ^ (z >>> 14)) / 0x100000000;
+    // `z ^ (z >>> 14)` uses XOR which returns a signed 32-bit integer in JS.
+    // The extra `>>> 0` coerces to unsigned so the result is always in [0, 1).
+    return ((z ^ (z >>> 14)) >>> 0) / 0x100000000;
   };
 }
 
@@ -55,28 +57,36 @@ export function mulberry32(seed: number): () => number {
 /**
  * Build the initial board from a LevelConfig.
  * Blockers are placed as defined; normal tiles are assigned symbols
- * using the level's seed so the board is fully deterministic.
- * The algorithm avoids placing 3-in-a-row at startup.
+ * using `config.seed ^ runtimeSeed` (defaults to config.seed when runtimeSeed
+ * is 0) so the board varies deterministically per session while remaining
+ * fully reproducible.  The algorithm avoids placing 3-in-a-row at startup.
+ *
+ * @param config       - Level configuration with blocker layout and base seed.
+ * @param runtimeSeed  - Optional per-session seed XOR'd with config.seed.
+ *                       Defaults to 0 (no variation beyond config.seed).
  */
-export function buildBoard(config: LevelConfig): Board {
-  const rng = mulberry32(config.seed);
+export function buildBoard(config: LevelConfig, runtimeSeed = 0): Board {
+  const rng = mulberry32((config.seed ^ runtimeSeed) >>> 0);
   const { rows, cols, blockerLayout } = config;
   const board: Board = [];
 
   for (let r = 0; r < rows; r++) {
-    const row: Cell[] = [];
+    // Push an empty row placeholder so horizontal look-back works during
+    // construction (wouldCreate3 reads board[r][c-1] and board[r][c-2]).
+    const row: Cell[] = Array.from({ length: cols }, (): Cell => ({ kind: 'empty' }));
+    board.push(row);
+
     for (let c = 0; c < cols; c++) {
       const code = blockerLayout[r]?.[c] ?? '';
       if (code === 'X') {
-        row.push({ kind: 'blocker', blockerKind: 'crate', hitsRemaining: 1 });
+        row[c] = { kind: 'blocker', blockerKind: 'crate', hitsRemaining: 1 };
       } else if (code === 'W') {
-        row.push({ kind: 'blocker', blockerKind: 'stone', hitsRemaining: 2 });
+        row[c] = { kind: 'blocker', blockerKind: 'stone', hitsRemaining: 2 };
       } else {
         const symbol = pickSymbol(rng, board, r, c);
-        row.push({ kind: 'normal', symbol });
+        row[c] = { kind: 'normal', symbol };
       }
     }
-    board.push(row);
   }
 
   return board;
@@ -96,14 +106,19 @@ function pickSymbol(rng: () => number, board: Board, r: number, c: number): Tile
   return shuffled[0];
 }
 
+/**
+ * Check whether placing `sym` at (r, c) would complete a horizontal or
+ * vertical run of 3.  The board must already contain cells for (r, 0..c-1)
+ * (i.e. the current row must be populated up to col c-1 before this call).
+ */
 function wouldCreate3(board: Board, r: number, c: number, sym: TileSymbol): boolean {
   const get = (row: number, col: number): TileSymbol | null => {
     const cell = board[row]?.[col];
     return cell?.kind === 'normal' ? cell.symbol : null;
   };
-  // Horizontal: left-left + left
+  // Horizontal: left-left + left (same row, already written)
   if (get(r, c - 2) === sym && get(r, c - 1) === sym) return true;
-  // Vertical: up-up + up
+  // Vertical: up-up + up (prior rows)
   if (get(r - 2, c) === sym && get(r - 1, c) === sym) return true;
   return false;
 }
@@ -182,13 +197,13 @@ export interface ResolutionResult {
 
 /**
  * Remove matched cells from the board and collect adjacent blocker positions
- * for the hit-blocker step.
+ * for the hit-blocker step.  Uses the matchSet of unique positions so cells
+ * that are part of both a horizontal and vertical match are only counted once.
  */
 export function applyMatchRemoval(board: Board, matches: MatchGroup[]): ResolutionResult {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
   const matchSet = new Set<string>();
-  let tilesRemoved = 0;
 
   for (const g of matches) {
     for (const [r, c] of g.cells) matchSet.add(`${r},${c}`);
@@ -196,19 +211,21 @@ export function applyMatchRemoval(board: Board, matches: MatchGroup[]): Resoluti
 
   const newBoard: Board = board.map(row => row.map(cell => ({ ...cell } as Cell)));
   const adjacentBlockerPositions: [number, number][] = [];
+  let tilesRemoved = 0;
 
-  for (const g of matches) {
-    for (const [r, c] of g.cells) {
-      (newBoard[r][c] as Cell) = { kind: 'empty' };
-      tilesRemoved++;
-      // Check 4-directional neighbours for blockers
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
-        const nr = r + dr; const nc = c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        if (matchSet.has(`${nr},${nc}`)) continue;
-        if (board[nr][nc].kind === 'blocker') {
-          adjacentBlockerPositions.push([nr, nc]);
-        }
+  for (const key of matchSet) {
+    const [rStr, cStr] = key.split(',');
+    const r = parseInt(rStr, 10);
+    const c = parseInt(cStr, 10);
+    (newBoard[r][c] as Cell) = { kind: 'empty' };
+    tilesRemoved++;
+    // Check 4-directional neighbours for blockers
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as [number, number][]) {
+      const nr = r + dr; const nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (matchSet.has(`${nr},${nc}`)) continue;
+      if (board[nr][nc].kind === 'blocker') {
+        adjacentBlockerPositions.push([nr, nc]);
       }
     }
   }
@@ -251,46 +268,57 @@ export function hitBlockers(board: Board, positions: [number, number][]): Blocke
 // ── Gravity ───────────────────────────────────────────────────────────────────
 
 /**
- * Apply gravity: tiles fall downward to fill empty cells.
- * Blockers do NOT fall — they stay in their rows.
+ * Apply gravity: normal tiles fall downward to fill empty cells within each
+ * column segment.  Blockers are immovable and segment the column — tiles
+ * above a blocker cannot fall through it to fill empty cells below.
+ *
+ * Algorithm: scan each column bottom→top, maintaining a `writeRow` pointer
+ * for the next slot to receive a falling tile.  When a blocker is encountered,
+ * it is fixed in place and `writeRow` is reset to the row immediately above it
+ * so tiles above the blocker can only fill empty rows in their own segment.
  */
 export function applyGravity(board: Board): Board {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
-  // Build new board, column by column
-  const newBoard: Board = Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, (): Cell => ({ kind: 'empty' }))
+  const newBoard: Board = Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (__, c): Cell => ({ ...board[r][c] }))
   );
 
   for (let c = 0; c < cols; c++) {
-    // Collect blockers with their rows (they stay)
-    const blockers: { row: number; cell: Cell }[] = [];
-    // Collect normal tiles (they fall)
-    const normals: Cell[] = [];
+    // First pass: fix all blockers in-place (already copied from board above).
+    // Second pass: apply gravity within each segment between blockers.
+    let writeRow = rows - 1;
 
-    for (let r = 0; r < rows; r++) {
-      const cell = board[r][c];
-      if (cell.kind === 'blocker') {
-        blockers.push({ row: r, cell });
-      } else if (cell.kind === 'normal') {
-        normals.push(cell);
-      }
-      // empty cells are just gaps
-    }
-
-    // Place blockers back at their original rows
-    for (const { row, cell } of blockers) {
-      newBoard[row][c] = cell;
-    }
-
-    // Fill normal tiles from bottom up, skipping blocker rows
-    const emptyRows: number[] = [];
     for (let r = rows - 1; r >= 0; r--) {
-      if (newBoard[r][c].kind === 'empty') emptyRows.push(r);
+      const cell = board[r][c];
+
+      if (cell.kind === 'blocker') {
+        // Blocker stays; empty out any rows that writeRow skipped above it.
+        while (writeRow > r) {
+          newBoard[writeRow][c] = { kind: 'empty' };
+          writeRow--;
+        }
+        // writeRow === r; set it to r to mark blocker row as occupied.
+        writeRow = r - 1;
+      } else if (cell.kind === 'normal') {
+        // Place this tile at writeRow (which is ≤ r), then move writeRow up.
+        // When writeRow === r the tile is already in its correct position
+        // within this segment — skip the move but still decrement writeRow
+        // so the next tile above knows this slot is taken.
+        if (writeRow >= 0 && writeRow !== r) {
+          newBoard[writeRow][c] = cell;
+          newBoard[r][c] = { kind: 'empty' };
+        }
+        writeRow--;
+      }
+      // empty cells are just gaps; writeRow stays put so the next normal tile
+      // fills this slot.
     }
-    // emptyRows is already bottom-first
-    for (let i = 0; i < normals.length && i < emptyRows.length; i++) {
-      newBoard[emptyRows[i]][c] = normals[normals.length - 1 - i];
+
+    // Fill any remaining slots above the last blocker with empty.
+    while (writeRow >= 0) {
+      newBoard[writeRow][c] = { kind: 'empty' };
+      writeRow--;
     }
   }
 
@@ -409,24 +437,28 @@ export function countNormalTiles(board: Board): number {
 /**
  * Compute the final raw score for a completed (or timed-out) game.
  *
+ * The `score` field on `GameState` is the *live* accumulated score tracked
+ * during gameplay (tile clears + blocker hits + per-cascade combo bonuses).
+ * `computeFinalScore` uses that accumulator as-is and appends the one-time
+ * board-clear + time bonuses when applicable, so the result screen always
+ * matches the HUD value.
+ *
  * Ranking rules:
- * - Nobody clears: highest tilesCleared + blockersDestroyed + comboBonus wins
- * - Multiple clear: highest boardClear + timeBonus + progressScore wins
- * - Score provides total ordering in both cases
+ * - Nobody clears: highest accumulated score (tiles × 10, blockers × 15/50,
+ *   combo cascade bonuses) determines ranking.
+ * - Multiple clear: same base, then +2000 board-clear + time-remaining × 20
+ *   separates players who all finished.
+ * - Score provides strict total ordering in both cases.
  */
 export function computeFinalScore(state: Pick<GameState,
-  'tilesCleared' | 'blockersHit' | 'blockersDestroyed' | 'maxCombo' | 'boardCleared' | 'timeRemainingMs'
+  'score' | 'boardCleared' | 'timeRemainingMs'
 >): number {
-  let score = 0;
-  score += state.tilesCleared * SCORE_PER_TILE;
-  score += state.blockersHit * SCORE_BLOCKER_HIT;
-  score += state.blockersDestroyed * SCORE_BLOCKER_DESTROYED;
-  score += Math.max(0, state.maxCombo - 1) * SCORE_COMBO_BONUS;
+  let total = state.score;
   if (state.boardCleared) {
-    score += SCORE_BOARD_CLEAR;
-    score += Math.floor(state.timeRemainingMs / 1000) * SCORE_TIME_BONUS_PER_SEC;
+    total += SCORE_BOARD_CLEAR;
+    total += Math.floor(state.timeRemainingMs / 1000) * SCORE_TIME_BONUS_PER_SEC;
   }
-  return score;
+  return total;
 }
 
 // ── AI simulation ─────────────────────────────────────────────────────────────
@@ -437,6 +469,9 @@ export function computeFinalScore(state: Pick<GameState,
  * Used by the competition framework to rank AI players without running the
  * full game loop. AI "plays" by clearing tiles at a rate proportional to a
  * skill level (0 = worst, 1 = best).
+ *
+ * The simulated `score` accumulator mirrors the real game: tiles × 10,
+ * blocker hits × 15, blocker destroys × 50, and per-cascade combo bonuses.
  *
  * @param seed - Deterministic seed for the AI's performance variation.
  * @param skillLevel - Float in [0, 1]. Controls clear rate and clear chance.
@@ -455,5 +490,13 @@ export function simulateAiScore(seed: number, skillLevel: number, totalTiles: nu
   const boardCleared = skillLevel > 0.75 && tilesCleared >= totalTiles && rng() > 0.3;
   const timeRemainingMs = boardCleared ? Math.round(totalTimeMs * 0.3 * skillLevel * rng()) : 0;
 
-  return computeFinalScore({ tilesCleared, blockersHit, blockersDestroyed, maxCombo, boardCleared, timeRemainingMs });
+  // Build an accumulated score the same way the live game does, then pass to
+  // computeFinalScore so the AI and human scores use the same formula.
+  const accumulatedScore =
+    tilesCleared * SCORE_PER_TILE +
+    blockersHit * SCORE_BLOCKER_HIT +
+    blockersDestroyed * SCORE_BLOCKER_DESTROYED +
+    Math.max(0, maxCombo - 1) * SCORE_COMBO_BONUS;
+
+  return computeFinalScore({ score: accumulatedScore, boardCleared, timeRemainingMs });
 }

@@ -16,7 +16,8 @@
  * up to MAX_RESHUFFLES times. Win condition = 0 normal tiles remaining.
  *
  * Level variation: 5 hand-designed blocker layouts; one is chosen
- * deterministically from (seed % 5). The seed also drives buildBoard().
+ * deterministically from (seed % 5). The seed is also XOR'd with the level's
+ * base seed in buildBoard() so symbol placement varies per session.
  *
  * Difficulty tuning: Edit SCORE_* constants and TIME_LIMIT_MS in
  * rescueTheKingLogic.ts. Edit blockerLayout in rescueTheKingLevels.ts.
@@ -84,8 +85,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const level = useMemo(() => pickLevel(seed), [seed]);
 
   // ── Initial state factory ────────────────────────────────────────────────
-  const buildInitialState = useCallback((): GameState => {
-    const board = buildBoard(level);
+  // Takes a fresh RNG to use during the initial-validity shuffle, so callers
+  // (including startGame) don't need to mutate rngRef directly.
+  const buildInitialState = useCallback((rng: () => number): GameState => {
+    let board = buildBoard(level, seed);
+    let reshuffleCount = 0;
+    // Guarantee at least one valid move before the player sees the board.
+    while (!hasAnyValidMove(board) && countNormalTiles(board) > 0 && reshuffleCount < MAX_RESHUFFLES) {
+      board = shuffleNormalTiles(board, rng);
+      reshuffleCount++;
+    }
     return {
       phase: autoStart ? 'playing' : 'idle',
       board,
@@ -98,13 +107,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       timeRemainingMs: TIME_LIMIT_MS,
       totalTimeMs: TIME_LIMIT_MS,
       selectedCell: null,
-      reshuffleCount: 0,
+      reshuffleCount,
       initialNormalTileCount: countNormalTiles(board),
       boardCleared: false,
     };
-  }, [level, autoStart]);
+  }, [level, autoStart, seed]);
 
-  const [state, setState] = useState<GameState>(buildInitialState);
+  const [state, setState] = useState<GameState>(() => {
+    const rng = mulberry32(seed ^ RNG_RESHUFFLE_SALT);
+    return buildInitialState(rng);
+  });
 
   // ── Animation state ──────────────────────────────────────────────────────
   const [matchingCells, setMatchingCells] = useState<Set<string>>(new Set());
@@ -417,8 +429,9 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   // ── Start game ───────────────────────────────────────────────────────────
   const startGame = useCallback(() => {
     finishedRef.current = false;
-    const newState = buildInitialState();
-    rngRef.current = mulberry32(seed ^ RNG_RESHUFFLE_SALT);
+    const freshRng = mulberry32(seed ^ RNG_RESHUFFLE_SALT);
+    rngRef.current = freshRng;
+    const newState = buildInitialState(freshRng);
     setState({ ...newState, phase: 'playing' });
   }, [buildInitialState, seed]);
 
