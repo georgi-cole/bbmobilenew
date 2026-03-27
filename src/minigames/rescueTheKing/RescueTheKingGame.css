@@ -19,6 +19,41 @@
   touch-action: none;
 }
 
+/* ── Debug overlay (DEV only) ──────────────────────────────────────────────── */
+
+.rtk-debug {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: #b2dfdb;
+  z-index: 50;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.rtk-debug-ok  { color: #69f0ae; }
+.rtk-debug-err { color: #ff5252; }
+
+.rtk-debug-btn {
+  padding: 2px 8px;
+  border: 1px solid #80cbc4;
+  border-radius: 4px;
+  background: rgba(0,150,136,0.3);
+  color: #b2dfdb;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.rtk-debug-btn:active {
+  background: rgba(0,150,136,0.6);
+}
+
 /* ── HUD ───────────────────────────────────────────────────────────────────── */
 
 .rtk-hud {
@@ -120,7 +155,7 @@
     transform 0.12s ease,
     opacity 0.2s ease,
     box-shadow 0.12s ease;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   line-height: 1;
   aspect-ratio: 1;
 }

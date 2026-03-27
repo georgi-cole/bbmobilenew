@@ -4,7 +4,8 @@
  * Unit tests for the core Rescue the King puzzle logic.
  *
  * Covers:
- *  - buildBoard: no 3-in-a-row on initial board; blockers placed correctly
+ *  - buildBoard: no 3-in-a-row on initial board; blockers placed correctly;
+ *                tileLayout overrides RNG symbols
  *  - findAllMatches: detects H + V runs; returns empty on no-match board
  *  - applyMatchRemoval: counts unique tiles (no double-count for H+V overlaps)
  *  - hitBlockers: single and double-hit blocker destruction
@@ -12,6 +13,8 @@
  *  - hasAnyValidMove: detects solvable vs. deadlocked boards
  *  - shuffleNormalTiles: preserves tile counts; blockers unchanged
  *  - computeFinalScore: HUD score used as base; clear bonus applied correctly
+ *  - validateLevel: reports valid/invalid for hand-crafted levels
+ *  - LEVELS: all 8 shipped levels pass validateLevel()
  *  - Registry: rescueTheKing has correct timeLimitMs and reactComponentKey
  */
 
@@ -26,6 +29,7 @@ import {
   shuffleNormalTiles,
   countNormalTiles,
   computeFinalScore,
+  validateLevel,
   mulberry32,
   SCORE_BOARD_CLEAR,
   SCORE_TIME_BONUS_PER_SEC,
@@ -96,7 +100,7 @@ describe('buildBoard', () => {
   it('produces no horizontal 3-in-a-row on startup', () => {
     // Run 20 seeds — none should start with a horizontal triple
     for (let s = 0; s < 20; s++) {
-      const level: LevelConfig = { id: 1, name: 'T', rows: 7, cols: 6, seed: s * 0x1234, blockerLayout: [] };
+      const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: s * 0x1234, blockerLayout: [] };
       const board = buildBoard(level);
       for (let r = 0; r < board.length; r++) {
         for (let c = 0; c + 2 < board[r].length; c++) {
@@ -111,7 +115,7 @@ describe('buildBoard', () => {
 
   it('produces no vertical 3-in-a-row on startup', () => {
     for (let s = 0; s < 20; s++) {
-      const level: LevelConfig = { id: 1, name: 'T', rows: 7, cols: 6, seed: s * 0xDEAD, blockerLayout: [] };
+      const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: s * 0xDEAD, blockerLayout: [] };
       const board = buildBoard(level);
       for (let r = 0; r + 2 < board.length; r++) {
         for (let c = 0; c < board[r].length; c++) {
@@ -385,7 +389,7 @@ describe('hasAnyValidMove', () => {
 describe('shuffleNormalTiles', () => {
   it('preserves the total normal tile count', () => {
     // Use a larger level so hasAnyValidMove can succeed
-    const level: LevelConfig = { id: 1, name: 'T', rows: 7, cols: 6, seed: 0xDEAD_BEEF, blockerLayout: [] };
+    const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: 0xDEAD_BEEF, blockerLayout: [] };
     const board = buildBoard(level);
     const before = countNormalTiles(board);
     const rng = mulberry32(0xDEAD_BEEF);
@@ -402,7 +406,7 @@ describe('shuffleNormalTiles', () => {
   });
 
   it('preserves the multiset of symbols (same symbols, different positions)', () => {
-    const level: LevelConfig = { id: 1, name: 'T', rows: 7, cols: 6, seed: 0xDEAD_BEEF, blockerLayout: [] };
+    const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: 0xDEAD_BEEF, blockerLayout: [] };
     const board = buildBoard(level);
     const countSymbol = (b: Board, sym: string) =>
       b.flat().filter(c => c.kind === 'normal' && (c as NormalCell).symbol === sym).length;
@@ -490,6 +494,147 @@ describe('deadlock regression', () => {
     expect(hasAnyValidMove(shuffled)).toBe(false);
     // And it still has the same number of normal tiles
     expect(countNormalTiles(shuffled)).toBe(countNormalTiles(board));
+  });
+});
+
+// ── buildBoard — tileLayout support ───────────────────────────────────────────
+
+describe('buildBoard tileLayout', () => {
+  it('uses explicit symbols from tileLayout when provided', () => {
+    const layout: LevelConfig = {
+      id: 99, name: 'T', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['','',''],['','',''],['','','']],
+      tileLayout: [
+        ['gem',   'sword',  'gem'],
+        ['shield','crown',  'shield'],
+        ['gem',   'sword',  'gem'],
+      ],
+    };
+    const board = buildBoard(layout);
+    expect(board[0][0]).toEqual({ kind: 'normal', symbol: 'gem' });
+    expect(board[0][1]).toEqual({ kind: 'normal', symbol: 'sword' });
+    expect(board[1][1]).toEqual({ kind: 'normal', symbol: 'crown' });
+    expect(board[2][2]).toEqual({ kind: 'normal', symbol: 'gem' });
+  });
+
+  it('falls back to RNG for cells where tileLayout has empty string', () => {
+    const layout: LevelConfig = {
+      id: 99, name: 'T', rows: 2, cols: 2, seed: 0xABCD,
+      blockerLayout: [['',''],['','']],
+      tileLayout: [['gem', ''], ['', 'sword']],
+    };
+    const board = buildBoard(layout);
+    // Explicitly defined cells must match
+    expect((board[0][0] as NormalCell).symbol).toBe('gem');
+    expect((board[1][1] as NormalCell).symbol).toBe('sword');
+    // RNG cells must be valid symbols
+    expect(['gem','sword','shield','crown','potion']).toContain((board[0][1] as NormalCell).symbol);
+    expect(['gem','sword','shield','crown','potion']).toContain((board[1][0] as NormalCell).symbol);
+  });
+
+  it('ignores tileLayout values at blocker positions', () => {
+    // Even if tileLayout says 'gem' at (0,1), a crate in blockerLayout wins.
+    const layout: LevelConfig = {
+      id: 99, name: 'T', rows: 2, cols: 3, seed: 0,
+      blockerLayout: [['','X',''],['','','']],
+      tileLayout:    [['gem','gem','gem'],['gem','gem','gem']],
+    };
+    const board = buildBoard(layout);
+    expect(board[0][1].kind).toBe('blocker'); // blocker wins over tileLayout symbol
+  });
+});
+
+// ── validateLevel ─────────────────────────────────────────────────────────────
+
+describe('validateLevel', () => {
+  it('returns valid for an open 7×8 board', () => {
+    const level: LevelConfig = {
+      id: 1, name: 'Open', rows: 8, cols: 7, seed: 0xDEAD_BEEF,
+      blockerLayout: Array.from({ length: 8 }, () => Array(7).fill('')),
+    };
+    const result = validateLevel(level);
+    expect(result.valid).toBe(true);
+    expect(result.hasInitialMove).toBe(true);
+    expect(result.normalTileCount).toBe(56);
+  });
+
+  it('returns invalid for a board with too few normal tiles', () => {
+    // All-blocker board → 0 normal tiles
+    const level: LevelConfig = {
+      id: 99, name: 'Blocked', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['X','X','X'],['X','X','X'],['X','X','X']],
+    };
+    const result = validateLevel(level);
+    expect(result.valid).toBe(false);
+    expect(result.normalTileCount).toBe(0);
+  });
+
+  it('uses Math.ceil so the ≥30% threshold is never under-reported', () => {
+    // 9-cell board: Math.ceil(9 * 0.3) = 3, not 2 (Math.floor would give 2)
+    // Build a level with exactly 2 normal tiles (rest blockers) — should be invalid
+    const level: LevelConfig = {
+      id: 99, name: 'Edge', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['X','X','X'],['X','',''],['X','X','X']],
+    };
+    const result = validateLevel(level);
+    // 2 normal tiles out of 9: Math.ceil(9 * 0.3) = 3, so 2 < 3 → invalid
+    expect(result.normalTileCount).toBe(2);
+    expect(result.valid).toBe(false);
+  });
+
+  it('detects tiny isolated column segments', () => {
+    // A single normal tile sandwiched between two crates in col 0 cannot match.
+    // col 0: X (row 0), normal (row 1), X (row 2), normal (row 3), normal (row 4)
+    const level: LevelConfig = {
+      id: 99, name: 'Tiny', rows: 5, cols: 3, seed: 0xABCD,
+      blockerLayout: [
+        ['X', '', ''],
+        ['',  '', ''],
+        ['X', '', ''],
+        ['',  '', ''],
+        ['',  '', ''],
+      ],
+    };
+    const result = validateLevel(level);
+    // col 0 segment above lower blocker has exactly 1 normal tile → tiny island
+    expect(result.noTinyIsolatedSegments).toBe(false);
+  });
+
+  it('returns invalid and reports the typo when tileLayout has an invalid symbol', () => {
+    const level: LevelConfig = {
+      id: 99, name: 'Typo', rows: 3, cols: 3, seed: 0,
+      blockerLayout: [['','',''],['','',''],['','','']],
+      // 'dimond' is a misspelling of 'gem'
+      tileLayout: [['gem','sword','gem'],['shield','dimond','crown'],['gem','sword','gem']],
+    };
+    const result = validateLevel(level);
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('[1,1]="dimond"');
+  });
+});
+
+// ── All shipped LEVELS pass validateLevel() ───────────────────────────────────
+
+describe('LEVELS solvability', () => {
+  it('all LEVELS pass validateLevel()', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    for (const level of LEVELS) {
+      const result = validateLevel(level);
+      expect(result.valid, `Level ${level.id} "${level.name}": ${result.message}`).toBe(true);
+    }
+  });
+
+  it('every level uses the new 7-column × 8-row standard board size', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    for (const level of LEVELS) {
+      expect(level.cols, `Level ${level.id} cols`).toBe(7);
+      expect(level.rows, `Level ${level.id} rows`).toBe(8);
+    }
+  });
+
+  it('there are at least 8 levels', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    expect(LEVELS.length).toBeGreaterThanOrEqual(8);
   });
 });
 

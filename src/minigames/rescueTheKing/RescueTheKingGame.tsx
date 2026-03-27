@@ -15,13 +15,34 @@
  * When no moves exist, tiles are reshuffled (preserving symbol counts)
  * up to MAX_RESHUFFLES times. Win condition = 0 normal tiles remaining.
  *
- * Level variation: 5 hand-designed blocker layouts; one is chosen
- * deterministically from (seed % 5). The seed is also XOR'd with the level's
+ * Level variation: 8 hand-designed levels (7×8 boards); one is chosen
+ * deterministically from (seed % 8). The seed is also XOR'd with the level's
  * base seed in buildBoard() so symbol placement varies per session.
  *
+ * Level definitions (rescueTheKingLevels.ts) may include a tileLayout field
+ * that hard-codes the initial symbols per cell, guaranteeing a deterministic
+ * and hand-validated starting position.  Cells without an explicit symbol use
+ * the seeded RNG with 3-in-a-row avoidance.
+ *
+ * Solvability guarantee:
+ * 1. buildInitialState() calls hasAnyValidMove() and reshuffles if needed.
+ * 2. resolveBoard() never sets boardCleared = true when tiles remain.
+ * 3. validateLevel() in rescueTheKingLogic.ts can be used in tests to verify
+ *    each level before shipping.
+ *
+ * Blocker rules:
+ * - crate (📦): breaks after 1 adjacent match (hitsRemaining = 1)
+ * - stone (🪨): breaks after 2 adjacent matches (hitsRemaining = 2, then 1, then gone)
+ * A "hit" happens when a normal tile that is part of a match is directly adjacent
+ * (up/down/left/right) to a blocker.  Blockers cannot be directly clicked.
+ *
+ * Debug mode (DEV builds only):
+ * Shows level ID, tile count, validation status and a "↺ Regen" button to
+ * reset with a new random seed. Controlled by the VITE_RTK_DEBUG env var or
+ * any DEV build (import.meta.env.DEV).
+ *
  * Difficulty tuning: Edit SCORE_* constants and TIME_LIMIT_MS in
- * rescueTheKingLogic.ts. Edit blockerLayout in rescueTheKingLevels.ts.
- * Increase rows/cols in LevelConfig for larger boards.
+ * rescueTheKingLogic.ts.  Edit blockerLayout / tileLayout in rescueTheKingLevels.ts.
  *
  * Score ranking:
  * - Nobody clears: tilesCleared×10 + blockerHits×15 + blockerDestroyed×50 + combo×25
@@ -46,6 +67,7 @@ import {
   shuffleNormalTiles,
   countNormalTiles,
   computeFinalScore,
+  validateLevel,
   mulberry32,
   TIME_LIMIT_MS,
   MAX_RESHUFFLES,
@@ -56,6 +78,10 @@ import {
 } from './rescueTheKingLogic';
 import { pickLevel } from './rescueTheKingLevels';
 import './RescueTheKingGame.css';
+
+// Debug overlay — shown only in DEV builds.
+// Set VITE_RTK_DEBUG=0 in your .env.local to suppress it even in dev.
+const DEBUG = import.meta.env.DEV && import.meta.env.VITE_RTK_DEBUG !== '0';
 
 interface Props {
   onFinish?: (value: number) => void;
@@ -84,11 +110,20 @@ interface ScorePop {
 export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = false }: Props) {
   const level = useMemo(() => pickLevel(seed), [seed]);
 
+  // Debug: validate the selected level (only computes once per level in DEV)
+  // DEBUG is a module-level compile-time constant (import.meta.env.DEV); it
+  // never changes at runtime so it doesn't need to be in the deps array.
+  const levelValidation = useMemo(() => (DEBUG ? validateLevel(level) : null), [level]);
+
+  // Debug: allow regenerating with a new runtime seed
+  const [debugSeedOffset, setDebugSeedOffset] = useState(0);
+
   // ── Initial state factory ────────────────────────────────────────────────
   // Takes a fresh RNG to use during the initial-validity shuffle, so callers
   // (including startGame) don't need to mutate rngRef directly.
-  const buildInitialState = useCallback((rng: () => number): GameState => {
-    let board = buildBoard(level, seed);
+  const buildInitialState = useCallback((rng: () => number, runtimeSeedOverride?: number): GameState => {
+    const runtimeSeed = runtimeSeedOverride ?? seed;
+    let board = buildBoard(level, runtimeSeed);
     let reshuffleCount = 0;
     // Guarantee at least one valid move before the player sees the board.
     while (!hasAnyValidMove(board) && countNormalTiles(board) > 0 && reshuffleCount < MAX_RESHUFFLES) {
@@ -138,9 +173,13 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const finishedRef = useRef(false);
 
   // ── Board cell size (computed from viewport) ─────────────────────────────
+  // Target: fit cols×rows board above the king/water area on a 360-480px wide
+  // portrait screen.  Max tile size is capped at 52px so large-screen layouts
+  // don't look cartoonishly oversized.  Gap between tiles is 3px.
   const cellSize = useMemo(() => {
     const maxW = Math.min(window.innerWidth, 480) - 24;
-    return Math.floor((maxW - (level.cols - 1) * 3 - 8) / level.cols);
+    const computed = Math.floor((maxW - (level.cols - 1) * 3 - 8) / level.cols);
+    return Math.min(computed, 52);
   }, [level.cols]);
 
   // ── Finish game ──────────────────────────────────────────────────────────
@@ -438,13 +477,21 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   }, [handleCellPress]);
 
   // ── Start game ───────────────────────────────────────────────────────────
-  const startGame = useCallback(() => {
+  const startGame = useCallback((runtimeSeedOverride?: number) => {
     finishedRef.current = false;
-    const freshRng = mulberry32(seed ^ RNG_RESHUFFLE_SALT);
+    const freshRng = mulberry32((runtimeSeedOverride ?? seed) ^ RNG_RESHUFFLE_SALT);
     rngRef.current = freshRng;
-    const newState = buildInitialState(freshRng);
+    const newState = buildInitialState(freshRng, runtimeSeedOverride);
     setState({ ...newState, phase: 'playing' });
   }, [buildInitialState, seed]);
+
+  // Debug: regenerate with a new runtime seed to verify the level works across
+  // multiple seeds.  Each click increments the offset so the board changes.
+  const debugRegen = useCallback(() => {
+    const nextOffset = debugSeedOffset + 1;
+    setDebugSeedOffset(nextOffset);
+    startGame(seed ^ (nextOffset * 0x1337));
+  }, [debugSeedOffset, seed, startGame]);
 
   // ── Format timer ─────────────────────────────────────────────────────────
   const formatTime = (ms: number) => {
@@ -477,6 +524,19 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
           {state.currentCombo >= 2 ? `🔥 ×${state.currentCombo}` : ''}
         </div>
       </div>
+
+      {/* Debug overlay — only visible in DEV builds */}
+      {DEBUG && (
+        <div className="rtk-debug">
+          <span>Lvl {level.id} · {level.name} · {level.rows}×{level.cols}</span>
+          <span className={levelValidation?.valid ? 'rtk-debug-ok' : 'rtk-debug-err'}>
+            {levelValidation?.valid ? '✔ valid' : `✘ ${levelValidation?.message}`}
+          </span>
+          <span>tiles: {countNormalTiles(state.board)}/{state.initialNormalTileCount}</span>
+          <span>moves: {hasAnyValidMove(state.board) ? '✔' : '✘'}</span>
+          <button className="rtk-debug-btn" onClick={debugRegen}>↺ Regen</button>
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="rtk-progress">
@@ -567,7 +627,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
             Match 3 or more identical symbols to clear the board.
             Destroy all tiles before the water rises to rescue the king!
           </div>
-          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={startGame}>
+          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={() => startGame()}>
             ▶ Start Game
           </button>
         </div>
@@ -582,7 +642,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
             You cleared the board and saved the king from the rising waters!
           </div>
           <div className="rtk-overlay-score">Score: {finalScore.toLocaleString()}</div>
-          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={startGame}>
+          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={() => startGame()}>
             Play Again
           </button>
         </div>
@@ -599,7 +659,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
               : 'Time ran out before the board was cleared. The king is gone…'}
           </div>
           <div className="rtk-overlay-score">Score: {finalScore.toLocaleString()}</div>
-          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={startGame}>
+          <button className="rtk-overlay-btn rtk-overlay-btn-primary" onClick={() => startGame()}>
             Try Again
           </button>
         </div>

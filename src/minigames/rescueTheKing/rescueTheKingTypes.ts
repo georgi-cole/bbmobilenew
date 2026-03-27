@@ -53,7 +53,19 @@ export interface LevelConfig {
    * Row 0 is the top. Must be [rows][cols].
    */
   blockerLayout: string[][];
-  /** Deterministic RNG seed for symbol placement. */
+  /**
+   * Optional explicit symbol layout. When provided, the symbol at [r][c] is used
+   * directly instead of the RNG — enabling fully deterministic, hand-validated boards.
+   * Valid values: 'gem' | 'sword' | 'shield' | 'crown' | 'potion'
+   * Leave a cell as '' to fall back to the seeded RNG for that position.
+   * Cells that match a blocker in blockerLayout are ignored.
+   *
+   * Solvability is guaranteed when tileLayout is designed such that
+   * hasAnyValidMove() returns true on the resulting board.  Use validateLevel()
+   * in rescueTheKingLogic.ts to verify before shipping a level.
+   */
+  tileLayout?: (TileSymbol | '')[][];
+  /** Deterministic RNG seed for symbol placement (used when tileLayout is absent or has '' cells). */
   seed: number;
 }
 
