@@ -145,7 +145,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="social_v2.svg"
-          ariaLabel={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
+          ariaLabel={`Open social module${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onChatClick}
           badge={chatBadgeCount}
@@ -156,7 +156,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="requests_v2.svg"
-          ariaLabel={`Log${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
+          ariaLabel={`Open incoming requests${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onLogClick}
           badge={logBadgeCount}
@@ -176,7 +176,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="public_meter_v2.svg"
-          ariaLabel={`Stats${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
+          ariaLabel={`Open public meter${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onStatsClick}
           badge={statsBadgeCount}
@@ -186,7 +186,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="confessional_v2.svg"
-          ariaLabel="Confessional"
+          ariaLabel="Open confessional"
           disabled={disabled}
           onClick={onToolClick}
         />
