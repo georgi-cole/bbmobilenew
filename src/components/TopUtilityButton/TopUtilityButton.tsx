@@ -63,6 +63,17 @@ export default function TopUtilityButton({
       onTouchEnd={() => { setIsPressed(false); }}
       onTouchCancel={() => { setIsPressed(false); }}
       onBlur={() => { setIsHovered(false); setIsPressed(false); }}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key === ' ' || event.key === 'Enter') {
+          setIsPressed(true);
+        }
+      }}
+      onKeyUp={(event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          setIsPressed(false);
+        }
+      }}
     >
       <img
         className="top-utility-btn__shell"
