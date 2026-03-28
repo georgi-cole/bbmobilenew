@@ -7,6 +7,7 @@ import SeasonFinaleOverlay from '../SeasonFinale/SeasonFinaleOverlay';
 import { useAppSelector } from '../../store/hooks';
 import { selectFinale } from '../../store/finaleSlice';
 import { selectSettings } from '../../store/settingsSlice';
+import useGameMode from '../../hooks/useGameMode';
 import './AppShell.css';
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean'];
@@ -33,6 +34,8 @@ export default function AppShell() {
   const finale = useAppSelector(selectFinale);
   const settings = useAppSelector(selectSettings);
   const { display } = settings;
+
+  useGameMode();
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
