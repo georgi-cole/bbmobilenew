@@ -1,0 +1,120 @@
+/* GameButton — SVG-backed reusable button component */
+
+.game-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform 150ms ease, opacity 150ms ease;
+  /* Prevent text selection on rapid taps */
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.game-btn:hover:not(.game-btn--disabled) {
+  transform: scale(1.02);
+}
+
+.game-btn:active:not(.game-btn--disabled),
+.game-btn--pressed:not(.game-btn--disabled) {
+  transform: scale(0.98);
+}
+
+.game-btn--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Keyboard focus ring — visible only for keyboard navigation */
+.game-btn:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* SVG background fills the button, no stretching */
+.btn-bg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  /* Ensure img covers full button area */
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Content (icon + label) overlays above the SVG */
+.btn-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+  padding: 12px 32px;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--color-text, #fff);
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.btn-label {
+  line-height: 1;
+}
+
+/* Disabled state: slightly reduce label/content opacity for extra legibility feedback */
+.game-btn--disabled .btn-content {
+  opacity: 0.7;
+}
+
+/* Variant sizing hints to maintain SVG aspect ratios */
+.game-btn--primary_large {
+  width: min(88%, 320px);
+  min-height: 60px;
+}
+
+.game-btn--secondary_medium {
+  width: min(80%, 260px);
+  min-height: 52px;
+}
+
+.game-btn--secondary_wide {
+  width: min(86%, 300px);
+  min-height: 52px;
+}
+
+.game-btn--secondary_small {
+  width: min(72%, 220px);
+  min-height: 48px;
+}
+
+@media (max-width: 420px) {
+  .game-btn--primary_large    { width: 92%; }
+  .game-btn--secondary_medium { width: 84%; }
+  .game-btn--secondary_wide   { width: 90%; }
+  .game-btn--secondary_small  { width: 78%; }
+
+  .btn-content {
+    padding: 10px 20px;
+    font-size: 1rem;
+  }
+}

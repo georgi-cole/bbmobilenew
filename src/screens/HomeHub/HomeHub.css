@@ -89,128 +89,6 @@
   padding: 8px 4px;
 }
 
-/* ===== Glassier main hub buttons ===== */
-
-/* Base button — more translucent and glassy */
-.home-hub__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: auto;
-  max-width: 86%;
-  min-width: 180px;
-  padding: 12px 34px;
-  border-radius: 28px 8px 28px 8px;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--color-text);
-  cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.12); /* subtle translucent border for glass edge */
-  background: rgba(6, 12, 28, 0.50); /* more transparent base */
-  box-shadow: 0 16px 44px rgba(6, 10, 20, 0.48); /* softer shadow */
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
-  position: relative;
-  overflow: visible;
-  white-space: nowrap;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Backdrop blur where available to create the frosted look */
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .home-hub__btn {
-    -webkit-backdrop-filter: blur(14px) saturate(1.10);
-    backdrop-filter: blur(14px) saturate(1.10);
-    background: linear-gradient(180deg, rgba(10,14,26,0.38), rgba(8,12,22,0.30));
-    border: 1px solid rgba(255,255,255,0.10);
-  }
-}
-/* Primary button — keep the purple vibrancy but with more glass feel */
-.home-hub__btn--primary {
-  background: linear-gradient(135deg,
-    rgba(110,60,255,0.86) 0%,
-    rgba(160,100,255,0.84) 50%,
-    rgba(111,183,255,0.80) 100%);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 26px 64px rgba(83,52,180,0.32);
-  padding: 14px 40px;
-  min-width: 220px;
-}
-/* Shimmer animation for Play button after splash — sweeps once then pauses */
-@keyframes hub-btn-shimmer {
-  0%   { background-position: -200% center; }
-  30%  { background-position: 200% center; }
-  100% { background-position: 200% center; } /* hold off-screen = pause */
-}
-
-.home-hub__btn--primary.shimmer {
-  background: linear-gradient(135deg,
-    rgba(110,60,255,0.92) 0%,
-    rgba(160,100,255,0.92) 30%,
-    rgba(210,180,255,0.96) 50%,
-    rgba(160,100,255,0.92) 70%,
-    rgba(110,60,255,0.92) 100%);
-  background-size: 200% auto;
-  animation: hub-btn-shimmer 3.5s linear infinite;
-  box-shadow: 0 28px 80px rgba(110,60,255,0.52);
-}
-
-/* Slightly dim on inactive/secondary to keep contrast */
-.home-hub__btn--secondary {
-  background: linear-gradient(180deg, rgba(10,14,26,0.50), rgba(8,12,22,0.44));
-  border: 1px solid rgba(255,255,255,0.08);
-}
-/* Ghost variant — keep subtle glass border and transparency */
-.home-hub__btn--ghost {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-}
-
-/* Press / active feedback */
-.home-hub__btn:active {
-  transform: translateY(1px) scale(0.995);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.5);
-}
-/* Hover/focus lift */
-.home-hub__btn:hover,
-.home-hub__btn:focus {
-  transform: translateY(-8px);
-  box-shadow: 0 32px 80px rgba(0,0,0,0.72);
-  outline: none;
-}
-
-/* Asymmetric offset: odd/even subtle shift.
-   Because buttons are auto-width, the translateX effect still provides visual variety. */
-.home-hub__buttons .home-hub__btn:nth-child(odd) {
-  transform: translateX(-8px);
-}
-.home-hub__buttons .home-hub__btn:nth-child(even) {
-  transform: translateX(8px);
-}
-
-/* On hover/focus remove horizontal offset and apply vertical lift */
-.home-hub__buttons .home-hub__btn:nth-child(odd):hover,
-.home-hub__buttons .home-hub__btn:nth-child(odd):focus {
-  transform: translateX(0) translateY(-8px);
-}
-.home-hub__buttons .home-hub__btn:nth-child(even):hover,
-.home-hub__buttons .home-hub__btn:nth-child(even):focus {
-  transform: translateX(0) translateY(-8px);
-}
-
-/* Small inset shine for Play button — matches parent border-radius exactly */
-.home-hub__btn--primary::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 -8px 40px rgba(255,255,255,0.06);
-  pointer-events: none;
-}
-
 /* Footer note */
 .homehub-footer {
   margin-top: 6px;
@@ -218,19 +96,7 @@
   font-size: 0.88rem;
 }
 
-/* Responsive: smaller screens — reduce min-widths and remove offsets for stability */
+/* Responsive: smaller screens */
 @media (max-width: 420px) {
   .home-hub__title { font-size: 1.8rem; }
-  .home-hub__btn {
-    min-width: unset;
-    width: 88%;
-    max-width: 420px;
-    padding: 12px 22px;
-    font-size: 1rem;
-  }
-  .home-hub__btn--primary { width: 92%; padding: 12px 26px; }
-  .home-hub__buttons .home-hub__btn:nth-child(odd),
-  .home-hub__buttons .home-hub__btn:nth-child(even) {
-    transform: translateX(0); /* no offsets on small screens */
-  }
 }

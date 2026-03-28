@@ -29,6 +29,7 @@ import { SoundManager } from '../../services/sound/SoundManager';
 import { NativeAudioAdapter } from '../../platform/cordova/NativeAudioAdapter';
 import { NATIVE_SFX_MAP, NATIVE_SFX_CONFIG } from '../../platform/cordova/nativeSfxMap';
 import { preloadImage } from '../../utils/preload';
+import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
 import './HomeHub.css';
 
 /**
@@ -49,12 +50,12 @@ import './HomeHub.css';
  *   6. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
-  { to: '/game',         label: '▶  Play',          variant: 'primary'   },
-  { to: '/rules',        label: '📋 Rules',         variant: 'secondary' },
-  { to: '/profile',      label: '👤 Profile',        variant: 'secondary' },
-  { to: '/leaderboard',  label: '🏆 Leaderboard',    variant: 'secondary' },
-  { to: '/credits',      label: '🎬 Credits',        variant: 'ghost'     },
-] as const;
+  { to: '/game',         label: 'Play',        icon: '▶',  variant: 'primary_large'    },
+  { to: '/rules',        label: 'Rules',       icon: '📋', variant: 'secondary_medium' },
+  { to: '/profile',      label: 'Profile',     icon: '👤', variant: 'secondary_medium' },
+  { to: '/leaderboard',  label: 'Leaderboard', icon: '🏆', variant: 'secondary_wide'   },
+  { to: '/credits',      label: 'Credits',     icon: '🎬', variant: 'secondary_small'  },
+] as const satisfies ReadonlyArray<{ to: string; label: string; icon: string; variant: GameButtonVariant }>;
 
 /** Returns true if the hub music consent popup should be shown. */
 function shouldShowSoundConsent(): boolean {
@@ -252,15 +253,14 @@ export default function HomeHub() {
                 to prevent accidental clicks through the pointer-events: none splash overlay. */}
             {splashDone && bgLoaded && (
               <nav className="home-hub__buttons" aria-label="Main menu">
-                {HUB_BUTTONS.map(({ to, label, variant }) => (
-                  <button
+                {HUB_BUTTONS.map(({ to, label, icon, variant }) => (
+                  <GameButton
                     key={to}
-                    className={`home-hub__btn home-hub__btn--${variant}${variant === 'primary' && splashDone ? ' shimmer' : ''}`}
+                    label={label}
+                    icon={icon}
+                    variant={variant}
                     onClick={to === '/game' ? handlePlay : () => navigate(to)}
-                    type="button"
-                  >
-                    {label}
-                  </button>
+                  />
                 ))}
               </nav>
             )}
