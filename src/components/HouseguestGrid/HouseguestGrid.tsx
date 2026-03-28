@@ -117,7 +117,7 @@ export default function HouseguestGrid({
     setAvailableHeight()
     window.addEventListener('resize', setAvailableHeight)
     return () => window.removeEventListener('resize', setAvailableHeight)
-  }, [footerSelector, headerSelector, overlaySelector])
+  }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
 
