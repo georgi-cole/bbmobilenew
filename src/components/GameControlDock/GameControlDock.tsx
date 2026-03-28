@@ -6,11 +6,11 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 type NodeState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
 function assetUrl(file: string): string {
-  return `${BASE}/assets/control_dock/${file}`;
+  return `${BASE}/assets/updated_nav_fab_bar/${file}`;
 }
 
 function nodeShellUrl(variant: 'play' | 'side', state: NodeState): string {
-  return assetUrl(`${variant}_node_${state}.svg`);
+  return assetUrl(`${variant}_node_${state}_final.svg`);
 }
 
 interface DockNodeProps {
@@ -118,7 +118,7 @@ export default function GameControlDock({
   statsBadgeCount,
   primaryPulse = false,
 }: GameControlDockProps) {
-  const shellSrc = assetUrl('control_dock_shell.svg');
+  const shellSrc = assetUrl('fab_dock_shell_final.svg');
 
   return (
     <div
@@ -140,51 +140,54 @@ export default function GameControlDock({
         {/* Left 1: Chat / Social */}
         <DockNode
           variant="side"
-          glyphFile="chat.svg"
+          glyphFile="social_v2.svg"
           ariaLabel={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onChatClick}
           badge={chatBadgeCount}
-          className={chatFlash ? 'dock-node--flash' : ''}
+          className={`dock-node--slot-a${chatFlash ? ' dock-node--flash' : ''}`}
         />
 
         {/* Left 2: Log / Inbox */}
         <DockNode
           variant="side"
-          glyphFile="log.svg"
-          ariaLabel={`Log${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
+          glyphFile="requests_v2.svg"
+          ariaLabel={`Incoming requests${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onLogClick}
           badge={logBadgeCount}
+          className="dock-node--slot-b"
         />
 
         {/* Center: Primary play/advance */}
         <DockNode
           variant="play"
-          glyphFile="play.svg"
+          glyphFile="play_v2.svg"
           ariaLabel="Advance to next phase"
           disabled={primaryDisabled}
           onClick={onPrimaryActionClick}
-          className={primaryPulse ? 'dock-node--pulse' : ''}
+          className={`dock-node--slot-play${primaryPulse ? ' dock-node--pulse' : ''}`}
         />
 
         {/* Right 1: Stats / Public Meter */}
         <DockNode
           variant="side"
-          glyphFile="stats.svg"
-          ariaLabel={`Stats${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
+          glyphFile="public_meter_v2.svg"
+          ariaLabel={`Public meter${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onStatsClick}
           badge={statsBadgeCount}
+          className="dock-node--slot-c"
         />
 
         {/* Right 2: Action / Diary Room */}
         <DockNode
           variant="side"
-          glyphFile="action.svg"
+          glyphFile="confessional_v2.svg"
           ariaLabel="Confessional"
           disabled={disabled}
           onClick={onToolClick}
+          className="dock-node--slot-d"
         />
       </div>
     </div>

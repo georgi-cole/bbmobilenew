@@ -110,8 +110,8 @@ describe('FloatingActionBar – social energy badge', () => {
   it('shows 0 badge when human energy is 0', () => {
     const store = makeStore();
     renderFAB(store);
-    // Default energy is 0 — badge should still show 0
-    expect(screen.getByText('0')).toBeDefined();
+    const socialButton = screen.getByRole('button', { name: 'Social' });
+    expect(socialButton.querySelector('.dock-node__badge')).toBeNull();
   });
 
   it('shows 99+ badge when energy exceeds 99', () => {
@@ -127,7 +127,7 @@ describe('FloatingActionBar – social energy badge', () => {
     const humanId = store.getState().game.players.find((p) => p.isUser)!.id;
     act(() => { store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 5 })); });
     renderFAB(store);
-    expect(screen.getByRole('button', { name: /energy: 5/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Social (5)' })).toBeDefined();
   });
 });
 
@@ -146,8 +146,8 @@ describe('FloatingActionBar – social button flash animation', () => {
     });
     act(() => { vi.advanceTimersByTime(0); });
 
-    const btn = screen.getByRole('button', { name: /energy: 10/i });
-    expect(btn.className).toContain('fab__side-btn--flash');
+    const btn = screen.getByRole('button', { name: 'Social (10)' });
+    expect(btn.className).toContain('dock-node--flash');
   });
 
   it('removes flash class after 600ms', () => {
@@ -161,8 +161,8 @@ describe('FloatingActionBar – social button flash animation', () => {
 
     act(() => { vi.advanceTimersByTime(600); });
 
-    const btn = screen.getByRole('button', { name: /energy: 10/i });
-    expect(btn.className).not.toContain('fab__side-btn--flash');
+    const btn = screen.getByRole('button', { name: 'Social (10)' });
+    expect(btn.className).not.toContain('dock-node--flash');
   });
 
   it('adds flash class when energy changes via applyEnergyDelta', () => {
@@ -177,8 +177,8 @@ describe('FloatingActionBar – social button flash animation', () => {
     });
     act(() => { vi.advanceTimersByTime(0); });
 
-    const btn = screen.getByRole('button', { name: /energy: 3/i });
-    expect(btn.className).toContain('fab__side-btn--flash');
+    const btn = screen.getByRole('button', { name: 'Social (3)' });
+    expect(btn.className).toContain('dock-node--flash');
   });
 });
 
@@ -203,7 +203,7 @@ describe('FloatingActionBar – inbox badge', () => {
     });
     renderFAB(store);
     expect(screen.getByText('1')).toBeDefined();
-    expect(screen.getByRole('button', { name: /social actions/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /incoming requests \(1\)/i })).toBeDefined();
   });
 });
 
@@ -215,8 +215,8 @@ describe('FloatingActionBar – layout', () => {
     const toolbar = screen.getByRole('toolbar', { name: /game actions/i });
     const labels = Array.from(toolbar.querySelectorAll('button')).map((button) => button.getAttribute('aria-label'));
     expect(labels).toEqual([
-      'Social (energy: 0)',
-      'Social actions',
+      'Social',
+      'Incoming requests',
       'Advance to next phase',
       'Public meter',
       'Confessional',
@@ -251,7 +251,7 @@ describe('FloatingActionBar – navigation buttons', () => {
 
     expect(screen.queryByText('2')).not.toBeNull();
     act(() => {
-      screen.getByRole('button', { name: /public meter \(2 active requests\)/i }).click();
+      screen.getByRole('button', { name: /public meter \(2\)/i }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/public-meter?tab=requests');
   });

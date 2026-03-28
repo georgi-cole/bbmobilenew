@@ -5,19 +5,12 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  /* Sized to match control_dock_shell.svg natural aspect ratio (~5:1 wide) */
   width: min(92vw, 400px);
-  /* Height driven by the shell SVG aspect ratio (shell is ~5:1) */
   height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Background shell fills the dock container */
 .game-control-dock__shell {
   display: block;
   width: 100%;
@@ -27,19 +20,13 @@
   user-select: none;
 }
 
-/* Node row overlaid on top of the shell */
 .game-control-dock__nodes {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  padding: 0 6%;
 }
 
-/* ── Individual dock nodes ──────────────────────────────────────────────── */
 .dock-node {
-  position: relative;
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,33 +37,23 @@
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   transition: transform 140ms ease, opacity 140ms ease;
-  /* Nodes should NOT expand to fill all space */
   flex-shrink: 0;
 }
 
-/* Side nodes */
 .dock-node--side {
-  width: 17%;
-  /* Square: let height = width via aspect-ratio */
+  width: 13%;
   aspect-ratio: 1 / 1;
 }
 
-/* Center (play) node — slightly larger */
 .dock-node--play {
-  width: 22%;
+  width: 18%;
   aspect-ratio: 1 / 1;
-}
-
-.dock-node:hover:not(:disabled) {
-  transform: scale(1.06);
 }
 
 .dock-node:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
 }
 
-/* Shell image fills the node */
 .dock-node__shell {
   position: absolute;
   inset: 0;
@@ -87,25 +64,44 @@
   user-select: none;
 }
 
-/* Glyph image overlaid, slightly smaller than shell */
 .dock-node__glyph {
-  position: relative;
-  z-index: 1;
-  width: 44%;
-  height: 44%;
+  position: absolute;
+  inset: 24%;
+  width: 52%;
+  height: 52%;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
-/* Center node glyph a bit larger for prominence */
-.dock-node--play .dock-node__glyph {
-  width: 46%;
-  height: 46%;
+.dock-node--slot-play {
+  left: 41%;
+  top: 2%;
 }
 
-/* Badge indicator */
+.dock-node--slot-a,
+.dock-node--slot-b,
+.dock-node--slot-c,
+.dock-node--slot-d {
+  top: 25%;
+}
+
+.dock-node--slot-a {
+  left: 16%;
+}
+
+.dock-node--slot-b {
+  left: 31%;
+}
+
+.dock-node--slot-c {
+  right: 31%;
+}
+
+.dock-node--slot-d {
+  right: 16%;
+}
+
 .dock-node__badge {
   position: absolute;
   top: -2px;
@@ -124,7 +120,6 @@
   z-index: 2;
 }
 
-/* ── Pulse animation for primary button when actionable ─────────────────── */
 @keyframes dock-pulse {
   0%   { filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4)); }
   50%  { filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.85)); }
@@ -135,7 +130,6 @@
   animation: dock-pulse 1.8s ease-in-out infinite;
 }
 
-/* ── Flash animation for chat node on energy change ─────────────────────── */
 @keyframes dock-flash {
   0%   { filter: brightness(1); }
   30%  { filter: brightness(1.6) drop-shadow(0 0 6px rgba(99, 102, 241, 0.7)); }
@@ -146,7 +140,6 @@
   animation: dock-flash 0.6s ease-out forwards;
 }
 
-/* ── Keyboard focus ring ─────────────────────────────────────────────────── */
 .dock-node:focus-visible {
   outline: none;
 }

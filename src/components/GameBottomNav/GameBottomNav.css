@@ -1,10 +1,6 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  /* Height matches existing --nav-bar-height */
   height: calc(var(--nav-bar-height, 58px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
   -webkit-user-select: none;
@@ -17,95 +13,76 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: cover;
   pointer-events: none;
   user-select: none;
 }
 
-/* Items row overlaid on shell, above safe-area inset */
 .game-bottom-nav__items {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: stretch;
-  /* Only occupy the non-safe-area height */
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
   height: var(--nav-bar-height, 58px);
-  padding-bottom: 0;
+  padding: 0 4.5%;
 }
 
-/* Individual nav item buttons */
 .game-bottom-nav__item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   background: transparent;
   border: none;
-  padding: 5px 4px;
+  padding: 6px 4px 5px;
   cursor: pointer;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.55));
-  transition: color 150ms ease, opacity 150ms ease;
+  color: rgba(238, 242, 255, 0.92);
+  opacity: 0.82;
+  transition: opacity 150ms ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
-.game-bottom-nav__item:hover {
-  color: var(--color-text, rgba(255, 255, 255, 0.92));
-}
-
 .game-bottom-nav__item--active {
-  color: var(--color-accent, #6366f1);
+  opacity: 1;
 }
 
-/* Glyph icon */
+.game-bottom-nav__segment {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(92%, 168px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+}
+
 .game-bottom-nav__glyph {
+  position: relative;
+  z-index: 1;
   width: 22px;
   height: 22px;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
-  /* Muted by default */
-  opacity: 0.55;
-  filter: grayscale(30%);
-  transition: opacity 150ms ease, filter 150ms ease, transform 160ms ease;
 }
 
-.game-bottom-nav__item:hover .game-bottom-nav__glyph {
-  opacity: 0.85;
-  filter: grayscale(0%);
-}
-
-.game-bottom-nav__item--active .game-bottom-nav__glyph {
-  opacity: 1;
-  filter: grayscale(0%) drop-shadow(0 0 5px rgba(99, 102, 241, 0.55));
-  transform: scale(1.1);
-}
-
-/* Label */
 .game-bottom-nav__label {
+  position: relative;
+  z-index: 1;
   font-size: 0.56rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   line-height: 1;
   white-space: nowrap;
-  opacity: 0.7;
-  transition: opacity 150ms ease;
 }
 
-.game-bottom-nav__item:hover .game-bottom-nav__label {
-  opacity: 0.9;
-}
-
-.game-bottom-nav__item--active .game-bottom-nav__label {
-  opacity: 1;
-  /* Subtle text glow for active tab */
-  text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
-}
-
-/* Keyboard focus ring */
 .game-bottom-nav__item:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: -2px;
