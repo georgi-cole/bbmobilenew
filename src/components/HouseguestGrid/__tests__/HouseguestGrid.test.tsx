@@ -31,6 +31,7 @@ describe('HouseguestGrid', () => {
     cleanup();
     document.body.innerHTML = '';
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   })
 
   it('renders a 16-player grid and reserves vertical space up to the floating dock', () => {
