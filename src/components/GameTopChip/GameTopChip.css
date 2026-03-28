@@ -1,0 +1,83 @@
+/* ── GameTopChip ────────────────────────────────────────────────────────── */
+.game-top-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent shrinking in the pill strip */
+  flex-shrink: 0;
+  /* Vertical size matches existing status pills */
+  height: 26px;
+  min-width: 64px;
+}
+
+/* Chips that are buttons */
+button.game-top-chip {
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+button.game-top-chip:hover:not(:disabled) {
+  transform: scale(1.04);
+  opacity: 0.92;
+}
+
+button.game-top-chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+button.game-top-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.game-top-chip:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Background SVG fills chip */
+.game-top-chip__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Content overlays background */
+.game-top-chip__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.game-top-chip__icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  font-size: 0.8rem;
+}
+
+.game-top-chip__label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text, #fff);
+  line-height: 1;
+}
