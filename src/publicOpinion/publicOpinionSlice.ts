@@ -93,6 +93,22 @@ const publicOpinionSlice = createSlice({
       }
     },
 
+    setProfileApprovals(state, action: PayloadAction<Record<string, number>>) {
+      for (const [playerId, rawApproval] of Object.entries(action.payload)) {
+        const profile = state.profiles[playerId];
+        if (!profile) continue;
+
+        const approval = Math.min(
+          publicOpinionConfig.MAX_APPROVAL,
+          Math.max(publicOpinionConfig.MIN_APPROVAL, Math.round(rawApproval)),
+        );
+
+        profile.previousApproval = approval;
+        profile.approval = approval;
+        profile.seasonApprovals = [approval];
+      }
+    },
+
     updateApproval(
       state,
       action: PayloadAction<{
@@ -292,6 +308,7 @@ const publicOpinionSlice = createSlice({
 
 export const {
   initializeProfiles,
+  setProfileApprovals,
   updateApproval,
   addDirection,
   resolveDirection,

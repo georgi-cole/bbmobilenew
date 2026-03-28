@@ -452,6 +452,8 @@ describe('NominationAnimator wiring in GameScreen', () => {
     await act(async () => {});
 
     expect(screen.getByRole('status')).toBeTruthy();
+    expect(screen.getByText('Reading the live audience…')).toBeTruthy();
+    expect(document.querySelector('.psr__spotlight')).toBeTruthy();
     expect(screen.queryByRole('toolbar', { name: 'Game actions' })).toBeNull();
   });
 
