@@ -27,7 +27,11 @@
     if (scripts.length) {
       return scripts[scripts.length - 1].src.replace(/js\/ui\/introHub\.js.*$/, '');
     }
-    return '/bbmobilenew/';
+    if (global.location && global.location.pathname) {
+      const path = global.location.pathname.replace(/[^\/]*$/, '');
+      return path || '/';
+    }
+    return '/';
   }());
 
   // Map chip ids to SVG icon pack names (assets/icons/${name}_${state}.svg)
@@ -100,38 +104,45 @@
     img.draggable = false;
     img.src = iconSrc(iconName, 'normal');
 
+    function isInactive() {
+      return btn.classList.contains('hub-chip--inactive');
+    }
+
+    function idleState() {
+      if (btn.disabled || isInactive()) return 'disabled';
+      return btn.matches && btn.matches(':hover') ? 'hover' : 'normal';
+    }
+
     // Hover state
     btn.addEventListener('mouseenter', function () {
-      if (!btn.disabled) img.src = iconSrc(iconName, 'hover');
+      if (!btn.disabled && !isInactive()) img.src = iconSrc(iconName, 'hover');
     });
     btn.addEventListener('mouseleave', function () {
-      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+      img.src = iconSrc(iconName, idleState());
     });
 
     // Press state (desktop)
     btn.addEventListener('mousedown', function () {
-      if (!btn.disabled) img.src = iconSrc(iconName, 'pressed');
+      if (!btn.disabled && !isInactive()) img.src = iconSrc(iconName, 'pressed');
     });
     btn.addEventListener('mouseup', function () {
-      if (!btn.disabled) {
-        img.src = iconSrc(iconName, 'normal');
-      }
+      img.src = iconSrc(iconName, idleState());
     });
 
     // Press state (touch)
     btn.addEventListener('touchstart', function () {
-      if (!btn.disabled) img.src = iconSrc(iconName, 'pressed');
+      if (!btn.disabled && !isInactive()) img.src = iconSrc(iconName, 'pressed');
     }, { passive: true });
     btn.addEventListener('touchend', function () {
-      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+      img.src = iconSrc(iconName, idleState());
     });
     btn.addEventListener('touchcancel', function () {
-      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+      img.src = iconSrc(iconName, idleState());
     });
 
     // Clear states on blur (keyboard accessibility)
     btn.addEventListener('blur', function () {
-      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+      img.src = iconSrc(iconName, idleState());
     });
 
     const badge = document.createElement('span');
