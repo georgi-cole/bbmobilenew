@@ -36,19 +36,19 @@ export default function GameTopChip({
 }: GameTopChipProps) {
   const chipSrc = `${BASE}/assets/control_dock/top_chip.svg`;
   const Tag = onClick ? 'button' : 'span';
-  const trimmedLabel = label.trim();
-  const overflowChars = Math.max(0, trimmedLabel.length - LABEL_SCALE_SOFT_LIMIT);
+  const normalizedLabel = label.trim() || label;
+  const overflowChars = Math.max(0, normalizedLabel.length - LABEL_SCALE_SOFT_LIMIT);
   const labelScale = Math.max(MIN_LABEL_SCALE, 1 - overflowChars * LABEL_SCALE_STEP);
   const contentPadding = overflowChars > 0 ? COMPACT_LABEL_PADDING : BASE_LABEL_PADDING;
   const chipStyle = {
-    '--game-top-chip-label-scale': labelScale.toString(),
+    '--game-top-chip-label-scale': labelScale,
     '--game-top-chip-inline-padding': `${contentPadding}px`,
   } as CSSProperties;
 
   return (
     <Tag
       className={`game-top-chip ${className}`.trim()}
-      aria-label={ariaLabel ?? label}
+      aria-label={ariaLabel ?? normalizedLabel}
       title={title}
       style={chipStyle}
       {...(onClick ? { type: 'button' as const, disabled, onClick: disabled ? undefined : onClick } : {})}
@@ -62,7 +62,7 @@ export default function GameTopChip({
       />
       <span className="game-top-chip__content">
         {icon && <span className="game-top-chip__icon" aria-hidden="true">{icon}</span>}
-        <span className="game-top-chip__label">{label}</span>
+        <span className="game-top-chip__label">{normalizedLabel}</span>
       </span>
     </Tag>
   );
