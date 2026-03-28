@@ -10,6 +10,7 @@ export interface BullseyeRoundConfig {
   maxTargets: number;
   targetWeights: Record<TargetKind, number>;
   targetLifetimes: Record<TargetKind, number>;
+  hazardPenalty: number;
   difficultyLabel: string;
 }
 
@@ -62,6 +63,7 @@ const ROUND_PRESETS = [
     maxTargets: 6,
     targetWeights: { standard: 0.58, bonus: 0.27, hazard: 0.15 },
     lifetimeMultiplier: 1,
+    hazardPenalty: -15,
     difficultyLabel: 'Opening round — balanced targets and a steady pace.',
   },
   {
@@ -70,6 +72,7 @@ const ROUND_PRESETS = [
     maxTargets: 7,
     targetWeights: { standard: 0.54, bonus: 0.24, hazard: 0.22 },
     lifetimeMultiplier: 0.94,
+    hazardPenalty: -20,
     difficultyLabel: 'Round heats up — faster spawns and more hazards.',
   },
   {
@@ -78,6 +81,7 @@ const ROUND_PRESETS = [
     maxTargets: 8,
     targetWeights: { standard: 0.5, bonus: 0.22, hazard: 0.28 },
     lifetimeMultiplier: 0.88,
+    hazardPenalty: -25,
     difficultyLabel: 'Pressure round — targets vanish faster and bombs pile up.',
   },
   {
@@ -86,6 +90,7 @@ const ROUND_PRESETS = [
     maxTargets: 8,
     targetWeights: { standard: 0.46, bonus: 0.21, hazard: 0.33 },
     lifetimeMultiplier: 0.82,
+    hazardPenalty: -30,
     difficultyLabel: 'Semi-final pace — dense spawns and very little breathing room.',
   },
   {
@@ -94,6 +99,7 @@ const ROUND_PRESETS = [
     maxTargets: 9,
     targetWeights: { standard: 0.42, bonus: 0.2, hazard: 0.38 },
     lifetimeMultiplier: 0.76,
+    hazardPenalty: -35,
     difficultyLabel: 'Final sprint — relentless spawns and danger everywhere.',
   },
 ] as const;
@@ -140,13 +146,14 @@ export function getBullseyeRoundConfig(roundNumber: number): BullseyeRoundConfig
       bonus: Math.round(TARGET_CONFIGS.bonus.lifetimeMs * preset.lifetimeMultiplier),
       hazard: Math.round(TARGET_CONFIGS.hazard.lifetimeMs * preset.lifetimeMultiplier),
     },
+    hazardPenalty: preset.hazardPenalty,
     difficultyLabel: preset.difficultyLabel,
   };
 }
 
 export function getBullseyeEliminationCount(activeCount: number): number {
-  if (activeCount <= 2) return 0;
-  return Math.min(activeCount - 2, Math.max(1, Math.round(activeCount / 2) - 1));
+  if (activeCount <= 1) return 0;
+  return Math.min(activeCount - 1, Math.ceil(activeCount / 2));
 }
 
 export interface ScoreEntry {

@@ -138,6 +138,9 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/Round 1 • Solo challenge • Bank every point/i)).toBeInTheDocument();
     expect(screen.getByText(/Round 1 complete — your score carries into the next round\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Advancing: You\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
 
     for (let round = 2; round <= BULLSEYE_CHALLENGE_ROUNDS; round += 1) {
@@ -211,7 +214,7 @@ describe('BullseyeBlitz tournament flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /keep watching/i }));
 
     expect(screen.getAllByText(/spectator mode/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Round 2 • 3 players • 1 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 2 • Final duel • Winner takes the challenge/i)).toBeInTheDocument();
     expect(screen.getByText(/Round heats up — faster spawns and more hazards./i)).toBeInTheDocument();
     expect(screen.queryByText(/skip to final results/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/continue to round/i)).not.toBeInTheDocument();
@@ -220,5 +223,30 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/wins Bullseye Blitz/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+
+  it('cuts the lower half of an odd-sized field and previews the harder next round', async () => {
+    const players = makePlayers(7);
+    const session: MinigameSession = {
+      key: 'targetPractice',
+      participants: players.map((player) => player.id),
+      seed: 12,
+      options: { timeLimit: 20 },
+      aiScores: { p1: -20, p2: -20, p3: -100, p4: -100, p5: -100, p6: -100 },
+    };
+
+    renderTournament(session, players);
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+
+    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Advancing: Player 1, Player 2, and Player 0 \(You\)\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Eliminated: Player 3, Player 4, Player 5, and Player 6\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
+    await advanceUntil(() => !!screen.queryByText(/Round 2 • 3 players • 2 eliminated/i));
+
+    expect(screen.getByText(/Round 2 • 3 players • 2 eliminated/i)).toBeInTheDocument();
   });
 });

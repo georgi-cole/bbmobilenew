@@ -484,6 +484,29 @@
   font-style: italic;
 }
 
+.bbl__round-feedback {
+  display: grid;
+  gap: 8px;
+}
+
+.bbl__next-round-preview {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.22);
+}
+
+.bbl__preview-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--color-text-muted, #a0a0b8);
+  font-size: 0.76rem;
+}
+
 .bbl__btn-row {
   display: grid;
   gap: 10px;
