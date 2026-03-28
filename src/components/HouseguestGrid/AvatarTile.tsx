@@ -4,6 +4,8 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
+const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
+
 type Props = {
   name: string
   avatarUrl?: string
@@ -47,7 +49,6 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
-  const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 
   React.useEffect(() => {
     attemptRef.current = 0
