@@ -1,67 +1,48 @@
 /* Intro Hub UI Styles
- * Rounded chip navigation for the intro screen
+ * Side utility buttons for the intro screen
  * Chips are positioned in four corners: top-left, top-right, bottom-left, bottom-right
  */
 
 /* ===== Hub Container ===== */
 #intro-hub {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   z-index: 9000;
 }
 
-/* ===== Hub Base: tiny glass containers for icon chips ===== */
+/* ===== Hub Base: side utility buttons ===== */
 .hub-chip {
   position: absolute;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   width: 44px;
   height: 44px;
-
-  /* small frosted glass container */
-  background: rgba(255, 255, 255, 0.04); /* very subtle white tint */
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px; /* tiny pill, slightly rounded */
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-
-  color: #ffffff;
+  background: transparent url('../../assets/side_utilities_button/side_utility_shell_normal.svg') center / contain no-repeat;
+  border: 0;
+  box-shadow: none;
   font-family: inherit;
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
   -webkit-appearance: none;
   appearance: none;
-  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
-  padding: 4px; /* keep the icon centered with a little breathing room */
+  transition: transform 150ms ease;
+  padding: 0;
   box-sizing: border-box;
 }
 
-/* Use the heavy backdrop blur where supported for a true glass look */
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .hub-chip {
-    background: rgba(255, 255, 255, 0.03); /* even more subtle tint when blur present */
-    -webkit-backdrop-filter: blur(6px) saturate(1.06);
-    backdrop-filter: blur(6px) saturate(1.06);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-  }
+.hub-chip:hover {
+  background-image: url('../../assets/side_utilities_button/side_utility_shell_hover.svg');
+  transform: scale(1.05);
 }
 
-/* When a browser doesn't support backdrop-filter, we keep a readable opaque fallback */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .hub-chip {
-    background: rgba(6, 12, 28, 0.88); /* slightly more opaque fallback so icon stays legible */
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.55);
-  }
+.hub-chip:active {
+  background-image: url('../../assets/side_utilities_button/side_utility_shell_pressed.svg');
+  transform: scale(0.96);
 }
-
-/* Keep hover / active behaviour but adjust translate to match new visual */
-.hub-chip:hover { transform: translateY(-4px); }
-.hub-chip:active { transform: scale(0.96); }
 
 .hub-chip:focus-visible {
   outline: 2px solid rgba(123, 146, 255, 0.7);
@@ -70,28 +51,39 @@
 
 /* ===== Inactive chip state (e.g. music/sounds off) ===== */
 .hub-chip--inactive {
-  opacity: 0.45;
-  filter: grayscale(1);
+  background-image: url('../../assets/side_utilities_button/side_utility_shell_disabled.svg');
 }
 
-/* Diagonal slash overlay for inactive chips */
-.hub-chip--inactive::after {
-  content: '';
+.hub-chip--inactive:hover,
+.hub-chip--inactive:active {
+  background-image: url('../../assets/side_utilities_button/side_utility_shell_disabled.svg');
+}
+
+.hub-chip__icon {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    transparent 42%,
-    rgba(255, 80, 80, 0.75) 42%,
-    rgba(255, 80, 80, 0.75) 58%,
-    transparent 58%
-  );
-  border-radius: inherit;
+  inset: 18%;
+  width: 64%;
+  height: 64%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
   pointer-events: none;
 }
 
-/* Slightly reduce icon size so it sits comfortably inside the tiny container */
-.hub-chip__icon { font-size: 18px; line-height: 1; pointer-events: none; }
+.hub-chip--inactive .hub-chip__icon {
+  opacity: 0.55;
+}
+
+.hub-chip__icon--housemates { background-image: url('../../assets/side_utilities_button/housemates_v2.svg'); }
+.hub-chip__icon--music { background-image: url('../../assets/side_utilities_button/music_v2.svg'); }
+.hub-chip__icon--sound { background-image: url('../../assets/side_utilities_button/sound_v2.svg'); }
+.hub-chip__icon--settings { background-image: url('../../assets/side_utilities_button/settings_v2.svg'); }
+.hub-chip__icon--share { background-image: url('../../assets/side_utilities_button/share_v2.svg'); }
+.hub-chip__icon--feedback { background-image: url('../../assets/side_utilities_button/feedback_v2.svg'); }
+.hub-chip__icon--news { background-image: url('../../assets/side_utilities_button/news_v2.svg'); }
+.hub-chip__icon--achievements { background-image: url('../../assets/side_utilities_button/achievements_v2.svg'); }
+.hub-chip__icon--social { background-image: url('../../assets/side_utilities_button/social_v2.svg'); }
+.hub-chip__icon--shop { background-image: url('../../assets/side_utilities_button/shop_v2.svg'); }
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {
@@ -101,15 +93,12 @@
 /* ===== Notification Badge Dot ===== */
 .hub-chip__badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #ff3b5c;
-  border: 2px solid rgba(15, 20, 35, 0.85);
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  background: transparent url('../../assets/side_utilities_button/badge_alert_red.svg') center / contain no-repeat;
   display: none;
-  box-shadow: 0 0 6px rgba(255, 59, 92, 0.6);
 }
 
 .hub-chip--has-notification .hub-chip__badge {
@@ -184,10 +173,6 @@
   .hub-chip {
     width: 38px;
     height: 38px;
-  }
-
-  .hub-chip__icon {
-    font-size: 17px;
   }
 }
 
