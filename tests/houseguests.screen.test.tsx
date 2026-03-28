@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import Houseguests from '../src/screens/Houseguests/Houseguests';
+import { AVATAR_TILE_LONG_PRESS_DELAY_MS } from '../src/components/HouseguestGrid/AvatarTile';
 import { enrichPlayer } from '../src/utils/houseguestLookup';
 
 function makeStore() {
@@ -18,6 +19,10 @@ function makeStore() {
 }
 
 describe('Houseguests screen', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the Housemates title and occupancy chip', () => {
     const store = makeStore();
     const playerCount = store.getState().game.players.length;
@@ -63,5 +68,94 @@ describe('Houseguests screen', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i') })).toBeNull();
+  });
+
+  it('opens the compact player info dialog on mobile touch tap', () => {
+    const store = makeStore();
+    const player = store
+      .getState()
+      .game.players.find((candidate) => {
+        const enriched = enrichPlayer(candidate);
+        return enriched.age !== undefined && Boolean(enriched.profession);
+      });
+    if (!player) {
+      throw new Error('Expected at least one player with profile metadata');
+    }
+    const enrichedPlayer = enrichPlayer(player);
+
+    render(
+      <Provider store={store}>
+        <Houseguests />
+      </Provider>,
+    );
+
+    const tile = screen.getByRole('button', { name: new RegExp(player.name, 'i') });
+
+    fireEvent.pointerDown(tile, { pointerType: 'touch' });
+    fireEvent.pointerUp(tile, { pointerType: 'touch' });
+    fireEvent.click(tile);
+
+    expect(
+      screen.getByRole('dialog', {
+        name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i'),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the compact player info dialog on mobile long press and does not suppress the next real tap', () => {
+    vi.useFakeTimers();
+
+    const store = makeStore();
+    const player = store
+      .getState()
+      .game.players.find((candidate) => {
+        const enriched = enrichPlayer(candidate);
+        return enriched.age !== undefined && Boolean(enriched.profession);
+      });
+    if (!player) {
+      throw new Error('Expected at least one player with profile metadata');
+    }
+    const enrichedPlayer = enrichPlayer(player);
+
+    render(
+      <Provider store={store}>
+        <Houseguests />
+      </Provider>,
+    );
+
+    const tile = screen.getByRole('button', { name: new RegExp(player.name, 'i') });
+
+    fireEvent.pointerDown(tile, { pointerType: 'touch' });
+    act(() => {
+      vi.advanceTimersByTime(AVATAR_TILE_LONG_PRESS_DELAY_MS);
+    });
+
+    expect(
+      screen.getByRole('dialog', {
+        name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i'),
+      }),
+    ).toBeInTheDocument();
+
+    const contextMenuEvent = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    tile.dispatchEvent(contextMenuEvent);
+    expect(contextMenuEvent.defaultPrevented).toBe(true);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i') })).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    fireEvent.click(tile);
+
+    expect(
+      screen.getByRole('dialog', {
+        name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i'),
+      }),
+    ).toBeInTheDocument();
   });
 });
