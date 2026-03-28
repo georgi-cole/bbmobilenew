@@ -85,6 +85,9 @@ interface StateWithGame {
 
 const OPENING_PUBLIC_APPROVAL_MIN = 42;
 const OPENING_PUBLIC_APPROVAL_MAX = 57;
+// Golden-ratio bit mixer keeps the opening approval shuffle deterministic while
+// avoiding obvious patterns from adjacent game seeds.
+const OPENING_PUBLIC_APPROVAL_SEED_MIX = 0x9e3779b9;
 
 function isDefaultOpeningProfile(profile: unknown): boolean {
   const candidate = profile as {
@@ -115,7 +118,7 @@ function shouldRandomizeOpeningApprovals(
 }
 
 function buildOpeningApprovalMap(players: Player[], seed: number): Record<string, number> {
-  const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  const rng = mulberry32((seed ^ OPENING_PUBLIC_APPROVAL_SEED_MIX) >>> 0);
   const range = OPENING_PUBLIC_APPROVAL_MAX - OPENING_PUBLIC_APPROVAL_MIN + 1;
 
   return Object.fromEntries(

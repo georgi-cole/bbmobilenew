@@ -54,6 +54,7 @@
 .psr__panel {
   position: relative;
   z-index: 1;
+  --psr-scanline-travel: calc(100% + 5rem);
   background: rgba(15, 20, 35, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -106,7 +107,7 @@
 
 @keyframes psrScanline {
   0% { transform: translateY(0); }
-  100% { transform: translateY(220px); }
+  100% { transform: translateY(var(--psr-scanline-travel)); }
 }
 
 .psr__heading-eyebrow {
