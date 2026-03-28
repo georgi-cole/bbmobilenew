@@ -35,7 +35,9 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="store"] .hub-chip__icon--shop')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="social"] .hub-chip__icon--social')).not.toBeNull();
     expect(mirroredIntroHubScript).toContain("icon: 'housemates'");
-    expect(mirroredIntroHubScript).toContain('hub-chip__icon--${def.icon}');
+    expect(mirroredIntroHubScript).toContain(
+      "icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`;",
+    );
   });
 
   it('styles the IntroHub chips with side utility shell and badge assets', () => {
