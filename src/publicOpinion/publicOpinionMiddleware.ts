@@ -315,6 +315,43 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/completeMinigame') {
+    // Some reducers can finalize HoH/PoV results (e.g. transition hoh_comp → hoh_results
+    // or pov_comp → pov_results) via this action. When a winner is present, we should
+    // also advance public-opinion missions for competition wins, similar to
+    // game/applyMinigameWinner.
+    const payload = actionPayload as
+      | {
+          winnerId?: string;
+          competitionType?: string | null;
+        }
+      | undefined;
+    const week = game.week ?? 1;
+    const winnerId = payload?.winnerId;
+
+    if (winnerId) {
+      // Prefer an explicit competitionType from the payload if provided, otherwise
+      // infer from prevPhase (hoh_comp/pov_comp), falling back to a generic win event.
+      let eventType: MissionGameEvent['type'];
+      const competitionType = (payload?.competitionType || '').toLowerCase();
+
+      if (competitionType === 'pov') {
+        eventType = 'pov_win';
+      } else if (competitionType === 'hoh') {
+        eventType = 'hoh_win';
+      } else if (prevPhase === 'pov_comp') {
+        eventType = 'pov_win';
+      } else if (prevPhase === 'hoh_comp') {
+        eventType = 'hoh_win';
+      } else {
+        eventType = 'won_competition';
+      }
+
+      dispatchMissionProgress(store, {
+        type: eventType,
+        actorId: winnerId,
+        week,
+      });
+    }
     applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase);
     return result;
   }
