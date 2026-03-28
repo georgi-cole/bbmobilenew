@@ -153,14 +153,18 @@ export default function PublicSaveReveal({
                 <div className="psr__bar-track">
                   <div
                     className={[
-                      'psr__bar-fill',
-                      !valuesRevealed ? 'psr__bar-fill--pending' : '',
+                      'psr__bar-motion',
+                      !valuesRevealed ? 'psr__bar-motion--pending' : '',
                     ].filter(Boolean).join(' ')}
-                    style={{
-                      width: phase === 'entering' ? '0%' : valuesRevealed ? barWidth(approval) : 'var(--pending-width)',
-                    }}
-                    aria-label={approvalLabel(player, approval)}
-                  />
+                  >
+                    <div
+                      className="psr__bar-fill"
+                      style={{
+                        width: phase === 'entering' ? '0%' : valuesRevealed ? barWidth(approval) : 'var(--pending-width)',
+                      }}
+                      aria-label={approvalLabel(player, approval)}
+                    />
+                  </div>
                 </div>
                 <span className="psr__approval-value">
                   {approvalText(approval)}
