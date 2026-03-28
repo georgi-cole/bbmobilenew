@@ -11,13 +11,13 @@
   user-select: none;
 }
 
-.fabClean {
+.fab-clean {
   position: fixed;
 }
 
-.fabShell,
-.fabPlay,
-.fabIcon {
+.fab-shell,
+.fab-play,
+.fab-icon {
   position: absolute;
   display: block;
   height: auto;
@@ -25,38 +25,38 @@
   user-select: none;
 }
 
-.fabShell {
+.fab-shell {
   inset: 0;
   width: 100%;
 }
 
-.fabPlay {
+.fab-play {
   width: 19.2%;
   left: 40.4%;
   top: 1.5%;
 }
 
-.fabIcon {
+.fab-icon {
   width: 4.25%;
   filter: drop-shadow(0 0 6px rgba(116, 132, 255, 0.22));
 }
 
-.fabIcon.social {
+.fab-icon.social {
   left: 25.2%;
   top: 37.8%;
 }
 
-.fabIcon.requests {
+.fab-icon.requests {
   left: 39%;
   top: 37.8%;
 }
 
-.fabIcon.stats {
+.fab-icon.stats {
   left: 67.3%;
   top: 37.8%;
 }
 
-.fabIcon.confessional {
+.fab-icon.confessional {
   left: 80.7%;
   top: 37.8%;
 }
@@ -144,32 +144,32 @@
   border-radius: 999px;
 }
 
-.game-control-dock:has(.dock-hit-area--social:hover) .fabIcon.social,
-.game-control-dock:has(.dock-hit-area--social:active) .fabIcon.social,
-.game-control-dock:has(.dock-hit-area--requests:hover) .fabIcon.requests,
-.game-control-dock:has(.dock-hit-area--requests:active) .fabIcon.requests,
-.game-control-dock:has(.dock-hit-area--stats:hover) .fabIcon.stats,
-.game-control-dock:has(.dock-hit-area--stats:active) .fabIcon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:hover) .fabIcon.confessional,
-.game-control-dock:has(.dock-hit-area--confessional:active) .fabIcon.confessional,
-.game-control-dock:has(.dock-hit-area--play:hover) .fabPlay,
-.game-control-dock:has(.dock-hit-area--play:active) .fabPlay {
+.game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
+.game-control-dock:has(.dock-hit-area--social:active) .fab-icon.social,
+.game-control-dock:has(.dock-hit-area--requests:hover) .fab-icon.requests,
+.game-control-dock:has(.dock-hit-area--requests:active) .fab-icon.requests,
+.game-control-dock:has(.dock-hit-area--stats:hover) .fab-icon.stats,
+.game-control-dock:has(.dock-hit-area--stats:active) .fab-icon.stats,
+.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional,
+.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional,
+.game-control-dock:has(.dock-hit-area--play:hover) .fab-play,
+.game-control-dock:has(.dock-hit-area--play:active) .fab-play {
   transition: transform 120ms ease, opacity 120ms ease;
 }
 
-.game-control-dock:has(.dock-hit-area--social:hover) .fabIcon.social,
-.game-control-dock:has(.dock-hit-area--requests:hover) .fabIcon.requests,
-.game-control-dock:has(.dock-hit-area--stats:hover) .fabIcon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:hover) .fabIcon.confessional,
-.game-control-dock:has(.dock-hit-area--play:hover) .fabPlay {
+.game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
+.game-control-dock:has(.dock-hit-area--requests:hover) .fab-icon.requests,
+.game-control-dock:has(.dock-hit-area--stats:hover) .fab-icon.stats,
+.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional,
+.game-control-dock:has(.dock-hit-area--play:hover) .fab-play {
   transform: scale(1.02);
 }
 
-.game-control-dock:has(.dock-hit-area--social:active) .fabIcon.social,
-.game-control-dock:has(.dock-hit-area--requests:active) .fabIcon.requests,
-.game-control-dock:has(.dock-hit-area--stats:active) .fabIcon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:active) .fabIcon.confessional,
-.game-control-dock:has(.dock-hit-area--play:active) .fabPlay {
+.game-control-dock:has(.dock-hit-area--social:active) .fab-icon.social,
+.game-control-dock:has(.dock-hit-area--requests:active) .fab-icon.requests,
+.game-control-dock:has(.dock-hit-area--stats:active) .fab-icon.stats,
+.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional,
+.game-control-dock:has(.dock-hit-area--play:active) .fab-play {
   transform: scale(0.985);
 }
 
@@ -188,11 +188,11 @@
 }
 
 .game-control-dock__play--disabled,
-.game-control-dock:has(.dock-hit-area--play:disabled) .fabPlay,
-.game-control-dock:has(.dock-hit-area--social:disabled) .fabIcon.social,
-.game-control-dock:has(.dock-hit-area--requests:disabled) .fabIcon.requests,
-.game-control-dock:has(.dock-hit-area--stats:disabled) .fabIcon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:disabled) .fabIcon.confessional {
+.game-control-dock:has(.dock-hit-area--play:disabled) .fab-play,
+.game-control-dock:has(.dock-hit-area--social:disabled) .fab-icon.social,
+.game-control-dock:has(.dock-hit-area--requests:disabled) .fab-icon.requests,
+.game-control-dock:has(.dock-hit-area--stats:disabled) .fab-icon.stats,
+.game-control-dock:has(.dock-hit-area--confessional:disabled) .fab-icon.confessional {
   opacity: 0.5;
 }
 

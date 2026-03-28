@@ -44,47 +44,47 @@ export default function GameControlDock({
 
   return (
     <div
-      className="game-control-dock fabClean"
+      className="game-control-dock fab-clean"
       role="toolbar"
       aria-label="Game actions"
     >
       <img
-        className="game-control-dock__shell fabShell"
+        className="game-control-dock__shell fab-shell"
         src={shellSrc}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className={`game-control-dock__play fabPlay${primaryPulse ? ' game-control-dock__play--pulse' : ''}${primaryDisabled ? ' game-control-dock__play--disabled' : ''}`}
+        className={`game-control-dock__play fab-play${primaryPulse ? ' game-control-dock__play--pulse' : ''}${primaryDisabled ? ' game-control-dock__play--disabled' : ''}`}
         src={playSrc}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className={`game-control-dock__icon fabIcon social${chatFlash ? ' game-control-dock__icon--flash' : ''}`}
+        className={`game-control-dock__icon fab-icon social${chatFlash ? ' game-control-dock__icon--flash' : ''}`}
         src={assetUrl('fab_icon_social_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fabIcon requests"
+        className="game-control-dock__icon fab-icon requests"
         src={assetUrl('fab_icon_requests_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fabIcon stats"
+        className="game-control-dock__icon fab-icon stats"
         src={assetUrl('fab_icon_stats_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fabIcon confessional"
+        className="game-control-dock__icon fab-icon confessional"
         src={assetUrl('fab_icon_confessional_clean.svg')}
         alt=""
         aria-hidden="true"
@@ -92,7 +92,7 @@ export default function GameControlDock({
       />
 
       <button
-        className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-node--flash' : ''}`}
+        className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}`}
         type="button"
         aria-label={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
         disabled={disabled}
@@ -118,7 +118,7 @@ export default function GameControlDock({
         )}
       </button>
       <button
-        className={`dock-hit-area hit-play dock-hit-area--play${primaryPulse ? ' dock-node--pulse' : ''}`}
+        className={`dock-hit-area hit-play dock-hit-area--play${primaryPulse ? ' dock-hit-area--pulse dock-node--pulse' : ''}`}
         type="button"
         aria-label="Advance to next phase"
         disabled={primaryDisabled}
