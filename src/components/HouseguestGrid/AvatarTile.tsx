@@ -49,7 +49,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
-  const longPressTimeoutRef = React.useRef<number | null>(null)
+  const longPressTimeoutRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const longPressTriggeredRef = React.useRef(false)
 
   React.useEffect(() => {
@@ -102,6 +102,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     if (longPressTimeoutRef.current !== null) {
       window.clearTimeout(longPressTimeoutRef.current)
       longPressTimeoutRef.current = null
+      longPressTriggeredRef.current = false
     }
   }
 
@@ -113,12 +114,15 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!onClick || e.pointerType !== 'touch') return
+    e.preventDefault()
     clearLongPressTimeout()
     longPressTriggeredRef.current = false
-    longPressTimeoutRef.current = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
+      if (longPressTimeoutRef.current !== timeoutId) return
       longPressTimeoutRef.current = null
       triggerPressAction()
     }, LONG_PRESS_DELAY_MS)
+    longPressTimeoutRef.current = timeoutId
   }
 
   function handlePointerEnd() {
