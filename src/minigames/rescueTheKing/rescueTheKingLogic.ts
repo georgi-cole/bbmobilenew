@@ -408,10 +408,10 @@ export interface ValidMove {
  * Returns an empty array when the board is deadlocked.
  *
  * Solvability note:
- * - After board creation buildInitialState() calls getAllValidMoves() and
- *   reshuffles until the array is non-empty.
- * - During gameplay resolveBoard() calls getAllValidMoves() and reshuffles on
- *   deadlock rather than faking a win.
+ * - Some code paths use a lightweight predicate (e.g. hasAnyValidMove()) for
+ *   simple deadlock checks and reshuffles.
+ * - When full move enumeration is needed (hints, debugging, AI), callers
+ *   should rely on getAllValidMoves() as the single source of truth.
  */
 export function getAllValidMoves(board: Board): ValidMove[] {
   const rows = board.length;
