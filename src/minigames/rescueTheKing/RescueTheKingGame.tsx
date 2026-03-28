@@ -179,6 +179,14 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const boardRef = useRef(state.board);
   useEffect(() => { boardRef.current = state.board; }, [state.board]);
 
+  // When we enter the playing phase (including via autoStart) and no activity
+  // has been recorded yet, initialize lastActivityRef so inactivity hints work
+  // from the start of gameplay.
+  useEffect(() => {
+    if (state.phase === 'playing' && lastActivityRef.current === null) {
+      lastActivityRef.current = Date.now();
+    }
+  }, [state.phase]);
   // ── RNG ref (persists across renders for reshuffles) ─────────────────────
   const rngRef = useRef(mulberry32(seed ^ RNG_RESHUFFLE_SALT));
 
