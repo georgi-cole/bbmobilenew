@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-const repoRoot = '/home/runner/work/bbmobilenew/bbmobilenew';
+const repoRoot = process.cwd();
 const introHubScript = readFileSync(path.join(repoRoot, 'public/js/ui/introHub.js'), 'utf8');
 const introHubCss = readFileSync(path.join(repoRoot, 'public/css/intro-hub.css'), 'utf8');
 
