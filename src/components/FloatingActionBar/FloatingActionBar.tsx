@@ -15,7 +15,6 @@ import {
   selectHumanIsActive,
 } from '../../store/selectors';
 import GameControlDock from '../GameControlDock/GameControlDock';
-import './FloatingActionBar.css';
 
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
