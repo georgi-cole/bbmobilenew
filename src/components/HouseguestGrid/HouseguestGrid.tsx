@@ -45,6 +45,7 @@ type Props = {
   showCountInHeader?: boolean
   headerSelector?: string
   footerSelector?: string
+  overlaySelector?: string | null
   /** Total grid size (12 or 16). Placeholder tiles will pad to this count. */
   gridSize?: number
   /** Number of placeholder tiles to append after real houseguests. */
@@ -58,15 +59,16 @@ type Props = {
 /** Minimum grid height (px) even when available space is very tight */
 const MIN_GRID_HEIGHT = 220
 /** Fallback nav-bar height (px) matching --nav-bar-height CSS variable */
-const DEFAULT_FOOTER_HEIGHT = 58
+const DEFAULT_FOOTER_HEIGHT = 62
 /** Extra vertical margin subtracted from available height */
-const GRID_VERTICAL_MARGIN = 32
+const GRID_VERTICAL_MARGIN = 20
 
 export default function HouseguestGrid({
   houseguests,
   showCountInHeader = false,
   headerSelector = '.tv-zone',
   footerSelector = '.nav-bar',
+  overlaySelector,
   gridSize,
   placeholderCount = 0,
   compact = false,
@@ -77,18 +79,35 @@ export default function HouseguestGrid({
   useEffect(() => {
     function setAvailableHeight() {
       const viewportHeight = window.innerHeight
-      let headerH = 0
+      let containerTop = 0
       let footerH = DEFAULT_FOOTER_HEIGHT
+      let bottomBoundary = viewportHeight - footerH
 
-      const headerEl = document.querySelector(headerSelector)
       const footerEl = document.querySelector(footerSelector)
+      const overlayEl = overlaySelector ? document.querySelector(overlaySelector) : null
 
-      if (headerEl instanceof HTMLElement) headerH = headerEl.getBoundingClientRect().height
-      if (footerEl instanceof HTMLElement) footerH = footerEl.getBoundingClientRect().height
+      if (containerRef.current instanceof HTMLElement) {
+        containerTop = containerRef.current.getBoundingClientRect().top
+      } else {
+        const headerEl = document.querySelector(headerSelector)
+        if (headerEl instanceof HTMLElement) {
+          containerTop = headerEl.getBoundingClientRect().bottom
+        }
+      }
+
+      if (footerEl instanceof HTMLElement) {
+        const footerRect = footerEl.getBoundingClientRect()
+        footerH = footerRect.height
+        bottomBoundary = Math.min(bottomBoundary, footerRect.top)
+      }
+
+      if (overlayEl instanceof HTMLElement) {
+        bottomBoundary = Math.min(bottomBoundary, overlayEl.getBoundingClientRect().top)
+      }
 
       const available = Math.max(
         MIN_GRID_HEIGHT,
-        viewportHeight - headerH - footerH - GRID_VERTICAL_MARGIN,
+        bottomBoundary - containerTop - GRID_VERTICAL_MARGIN,
       )
       if (containerRef.current) {
         containerRef.current.style.setProperty('--grid-available-height', `${available}px`)
@@ -98,7 +117,7 @@ export default function HouseguestGrid({
     setAvailableHeight()
     window.addEventListener('resize', setAvailableHeight)
     return () => window.removeEventListener('resize', setAvailableHeight)
-  }, [headerSelector, footerSelector])
+  }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
 

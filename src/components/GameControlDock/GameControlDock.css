@@ -1,10 +1,10 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
 .game-control-dock {
   position: fixed;
-  bottom: calc(var(--nav-bar-height) + 14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   z-index: 100;
-  width: min(76vw, 320px);
+  width: min(80vw, 340px);
   aspect-ratio: 980 / 220;
   transform: translateX(-50%);
   -webkit-user-select: none;
