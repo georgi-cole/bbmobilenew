@@ -62,7 +62,7 @@
   inset: 2px 1px 1px;
   width: calc(100% - 2px);
   height: calc(100% - 3px);
-  object-fit: fill;
+  object-fit: contain;
   pointer-events: none;
   user-select: none;
 }

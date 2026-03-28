@@ -43,9 +43,9 @@ function DockNode({
     ? 'disabled'
     : isPressed
     ? 'pressed'
-     : isHovered
-     ? 'hover'
-     : 'normal';
+    : isHovered
+    ? 'hover'
+    : 'normal';
 
   const shellSrc = nodeShellUrl(variant, state);
   const glyphSrc = assetUrl(glyphFile);
@@ -145,7 +145,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="social_v2.svg"
-          ariaLabel={`Social Module${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
+          ariaLabel={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onChatClick}
           badge={chatBadgeCount}
@@ -156,7 +156,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="requests_v2.svg"
-          ariaLabel={`Incoming Requests${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
+          ariaLabel={`Log${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onLogClick}
           badge={logBadgeCount}
@@ -166,7 +166,7 @@ export default function GameControlDock({
         <DockNode
           variant="play"
           glyphFile="play_v2.svg"
-          ariaLabel="Play"
+          ariaLabel="Advance to next phase"
           disabled={primaryDisabled}
           onClick={onPrimaryActionClick}
           className={primaryPulse ? 'dock-node--pulse' : ''}
@@ -176,7 +176,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="public_meter_v2.svg"
-          ariaLabel={`Public Meter${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
+          ariaLabel={`Stats${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onStatsClick}
           badge={statsBadgeCount}
@@ -186,7 +186,7 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="confessional_v2.svg"
-          ariaLabel="Confessional Room"
+          ariaLabel="Confessional"
           disabled={disabled}
           onClick={onToolClick}
         />

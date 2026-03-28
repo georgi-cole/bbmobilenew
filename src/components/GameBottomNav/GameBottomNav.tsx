@@ -87,14 +87,14 @@ export default function GameBottomNav({
                   draggable={false}
                 />
                 <span className="game-bottom-nav__content">
-                <img
-                  className="game-bottom-nav__glyph"
-                  src={glyphSrc}
-                  alt=""
-                  aria-hidden="true"
-                  draggable={false}
-                />
-                <span className="game-bottom-nav__label">{label}</span>
+                  <img
+                    className="game-bottom-nav__glyph"
+                    src={glyphSrc}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                  />
+                  <span className="game-bottom-nav__label">{label}</span>
                 </span>
               </button>
             );
