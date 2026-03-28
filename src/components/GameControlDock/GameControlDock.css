@@ -37,28 +37,29 @@
 }
 
 .fab-icon {
-  width: 4.25%;
+  width: 5.3%;
+  transform: translate(-50%, -50%);
   filter: drop-shadow(0 0 6px rgba(116, 132, 255, 0.22));
 }
 
 .fab-icon.social {
-  left: 25.2%;
-  top: 37.8%;
+  left: 30.5%;
+  top: 50.5%;
 }
 
 .fab-icon.requests {
-  left: 39%;
-  top: 37.8%;
+  left: 41%;
+  top: 50.5%;
 }
 
 .fab-icon.stats {
-  left: 67.3%;
-  top: 37.8%;
+  left: 69%;
+  top: 50.5%;
 }
 
 .fab-icon.confessional {
-  left: 80.7%;
-  top: 37.8%;
+  left: 79.5%;
+  top: 50.5%;
 }
 
 .dock-hit-area {
@@ -160,15 +161,21 @@
 .game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
 .game-control-dock:has(.dock-hit-area--requests:hover) .fab-icon.requests,
 .game-control-dock:has(.dock-hit-area--stats:hover) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional,
-.game-control-dock:has(.dock-hit-area--play:hover) .fab-play {
-  transform: scale(1.02);
+.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional {
+  transform: translate(-50%, -50%) scale(1.02);
 }
 
 .game-control-dock:has(.dock-hit-area--social:active) .fab-icon.social,
 .game-control-dock:has(.dock-hit-area--requests:active) .fab-icon.requests,
 .game-control-dock:has(.dock-hit-area--stats:active) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional,
+.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional {
+  transform: translate(-50%, -50%) scale(0.985);
+}
+
+.game-control-dock:has(.dock-hit-area--play:hover) .fab-play {
+  transform: scale(1.02);
+}
+
 .game-control-dock:has(.dock-hit-area--play:active) .fab-play {
   transform: scale(0.985);
 }
