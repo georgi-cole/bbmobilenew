@@ -70,14 +70,14 @@ const ROUND_CONFIG: RoundConfig[] = [
     instruction: 'Count all the stars',
   },
   {
-    minCount:    35, maxCount:    58, exposureMs: 1100,
+    minCount:    35, maxCount:    58, exposureMs: 1400,
     label:       'Round 3 of 5',
     figureTypes: ['circle', 'triangle'],
     countType:   'all',
     instruction: 'Count ALL the shapes (circles + triangles)',
   },
   {
-    minCount:    50, maxCount:    75, exposureMs: 800,
+    minCount:    50, maxCount:    75, exposureMs: 1200,
     label:       'Round 4 of 5',
     figureTypes: ['circle', 'triangle'],
     countType:   'only',
@@ -85,7 +85,7 @@ const ROUND_CONFIG: RoundConfig[] = [
     instruction: 'Count only the CIRCLES — ignore the triangles!',
   },
   {
-    minCount:    60, maxCount:    90, exposureMs: 600,
+    minCount:    60, maxCount:    90, exposureMs: 1000,
     label:       'Round 5 of 5',
     figureTypes: ['circle', 'triangle', 'star'],
     countType:   'exclude',

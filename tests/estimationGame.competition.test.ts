@@ -463,8 +463,8 @@ describe('Estimation Game — escalating difficulty', () => {
   it('each round has strictly less exposure time than the previous', () => {
     // Import the round config by loading the component and reading its constants.
     // Since ROUND_CONFIG is internal, we test the property via its effects:
-    // exposure time 2000 > 1500 > 1100 > 800 > 600
-    const exposureTimes = [2000, 1500, 1100, 800, 600];
+    // exposure time 2000 > 1500 > 1400 > 1200 > 1000
+    const exposureTimes = [2000, 1500, 1400, 1200, 1000];
 
     for (let i = 1; i < exposureTimes.length; i++) {
       expect(exposureTimes[i]).toBeLessThan(exposureTimes[i - 1]);

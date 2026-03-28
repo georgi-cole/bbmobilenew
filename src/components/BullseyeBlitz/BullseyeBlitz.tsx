@@ -56,6 +56,8 @@ const SPECTATOR_ROUND_DELAY_MS = 2200;
 const SPECTATOR_RESULTS_DELAY_MS = 2400;
 const READY_TICK_MS = 1000;
 const READY_GO_MS = 200;
+const CHALLENGE_PARTICIPANT_COUNT = 7;
+const CHALLENGE_AI_BASELINE_SCORE = -100;
 
 // ── Internal target state ─────────────────────────────────────────────────────
 
@@ -299,30 +301,67 @@ function getReadyHintText(isKnockoutMode: boolean, activeCount: number, roundNum
   return `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`;
 }
 
+function buildChallengePlayers(humanId: string): Player[] {
+  return [
+    { id: humanId, name: 'You', avatar: '🧑', status: 'active', isUser: true },
+    ...Array.from({ length: CHALLENGE_PARTICIPANT_COUNT - 1 }, (_, index) => ({
+      id: `challenge-ai-${index + 1}`,
+      name: `Player ${index + 1}`,
+      avatar: '🧑',
+      status: 'active' as const,
+      isUser: false,
+    })),
+  ];
+}
+
+function appendRoundEliminations(
+  eliminationHistory: ScoreEntry[][],
+  roundOutcome: RoundOutcome,
+): ScoreEntry[][] {
+  if (roundOutcome.isFinal || roundOutcome.eliminatedEntries.length === 0) {
+    return eliminationHistory;
+  }
+  if (eliminationHistory[eliminationHistory.length - 1] === roundOutcome.eliminatedEntries) {
+    return eliminationHistory;
+  }
+  return [...eliminationHistory, roundOutcome.eliminatedEntries];
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BullseyeBlitz({
   session,
   players = EMPTY_PLAYERS,
   onFinish,
+  seed,
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
-  const isKnockoutMode = !!session;
   const challengeParticipantId = humanId ?? 'human';
   const challengePlayers = useMemo(
-    () => (players.length > 0
-      ? players
-      : [{ id: challengeParticipantId, name: 'You', avatar: '🧑', status: 'active', isUser: true } satisfies Player]),
-    [challengeParticipantId, players],
+    () => buildChallengePlayers(challengeParticipantId),
+    [challengeParticipantId],
+  );
+  const effectivePlayers = session ? players : challengePlayers;
+  const effectiveParticipantIds = session?.participants ?? challengePlayers.map((player) => player.id);
+  const effectiveSeed = session?.seed ?? seed ?? 1;
+  const effectiveHumanId = session ? humanId : challengeParticipantId;
+  const isKnockoutMode = effectiveParticipantIds.length > 1;
+  const challengeAiScores = useMemo(
+    () => Object.fromEntries(
+      challengePlayers
+        .filter((player) => !player.isUser)
+        .map((player) => [player.id, CHALLENGE_AI_BASELINE_SCORE]),
+    ),
+    [challengePlayers],
   );
   const [autoStartEnabled] = useState(autoStart);
   const initialRoundConfig = getBullseyeRoundConfig(1);
 
   const [roundNumber, setRoundNumber] = useState(1);
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
-    session?.participants ?? [challengeParticipantId],
+    effectiveParticipantIds,
   );
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
   const [countdown, setCountdown] = useState(autoStartEnabled ? 0 : READY_COUNT);
@@ -417,41 +456,13 @@ export default function BullseyeBlitz({
     const humanFinalScore = scoreRef.current;
     const humanFinalHits = { ...hitsRef.current };
 
-    if (!session) {
-      const challengeOutcome: RoundOutcome = {
-        roundNumber,
-        activeParticipantIds: [challengeParticipantId],
-        rankedScores: buildRankedLeaderboard(
-          [challengeParticipantId],
-          { [challengeParticipantId]: humanFinalScore },
-          challengeParticipantId,
-          challengePlayers,
-          humanFinalHits,
-        ),
-        advancingIds: roundNumber < BULLSEYE_CHALLENGE_ROUNDS ? [challengeParticipantId] : [],
-        eliminatedIds: [],
-        eliminatedEntries: [],
-        isFinal: roundNumber >= BULLSEYE_CHALLENGE_ROUNDS,
-      };
-      setTournamentScoreTotal((prev) => prev + humanFinalScore);
-      setRoundOutcome(challengeOutcome);
-      setRankedScores(challengeOutcome.rankedScores);
-      if (challengeOutcome.isFinal) {
-        setFinalStandings(challengeOutcome.rankedScores);
-        setGamePhase('final_results');
-        return;
-      }
-      setGamePhase('round_results');
-      return;
-    }
-
     // HOH/LOH tournament path.
     // For hybrid sessions, resolve per-player AI base scores once (round 1 only),
     // using the cumulative total that will ultimately be dispatched to the store.
     // `tournamentScoreTotal` at this point holds all previous rounds' scores;
     // adding `humanFinalScore` gives the same value that `handleDone` will pass
     // to `completeMinigame` as `humanScore`.
-    if (session.hybridResolveOnComplete && resolvedAiScoresRef.current === null) {
+    if (session?.hybridResolveOnComplete && resolvedAiScoresRef.current === null) {
       const finalTotal = tournamentScoreTotal + humanFinalScore;
       const aiParticipants = session.participants
         .filter((id) => id !== humanId)
@@ -469,17 +480,19 @@ export default function BullseyeBlitz({
 
     // Use the hybrid-resolved scores when available; fall back to precomputed
     // session scores for non-hybrid (legacy / endurance) sessions.
-    const effectiveAiScores = resolvedAiScoresRef.current ?? session.aiScores;
+    const effectiveAiScores = session
+      ? resolvedAiScoresRef.current ?? session.aiScores
+      : challengeAiScores;
 
     const outcome = buildRoundOutcome({
       activeParticipantIds,
       aiScores: effectiveAiScores,
-      humanId,
+      humanId: effectiveHumanId,
       humanScore: humanFinalScore,
       humanHits: humanFinalHits,
-      players,
+      players: effectivePlayers,
       roundNumber,
-      seed: session.seed,
+      seed: effectiveSeed,
     });
 
     setTournamentScoreTotal((prev) => prev + humanFinalScore);
@@ -496,11 +509,13 @@ export default function BullseyeBlitz({
     setGamePhase('round_results');
   }, [
     activeParticipantIds,
-    challengeParticipantId,
-    challengePlayers,
+    challengeAiScores,
     clearPopTimeouts,
     clearRoundTimers,
     eliminationHistory,
+    effectiveHumanId,
+    effectivePlayers,
+    effectiveSeed,
     humanId,
     players,
     roundNumber,
@@ -658,28 +673,28 @@ export default function BullseyeBlitz({
   }, [resetRoundState, roundOutcome]);
 
   const handleSkipToFinal = useCallback(() => {
-    if (!session || !roundOutcome) return;
+    if (!roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
-      aiScores: resolvedAiScoresRef.current ?? session.aiScores,
-      players,
+      aiScores: session ? resolvedAiScoresRef.current ?? session.aiScores : challengeAiScores,
+      players: effectivePlayers,
       roundNumber: roundOutcome.roundNumber + 1,
-      seed: session.seed,
-      eliminationHistory,
+      seed: effectiveSeed,
+      eliminationHistory: appendRoundEliminations(eliminationHistory, roundOutcome),
     });
     setFinalStandings(simulation.finalStandings);
     setGamePhase('final_results');
-  }, [eliminationHistory, players, roundOutcome, session]);
+  }, [challengeAiScores, effectivePlayers, effectiveSeed, eliminationHistory, roundOutcome, session]);
 
   const handleKeepWatching = useCallback(() => {
-    if (!session || !roundOutcome) return;
+    if (!roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
-      aiScores: resolvedAiScoresRef.current ?? session.aiScores,
-      players,
+      aiScores: session ? resolvedAiScoresRef.current ?? session.aiScores : challengeAiScores,
+      players: effectivePlayers,
       roundNumber: roundOutcome.roundNumber + 1,
-      seed: session.seed,
-      eliminationHistory,
+      seed: effectiveSeed,
+      eliminationHistory: appendRoundEliminations(eliminationHistory, roundOutcome),
     });
 
     setIsSpectatorMode(true);
@@ -687,7 +702,7 @@ export default function BullseyeBlitz({
     setSpectatorPlan({ rounds: simulation.rounds, currentIndex: 0 });
     setActiveParticipantIds(roundOutcome.advancingIds);
     setGamePhase('spectating');
-  }, [eliminationHistory, players, roundOutcome, session]);
+  }, [challengeAiScores, effectivePlayers, effectiveSeed, eliminationHistory, roundOutcome, session]);
 
   const handleDone = useCallback(() => {
     if (!session) {
@@ -741,7 +756,9 @@ export default function BullseyeBlitz({
   const currentHumanEntry = roundOutcome?.rankedScores.find((entry) => entry.isHuman)
     ?? finalStandings.find((entry) => entry.isHuman)
     ?? rankedScores.find((entry) => entry.isHuman);
-  const humanWasEliminated = !!roundOutcome && !!humanId && roundOutcome.eliminatedIds.includes(humanId);
+  const humanWasEliminated = !!roundOutcome
+    && !!effectiveHumanId
+    && roundOutcome.eliminatedIds.includes(effectiveHumanId);
   const advancingEntries = roundOutcome
     ? roundOutcome.rankedScores.filter((entry) => roundOutcome.advancingIds.includes(entry.id))
     : [];
