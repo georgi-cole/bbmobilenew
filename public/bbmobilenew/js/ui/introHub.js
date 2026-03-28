@@ -15,29 +15,58 @@
 
   const g = global.game || (global.game = {});
 
-  // Chip definitions: { id, label, icon, position }
+  // Resolve asset base path from the script's own src so that the correct
+  // subdirectory is used regardless of whether the app is served from / or
+  // from the configured Vite base path (e.g. /bbmobilenew/).
+  var _scriptSrc = (document.currentScript || {}).src || '';
+  var ASSET_BASE = _scriptSrc ? _scriptSrc.replace(/js\/ui\/introHub\.js.*$/, '') : '/';
+
+  var SHELL_ASSETS = {
+    normal:   ASSET_BASE + 'assets/side_utilities_button/side_utility_shell_normal.svg',
+    hover:    ASSET_BASE + 'assets/side_utilities_button/side_utility_shell_hover.svg',
+    pressed:  ASSET_BASE + 'assets/side_utilities_button/side_utility_shell_pressed.svg',
+    disabled: ASSET_BASE + 'assets/side_utilities_button/side_utility_shell_disabled.svg',
+  };
+
+  var BADGE_ASSET = ASSET_BASE + 'assets/side_utilities_button/badge_alert_red.svg';
+
+  var ICON_MAP = {
+    houseguests:  'housemates_v2.svg',
+    music:        'music_v2.svg',
+    sounds:       'sound_v2.svg',
+    settings:     'settings_v2.svg',
+    share:        'share_v2.svg',
+    feedback:     'feedback_v2.svg',
+    news:         'news_v2.svg',
+    achievements: 'achievements_v2.svg',
+    store:        'shop_v2.svg',
+    social:       'social_v2.svg',
+  };
+
+  // Chip definitions: { id, label, position }
   // Positions: top-left, top-right, bottom-left, bottom-right
   //   Suffixes -2 and -3 stack chips vertically within the same corner
   //   (e.g. top-right renders above top-right-2, which renders above top-right-3).
   //   Array order does not affect visual stacking — only the position class does.
   const CHIPS = [
     // Top-left corner (stacked top → bottom)
-    { id: 'houseguests', label: 'Houseguests', icon: '👥', position: 'top-left' },
-    { id: 'music',       label: 'Music',       icon: '🎵', position: 'top-left-2' },
-    { id: 'sounds',      label: 'Sounds',      icon: '🔊', position: 'top-left-3' },
+    { id: 'houseguests', label: 'Houseguests', position: 'top-left' },
+    { id: 'music',       label: 'Music',       position: 'top-left-2' },
+    { id: 'sounds',      label: 'Sounds',      position: 'top-left-3' },
     // Top-right corner (stacked top → bottom: settings, share, feedback)
-    { id: 'settings',    label: 'Settings',    icon: '⚙️',  position: 'top-right' },
-    { id: 'share',       label: 'Share',       icon: '↗️',  position: 'top-right-2' },
-    { id: 'feedback',    label: 'Feedback',    icon: '💬', position: 'top-right-3' },
+    { id: 'settings',    label: 'Settings',    position: 'top-right' },
+    { id: 'share',       label: 'Share',       position: 'top-right-2' },
+    { id: 'feedback',    label: 'Feedback',    position: 'top-right-3' },
     // Bottom-left corner (stacked bottom → top)
-    { id: 'news',        label: 'News',        icon: '📰', position: 'bottom-left' },
-    { id: 'achievements',label: 'Achievements',icon: '🎖️', position: 'bottom-left-2' },
+    { id: 'news',        label: 'News',        position: 'bottom-left' },
+    { id: 'achievements',label: 'Achievements',position: 'bottom-left-2' },
     // Bottom-right corner (stacked bottom → top: store, social)
-    { id: 'store',       label: 'Store',       icon: '🛒', position: 'bottom-right' },
-    { id: 'social',      label: 'Social',      icon: '🔗', position: 'bottom-right-2' },
+    { id: 'store',       label: 'Store',       position: 'bottom-right' },
+    { id: 'social',      label: 'Social',      position: 'bottom-right-2' },
   ];
 
   let chipElements = {}; // { id: Element }
+  var shellElements = {}; // { id: img Element } — for dynamic shell src swapping
 
   /**
    * Build a single chip element.
@@ -51,17 +80,63 @@
     btn.setAttribute('aria-label', def.label);
     btn.setAttribute('type', 'button');
 
-    const icon = document.createElement('span');
+    // Shell image (provides button background; swapped on hover/press/disabled)
+    const shell = document.createElement('img');
+    shell.className = 'hub-chip__shell';
+    shell.src = SHELL_ASSETS.normal;
+    shell.alt = '';
+    shell.setAttribute('aria-hidden', 'true');
+    shell.draggable = false;
+    shellElements[def.id] = shell;
+
+    // Icon image (overlaid on shell)
+    const iconFile = ICON_MAP[def.id] || 'housemates_v2.svg';
+    const icon = document.createElement('img');
     icon.className = 'hub-chip__icon';
+    icon.src = ASSET_BASE + 'assets/side_utilities_button/' + iconFile;
+    icon.alt = '';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = def.icon;
+    icon.draggable = false;
 
-    const badge = document.createElement('span');
+    // Badge — uses SVG asset; visibility toggled via CSS class
+    const badge = document.createElement('img');
     badge.className = 'hub-chip__badge';
-    badge.setAttribute('aria-label', 'New notification');
+    badge.src = BADGE_ASSET;
+    badge.alt = 'New notification';
+    badge.setAttribute('aria-hidden', 'true');
+    badge.draggable = false;
 
+    btn.appendChild(shell);
     btn.appendChild(icon);
     btn.appendChild(badge);
+
+    // State helpers — update shell src based on interaction state
+    function isInactive() {
+      return btn.classList.contains('hub-chip--inactive');
+    }
+    function applyShell(state) {
+      shell.src = SHELL_ASSETS[state] || SHELL_ASSETS.normal;
+    }
+    function resetShell() {
+      applyShell(isInactive() ? 'disabled' : 'normal');
+    }
+
+    btn.addEventListener('mouseenter', function () {
+      if (!isInactive()) applyShell('hover');
+    });
+    btn.addEventListener('mouseleave', function () { resetShell(); });
+    btn.addEventListener('mousedown', function () {
+      if (!isInactive()) applyShell('pressed');
+    });
+    btn.addEventListener('mouseup', function () {
+      if (!isInactive()) applyShell('hover');
+    });
+    btn.addEventListener('touchstart', function () {
+      if (!isInactive()) applyShell('pressed');
+    }, { passive: true });
+    btn.addEventListener('touchend', function () { resetShell(); });
+    btn.addEventListener('touchcancel', function () { resetShell(); });
+    btn.addEventListener('blur', function () { resetShell(); });
 
     btn.addEventListener('click', function () {
       handleChipClick(def.id);
@@ -235,10 +310,13 @@
   function toggleChipVisual(id, active) {
     var el = chipElements[id];
     if (!el) return;
+    var shellEl = shellElements[id];
     if (active) {
       el.classList.remove('hub-chip--inactive');
+      if (shellEl) shellEl.src = SHELL_ASSETS.normal;
     } else {
       el.classList.add('hub-chip--inactive');
+      if (shellEl) shellEl.src = SHELL_ASSETS.disabled;
     }
   }
 
@@ -284,6 +362,7 @@
     // Clear existing chips to make init idempotent
     container.innerHTML = '';
     chipElements = {};
+    shellElements = {};
 
     CHIPS.forEach(function (def) {
       const chip = buildChip(def);

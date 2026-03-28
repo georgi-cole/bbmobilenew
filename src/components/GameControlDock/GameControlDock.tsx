@@ -6,15 +6,24 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 type NodeState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
 function assetUrl(file: string): string {
-  return `${BASE}/assets/control_dock/${file}`;
+  return `${BASE}/assets/glossy_dock/${file}`;
 }
 
-function nodeShellUrl(variant: 'play' | 'side', state: NodeState): string {
-  return assetUrl(`${variant}_node_${state}.svg`);
+function nodeShellUrl(variant: 'play' | 'side', state: NodeState, role?: string): string {
+  if (variant === 'play') {
+    return assetUrl(`play_node_${state}_glossy_v4.svg`);
+  }
+  // Side nodes use per-role shells; disabled state is shared across all roles
+  if (state === 'disabled') {
+    return assetUrl('side_node_disabled_glossy_v4.svg');
+  }
+  return assetUrl(`side_node_${role ?? 'chat'}_${state}_glossy_v4.svg`);
 }
 
 interface DockNodeProps {
   variant: 'play' | 'side';
+  /** Role name used to pick the correct side-node shell (e.g. 'chat', 'log', 'stats', 'action') */
+  role?: string;
   glyphFile: string;
   ariaLabel: string;
   disabled?: boolean;
@@ -25,6 +34,7 @@ interface DockNodeProps {
 
 function DockNode({
   variant,
+  role,
   glyphFile,
   ariaLabel,
   disabled = false,
@@ -43,7 +53,7 @@ function DockNode({
     ? 'hover'
     : 'normal';
 
-  const shellSrc = nodeShellUrl(variant, state);
+  const shellSrc = nodeShellUrl(variant, state, role);
   const glyphSrc = assetUrl(glyphFile);
 
   return (
@@ -118,7 +128,7 @@ export default function GameControlDock({
   statsBadgeCount,
   primaryPulse = false,
 }: GameControlDockProps) {
-  const shellSrc = assetUrl('control_dock_shell.svg');
+  const shellSrc = assetUrl('dock_shell_glossy_v4.svg');
 
   return (
     <div
@@ -140,7 +150,8 @@ export default function GameControlDock({
         {/* Left 1: Chat / Social */}
         <DockNode
           variant="side"
-          glyphFile="chat.svg"
+          role="chat"
+          glyphFile="chat_glossy_v4.svg"
           ariaLabel={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onChatClick}
@@ -151,7 +162,8 @@ export default function GameControlDock({
         {/* Left 2: Log / Inbox */}
         <DockNode
           variant="side"
-          glyphFile="log.svg"
+          role="log"
+          glyphFile="log_glossy_v4.svg"
           ariaLabel={`Log${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onLogClick}
@@ -161,7 +173,7 @@ export default function GameControlDock({
         {/* Center: Primary play/advance */}
         <DockNode
           variant="play"
-          glyphFile="play.svg"
+          glyphFile="play_glossy_v4.svg"
           ariaLabel="Advance to next phase"
           disabled={primaryDisabled}
           onClick={onPrimaryActionClick}
@@ -171,7 +183,8 @@ export default function GameControlDock({
         {/* Right 1: Stats / Public Meter */}
         <DockNode
           variant="side"
-          glyphFile="stats.svg"
+          role="stats"
+          glyphFile="stats_glossy_v4.svg"
           ariaLabel={`Stats${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onStatsClick}
@@ -181,7 +194,8 @@ export default function GameControlDock({
         {/* Right 2: Action / Diary Room */}
         <DockNode
           variant="side"
-          glyphFile="action.svg"
+          role="action"
+          glyphFile="action_glossy_v4.svg"
           ariaLabel="Confessional"
           disabled={disabled}
           onClick={onToolClick}

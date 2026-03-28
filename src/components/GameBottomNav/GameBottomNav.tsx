@@ -5,11 +5,11 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 export type NavTab = 'home' | 'rules' | 'settings' | 'leaderboard' | 'profile';
 
 const NAV_ITEMS: { tab: NavTab; glyph: string; label: string }[] = [
-  { tab: 'home',        glyph: 'home.svg',        label: 'HOME'        },
-  { tab: 'rules',       glyph: 'rules.svg',       label: 'RULES'       },
-  { tab: 'settings',    glyph: 'settings.svg',    label: 'SETTINGS'    },
-  { tab: 'leaderboard', glyph: 'leaderboard.svg', label: 'LEADERBOARD' },
-  { tab: 'profile',     glyph: 'profile.svg',     label: 'PROFILE'     },
+  { tab: 'home',        glyph: 'home_glossy_v4.svg',        label: 'HOME'        },
+  { tab: 'rules',       glyph: 'rules_glossy_v4.svg',       label: 'RULES'       },
+  { tab: 'settings',    glyph: 'settings_glossy_v4.svg',    label: 'SETTINGS'    },
+  { tab: 'leaderboard', glyph: 'leaderboard_glossy_v4.svg', label: 'LEADERBOARD' },
+  { tab: 'profile',     glyph: 'profile_glossy_v4.svg',     label: 'PROFILE'     },
 ];
 
 export interface GameBottomNavProps {
@@ -65,7 +65,7 @@ export default function GameBottomNav({
         <div className="game-bottom-nav__items">
           {NAV_ITEMS.map(({ tab, glyph, label }) => {
             const isActive = activeTab === tab;
-            const glyphSrc = `${BASE}/assets/control_dock/${glyph}`;
+            const glyphSrc = `${BASE}/assets/glossy_bottom_bar/${glyph}`;
             return (
               <button
                 key={tab}
