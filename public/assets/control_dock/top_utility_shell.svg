@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="104" height="84" viewBox="0 0 104 84" fill="none">
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="104" y2="84">
+    <stop offset="0%" stop-color="rgba(24,31,58,0.98)"/>
+    <stop offset="100%" stop-color="rgba(40,54,92,0.94)"/>
+  </linearGradient>
+  <filter id="glow" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<path d="M 24 10 Q 32 8 42 8 L 68 8 Q 82 8 90 16 Q 96 22 96 42 Q 96 62 90 68 Q 82 76 68 76 L 42 76 Q 32 76 24 74 Q 8 68 8 42 Q 8 16 24 10 Z" fill="rgba(124,148,255,0.18)" filter="url(#glow)"/>
+<path d="M 24 10 Q 32 8 42 8 L 68 8 Q 82 8 90 16 Q 96 22 96 42 Q 96 62 90 68 Q 82 76 68 76 L 42 76 Q 32 76 24 74 Q 8 68 8 42 Q 8 16 24 10 Z" fill="url(#g)" stroke="rgba(225,236,255,0.18)" stroke-width="1.6"/>
+</svg>

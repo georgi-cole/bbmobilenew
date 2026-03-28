@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Final Control Dock Pack</title>
+<style>
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, Arial, sans-serif;
+  color: white;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(108,132,255,.18), transparent 22%),
+    linear-gradient(180deg, #070d1d 0%, #0e1730 55%, #091121 100%);
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 28px 20px 60px; }
+h1 { text-align:center; margin:0 0 8px; font-size:28px; }
+p { text-align:center; margin:0 0 22px; opacity:.76; }
+.card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 18px;
+  backdrop-filter: blur(8px);
+}
+.row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; justify-content:center; }
+.demoNode { position:relative; width:78px; height:78px; }
+.demoNode img.bg { width:100%; height:100%; display:block; }
+.demoNode img.glyph { position:absolute; inset:22%; width:56%; height:56%; }
+.dock {
+  position:relative; width:min(620px,92vw); aspect-ratio:860/170; margin:0 auto;
+}
+.dock > img.bg { position:absolute; inset:0; width:100%; height:100%; }
+.dock .node { position:absolute; width:18%; aspect-ratio:1; }
+.dock .node img.bg { width:100%; height:100%; display:block; }
+.dock .node img.glyph { position:absolute; inset:24%; width:52%; height:52%; }
+.dock .play { width:25%; left:37.5%; top:10%; }
+.dock .a { left:9%; top:20%; }
+.dock .b { left:23.5%; top:20%; }
+.dock .c { right:23.5%; top:20%; }
+.dock .d { right:9%; top:20%; }
+.topRow { display:flex; gap:12px; justify-content:space-between; align-items:center; }
+.chip { position:relative; width:146px; aspect-ratio:230/84; }
+.chip img { width:100%; height:100%; display:block; }
+.chip span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:800; gap:8px; }
+.utils { display:flex; gap:10px; }
+.util { position:relative; width:56px; height:46px; }
+.util img.bg { width:100%; height:100%; }
+.util img.glyph { position:absolute; inset:22%; width:56%; height:56%; }
+.nav { position:relative; width:min(760px,94vw); aspect-ratio:980/130; margin:10px auto 0; }
+.nav > img.bg { position:absolute; inset:0; width:100%; height:100%; }
+.nav .items { position:absolute; inset:0; display:grid; grid-template-columns:repeat(5,1fr); align-items:center; }
+.nav .item { display:flex; flex-direction:column; align-items:center; gap:4px; opacity:.74; font-size:12px; font-weight:700; }
+.nav .item.active { opacity:1; text-shadow:0 0 14px rgba(146,134,255,.35); }
+.nav .item img { width:28px; height:28px; }
+.label { font-size:13px; opacity:.8; text-align:center; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Final Control Dock System</h1>
+  <p>Dock shell, button nodes, top chips, top utility shell and bottom navigation strip designed in the same visual family.</p>
+
+  <div class="card">
+    <div class="topRow">
+      <div style="display:flex; gap:10px;">
+        <div class="chip"><img src="top_chip.svg"><span>📍 DAY START</span></div>
+        <div class="chip"><img src="top_chip.svg"><span>🗓 S2D1</span></div>
+      </div>
+      <div class="utils">
+        <div class="util"><img class="bg" src="top_utility_shell.svg"><img class="glyph" src="music.svg"></div>
+        <div class="util"><img class="bg" src="top_utility_shell.svg"><img class="glyph" src="sound.svg"></div>
+        <div class="util"><img class="bg" src="top_utility_shell.svg"><img class="glyph" src="save.svg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dock">
+      <img class="bg" src="control_dock_shell.svg">
+      <div class="node a"><img class="bg" src="side_node_normal.svg"><img class="glyph" src="chat.svg"></div>
+      <div class="node b"><img class="bg" src="side_node_normal.svg"><img class="glyph" src="log.svg"></div>
+      <div class="node play"><img class="bg" src="play_node_normal.svg"><img class="glyph" src="play.svg"></div>
+      <div class="node c"><img class="bg" src="side_node_normal.svg"><img class="glyph" src="stats.svg"></div>
+      <div class="node d"><img class="bg" src="side_node_normal.svg"><img class="glyph" src="action.svg"></div>
+    </div>
+    <div class="label">Bottom control dock</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="row">
+          <div class="demoNode"><img class="bg" src="side_node_normal.svg"><img class="glyph" src="chat.svg"></div>
+          <div class="demoNode"><img class="bg" src="side_node_hover.svg"><img class="glyph" src="chat.svg"></div>
+          <div class="demoNode"><img class="bg" src="side_node_pressed.svg"><img class="glyph" src="chat.svg"></div>
+          <div class="demoNode"><img class="bg" src="side_node_disabled.svg"><img class="glyph" src="chat.svg"></div>
+        </div>
+        <div class="label">Side node states</div>
+      </div>
+      <div>
+        <div class="row">
+          <div class="demoNode"><img class="bg" src="play_node_normal.svg"><img class="glyph" src="play.svg"></div>
+          <div class="demoNode"><img class="bg" src="play_node_hover.svg"><img class="glyph" src="play.svg"></div>
+          <div class="demoNode"><img class="bg" src="play_node_pressed.svg"><img class="glyph" src="play.svg"></div>
+          <div class="demoNode"><img class="bg" src="play_node_disabled.svg"><img class="glyph" src="play.svg"></div>
+        </div>
+        <div class="label">Play node states</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="nav">
+      <img class="bg" src="nav_bar.svg">
+      <div class="items">
+        <div class="item active"><img src="home.svg"><div>HOME</div></div>
+        <div class="item"><img src="rules.svg"><div>RULES</div></div>
+        <div class="item"><img src="settings.svg"><div>SETTINGS</div></div>
+        <div class="item"><img src="leaderboard.svg"><div>LEADERBOARD</div></div>
+        <div class="item"><img src="profile.svg"><div>PROFILE</div></div>
+      </div>
+    </div>
+    <div class="label">Bottom navigation strip</div>
+  </div>
+</div>
+</body>
+</html>
