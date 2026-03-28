@@ -1,28 +1,21 @@
 /**
- * AudioGate.tsx — Overlay that unlocks the Web Audio API on the first user
- * gesture, satisfying browser autoplay policies.
+ * AudioGate.tsx — Silent audio unlock gate for the first user gesture.
  *
  * Render once near the top of your component tree (e.g. in App.tsx).
- * The gate is invisible after unlock; it renders a tap-to-continue prompt
- * only when the audio context has not yet been unlocked.
- *
- * Usage:
- *   <AudioGate onUnlock={() => SoundManager.playMusic('music:menu_loop')} />
+ * It listens for the first interaction so audio can unlock without showing
+ * a full-screen prompt.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { SoundManager } from '../../services/sound/SoundManager';
 import { detectDebugMode } from '../../utils/debugMode';
-import styles from './AudioGate.module.css';
 
 export interface AudioGateProps {
   /** Called once when the user gesture unlocks audio. */
   onUnlock?: () => void;
-  /** Custom prompt text. Defaults to "Tap anywhere to enable audio". */
-  promptText?: string;
 }
 
-export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
+export default function AudioGate({ onUnlock }: AudioGateProps) {
   const [unlocked, setUnlocked] = useState(() => detectDebugMode());
 
   const handleUnlock = useCallback(() => {
@@ -54,20 +47,5 @@ export default function AudioGate({ onUnlock, promptText }: AudioGateProps) {
     };
   }, [unlocked, handleUnlock]);
 
-  if (unlocked) return null;
-
-  return (
-    <div
-      className={styles.overlay}
-      onClick={handleUnlock}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleUnlock()}
-      aria-label="Enable audio"
-    >
-      <span className={styles.prompt}>
-        {promptText ?? 'Tap anywhere to enable audio'}
-      </span>
-    </div>
-  );
+  return null;
 }
