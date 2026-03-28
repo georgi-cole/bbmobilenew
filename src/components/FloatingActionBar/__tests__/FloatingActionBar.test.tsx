@@ -113,7 +113,7 @@ describe('FloatingActionBar – social energy badge', () => {
     const socialButton = screen.getByRole('button', { name: 'Social' });
     expect(socialButton).toBeDefined();
     expect(socialButton).toHaveAttribute('aria-label', 'Social');
-    expect(socialButton.querySelector('.dock-node__badge')).toBeNull();
+    expect(socialButton.querySelector('.dock-hit-area__badge')).toBeNull();
   });
 
   it('shows 99+ badge when energy exceeds 99', () => {
