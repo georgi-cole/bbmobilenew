@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="156" viewBox="0 0 640 156" fill="none">
+  <defs>
+    <linearGradient id="grad-primary_large_disabled.svg" x1="0" y1="0" x2="640" y2="156">
+      <stop offset="0%" stop-color="#47417A"/>
+      <stop offset="58%" stop-color="#5D5A84"/>
+      <stop offset="100%" stop-color="#787499"/>
+    </linearGradient>
+
+    <linearGradient id="sheen-primary_large_disabled.svg" x1="0" y1="0" x2="0" y2="156">
+      <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+      <stop offset="42%" stop-color="white" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="glow-primary_large_disabled.svg" x="-35%" y="-60%" width="170%" height="240%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+    </filter>
+
+    <filter id="soft-primary_large_disabled.svg" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+
+    <clipPath id="clip-primary_large_disabled.svg">
+      <path d="M 22 18
+    Q 30 10, 42 10
+    L 548 10
+    Q 574 10, 592 24
+    L 622 78.0
+    L 586 140
+    Q 570 150, 542 150
+    L 52 148
+    Q 28 148, 18 130
+    L 10 84.0
+    Q 6 76.0, 12 66.0
+    L 22 18"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(0.00 0.00) scale(1.0)">
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 548 10
+    Q 574 10, 592 24
+    L 622 78.0
+    L 586 140
+    Q 570 150, 542 150
+    L 52 148
+    Q 28 148, 18 130
+    L 10 84.0
+    Q 6 76.0, 12 66.0
+    L 22 18" fill="rgba(110,110,150,0.1)" opacity="1" filter="url(#glow-primary_large_disabled.svg)"/>
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 548 10
+    Q 574 10, 592 24
+    L 622 78.0
+    L 586 140
+    Q 570 150, 542 150
+    L 52 148
+    Q 28 148, 18 130
+    L 10 84.0
+    Q 6 76.0, 12 66.0
+    L 22 18" fill="url(#grad-primary_large_disabled.svg)"/>
+
+    <g clip-path="url(#clip-primary_large_disabled.svg)">
+      <path d="M 28 14 L 530 14 L 496 65.5 L 46 53.0 Z" fill="white" opacity="0.05"/>
+      <rect x="38" y="35.9" width="495" height="2" rx="1" fill="white" opacity="0.10"/>
+      <rect x="46" y="39.9" width="450" height="1" rx="0.5" fill="white" opacity="0.06"/>
+      <path d="M 24 87.4 L 566 79.6 L 610 138 L 40 146 Z" fill="black" opacity="0.25" filter="url(#soft-primary_large_disabled.svg)"/>
+      <rect x="0" y="0" width="640" height="156" fill="url(#sheen-primary_large_disabled.svg)" opacity="0.10"/>
+    </g>
+
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 548 10
+    Q 574 10, 592 24
+    L 622 78.0
+    L 586 140
+    Q 570 150, 542 150
+    L 52 148
+    Q 28 148, 18 130
+    L 10 84.0
+    Q 6 76.0, 12 66.0
+    L 22 18" stroke="rgba(255,255,255,0.2)" stroke-width="2.2" filter="url(#soft-primary_large_disabled.svg)"/>
+  </g>
+</svg>

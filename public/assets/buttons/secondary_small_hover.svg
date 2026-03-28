@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120" fill="none">
+  <defs>
+    <linearGradient id="grad-secondary_small_hover.svg" x1="0" y1="0" x2="420" y2="120">
+      <stop offset="0%" stop-color="rgba(58,71,116,0.98)"/>
+      <stop offset="58%" stop-color="rgba(85,101,155,0.96)"/>
+      <stop offset="100%" stop-color="rgba(120,137,188,0.92)"/>
+    </linearGradient>
+
+    <linearGradient id="sheen-secondary_small_hover.svg" x1="0" y1="0" x2="0" y2="120">
+      <stop offset="0%" stop-color="white" stop-opacity="0.44"/>
+      <stop offset="42%" stop-color="white" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="glow-secondary_small_hover.svg" x="-35%" y="-60%" width="170%" height="240%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+    </filter>
+
+    <filter id="soft-secondary_small_hover.svg" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+
+    <clipPath id="clip-secondary_small_hover.svg">
+      <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(-4.20 -1.20) scale(1.02)">
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" fill="rgba(165,186,255,0.38)" opacity="1" filter="url(#glow-secondary_small_hover.svg)"/>
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" fill="url(#grad-secondary_small_hover.svg)"/>
+
+    <g clip-path="url(#clip-secondary_small_hover.svg)">
+      <path d="M 28 14 L 310 14 L 276 50.4 L 46 40.8 Z" fill="white" opacity="0.14"/>
+      <rect x="38" y="27.6" width="275" height="2" rx="1" fill="white" opacity="0.34"/>
+      <rect x="46" y="31.6" width="230" height="1" rx="0.5" fill="white" opacity="0.15"/>
+      <path d="M 24 67.2 L 346 61.2 L 390 102 L 40 110 Z" fill="black" opacity="0.22" filter="url(#soft-secondary_small_hover.svg)"/>
+      <rect x="0" y="0" width="420" height="120" fill="url(#sheen-secondary_small_hover.svg)" opacity="0.10"/>
+    </g>
+
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" stroke="rgba(234,242,255,0.54)" stroke-width="2.2" filter="url(#soft-secondary_small_hover.svg)"/>
+  </g>
+</svg>

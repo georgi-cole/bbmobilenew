@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Full Button Pack Preview</title>
+<style>
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(120,140,255,.18), transparent 24%),
+    linear-gradient(180deg, #0b1020 0%, #131b31 55%, #101523 100%);
+  font-family: Inter, Arial, sans-serif;
+}
+.wrap {
+  width: 100%;
+  max-width: 980px;
+  padding: 36px 24px 60px;
+  color: #fff;
+}
+h1 {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 26px;
+}
+p {
+  margin: 0 0 26px;
+  text-align: center;
+  opacity: .75;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 20px 18px;
+  align-items: start;
+}
+.card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  padding: 16px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+}
+.name { font-size: 14px; opacity: .78; }
+.demo { position: relative; }
+.demo img { width: 100%; height: 100%; display: block; }
+.demo span {
+  position: absolute; inset: 0; display:flex; align-items:center; justify-content:center;
+  font-weight: 800; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.35);
+}
+.play { width: 320px; height: 78px; font-size: 22px; }
+.medium { width: 250px; height: 66px; font-size: 18px; }
+.wide { width: 280px; height: 66px; font-size: 18px; }
+.small { width: 210px; height: 60px; font-size: 17px; }
+.sectionTitle {
+  margin: 28px 0 14px;
+  font-size: 18px;
+  text-align:center;
+  opacity:.92;
+}
+@media (max-width: 940px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Full SVG Button Pack</h1>
+    <p>Normal, hover, pressed and disabled states. Replace your current menu buttons with these assets and overlay text in code.</p>
+
+    <div class="sectionTitle">Primary / Play</div>
+    <div class="grid">
+      <div class="card"><div class="name">Normal</div><div class="demo play"><img src="primary_large_normal.svg"><span>▶ Play</span></div></div>
+      <div class="card"><div class="name">Hover</div><div class="demo play"><img src="primary_large_hover.svg"><span>▶ Play</span></div></div>
+      <div class="card"><div class="name">Pressed</div><div class="demo play"><img src="primary_large_pressed.svg"><span>▶ Play</span></div></div>
+      <div class="card"><div class="name">Disabled</div><div class="demo play"><img src="primary_large_disabled.svg"><span>▶ Play</span></div></div>
+    </div>
+
+    <div class="sectionTitle">Secondary / Medium</div>
+    <div class="grid">
+      <div class="card"><div class="name">Normal</div><div class="demo medium"><img src="secondary_medium_normal.svg"><span>📋 Rules</span></div></div>
+      <div class="card"><div class="name">Hover</div><div class="demo medium"><img src="secondary_medium_hover.svg"><span>📋 Rules</span></div></div>
+      <div class="card"><div class="name">Pressed</div><div class="demo medium"><img src="secondary_medium_pressed.svg"><span>📋 Rules</span></div></div>
+      <div class="card"><div class="name">Disabled</div><div class="demo medium"><img src="secondary_medium_disabled.svg"><span>📋 Rules</span></div></div>
+    </div>
+
+    <div class="sectionTitle">Secondary / Wide + Small</div>
+    <div class="grid">
+      <div class="card"><div class="name">Wide normal</div><div class="demo wide"><img src="secondary_wide_normal.svg"><span>🏆 Leaderboard</span></div></div>
+      <div class="card"><div class="name">Wide hover</div><div class="demo wide"><img src="secondary_wide_hover.svg"><span>🏆 Leaderboard</span></div></div>
+      <div class="card"><div class="name">Small normal</div><div class="demo small"><img src="secondary_small_normal.svg"><span>🎬 Credits</span></div></div>
+      <div class="card"><div class="name">Small disabled</div><div class="demo small"><img src="secondary_small_disabled.svg"><span>🎬 Credits</span></div></div>
+    </div>
+  </div>
+</body>
+</html>

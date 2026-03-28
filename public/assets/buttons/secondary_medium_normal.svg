@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="132" viewBox="0 0 500 132" fill="none">
+  <defs>
+    <linearGradient id="grad-secondary_medium_normal.svg" x1="0" y1="0" x2="500" y2="132">
+      <stop offset="0%" stop-color="rgba(45,56,92,0.94)"/>
+      <stop offset="58%" stop-color="rgba(63,76,120,0.92)"/>
+      <stop offset="100%" stop-color="rgba(96,110,160,0.88)"/>
+    </linearGradient>
+
+    <linearGradient id="sheen-secondary_medium_normal.svg" x1="0" y1="0" x2="0" y2="132">
+      <stop offset="0%" stop-color="white" stop-opacity="0.40"/>
+      <stop offset="42%" stop-color="white" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="glow-secondary_medium_normal.svg" x="-35%" y="-60%" width="170%" height="240%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+    </filter>
+
+    <filter id="soft-secondary_medium_normal.svg" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+
+    <clipPath id="clip-secondary_medium_normal.svg">
+      <path d="M 22 18
+    Q 30 10, 42 10
+    L 408 10
+    Q 434 10, 452 24
+    L 482 66.0
+    L 446 116
+    Q 430 126, 402 126
+    L 52 124
+    Q 28 124, 18 106
+    L 10 72.0
+    Q 6 64.0, 12 54.0
+    L 22 18"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(0.00 0.00) scale(1.0)">
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 408 10
+    Q 434 10, 452 24
+    L 482 66.0
+    L 446 116
+    Q 430 126, 402 126
+    L 52 124
+    Q 28 124, 18 106
+    L 10 72.0
+    Q 6 64.0, 12 54.0
+    L 22 18" fill="rgba(141,160,220,0.22)" opacity="1" filter="url(#glow-secondary_medium_normal.svg)"/>
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 408 10
+    Q 434 10, 452 24
+    L 482 66.0
+    L 446 116
+    Q 430 126, 402 126
+    L 52 124
+    Q 28 124, 18 106
+    L 10 72.0
+    Q 6 64.0, 12 54.0
+    L 22 18" fill="url(#grad-secondary_medium_normal.svg)"/>
+
+    <g clip-path="url(#clip-secondary_medium_normal.svg)">
+      <path d="M 28 14 L 390 14 L 356 55.4 L 46 44.9 Z" fill="white" opacity="0.10"/>
+      <rect x="38" y="30.4" width="355" height="2" rx="1" fill="white" opacity="0.20"/>
+      <rect x="46" y="34.4" width="310" height="1" rx="0.5" fill="white" opacity="0.09"/>
+      <path d="M 24 73.9 L 426 67.3 L 470 114 L 40 122 Z" fill="black" opacity="0.26" filter="url(#soft-secondary_medium_normal.svg)"/>
+      <rect x="0" y="0" width="500" height="132" fill="url(#sheen-secondary_medium_normal.svg)" opacity="0.10"/>
+    </g>
+
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 408 10
+    Q 434 10, 452 24
+    L 482 66.0
+    L 446 116
+    Q 430 126, 402 126
+    L 52 124
+    Q 28 124, 18 106
+    L 10 72.0
+    Q 6 64.0, 12 54.0
+    L 22 18" stroke="rgba(220,232,255,0.34)" stroke-width="2.2" filter="url(#soft-secondary_medium_normal.svg)"/>
+  </g>
+</svg>

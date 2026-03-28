@@ -1,0 +1,64 @@
+
+/* Button pack usage */
+.menuBtn {
+  position: relative;
+  display: inline-block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 140ms ease, filter 140ms ease;
+}
+.menuBtn > img,
+.menuBtn > .bg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.menuBtn > .label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 12px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+
+.menuBtn.play { width: 320px; height: 78px; }
+.menuBtn.medium { width: 250px; height: 66px; }
+.menuBtn.wide { width: 280px; height: 66px; }
+.menuBtn.small { width: 210px; height: 60px; }
+
+.menuBtn.play .bg { content: url("/assets/ui/button_primary_large_normal.svg"); }
+.menuBtn.medium .bg { content: url("/assets/ui/button_secondary_medium_normal.svg"); }
+.menuBtn.wide .bg { content: url("/assets/ui/button_secondary_wide_normal.svg"); }
+.menuBtn.small .bg { content: url("/assets/ui/button_secondary_small_normal.svg"); }
+
+.menuBtn.play:hover .bg { content: url("/assets/ui/button_primary_large_hover.svg"); }
+.menuBtn.medium:hover .bg { content: url("/assets/ui/button_secondary_medium_hover.svg"); }
+.menuBtn.wide:hover .bg { content: url("/assets/ui/button_secondary_wide_hover.svg"); }
+.menuBtn.small:hover .bg { content: url("/assets/ui/button_secondary_small_hover.svg"); }
+
+.menuBtn.play:active .bg { content: url("/assets/ui/button_primary_large_pressed.svg"); }
+.menuBtn.medium:active .bg { content: url("/assets/ui/button_secondary_medium_pressed.svg"); }
+.menuBtn.wide:active .bg { content: url("/assets/ui/button_secondary_wide_pressed.svg"); }
+.menuBtn.small:active .bg { content: url("/assets/ui/button_secondary_small_pressed.svg"); }
+
+.menuBtn[disabled] {
+  cursor: default;
+  filter: grayscale(.15);
+}
+.menuBtn.play[disabled] .bg { content: url("/assets/ui/button_primary_large_disabled.svg"); }
+.menuBtn.medium[disabled] .bg { content: url("/assets/ui/button_secondary_medium_disabled.svg"); }
+.menuBtn.wide[disabled] .bg { content: url("/assets/ui/button_secondary_wide_disabled.svg"); }
+.menuBtn.small[disabled] .bg { content: url("/assets/ui/button_secondary_small_disabled.svg"); }
+
+.menuBtn:not([disabled]):hover { transform: translateY(-1px) scale(1.01); }
+.menuBtn:not([disabled]):active { transform: translateY(1px) scale(.995); }
+.menuBtn[disabled] > .label { opacity: .58; }
