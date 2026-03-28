@@ -26,8 +26,6 @@ vi.mock('../src/components/BullseyeBlitz/bullseyeBlitzUtils', async () => {
 import BullseyeBlitz from '../src/components/BullseyeBlitz/BullseyeBlitz';
 import gameReducer from '../src/store/gameSlice';
 import type { MinigameSession, Player } from '../src/types';
-import { BULLSEYE_CHALLENGE_ROUNDS } from '../src/components/BullseyeBlitz/bullseyeBlitzUtils';
-
 function makePlayers(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `p${i}`,
@@ -122,38 +120,32 @@ describe('BullseyeBlitz tournament flow', () => {
     vi.useRealTimers();
   });
 
-  it('displays challenge mode hint text on ready screen', () => {
+  it('displays knockout hint text on the standalone ready screen', () => {
     renderBullseyeChallenge(makePlayers(3));
 
-    expect(
-      screen.getByText(/tap the bullseyes, avoid the bombs, and carry your score into the next round!/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/4 players will be cut this round\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
   });
 
-  it('keeps challenge mode multiround and only reports the cumulative total after the final results screen when mounted without players', async () => {
+  it('runs a knockout bracket in standalone mode and only reports the total after the final results screen', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(3), { onFinish, autoStart: true });
 
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
-    expect(screen.getByText(/Round 1 • Solo challenge • Bank every point/i)).toBeInTheDocument();
-    expect(screen.getByText(/Round 1 complete — your score carries into the next round\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Advancing: You\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 complete — Player 3, Player 4, Player 5, and Player 6 are eliminated\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Advancing: You, Player 1, and Player 2\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Eliminated: Player 3, Player 4, Player 5, and Player 6\./i)).toBeInTheDocument();
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
 
-    for (let round = 2; round <= BULLSEYE_CHALLENGE_ROUNDS; round += 1) {
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(`continue to round ${round}`, 'i') }));
+    fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
 
-      if (round < BULLSEYE_CHALLENGE_ROUNDS) {
-        await advanceUntil(() => !!screen.queryByRole('button', { name: new RegExp(`continue to round ${round + 1}`, 'i') }));
-      }
-    }
+    await advanceUntil(() => !!screen.queryByText(/win[s]? Bullseye Blitz/i));
 
-    await advanceUntil(() => !!screen.queryByText(/Bullseye Blitz complete!/i));
-
-    expect(screen.getByText(/Bullseye Blitz complete!/i)).toBeInTheDocument();
+    expect(screen.getByText(/You win Bullseye Blitz!/i)).toBeInTheDocument();
     expect(screen.getByText(/Your total score: 0 pts\./i)).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
 
@@ -163,16 +155,17 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(onFinish).toHaveBeenCalledWith(0);
   });
 
-  it('runs challenge mode without passing players, matching MinigameHost mounting', async () => {
+  it('runs multiplayer knockout mode without passing players, matching MinigameHost mounting', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(2), { onFinish, autoStart: true });
 
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
-    expect(screen.getByText(/Round 1 • Solo challenge • Bank every point/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
     expect(
       screen.getByText((_content, node) => node?.textContent?.trim() === 'You (You)'),
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/Player 6/i).length).toBeGreaterThan(0);
     expect(onFinish).not.toHaveBeenCalled();
   });
 
