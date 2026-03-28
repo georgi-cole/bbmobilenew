@@ -2307,7 +2307,7 @@ const gameSlice = createSlice({
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = { ...createInitialGameState(), seed, seasonArchives, season };
       // Update the welcome message to reflect the actual season number.
-      const freshSettings = loadSettings();
+      // publicModeEnabled is already derived from settings inside createInitialGameState().
       fresh.tvFeed = [
         {
           id: 'e0',
@@ -2317,7 +2317,7 @@ const gameSlice = createSlice({
         },
         {
           id: 'e1',
-          text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`,
+          text: `[Rules] Public mode: ${fresh.publicModeEnabled === true ? 'ON' : 'OFF'}`,
           type: 'game' as const,
           timestamp: Date.now(),
         },
