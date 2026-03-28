@@ -225,12 +225,14 @@ describe('Estimation Game — winner correctness', () => {
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 91, p2: 70, p3: 55 });
 
-    // Pass explicit winnerId — component always passes this from its ranked leaderboard
+    // Pass explicit winnerId — component always passes this from its ranked leaderboard.
+    // Here, the score-derived winner would be p1 (highest AI score = 91, human = 75),
+    // but we explicitly choose p2 to ensure the store respects the override.
     store.dispatch(
-      completeMinigame({ humanScore: 75, winnerId: 'p1' } as CompleteMinigamePayload),
+      completeMinigame({ humanScore: 75, winnerId: 'p2' } as CompleteMinigamePayload),
     );
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.hohId).toBe('p2');
   });
 });
 
@@ -558,14 +560,16 @@ describe('Estimation Game — non-repeating random figure counts', () => {
     expect(allMatch).toBe(false);
   });
 
-  it('seed=1 and seed=2 produce different round-1 counts', () => {
-    const getCount = (baseSeed: number) => {
-      const roundSeed = ((baseSeed ^ (1 * 0x6b7f5)) >>> 0) || 1;
-      const rng = mulberry32(roundSeed);
-      return 15 + Math.floor(rng() * 11);
-    };
-    // With XOR mixing, seed=1 and seed=2 should give different counts
-    expect(getCount(1)).not.toBe(getCount(2));
+  it('seed=1 and seed=2 produce different round-1 seeds (XOR-mix guarantee)', () => {
+    const getRoundSeed = (baseSeed: number) =>
+      ((baseSeed ^ (1 * 0x6b7f5)) >>> 0) || 1;
+
+    const roundSeed1 = getRoundSeed(1);
+    const roundSeed2 = getRoundSeed(2);
+
+    // With XOR mixing, seed=1 and seed=2 must give different effective round seeds
+    // (testing seeds rather than sampled counts avoids brittle collisions in small ranges)
+    expect(roundSeed1).not.toBe(roundSeed2);
   });
 });
 

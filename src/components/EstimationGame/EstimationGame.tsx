@@ -422,11 +422,14 @@ export default function EstimationGame({
 
     if (session) {
       const allScores = buildAllScores(session, humanId, humanAvg, players);
-      // For human player, we know the response time; AI tiebreakers are derived
-      // from session.aiTiebreakers if available, or remain at Infinity (stable fallback).
-      const respMap: Record<string, number> = {};
-      if (humanId) respMap[humanId] = totalRespMs;
-      const ranked = rankParticipants(allScores, session.participants, respMap);
+      // In the session/competition path, rank participants by score; ties fall back
+      // to the stable participant order defined in session.participants.
+      // We intentionally do NOT pass the human's response time here because AI
+      // participants would implicitly get Infinity, which would always favour the
+      // human on any tied score and violate the "don't crown the human by default"
+      // requirement.  The MinigameHost (challenge) path does use response time
+      // because AI tiebreakers are pre-computed there via challengeSlice.
+      const ranked = rankParticipants(allScores, session.participants);
 
       const entries: ScoreEntry[] = ranked.map((id) => {
         const p = players.find((pl) => pl.id === id);
