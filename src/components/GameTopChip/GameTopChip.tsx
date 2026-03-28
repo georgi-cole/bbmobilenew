@@ -36,7 +36,7 @@ export default function GameTopChip({
 }: GameTopChipProps) {
   const chipSrc = `${BASE}/assets/control_dock/top_chip.svg`;
   const Tag = onClick ? 'button' : 'span';
-  const normalizedLabel = label.trim() || label;
+  const normalizedLabel = label.trim();
   const overflowChars = Math.max(0, normalizedLabel.length - LABEL_SCALE_SOFT_LIMIT);
   const labelScale = Math.max(MIN_LABEL_SCALE, 1 - overflowChars * LABEL_SCALE_STEP);
   const contentPadding = overflowChars > 0 ? COMPACT_LABEL_PADDING : BASE_LABEL_PADDING;
