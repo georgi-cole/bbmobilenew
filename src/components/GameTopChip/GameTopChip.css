@@ -13,8 +13,10 @@
   /* Prevent shrinking in the pill strip */
   flex-shrink: 0;
   /* Vertical size matches existing status pills */
-  height: 26px;
-  min-width: 64px;
+  height: 28px;
+  min-width: 68px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 /* Chips that are buttons */
@@ -60,8 +62,8 @@ button.game-top-chip:focus-visible {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 10px;
+  gap: 5px;
+  padding: 0 13px;
   pointer-events: none;
   white-space: nowrap;
 }
@@ -74,10 +76,10 @@ button.game-top-chip:focus-visible {
 }
 
 .game-top-chip__label {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.45px;
   color: var(--color-text, #fff);
   line-height: 1;
 }

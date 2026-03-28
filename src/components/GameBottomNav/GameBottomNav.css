@@ -1,9 +1,9 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
   /* Match the approved segment plate art width from the final asset preview. */
-  --game-bottom-nav-segment-max-width: 152px;
+  --game-bottom-nav-segment-max-width: 156px;
   position: relative;
-  height: calc(var(--nav-bar-height, 58px) + env(safe-area-inset-bottom, 0px));
+  height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
   -webkit-user-select: none;
   user-select: none;
@@ -26,7 +26,7 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
-  height: var(--nav-bar-height, 58px);
+  height: var(--nav-bar-height, 62px);
   padding: 0 5%;
 }
 
@@ -37,10 +37,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   background: transparent;
   border: none;
-  padding: 3px 4px 2px;
+  padding: 4px 4px 3px;
   cursor: pointer;
   color: rgba(238, 242, 255, 0.92);
   opacity: 0.84;
@@ -57,7 +57,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(88%, var(--game-bottom-nav-segment-max-width));
+  width: min(92%, var(--game-bottom-nav-segment-max-width));
   height: auto;
   transform: translate(-50%, -50%);
   opacity: 0.72;
@@ -69,8 +69,8 @@
 .game-bottom-nav__glyph {
   position: relative;
   z-index: 1;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   filter: saturate(0.86) contrast(0.94) brightness(0.97);
   pointer-events: none;
@@ -80,7 +80,7 @@
 .game-bottom-nav__label {
   position: relative;
   z-index: 1;
-  font-size: 0.5rem;
+  font-size: 0.52rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.24px;
