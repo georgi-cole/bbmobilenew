@@ -23,6 +23,7 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
   const onCloseRef = useRef(onClose);
   const ep = enrichPlayer(player);
   const { city, nationality } = parseLocation(ep.location);
+  const dialogShellSrc = `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/assets/bed_avatar_glass_v2.svg`;
 
   const fields: Array<{ label: string; value: string | number | undefined }> = [
     { label: 'Age', value: ep.age },
@@ -65,6 +66,13 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
         tabIndex={-1}
         ref={dialogRef}
       >
+        <img
+          className="hg-info-dialog__shell"
+          src={dialogShellSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
         <button
           className="hg-info-dialog__close"
           onClick={onClose}

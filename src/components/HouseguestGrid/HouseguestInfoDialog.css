@@ -22,15 +22,26 @@
   max-width: 320px;
   padding: 20px 18px 22px;
   border-radius: 18px;
-  background: linear-gradient(160deg, rgba(30, 18, 60, 0.97) 0%, rgba(14, 20, 42, 0.97) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: linear-gradient(160deg, rgba(11, 16, 40, 0.94) 0%, rgba(17, 24, 50, 0.94) 100%);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.58);
+  overflow: hidden;
   animation: hgInfoDialogIn 0.2s ease;
+}
+
+.hg-info-dialog__shell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+  object-fit: fill;
+  z-index: 0;
+}
+
+.hg-info-dialog > *:not(.hg-info-dialog__shell) {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes hgInfoDialogIn {
