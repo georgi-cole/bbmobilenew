@@ -89,7 +89,7 @@ describe('PublicSaveReveal', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tap to skip' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip reveal animation' }));
     expect(onDone).toHaveBeenCalledTimes(1);
 
     act(() => {

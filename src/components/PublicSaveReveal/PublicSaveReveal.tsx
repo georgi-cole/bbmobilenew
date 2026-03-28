@@ -143,6 +143,7 @@ export default function PublicSaveReveal({
                         'psr__status-pill',
                         isSaved ? 'psr__status-pill--saved' : 'psr__status-pill--nominated',
                       ].join(' ')}
+                      aria-label={isSaved ? `${player.name} saved` : `${player.name} remains nominated`}
                     >
                       {isSaved ? 'Saved' : '?'}
                     </span>
@@ -177,7 +178,12 @@ export default function PublicSaveReveal({
           </div>
         )}
 
-        <button type="button" className="psr__skip" onClick={handleSkip}>
+        <button
+          type="button"
+          className="psr__skip"
+          onClick={handleSkip}
+          aria-label="Skip reveal animation"
+        >
           Tap to skip
         </button>
       </div>
