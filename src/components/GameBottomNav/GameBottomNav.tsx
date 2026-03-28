@@ -8,8 +8,8 @@ const NAV_ITEMS: { tab: NavTab; glyph: string; label: string }[] = [
   { tab: 'home',        glyph: 'home_approved_final.svg',        label: 'HOME'        },
   { tab: 'rules',       glyph: 'rules_approved_final.svg',       label: 'RULES'       },
   { tab: 'settings',    glyph: 'settings_approved_final.svg',    label: 'SETTINGS'    },
-  { tab: 'leaderboard', glyph: 'leaderboard_approved_final.svg', label: 'LEADERBOARD' },
-  { tab: 'profile',     glyph: 'profile_approved_final.svg',     label: 'PROFILE'     },
+  { tab: 'leaderboard', glyph: 'leaderboard_approved_final.svg', label: 'BOARD'       },
+  { tab: 'profile',     glyph: 'profile_approved_final.svg',     label: 'USER'        },
 ];
 
 export interface GameBottomNavProps {

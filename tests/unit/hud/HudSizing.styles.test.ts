@@ -48,6 +48,6 @@ describe('HUD sizing styles', () => {
     expect(chipCss).toContain('padding: 0 var(--game-top-chip-inline-padding, 13px);');
     expect(chipCss).toContain('font-size: 0.68rem;');
     expect(houseguestGridCss).toContain('padding: 4px 8px 6px;');
-    expect(houseguestGridCss).toContain('margin-bottom: 6px;');
+    expect(houseguestGridCss).toContain('margin-bottom: 10px;');
   });
 });
