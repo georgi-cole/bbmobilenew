@@ -180,6 +180,7 @@ export function createInitialGameState(): GameState {
     competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
     tvFeed: [
       { id: 'e0', text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`, type: 'game', timestamp: Date.now() },
+      { id: 'e1', text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`, type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
     seasonArchives,
@@ -2306,12 +2307,21 @@ const gameSlice = createSlice({
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = { ...createInitialGameState(), seed, seasonArchives, season };
       // Update the welcome message to reflect the actual season number.
-      fresh.tvFeed = [{
-        id: 'e0',
-        text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
-        type: 'game' as const,
-        timestamp: Date.now(),
-      }];
+      const freshSettings = loadSettings();
+      fresh.tvFeed = [
+        {
+          id: 'e0',
+          text: `Welcome to The Big Eye house! 🏠 Season ${season} is about to begin.`,
+          type: 'game' as const,
+          timestamp: Date.now(),
+        },
+        {
+          id: 'e1',
+          text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`,
+          type: 'game' as const,
+          timestamp: Date.now(),
+        },
+      ];
       return fresh;
     },
     /**

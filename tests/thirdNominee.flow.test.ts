@@ -150,7 +150,7 @@ describe('third nominee — AI HOH normal week', () => {
     expect(state.nomineeIds).toHaveLength(3);
     expect(nomineeNames.every(Boolean)).toBe(true);
     expect(state.tvFeed[0]?.text).toContain(
-      `${nomineeNames.join(', ')} have been nominated for eviction.`,
+      `${nomineeNames.join(', ')} have been nominated for elimination`,
     );
     expect(state.tvFeed[0]?.text).not.toContain(
       `${nomineeNames.join(' and ')} have been nominated for eviction.`,
@@ -258,7 +258,7 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
 
     expect(state.tvFeed[0]?.text).toContain('Player 0 nominated Player 1 and Player 2');
     expect(state.tvFeed[0]?.text).toContain(
-      'Player 5 was automatically nominated for finishing last in the HOH competition',
+      'Player 5 was automatically nominated for finishing last in the LOH competition',
     );
     expect(state.tvFeed[0]?.text).not.toContain('Player 1, Player 2, Player 5 have been nominated for eviction by Player 0');
   });
@@ -367,7 +367,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pov_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
 
   it('skips pre_veto_public_save and still announces POV when public mode is off', () => {
@@ -384,7 +384,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pov_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
 
   it('skips pre_veto_public_save when the block is not exactly 3 nominees', () => {
@@ -401,7 +401,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pov_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
 
   it('commitPublicSave removes saved nominee, records publicSavedNomineeId, and advances phase', () => {
@@ -431,7 +431,7 @@ describe('pre_veto_public_save phase', () => {
     // Saved player reverts to active
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('active');
     expect(state.tvFeed.some((event) => event.text.includes('has been saved by the public'))).toBe(true);
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Veto competition');
+    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
 
   it('commitPublicSave is a no-op when phase is not pre_veto_public_save', () => {

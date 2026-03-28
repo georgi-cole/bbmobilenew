@@ -19,6 +19,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import CeremonyOverlay from '../../src/components/CeremonyOverlay/CeremonyOverlay';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
@@ -93,6 +94,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
   });
@@ -246,7 +248,7 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
 
     // CeremonyOverlay should be visible with appropriate aria label.
     const statusEl = screen.getByRole('status');
-    expect(statusEl.getAttribute('aria-label')).toContain('wins Head of Household');
+    expect(statusEl.getAttribute('aria-label')).toContain('wins Leader of the House');
 
     // Advance past default durationMs (2800) + exit animation (350).
     await act(async () => { vi.advanceTimersByTime(2800); });
