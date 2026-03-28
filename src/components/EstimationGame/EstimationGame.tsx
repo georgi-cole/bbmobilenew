@@ -314,10 +314,36 @@ export default function EstimationGame({
         };
       });
 
+      if (import.meta.env.DEV) {
+        console.log('[EstimationDebug] finishGame — session path', {
+          humanId,
+          humanTotal,
+          sessionParticipants: session.participants,
+          sessionKey: session.key,
+          hybridResolveOnComplete: session.hybridResolveOnComplete,
+          allScores,
+          rankedOrder: ranked,
+          leaderboard: entries.map((e, i) => ({
+            rank: i + 1,
+            id: e.id,
+            name: e.name,
+            totalScore: e.totalScore,
+            isHuman: e.isHuman,
+          })),
+          computedWinnerId: entries[0]?.id,
+        });
+      }
+
       setScores(entries);
       setPhase('results');
     } else {
       // MinigameHost path
+      if (import.meta.env.DEV) {
+        console.log('[EstimationDebug] finishGame — MinigameHost path (no session)', {
+          humanTotal,
+          hasOnFinish: !!onFinish,
+        });
+      }
       if (onFinish) onFinish(humanTotal);
     }
   }, [roundResults, session, humanId, players, onFinish]);
@@ -349,8 +375,23 @@ export default function EstimationGame({
         )
       : undefined;
     const payload: CompleteMinigamePayload = { humanScore: humanTotal, lastPlaceId, winnerId };
+    if (import.meta.env.DEV) {
+      console.log('[EstimationDebug] handleDone — dispatching completeMinigame', {
+        payload,
+        leaderboard: scores.map((e, i) => ({
+          rank: i + 1,
+          id: e.id,
+          name: e.name,
+          totalScore: e.totalScore,
+          isHuman: e.isHuman,
+        })),
+        humanId,
+        sessionParticipants: session.participants,
+        path: 'session/competition (completeMinigame)',
+      });
+    }
     dispatch(completeMinigame(payload));
-  }, [dispatch, roundResults, scores, session]);
+  }, [dispatch, roundResults, scores, session, humanId]);
 
   // ── Canvas drawing ─────────────────────────────────────────────────────────
 

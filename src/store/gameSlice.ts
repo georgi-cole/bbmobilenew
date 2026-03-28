@@ -357,7 +357,15 @@ function markFinalHohWinner(state: GameState, winnerId: string) {
 /**
  * Apply an HOH winner to state.  Used by both advance() and completeMinigame().
  */
-function applyHohWinner(state: GameState, winnerId: string) {
+function applyHohWinner(state: GameState, winnerId: string, source?: string) {
+  if (import.meta.env.DEV) {
+    console.log('[applyHohWinner]', {
+      source: source ?? 'unknown',
+      previousHohId: state.hohId,
+      nextHohId: winnerId,
+      currentPhase: state.phase,
+    });
+  }
   state.hohId = winnerId;
   state.players.forEach((p) => {
     if (p.id === winnerId) p.status = 'hoh';
@@ -586,6 +594,18 @@ const gameSlice = createSlice({
 
       const humanPlayer = state.players.find((p) => p.isUser);
 
+      if (import.meta.env.DEV) {
+        console.log('[completeMinigame] received', {
+          payload,
+          sessionKey: session.key,
+          sessionParticipants: session.participants,
+          hybridResolveOnComplete: session.hybridResolveOnComplete,
+          currentPhase: state.phase,
+          precomputedAiScores: session.aiScores,
+          humanPlayerId: humanPlayer?.id,
+        });
+      }
+
       let scores: Record<string, number>;
 
       if (session.hybridResolveOnComplete) {
@@ -622,7 +642,21 @@ const gameSlice = createSlice({
       // displayed leaderboard and the applied state transition stay aligned.
       // When using the hybrid resolver the component also calls it with the
       // same inputs, so the winnerId it supplies will be consistent.
-      const winnerId = payload.winnerId ?? determineWinner(session.participants, scores);
+      const derivedWinnerId = determineWinner(session.participants, scores);
+      const winnerId = payload.winnerId ?? derivedWinnerId;
+
+      if (import.meta.env.DEV) {
+        console.log('[completeMinigame] winner resolution', {
+          sessionKey: session.key,
+          resolvedScores: scores,
+          payloadWinnerId: payload.winnerId,
+          derivedWinnerId,
+          chosenWinnerId: winnerId,
+          usedExplicit: payload.winnerId != null,
+          currentPhase: state.phase,
+          payloadLastPlaceId: payload.lastPlaceId,
+        });
+      }
 
       // Update personal records for every participant
       const personalRecords: Record<string, number> = {};
@@ -655,7 +689,7 @@ const gameSlice = createSlice({
       // which would risk being consumed by a later advance() call.
       const alive = getAlivePlayers(state);
       if (state.phase === 'hoh_comp') {
-        applyHohWinner(state, winnerId);
+        applyHohWinner(state, winnerId, '[completeMinigame]');
         state.phase = 'hoh_results';
         // Track the last-place HOH competition finisher for the third-nominee rule.
         // Priority:
@@ -717,15 +751,40 @@ const gameSlice = createSlice({
       const resolvedScores = scores ?? buildFallbackScores(resolvedParticipants, winnerId);
       // includePlacementBonuses takes precedence; scores imply we have ranking info.
       const usePlacementBonuses = includePlacementBonuses ?? hasScores;
+
+      if (import.meta.env.DEV) {
+        console.log('[applyMinigameWinner] entry', {
+          incomingWinnerId: winnerId,
+          incomingParticipants: participants,
+          resolvedParticipants,
+          incomingScores: scores,
+          resolvedScores,
+          lastPlaceId,
+          lastPlaceType,
+          currentPhase: state.phase,
+          currentHohId: state.hohId,
+        });
+      }
+
       let winnerWasApplied = false;
       if (state.phase === 'hoh_comp') {
         // Idempotency: if hohId already set the winner was already applied.
         if (state.hohId) {
-          console.log('[gameSlice] applyMinigameWinner: HOH already applied, skipping.');
+          if (import.meta.env.DEV) {
+            console.log('[applyMinigameWinner] HOH already applied, skipping.', {
+              existingHohId: state.hohId,
+              incomingWinnerId: winnerId,
+            });
+          }
           return;
         }
-        console.log('[gameSlice] applyMinigameWinner: applying HOH winner', winnerId);
-        applyHohWinner(state, winnerId);
+        if (import.meta.env.DEV) {
+          console.log('[applyMinigameWinner] applying HOH winner', {
+            winnerId,
+            currentPhase: state.phase,
+          });
+        }
+        applyHohWinner(state, winnerId, '[applyMinigameWinner]');
         state.phase = 'hoh_results';
         winnerWasApplied = true;
         // Track the last-place HOH competition finisher for the third-nominee rule.
@@ -756,10 +815,17 @@ const gameSlice = createSlice({
       } else if (state.phase === 'pov_comp') {
         // Idempotency: if povWinnerId already set the winner was already applied.
         if (state.povWinnerId) {
-          console.log('[gameSlice] applyMinigameWinner: POV already applied, skipping.');
+          if (import.meta.env.DEV) {
+            console.log('[applyMinigameWinner] POV already applied, skipping.', {
+              existingPovWinnerId: state.povWinnerId,
+              incomingWinnerId: winnerId,
+            });
+          }
           return;
         }
-        console.log('[gameSlice] applyMinigameWinner: applying POV winner', winnerId);
+        if (import.meta.env.DEV) {
+          console.log('[applyMinigameWinner] applying POV winner', { winnerId, currentPhase: state.phase });
+        }
         state.phase = applyPovWinner(state, winnerId, alive);
         winnerWasApplied = true;
       }
@@ -818,6 +884,14 @@ const gameSlice = createSlice({
       } else if (state.phase === 'final3_comp3_minigame') {
         // Crown the Final HOH (mirrors the deterministic path in advance() for final3_comp3).
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+        if (import.meta.env.DEV) {
+          console.log('[applyHohWinner]', {
+            source: '[applyF3MinigameWinner/final3_comp3_minigame]',
+            previousHohId: state.hohId,
+            nextHohId: winnerId,
+            currentPhase: state.phase,
+          });
+        }
         state.hohId = winnerId;
         markFinalHohWinner(state, winnerId);
         state.players.forEach((p) => {
@@ -1985,6 +2059,14 @@ const gameSlice = createSlice({
 
       // Crown HOH (may already be set from advance(); idempotent).
       if (hoh && state.hohId !== hohWinnerId) {
+        if (import.meta.env.DEV) {
+          console.log('[applyHohWinner]', {
+            source: '[finalizeFinal3Decision]',
+            previousHohId: state.hohId,
+            nextHohId: hohWinnerId,
+            currentPhase: state.phase,
+          });
+        }
         state.hohId = hohWinnerId;
         state.players.forEach((p) => {
           if (p.status === 'hoh') p.status = 'active';
@@ -2500,6 +2582,14 @@ const gameSlice = createSlice({
         const finalHoh = seededPick(rng, pool);
 
         // Crown the Final HOH
+        if (import.meta.env.DEV) {
+          console.log('[applyHohWinner]', {
+            source: '[advance/final3_comp3]',
+            previousHohId: state.hohId,
+            nextHohId: finalHoh.id,
+            currentPhase: state.phase,
+          });
+        }
         state.hohId = finalHoh.id;
         markFinalHohWinner(state, finalHoh.id);
         state.players.forEach((p) => {
@@ -2792,7 +2882,7 @@ const gameSlice = createSlice({
             : alive;
           const hohEligible = hohPool.length > 0 ? hohPool : alive;
           const hoh = seededPick(rng, hohEligible);
-          applyHohWinner(state, hoh.id);
+          applyHohWinner(state, hoh.id, '[advance/hoh_results]');
           // Track last-place HOH competition finisher for the third-nominee rule.
           // Use RNG to pick deterministically among non-HOH eligible players.
           const lastPlacePool = hohEligible.filter((p) => p.id !== hoh.id);

@@ -1779,9 +1779,30 @@ export default function GameScreen() {
               capturedParticipants.includes(reactCompletion.authoritativeWinnerId)
                 ? reactCompletion.authoritativeWinnerId
                 : null;
+
+            if (import.meta.env.DEV) {
+              console.log('[HOH_CROWN] MinigameHost onDone — challenge completion', {
+                capturedGameKey,
+                capturedParticipants,
+                rawValue: rawResults.find((r) => r.playerId === humanPlayer?.id)?.rawValue,
+                rawResults,
+                reactCompletion,
+                explicitWinnerId,
+                partial,
+                pendingChallengeAiScores: pendingChallenge.aiScores,
+              });
+            }
+
             const scoreWinnerId = dispatch(completeChallenge(rawResults, {
               authoritativeWinnerId: explicitWinnerId,
             })) as string | null;
+
+            if (import.meta.env.DEV) {
+              console.log('[HOH_CROWN] completeChallenge returned scoreWinnerId', {
+                scoreWinnerId,
+                capturedGameKey,
+              });
+            }
             // Only record personal records for valid (non-early-exit) completions.
             // A partial=true exit uses rawValue=0 for the human and would
             // incorrectly set a "best" 0-score for lowerBetter games.
@@ -1825,6 +1846,22 @@ export default function GameScreen() {
                 ? featureAppliedWinner
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
+            if (import.meta.env.DEV) {
+              console.log('[HOH_CROWN] winner resolution in GameScreen', {
+                capturedGameKey,
+                capturedPrizeType,
+                capturedParticipants,
+                rawResults,
+                explicitWinnerId,
+                featureAppliedWinner,
+                scoreWinnerId,
+                finalWinnerId,
+                fallbackWasCapturedParticipants0: !explicitWinnerId && !featureAppliedWinner && !scoreWinnerId,
+                liveHohId: liveState.game.hohId,
+                livePhase: liveState.game.phase,
+              });
+            }
+
             // Compute the last-place finisher for the HOH third-nominee rule.
             // Use computeScores with the game's actual scoringAdapter so the canonical
             // ranking matches the results screen (handles both lowerBetter and higherBetter).
@@ -1859,7 +1896,18 @@ export default function GameScreen() {
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
-            console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+            if (import.meta.env.DEV) {
+              console.log('[HOH_CROWN] HOH_CROWN_ANIM_STARTED', {
+                winnerId: finalWinnerId,
+                label: winLabel,
+                screen: 'GameScreen',
+                storeHohId: liveState.game.hohId,
+                phase: liveState.game.phase,
+                capturedGameKey,
+              });
+            } else {
+              console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+            }
             const tiles: CeremonyTile[] = [{
               rect: sourceDomRect,
               badge: winSymbol,
