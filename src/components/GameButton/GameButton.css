@@ -32,6 +32,13 @@
   opacity: 0.6;
 }
 
+/* Keyboard focus ring — visible only for keyboard navigation */
+.game-btn:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 /* SVG background fills the button, no stretching */
 .btn-bg {
   display: block;

@@ -7,6 +7,8 @@ export type GameButtonVariant =
   | 'secondary_wide'
   | 'secondary_small';
 
+type GameButtonState = 'normal' | 'hover' | 'pressed' | 'disabled';
+
 interface GameButtonProps {
   label: string;
   icon?: ReactNode;
@@ -17,7 +19,7 @@ interface GameButtonProps {
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-function resolveAsset(variant: GameButtonVariant, state: string): string {
+function resolveAsset(variant: GameButtonVariant, state: GameButtonState): string {
   return `${BASE}/assets/buttons/${variant}_${state}.svg`;
 }
 
@@ -31,7 +33,7 @@ export default function GameButton({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
-  const state = disabled
+  const state: GameButtonState = disabled
     ? 'disabled'
     : isPressed
     ? 'pressed'
@@ -43,7 +45,7 @@ export default function GameButton({
 
   return (
     <button
-      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}`}
+      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}`}
       type="button"
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
