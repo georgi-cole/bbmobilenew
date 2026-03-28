@@ -386,6 +386,79 @@ export function hasAnyValidMove(board: Board): boolean {
   return false;
 }
 
+// ── Valid move enumeration ─────────────────────────────────────────────────────
+
+/** A pair of adjacent cells whose swap produces at least one match. */
+export interface ValidMove {
+  r1: number; c1: number; r2: number; c2: number;
+}
+
+/**
+ * Return ALL adjacent swaps that produce at least one match.
+ *
+ * This is the canonical "move catalogue" used by:
+ * - The hint system (highlight a suggested move after inactivity).
+ * - The debug overlay (show total valid move count).
+ * - The AI simulator (verify the board is playable before each step).
+ *
+ * Each swap is listed once: the cell with the smaller (row, col) pair is always
+ * (r1, c1).  Only right and down neighbours are checked per origin cell, so
+ * there are no duplicates.
+ *
+ * Returns an empty array when the board is deadlocked.
+ *
+ * Solvability note:
+ * - Some code paths use a lightweight predicate (e.g. hasAnyValidMove()) for
+ *   simple deadlock checks and reshuffles.
+ * - When full move enumeration is needed (hints, debugging, AI), callers
+ *   should rely on getAllValidMoves() as the single source of truth.
+ */
+/**
+ * Internal helper to traverse the board and invoke `visitor` for every
+ * adjacent swap that would create at least one match.
+ *
+ * Keeping this logic in a single place avoids divergence between
+ * getAllValidMoves() and hasAnyValidMove() or other callers.
+ */
+function forEachValidMove(
+  board: Board,
+  visitor: (r1: number, c1: number, r2: number, c2: number) => void,
+): void {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].kind !== 'normal') continue;
+      // Check right neighbour
+      if (
+        c + 1 < cols &&
+        board[r][c + 1].kind === 'normal' &&
+        swapCreatesMatch(board, r, c, r, c + 1)
+      ) {
+        visitor(r, c, r, c + 1);
+      }
+      // Check down neighbour
+      if (
+        r + 1 < rows &&
+        board[r + 1][c].kind === 'normal' &&
+        swapCreatesMatch(board, r, c, r + 1, c)
+      ) {
+        visitor(r, c, r + 1, c);
+      }
+    }
+  }
+}
+
+export function getAllValidMoves(board: Board): ValidMove[] {
+  const moves: ValidMove[] = [];
+
+  forEachValidMove(board, (r1, c1, r2, c2) => {
+    moves.push({ r1, c1, r2, c2 });
+  });
+  return moves;
+}
+
 // ── Reshuffle ─────────────────────────────────────────────────────────────────
 
 /**
@@ -546,6 +619,46 @@ export function countNormalTiles(board: Board): number {
   let count = 0;
   for (const row of board) for (const cell of row) if (cell.kind === 'normal') count++;
   return count;
+}
+
+// ── Target-based win condition ────────────────────────────────────────────────
+
+/**
+ * Count the number of target positions that have NOT yet been cleared.
+ *
+ * A target is cleared when the cell at its [row, col] is empty.
+ *
+ * When `targetPositions` is empty, returns the number of normal tiles remaining
+ * (fallback to the original "clear all tiles" behaviour).
+ *
+ * Solvability guarantee:
+ * - Every target position must be breakable via the standard match/blocker-hit
+ *   mechanic.  Level authors ensure this by only placing targets at blocker
+ *   cells that are adjacent to normal-tile neighbours.
+ */
+export function countRemainingTargets(board: Board, targetPositions: [number, number][]): number {
+  if (targetPositions.length === 0) return countNormalTiles(board);
+  return targetPositions.filter(([r, c]) => board[r]?.[c]?.kind !== 'empty').length;
+}
+
+/**
+ * Return true when the win condition for the current board state is satisfied.
+ *
+ * Win condition:
+ * - If `targetPositions` is non-empty: ALL target positions must be empty (cleared).
+ *   This is the "target tile" model — players win by destroying specific obstacles.
+ * - If `targetPositions` is empty or omitted: ALL normal tiles must be cleared
+ *   (original fallback behaviour for levels without explicit targets).
+ *
+ * Using explicit targets avoids the "full-board-clear with infinite refill"
+ * contradiction: once all targets are cleared the board is genuinely won,
+ * regardless of any remaining non-target normal tiles.
+ */
+export function checkWinCondition(board: Board, targetPositions?: [number, number][]): boolean {
+  if (!targetPositions || targetPositions.length === 0) {
+    return countNormalTiles(board) === 0;
+  }
+  return targetPositions.every(([r, c]) => board[r]?.[c]?.kind === 'empty');
 }
 
 // ── Scoring ───────────────────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ export const LEVELS: LevelConfig[] = [
   // Completely open board — no blockers at all.  Players learn the matching
   // mechanic with no obstacles.  tileLayout is omitted so the seeded RNG fills
   // all 56 cells (with 3-in-a-row avoidance), guaranteeing an initial move.
+  // No targetPositions → fallback win = clear all normal tiles.
   {
     id: 1,
     name: 'The Outer Gate',
@@ -63,11 +64,13 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    // No targetPositions — win by clearing all normal tiles (intro level).
   },
 
   // ─── Level 2: Easy-Normal ──────────────────────────────────────────────────
   // Two crates in the upper-middle, two in the lower-middle.  Symmetric and
   // predictable.  A good warm-up for blocker mechanics.
+  // Win: destroy all 4 crates (target = all blocker positions).
   {
     id: 2,
     name: 'The Gatehouse',
@@ -84,10 +87,13 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    // Targets = all 4 crate positions.  Win when all 4 are destroyed.
+    targetPositions: [[2, 2], [2, 4], [5, 2], [5, 4]],
   },
 
   // ─── Level 3: Normal ───────────────────────────────────────────────────────
   // Four crates in a symmetric cross-arms pattern.  Mild challenge.
+  // Win: destroy all 6 crates.
   {
     id: 3,
     name: 'The Great Hall',
@@ -104,11 +110,13 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    targetPositions: [[1, 1], [1, 5], [3, 0], [3, 6], [5, 1], [5, 5]],
   },
 
   // ─── Level 4: Medium ───────────────────────────────────────────────────────
   // Diamond formation of 2-hit stone blockers with 1-hit crates on the sides.
   // Players learn that stones need two adjacent clears.
+  // Win: destroy all 8 blockers.
   {
     id: 4,
     name: 'The Dungeon Corridor',
@@ -125,11 +133,13 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    targetPositions: [[1, 2], [1, 4], [2, 1], [2, 5], [4, 1], [4, 5], [5, 2], [5, 4]],
   },
 
   // ─── Level 5: Medium-Hard ─────────────────────────────────────────────────
   // Two horizontal pairs of stones in rows 2 and 5, with a gap in the centre
   // so tiles above and below can flow.  No isolated segments.
+  // Win: destroy all 8 stone blockers.
   {
     id: 5,
     name: 'The Siege Works',
@@ -146,10 +156,12 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    targetPositions: [[2, 1], [2, 2], [2, 4], [2, 5], [5, 1], [5, 2], [5, 4], [5, 5]],
   },
 
   // ─── Level 6: Hard ─────────────────────────────────────────────────────────
   // Border frame of crates with corner stone clusters.  Open centre.
+  // Win: destroy all 12 blockers.
   {
     id: 6,
     name: 'The Guard Tower',
@@ -166,11 +178,19 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', 'X', '', '', '', 'X', ''],
     ],
+    targetPositions: [
+      [0, 1], [0, 5],
+      [2, 0], [2, 2], [2, 4], [2, 6],
+      [4, 0], [4, 6],
+      [5, 2], [5, 4],
+      [7, 1], [7, 5],
+    ],
   },
 
   // ─── Level 7: Hard-Expert ─────────────────────────────────────────────────
   // Alternating stone columns — creates corridors the player must clear through.
   // Column segments are all ≥ 4 tiles, so no tiny-island risk.
+  // Win: destroy all 6 stone blockers.
   {
     id: 7,
     name: 'The Armoured Columns',
@@ -187,12 +207,14 @@ export const LEVELS: LevelConfig[] = [
       ['', '', '', '', '', '', ''],
       ['', '', '', '', '', '', ''],
     ],
+    targetPositions: [[1, 1], [1, 3], [1, 5], [4, 1], [4, 3], [4, 5]],
   },
 
   // ─── Level 8: Expert ──────────────────────────────────────────────────────
   // Double-ring blocker frame: crates on the outer ring, stones in the inner
   // positions.  Row 3 and row 7 are fully open giving the board a central open
   // lane and a wide clear base.  44 normal tiles with varied seeded symbols.
+  // Win: destroy all 12 blockers.
   {
     id: 8,
     name: "The King's Chamber",
@@ -208,6 +230,14 @@ export const LEVELS: LevelConfig[] = [
       ['X', '', '', '', '', '', 'X'],
       ['', 'X', '', '', '', 'X', ''],
       ['', '', '', '', '', '', ''],
+    ],
+    targetPositions: [
+      [0, 1], [0, 5],
+      [1, 0], [1, 6],
+      [2, 2], [2, 4],
+      [4, 2], [4, 4],
+      [5, 0], [5, 6],
+      [6, 1], [6, 5],
     ],
   },
 ];

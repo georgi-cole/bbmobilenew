@@ -26,8 +26,11 @@ import {
   hitBlockers,
   applyGravity,
   hasAnyValidMove,
+  getAllValidMoves,
   shuffleNormalTiles,
   countNormalTiles,
+  countRemainingTargets,
+  checkWinCondition,
   computeFinalScore,
   validateLevel,
   mulberry32,
@@ -663,5 +666,247 @@ describe('rescueTheKing registry entry', () => {
     const entry = getGame('rescueTheKing');
     expect(entry?.implementation).toBe('react');
     expect(entry?.legacy).toBe(false);
+  });
+});
+
+// ── getAllValidMoves ───────────────────────────────────────────────────────────
+
+describe('getAllValidMoves', () => {
+  it('returns an empty array on a deadlocked 2×2 board', () => {
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(getAllValidMoves(board)).toHaveLength(0);
+  });
+
+  it('returns moves on a board with a known valid swap', () => {
+    const board = makeBoard([
+      ['sword', 'gem',   'gem'],
+      ['gem',   'sword', 'crown'],
+      ['crown', 'shield','potion'],
+    ]);
+    const moves = getAllValidMoves(board);
+    expect(moves.length).toBeGreaterThan(0);
+  });
+
+  it('each returned move actually produces a match', () => {
+    const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: 0xDEAD_BEEF, blockerLayout: [] };
+    const board = buildBoard(level);
+    for (const move of getAllValidMoves(board)) {
+      const tmp: Board = board.map(row => [...row]);
+      [tmp[move.r1][move.c1], tmp[move.r2][move.c2]] = [tmp[move.r2][move.c2], tmp[move.r1][move.c1]];
+      expect(findAllMatches(tmp).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('returns no duplicate (r1,c1,r2,c2) pairs', () => {
+    const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: 0xABCD, blockerLayout: [] };
+    const board = buildBoard(level);
+    const moves = getAllValidMoves(board);
+    const seen = new Set<string>();
+    for (const m of moves) {
+      const key = `${m.r1},${m.c1}-${m.r2},${m.c2}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    }
+  });
+
+  it('getAllValidMoves returns at least one move on every shipped level', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    for (const level of LEVELS) {
+      const board = buildBoard(level, 0);
+      const moves = getAllValidMoves(board);
+      expect(moves.length, `Level ${level.id} "${level.name}" has no valid moves`).toBeGreaterThan(0);
+    }
+  });
+
+  it('is consistent with hasAnyValidMove', () => {
+    const deadlock = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(getAllValidMoves(deadlock).length > 0).toBe(hasAnyValidMove(deadlock));
+
+    const level: LevelConfig = { id: 1, name: 'T', rows: 8, cols: 7, seed: 0x1234, blockerLayout: [] };
+    const full = buildBoard(level);
+    expect(getAllValidMoves(full).length > 0).toBe(hasAnyValidMove(full));
+  });
+});
+
+// ── checkWinCondition ─────────────────────────────────────────────────────────
+
+describe('checkWinCondition', () => {
+  it('returns true when all normal tiles are cleared and no targets are set', () => {
+    const board = makeBoard([[null, null], [null, null]]);
+    expect(checkWinCondition(board, [])).toBe(true);
+    expect(checkWinCondition(board, undefined)).toBe(true);
+  });
+
+  it('returns false when normal tiles remain and no targets are set', () => {
+    const board = makeBoard([['gem', null], [null, null]]);
+    expect(checkWinCondition(board, [])).toBe(false);
+  });
+
+  it('returns true when all target positions are empty', () => {
+    const board = makeBoard([
+      ['gem', null],
+      [null, 'sword'],
+    ]);
+    expect(checkWinCondition(board, [[0, 1], [1, 0]])).toBe(true);
+  });
+
+  it('returns false when at least one target position is not empty', () => {
+    const board = makeBoard([
+      ['gem', 'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(checkWinCondition(board, [[0, 0], [0, 1]])).toBe(false);
+  });
+
+  it('returns true even when non-target normal tiles remain', () => {
+    const board = makeBoard([
+      ['gem',  'sword'],
+      [null,   null],
+    ]);
+    expect(checkWinCondition(board, [[1, 0], [1, 1]])).toBe(true);
+  });
+
+  it('returns false on a blocker at a target position', () => {
+    const board = makeBoard([
+      ['X',  'sword'],
+      ['gem', null],
+    ]);
+    expect(checkWinCondition(board, [[0, 0]])).toBe(false);
+  });
+
+  it('returns true after a blocker at a target position is destroyed', () => {
+    const board = makeBoard([
+      [null,   'sword'],
+      ['gem',  null],
+    ]);
+    expect(checkWinCondition(board, [[0, 0]])).toBe(true);
+  });
+});
+
+// ── countRemainingTargets ─────────────────────────────────────────────────────
+
+describe('countRemainingTargets', () => {
+  it('returns normal tile count when targetPositions is empty', () => {
+    const board = makeBoard([['gem', null], ['sword', null]]);
+    expect(countRemainingTargets(board, [])).toBe(countNormalTiles(board));
+  });
+
+  it('counts only target positions that are not empty', () => {
+    const board = makeBoard([
+      ['gem',  null],
+      ['X',    'sword'],
+    ]);
+    expect(countRemainingTargets(board, [[0, 0], [0, 1], [1, 0]])).toBe(2);
+  });
+
+  it('returns 0 when all target positions are empty', () => {
+    const board = makeBoard([[null, null], [null, null]]);
+    expect(countRemainingTargets(board, [[0, 0], [0, 1], [1, 0], [1, 1]])).toBe(0);
+  });
+});
+
+// ── Target-based win condition integration ────────────────────────────────────
+
+describe('target-based win condition', () => {
+  it('wins when all target blockers are destroyed even if normal tiles remain', () => {
+    const board = makeBoard([
+      ['X',    'gem'],
+      ['sword', 'shield'],
+    ]);
+    const { board: board2 } = hitBlockers(board, [[0, 0]]);
+    expect(board2[0][0].kind).toBe('empty');
+    expect(countNormalTiles(board2)).toBeGreaterThan(0);
+    expect(checkWinCondition(board2, [[0, 0]])).toBe(true);
+    expect(checkWinCondition(board2, [])).toBe(false);
+  });
+
+  it('every shipped level with blockers has non-empty targetPositions', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    for (const level of LEVELS) {
+      const board = buildBoard(level, 0);
+      const hasBlockers = board.flat().some(c => c.kind === 'blocker');
+      if (hasBlockers) {
+        expect(
+          level.targetPositions && level.targetPositions.length > 0,
+          `Level ${level.id} "${level.name}" has blockers but no targetPositions`
+        ).toBe(true);
+        for (const [tr, tc] of level.targetPositions!) {
+          const cell = board[tr]?.[tc];
+          expect(
+            cell?.kind,
+            `Level ${level.id} target [${tr},${tc}] is not a blocker`
+          ).toBe('blocker');
+        }
+      }
+    }
+  });
+
+  it('deadlock detection reshuffles movable tiles only, not blockers', () => {
+    const layout = [['', '', ''], ['X', '', ''], ['', '', '']];
+    const level = makeMinimalLevel(layout);
+    const board = buildBoard(level);
+    const rng = mulberry32(0xC0DE);
+    const shuffled = shuffleNormalTiles(board, rng);
+    expect(shuffled[1][0].kind).toBe('blocker');
+    expect(countNormalTiles(shuffled)).toBe(countNormalTiles(board));
+  });
+
+  it('fake win is impossible: checkWinCondition is false when targets remain', () => {
+    const board = makeBoard([
+      ['gem',    'sword'],
+      ['shield', 'crown'],
+    ]);
+    expect(checkWinCondition(board, [])).toBe(false);
+    expect(checkWinCondition(board, [[0, 0], [0, 1]])).toBe(false);
+  });
+});
+
+// ── Blocker break rules ───────────────────────────────────────────────────────
+
+describe('blocker break rules', () => {
+  it('every blocker in every shipped level has at least one adjacent normal-tile neighbour', async () => {
+    const { LEVELS } = await import('../../../src/minigames/rescueTheKing/rescueTheKingLevels');
+    for (const level of LEVELS) {
+      const board = buildBoard(level, 0);
+      const rows = board.length;
+      const cols = board[0]?.length ?? 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c].kind !== 'blocker') continue;
+          const neighbours = [
+            board[r - 1]?.[c], board[r + 1]?.[c],
+            board[r]?.[c - 1], board[r]?.[c + 1],
+          ];
+          const hasNormalNeighbour = neighbours.some(n => n?.kind === 'normal');
+          expect(
+            hasNormalNeighbour,
+            `Level ${level.id}: blocker at [${r},${c}] has no adjacent normal-tile neighbour`
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('a crate breaks in exactly 1 hit', () => {
+    const board = makeBoard([['X', 'gem', 'gem']]);
+    const { board: b2, blockersDestroyed } = hitBlockers(board, [[0, 0]]);
+    expect(blockersDestroyed).toBe(1);
+    expect(b2[0][0].kind).toBe('empty');
+  });
+
+  it('a stone takes exactly 2 hits to break', () => {
+    const board = makeBoard([['W', 'gem', 'gem']]);
+    const { board: b2, blockersDestroyed: d1 } = hitBlockers(board, [[0, 0]]);
+    expect(d1).toBe(0);
+    expect(b2[0][0].kind).toBe('blocker');
+    const { board: b3, blockersDestroyed: d2 } = hitBlockers(b2, [[0, 0]]);
+    expect(d2).toBe(1);
+    expect(b3[0][0].kind).toBe('empty');
   });
 });

@@ -208,6 +208,16 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Hint highlight — pulsing green glow after 5 s of inactivity */
+.rtk-cell-normal.rtk-cell-hint {
+  animation: rtk-hint-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rtk-hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px #66ee66; }
+  50%       { box-shadow: 0 0 8px 4px #66ee66; }
+}
+
 /* Blocker cells */
 .rtk-cell-blocker {
   cursor: default;

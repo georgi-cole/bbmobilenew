@@ -67,6 +67,23 @@ export interface LevelConfig {
   tileLayout?: (TileSymbol | '')[][];
   /** Deterministic RNG seed for symbol placement (used when tileLayout is absent or has '' cells). */
   seed: number;
+  /**
+   * Target positions for the win condition.
+   *
+   * Each entry is a [row, col] pair whose cell must be cleared (emptied) for the
+   * player to win.  Typically these are the blocker positions — the player wins
+   * when all target blockers have been destroyed.
+   *
+   * If omitted or empty, the win condition falls back to clearing ALL normal tiles
+   * from the board (original behaviour).
+   *
+   * Design rationale:
+   * - Using explicit targets avoids the "infinite refill" contradiction: with a
+   *   finite board and target-based win, the board can truly empty.
+   * - Targets are always breakable via the standard blocker-hit mechanic; there
+   *   is no "unbreakable" row problem.
+   */
+  targetPositions?: [number, number][];
 }
 
 // ── Game state ────────────────────────────────────────────────────────────────
@@ -85,6 +102,12 @@ export interface GameState {
   selectedCell: [number, number] | null;
   reshuffleCount: number;
   initialNormalTileCount: number;
+  /**
+   * Number of target positions at board construction time.
+   * 0 when the level has no targetPositions (fallback to clear-all-tiles win).
+   * Used to render the progress bar and result screen.
+   */
+  initialTargetCount: number;
   boardCleared: boolean;
   loseReason: LoseReason | null;
 }
