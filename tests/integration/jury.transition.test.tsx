@@ -8,6 +8,7 @@ import challengeReducer from '../../src/store/challengeSlice'
 import socialReducer from '../../src/social/socialSlice'
 import uiReducer from '../../src/store/uiSlice'
 import settingsReducer from '../../src/store/settingsSlice'
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import type { GameState, Player } from '../../src/types'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 
@@ -67,6 +68,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
   })
@@ -97,7 +99,7 @@ describe('Jury phase transition', () => {
     await act(async () => {})
 
     expect(store.getState().game.phase).toBe('jury_announcement')
-    expect(screen.getByRole('dialog', { name: /The Jury Takes Control/i })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /The Tribunal Takes Control/i })).toBeTruthy()
   })
 
   it('shows the Skip button during the animation sequence', async () => {
@@ -114,7 +116,7 @@ describe('Jury phase transition', () => {
     await act(async () => {})
 
     fireEvent.click(screen.getByRole('button', { name: /Skip sequence/i }))
-    expect(screen.getByRole('button', { name: /Enter Jury Vote/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Enter Tribunal Vote/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Spy Jury/i })).toBeTruthy()
   })
 
@@ -128,7 +130,7 @@ describe('Jury phase transition', () => {
 
       expect(store.getState().game.phase).toBe('jury')
       expect(
-        screen.queryByRole('dialog', { name: /The Jury Takes Control/i }),
+        screen.queryByRole('dialog', { name: /The Tribunal Takes Control/i }),
       ).toBeNull()
     } finally {
       document.body.classList.remove('no-animations')
@@ -141,7 +143,7 @@ describe('Jury phase transition', () => {
     await act(async () => {})
 
     fireEvent.click(screen.getByRole('button', { name: /Skip sequence/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Enter Jury Vote/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Enter Tribunal Vote/i }))
 
     expect(store.getState().game.phase).toBe('jury')
   })

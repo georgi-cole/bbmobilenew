@@ -40,6 +40,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import holdTheWallReducer, {
   startHoldTheWall,
   dropPlayer,
@@ -127,6 +128,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
       holdTheWall: holdTheWallReducer,
     },
     preloadedState: { game: { ...base, ...gameOverrides } },

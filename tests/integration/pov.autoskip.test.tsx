@@ -35,6 +35,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
@@ -114,6 +115,7 @@ function makeStore(
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: {
       game: { ...base, ...gameOverrides },

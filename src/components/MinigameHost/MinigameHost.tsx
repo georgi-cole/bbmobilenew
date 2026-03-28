@@ -185,7 +185,11 @@ export default function MinigameHost({
   const handleContinue = useCallback(() => {
     const completion: ReactMinigameCompletion | undefined =
       finalTiebreakerMs != null ? { tiebreakerMs: finalTiebreakerMs } : undefined;
-    onDone(finalValue ?? 0, wasPartial, completion);
+    if (completion != null) {
+      onDone(finalValue ?? 0, wasPartial, completion);
+    } else {
+      onDone(finalValue ?? 0, wasPartial);
+    }
   }, [onDone, finalValue, finalTiebreakerMs, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────

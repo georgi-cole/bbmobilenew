@@ -18,6 +18,7 @@ import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
@@ -101,6 +102,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
       social: socialReducer,
       ui: uiReducer,
       settings: settingsReducer,
+      publicOpinion: publicOpinionReducer,
     },
     preloadedState: { game: { ...base, ...overrides } },
   });
@@ -172,7 +174,7 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
 
     // CeremonyOverlay with replacement label should be visible.
     const statusEl = screen.getByRole('status');
-    expect(statusEl.getAttribute('aria-label')).toContain('Replacement nominee ceremony');
+    expect(statusEl.getAttribute('aria-label')).toContain('Backup nominee ceremony');
   });
 });
 
@@ -210,8 +212,8 @@ describe('Ceremony fix: AI HOH tiebreak choreography', () => {
       capturedOnTiebreakerRequired!(['p2', 'p3']);
     });
 
-    // "HOH is breaking the tie" overlay should appear.
-    expect(screen.getByText(/HOH is breaking the tie/i)).toBeTruthy();
+    // "LOH is breaking the tie" overlay should appear.
+    expect(screen.getByText(/LOH is breaking the tie/i)).toBeTruthy();
     // Vote results modal should still be visible (not dismissed yet).
     expect(store.getState().game.voteResults).not.toBeNull();
   });

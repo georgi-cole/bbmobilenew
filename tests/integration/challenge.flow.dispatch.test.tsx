@@ -17,6 +17,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import challengeReducer, { startChallenge, recordRun, setPendingChallenge } from '../../src/store/challengeSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ const REDUCERS = {
   game: gameReducer,
   challenge: challengeReducer,
   settings: settingsReducer,
+  publicOpinion: publicOpinionReducer,
 } as const;
 
 function makeStore() {

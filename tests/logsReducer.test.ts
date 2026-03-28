@@ -221,7 +221,7 @@ describe('replacement nominee — log entry uniqueness', () => {
     expect(uniqueIds.size).toBe(ids.length);
 
     // There should be a replacement event
-    const replacementEvent = feed.find((e) => e.text.includes('replacement nominee'));
+    const replacementEvent = feed.find((e) => e.text.includes('backup nominee'));
     expect(replacementEvent).toBeDefined();
     expect(replacementEvent?.id).toBeTruthy();
   });
