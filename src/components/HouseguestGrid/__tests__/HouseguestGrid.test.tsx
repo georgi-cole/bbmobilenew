@@ -8,10 +8,10 @@ function rect({
   width = 0,
   height = 0,
 }: {
-  top?: number
-  left?: number
-  width?: number
-  height?: number
+  top?: number;
+  left?: number;
+  width?: number;
+  height?: number;
 }) {
   return {
     x: left,
@@ -28,9 +28,9 @@ function rect({
 
 describe('HouseguestGrid', () => {
   afterEach(() => {
-    cleanup()
-    document.body.innerHTML = ''
-    vi.restoreAllMocks()
+    cleanup();
+    document.body.innerHTML = '';
+    vi.restoreAllMocks();
   })
 
   it('renders a 16-player grid and reserves vertical space up to the floating dock', () => {
