@@ -51,7 +51,7 @@ export default function GameBottomNav({
 
   return (
     <>
-      <nav className="game-bottom-nav" aria-label="Main navigation">
+      <nav className="game-bottom-nav nav-bar" aria-label="Main navigation">
         {/* Background shell */}
         <img
           className="game-bottom-nav__shell"
