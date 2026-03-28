@@ -18,18 +18,18 @@
 
 .hg-info-dialog {
   position: relative;
-  width: 100%;
-  max-width: 320px;
-  padding: 20px 18px 22px;
-  border-radius: 18px;
-  background: linear-gradient(160deg, rgba(30, 18, 60, 0.97) 0%, rgba(14, 20, 42, 0.97) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  width: min(100%, 320px);
+  padding: 18px 16px 16px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 34%),
+    linear-gradient(160deg, rgba(24, 31, 68, 0.86) 0%, rgba(14, 20, 48, 0.8) 100%);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    0 18px 40px rgba(0, 0, 0, 0.5),
+    inset 0 0 24px rgba(148, 214, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  outline: none;
   animation: hgInfoDialogIn 0.2s ease;
 }
 
@@ -40,24 +40,30 @@
 
 .hg-info-dialog__close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  top: 10px;
+  left: 10px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(48, 55, 97, 0.62);
+  border: 1px solid rgba(164, 227, 255, 0.14);
+  color: rgba(221, 227, 255, 0.52);
   cursor: pointer;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  padding: 3px 7px;
-  border-radius: 8px;
-  transition: background 0.15s ease, color 0.15s ease;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  border-radius: 9px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .hg-info-dialog__close:hover,
 .hg-info-dialog__close:focus-visible {
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(68, 77, 128, 0.8);
   color: rgba(255, 255, 255, 0.9);
-  outline: 2px solid rgba(139, 92, 246, 0.5);
+  border-color: rgba(164, 227, 255, 0.35);
+  outline: 2px solid rgba(118, 215, 255, 0.45);
   outline-offset: 2px;
 }
 
@@ -65,28 +71,31 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  margin: 10px 0 14px;
+  padding: 0 4px 12px 4px;
+  border-bottom: 1px solid rgba(118, 215, 255, 0.14);
 }
 
 .hg-info-dialog__avatar {
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid rgba(139, 92, 246, 0.45);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(169, 133, 255, 0.85);
+  box-shadow:
+    0 0 0 1px rgba(255, 174, 208, 0.36),
+    0 0 16px rgba(164, 140, 255, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .hg-info-dialog__name {
   margin: 0;
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-  text-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
 }
 
 .hg-info-dialog__fields {
@@ -100,10 +109,12 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 9px 10px;
+  min-height: 54px;
+  padding: 10px 11px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(35, 42, 84, 0.42);
+  border: 1px solid rgba(164, 227, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .hg-info-dialog__field-label {
@@ -120,4 +131,20 @@
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.2;
+}
+
+@media (max-width: 420px) {
+  .hg-info-dialog {
+    width: min(100%, 328px);
+    padding: 18px 14px 14px;
+  }
+
+  .hg-info-dialog__header {
+    gap: 12px;
+  }
+
+  .hg-info-dialog__avatar {
+    width: 56px;
+    height: 56px;
+  }
 }
