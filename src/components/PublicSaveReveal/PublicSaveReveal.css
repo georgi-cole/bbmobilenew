@@ -54,7 +54,6 @@
 .psr__panel {
   position: relative;
   z-index: 1;
-  --psr-scanline-travel: calc(100% + 5rem);
   background: rgba(15, 20, 35, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -67,6 +66,7 @@
   transition: transform 0.5s cubic-bezier(0.34, 1.42, 0.64, 1), opacity 0.4s ease;
   backdrop-filter: blur(12px);
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .psr--entering .psr__panel,
@@ -86,28 +86,6 @@
 .psr__heading {
   text-align: center;
   margin-bottom: 1.25rem;
-}
-
-.psr__scanline {
-  position: absolute;
-  left: -15%;
-  right: -15%;
-  top: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(131, 191, 255, 0.9), transparent);
-  opacity: 0;
-  transform: translateY(0);
-}
-
-.psr--revealing .psr__scanline,
-.psr--saved .psr__scanline {
-  animation: psrScanline 1.35s ease-in-out infinite;
-  opacity: 0.85;
-}
-
-@keyframes psrScanline {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(var(--psr-scanline-travel)); }
 }
 
 .psr__heading-eyebrow {
@@ -183,9 +161,9 @@
   filter: drop-shadow(0 0 18px rgba(74, 222, 128, 0.35));
 }
 
-.psr__nominee--dimmed {
-  opacity: 0.38 !important;
-  filter: grayscale(0.6);
+.psr__nominee--nominated {
+  opacity: 0.72 !important;
+  filter: saturate(0.85);
 }
 
 /* ── Avatar wrap ── */
@@ -194,14 +172,34 @@
   display: inline-flex;
 }
 
-/* Saved checkmark badge */
-.psr__saved-icon {
+/* Outcome badge */
+.psr__status-pill {
   position: absolute;
-  bottom: -3px;
-  right: -3px;
-  font-size: 1.1rem;
+  bottom: -8px;
+  right: -8px;
+  min-width: 1.35rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
   animation: psrBadgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.psr__status-pill--saved {
+  color: #d7ffe6;
+  background: rgba(34, 197, 94, 0.92);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.28);
+}
+
+.psr__status-pill--nominated {
+  color: #ffd7df;
+  background: rgba(220, 38, 38, 0.92);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.22);
 }
 
 @keyframes psrBadgePop {
@@ -236,6 +234,21 @@
   background: linear-gradient(90deg, #4fa3ff 0%, #83bfff 100%);
   border-radius: 999px;
   transition: width 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.psr__bar-fill--pending {
+  animation: psrPendingBar 1.05s ease-in-out infinite alternate;
+  animation-delay: var(--pending-delay, 0ms);
+  box-shadow: 0 0 10px rgba(131, 191, 255, 0.28);
+}
+
+@keyframes psrPendingBar {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100% - var(--pending-width)));
+  }
 }
 
 .psr__nominee--saved .psr__bar-fill {
@@ -275,14 +288,34 @@
   letter-spacing: 0.03em;
 }
 
+.psr__skip {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.7rem;
+  border: 0;
+  padding: 0.2rem 0.3rem;
+  background: transparent;
+  color: rgba(212, 231, 255, 0.56);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.psr__skip:hover,
+.psr__skip:focus-visible {
+  color: rgba(212, 231, 255, 0.82);
+  outline: none;
+}
+
 /* ── Reduce motion ── */
 @media (prefers-reduced-motion: reduce) {
   .psr__backdrop,
   .psr__panel,
   .psr__nominee,
   .psr__bar-fill,
-  .psr__saved-icon,
-  .psr__scanline {
+  .psr__status-pill {
     animation: none !important;
     transition: none !important;
   }

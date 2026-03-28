@@ -6,12 +6,12 @@
  *
  * Animation sequence:
  *   1. (entering) Backdrop fades in; nominee cards stagger-enter.
- *   2. (revealing) Approval bars fill smoothly to current values.
- *   3. (saved) Saved nominee scales forward with a glow; others dim.
+ *   2. (revealing) Bars sweep back and forth while approval values stay hidden.
+ *   3. (saved) The true percentages appear; the top nominee is marked saved.
  *   4. (exiting) Everything fades out; onDone() is called.
  */
 
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './PublicSaveReveal.css';
@@ -25,6 +25,12 @@ export interface PublicSaveRevealProps {
 
 type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting';
 
+const ENTER_TO_REVEAL_MS = 900;
+const REVEAL_VALUES_MS = 5000;
+const SHOW_SAVED_MS = 7600;
+const EXIT_MS = 9300;
+const DONE_MS = 10000;
+
 export default function PublicSaveReveal({
   nominees,
   approvals,
@@ -32,39 +38,62 @@ export default function PublicSaveReveal({
   onDone,
 }: PublicSaveRevealProps) {
   const [phase, setPhase] = useState<AnimPhase>('entering');
+  const [valuesRevealed, setValuesRevealed] = useState(false);
+  const timersRef = useRef<number[]>([]);
+  const doneRef = useRef(false);
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach((id) => window.clearTimeout(id));
+    timersRef.current = [];
+  }, []);
+
+  const fireDone = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    clearTimers();
+    onDone();
+  }, [clearTimers, onDone]);
 
   useEffect(() => {
+    doneRef.current = false;
+
     if (document.body.classList.contains('no-animations')) {
-      onDone();
+      fireDone();
       return;
     }
 
-    // entering → revealing (let the room settle before the bars climb)
-    const t1 = setTimeout(() => setPhase('revealing'), 850);
-    // revealing → saved (hold longer to build suspense)
-    const t2 = setTimeout(() => setPhase('saved'), 2200);
-    // saved → exiting (hold the saved moment)
-    const t3 = setTimeout(() => setPhase('exiting'), 3750);
-    // exiting → done
-    const t4 = setTimeout(() => onDone(), 4400);
+    timersRef.current = [
+      window.setTimeout(() => setPhase('revealing'), ENTER_TO_REVEAL_MS),
+      window.setTimeout(() => setValuesRevealed(true), REVEAL_VALUES_MS),
+      window.setTimeout(() => setPhase('saved'), SHOW_SAVED_MS),
+      window.setTimeout(() => setPhase('exiting'), EXIT_MS),
+      window.setTimeout(() => fireDone(), DONE_MS),
+    ];
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, [onDone]);
+    return clearTimers;
+  }, [clearTimers, fireDone]);
 
-  const showBars = phase === 'revealing' || phase === 'saved' || phase === 'exiting';
   const phaseCopy =
     phase === 'entering'
       ? 'Reading the live audience…'
-      : phase === 'revealing'
+      : phase === 'revealing' && !valuesRevealed
         ? 'Every point matters tonight.'
-        : phase === 'saved'
-          ? 'The public has spoken.'
-          : 'Locking in the result…';
+        : phase === 'revealing'
+          ? 'The percentages are in.'
+          : phase === 'saved'
+            ? 'The public has spoken.'
+            : 'Locking in the result…';
+
+  const handleSkip = useCallback(() => {
+    fireDone();
+  }, [fireDone]);
+
+  const approvalLabel = (player: Player, approval: number) =>
+    `${player.name} approval: ${valuesRevealed ? `${Math.round(approval)}%` : 'pending reveal'}`;
+
+  const approvalText = (approval: number) => (valuesRevealed ? `${Math.round(approval)}%` : '?? %');
+
+  const barWidth = (approval: number) => `${Math.max(0, Math.min(100, approval))}%`;
 
   return (
     <div
@@ -76,7 +105,6 @@ export default function PublicSaveReveal({
       <div className="psr__backdrop" />
       <div className="psr__spotlight" aria-hidden="true" />
       <div className="psr__panel">
-        <div className="psr__scanline" aria-hidden="true" />
         <div className="psr__heading">
           <span className="psr__heading-eyebrow">Public Save</span>
           <h2 className="psr__heading-title">The Audience Decides</h2>
@@ -90,34 +118,51 @@ export default function PublicSaveReveal({
           {nominees.map((player, idx) => {
             const isSaved = player.id === savedId;
             const approval = approvals[player.id] ?? 50;
+            const showOutcomeBadge = phase === 'saved' || phase === 'exiting';
             return (
               <div
                 key={player.id}
                 className={[
                   'psr__nominee',
-                  isSaved && phase === 'saved' ? 'psr__nominee--saved' : '',
-                  !isSaved && phase === 'saved' ? 'psr__nominee--dimmed' : '',
+                  isSaved && showOutcomeBadge ? 'psr__nominee--saved' : '',
+                  !isSaved && showOutcomeBadge ? 'psr__nominee--nominated' : '',
                 ].filter(Boolean).join(' ')}
-                style={{ '--stagger': idx } as CSSProperties}
+                style={
+                  {
+                    '--stagger': idx,
+                    '--pending-width': `${32 + idx * 6}%`,
+                    '--pending-delay': `${idx * 140}ms`,
+                  } as CSSProperties
+                }
               >
                 <div className="psr__avatar-wrap">
                   <PlayerAvatar player={player} size="md" />
-                  {isSaved && phase === 'saved' && (
-                    <span className="psr__saved-icon" aria-hidden="true">✅</span>
+                  {showOutcomeBadge && (
+                    <span
+                      className={[
+                        'psr__status-pill',
+                        isSaved ? 'psr__status-pill--saved' : 'psr__status-pill--nominated',
+                      ].join(' ')}
+                    >
+                      {isSaved ? 'Saved' : '?'}
+                    </span>
                   )}
                 </div>
                 <span className="psr__name">{player.name}</span>
                 <div className="psr__bar-track">
                   <div
-                    className="psr__bar-fill"
+                    className={[
+                      'psr__bar-fill',
+                      !valuesRevealed ? 'psr__bar-fill--pending' : '',
+                    ].filter(Boolean).join(' ')}
                     style={{
-                      width: showBars ? `${Math.max(0, Math.min(100, approval))}%` : '0%',
+                      width: phase === 'entering' ? '0%' : valuesRevealed ? barWidth(approval) : 'var(--pending-width)',
                     }}
-                    aria-label={`${player.name} approval: ${approval}%`}
+                    aria-label={approvalLabel(player, approval)}
                   />
                 </div>
                 <span className="psr__approval-value">
-                  {showBars ? `${Math.round(approval)}%` : '—'}
+                  {approvalText(approval)}
                 </span>
               </div>
             );
@@ -131,6 +176,10 @@ export default function PublicSaveReveal({
             </span>
           </div>
         )}
+
+        <button type="button" className="psr__skip" onClick={handleSkip}>
+          Tap to skip
+        </button>
       </div>
     </div>
   );
