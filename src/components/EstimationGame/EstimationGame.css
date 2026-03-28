@@ -60,6 +60,13 @@
   line-height: 1.55;
 }
 
+.eg__intro-metric {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-accent, #7c3aed);
+  font-weight: 600;
+}
+
 .eg__rounds-preview {
   display: flex;
   gap: 10px;
@@ -110,6 +117,26 @@
 
 .eg__start-btn:active {
   transform: translateY(0);
+}
+
+/* ── Instruction banner (mixed-round task text) ───────────────────────────── */
+.eg__instruction-banner {
+  margin: 6px 16px 4px;
+  padding: 8px 12px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
+.eg__instruction-banner--dim {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted, #a0a0b8);
 }
 
 /* ── Round tag / label ───────────────────────────────────────────────────── */
@@ -506,6 +533,14 @@
 .eg__breakdown-pts {
   font-weight: 700;
   color: var(--color-accent, #7c3aed);
+}
+
+.eg__breakdown-row--total {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+  padding-top: 4px;
+  font-weight: 700;
+  color: var(--color-text, #fff);
 }
 
 /* Continue button */
