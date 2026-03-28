@@ -5,12 +5,13 @@
  *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload`
  *     (humanScore + winnerId + lastPlaceId).
- *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same escalating
- *     multiround gauntlet and calls `onFinish(totalScore)` after the final round.
+ *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same knockout
+ *     bracket flow and calls `onFinish(totalScore)` after the final results screen.
  *
  * Gameplay — "Bullseye Blitz":
  *  - HOH/LOH mode now runs as a knockout bracket with progressively harder rounds.
- *  - Challenge mode runs as a solo multiround gauntlet with a cumulative total.
+ *  - Standalone / MinigameHost mode still runs as a multiplayer knockout bracket,
+ *    even when the player is the only human participant.
  *  - Canonical scoring: sum of all scored hits (including penalties)
  *  - Canonical last-place: lowest overall finisher from the knockout bracket
  */
@@ -27,7 +28,6 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import {
-  BULLSEYE_CHALLENGE_ROUNDS,
   TARGET_CONFIGS,
   buildRankedLeaderboard,
   getBullseyeEliminationCount,
@@ -258,9 +258,7 @@ function simulateRemainingRounds(params: {
 
 function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFinalRound: boolean): string {
   if (activeCount <= 1) {
-    return config.roundNumber >= BULLSEYE_CHALLENGE_ROUNDS
-      ? `Round ${config.roundNumber} • Final solo sprint • Bank your last points`
-      : `Round ${config.roundNumber} • Solo challenge • Bank every point`;
+    return `Round ${config.roundNumber} • Championship result`;
   }
   if (isFinalRound) {
     return `Round ${config.roundNumber} • Final duel • Winner takes the challenge`;
@@ -289,12 +287,7 @@ function getDisplayedRoundNumber(params: {
   return roundNumber;
 }
 
-function getReadyHintText(isKnockoutMode: boolean, activeCount: number, roundNumber: number): string {
-  if (!isKnockoutMode) {
-    return roundNumber >= BULLSEYE_CHALLENGE_ROUNDS
-      ? 'Final round — bank every point and dodge every bomb.'
-      : 'Tap the bullseyes, avoid the bombs, and carry your score into the next round!';
-  }
+function getReadyHintText(activeCount: number): string {
   if (activeCount <= FINAL_SHOWDOWN_THRESHOLD) {
     return 'Final showdown — the highest score wins it all.';
   }
@@ -807,7 +800,7 @@ export default function BullseyeBlitz({
             <span className="bbl__countdown" aria-live="assertive">
               {countdown === 0 ? 'GO!' : countdown}
             </span>
-              <p className="bbl__hint">{getReadyHintText(isKnockoutMode, activeCount, roundNumber)}</p>
+              <p className="bbl__hint">{getReadyHintText(activeCount)}</p>
           </div>
         )}
 

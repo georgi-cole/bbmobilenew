@@ -155,7 +155,7 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(onFinish).toHaveBeenCalledWith(0);
   });
 
-  it('runs challenge mode without passing players, matching MinigameHost mounting', async () => {
+  it('runs multiplayer knockout mode without passing players, matching MinigameHost mounting', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(2), { onFinish, autoStart: true });
 

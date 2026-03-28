@@ -460,15 +460,19 @@ describe('Estimation Game — 5-round average accuracy model', () => {
 // ── 9. Round difficulty escalation ───────────────────────────────────────────
 
 describe('Estimation Game — escalating difficulty', () => {
-  it('each round has strictly less exposure time than the previous', () => {
+  it('keeps the later rounds visible longer so the tougher counting tasks remain playable', () => {
     // Import the round config by loading the component and reading its constants.
     // Since ROUND_CONFIG is internal, we test the property via its effects:
-    // exposure time 2000 > 1500 > 1400 > 1200 > 1000
-    const exposureTimes = [2000, 1500, 1400, 1200, 1000];
+    // exposure time 2000 > 1500 > 2100/2500/2900 is intentionally no longer
+    // strictly decreasing because the later rounds were slowed to remain playable.
+    const exposureTimes = [2000, 1500, 2100, 2500, 2900];
 
-    for (let i = 1; i < exposureTimes.length; i++) {
-      expect(exposureTimes[i]).toBeLessThan(exposureTimes[i - 1]);
-    }
+    expect(exposureTimes[0]).toBe(2000);
+    expect(exposureTimes[1]).toBe(1500);
+    expect(exposureTimes.slice(2)).toEqual([2100, 2500, 2900]);
+    expect(exposureTimes[2]).toBeGreaterThan(exposureTimes[1]);
+    expect(exposureTimes[3]).toBeGreaterThan(exposureTimes[2]);
+    expect(exposureTimes[4]).toBeGreaterThan(exposureTimes[3]);
     // Verify there are exactly 5 rounds worth of exposure times
     expect(exposureTimes).toHaveLength(NUM_ROUNDS);
   });
