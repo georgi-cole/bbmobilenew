@@ -37,21 +37,21 @@ describe('HouseguestGrid', () => {
     vi.stubGlobal('innerHeight', 812)
 
     const headerEl = document.createElement('div')
-    headerEl.className = 'tv-zone'
+    headerEl.className = 'test-tv-zone'
     document.body.appendChild(headerEl)
 
     const dockEl = document.createElement('div')
-    dockEl.className = 'game-control-dock'
+    dockEl.className = 'test-dock'
     document.body.appendChild(dockEl)
 
     const footerEl = document.createElement('nav')
-    footerEl.className = 'nav-bar'
+    footerEl.className = 'test-nav'
     document.body.appendChild(footerEl)
 
     const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this.classList.contains('tv-zone')) return rect({ top: 12, height: 308 })
-      if (this.classList.contains('game-control-dock')) return rect({ top: 624, height: 76 })
-      if (this.classList.contains('nav-bar')) return rect({ top: 734, height: 78 })
+      if (this.classList.contains('test-tv-zone')) return rect({ top: 12, height: 308 })
+      if (this.classList.contains('test-dock')) return rect({ top: 624, height: 76 })
+      if (this.classList.contains('test-nav')) return rect({ top: 734, height: 78 })
       if (this.getAttribute('aria-labelledby') === 'houseguests-heading') {
         return rect({ top: 338, height: 260 })
       }
@@ -70,7 +70,9 @@ describe('HouseguestGrid', () => {
         houseguests={houseguests}
         gridSize={16}
         occupancyLabel="16/16"
-        overlaySelector=".game-control-dock"
+        headerSelector=".test-tv-zone"
+        footerSelector=".test-nav"
+        overlaySelector=".test-dock"
       />,
     )
 

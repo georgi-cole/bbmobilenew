@@ -45,7 +45,7 @@ type Props = {
   showCountInHeader?: boolean
   headerSelector?: string
   footerSelector?: string
-  overlaySelector?: string
+  overlaySelector?: string | null
   /** Total grid size (12 or 16). Placeholder tiles will pad to this count. */
   gridSize?: number
   /** Number of placeholder tiles to append after real houseguests. */
@@ -68,7 +68,7 @@ export default function HouseguestGrid({
   showCountInHeader = false,
   headerSelector = '.tv-zone',
   footerSelector = '.nav-bar',
-  overlaySelector = '.game-control-dock',
+  overlaySelector,
   gridSize,
   placeholderCount = 0,
   compact = false,
@@ -84,7 +84,7 @@ export default function HouseguestGrid({
       let bottomBoundary = viewportHeight - footerH
 
       const footerEl = document.querySelector(footerSelector)
-      const overlayEl = document.querySelector(overlaySelector)
+      const overlayEl = overlaySelector ? document.querySelector(overlaySelector) : null
 
       if (containerRef.current instanceof HTMLElement) {
         containerTop = containerRef.current.getBoundingClientRect().top
