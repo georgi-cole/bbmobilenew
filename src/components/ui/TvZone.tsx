@@ -429,7 +429,7 @@ export default function TvZone() {
         </div>
 
         {/* Center: scrollable single-row status chips */}
-        <ul className="tv-zone__head-pills" aria-label="Game status pills">
+        <ul className="tv-zone__head-pills" aria-label="Game status chips">
           <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} /></li>
         </ul>
 
