@@ -137,7 +137,7 @@
   right: 16px;
 }
 
-/* Secondary chips stacked below primary in each corner (40px chip + 8px gap) */
+/* Secondary chips stacked from the existing edge inset using 40px chips + 8px gap */
 .hub-chip--top-left-2 {
   top: 64px;
   left: 16px;
@@ -158,7 +158,7 @@
   right: 16px;
 }
 
-/* Third row if needed */
+/* Third row continues the same inset-based 40px chip + 8px gap rhythm */
 .hub-chip--top-left-3 {
   top: 112px;
   left: 16px;
