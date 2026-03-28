@@ -48,7 +48,7 @@ describe('HouseguestGrid', () => {
     footerEl.className = 'nav-bar'
     document.body.appendChild(footerEl)
 
-    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
       if (this.classList.contains('tv-zone')) return rect({ top: 12, height: 308 })
       if (this.classList.contains('game-control-dock')) return rect({ top: 624, height: 76 })
       if (this.classList.contains('nav-bar')) return rect({ top: 734, height: 78 })
