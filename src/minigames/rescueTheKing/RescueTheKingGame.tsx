@@ -64,8 +64,11 @@ import {
   isValidSwap,
   performSwap,
   hasAnyValidMove,
+  getAllValidMoves,
   shuffleNormalTiles,
   countNormalTiles,
+  countRemainingTargets,
+  checkWinCondition,
   computeFinalScore,
   validateLevel,
   mulberry32,
@@ -144,6 +147,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       selectedCell: null,
       reshuffleCount,
       initialNormalTileCount: countNormalTiles(board),
+      initialTargetCount: level.targetPositions?.length ?? 0,
       boardCleared: false,
       loseReason: null,
     };
@@ -164,6 +168,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const [scorePops, setScorePops] = useState<ScorePop[]>([]);
   const [shaking, setShaking] = useState(false);
   const popIdRef = useRef(0);
+
+  // ── Hint system ──────────────────────────────────────────────────────────
+  // After HINT_DELAY_MS of inactivity highlight a random valid move.
+  const HINT_DELAY_MS = 5000;
+  const [hintCells, setHintCells] = useState<Set<string>>(new Set());
+  // null = activity not yet recorded (hint won't fire until first interaction).
+  const lastActivityRef = useRef<number | null>(null);
+  // Keep a ref to the current board so the hint timer doesn't capture a stale closure.
+  const boardRef = useRef(state.board);
+  useEffect(() => { boardRef.current = state.board; }, [state.board]);
 
   // ── RNG ref (persists across renders for reshuffles) ─────────────────────
   const rngRef = useRef(mulberry32(seed ^ RNG_RESHUFFLE_SALT));
@@ -213,7 +227,34 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
     };
   }, [state.phase, finishGame]);
 
-  // ── Score pop helper ─────────────────────────────────────────────────────
+  // ── Hint timer ───────────────────────────────────────────────────────────
+  // Single long-lived interval; all mutable values are accessed via refs so
+  // there are no stale-closure or synchronous-setState-in-effect issues.
+  const phaseRef = useRef(state.phase);
+  useEffect(() => { phaseRef.current = state.phase; }, [state.phase]);
+
+  useEffect(() => {
+    const hintInterval = setInterval(() => {
+      if (phaseRef.current !== 'playing') {
+        setHintCells(prev => (prev.size > 0 ? new Set() : prev));
+        return;
+      }
+      const last = lastActivityRef.current;
+      if (last !== null && Date.now() - last >= HINT_DELAY_MS) {
+        const moves = getAllValidMoves(boardRef.current);
+        if (moves.length > 0) {
+          // Use the seeded RNG (rngRef) for consistent hint selection.
+          const pick = moves[Math.floor(rngRef.current() * Math.min(3, moves.length))];
+          setHintCells(new Set([`${pick.r1},${pick.c1}`, `${pick.r2},${pick.c2}`]));
+        }
+      } else {
+        setHintCells(prev => (prev.size > 0 ? new Set() : prev));
+      }
+    }, 1000);
+    return () => clearInterval(hintInterval);
+  }, []); // intentionally empty: all values read via refs
+
+
   const spawnScorePop = useCallback((value: number, x: number, y: number) => {
     const id = ++popIdRef.current;
     setScorePops(prev => [...prev, { id, value, x, y }]);
@@ -243,8 +284,8 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
     if (matches.length === 0) {
       // No matches — check if any moves remain
       const remaining = countNormalTiles(board);
-      if (remaining === 0) {
-        // Win!
+      if (remaining === 0 || checkWinCondition(board, level.targetPositions)) {
+        // Win! All targets cleared (or all tiles cleared for target-less levels).
         const winState: GameState = {
           ...accState,
           board,
@@ -379,7 +420,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
       }, FALL_ANIM_MS);
 
     }, MATCH_ANIM_MS);
-  }, [finishGame, spawnScorePop, triggerShake]);
+  }, [finishGame, spawnScorePop, triggerShake, level.targetPositions]);
 
   // Keep the ref in sync so the recursive call always uses the latest version.
   useEffect(() => {
@@ -388,6 +429,8 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
 
   // ── Handle cell press ────────────────────────────────────────────────────
   const handleCellPress = useCallback((row: number, col: number) => {
+    lastActivityRef.current = Date.now();
+    setHintCells(new Set()); // clear hint on any activity
     setState(prev => {
       if (prev.phase !== 'playing') return prev;
       const cell = prev.board[row][col];
@@ -479,6 +522,8 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   // ── Start game ───────────────────────────────────────────────────────────
   const startGame = useCallback((runtimeSeedOverride?: number) => {
     finishedRef.current = false;
+    lastActivityRef.current = Date.now(); // reset hint timer on new game
+    setHintCells(new Set());
     const freshRng = mulberry32((runtimeSeedOverride ?? seed) ^ RNG_RESHUFFLE_SALT);
     rngRef.current = freshRng;
     const newState = buildInitialState(freshRng, runtimeSeedOverride);
@@ -493,6 +538,28 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
     startGame(seed ^ (nextOffset * 0x1337));
   }, [debugSeedOffset, seed, startGame]);
 
+  // Debug: trigger a manual reshuffle of movable tiles (same as deadlock recovery).
+  const debugReshuffle = useCallback(() => {
+    setState(prev => {
+      if (prev.phase !== 'playing') return prev;
+      const candidate = shuffleNormalTiles(prev.board, rngRef.current);
+      return { ...prev, board: candidate, reshuffleCount: prev.reshuffleCount + 1, selectedCell: null };
+    });
+    setHintCells(new Set());
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  // Debug: load the next level by index.
+  const [debugLevelOffset, setDebugLevelOffset] = useState(0);
+  const debugNextLevel = useCallback(() => {
+    const nextOffset = debugLevelOffset + 1;
+    setDebugLevelOffset(nextOffset);
+    // 0x9E37_79B9 is the Fibonacci hashing constant (2^32 / golden ratio), chosen
+    // because it spreads seed values evenly across the LEVELS array, making each
+    // successive debug step land on a different level.
+    startGame(seed + nextOffset * 0x9E37_79B9);
+  }, [debugLevelOffset, seed, startGame]);
+
   // ── Format timer ─────────────────────────────────────────────────────────
   const formatTime = (ms: number) => {
     const totalSec = Math.ceil(ms / 1000);
@@ -506,9 +573,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
   const waterPct = Math.min(100, (1 - state.timeRemainingMs / state.totalTimeMs) * 100);
   const kingPanic = timerDanger && state.phase === 'playing';
   const kingRescued = state.phase === 'win';
-  const progressPct = state.initialNormalTileCount > 0
-    ? Math.max(0, Math.min(100, (1 - countNormalTiles(state.board) / state.initialNormalTileCount) * 100))
-    : 100;
+  // Progress: use target count when the level has targets; else normal tile count.
+  const progressPct = (() => {
+    if (state.initialTargetCount > 0) {
+      const remaining = countRemainingTargets(state.board, level.targetPositions ?? []);
+      return Math.max(0, Math.min(100, (1 - remaining / state.initialTargetCount) * 100));
+    }
+    return state.initialNormalTileCount > 0
+      ? Math.max(0, Math.min(100, (1 - countNormalTiles(state.board) / state.initialNormalTileCount) * 100))
+      : 100;
+  })();
   const finalScore = useMemo(() => computeFinalScore(state), [state]);
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -533,7 +607,9 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
             {levelValidation?.valid ? '✔ valid' : `✘ ${levelValidation?.message}`}
           </span>
           <span>tiles: {countNormalTiles(state.board)}/{state.initialNormalTileCount}</span>
-          <span>moves: {hasAnyValidMove(state.board) ? '✔' : '✘'}</span>
+          <span>moves: {getAllValidMoves(state.board).length}</span>
+          <button className="rtk-debug-btn" onClick={debugReshuffle}>↺ Shuffle</button>
+          <button className="rtk-debug-btn" onClick={debugNextLevel}>→ Next Lvl</button>
           <button className="rtk-debug-btn" onClick={debugRegen}>↺ Regen</button>
         </div>
       )}
@@ -577,6 +653,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
                 isHitFlash={hitFlashCells.has(`${r},${c}`)}
                 isFalling={fallingCells.has(`${r},${c}`)}
                 isInvalidSwap={invalidSwapCells.has(`${r},${c}`)}
+                isHint={hintCells.has(`${r},${c}`)}
                 onPress={handleCellPress}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
@@ -680,6 +757,7 @@ interface BoardCellProps {
   isHitFlash: boolean;
   isFalling: boolean;
   isInvalidSwap: boolean;
+  isHint: boolean;
   onPress: (row: number, col: number) => void;
   onTouchStart: (row: number, col: number) => void;
   onTouchEnd: (row: number, col: number, e: React.TouchEvent) => void;
@@ -688,7 +766,7 @@ interface BoardCellProps {
 
 function BoardCell({
   cell, row, col, size,
-  isSelected, isMatching, isHitFlash, isFalling, isInvalidSwap,
+  isSelected, isMatching, isHitFlash, isFalling, isInvalidSwap, isHint,
   onPress, onTouchStart, onTouchEnd, onTouchMove,
 }: BoardCellProps) {
   if (cell.kind === 'empty') {
@@ -729,17 +807,24 @@ function BoardCell({
   const matchingClass = isMatching ? ' rtk-cell-matching' : '';
   const fallingClass = isFalling ? ' rtk-cell-falling' : '';
   const invalidClass = isInvalidSwap ? ' rtk-cell-invalid-swap' : '';
+  const hintClass = isHint && !isSelected ? ' rtk-cell-hint' : '';
 
   return (
     <div
-      className={`rtk-cell rtk-cell-normal${selectedClass}${matchingClass}${fallingClass}${invalidClass}`}
+      className={`rtk-cell rtk-cell-normal${selectedClass}${matchingClass}${fallingClass}${invalidClass}${hintClass}`}
       style={{
         width: size,
         height: size,
         background: isSelected
           ? `rgba(255,235,59,0.28)`
-          : `${SYMBOL_COLOR[cell.symbol]}33`,
-        borderColor: isSelected ? '#ffeb3b' : `${SYMBOL_COLOR[cell.symbol]}88`,
+          : isHint
+            ? `rgba(100,220,100,0.28)`
+            : `${SYMBOL_COLOR[cell.symbol]}33`,
+        borderColor: isSelected
+          ? '#ffeb3b'
+          : isHint
+            ? '#66ee66'
+            : `${SYMBOL_COLOR[cell.symbol]}88`,
       }}
       data-row={row}
       data-col={col}
