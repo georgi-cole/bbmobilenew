@@ -559,13 +559,16 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
 
   // Debug: load the next level by index.
   const [debugLevelOffset, setDebugLevelOffset] = useState(0);
+  const [debugLevelSeed, setDebugLevelSeed] = useState(seed);
   const debugNextLevel = useCallback(() => {
     const nextOffset = debugLevelOffset + 1;
+    const nextLevelSeed = seed + nextOffset * 0x9E37_79B9;
     setDebugLevelOffset(nextOffset);
+    setDebugLevelSeed(nextLevelSeed);
     // 0x9E37_79B9 is the Fibonacci hashing constant (2^32 / golden ratio), chosen
     // because it spreads seed values evenly across the LEVELS array, making each
     // successive debug step land on a different level.
-    startGame(seed + nextOffset * 0x9E37_79B9);
+    startGame(nextLevelSeed);
   }, [debugLevelOffset, seed, startGame]);
 
   // ── Format timer ─────────────────────────────────────────────────────────
