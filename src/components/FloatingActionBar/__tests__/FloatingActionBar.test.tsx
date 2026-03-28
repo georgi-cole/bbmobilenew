@@ -107,10 +107,12 @@ describe('FloatingActionBar – social energy badge', () => {
     expect(screen.getByText('8')).toBeDefined();
   });
 
-  it('shows 0 badge when human energy is 0', () => {
+  it('keeps the social button unlabeled by count when human energy is 0', () => {
     const store = makeStore();
     renderFAB(store);
     const socialButton = screen.getByRole('button', { name: 'Social' });
+    expect(socialButton).toBeDefined();
+    expect(socialButton).toHaveAttribute('aria-label', 'Social');
     expect(socialButton.querySelector('.dock-node__badge')).toBeNull();
   });
 

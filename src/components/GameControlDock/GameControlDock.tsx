@@ -87,35 +87,35 @@ function DockNode({
 
 export interface GameControlDockProps {
   onChatClick?: () => void;
-  onLogClick?: () => void;
+  onIncomingRequestsClick?: () => void;
   onPrimaryActionClick?: () => void;
-  onStatsClick?: () => void;
+  onPublicMeterClick?: () => void;
   onToolClick?: () => void;
   disabled?: boolean;
   primaryDisabled?: boolean;
   chatBadgeCount?: number;
   /** Extra class name for the flash animation on chat node */
   chatFlash?: boolean;
-  /** Badge count for the log/inbox node */
-  logBadgeCount?: number;
-  /** Badge count for the stats node */
-  statsBadgeCount?: number;
+  /** Badge count for the incoming requests node */
+  incomingRequestsBadgeCount?: number;
+  /** Badge count for the public meter node */
+  publicMeterBadgeCount?: number;
   /** Whether the center button should pulse */
   primaryPulse?: boolean;
 }
 
 export default function GameControlDock({
   onChatClick,
-  onLogClick,
+  onIncomingRequestsClick,
   onPrimaryActionClick,
-  onStatsClick,
+  onPublicMeterClick,
   onToolClick,
   disabled = false,
   primaryDisabled = false,
   chatBadgeCount,
   chatFlash = false,
-  logBadgeCount,
-  statsBadgeCount,
+  incomingRequestsBadgeCount,
+  publicMeterBadgeCount,
   primaryPulse = false,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_dock_shell_final.svg');
@@ -152,10 +152,10 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="requests_v2.svg"
-          ariaLabel={`Incoming requests${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
+          ariaLabel={`Incoming requests${incomingRequestsBadgeCount ? ` (${incomingRequestsBadgeCount})` : ''}`}
           disabled={disabled}
-          onClick={onLogClick}
-          badge={logBadgeCount}
+          onClick={onIncomingRequestsClick}
+          badge={incomingRequestsBadgeCount}
           className="dock-node--slot-b"
         />
 
@@ -173,10 +173,10 @@ export default function GameControlDock({
         <DockNode
           variant="side"
           glyphFile="public_meter_v2.svg"
-          ariaLabel={`Public meter${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
+          ariaLabel={`Public meter${publicMeterBadgeCount ? ` (${publicMeterBadgeCount})` : ''}`}
           disabled={disabled}
-          onClick={onStatsClick}
-          badge={statsBadgeCount}
+          onClick={onPublicMeterClick}
+          badge={publicMeterBadgeCount}
           className="dock-node--slot-c"
         />
 

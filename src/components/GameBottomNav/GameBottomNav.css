@@ -1,5 +1,7 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
+  /* Match the approved segment plate art width from the final asset preview. */
+  --game-bottom-nav-segment-max-width: 168px;
   position: relative;
   height: calc(var(--nav-bar-height, 58px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
@@ -55,7 +57,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(92%, 168px);
+  width: min(92%, var(--game-bottom-nav-segment-max-width));
   height: auto;
   transform: translate(-50%, -50%);
   pointer-events: none;

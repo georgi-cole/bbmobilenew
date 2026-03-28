@@ -7,6 +7,7 @@ describe('GameBottomNav', () => {
     const { container } = render(<GameBottomNav activeTab="settings" />);
 
     const shell = container.querySelector<HTMLImageElement>('.game-bottom-nav__shell');
+    expect(shell).not.toBeNull();
     expect(shell?.getAttribute('src')).toContain('/assets/updated_nav_fab_bar/bottom_nav_shell_final.svg');
 
     const segments = Array.from(

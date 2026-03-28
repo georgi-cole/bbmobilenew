@@ -7,6 +7,7 @@ describe('GameControlDock', () => {
     const { container } = render(<GameControlDock />);
 
     const shell = container.querySelector<HTMLImageElement>('.game-control-dock__shell');
+    expect(shell).not.toBeNull();
     expect(shell?.getAttribute('src')).toContain('/assets/updated_nav_fab_bar/fab_dock_shell_final.svg');
 
     const glyphs = Array.from(
@@ -27,6 +28,7 @@ describe('GameControlDock', () => {
 
     const socialButton = screen.getByRole('button', { name: 'Social' });
     const socialShell = socialButton.querySelector<HTMLImageElement>('.dock-node__shell');
+    expect(socialShell).not.toBeNull();
     expect(socialShell?.getAttribute('src')).toContain('/assets/updated_nav_fab_bar/side_node_normal_final.svg');
 
     fireEvent.mouseEnter(socialButton);
@@ -40,6 +42,7 @@ describe('GameControlDock', () => {
 
     const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
     const playShell = playButton.querySelector<HTMLImageElement>('.dock-node__shell');
+    expect(playShell).not.toBeNull();
     expect(playShell?.getAttribute('src')).toContain('/assets/updated_nav_fab_bar/play_node_disabled_final.svg');
   });
 });
