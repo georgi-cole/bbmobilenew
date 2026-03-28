@@ -172,16 +172,17 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_PRECISION,
     weights: WEIGHTS_MENTAL_PRECISION,
     minScore: 0,
-    maxScore: 300,
+    maxScore: 100,
+    tiebreakerMaxMs: 110_000,   // 5 rounds × 22 s max guess time = 110 s total
     scoreBuckets: [
-      { minScore: 250, maxScore: 300, weight: 0.2 },
-      { minScore: 200, maxScore: 250, weight: 0.4 },
-      { minScore: 180, maxScore: 200, weight: 0.3 },
-      { minScore: 0, maxScore: 180, weight: 0.1 },
+      { minScore: 82, maxScore: 100, weight: 0.2 },
+      { minScore: 67, maxScore:  82, weight: 0.4 },
+      { minScore: 52, maxScore:  67, weight: 0.3 },
+      { minScore:  0, maxScore:  52, weight: 0.1 },
     ],
     notes:
-      'Estimation — normalize AI totals across 0–300 with a competitive distribution: ' +
-      '20% in 250–300, 40% in 200–250, 30% in 180–200, 10% below 180.',
+      'Estimation (5-round redesign) — final metric is average accuracy 0–100. ' +
+      'Competitive distribution: 20% in 82–100, 40% in 67–82, 30% in 52–67, 10% below 52.',
   },
   holdWall: {
     key: 'holdWall',

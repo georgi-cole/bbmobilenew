@@ -55,11 +55,11 @@ function makeStore() {
 const ESTIMATION_GAME = {
   key: 'estimationGame',
   title: 'Estimation',
-  description: 'Three rounds of rapid estimation — count objects before they vanish',
+  description: 'Five rounds of rapid estimation — count figures before they vanish, with mixed shapes in the final rounds',
   instructions: [
     'Objects flash on screen briefly — count as many as you can!',
     'When the board hides, enter your estimate before the timer runs out',
-    'Three rounds of increasing difficulty',
+    'Five rounds of increasing difficulty',
     'Closest estimate wins each round — highest total score wins the competition',
   ],
   metricKind: 'accuracy' as const,
