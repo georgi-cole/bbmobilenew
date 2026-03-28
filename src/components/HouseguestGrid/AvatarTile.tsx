@@ -4,8 +4,7 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
-export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
-const LONG_PRESS_CLICK_SUPPRESSION_MS = 350
+const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 
 type Props = {
   name: string
@@ -214,7 +213,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 aria-label={b.label}
                 title={b.label}
               >
-                {b.emoji}
+                {b.code === 'nominated' ? (
+                  <img
+                    src={`${assetBasePath}/assets/nomination%20mark%20glow.png`}
+                    alt=""
+                    aria-hidden="true"
+                    className={styles.statusBadgeImage}
+                  />
+                ) : (
+                  b.emoji
+                )}
               </span>
             ))}
           </div>
