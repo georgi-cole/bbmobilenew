@@ -413,27 +413,49 @@ export interface ValidMove {
  * - When full move enumeration is needed (hints, debugging, AI), callers
  *   should rely on getAllValidMoves() as the single source of truth.
  */
-export function getAllValidMoves(board: Board): ValidMove[] {
+/**
+ * Internal helper to traverse the board and invoke `visitor` for every
+ * adjacent swap that would create at least one match.
+ *
+ * Keeping this logic in a single place avoids divergence between
+ * getAllValidMoves() and hasAnyValidMove() or other callers.
+ */
+function forEachValidMove(
+  board: Board,
+  visitor: (r1: number, c1: number, r2: number, c2: number) => void,
+): void {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
-  const moves: ValidMove[] = [];
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (board[r][c].kind !== 'normal') continue;
       // Check right neighbour
-      if (c + 1 < cols && board[r][c + 1].kind === 'normal' &&
-          swapCreatesMatch(board, r, c, r, c + 1)) {
-        moves.push({ r1: r, c1: c, r2: r, c2: c + 1 });
+      if (
+        c + 1 < cols &&
+        board[r][c + 1].kind === 'normal' &&
+        swapCreatesMatch(board, r, c, r, c + 1)
+      ) {
+        visitor(r, c, r, c + 1);
       }
       // Check down neighbour
-      if (r + 1 < rows && board[r + 1][c].kind === 'normal' &&
-          swapCreatesMatch(board, r, c, r + 1, c)) {
-        moves.push({ r1: r, c1: c, r2: r + 1, c2: c });
+      if (
+        r + 1 < rows &&
+        board[r + 1][c].kind === 'normal' &&
+        swapCreatesMatch(board, r, c, r + 1, c)
+      ) {
+        visitor(r, c, r + 1, c);
       }
     }
   }
+}
 
+export function getAllValidMoves(board: Board): ValidMove[] {
+  const moves: ValidMove[] = [];
+
+  forEachValidMove(board, (r1, c1, r2, c2) => {
+    moves.push({ r1, c1, r2, c2 });
+  });
   return moves;
 }
 
