@@ -47,6 +47,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
+  const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 
   React.useEffect(() => {
     attemptRef.current = 0
@@ -144,7 +145,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 aria-label={b.label}
                 title={b.label}
               >
-                {b.emoji}
+                {b.code === 'nominated' ? (
+                  <img
+                    src={`${assetBasePath}/assets/nomination%20mark%20glow.png`}
+                    alt=""
+                    aria-hidden="true"
+                    className={styles.statusBadgeImage}
+                  />
+                ) : (
+                  b.emoji
+                )}
               </span>
             ))}
           </div>
