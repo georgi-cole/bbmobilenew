@@ -71,20 +71,20 @@ export default function FloatingActionBar() {
   return (
     <GameControlDock
       onChatClick={humanIsActive ? () => dispatch(openSocialPanel()) : undefined}
-      onLogClick={humanIsActive ? () => dispatch(openIncomingInbox()) : undefined}
+      onIncomingRequestsClick={humanIsActive ? () => dispatch(openIncomingInbox()) : undefined}
       onPrimaryActionClick={() => {
         dispatch(advance());
         try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
       }}
-      onStatsClick={() =>
+      onPublicMeterClick={() =>
         navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
       }
       onToolClick={() => navigate('/diary-room')}
       primaryDisabled={isWaiting}
       chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
       chatFlash={isFlashing}
-      logBadgeCount={pendingCount > 0 ? pendingCount : undefined}
-      statsBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
+      incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
+      publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
       primaryPulse={canAdvance && !isWaiting}
     />
   );
