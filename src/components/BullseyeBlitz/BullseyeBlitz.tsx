@@ -321,7 +321,11 @@ function appendRoundEliminations(
   if (roundOutcome.isFinal || roundOutcome.eliminatedEntries.length === 0) {
     return eliminationHistory;
   }
-  if (eliminationHistory[eliminationHistory.length - 1] === roundOutcome.eliminatedEntries) {
+  const lastEliminationBatch = eliminationHistory[eliminationHistory.length - 1];
+  if (
+    lastEliminationBatch?.length === roundOutcome.eliminatedEntries.length
+    && lastEliminationBatch.every((entry, index) => entry.id === roundOutcome.eliminatedEntries[index]?.id)
+  ) {
     return eliminationHistory;
   }
   return [...eliminationHistory, roundOutcome.eliminatedEntries];
@@ -1048,7 +1052,9 @@ export default function BullseyeBlitz({
           <div className="bbl__results">
             <p className="bbl__winner-line">
               {isKnockoutMode
-                ? `🏆 ${finalStandings[0].name} wins Bullseye Blitz!`
+                ? finalStandings[0].isHuman
+                  ? '🏆 You win Bullseye Blitz!'
+                  : `🏆 ${finalStandings[0].name} wins Bullseye Blitz!`
                 : '🏆 Bullseye Blitz complete!'}
             </p>
             <ol className="bbl__leaderboard">

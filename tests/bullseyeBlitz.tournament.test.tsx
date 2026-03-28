@@ -143,9 +143,9 @@ describe('BullseyeBlitz tournament flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
 
-    await advanceUntil(() => !!screen.queryByText(/wins Bullseye Blitz/i));
+    await advanceUntil(() => !!screen.queryByText(/win[s]? Bullseye Blitz/i));
 
-    expect(screen.getByText(/You wins Bullseye Blitz!/i)).toBeInTheDocument();
+    expect(screen.getByText(/You win Bullseye Blitz!/i)).toBeInTheDocument();
     expect(screen.getByText(/Your total score: 0 pts\./i)).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
 
