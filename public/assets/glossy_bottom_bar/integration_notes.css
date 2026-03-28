@@ -1,0 +1,24 @@
+
+/* Recommended nav usage for glossy icon set */
+.navItem {
+  opacity: 0.84;
+  color: rgba(255,255,255,0.92);
+  transition: transform 150ms ease, opacity 150ms ease, filter 150ms ease;
+}
+.navItem .icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+.navItem.active {
+  opacity: 1;
+  transform: translateY(-2px) scale(1.04);
+  text-shadow: 0 0 18px rgba(168,148,255,0.45);
+}
+.navItem.active .icon {
+  filter: drop-shadow(0 0 12px rgba(168,148,255,0.35));
+}
+.navItem:not(.active):hover {
+  opacity: 0.96;
+  transform: translateY(-1px);
+}
