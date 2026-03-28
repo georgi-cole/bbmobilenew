@@ -1,11 +1,11 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
 .game-control-dock {
   position: fixed;
-  bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-bar-height) + 14px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  width: min(92vw, 400px);
+  width: min(74vw, 316px);
   height: auto;
   -webkit-user-select: none;
   user-select: none;
@@ -16,6 +16,8 @@
   width: 100%;
   height: auto;
   object-fit: contain;
+  opacity: 0.9;
+  filter: saturate(0.86) brightness(0.92) contrast(0.95);
   pointer-events: none;
   user-select: none;
 }
@@ -41,12 +43,12 @@
 }
 
 .dock-node--side {
-  width: 13%;
+  width: 11.5%;
   aspect-ratio: 1 / 1;
 }
 
 .dock-node--play {
-  width: 18%;
+  width: 15.2%;
   aspect-ratio: 1 / 1;
 }
 
@@ -66,22 +68,23 @@
 
 .dock-node__glyph {
   position: absolute;
-  inset: 24%;
+  inset: 26%;
   object-fit: contain;
+  filter: saturate(0.76) contrast(0.9) brightness(0.97);
   pointer-events: none;
   user-select: none;
 }
 
 .dock-node--slot-play {
   left: 41%;
-  top: 2%;
+  top: 4%;
 }
 
 .dock-node--slot-a,
 .dock-node--slot-b,
 .dock-node--slot-c,
 .dock-node--slot-d {
-  top: 25%;
+  top: 27%;
 }
 
 .dock-node--slot-a {
@@ -119,9 +122,9 @@
 }
 
 @keyframes dock-pulse {
-  0%   { filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4)); }
-  50%  { filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.85)); }
-  100% { filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4)); }
+  0%   { filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.28)); }
+  50%  { filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.58)); }
+  100% { filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.28)); }
 }
 
 .dock-node--pulse .dock-node__shell {
@@ -130,7 +133,7 @@
 
 @keyframes dock-flash {
   0%   { filter: brightness(1); }
-  30%  { filter: brightness(1.6) drop-shadow(0 0 6px rgba(99, 102, 241, 0.7)); }
+  30%  { filter: brightness(1.22) drop-shadow(0 0 4px rgba(99, 102, 241, 0.45)); }
   100% { filter: brightness(1); }
 }
 
