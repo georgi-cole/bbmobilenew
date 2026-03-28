@@ -28,7 +28,10 @@
       return scripts[scripts.length - 1].src.replace(/js\/ui\/introHub\.js.*$/, '');
     }
     if (global.location && global.location.pathname) {
-      const path = global.location.pathname.replace(/[^\/]*$/, '');
+      const lastSlash = global.location.pathname.lastIndexOf('/');
+      const path = lastSlash >= 0
+        ? global.location.pathname.substring(0, lastSlash + 1)
+        : '/';
       return path || '/';
     }
     return '/';
