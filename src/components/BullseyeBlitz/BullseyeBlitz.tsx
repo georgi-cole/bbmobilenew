@@ -112,8 +112,15 @@ function formatNameList(entries: ScoreEntry[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
-function getHazardLabel(hazardPenalty: number): string {
+function formatHazardPenaltyDisplay(hazardPenalty: number): string {
   return `💣 ${hazardPenalty}`;
+}
+
+function getTargetAriaLabel(kind: TargetKind, config: BullseyeRoundConfig): string {
+  if (kind === 'hazard') {
+    return `Hazard! Minus ${Math.abs(config.hazardPenalty)} points if tapped`;
+  }
+  return TARGET_CONFIGS[kind].label;
 }
 
 function buildNextRoundPreview(roundNumber: number): string[] {
@@ -764,7 +771,7 @@ export default function BullseyeBlitz({
         <div className="bbl__legend" aria-label="Target legend">
           <span className="bbl__legend-item bbl__legend-item--standard">🎯 +10</span>
           <span className="bbl__legend-item bbl__legend-item--bonus">⭐ +25</span>
-          <span className="bbl__legend-item bbl__legend-item--hazard">{getHazardLabel(currentRoundConfig.hazardPenalty)}</span>
+          <span className="bbl__legend-item bbl__legend-item--hazard">{formatHazardPenaltyDisplay(currentRoundConfig.hazardPenalty)}</span>
         </div>
 
         {showRoundBanner && (
@@ -864,7 +871,7 @@ export default function BullseyeBlitz({
                     }}
                     onClick={() => handleTargetTap(t)}
                     type="button"
-                    aria-label={t.kind === 'hazard' ? `Hazard! ${currentRoundConfig.hazardPenalty} if tapped` : cfg.label}
+                    aria-label={getTargetAriaLabel(t.kind, currentRoundConfig)}
                   >
                     {cfg.emoji}
                   </button>

@@ -232,16 +232,21 @@ describe('BullseyeBlitz tournament flow', () => {
       participants: players.map((player) => player.id),
       seed: 12,
       options: { timeLimit: 20 },
-      aiScores: { p1: -100, p2: -100, p3: -100, p4: -100, p5: -100, p6: -100 },
+      aiScores: { p1: -20, p2: -20, p3: -100, p4: -100, p5: -100, p6: -100 },
     };
 
     renderTournament(session, players);
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
     expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
-    expect(screen.getByText(/Advancing: Player 0 \(You\), Player 1, and Player 2\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Advancing: Player 1, Player 2, and Player 0 \(You\)\./i)).toBeInTheDocument();
     expect(screen.getByText(/Eliminated: Player 3, Player 4, Player 5, and Player 6\./i)).toBeInTheDocument();
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
+    await advanceUntil(() => !!screen.queryByText(/Round 2 • 3 players • 2 eliminated/i));
+
+    expect(screen.getByText(/Round 2 • 3 players • 2 eliminated/i)).toBeInTheDocument();
   });
 });
