@@ -81,7 +81,6 @@ export default function FloatingActionBar() {
         navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
       }
       onToolClick={() => navigate('/diary-room')}
-      disabled={!humanIsActive}
       primaryDisabled={isWaiting}
       chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
       chatFlash={isFlashing}
