@@ -60,9 +60,9 @@
   }
 }
 
-/* Keep hover / active behaviour but adjust translate to match new visual */
-.hub-chip:hover { transform: translateY(-4px); }
-.hub-chip:active { transform: scale(0.96); }
+/* Keep hover / active behaviour — subtle scale, secondary to main menu */
+.hub-chip:hover { transform: scale(1.04); }
+.hub-chip:active { transform: scale(0.97); }
 
 .hub-chip:focus-visible {
   outline: 2px solid rgba(123, 146, 255, 0.7);
@@ -91,8 +91,17 @@
   pointer-events: none;
 }
 
-/* Slightly reduce icon size so it sits comfortably inside the tiny container */
-.hub-chip__icon { font-size: 18px; line-height: 1; pointer-events: none; }
+/* SVG icon image — fills the chip container without distortion */
+.hub-chip__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  /* Legacy emoji fallback sizing */
+  font-size: 18px;
+  line-height: 1;
+}
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {

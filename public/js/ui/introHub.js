@@ -15,29 +15,68 @@
 
   const g = global.game || (global.game = {});
 
-  // Chip definitions: { id, label, icon, position }
+  // Detect the base path from this script's own src so SVG assets resolve correctly
+  // under both /bbmobilenew/ (GitHub Pages) and ./ (Capacitor) deployments.
+  const BASE_PATH = (function () {
+    const s = document.currentScript;
+    if (s && s.src) {
+      return s.src.replace(/js\/ui\/introHub\.js.*$/, '');
+    }
+    // Fallback: search existing script tags
+    const scripts = document.querySelectorAll('script[src*="introHub.js"]');
+    if (scripts.length) {
+      return scripts[scripts.length - 1].src.replace(/js\/ui\/introHub\.js.*$/, '');
+    }
+    return '/bbmobilenew/';
+  }());
+
+  // Map chip ids to SVG icon pack names (assets/icons/${name}_${state}.svg)
+  const CHIP_ICON_MAP = {
+    houseguests:  'housemates',
+    music:        'music',
+    sounds:       'sound',
+    settings:     'settings',
+    share:        'share',
+    feedback:     'feedback',
+    news:         'news',
+    achievements: 'achievements',
+    store:        'shop',
+    social:       'social',
+  };
+
+  // Chip definitions: { id, label, position }
   // Positions: top-left, top-right, bottom-left, bottom-right
   //   Suffixes -2 and -3 stack chips vertically within the same corner
   //   (e.g. top-right renders above top-right-2, which renders above top-right-3).
   //   Array order does not affect visual stacking — only the position class does.
   const CHIPS = [
     // Top-left corner (stacked top → bottom)
-    { id: 'houseguests', label: 'Houseguests', icon: '👥', position: 'top-left' },
-    { id: 'music',       label: 'Music',       icon: '🎵', position: 'top-left-2' },
-    { id: 'sounds',      label: 'Sounds',      icon: '🔊', position: 'top-left-3' },
+    { id: 'houseguests', label: 'Houseguests', position: 'top-left' },
+    { id: 'music',       label: 'Music',       position: 'top-left-2' },
+    { id: 'sounds',      label: 'Sounds',      position: 'top-left-3' },
     // Top-right corner (stacked top → bottom: settings, share, feedback)
-    { id: 'settings',    label: 'Settings',    icon: '⚙️',  position: 'top-right' },
-    { id: 'share',       label: 'Share',       icon: '↗️',  position: 'top-right-2' },
-    { id: 'feedback',    label: 'Feedback',    icon: '💬', position: 'top-right-3' },
+    { id: 'settings',    label: 'Settings',    position: 'top-right' },
+    { id: 'share',       label: 'Share',       position: 'top-right-2' },
+    { id: 'feedback',    label: 'Feedback',    position: 'top-right-3' },
     // Bottom-left corner (stacked bottom → top)
-    { id: 'news',        label: 'News',        icon: '📰', position: 'bottom-left' },
-    { id: 'achievements',label: 'Achievements',icon: '🎖️', position: 'bottom-left-2' },
+    { id: 'news',        label: 'News',        position: 'bottom-left' },
+    { id: 'achievements',label: 'Achievements',position: 'bottom-left-2' },
     // Bottom-right corner (stacked bottom → top: store, social)
-    { id: 'store',       label: 'Store',       icon: '🛒', position: 'bottom-right' },
-    { id: 'social',      label: 'Social',      icon: '🔗', position: 'bottom-right-2' },
+    { id: 'store',       label: 'Store',       position: 'bottom-right' },
+    { id: 'social',      label: 'Social',      position: 'bottom-right-2' },
   ];
 
   let chipElements = {}; // { id: Element }
+
+  /**
+   * Resolve an SVG asset URL for the given icon name and visual state.
+   * @param {string} iconName - SVG icon pack name (e.g. 'housemates')
+   * @param {string} state    - 'normal' | 'hover' | 'pressed' | 'disabled'
+   * @returns {string}
+   */
+  function iconSrc(iconName, state) {
+    return BASE_PATH + 'assets/icons/' + iconName + '_' + state + '.svg';
+  }
 
   /**
    * Build a single chip element.
@@ -45,22 +84,61 @@
    * @returns {HTMLElement}
    */
   function buildChip(def) {
+    const iconName = CHIP_ICON_MAP[def.id] || def.id;
+
     const btn = document.createElement('button');
-    btn.className = `hub-chip hub-chip--${def.position}`;
+    btn.className = 'hub-chip hub-chip--' + def.position;
     btn.setAttribute('data-hub-id', def.id);
     btn.setAttribute('aria-label', def.label);
     btn.setAttribute('type', 'button');
 
-    const icon = document.createElement('span');
-    icon.className = 'hub-chip__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = def.icon;
+    // SVG icon image — swaps src on hover / press / disabled
+    const img = document.createElement('img');
+    img.className = 'hub-chip__icon';
+    img.setAttribute('aria-hidden', 'true');
+    img.alt = '';
+    img.draggable = false;
+    img.src = iconSrc(iconName, 'normal');
+
+    // Hover state
+    btn.addEventListener('mouseenter', function () {
+      if (!btn.disabled) img.src = iconSrc(iconName, 'hover');
+    });
+    btn.addEventListener('mouseleave', function () {
+      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+    });
+
+    // Press state (desktop)
+    btn.addEventListener('mousedown', function () {
+      if (!btn.disabled) img.src = iconSrc(iconName, 'pressed');
+    });
+    btn.addEventListener('mouseup', function () {
+      if (!btn.disabled) {
+        img.src = iconSrc(iconName, 'normal');
+      }
+    });
+
+    // Press state (touch)
+    btn.addEventListener('touchstart', function () {
+      if (!btn.disabled) img.src = iconSrc(iconName, 'pressed');
+    }, { passive: true });
+    btn.addEventListener('touchend', function () {
+      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+    });
+    btn.addEventListener('touchcancel', function () {
+      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+    });
+
+    // Clear states on blur (keyboard accessibility)
+    btn.addEventListener('blur', function () {
+      img.src = iconSrc(iconName, btn.disabled ? 'disabled' : 'normal');
+    });
 
     const badge = document.createElement('span');
     badge.className = 'hub-chip__badge';
     badge.setAttribute('aria-label', 'New notification');
 
-    btn.appendChild(icon);
+    btn.appendChild(img);
     btn.appendChild(badge);
 
     btn.addEventListener('click', function () {
@@ -239,6 +317,12 @@
       el.classList.remove('hub-chip--inactive');
     } else {
       el.classList.add('hub-chip--inactive');
+    }
+    // Also update the SVG icon state to reflect enabled/disabled visually
+    var img = el.querySelector('img.hub-chip__icon');
+    if (img) {
+      var iconName = CHIP_ICON_MAP[id] || id;
+      img.src = iconSrc(iconName, active ? 'normal' : 'disabled');
     }
   }
 
