@@ -16,12 +16,18 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/components/layout/NavBar.css'),
       'utf8',
     );
+    const gameScreenCss = readFileSync(
+      resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'),
+      'utf8',
+    );
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
+    expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('width: 22px;');
     expect(navCss).toContain('height: 22px;');
     expect(layoutNavCss).toContain('--nav-bar-height: 62px;');
+    expect(gameScreenCss).toContain('gap: 10px;');
   });
 
   it('keeps top chips content-sized so longer labels have room to fit', () => {
@@ -29,10 +35,16 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/components/GameTopChip/GameTopChip.css'),
       'utf8',
     );
+    const houseguestGridCss = readFileSync(
+      resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.module.css'),
+      'utf8',
+    );
 
     expect(chipCss).toContain('height: 28px;');
     expect(chipCss).toContain('width: fit-content;');
     expect(chipCss).toContain('max-width: 100%;');
     expect(chipCss).toContain('padding: 0 13px;');
+    expect(houseguestGridCss).toContain('padding: 4px 8px 6px;');
+    expect(houseguestGridCss).toContain('margin-bottom: 6px;');
   });
 });

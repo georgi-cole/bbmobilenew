@@ -1,7 +1,7 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
 .game-control-dock {
   position: fixed;
-  bottom: calc(var(--nav-bar-height) + 14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   z-index: 100;
   width: min(80vw, 340px);
