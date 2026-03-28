@@ -7,7 +7,7 @@ import { selectAlivePlayers } from '../../store/gameSlice';
 import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence';
 import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice';
 import type { RootState } from '../../store/store';
-import StatusPill from '../ui/StatusPill';
+import GameTopChip from '../GameTopChip/GameTopChip';
 import TVLog from '../TVLog/TVLog';
 import TvAnnouncementOverlay, {
   type Announcement,
@@ -16,6 +16,7 @@ import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
+import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 
@@ -357,9 +358,6 @@ export default function TvZone() {
   const phaseLabel = PHASE_LABELS[gameState.phase] ?? gameState.phase;
   const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
-  const saveChipLabel = '';
-  const saveChipIcon = saveStatus === 'saved' ? '✅' : saveStatus === 'error' ? '❌' : '💾';
-  const saveChipVariant = saveStatus === 'error' ? 'danger' : 'success';
   const saveChipAriaLabel = isGuest
     ? 'Save (unavailable in guest mode)'
     : !activeProfileId
@@ -425,14 +423,14 @@ export default function TvZone() {
 
       {/* ── Head bar ────────────────────────────────────────────────────── */}
       <div className="tv-zone__head">
-        {/* Left: pinned phase pill */}
+        {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <StatusPill variant="phase" icon="📍" label={phaseLabel} />
+          <GameTopChip label={phaseLabel} />
         </div>
 
-        {/* Center: scrollable single-row status pills */}
+        {/* Center: scrollable single-row status chips */}
         <ul className="tv-zone__head-pills" aria-label="Game status pills">
-          <li><StatusPill variant="week" icon="📅" label={`S${gameState.season}D${gameState.week}`} /></li>
+          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
@@ -440,34 +438,26 @@ export default function TvZone() {
             <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
           )}
           {/* Alive/total moved to the Housemates occupancy chip so this header can host direct audio toggles. */}
-          <button
-            className="tv-zone__audio-btn"
-            type="button"
-            aria-label="Music"
-            aria-pressed={audioSettings.musicOn}
+          <TopUtilityButton
+            icon="music"
+            ariaLabel="Music"
+            pressed={audioSettings.musicOn}
             title={audioSettings.musicOn ? 'Music on' : 'Music off'}
             onClick={() => dispatch(setAudio({ musicOn: !audioSettings.musicOn }))}
-          >
-            {audioSettings.musicOn ? '🎵' : '🔇'}
-          </button>
-          <button
-            className="tv-zone__audio-btn"
-            type="button"
-            aria-label="Sound effects"
-            aria-pressed={audioSettings.sfxOn}
+          />
+          <TopUtilityButton
+            icon="sound"
+            ariaLabel="Sound effects"
+            pressed={audioSettings.sfxOn}
             title={audioSettings.sfxOn ? 'Sound effects on' : 'Sound effects off'}
             onClick={() => dispatch(setAudio({ sfxOn: !audioSettings.sfxOn }))}
-          >
-            {audioSettings.sfxOn ? '🔊' : '🔕'}
-          </button>
-          <StatusPill
-            variant={saveChipVariant}
-            icon={saveChipIcon}
-            label={saveChipLabel}
-            onClick={handleSave}
-            disabled={!canSave}
+          />
+          <TopUtilityButton
+            icon="save"
             ariaLabel={saveChipAriaLabel}
             title={saveChipTitle}
+            onClick={handleSave}
+            disabled={!canSave}
           />
         </div>
       </div>

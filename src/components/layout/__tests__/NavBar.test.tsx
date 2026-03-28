@@ -26,7 +26,7 @@ describe('NavBar', () => {
   it('shows Rules instead of Game in the bottom navigation', () => {
     renderNavBar('/game');
 
-    expect(screen.getByRole('link', { name: 'Rules' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Game' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'RULES' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'GAME' })).toBeNull();
   });
 });

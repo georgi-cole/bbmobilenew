@@ -1,24 +1,17 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import './NavBar.css';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame } from '../../store/gameSlice';
+import GameBottomNav, { type NavTab } from '../GameBottomNav/GameBottomNav';
 
 /**
  * NavBar — bottom tab bar.
  *
- * To add a tab: append an entry to LINKS.
- * Each entry needs: to (route path), icon (emoji), label (text).
+ * Preserves all routing and game-exit confirmation logic.
+ * Visual layer is now delegated to GameBottomNav.
  */
-const LINKS = [
-  { to: '/',          icon: '🏠', label: 'Home'        },
-  { to: '/rules',     icon: '📋', label: 'Rules'       },
-  { to: '/settings',  icon: '⚙️', label: 'Settings'    },
-  { to: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
-  { to: '/profile',   icon: '👤', label: 'Profile'     },
-] as const;
-
 export default function NavBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -35,8 +28,7 @@ export default function NavBar() {
 
   if (pathname === '/') return null;
 
-  function handleHomeClick(e: React.MouseEvent) {
-    e.preventDefault();
+  function handleHomeClick() {
     if (!isGameActive) {
       navigate('/');
       return;
@@ -53,47 +45,25 @@ export default function NavBar() {
     navigate('/');
   }
 
+  // Derive the active tab from the current pathname.
+  function getActiveTab(): NavTab | null {
+    if (pathname.startsWith('/rules'))       return 'rules';
+    if (pathname.startsWith('/settings'))    return 'settings';
+    if (pathname.startsWith('/leaderboard')) return 'leaderboard';
+    if (pathname.startsWith('/profile'))     return 'profile';
+    if (pathname === '/')                    return 'home';
+    return null;
+  }
+
   return (
-    <>
-      <nav className="nav-bar" aria-label="Main navigation">
-        {LINKS.map(({ to, icon, label }) => {
-          if (to === '/') {
-            // Render a button so we can intercept the click when the game is active.
-            return (
-              <button
-                key={to}
-                className="nav-bar__item"
-                onClick={handleHomeClick}
-                aria-label={label}
-                type="button"
-              >
-                <span className="nav-bar__item-inner">
-                  <span className="nav-bar__icon" aria-hidden="true">{icon}</span>
-                  <span className="nav-bar__label">{label}</span>
-                </span>
-              </button>
-            );
-          }
-
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              end={false} /* 'to' is never '/' in this branch; TypeScript confirmed no overlap */
-              className={({ isActive }) =>
-                `nav-bar__item${isActive ? ' nav-bar__item--active' : ''}`
-              }
-              aria-label={label}
-            >
-              <span className="nav-bar__item-inner">
-                <span className="nav-bar__icon" aria-hidden="true">{icon}</span>
-                <span className="nav-bar__label">{label}</span>
-              </span>
-            </NavLink>
-          );
-        })}
-      </nav>
-
+    <GameBottomNav
+      activeTab={getActiveTab()}
+      onHomeClick={handleHomeClick}
+      onRulesClick={() => navigate('/rules')}
+      onSettingsClick={() => navigate('/settings')}
+      onLeaderboardClick={() => navigate('/leaderboard')}
+      onProfileClick={() => navigate('/profile')}
+    >
       <ConfirmExitModal
         open={confirmOpen}
         title="You are about to exit the house"
@@ -103,6 +73,6 @@ export default function NavBar() {
         onConfirm={onConfirmExit}
         onCancel={() => setConfirmOpen(false)}
       />
-    </>
+    </GameBottomNav>
   );
 }

@@ -14,6 +14,7 @@ import {
   selectIsWaitingForInput,
   selectHumanIsActive,
 } from '../../store/selectors';
+import GameControlDock from '../GameControlDock/GameControlDock';
 import './FloatingActionBar.css';
 
 /**
@@ -69,85 +70,24 @@ export default function FloatingActionBar() {
   }, [humanEnergy]);
 
   return (
-    <div className="fab" role="toolbar" aria-label="Game actions">
-      {/* ── Left side: Social + incoming actions ───────────────────────── */}
-      <div className="fab__side">
-        <button
-          className={`fab__side-btn${isFlashing ? ' fab__side-btn--flash' : ''}`}
-          type="button"
-          aria-label={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
-          title={`Social${humanEnergy !== null ? ` (energy: ${humanEnergy})` : ''}`}
-          disabled={!humanIsActive}
-          onClick={() => dispatch(openSocialPanel())}
-        >
-          💬
-          {humanEnergy !== null && (
-            <span className="fab__badge" aria-hidden="true">
-              {humanEnergy > 99 ? '99+' : humanEnergy}
-            </span>
-          )}
-        </button>
-        <button
-          className="fab__side-btn"
-          type="button"
-          aria-label={`Social actions${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
-          title="Social actions"
-          disabled={!humanIsActive}
-          onClick={() => dispatch(openIncomingInbox())}
-        >
-          📥
-          {pendingCount > 0 && (
-            <span className="fab__badge" aria-hidden="true">
-              {pendingCount > 99 ? '99+' : pendingCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ── Center: Next / Advance ─────────────────────────────────────── */}
-      <button
-        className={`fab__center-btn${canAdvance && !isWaiting ? ' fab__center-btn--pulse' : ''}${
-          isWaiting ? ' fab__center-btn--disabled' : ''
-        }`}
-        type="button"
-        aria-label="Advance to next phase"
-        disabled={isWaiting}
-        onClick={() => {
-          dispatch(advance())
-          try { window.dispatchEvent(new CustomEvent('ui:playPressed')) } catch { /* ignore */ }
-        }}
-      >
-        ▶
-      </button>
-
-      {/* ── Right side: Public Meter + Diary Room ──────────────────────── */}
-      <div className="fab__side">
-        <button
-          className="fab__side-btn"
-          type="button"
-          aria-label={`Public meter${publicRequestCount > 0 ? ` (${publicRequestCount} active requests)` : ''}`}
-          title="Public meter"
-          onClick={() =>
-            navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
-          }
-        >
-          📊
-          {publicRequestCount > 0 && (
-            <span className="fab__badge" aria-hidden="true">
-              {publicRequestCount > 99 ? '99+' : publicRequestCount}
-            </span>
-          )}
-        </button>
-        <button
-          className="fab__side-btn"
-          type="button"
-          aria-label="Confessional"
-          title="Confessional"
-          onClick={() => navigate('/diary-room')}
-        >
-          🎤
-        </button>
-      </div>
-    </div>
+    <GameControlDock
+      onChatClick={humanIsActive ? () => dispatch(openSocialPanel()) : undefined}
+      onLogClick={humanIsActive ? () => dispatch(openIncomingInbox()) : undefined}
+      onPrimaryActionClick={() => {
+        dispatch(advance());
+        try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
+      }}
+      onStatsClick={() =>
+        navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
+      }
+      onToolClick={() => navigate('/diary-room')}
+      disabled={!humanIsActive}
+      primaryDisabled={isWaiting}
+      chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
+      chatFlash={isFlashing}
+      logBadgeCount={pendingCount > 0 ? pendingCount : undefined}
+      statsBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
+      primaryPulse={canAdvance && !isWaiting}
+    />
   );
 }

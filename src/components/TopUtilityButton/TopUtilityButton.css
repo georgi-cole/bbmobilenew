@@ -1,0 +1,61 @@
+/* ── TopUtilityButton ───────────────────────────────────────────────────── */
+.top-utility-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 150ms ease, opacity 150ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Sized to be secondary/small — matches existing audio button footprint */
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.top-utility-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Shell image fills the button */
+.top-utility-btn__shell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Glyph overlaid, centred */
+.top-utility-btn__glyph {
+  position: relative;
+  z-index: 1;
+  width: 52%;
+  height: 52%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: opacity 150ms ease;
+}
+
+/* Active/pressed state: slightly brighter glyph */
+.top-utility-btn--active .top-utility-btn__glyph {
+  filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.7)) brightness(1.2);
+}
+
+/* Keyboard focus ring */
+.top-utility-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
