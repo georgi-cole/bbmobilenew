@@ -9,7 +9,7 @@ describe('AudioGate', () => {
   });
 
   it('does not render a visible enable-audio overlay', () => {
-    render(<AudioGate promptText="Tap anywhere to enable audio" />);
+    render(<AudioGate />);
 
     expect(screen.queryByRole('button', { name: /enable audio/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/tap anywhere to enable audio/i)).not.toBeInTheDocument();

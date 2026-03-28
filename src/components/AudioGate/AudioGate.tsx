@@ -13,8 +13,6 @@ import { detectDebugMode } from '../../utils/debugMode';
 export interface AudioGateProps {
   /** Called once when the user gesture unlocks audio. */
   onUnlock?: () => void;
-  /** Retained for API compatibility; no prompt is rendered. */
-  promptText?: string;
 }
 
 export default function AudioGate({ onUnlock }: AudioGateProps) {
