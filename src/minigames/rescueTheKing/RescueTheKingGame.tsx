@@ -244,7 +244,7 @@ export default function RescueTheKingGame({ onFinish, seed = 12345, autoStart = 
         const moves = getAllValidMoves(boardRef.current);
         if (moves.length > 0) {
           // Use the seeded RNG (rngRef) for consistent hint selection.
-          const pick = moves[Math.floor(rngRef.current() * Math.min(3, moves.length))];
+          const pick = moves[Math.floor(rngRef.current() * moves.length)];
           setHintCells(new Set([`${pick.r1},${pick.c1}`, `${pick.r2},${pick.c2}`]));
         }
       } else {
