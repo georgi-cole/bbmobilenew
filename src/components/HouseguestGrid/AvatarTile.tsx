@@ -4,7 +4,8 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
-const LONG_PRESS_DELAY_MS = 450
+export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
+const LONG_PRESS_CLICK_SUPPRESSION_MS = 350
 
 type Props = {
   name: string
@@ -50,7 +51,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
   const longPressTimeoutRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(null)
-  const longPressTriggeredRef = React.useRef(false)
+  const suppressClickUntilRef = React.useRef(0)
 
   React.useEffect(() => {
     attemptRef.current = 0
@@ -102,26 +103,23 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     if (longPressTimeoutRef.current !== null) {
       window.clearTimeout(longPressTimeoutRef.current)
       longPressTimeoutRef.current = null
-      longPressTriggeredRef.current = false
     }
   }
 
   function triggerPressAction() {
     if (!onClick) return
-    longPressTriggeredRef.current = true
+    suppressClickUntilRef.current = Date.now() + LONG_PRESS_CLICK_SUPPRESSION_MS
     onClick()
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!onClick || e.pointerType !== 'touch') return
-    e.preventDefault()
     clearLongPressTimeout()
-    longPressTriggeredRef.current = false
     const timeoutId = window.setTimeout(() => {
       if (longPressTimeoutRef.current !== timeoutId) return
       longPressTimeoutRef.current = null
       triggerPressAction()
-    }, LONG_PRESS_DELAY_MS)
+    }, AVATAR_TILE_LONG_PRESS_DELAY_MS)
     longPressTimeoutRef.current = timeoutId
   }
 
@@ -131,10 +129,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!onClick) return
-    if (longPressTriggeredRef.current) {
+    if (Date.now() < suppressClickUntilRef.current) {
       e.preventDefault()
       e.stopPropagation()
-      longPressTriggeredRef.current = false
       return
     }
     onClick()
