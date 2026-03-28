@@ -32,7 +32,7 @@
       const path = lastSlash >= 0
         ? global.location.pathname.substring(0, lastSlash + 1)
         : '/';
-      return path || '/';
+      return path;
     }
     return '/';
   }());
