@@ -39,14 +39,14 @@ export default function PublicSaveReveal({
       return;
     }
 
-    // entering → revealing (cards have entered)
-    const t1 = setTimeout(() => setPhase('revealing'), 700);
-    // revealing → saved (bars have filled)
-    const t2 = setTimeout(() => setPhase('saved'), 1800);
+    // entering → revealing (let the room settle before the bars climb)
+    const t1 = setTimeout(() => setPhase('revealing'), 850);
+    // revealing → saved (hold longer to build suspense)
+    const t2 = setTimeout(() => setPhase('saved'), 2200);
     // saved → exiting (hold the saved moment)
-    const t3 = setTimeout(() => setPhase('exiting'), 3400);
+    const t3 = setTimeout(() => setPhase('exiting'), 3750);
     // exiting → done
-    const t4 = setTimeout(() => onDone(), 4000);
+    const t4 = setTimeout(() => onDone(), 4400);
 
     return () => {
       clearTimeout(t1);
@@ -57,6 +57,14 @@ export default function PublicSaveReveal({
   }, [onDone]);
 
   const showBars = phase === 'revealing' || phase === 'saved' || phase === 'exiting';
+  const phaseCopy =
+    phase === 'entering'
+      ? 'Reading the live audience…'
+      : phase === 'revealing'
+        ? 'Every point matters tonight.'
+        : phase === 'saved'
+          ? 'The public has spoken.'
+          : 'Locking in the result…';
 
   return (
     <div
@@ -66,13 +74,16 @@ export default function PublicSaveReveal({
       aria-label={`Public Save: ${nominees.find((n) => n.id === savedId)?.name ?? ''} is saved`}
     >
       <div className="psr__backdrop" />
+      <div className="psr__spotlight" aria-hidden="true" />
       <div className="psr__panel">
+        <div className="psr__scanline" aria-hidden="true" />
         <div className="psr__heading">
           <span className="psr__heading-eyebrow">Public Save</span>
           <h2 className="psr__heading-title">The Audience Decides</h2>
           <p className="psr__heading-sub">
             Before veto night, the houseguest with the highest public approval steps off the block.
           </p>
+          <p className="psr__phase-copy">{phaseCopy}</p>
         </div>
 
         <div className="psr__nominees">

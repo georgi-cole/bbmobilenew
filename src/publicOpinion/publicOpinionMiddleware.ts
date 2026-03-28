@@ -2,6 +2,7 @@ import type { Middleware, MiddlewareAPI, Dispatch, UnknownAction } from '@reduxj
 import type { Player } from '../types';
 import {
   initializeProfiles,
+  setProfileApprovals,
   updateApproval,
   addDirection,
   pruneExpiredDirections,
@@ -12,6 +13,7 @@ import { publicOpinionConfig } from './publicOpinionConfig';
 import { generateDirectionsForCycle } from './PublicDirectionService';
 import { generateDailyPublicUpdate } from './PublicHeadlineService';
 import { resolveEventMissionProgress, type MissionGameEvent } from './MissionActionMapper';
+import { mulberry32 } from '../store/rng';
 import {
   computeNominationReactions,
   computeEvictionReactions,
@@ -79,6 +81,111 @@ interface StateWithGame {
     profiles: Record<string, unknown>;
     directions: PublicDirection[];
   };
+}
+
+const OPENING_PUBLIC_APPROVAL_MIN = 42;
+const OPENING_PUBLIC_APPROVAL_MAX = 57;
+// Golden-ratio bit mixer keeps the opening approval shuffle deterministic while
+// avoiding obvious patterns from adjacent game seeds.
+const OPENING_PUBLIC_APPROVAL_SEED_MIX = 0x9e3779b9;
+
+function isDefaultOpeningProfile(profile: unknown): boolean {
+  const candidate = profile as {
+    approval?: number;
+    previousApproval?: number;
+    seasonApprovals?: number[];
+    completedDirectionCount?: number;
+    cumulativePositiveDelta?: number;
+  };
+
+  return (
+    candidate?.approval === publicOpinionConfig.DEFAULT_APPROVAL &&
+    candidate?.previousApproval === publicOpinionConfig.DEFAULT_APPROVAL &&
+    Array.isArray(candidate?.seasonApprovals) &&
+    candidate.seasonApprovals.length === 1 &&
+    candidate.seasonApprovals[0] === publicOpinionConfig.DEFAULT_APPROVAL &&
+    (candidate?.completedDirectionCount ?? 0) === 0 &&
+    (candidate?.cumulativePositiveDelta ?? 0) === 0
+  );
+}
+
+function shouldRandomizeOpeningApprovals(
+  profiles: Record<string, unknown>,
+  playerIds: string[],
+): boolean {
+  if (playerIds.length === 0) return false;
+  return playerIds.every((playerId) => isDefaultOpeningProfile(profiles[playerId]));
+}
+
+function buildOpeningApprovalMap(players: Player[], seed: number): Record<string, number> {
+  const rng = mulberry32((seed ^ OPENING_PUBLIC_APPROVAL_SEED_MIX) >>> 0);
+  const range = OPENING_PUBLIC_APPROVAL_MAX - OPENING_PUBLIC_APPROVAL_MIN + 1;
+
+  return Object.fromEntries(
+    [...players]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((player) => [
+        player.id,
+        OPENING_PUBLIC_APPROVAL_MIN + Math.floor(rng() * range),
+      ]),
+  );
+}
+
+function ensureProfiles(
+  store: MiddlewareAPI<Dispatch<UnknownAction>>,
+  game: GameState,
+): Record<string, unknown> {
+  let profiles = ((store.getState() as StateWithGame).publicOpinion?.profiles ?? {});
+  if (Object.keys(profiles).length === 0 && game.players?.length > 0) {
+    store.dispatch(initializeProfiles(game.players.map((p) => p.id)));
+    profiles = ((store.getState() as StateWithGame).publicOpinion?.profiles ?? {});
+  }
+  return profiles;
+}
+
+function applyCompetitionResultPublicOpinion(
+  store: MiddlewareAPI<Dispatch<UnknownAction>>,
+  game: GameState,
+  prevPhase: string | undefined,
+  newPhase: string | undefined,
+): void {
+  if (!game) return;
+
+  const profiles = ensureProfiles(store, game);
+  const week = game.week ?? 1;
+
+  if (prevPhase === 'hoh_comp' && newPhase === 'hoh_results') {
+    if (
+      week === 1 &&
+      shouldRandomizeOpeningApprovals(profiles, game.players.map((p) => p.id))
+    ) {
+      store.dispatch(setProfileApprovals(buildOpeningApprovalMap(game.players, game.seed ?? 0)));
+    }
+
+    if (game.hohId) {
+      store.dispatch(
+        updateApproval({
+          playerId: game.hohId,
+          delta: publicOpinionConfig.competitionImpact.hohWin,
+          reason: 'hoh_win',
+          week,
+          eventType: 'hoh_win',
+        }),
+      );
+    }
+  }
+
+  if (prevPhase === 'pov_comp' && newPhase === 'pov_results' && game.povWinnerId) {
+    store.dispatch(
+      updateApproval({
+        playerId: game.povWinnerId,
+        delta: publicOpinionConfig.competitionImpact.povWin,
+        reason: 'pov_win',
+        week,
+        eventType: 'pov_win',
+      }),
+    );
+  }
 }
 
 // ── Helper: dispatch mission-progress signals ─────────────────────────────────
@@ -203,6 +310,49 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         : 'won_competition';
       dispatchMissionProgress(store, { type: eventType, actorId: winnerId, week });
     }
+    applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase);
+    return result;
+  }
+
+  if (actionType === 'game/completeMinigame') {
+    // Some reducers can finalize HoH/PoV results (e.g. transition hoh_comp → hoh_results
+    // or pov_comp → pov_results) via this action. When a winner is present, we should
+    // also advance public-opinion missions for competition wins, similar to
+    // game/applyMinigameWinner.
+    const payload = actionPayload as
+      | {
+          winnerId?: string;
+          competitionType?: string | null;
+        }
+      | undefined;
+    const week = game.week ?? 1;
+    const winnerId = payload?.winnerId;
+
+    if (winnerId) {
+      // Prefer an explicit competitionType from the payload if provided, otherwise
+      // infer from prevPhase (hoh_comp/pov_comp), falling back to a generic win event.
+      let eventType: MissionGameEvent['type'];
+      const competitionType = (payload?.competitionType || '').toLowerCase();
+
+      if (competitionType === 'pov') {
+        eventType = 'pov_win';
+      } else if (competitionType === 'hoh') {
+        eventType = 'hoh_win';
+      } else if (prevPhase === 'pov_comp') {
+        eventType = 'pov_win';
+      } else if (prevPhase === 'hoh_comp') {
+        eventType = 'hoh_win';
+      } else {
+        eventType = 'won_competition';
+      }
+
+      dispatchMissionProgress(store, {
+        type: eventType,
+        actorId: winnerId,
+        week,
+      });
+    }
+    applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase);
     return result;
   }
 
@@ -255,54 +405,27 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
     actionType === 'game/setPhase' ||
     actionType === 'game/forcePhase'
   ) {
-    const profiles = nextState.publicOpinion?.profiles ?? {};
-    const hasProfiles = Object.keys(profiles).length > 0;
-
-    if (!hasProfiles && game.players?.length > 0) {
-      const playerIds = game.players.map((p) => p.id);
-      store.dispatch(initializeProfiles(playerIds));
-    }
+    ensureProfiles(store, game);
 
     if (prevPhase !== newPhase) {
       const week = game.week ?? 1;
+      applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase);
 
-      if (newPhase === 'hoh_results') {
-        if (game.hohId) {
-          store.dispatch(
-            updateApproval({
-              playerId: game.hohId,
-              delta: publicOpinionConfig.competitionImpact.hohWin,
-              reason: 'hoh_win',
-              week,
-              eventType: 'hoh_win',
-            }),
-          );
-          // Mission progress: HOH win
-          dispatchMissionProgress(store, {
-            type: 'hoh_win',
-            actorId: game.hohId,
-            week,
-          });
-        }
+      if (prevPhase === 'hoh_comp' && newPhase === 'hoh_results' && game.hohId) {
+        // Mission progress: HOH win
+        dispatchMissionProgress(store, {
+          type: 'hoh_win',
+          actorId: game.hohId,
+          week,
+        });
       }
 
-      if (newPhase === 'pov_results') {
-        if (game.povWinnerId) {
-          store.dispatch(
-            updateApproval({
-              playerId: game.povWinnerId,
-              delta: publicOpinionConfig.competitionImpact.povWin,
-              reason: 'pov_win',
-              week,
-              eventType: 'pov_win',
-            }),
-          );
-          dispatchMissionProgress(store, {
-            type: 'pov_win',
-            actorId: game.povWinnerId,
-            week,
-          });
-        }
+      if (prevPhase === 'pov_comp' && newPhase === 'pov_results' && game.povWinnerId) {
+        dispatchMissionProgress(store, {
+          type: 'pov_win',
+          actorId: game.povWinnerId,
+          week,
+        });
       }
 
       if (newPhase === 'eviction_results') {

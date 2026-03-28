@@ -67,7 +67,7 @@ function makeGameState(overrides: Partial<TestGameState> = {}): TestGameState {
 
 function gameReducer(
   state: TestGameState = makeGameState(),
-  action: { type: string; payload?: Partial<TestGameState> | string },
+  action: { type: string; payload?: Partial<TestGameState> | string | { winnerId?: string } },
 ) {
   if (
     action.type === 'game/advance' ||
@@ -75,6 +75,14 @@ function gameReducer(
     action.type === 'game/forcePhase'
   ) {
     return { ...state, ...(action.payload as Partial<TestGameState>) };
+  }
+  if (action.type === 'game/applyMinigameWinner' && state.phase === 'hoh_comp') {
+    const payload = action.payload as { winnerId?: string } | undefined;
+    return {
+      ...state,
+      phase: 'hoh_results',
+      hohId: payload?.winnerId ?? state.hohId,
+    };
   }
   return state;
 }
@@ -94,6 +102,63 @@ function makeStore(initialGame?: Partial<TestGameState>) {
 }
 
 // ── 1. Event-driven approval updates ─────────────────────────────────────────
+
+describe('event-driven approval: hoh_results', () => {
+  it('randomizes opening approvals after the first LOH result before applying the winner bonus', () => {
+    const store = makeStore({
+      phase: 'hoh_comp',
+      week: 1,
+      hohId: null,
+      seed: 42,
+    });
+
+    store.dispatch({
+      type: 'game/advance',
+      payload: {
+        phase: 'hoh_results',
+        hohId: 'p1',
+        week: 1,
+      },
+    });
+
+    const profiles = store.getState().publicOpinion.profiles;
+    expect(Object.keys(profiles)).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(profiles.p1.previousApproval).toBeGreaterThanOrEqual(42);
+    expect(profiles.p1.previousApproval).toBeLessThanOrEqual(57);
+    expect(profiles.p1.approval).toBe(profiles.p1.previousApproval + publicOpinionConfig.competitionImpact.hohWin);
+    expect(profiles.p1.seasonApprovals).toEqual([
+      profiles.p1.previousApproval,
+      profiles.p1.approval,
+    ]);
+
+    for (const playerId of ['p2', 'p3', 'p4']) {
+      expect(profiles[playerId].approval).toBeGreaterThanOrEqual(42);
+      expect(profiles[playerId].approval).toBeLessThanOrEqual(57);
+      expect(profiles[playerId].seasonApprovals).toEqual([profiles[playerId].approval]);
+    }
+  });
+
+  it('randomizes opening approvals on the live applyMinigameWinner path', () => {
+    const store = makeStore({
+      phase: 'hoh_comp',
+      week: 1,
+      hohId: null,
+      seed: 42,
+    });
+
+    store.dispatch({
+      type: 'game/applyMinigameWinner',
+      payload: { winnerId: 'p1' },
+    });
+
+    const profiles = store.getState().publicOpinion.profiles;
+    expect(profiles.p1.previousApproval).toBeGreaterThanOrEqual(42);
+    expect(profiles.p1.previousApproval).toBeLessThanOrEqual(57);
+    expect(profiles.p1.approval).toBe(profiles.p1.previousApproval + publicOpinionConfig.competitionImpact.hohWin);
+    expect(profiles.p2.approval).toBeGreaterThanOrEqual(42);
+    expect(profiles.p2.approval).toBeLessThanOrEqual(57);
+  });
+});
 
 describe('event-driven approval: nomination_results', () => {
   it('applies HOH backlash immediately when a liked player (≥60%) is nominated', () => {
