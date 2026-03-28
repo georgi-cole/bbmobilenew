@@ -152,7 +152,7 @@
 }
 
 .dock-node:focus-visible .dock-node__shell {
-  filter: drop-shadow(0 0 0 2px rgba(255, 255, 255, 0.8));
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
   outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: 2px;
   border-radius: 50%;
