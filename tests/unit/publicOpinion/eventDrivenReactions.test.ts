@@ -103,7 +103,7 @@ function makeStore(initialGame?: Partial<TestGameState>) {
 
 // ── 1. Event-driven approval updates ─────────────────────────────────────────
 
-describe('event-driven approval: nomination_results', () => {
+describe('event-driven approval: hoh_results', () => {
   it('randomizes opening approvals after the first LOH result before applying the winner bonus', () => {
     const store = makeStore({
       phase: 'hoh_comp',
@@ -158,7 +158,9 @@ describe('event-driven approval: nomination_results', () => {
     expect(profiles.p2.approval).toBeGreaterThanOrEqual(42);
     expect(profiles.p2.approval).toBeLessThanOrEqual(57);
   });
+});
 
+describe('event-driven approval: nomination_results', () => {
   it('applies HOH backlash immediately when a liked player (≥60%) is nominated', () => {
     const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));

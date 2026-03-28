@@ -151,7 +151,7 @@ function applyCompetitionResultPublicOpinion(
 ): void {
   if (!game) return;
 
-  let profiles = ensureProfiles(store, game);
+  const profiles = ensureProfiles(store, game);
   const week = game.week ?? 1;
 
   if (prevPhase === 'hoh_comp' && newPhase === 'hoh_results') {
@@ -160,7 +160,6 @@ function applyCompetitionResultPublicOpinion(
       shouldRandomizeOpeningApprovals(profiles, game.players.map((p) => p.id))
     ) {
       store.dispatch(setProfileApprovals(buildOpeningApprovalMap(game.players, game.seed ?? 0)));
-      profiles = ((store.getState() as StateWithGame).publicOpinion?.profiles ?? {});
     }
 
     if (game.hohId) {
