@@ -28,81 +28,86 @@
   z-index: 1;
   display: flex;
   align-items: stretch;
+  justify-content: space-between;
   /* Only occupy the non-safe-area height */
   height: var(--nav-bar-height, 58px);
-  padding-bottom: 0;
+  padding: 0 6px;
 }
 
 /* Individual nav item buttons */
 .game-bottom-nav__item {
+  position: relative;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
   background: transparent;
   border: none;
-  padding: 5px 4px;
+  padding: 3px 2px 5px;
   cursor: pointer;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.55));
-  transition: color 150ms ease, opacity 150ms ease;
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 0.8;
+  transition: opacity 150ms ease, transform 150ms ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
 .game-bottom-nav__item:hover {
-  color: var(--color-text, rgba(255, 255, 255, 0.92));
+  opacity: 0.9;
 }
 
 .game-bottom-nav__item--active {
-  color: var(--color-accent, #6366f1);
+  opacity: 1;
+}
+
+.game-bottom-nav__segment {
+  position: absolute;
+  inset: 2px 1px 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 3px);
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+.game-bottom-nav__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
 }
 
 /* Glyph icon */
 .game-bottom-nav__glyph {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
-  /* Muted by default */
-  opacity: 0.65;
-  filter: grayscale(20%);
-  transition: opacity 150ms ease, filter 150ms ease, transform 160ms ease;
-}
-
-.game-bottom-nav__item:hover .game-bottom-nav__glyph {
-  opacity: 0.85;
-  filter: grayscale(0%);
+  transition: opacity 150ms ease, transform 160ms ease;
 }
 
 .game-bottom-nav__item--active .game-bottom-nav__glyph {
   opacity: 1;
-  filter: grayscale(0%) drop-shadow(0 0 5px rgba(99, 102, 241, 0.55));
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 /* Label */
 .game-bottom-nav__label {
-  font-size: 0.56rem;
+  font-size: 0.5rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   line-height: 1;
   white-space: nowrap;
-  opacity: 0.7;
+  opacity: 0.94;
   transition: opacity 150ms ease;
-}
-
-.game-bottom-nav__item:hover .game-bottom-nav__label {
-  opacity: 0.9;
 }
 
 .game-bottom-nav__item--active .game-bottom-nav__label {
   opacity: 1;
-  /* Subtle text glow for active tab */
-  text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
 }
 
 /* Keyboard focus ring */

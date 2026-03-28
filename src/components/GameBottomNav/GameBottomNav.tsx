@@ -1,15 +1,16 @@
 import './GameBottomNav.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ASSET_BASE = `${BASE}/assets/updated_nav_fab_bar`;
 
 export type NavTab = 'home' | 'rules' | 'settings' | 'leaderboard' | 'profile';
 
 const NAV_ITEMS: { tab: NavTab; glyph: string; label: string }[] = [
-  { tab: 'home',        glyph: 'home_glossy_v4.svg',        label: 'HOME'        },
-  { tab: 'rules',       glyph: 'rules_glossy_v4.svg',       label: 'RULES'       },
-  { tab: 'settings',    glyph: 'settings_glossy_v4.svg',    label: 'SETTINGS'    },
-  { tab: 'leaderboard', glyph: 'leaderboard_glossy_v4.svg', label: 'LEADERBOARD' },
-  { tab: 'profile',     glyph: 'profile_glossy_v4.svg',     label: 'PROFILE'     },
+  { tab: 'home',        glyph: 'home_approved_final.svg',        label: 'HOME'        },
+  { tab: 'rules',       glyph: 'rules_approved_final.svg',       label: 'RULES'       },
+  { tab: 'settings',    glyph: 'settings_approved_final.svg',    label: 'SETTINGS'    },
+  { tab: 'leaderboard', glyph: 'leaderboard_approved_final.svg', label: 'LEADERBOARD' },
+  { tab: 'profile',     glyph: 'profile_approved_final.svg',     label: 'PROFILE'     },
 ];
 
 export interface GameBottomNavProps {
@@ -25,10 +26,11 @@ export interface GameBottomNavProps {
 
 
 /**
- * GameBottomNav — SVG-backed bottom navigation strip.
+ * GameBottomNav — SVG-backed segmented bottom navigation strip.
  *
- * Uses nav_bar.svg as the visual shell, with per-tab SVG glyphs and text
- * labels overlaid as React content. Preserves full accessibility semantics.
+ * Uses a shell background plus per-tab active/idle segment SVGs, with centered
+ * icon + text content overlaid as React content. Preserves full accessibility
+ * semantics and existing routing logic.
  */
 export default function GameBottomNav({
   activeTab,
@@ -39,7 +41,9 @@ export default function GameBottomNav({
   onProfileClick,
   children,
 }: GameBottomNavProps) {
-  const navBarSrc = `${BASE}/assets/control_dock/nav_bar.svg`;
+  const navBarSrc = `${ASSET_BASE}/bottom_nav_shell_final.svg`;
+  const activeSegmentSrc = `${ASSET_BASE}/bottom_nav_segment_active_final.svg`;
+  const idleSegmentSrc = `${ASSET_BASE}/bottom_nav_segment_idle_final.svg`;
 
   const handlers: Record<NavTab, (() => void) | undefined> = {
     home:        onHomeClick,
@@ -65,7 +69,7 @@ export default function GameBottomNav({
         <div className="game-bottom-nav__items">
           {NAV_ITEMS.map(({ tab, glyph, label }) => {
             const isActive = activeTab === tab;
-            const glyphSrc = `${BASE}/assets/glossy_bottom_bar/${glyph}`;
+            const glyphSrc = `${ASSET_BASE}/${glyph}`;
             return (
               <button
                 key={tab}
@@ -76,6 +80,14 @@ export default function GameBottomNav({
                 onClick={handlers[tab]}
               >
                 <img
+                  className="game-bottom-nav__segment"
+                  src={isActive ? activeSegmentSrc : idleSegmentSrc}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                />
+                <span className="game-bottom-nav__content">
+                <img
                   className="game-bottom-nav__glyph"
                   src={glyphSrc}
                   alt=""
@@ -83,6 +95,7 @@ export default function GameBottomNav({
                   draggable={false}
                 />
                 <span className="game-bottom-nav__label">{label}</span>
+                </span>
               </button>
             );
           })}
@@ -92,4 +105,3 @@ export default function GameBottomNav({
     </>
   );
 }
-

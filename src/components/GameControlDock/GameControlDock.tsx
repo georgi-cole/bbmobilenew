@@ -2,28 +2,23 @@ import { useState } from 'react';
 import './GameControlDock.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ASSET_BASE = `${BASE}/assets/updated_nav_fab_bar`;
 
 type NodeState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
 function assetUrl(file: string): string {
-  return `${BASE}/assets/glossy_dock/${file}`;
+  return `${ASSET_BASE}/${file}`;
 }
 
-function nodeShellUrl(variant: 'play' | 'side', state: NodeState, role?: string): string {
+function nodeShellUrl(variant: 'play' | 'side', state: NodeState): string {
   if (variant === 'play') {
-    return assetUrl(`play_node_${state}_glossy_v4.svg`);
+    return assetUrl(`play_node_${state}_final.svg`);
   }
-  // Side nodes use per-role shells; disabled state is shared across all roles
-  if (state === 'disabled') {
-    return assetUrl('side_node_disabled_glossy_v4.svg');
-  }
-  return assetUrl(`side_node_${role ?? 'chat'}_${state}_glossy_v4.svg`);
+  return assetUrl(`side_node_${state}_final.svg`);
 }
 
 interface DockNodeProps {
   variant: 'play' | 'side';
-  /** Role name used to pick the correct side-node shell (e.g. 'chat', 'log', 'stats', 'action') */
-  role?: string;
   glyphFile: string;
   ariaLabel: string;
   disabled?: boolean;
@@ -34,7 +29,6 @@ interface DockNodeProps {
 
 function DockNode({
   variant,
-  role,
   glyphFile,
   ariaLabel,
   disabled = false,
@@ -49,11 +43,11 @@ function DockNode({
     ? 'disabled'
     : isPressed
     ? 'pressed'
-    : isHovered
-    ? 'hover'
-    : 'normal';
+     : isHovered
+     ? 'hover'
+     : 'normal';
 
-  const shellSrc = nodeShellUrl(variant, state, role);
+  const shellSrc = nodeShellUrl(variant, state);
   const glyphSrc = assetUrl(glyphFile);
 
   return (
@@ -128,7 +122,7 @@ export default function GameControlDock({
   statsBadgeCount,
   primaryPulse = false,
 }: GameControlDockProps) {
-  const shellSrc = assetUrl('dock_shell_glossy_v4.svg');
+  const shellSrc = assetUrl('fab_dock_shell_final.svg');
 
   return (
     <div
@@ -150,9 +144,8 @@ export default function GameControlDock({
         {/* Left 1: Chat / Social */}
         <DockNode
           variant="side"
-          role="chat"
-          glyphFile="chat_glossy_v4.svg"
-          ariaLabel={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
+          glyphFile="social_v2.svg"
+          ariaLabel={`Social Module${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onChatClick}
           badge={chatBadgeCount}
@@ -162,9 +155,8 @@ export default function GameControlDock({
         {/* Left 2: Log / Inbox */}
         <DockNode
           variant="side"
-          role="log"
-          glyphFile="log_glossy_v4.svg"
-          ariaLabel={`Log${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
+          glyphFile="requests_v2.svg"
+          ariaLabel={`Incoming Requests${logBadgeCount ? ` (${logBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onLogClick}
           badge={logBadgeCount}
@@ -173,8 +165,8 @@ export default function GameControlDock({
         {/* Center: Primary play/advance */}
         <DockNode
           variant="play"
-          glyphFile="play_glossy_v4.svg"
-          ariaLabel="Advance to next phase"
+          glyphFile="play_v2.svg"
+          ariaLabel="Play"
           disabled={primaryDisabled}
           onClick={onPrimaryActionClick}
           className={primaryPulse ? 'dock-node--pulse' : ''}
@@ -183,9 +175,8 @@ export default function GameControlDock({
         {/* Right 1: Stats / Public Meter */}
         <DockNode
           variant="side"
-          role="stats"
-          glyphFile="stats_glossy_v4.svg"
-          ariaLabel={`Stats${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
+          glyphFile="public_meter_v2.svg"
+          ariaLabel={`Public Meter${statsBadgeCount ? ` (${statsBadgeCount})` : ''}`}
           disabled={disabled}
           onClick={onStatsClick}
           badge={statsBadgeCount}
@@ -194,9 +185,8 @@ export default function GameControlDock({
         {/* Right 2: Action / Diary Room */}
         <DockNode
           variant="side"
-          role="action"
-          glyphFile="action_glossy_v4.svg"
-          ariaLabel="Confessional"
+          glyphFile="confessional_v2.svg"
+          ariaLabel="Confessional Room"
           disabled={disabled}
           onClick={onToolClick}
         />
