@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="g" x1="64" y1="20" x2="64" y2="106">
+      <stop offset="0%" stop-color="#F8E9FF"/>
+      <stop offset="100%" stop-color="#D8B6FF"/>
+    </linearGradient>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="rgba(0,0,0,0.18)"/>
+    </filter>
+  </defs>
+  <g opacity="0.30" filter="url(#glow)">
+    <g fill="rgba(210,164,255,0.44)" stroke="rgba(210,164,255,0.44)" stroke-linecap="round" stroke-linejoin="round"><circle cx="64" cy="64" r="15" fill="none" stroke-width="7"/><path d="M64 30v12M64 86v12M30 64h12M86 64h12M42 42l8 8M78 78l8 8M86 42l-8 8M50 78l-8 8" stroke-width="7"/><circle cx="64" cy="64" r="4.5" stroke-width="6"/></g>
+  </g>
+  <g transform="translate(0 2)" opacity="0.16">
+    <g fill="black" stroke="black" stroke-linecap="round" stroke-linejoin="round"><circle cx="64" cy="64" r="15" fill="none" stroke-width="7"/><path d="M64 30v12M64 86v12M30 64h12M86 64h12M42 42l8 8M78 78l8 8M86 42l-8 8M50 78l-8 8" stroke-width="7"/><circle cx="64" cy="64" r="4.5" stroke-width="6"/></g>
+  </g>
+  <g filter="url(#shadow)">
+    <g fill="url(#g)" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round"><circle cx="64" cy="64" r="15" fill="none" stroke-width="7"/><path d="M64 30v12M64 86v12M30 64h12M86 64h12M42 42l8 8M78 78l8 8M86 42l-8 8M50 78l-8 8" stroke-width="7"/><circle cx="64" cy="64" r="4.5" stroke-width="6"/></g>
+  </g>
+</svg>

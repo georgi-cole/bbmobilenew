@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="210" viewBox="0 0 980 210" fill="none">
+  <defs>
+    <linearGradient id="dockBg" x1="0" y1="0" x2="980" y2="210">
+      <stop offset="0%" stop-color="#061024"/>
+      <stop offset="55%" stop-color="#0B1732"/>
+      <stop offset="100%" stop-color="#071125"/>
+    </linearGradient>
+    <linearGradient id="topGlass" x1="490" y1="14" x2="490" y2="96">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+      <stop offset="44%" stop-color="rgba(255,255,255,0.10)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="48%" r="38%">
+      <stop offset="0%" stop-color="rgba(126,136,255,0.24)"/>
+      <stop offset="55%" stop-color="rgba(96,112,255,0.08)"/>
+      <stop offset="100%" stop-color="rgba(96,112,255,0)"/>
+    </radialGradient>
+    <filter id="og" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <clipPath id="clip">
+      <rect x="28" y="26" width="924" height="146" rx="73"/>
+    </clipPath>
+  </defs>
+  <rect x="24" y="26" width="932" height="146" rx="73" fill="rgba(102,120,255,0.16)" filter="url(#og)"/>
+  <rect x="28" y="26" width="924" height="146" rx="73" fill="url(#dockBg)" stroke="rgba(220,232,255,0.18)" stroke-width="2"/>
+  <g clip-path="url(#clip)">
+    <path d="M 64 34 H 916 Q 872 90 490 102 Q 108 90 64 34 Z" fill="url(#topGlass)" opacity="0.96"/>
+    <rect x="100" y="58" width="780" height="84" rx="30" fill="rgba(16,28,60,0.42)" stroke="rgba(255,255,255,0.08)" stroke-width="1.3"/>
+    <ellipse cx="490" cy="98" rx="164" ry="50" fill="url(#centerGlow)"/>
+  </g>
+  <path d="M 84 42 H 896" stroke="rgba(255,255,255,0.14)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 92 160 H 888" stroke="rgba(255,255,255,0.04)" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

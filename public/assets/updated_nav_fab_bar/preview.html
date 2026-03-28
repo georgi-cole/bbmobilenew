@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Final Bottom Nav + FAB Pack</title>
+<style>
+body{margin:0;min-height:100vh;font-family:Inter,Arial,sans-serif;color:#fff;background:radial-gradient(circle at 50% 18%, rgba(108,132,255,.14), transparent 22%),linear-gradient(180deg,#060c1b 0%,#0c1430 55%,#09101f 100%)}
+.wrap{max-width:1240px;margin:0 auto;padding:30px 20px 60px}
+h1{text-align:center;margin:0 0 8px;font-size:28px}
+p{text-align:center;opacity:.78;margin:0 0 24px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;margin-bottom:18px;backdrop-filter:blur(8px)}
+.nav{position:relative;width:min(1000px,96vw);aspect-ratio:1600/300;margin:0 auto}
+.nav .bg{position:absolute;inset:0;width:100%;height:100%}
+.nav .items{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;padding:0 34px}
+.item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:18px;font-weight:800;color:#EEF2FF}
+.item img.seg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:168px;height:auto;z-index:0}
+.item > *:not(.seg){position:relative;z-index:1}
+.item img.icon{width:46px;height:46px}
+.dock{position:relative;width:min(700px,95vw);aspect-ratio:980/210;margin:0 auto}
+.dock>.bg{position:absolute;inset:0;width:100%;height:100%}
+.node{position:absolute}.node img.bg{width:100%;height:100%;display:block}.node img.glyph{position:absolute;inset:24%;width:52%;height:52%}
+.play{width:18%;left:41%;top:2%}.a,.b,.c,.d{width:13%;top:25%}.a{left:16%}.b{left:31%}.c{right:31%}.d{right:16%}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Final Bottom Nav + FAB Pack</h1>
+<p>Одобреният bottom navbar style плюс чистия floating FAB dock в един пакет.</p>
+<div class="card">
+  <div class="nav">
+    <img class="bg" src="bottom_nav_shell_final.svg" alt="">
+    <div class="items">
+      <div class="item"><img class="seg" src="bottom_nav_segment_idle_final.svg"><img class="icon" src="home_approved_final.svg"><div>HOME</div></div>
+      <div class="item"><img class="seg" src="bottom_nav_segment_idle_final.svg"><img class="icon" src="rules_approved_final.svg"><div>RULES</div></div>
+      <div class="item"><img class="seg" src="bottom_nav_segment_active_final.svg"><img class="icon" src="settings_approved_final.svg"><div>SETTINGS</div></div>
+      <div class="item"><img class="seg" src="bottom_nav_segment_idle_final.svg"><img class="icon" src="leaderboard_approved_final.svg"><div>LEADERBOARD</div></div>
+      <div class="item"><img class="seg" src="bottom_nav_segment_idle_final.svg"><img class="icon" src="profile_approved_final.svg"><div>PROFILE</div></div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="dock">
+    <img class="bg" src="fab_dock_shell_final.svg" alt="">
+    <div class="node a"><img class="bg" src="side_node_normal_final.svg"><img class="glyph" src="chat_glyph_final.svg"></div>
+    <div class="node b"><img class="bg" src="side_node_normal_final.svg"><img class="glyph" src="log_glyph_final.svg"></div>
+    <div class="node play"><img class="bg" src="play_node_normal_final.svg"><img class="glyph" src="play_glyph_final.svg"></div>
+    <div class="node c"><img class="bg" src="side_node_normal_final.svg"><img class="glyph" src="stats_glyph_final.svg"></div>
+    <div class="node d"><img class="bg" src="side_node_normal_final.svg"><img class="glyph" src="action_glyph_final.svg"></div>
+  </div>
+</div>
+</div>
+</body>
+</html>

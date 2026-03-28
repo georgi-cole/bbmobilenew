@@ -1,0 +1,38 @@
+
+BOTTOM NAV FILES
+- bottom_nav_shell_final.svg
+- bottom_nav_segment_active_final.svg
+- bottom_nav_segment_idle_final.svg
+- home_approved_final.svg
+- rules_approved_final.svg
+- settings_approved_final.svg
+- leaderboard_approved_final.svg
+- profile_approved_final.svg
+
+FAB DOCK FILES
+- fab_dock_shell_final.svg
+- play_node_normal_final.svg
+- play_node_hover_final.svg
+- play_node_pressed_final.svg
+- play_node_disabled_final.svg
+- side_node_normal_final.svg
+- side_node_hover_final.svg
+- side_node_pressed_final.svg
+- side_node_disabled_final.svg
+- play_glyph_final.svg
+- chat_glyph_final.svg
+- log_glyph_final.svg
+- stats_glyph_final.svg
+- action_glyph_final.svg
+
+Recommended navbar structure:
+- render one segment plate per item
+- active item uses bottom_nav_segment_active_final.svg
+- inactive items use bottom_nav_segment_idle_final.svg
+- icons stay fully visible and solid
+- no underline / parabola
+
+Recommended dock:
+- replace previous shell with fab_dock_shell_final.svg
+- replace play/side node assets with *_final.svg versions
+- keep logic exactly as is
