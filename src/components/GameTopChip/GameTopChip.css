@@ -14,7 +14,7 @@
   flex-shrink: 0;
   /* Vertical size matches existing status pills */
   height: 28px;
-  min-width: 68px;
+  min-width: var(--game-top-chip-min-width, 68px);
   width: auto;
   max-width: 100%;
 }
@@ -77,10 +77,10 @@ button.game-top-chip:focus-visible {
 }
 
 .game-top-chip__label {
-  font-size: calc(0.68rem * var(--game-top-chip-label-scale, 1));
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: calc(0.45px * var(--game-top-chip-label-scale, 1));
+  letter-spacing: 0.45px;
   color: var(--color-text, #fff);
   line-height: 1;
 }

@@ -3,10 +3,9 @@ import './GameTopChip.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const BASE_LABEL_PADDING = 13;
-const COMPACT_LABEL_PADDING = 10;
-const LABEL_SCALE_SOFT_LIMIT = 10;
-const LABEL_SCALE_STEP = 0.045;
-const MIN_LABEL_SCALE = 0.74;
+const LABEL_WIDTH_SOFT_LIMIT = 10;
+const CHIP_WIDTH_STEP = 14;
+const BASE_CHIP_WIDTH = 68;
 
 export interface GameTopChipProps {
   label: string;
@@ -37,12 +36,11 @@ export default function GameTopChip({
   const chipSrc = `${BASE}/assets/control_dock/top_chip.svg`;
   const Tag = onClick ? 'button' : 'span';
   const normalizedLabel = label.trim();
-  const overflowChars = Math.max(0, normalizedLabel.length - LABEL_SCALE_SOFT_LIMIT);
-  const labelScale = Math.max(MIN_LABEL_SCALE, 1 - overflowChars * LABEL_SCALE_STEP);
-  const contentPadding = overflowChars > 0 ? COMPACT_LABEL_PADDING : BASE_LABEL_PADDING;
+  const overflowChars = Math.max(0, normalizedLabel.length - LABEL_WIDTH_SOFT_LIMIT);
+  const minChipWidth = BASE_CHIP_WIDTH + overflowChars * CHIP_WIDTH_STEP;
   const chipStyle = {
-    '--game-top-chip-label-scale': labelScale,
-    '--game-top-chip-inline-padding': `${contentPadding}px`,
+    '--game-top-chip-min-width': `${minChipWidth}px`,
+    '--game-top-chip-inline-padding': `${BASE_LABEL_PADDING}px`,
   } as CSSProperties;
 
   return (
