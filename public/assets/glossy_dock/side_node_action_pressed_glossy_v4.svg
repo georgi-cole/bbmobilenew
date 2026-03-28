@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="12" x2="104" y2="110">
+      <stop offset="0%" stop-color="#DB98F0"/>
+      <stop offset="55%" stop-color="#AE5DE6"/>
+      <stop offset="100%" stop-color="#7F3FD0"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="60" y1="16" x2="60" y2="58">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.42)"/>
+      <stop offset="48%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <clipPath id="clip">
+      <path d="M 60 12 Q 86 12 100 22 Q 108 30 108 60 Q 108 90 100 98 Q 86 108 60 108 Q 34 108 20 98 Q 12 90 12 60 Q 12 30 20 22 Q 34 12 60 12 Z"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(0.90 0.90) scale(0.985) translate(-60 -60)">
+    <path d="M 60 12 Q 86 12 100 22 Q 108 30 108 60 Q 108 90 100 98 Q 86 108 60 108 Q 34 108 20 98 Q 12 90 12 60 Q 12 30 20 22 Q 34 12 60 12 Z" fill="rgba(186,110,232,0.34)" opacity="0.38" filter="url(#g)"/>
+    <path d="M 60 12 Q 86 12 100 22 Q 108 30 108 60 Q 108 90 100 98 Q 86 108 60 108 Q 34 108 20 98 Q 12 90 12 60 Q 12 30 20 22 Q 34 12 60 12 Z" fill="url(#bg)" stroke="rgba(255,255,255,0.30)" stroke-width="1.8"/>
+    <g clip-path="url(#clip)">
+      <path d="M 22 18 H 98 Q 92 48 60 54 Q 28 48 22 18 Z" fill="url(#shine)" opacity="0.95"/>
+      <path d="M 24 86 Q 60 96 96 86 V 110 H 24 Z" fill="rgba(0,0,0,0.10)"/>
+    </g>
+    <path d="M 28 22 H 82" stroke="rgba(255,255,255,0.18)" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+</svg>
