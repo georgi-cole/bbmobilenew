@@ -51,7 +51,6 @@ export default function NavBar() {
     if (pathname.startsWith('/settings'))    return 'settings';
     if (pathname.startsWith('/leaderboard')) return 'leaderboard';
     if (pathname.startsWith('/profile'))     return 'profile';
-    if (pathname === '/')                    return 'home';
     return null;
   }
 
