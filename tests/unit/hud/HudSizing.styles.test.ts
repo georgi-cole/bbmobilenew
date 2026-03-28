@@ -24,6 +24,9 @@ describe('HUD sizing styles', () => {
     expect(dockCss).toContain('width: min(80vw, 340px);');
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));');
+    expect(navCss).toContain('position: absolute;');
+    expect(navCss).toContain('inset: 0;');
+    expect(navCss).toContain('width: 100%;');
     expect(navCss).toContain('width: 22px;');
     expect(navCss).toContain('height: 22px;');
     expect(layoutNavCss).toContain('--nav-bar-height: 62px;');

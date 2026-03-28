@@ -21,11 +21,13 @@
 }
 
 .game-bottom-nav__items {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
+  width: 100%;
   height: var(--nav-bar-height, 62px);
   padding: 0 5%;
 }
