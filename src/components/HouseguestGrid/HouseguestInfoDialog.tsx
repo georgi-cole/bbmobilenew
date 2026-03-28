@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import type { Player } from '../../types';
 import { enrichPlayer } from '../../utils/houseguestLookup';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
@@ -24,6 +25,9 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
   const ep = enrichPlayer(player);
   const { city, nationality } = parseLocation(ep.location);
   const dialogShellSrc = `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/assets/bed_avatar_glass_v2.svg`;
+  const dialogStyle = {
+    backgroundImage: `url("${dialogShellSrc}")`,
+  } satisfies CSSProperties;
 
   const fields: Array<{ label: string; value: string | number | undefined }> = [
     { label: 'Age', value: ep.age },
@@ -65,14 +69,8 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
         aria-modal="true"
         tabIndex={-1}
         ref={dialogRef}
+        style={dialogStyle}
       >
-        <img
-          className="hg-info-dialog__shell"
-          src={dialogShellSrc}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-        />
         <button
           className="hg-info-dialog__close"
           onClick={onClose}
@@ -82,33 +80,35 @@ export default function HouseguestInfoDialog({ player, onClose }: HouseguestInfo
           ✕
         </button>
 
-        <div className="hg-info-dialog__header">
-          <img
-            className="hg-info-dialog__avatar"
-            src={resolveAvatar(player)}
-            alt={player.name}
-            draggable={false}
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = getDicebear(player.name);
-            }}
-          />
-          <div className="hg-info-dialog__identity">
-            <h3 className="hg-info-dialog__name">{ep.fullName ?? ep.name}</h3>
+        <div className="hg-info-dialog__panel">
+          <div className="hg-info-dialog__header">
+            <img
+              className="hg-info-dialog__avatar"
+              src={resolveAvatar(player)}
+              alt={player.name}
+              draggable={false}
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.onerror = null;
+                img.src = getDicebear(player.name);
+              }}
+            />
+            <div className="hg-info-dialog__identity">
+              <h3 className="hg-info-dialog__name">{ep.fullName ?? ep.name}</h3>
+            </div>
           </div>
-        </div>
 
-        <dl className="hg-info-dialog__fields">
-          {fields.map(({ label, value }) =>
-            value !== undefined && value !== '' ? (
-              <div key={label} className="hg-info-dialog__field">
-                <dt className="hg-info-dialog__field-label">{label}</dt>
-                <dd className="hg-info-dialog__field-value">{value}</dd>
-              </div>
-            ) : null,
-          )}
-        </dl>
+          <dl className="hg-info-dialog__fields">
+            {fields.map(({ label, value }) =>
+              value !== undefined && value !== '' ? (
+                <div key={label} className="hg-info-dialog__field">
+                  <dt className="hg-info-dialog__field-label">{label}</dt>
+                  <dd className="hg-info-dialog__field-value">{value}</dd>
+                </div>
+              ) : null,
+            )}
+          </dl>
+        </div>
       </div>
     </div>
   );
