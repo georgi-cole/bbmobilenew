@@ -4,6 +4,8 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
+const LONG_PRESS_DELAY_MS = 450
+
 type Props = {
   name: string
   avatarUrl?: string
@@ -47,12 +49,23 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
+  const longPressTimeoutRef = React.useRef<number | null>(null)
+  const longPressTriggeredRef = React.useRef(false)
 
   React.useEffect(() => {
     attemptRef.current = 0
     variantsRef.current = null
     exhaustedRef.current = false
   }, [avatarUrl])
+
+  React.useEffect(
+    () => () => {
+      if (longPressTimeoutRef.current !== null) {
+        window.clearTimeout(longPressTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
     if (exhaustedRef.current) return
@@ -85,6 +98,50 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     .filter(Boolean)
     .join(' – ')
 
+  function clearLongPressTimeout() {
+    if (longPressTimeoutRef.current !== null) {
+      window.clearTimeout(longPressTimeoutRef.current)
+      longPressTimeoutRef.current = null
+    }
+  }
+
+  function triggerPressAction() {
+    if (!onClick) return
+    longPressTriggeredRef.current = true
+    onClick()
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!onClick || e.pointerType !== 'touch') return
+    clearLongPressTimeout()
+    longPressTriggeredRef.current = false
+    longPressTimeoutRef.current = window.setTimeout(() => {
+      longPressTimeoutRef.current = null
+      triggerPressAction()
+    }, LONG_PRESS_DELAY_MS)
+  }
+
+  function handlePointerEnd() {
+    clearLongPressTimeout()
+  }
+
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!onClick) return
+    if (longPressTriggeredRef.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      longPressTriggeredRef.current = false
+      return
+    }
+    onClick()
+  }
+
+  function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+    if (!onClick) return
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
   return (
     <div
       className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
@@ -92,7 +149,12 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       title={name}
       role={onClick ? 'button' : 'group'}
       tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
       onKeyDown={
         onClick
           ? (e) => {
@@ -128,7 +190,14 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         )}
 
         {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className={styles.avatar} onError={handleImgError} />
+          <img
+            src={avatarUrl}
+            alt={name}
+            className={styles.avatar}
+            onError={handleImgError}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
