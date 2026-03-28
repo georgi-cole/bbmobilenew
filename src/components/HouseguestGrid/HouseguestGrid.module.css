@@ -1,5 +1,5 @@
 .container {
-  padding: 8px 8px 6px;
+  padding: 4px 8px 6px;
 }
 
 .headerRow {
@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .header {
   font-size: 13px;

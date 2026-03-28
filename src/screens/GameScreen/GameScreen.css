@@ -2,7 +2,7 @@
 .game-screen {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   padding: 12px 12px calc(var(--nav-bar-height) + 16px);
 }
 

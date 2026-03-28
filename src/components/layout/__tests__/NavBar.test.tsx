@@ -23,10 +23,14 @@ function renderNavBar(initialEntry = '/game') {
 }
 
 describe('NavBar', () => {
-  it('shows Rules instead of Game in the bottom navigation', () => {
+  it('shows the updated bottom navigation labels', () => {
     renderNavBar('/game');
 
     expect(screen.getByRole('button', { name: 'RULES' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'GAME' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'BOARD' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
 });

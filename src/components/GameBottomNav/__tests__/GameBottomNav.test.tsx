@@ -27,5 +27,9 @@ describe('GameBottomNav', () => {
     ).toContain('/assets/updated_nav_fab_bar/settings_approved_final.svg');
 
     expect(screen.getByRole('button', { name: 'SETTINGS' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'BOARD' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'USER' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
 });
