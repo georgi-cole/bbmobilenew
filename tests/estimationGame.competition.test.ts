@@ -163,8 +163,8 @@ describe('Estimation Game — pure scoring helpers', () => {
     expect(computeAverageAccuracy([80, 90, 70, 60, 100])).toBe(80);
   });
 
-  it('computeAverageAccuracy: rounds correctly (e.g. 3 rounds summing to odd value)', () => {
-    // 100 + 97 + 94 = 291 / 3 = 97
+  it('computeAverageAccuracy: rounds correctly (e.g. 3 sample rounds summing to an exact value)', () => {
+    // 100 + 97 + 94 = 291 / 3 = 97 (exact integer, no rounding needed)
     expect(computeAverageAccuracy([100, 97, 94])).toBe(97);
   });
 

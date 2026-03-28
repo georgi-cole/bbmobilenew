@@ -291,6 +291,8 @@ export default function EstimationGame({
   const humanId   = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
 
   // Use a stable time-varied fallback seed so standalone runs produce varied counts.
+  // The XOR with Math.random() ensures each component mount gets a unique seed
+  // when no explicit session/prop seed is provided (challenge mode always provides one).
   const fallbackSeedRef = useRef<number>(
     ((Date.now() ^ Math.floor(Math.random() * 0xFFFFFF)) >>> 0) || 1,
   );
@@ -308,8 +310,10 @@ export default function EstimationGame({
   const [scores,         setScores]         = useState<ScoreEntry[]>([]);
   const [feedbackMsg,    setFeedbackMsg]    = useState('');
 
-  // Track when the guess phase started (for response-time tiebreaker)
-  const guessStartTimeRef  = useRef<number>(0);
+  // Track when the guess phase started (for response-time tiebreaker).
+  // Initialized to Date.now() so if the reveal-to-guess transition is somehow
+  // skipped, responseMs defaults to 0 rather than an enormous timestamp.
+  const guessStartTimeRef  = useRef<number>(Date.now());
   const guessTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef           = useRef<HTMLInputElement>(null);
   const canvasRef          = useRef<HTMLCanvasElement>(null);
@@ -318,8 +322,9 @@ export default function EstimationGame({
 
   const generateRound = useCallback((idx: number) => {
     const cfg = ROUND_CONFIG[idx];
-    // Per-round seed: XOR-mix effectiveSeed with a round-specific salt to produce
-    // independent, varied counts even across closely-spaced effectiveSeed values.
+    // Per-round seed: XOR-mix effectiveSeed with a round-specific prime-derived salt.
+    // 0x6b7f5 = 442357 (prime) ensures rounds produce independent, well-spread count
+    // values even when effectiveSeed values differ by only 1.
     const roundSeed = ((effectiveSeed ^ ((idx + 1) * 0x6b7f5)) >>> 0) || 1;
     const rng = mulberry32(roundSeed);
 
