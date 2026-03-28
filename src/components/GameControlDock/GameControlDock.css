@@ -216,5 +216,5 @@
 }
 
 .game-control-dock__icon--flash {
-  animation: dock-icon-flash 0.6s ease-out forwards;
+  animation: dock-icon-flash 0.6s ease-out;
 }
