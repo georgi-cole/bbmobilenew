@@ -1,7 +1,12 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import './GameTopChip.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const BASE_LABEL_PADDING = 13;
+const COMPACT_LABEL_PADDING = 10;
+const LABEL_SCALE_SOFT_LIMIT = 10;
+const LABEL_SCALE_STEP = 0.045;
+const MIN_LABEL_SCALE = 0.74;
 
 export interface GameTopChipProps {
   label: string;
@@ -31,12 +36,21 @@ export default function GameTopChip({
 }: GameTopChipProps) {
   const chipSrc = `${BASE}/assets/control_dock/top_chip.svg`;
   const Tag = onClick ? 'button' : 'span';
+  const trimmedLabel = label.trim();
+  const overflowChars = Math.max(0, trimmedLabel.length - LABEL_SCALE_SOFT_LIMIT);
+  const labelScale = Math.max(MIN_LABEL_SCALE, 1 - overflowChars * LABEL_SCALE_STEP);
+  const contentPadding = overflowChars > 0 ? COMPACT_LABEL_PADDING : BASE_LABEL_PADDING;
+  const chipStyle = {
+    '--game-top-chip-label-scale': labelScale.toString(),
+    '--game-top-chip-inline-padding': `${contentPadding}px`,
+  } as CSSProperties;
 
   return (
     <Tag
       className={`game-top-chip ${className}`.trim()}
       aria-label={ariaLabel ?? label}
       title={title}
+      style={chipStyle}
       {...(onClick ? { type: 'button' as const, disabled, onClick: disabled ? undefined : onClick } : {})}
     >
       <img

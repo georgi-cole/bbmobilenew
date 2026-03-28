@@ -41,9 +41,10 @@ describe('HUD sizing styles', () => {
     );
 
     expect(chipCss).toContain('height: 28px;');
-    expect(chipCss).toContain('width: fit-content;');
+    expect(chipCss).toContain('width: auto;');
     expect(chipCss).toContain('max-width: 100%;');
-    expect(chipCss).toContain('padding: 0 13px;');
+    expect(chipCss).toContain('padding: 0 var(--game-top-chip-inline-padding, 13px);');
+    expect(chipCss).toContain('font-size: calc(0.68rem * var(--game-top-chip-label-scale, 1));');
     expect(houseguestGridCss).toContain('padding: 4px 8px 6px;');
     expect(houseguestGridCss).toContain('margin-bottom: 6px;');
   });
