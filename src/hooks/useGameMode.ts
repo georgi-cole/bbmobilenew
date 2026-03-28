@@ -28,12 +28,20 @@ export default function useGameMode(): void {
   useEffect(() => {
     let isMounted = true;
     let wakeLockSentinel: WakeLockSentinelLike | null = null;
+    let wakeLockRequestInFlight: Promise<void> | null = null;
 
     const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockControllerLike }).wakeLock;
     const orientation = screen.orientation as LockableOrientationLike | undefined;
 
+    function isWakeLockRequestAllowedByVisibility() {
+      return document.visibilityState === 'visible';
+    }
+
     const handleWakeLockRelease = () => {
       wakeLockSentinel = null;
+      if (isMounted && isWakeLockRequestAllowedByVisibility()) {
+        void requestWakeLock();
+      }
     };
 
     async function releaseWakeLock() {
@@ -50,24 +58,36 @@ export default function useGameMode(): void {
     }
 
     async function requestWakeLock() {
-      if (!isMounted || document.visibilityState === 'hidden' || wakeLockSentinel != null) {
+      if (
+        !isMounted
+        || !isWakeLockRequestAllowedByVisibility()
+        || wakeLockSentinel != null
+        || wakeLockRequestInFlight != null
+      ) {
         return;
       }
 
-      try {
-        const sentinel = await wakeLock?.request('screen');
-        if (!sentinel) return;
+      const pendingRequest = (async () => {
+        try {
+          const sentinel = await wakeLock?.request('screen');
+          if (!sentinel) return;
 
-        if (!isMounted) {
-          await sentinel.release?.();
-          return;
+          if (!isMounted || !isWakeLockRequestAllowedByVisibility()) {
+            await sentinel.release?.();
+            return;
+          }
+
+          wakeLockSentinel = sentinel;
+          sentinel.addEventListener?.('release', handleWakeLockRelease);
+        } catch {
+          // Browsers may reject wake lock requests unless the page is active.
+        } finally {
+          wakeLockRequestInFlight = null;
         }
+      })();
 
-        wakeLockSentinel = sentinel;
-        sentinel.addEventListener?.('release', handleWakeLockRelease);
-      } catch {
-        // Browsers may reject wake lock requests unless the page is active.
-      }
+      wakeLockRequestInFlight = pendingRequest;
+      await pendingRequest;
     }
 
     async function lockOrientation() {
