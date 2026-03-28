@@ -19,7 +19,16 @@
   // subdirectory is used regardless of whether the app is served from / or
   // from the configured Vite base path (e.g. /bbmobilenew/).
   var _scriptSrc = (document.currentScript || {}).src || '';
-  var ASSET_BASE = _scriptSrc ? _scriptSrc.replace(/js\/ui\/introHub\.js.*$/, '') : '/';
+  var ASSET_BASE = '/';
+  if (_scriptSrc) {
+    var resolvedBase = _scriptSrc.replace(/js\/ui\/introHub\.js.*$/, '');
+    // When served under /bbmobilenew/, static assets still live under /assets/ at the origin
+    // root, not /bbmobilenew/assets/. In that case keep ASSET_BASE as '/' so that asset
+    // URLs resolve to /assets/... instead of /bbmobilenew/assets/...
+    if (resolvedBase.indexOf('/bbmobilenew/') === -1) {
+      ASSET_BASE = resolvedBase;
+    }
+  }
 
   var SHELL_ASSETS = {
     normal:   ASSET_BASE + 'assets/side_utilities_button/side_utility_shell_normal.svg',
@@ -102,7 +111,7 @@
     const badge = document.createElement('img');
     badge.className = 'hub-chip__badge';
     badge.src = BADGE_ASSET;
-    badge.alt = 'New notification';
+    badge.alt = '';
     badge.setAttribute('aria-hidden', 'true');
     badge.draggable = false;
 
@@ -305,7 +314,7 @@
   /**
    * Toggle the inactive visual state of a chip.
    * @param {string} id     - Chip id (e.g. 'music', 'sounds')
-   * @param {boolean} active - true = active (no overlay), false = inactive (dimmed + slash)
+   * @param {boolean} active - true = active (normal shell), false = inactive (disabled shell, dimmed)
    */
   function toggleChipVisual(id, active) {
     var el = chipElements[id];
