@@ -1,21 +1,37 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
-  /* Match the approved segment plate art width from the final asset preview. */
-  --game-bottom-nav-segment-max-width: 156px;
   position: relative;
-  height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));
+  height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;
+  clip-path: inset(0 round 18px 18px 28px 28px / 12px 12px 24px 24px);
   -webkit-user-select: none;
   user-select: none;
+}
+
+.game-bottom-nav.nav-bar {
+  background: linear-gradient(180deg, rgba(17, 24, 37, 0.96), rgba(12, 18, 31, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(2, 6, 16, 0.24);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  isolation: isolate;
 }
 
 /* Background SVG fills the nav bar area */
 .game-bottom-nav__shell {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+  filter: saturate(0.72) brightness(0.82);
   pointer-events: none;
   user-select: none;
 }
@@ -27,45 +43,50 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
+  column-gap: 7px;
   width: 100%;
-  height: var(--nav-bar-height, 62px);
-  padding: 0 5%;
+  height: var(--nav-bar-height, 60px);
+  padding: 1px 2.25% 3px;
+  background: transparent;
 }
 
 .game-bottom-nav__item {
   position: relative;
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
   gap: 2px;
-  background: transparent;
-  border: none;
-  padding: 4px 4px 3px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+  padding: 4px 6px 3px;
   cursor: pointer;
   color: rgba(238, 242, 255, 0.92);
-  opacity: 0.84;
-  transition: opacity 150ms ease;
+  opacity: 0.9;
+  box-shadow: 0 4px 10px rgba(3, 8, 20, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    filter 150ms ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
-.game-bottom-nav__item--active {
-  opacity: 1;
+.game-bottom-nav__item:hover,
+.game-bottom-nav__item:active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.055));
+  filter: brightness(1.02);
 }
 
-.game-bottom-nav__segment {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(92%, var(--game-bottom-nav-segment-max-width));
-  height: auto;
-  transform: translate(-50%, -50%);
-  opacity: 0.72;
-  filter: saturate(0.92) brightness(0.94);
-  pointer-events: none;
-  user-select: none;
+.game-bottom-nav__item--active {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.078), rgba(255, 255, 255, 0.06));
 }
 
 .game-bottom-nav__glyph {
@@ -88,11 +109,6 @@
   letter-spacing: 0.24px;
   line-height: 1;
   white-space: nowrap;
-}
-
-.game-bottom-nav__item--active .game-bottom-nav__segment {
-  opacity: 0.82;
-  filter: saturate(0.94) brightness(0.98) drop-shadow(0 1px 4px rgba(99, 102, 241, 0.16));
 }
 
 .game-bottom-nav__item--active .game-bottom-nav__glyph,
