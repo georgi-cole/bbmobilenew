@@ -27,9 +27,9 @@ export interface GameBottomNavProps {
 /**
  * GameBottomNav — SVG-backed bottom navigation strip.
  *
- * Uses the final segmented navbar asset pack, with per-tab segment plates,
- * icons, and labels overlaid as React content. Preserves full accessibility
- * semantics and existing click behavior.
+ * Uses the final navbar shell asset pack, with icons and labels overlaid as
+ * React content. Preserves full accessibility semantics and existing click
+ * behavior.
  */
 export default function GameBottomNav({
   activeTab,
@@ -67,9 +67,6 @@ export default function GameBottomNav({
           {NAV_ITEMS.map(({ tab, glyph, label }) => {
             const isActive = activeTab === tab;
             const glyphSrc = `${BASE}/assets/updated_nav_fab_bar/${glyph}`;
-            const segmentSrc = `${BASE}/assets/updated_nav_fab_bar/${
-              isActive ? 'bottom_nav_segment_active_final.svg' : 'bottom_nav_segment_idle_final.svg'
-            }`;
             return (
               <button
                 key={tab}
@@ -79,13 +76,6 @@ export default function GameBottomNav({
                 aria-current={isActive ? 'page' : undefined}
                 onClick={handlers[tab]}
               >
-                <img
-                  className="game-bottom-nav__segment"
-                  src={segmentSrc}
-                  alt=""
-                  aria-hidden="true"
-                  draggable={false}
-                />
                 <img
                   className="game-bottom-nav__glyph"
                   src={glyphSrc}

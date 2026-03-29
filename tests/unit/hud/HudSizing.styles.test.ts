@@ -28,7 +28,7 @@ describe('HUD sizing styles', () => {
     const navGlyphRule = /\.game-bottom-nav__glyph\s*\{[\s\S]*?width:\s*22px;[\s\S]*?height:\s*22px;[\s\S]*?\}/;
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
-    expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 4px + env(safe-area-inset-bottom, 0px));');
+    expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 3px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toMatch(navItemsRule);
     expect(navCss).toContain('column-gap: 7px;');
@@ -45,8 +45,7 @@ describe('HUD sizing styles', () => {
     expect(navCss).toContain('backdrop-filter: blur(6px);');
     expect(navCss).toContain('box-shadow: 0 4px 10px rgba(3, 8, 20, 0.18);');
     expect(navCss).toContain('filter: brightness(1.02);');
-    expect(navCss).toContain('width: min(86%, var(--game-bottom-nav-segment-max-width));');
-    expect(navCss).toContain('opacity: 0.36;');
+    expect(navCss).not.toContain('.game-bottom-nav__segment');
     expect(layoutNavCss).toContain('--nav-bar-height: 60px;');
     expect(houseguestGridTsx).toContain('const GRID_VERTICAL_MARGIN = 4');
     expect(gameScreenCss).toContain('gap: 6px;');

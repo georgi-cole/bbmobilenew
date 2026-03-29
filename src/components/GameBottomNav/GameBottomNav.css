@@ -1,7 +1,5 @@
 /* ── GameBottomNav ──────────────────────────────────────────────────────── */
 .game-bottom-nav {
-  /* Match the approved segment plate art width from the final asset preview. */
-  --game-bottom-nav-segment-max-width: 156px;
   position: relative;
   height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
@@ -72,19 +70,6 @@
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.078), rgba(255, 255, 255, 0.06));
 }
 
-.game-bottom-nav__segment {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(86%, var(--game-bottom-nav-segment-max-width));
-  height: auto;
-  transform: translate(-50%, -50%);
-  opacity: 0.36;
-  filter: saturate(0.88) brightness(0.84);
-  pointer-events: none;
-  user-select: none;
-}
-
 .game-bottom-nav__glyph {
   position: relative;
   z-index: 1;
@@ -105,11 +90,6 @@
   letter-spacing: 0.24px;
   line-height: 1;
   white-space: nowrap;
-}
-
-.game-bottom-nav__item--active .game-bottom-nav__segment {
-  opacity: 0.44;
-  filter: saturate(0.9) brightness(0.9);
 }
 
 .game-bottom-nav__item--active .game-bottom-nav__glyph,
