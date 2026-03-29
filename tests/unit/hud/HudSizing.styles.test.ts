@@ -29,6 +29,21 @@ describe('HUD sizing styles', () => {
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 3px + env(safe-area-inset-bottom, 0px));');
+    expect(dockCss).toContain('width: 18.8%;');
+    expect(dockCss).toContain('left: 40.6%;');
+    expect(dockCss).toContain('left: 20.15%;');
+    expect(dockCss).toContain('left: 32.85%;');
+    expect(dockCss).toContain('left: 67.15%;');
+    expect(dockCss).toContain('left: 79.85%;');
+    expect(dockCss).toContain('left: 15.4%;');
+    expect(dockCss).toContain('left: 28.1%;');
+    expect(dockCss).toContain('left: 40.2%;');
+    expect(dockCss).toContain('left: 62.4%;');
+    expect(dockCss).toContain('left: 75.1%;');
+    expect(dockCss).toContain('width: 9.5%;');
+    expect(dockCss).toContain('height: 36%;');
+    expect(dockCss).toContain('top: -6px;');
+    expect(dockCss).toContain('right: -5px;');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('overflow: hidden;');
     expect(navCss).toContain('border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;');

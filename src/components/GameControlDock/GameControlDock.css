@@ -31,8 +31,8 @@
 }
 
 .fab-play {
-  width: 19.2%;
-  left: 40.4%;
+  width: 18.8%;
+  left: 40.6%;
   top: 1.5%;
 }
 
@@ -43,22 +43,22 @@
 }
 
 .fab-icon.social {
-  left: 23%;
+  left: 20.15%;
   top: 50.5%;
 }
 
 .fab-icon.requests {
-  left: 36.5%;
+  left: 32.85%;
   top: 50.5%;
 }
 
 .fab-icon.stats {
-  left: 63.5%;
+  left: 67.15%;
   top: 50.5%;
 }
 
 .fab-icon.confessional {
-  left: 77%;
+  left: 79.85%;
   top: 50.5%;
 }
 
@@ -76,38 +76,38 @@
 }
 
 .hit-social {
-  left: 17.5%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
+  left: 15.4%;
+  top: 29.5%;
+  width: 9.5%;
+  height: 36%;
 }
 
 .hit-requests {
-  left: 31%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
+  left: 28.1%;
+  top: 29.5%;
+  width: 9.5%;
+  height: 36%;
 }
 
 .hit-play {
-  left: 40%;
+  left: 40.2%;
   top: 0;
-  width: 20%;
+  width: 19.6%;
   height: 66%;
 }
 
 .hit-stats {
-  left: 58%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
+  left: 62.4%;
+  top: 29.5%;
+  width: 9.5%;
+  height: 36%;
 }
 
 .hit-confessional {
-  left: 71.5%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
+  left: 75.1%;
+  top: 29.5%;
+  width: 9.5%;
+  height: 36%;
 }
 
 .dock-hit-area:hover {
@@ -124,8 +124,8 @@
 
 .dock-hit-area__badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -5px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
