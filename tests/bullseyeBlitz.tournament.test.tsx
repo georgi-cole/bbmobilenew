@@ -236,11 +236,13 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Advancing: Player 2, Player 1, Player 6, Player 4, Player 3, and Player 0 (You).'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 2, Player 1, Player 6, Player 4, Player 3, and Player 0 (You).'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Eliminated: Player 5\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Out this round: Player 5\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
+    // Spawn-speed preview is suppressed by the test mock (all rounds share the same
+    // TEST_SPAWN_INTERVAL_MS), but the hazard and penalty preview lines still fire.
+    expect(screen.getByText(/More bombs will crash the party\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
     await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i));

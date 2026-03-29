@@ -108,14 +108,14 @@ const ROUND_PRESETS = [
 export const BULLSEYE_CHALLENGE_ROUNDS = ROUND_PRESETS.length;
 
 /**
- * Calibrated expected per-round score for an average human player.
- * Used to map an AI's baseScore (from the hybrid score resolver) into a
- * 0–1 skill level that drives the gameplay simulation.
- *
- * Derived from observed human play: a typical player taps ~25–30 targets in
- * an 18-second round 1 at roughly 70 % accuracy, yielding ~250–330 points.
+ * Envelope ceiling for the targetPractice hybrid score resolver.
+ * Used to normalise an AI's per-round baseScore to a 0–1 skill level so that
+ * the full envelope range (80–500) maps to distinct, graded skill levels:
+ *   baseScore  80 → skill ≈ 0.16 (weakest)
+ *   baseScore 300 → skill ≈ 0.60 (average-human baseline)
+ *   baseScore 500 → skill = 1.00 (near-perfect)
  */
-const AI_HUMAN_ROUND_BASELINE = 300;
+const AI_SCORE_MAX = 500;
 
 /**
  * Select a random target kind using weighted distribution.
@@ -239,13 +239,16 @@ function hashTournamentSeed(seed: number, participantId: string, roundNumber: nu
 /**
  * Simulate one complete Bullseye Blitz round for an AI player.
  *
- * The AI "plays" the game mechanics: targets spawn at the configured rate and
- * the AI decides whether to tap each one based on their skill profile.
+ * The simulation advances in steps of `spawnIntervalMs` (matching the real
+ * spawner tick) and maintains an active-target list with per-target expiry
+ * timestamps.  This mirrors the real spawner's maxTargets gate: when the
+ * screen is full of un-tapped targets the spawner skips a tick, exactly as
+ * `BullseyeBlitz.tsx` does with `if (prev.length >= currentRoundConfig.maxTargets) return prev`.
  *
  * Skill traits derived from `skillLevel` (0–1):
- *   - reactionSpeed:   controls whether short-lived targets are reachable before they expire
- *   - hitAccuracy:     probability of successfully tapping a reachable non-hazard target
- *   - bonusFocusRatio: bonus-target hit-rate as a fraction of the standard hit-rate
+ *   - reactionSpeed:   reduces the effective tap window for short-lived targets
+ *   - hitAccuracy:     probability of successfully tapping a reachable target
+ *   - bonusFocusRatio: extra difficulty modifier for the short-lived bonus targets
  *   - hazardAvoidance: probability of NOT accidentally tapping a hazard target
  *
  * @param config     Round configuration (spawn rate, lifetimes, weights, penalties)
@@ -265,40 +268,67 @@ function runBullseyeAiRound(
   const bonusFocusRatio = 0.70 + skillLevel * 0.30; // 0.70–1.00
   const hazardAvoidance = 0.55 + skillLevel * 0.40; // 0.55–0.95
 
-  const durationMs  = config.durationSeconds * 1000;
-  const totalSpawns = Math.floor(durationMs / config.spawnIntervalMs);
-
   // Reaction-time penalty: slower players miss short-lived targets before they expire.
   // At skill 0: reactionSpeed=0.30 → penalty = (1−0.30)×450 = 315 ms.
   // At skill 1: reactionSpeed=0.90 → penalty = (1−0.90)×450 =  45 ms.
   const reactionPenaltyMs = (1 - reactionSpeed) * 450;
 
-  const standardWindow = config.targetLifetimes.standard - reactionPenaltyMs;
-  const bonusWindow    = config.targetLifetimes.bonus    - reactionPenaltyMs;
+  const standardReachable = Math.max(0.05, Math.min(1,
+    (config.targetLifetimes.standard - reactionPenaltyMs) / config.targetLifetimes.standard,
+  ));
+  const bonusReachable = Math.max(0.05, Math.min(1,
+    (config.targetLifetimes.bonus - reactionPenaltyMs) / config.targetLifetimes.bonus,
+  ));
 
-  // "Reachable fraction": proportion of targets the AI can attempt to tap before
-  // they expire.  Floor at 0.05 so even a slow player can occasionally catch fast targets.
-  const standardReachable = Math.max(0.05, Math.min(1, standardWindow / config.targetLifetimes.standard));
-  const bonusReachable    = Math.max(0.05, Math.min(1, bonusWindow    / config.targetLifetimes.bonus));
+  const durationMs = config.durationSeconds * 1000;
 
+  // Active targets on-screen, represented by their expiry timestamps.
+  // Missed/ignored targets stay here until they expire, potentially blocking
+  // future spawns when the screen reaches maxTargets — same as the real spawner.
+  const activeExpiries: number[] = [];
+
+  let nowMs = 0;
   let score = 0;
-  for (let i = 0; i < totalSpawns; i += 1) {
-    const kind = pickTargetKind(rng(), config.targetWeights);
-    if (kind === 'hazard') {
-      // Accidental hazard tap: lower skill → higher accident rate.
-      if (rng() > hazardAvoidance) {
-        score += config.hazardPenalty;
-      }
-    } else if (kind === 'standard') {
-      if (rng() < hitAccuracy * standardReachable) {
-        score += TARGET_CONFIGS.standard.points;
-      }
-    } else {
-      // Bonus targets are shorter-lived and harder to catch.
-      if (rng() < hitAccuracy * bonusFocusRatio * bonusReachable) {
-        score += TARGET_CONFIGS.bonus.points;
+
+  while (nowMs < durationMs) {
+    // Expire any targets whose lifetime has elapsed at this tick.
+    // Filter is O(n) and avoids mutating the array mid-iteration.
+    const beforeLength = activeExpiries.length;
+    let writeIdx = 0;
+    for (let i = 0; i < beforeLength; i++) {
+      if (activeExpiries[i] > nowMs) activeExpiries[writeIdx++] = activeExpiries[i];
+    }
+    activeExpiries.length = writeIdx;
+
+    // Spawn gating: real spawner skips this tick when the screen is full.
+    if (activeExpiries.length < config.maxTargets) {
+      const kind = pickTargetKind(rng(), config.targetWeights);
+      const expiresAt = nowMs + config.targetLifetimes[kind];
+
+      if (kind === 'hazard') {
+        // AI either accidentally taps the hazard (score deducted, slot freed)
+        // or ignores it (slot occupied until expiry).
+        if (rng() > hazardAvoidance) {
+          score += config.hazardPenalty;
+        } else {
+          activeExpiries.push(expiresAt);
+        }
+      } else {
+        const hitRate = kind === 'standard'
+          ? hitAccuracy * standardReachable
+          : hitAccuracy * bonusFocusRatio * bonusReachable;
+
+        if (rng() < hitRate) {
+          score += TARGET_CONFIGS[kind].points;
+          // Tapped target clears its slot immediately.
+        } else {
+          // Missed target stays on screen and may block future spawns.
+          activeExpiries.push(expiresAt);
+        }
       }
     }
+
+    nowMs += config.spawnIntervalMs;
   }
 
   return Math.max(0, score);
@@ -307,19 +337,24 @@ function runBullseyeAiRound(
 /**
  * Simulate a single Bullseye Blitz round score for an AI participant.
  *
- * The `baseScore` parameter is the AI's "per-round capacity" — a value
- * produced by the hybrid score resolver that reflects overall skill relative
- * to a calibrated human baseline (`AI_HUMAN_ROUND_BASELINE`).  It is
- * normalised to a 0–1 skill level and fed into a realistic target-tapping
- * simulation that uses the actual round mechanics (spawn rate, target
- * lifetimes, point values, hazard penalties).
+ * The `baseScore` parameter is the AI's per-round capacity produced by the
+ * hybrid score resolver.  It spans the full targetPractice envelope (80–500)
+ * and is normalised against the envelope ceiling (`AI_SCORE_MAX = 500`) so
+ * every point in the range maps to a distinct skill level:
+ *   baseScore  80 → skill ≈ 0.16 (low)
+ *   baseScore 300 → skill ≈ 0.60 (average human)
+ *   baseScore 500 → skill = 1.00 (near-perfect)
  *
- * This replaces the earlier formula-based approach and ensures AI scores are
- * competitive with real human play without being perfect or unrealistically
- * uniform.  Human-like mistakes are modelled via per-target RNG rolls:
+ * The normalised skill feeds `runBullseyeAiRound`, which uses the real round
+ * mechanics (spawn intervals, maxTargets cap, target lifetimes, point values,
+ * hazard penalties) to produce a final score.
+ *
+ * Human-like mistakes are modelled via per-target RNG rolls:
  *   - reaction delays that cause some short-lived targets to be missed
  *   - imperfect hit accuracy on standard and bonus targets
- *   - occasional accidental hazard taps (more frequent for lower-skill AI)
+ *   - occasional accidental hazard taps (more frequent for low-skill AI)
+ *   - missed targets fill the screen, triggering the maxTargets cap and
+ *     suppressing future spawns (exactly as in the live game)
  *
  * Results are deterministic: same (baseScore, roundNumber, seed, participantId)
  * inputs always produce the same output.
@@ -333,9 +368,9 @@ export function simulateBullseyeAiRoundScore(
   const rng    = mulberry32(hashTournamentSeed(seed, participantId, roundNumber));
   const config = getBullseyeRoundConfig(roundNumber);
 
-  // Derive skill from baseScore. A baseScore equal to AI_HUMAN_ROUND_BASELINE
-  // corresponds to skill 1.0 (values above are clamped).
-  const rawSkill = baseScore / AI_HUMAN_ROUND_BASELINE;
+  // Normalise baseScore against the envelope ceiling so the full 80–500 range
+  // maps to distinct skill levels.  Values outside [0, AI_SCORE_MAX] are clamped.
+  const rawSkill = Math.max(0, baseScore) / AI_SCORE_MAX;
 
   // Add ±5 % per-player, per-round variance so AI contestants never produce
   // identical scores even when they share the same baseScore.

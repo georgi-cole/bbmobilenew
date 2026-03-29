@@ -473,7 +473,8 @@ describe('Bullseye Blitz — tournament helpers', () => {
   });
 
   it('AI round scores stay deterministic and competitive across rounds', () => {
-    const baseScore = 160;
+    // Use a mid-range baseScore (250 → skill ≈ 0.50) to represent a competitive AI.
+    const baseScore = 250;
     const roundOneA = simulateBullseyeAiRoundScore(baseScore, 1, 42, 'p1');
     const roundOneB = simulateBullseyeAiRoundScore(baseScore, 1, 42, 'p1');
     const roundThree = simulateBullseyeAiRoundScore(baseScore, 3, 42, 'p1');
