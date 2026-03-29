@@ -12,7 +12,7 @@ const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
 /** How long (ms) after a long-press fires to suppress the subsequent click event. */
-export const LONG_PRESS_CLICK_SUPPRESSION_MS = 600
+export const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 /** Pixel-distance threshold: if the finger moves more than this the long-press is cancelled. */
 export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
 
