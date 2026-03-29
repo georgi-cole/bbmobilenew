@@ -31,8 +31,14 @@ describe('HUD sizing styles', () => {
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 6px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toMatch(navItemsRule);
+    expect(navCss).toContain('column-gap: 6px;');
+    expect(navCss).toContain('padding: 2px 2.75% 0;');
     expect(navCss).toMatch(navGlyphRule);
-    expect(navCss).toContain('padding: 2px 3.5% 0;');
+    expect(navCss).toContain('width: 100%;');
+    expect(navCss).toContain('min-width: 0;');
+    expect(navCss).toContain('min-height: 44px;');
+    expect(navCss).toContain('gap: 2px;');
+    expect(navCss).toContain('padding: 5px 6px 4px;');
     expect(navCss).toContain('background: rgba(255, 255, 255, 0.06);');
     expect(navCss).toContain('border: 1px solid rgba(255, 255, 255, 0.06);');
     expect(navCss).toContain('border-radius: 9px;');
