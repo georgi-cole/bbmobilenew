@@ -14,13 +14,17 @@ import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent, selfEvict } from '../../store/gameSlice';
-import { generateBigBrotherReply } from '../../services/bigBrother';
-import { detectIntent } from '../../bb/engine';
+import {
+  createInitialBigEyeState,
+  generateBigBrotherReply,
+  type BigEyeConversationState,
+} from '../../services/bigBrother';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import DiaryWeekView from '../../components/DiaryWeekView';
 import DiaryWeekEditor from '../../components/DiaryWeekEditor';
 import { FEATURE_DIARY_WEEK, exportDiaryWeekJson } from '../../services/diaryWeek';
 import type { DiaryWeek } from '../../types/diaryWeek';
+import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger';
 import './DiaryRoom.css';
 
 type DiaryTab = 'confess' | 'log' | 'weekly';
@@ -208,13 +212,11 @@ export default function DiaryRoom() {
   const [loading, setLoading] = useState(false);
   const [bbTyping, setBbTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
-  const [awaitingQuitConfirmation, setAwaitingQuitConfirmation] = useState(false);
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
-
-  /** Returns true if the given text is a simple affirmative reply. */
-  function isAffirmative(text: string): boolean {
-    return /^\s*(yes|yeah|yep|yup|sure|certainly|absolutely|ok|okay|yea|affirmative)\s*[.!]?\s*$/i.test(text);
-  }
+  const [conversationState, setConversationState] = useState<BigEyeConversationState>(
+    () => createInitialBigEyeState(),
+  );
+  const { active: ticTacToeActive, launchTicTacToe, dismissTicTacToe } = useConfessionalTicTacToeTrigger();
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
@@ -303,73 +305,18 @@ export default function DiaryRoom() {
       return updated;
     });
 
-    // ── Quit-intent interception ────────────────────────────────────────────
-    if (awaitingQuitConfirmation) {
-      if (isAffirmative(text)) {
-        const ackMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'bb',
-          text: "Understood. Take a moment if you need it.",
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => {
-          const withSeen = prev.map((m) =>
-            m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
-          );
-          const withAck = [...withSeen, ackMsg];
-          saveChat(playerId, withAck);
-          return withAck;
-        });
-        setAwaitingQuitConfirmation(false);
-        setShowSelfEvictConfirm(true);
-        setLoading(false);
-        return;
-      } else {
-        setAwaitingQuitConfirmation(false);
-        // Fall through to normal LLM flow
-      }
-    } else {
-      // Check for quit intent in first submission
-      let intent: string | null = null;
-      try {
-        intent = detectIntent(text);
-      } catch (err) {
-        console.error('detectIntent error:', err);
-        // detectIntent is synchronous and shouldn't throw; fall through to LLM
-      }
-      if (intent === 'quit') {
-        const bbAsk: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'bb',
-          text: "Do you really want to leave The Big Eye house?",
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => {
-          const withSeen = prev.map((m) =>
-            m.role === 'user' && m.status !== 'seen' ? { ...m, status: 'seen' as MessageStatus } : m,
-          );
-          const withAsk = [...withSeen, bbAsk];
-          saveChat(playerId, withAsk);
-          return withAsk;
-        });
-        setAwaitingQuitConfirmation(true);
-        setLoading(false);
-        return;
-      }
-    }
-    // ── End quit-intent interception ────────────────────────────────────────
-
     try {
       const resp = await generateBigBrotherReply({
         diaryText: text,
         playerName,
         phase,
         seed,
+        state: conversationState,
       });
+      setConversationState(resp.nextState);
 
-      // Simulate BB typing: delay proportional to reply length (client-side only).
-      // Does NOT affect tvFeed — the summary emission on unmount is unchanged.
-      const typingDelay = Math.max(500, Math.min(2200, 400 + resp.text.length * 6));
+      // Simulate BB thinking before replying.
+      const typingDelay = Math.max(300, Math.min(1200, resp.delayMs));
       setBbTyping(true);
       await new Promise<void>((resolve) => setTimeout(resolve, typingDelay));
       setBbTyping(false);
@@ -390,6 +337,13 @@ export default function DiaryRoom() {
         saveChat(playerId, withReply);
         return withReply;
       });
+
+      if (resp.action === 'launch_tic_tac_toe') {
+        launchTicTacToe();
+      }
+      if (resp.action === 'open_self_evict_modal') {
+        setShowSelfEvictConfirm(true);
+      }
     } catch (err) {
       console.error('Big Brother AI error:', err);
       const detail = err instanceof Error ? err.message : 'Unknown error.';
@@ -463,6 +417,21 @@ export default function DiaryRoom() {
             <p className="diary-room__prompt">
               "You are now in the Confessional. No one can hear you. Speak freely."
             </p>
+            {ticTacToeActive && (
+              <div className="diary-room__mini-game-card" role="status" aria-live="polite">
+                <div>
+                  <strong>The Big Eye opened a game.</strong>
+                  <div>Tic Tac Toe would launch here. Keep your nerve.</div>
+                </div>
+                <button
+                  className="diary-room__mini-game-btn"
+                  type="button"
+                  onClick={dismissTicTacToe}
+                >
+                  Close
+                </button>
+              </div>
+            )}
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             {bbTyping && (
               <div className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">

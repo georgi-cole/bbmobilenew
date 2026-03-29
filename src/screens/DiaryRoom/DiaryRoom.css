@@ -133,6 +133,30 @@
   gap: 12px;
 }
 
+.diary-room__mini-game-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(17, 24, 39, 0.92);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: var(--color-text);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.diary-room__mini-game-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(139, 92, 246, 0.18);
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .diary-room__confess-form {
   display: flex;
   flex-direction: column;
@@ -808,4 +832,3 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
-

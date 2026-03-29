@@ -1,92 +1,42 @@
-/**
- * Client wrapper for the Big Brother AI responder endpoint.
- *
- * Resolution order:
- *  1. VITE_BB_AI_ENDPOINT env var (full URL).
- *  2. REACT_APP_BB_AI_ENDPOINT env var (full URL).
- *  3. Relative URL /api/ai/bigbrother — works in dev via the Vite proxy to
- *     localhost:4000 (see vite.config.ts). This path is always tried when no
- *     explicit env var is set, so local dev without env vars still reaches the
- *     backend server.
- *
- * If the remote fetch fails (network error, timeout, non-OK status, or
- * malformed JSON), the offline fallback in bigBrotherFallback.ts is used and
- * a console.warn is emitted with the error details to aid debugging.
- */
-
-import { generateOfflineBigBrotherReply } from './bigBrotherFallback';
-
-const FETCH_TIMEOUT_MS = 15_000;
-
-/**
- * Resolve the remote endpoint from env vars, falling back to the relative
- * Vite proxy path so that local dev without env vars still reaches the backend.
- */
-function resolveEndpoint(): string {
-  // Vite projects expose VITE_* on import.meta.env
-  const vite = import.meta.env.VITE_BB_AI_ENDPOINT as string | undefined;
-  if (vite) return vite;
-
-  // CRA / other bundlers may expose REACT_APP_* on import.meta.env too
-  const cra = import.meta.env.REACT_APP_BB_AI_ENDPOINT as string | undefined;
-  if (cra) return cra;
-
-  // Default: relative path proxied to localhost:4000 in dev (see vite.config.ts)
-  return '/api/ai/bigbrother';
-}
-
-const ENDPOINT = resolveEndpoint();
+import {
+  createInitialBigEyeState,
+  resolveBigEyeTurn,
+  type BigEyeAction,
+  type BigEyeConversationState,
+  type BigEyeIntent,
+} from '../bb/confessionalBigEye';
 
 export interface BigBrotherPayload {
   diaryText: string;
   playerName?: string;
   phase?: string;
   seed?: number;
+  state?: BigEyeConversationState;
 }
 
 export interface BigBrotherResponse {
   text: string;
-  reason: string;
+  reason: BigEyeIntent;
+  intent: BigEyeIntent;
+  nextState: BigEyeConversationState;
+  delayMs: number;
+  action?: BigEyeAction;
 }
+
+export type { BigEyeConversationState, BigEyeAction, BigEyeIntent };
+export { createInitialBigEyeState };
 
 export async function generateBigBrotherReply(
   payload: BigBrotherPayload,
 ): Promise<BigBrotherResponse> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      throw new Error(`The Big Eye server responded with status ${res.status}.`);
-    }
-
-    let json: BigBrotherResponse;
-    try {
-      json = (await res.json()) as BigBrotherResponse;
-    } catch {
-      throw new Error('The Big Eye server returned an unexpected response.');
-    }
-
-    if (typeof json?.text !== 'string') {
-      throw new Error('The Big Eye server response missing "text" field.');
-    }
-
-    return json;
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[BigBrother] Remote endpoint unreachable or returned an error — using offline fallback. Reason: ${detail}`,
-    );
-    const fallback = await generateOfflineBigBrotherReply(payload);
-    return { ...fallback, reason: 'fallback_offline' };
-  } finally {
-    clearTimeout(timer);
-  }
+  const state = payload.state ?? createInitialBigEyeState();
+  const reply = resolveBigEyeTurn(payload.diaryText, payload, state);
+  return {
+    text: reply.text,
+    reason: reply.intent,
+    intent: reply.intent,
+    nextState: reply.nextState,
+    delayMs: reply.delayMs,
+    action: reply.action,
+  };
 }
