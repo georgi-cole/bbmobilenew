@@ -14,6 +14,7 @@ export default function Houseguests() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const { hohId, nomineeIds, povWinnerId } = game
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
   const settings = useAppSelector(selectSettings)
 
   const { castSize } = settings.gameUX
@@ -41,6 +42,8 @@ export default function Houseguests() {
       isEvicted: p.status === 'evicted' || p.status === 'jury',
       isYou: p.isUser,
       onClick: () => setSelectedPlayer(p),
+      onHoldPreviewStart: () => setPreviewPlayer(p),
+      onHoldPreviewEnd: () => setPreviewPlayer(null),
     }
   })
 
@@ -62,6 +65,9 @@ export default function Houseguests() {
 
       {selectedPlayer && (
         <HouseguestInfoDialog player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+      )}
+      {!selectedPlayer && previewPlayer && (
+        <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />
       )}
     </div>
   )

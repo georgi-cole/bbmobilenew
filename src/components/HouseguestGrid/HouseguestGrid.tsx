@@ -13,6 +13,16 @@ export type Houseguest = {
   isYou?: boolean
   onClick?: () => void
   /**
+   * Called when the user has held their finger down long enough to trigger the
+   * hold-preview threshold. The caller should show a transient profile preview.
+   */
+  onHoldPreviewStart?: () => void
+  /**
+   * Called when the user lifts or cancels their finger after a hold-preview was
+   * triggered. The caller should dismiss the transient preview.
+   */
+  onHoldPreviewEnd?: () => void
+  /**
    * Game status string(s) to display as badge overlays.
    * Accepts a single PlayerStatus value (e.g. 'hoh', 'nominated+pov')
    * or an array of status codes.
@@ -143,6 +153,8 @@ export default function HouseguestGrid({
               isEvicted={hg.isEvicted}
               isYou={hg.isYou}
               onClick={hg.onClick}
+              onHoldPreviewStart={hg.onHoldPreviewStart}
+              onHoldPreviewEnd={hg.onHoldPreviewEnd}
               statuses={hg.statuses}
               finalRank={hg.finalRank}
               showPermanentBadge={hg.showPermanentBadge}
