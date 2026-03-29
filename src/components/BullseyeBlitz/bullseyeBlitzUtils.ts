@@ -108,14 +108,18 @@ const ROUND_PRESETS = [
 export const BULLSEYE_CHALLENGE_ROUNDS = ROUND_PRESETS.length;
 
 /**
- * Envelope ceiling for the targetPractice hybrid score resolver.
- * Used to normalise an AI's per-round baseScore to a 0–1 skill level so that
- * the full envelope range (80–500) maps to distinct, graded skill levels:
- *   baseScore  80 → skill ≈ 0.16 (weakest)
- *   baseScore 300 → skill ≈ 0.60 (average-human baseline)
- *   baseScore 500 → skill = 1.00 (near-perfect)
+ * Envelope ceiling used to normalise an AI's per-round baseScore to a 0–1
+ * skill level.  Capped at 400 so the hybrid resolver's full 80–500 range maps
+ * to meaningfully differentiated (and competitive) skill levels:
+ *   baseScore  80 → skill ≈ 0.20 (low — clearly weaker)
+ *   baseScore 300 → skill ≈ 0.75 (strong competitor — can genuinely threaten)
+ *   baseScore 400 → skill = 1.00 (near-perfect ceiling)
+ *   baseScore 500 → skill = 1.00 (clamped — still near-perfect)
+ *
+ * Using 400 (vs the previous 500) raises every contestant's effective skill
+ * without removing variation, making the field feel genuinely competitive.
  */
-const AI_SCORE_MAX = 500;
+const AI_SCORE_MAX = 400;
 
 /**
  * Select a random target kind using weighted distribution.
@@ -261,17 +265,26 @@ function runBullseyeAiRound(
   rng: () => number,
 ): number {
   // Skill-to-trait mapping:
-  //   skill 0 → slow reactions, low accuracy, frequently hits hazards
-  //   skill 1 → fast reactions, near-perfect accuracy, rarely hits hazards
-  const reactionSpeed   = 0.30 + skillLevel * 0.60; // 0.30–0.90
-  const hitAccuracy     = 0.40 + skillLevel * 0.50; // 0.40–0.90
-  const bonusFocusRatio = 0.70 + skillLevel * 0.30; // 0.70–1.00
-  const hazardAvoidance = 0.55 + skillLevel * 0.40; // 0.55–0.95
+  //   skill 0 → slower reactions, lower accuracy, more frequent hazard hits
+  //   skill 1 → very fast reactions, near-perfect accuracy, rarely hits hazards
+  //
+  // Ranges are tuned so that contestants produce competitive, human-shaped
+  // scores rather than flat placeholder totals:
+  //   reactionSpeed   0.45–0.95  (was 0.30–0.90)
+  //   hitAccuracy     0.58–0.96  (was 0.40–0.90)
+  //   bonusFocusRatio 0.76–1.00  (was 0.70–1.00)
+  //   hazardAvoidance 0.68–0.98  (was 0.55–0.95)
+  const reactionSpeed   = 0.45 + skillLevel * 0.50; // 0.45–0.95
+  const hitAccuracy     = 0.58 + skillLevel * 0.38; // 0.58–0.96
+  const bonusFocusRatio = 0.76 + skillLevel * 0.24; // 0.76–1.00
+  const hazardAvoidance = 0.68 + skillLevel * 0.30; // 0.68–0.98
 
   // Reaction-time penalty: slower players miss short-lived targets before they expire.
-  // At skill 0: reactionSpeed=0.30 → penalty = (1−0.30)×450 = 315 ms.
-  // At skill 1: reactionSpeed=0.90 → penalty = (1−0.90)×450 =  45 ms.
-  const reactionPenaltyMs = (1 - reactionSpeed) * 450;
+  // Multiplier reduced to 280 ms (from 450 ms) so even lower-skill AI can reach
+  // most targets within their lifetime, keeping scores in a believable human range.
+  // At skill 0: reactionSpeed=0.45 → penalty = (1−0.45)×280 = 154 ms.
+  // At skill 1: reactionSpeed=0.95 → penalty = (1−0.95)×280 =  14 ms.
+  const reactionPenaltyMs = (1 - reactionSpeed) * 280;
 
   const standardReachable = Math.max(0.05, Math.min(1,
     (config.targetLifetimes.standard - reactionPenaltyMs) / config.targetLifetimes.standard,
@@ -339,11 +352,11 @@ function runBullseyeAiRound(
  *
  * The `baseScore` parameter is the AI's per-round capacity produced by the
  * hybrid score resolver.  It spans the full targetPractice envelope (80–500)
- * and is normalised against the envelope ceiling (`AI_SCORE_MAX = 500`) so
- * every point in the range maps to a distinct skill level:
- *   baseScore  80 → skill ≈ 0.16 (low)
- *   baseScore 300 → skill ≈ 0.60 (average human)
- *   baseScore 500 → skill = 1.00 (near-perfect)
+ * and is normalised against the envelope ceiling (`AI_SCORE_MAX = 400`) so
+ * every point in the range maps to a distinct, competitive skill level:
+ *   baseScore  80 → skill ≈ 0.20 (low — clearly weaker than average)
+ *   baseScore 300 → skill ≈ 0.75 (strong competitor — genuinely threatening)
+ *   baseScore 400 → skill = 1.00 (near-perfect ceiling)
  *
  * The normalised skill feeds `runBullseyeAiRound`, which uses the real round
  * mechanics (spawn intervals, maxTargets cap, target lifetimes, point values,
@@ -372,8 +385,9 @@ export function simulateBullseyeAiRoundScore(
   // maps to distinct skill levels.  Values outside [0, AI_SCORE_MAX] are clamped.
   const rawSkill = Math.max(0, baseScore) / AI_SCORE_MAX;
 
-  // Add ±5 % per-player, per-round variance so AI contestants never produce
-  // identical scores even when they share the same baseScore.
+  // Add ±5 % per-player, per-round variance so contestants never produce identical
+  // scores even when they share the same baseScore, while keeping results
+  // deterministic for the same inputs.
   const jitter     = (rng() - 0.5) * 0.10;
   const skillLevel = Math.min(1, Math.max(0, rawSkill + jitter));
 

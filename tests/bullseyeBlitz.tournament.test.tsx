@@ -225,28 +225,34 @@ describe('BullseyeBlitz tournament flow', () => {
       participants: players.map((player) => player.id),
       seed: 12,
       options: { timeLimit: 20 },
-      // Negative base scores → skill ≈ 0 for all AI.  The specific eliminated
-      // player is determined by per-player seeded RNG.  With seed=12 the
-      // simulation deterministically produces the order below.
+      // With the improved AI simulation, near-zero base scores still produce
+      // 85–190 pts per round because the raised base traits (reactionSpeed 0.45,
+      // hitAccuracy 0.58) ensure AI score positively even at skill ≈ 0.
+      // The human scores 0 in the 1-second test window, so is eliminated.
+      // The specific ordering below is deterministic for seed=12 with the
+      // tuned simulation (p2=190, p1=135, p5=135, p6=110, p4=90, p3=85, p0=0).
       aiScores: { p1: -20, p2: -20, p3: -100, p4: -100, p5: -100, p6: -100 },
     };
 
     renderTournament(session, players);
-    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+    // Human scores 0 in the short test round → eliminated; game offers skip/spectate.
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /skip to final results/i }));
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 2, Player 1, Player 6, Player 4, Player 3, and Player 0 (You).'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 2, Player 1, Player 5, Player 6, Player 4, and Player 3.'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Out this round: Player 5\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Out this round: Player 0 (You).'),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
     // Spawn-speed preview is suppressed by the test mock (all rounds share the same
-    // TEST_SPAWN_INTERVAL_MS), but the hazard and penalty preview lines still fire.
+    // TEST_SPAWN_INTERVAL_MS), but the hazard preview line still fires.
     expect(screen.getByText(/More bombs will crash the party\./i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
-    await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i));
-
+    // "Keep watching" enters spectator mode and auto-advances to round 2.
+    fireEvent.click(screen.getByRole('button', { name: /keep watching/i }));
+    await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i), 400);
     expect(screen.getByText(/Round 2 • 6 players • 1 eliminated/i)).toBeInTheDocument();
   });
 });
