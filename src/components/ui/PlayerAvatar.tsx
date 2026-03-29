@@ -4,6 +4,8 @@ import { resolveAvatar, getDicebear } from '../../utils/avatar';
 import { getBadgesForPlayer } from '../../utils/statusBadges';
 import './PlayerAvatar.css';
 
+const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '');
+
 interface PlayerAvatarProps {
   player: Player;
   /** Called when avatar is tapped/clicked */
@@ -19,7 +21,7 @@ interface PlayerAvatarProps {
  * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
  * Badge rendering delegates to getBadgesForPlayer() from statusBadges utility:
- *   'hoh' → 👑  'pov' → 🛡️  'nominated' → ❓  'jury' → ⚖️
+ *   'hoh' → 👑  'pov' → 🛡️  'nominated' → glow image  'jury' → ⚖️
  *   finalRank 1/2/3 → 🥇/🥈/🥉
  *
  * Image loading uses a two-step fallback chain:
@@ -84,7 +86,19 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
             aria-label={badgeLabels}
             title={badgeLabels}
           >
-            {badges.map((b) => b.emoji).join('')}
+            {badges.map((b) =>
+              b.code === 'nominated' ? (
+                <img
+                  key={b.code}
+                  src={`${assetBasePath}/assets/nomination%20mark%20glow.png`}
+                  alt=""
+                  aria-hidden="true"
+                  className="player-avatar__badge-img"
+                />
+              ) : (
+                <span key={b.code}>{b.emoji}</span>
+              )
+            )}
           </span>
         )}
         {player.isUser && (
