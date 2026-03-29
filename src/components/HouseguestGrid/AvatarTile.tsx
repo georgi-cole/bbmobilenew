@@ -2,7 +2,6 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
 import {
-  AVATAR_TILE_SHELL_ASSET,
   EVICTED_OVERLAY_ASSET,
   getBadgesForPlayer,
   statusBadgeAsset,
@@ -10,18 +9,12 @@ import {
 import styles from './HouseguestGrid.module.css'
 
 const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
-export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
-const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
-
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
 /** How long (ms) after a long-press fires to suppress the subsequent click event. */
 export const LONG_PRESS_CLICK_SUPPRESSION_MS = 600
 /** Pixel-distance threshold: if the finger moves more than this the long-press is cancelled. */
 export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
-
-export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
-const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 
 type Props = {
   name: string
@@ -235,12 +228,14 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
 
-        <img
-          src={`${assetBasePath}${AVATAR_TILE_SHELL_ASSET}`}
-          alt=""
-          aria-hidden="true"
-          className={styles.avatarShell}
-        />
+        <div className={styles.avatarShell} aria-hidden="true">
+          <div className={styles.avatarShellBorder} />
+          <div className={styles.avatarShellBands} />
+          <div className={styles.avatarShellTopShine} />
+          <div className={styles.avatarShellBlobPink} />
+          <div className={styles.avatarShellBlobCyan} />
+          <div className={styles.avatarShellBottomCurve} />
+        </div>
 
         {/* Status badge stack — top-left corner, stacked vertically */}
         {showPermanentBadge && badges.length > 0 && (

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import AvatarTile from '../AvatarTile';
+import styles from '../HouseguestGrid.module.css';
 
 describe('AvatarTile', () => {
   it('renders the nomination asset instead of the question-mark badge', () => {
@@ -18,7 +19,7 @@ describe('AvatarTile', () => {
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('');
     expect(badgeImage).not.toBeNull();
-    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_nom.svg');
+    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_nom_rounded.svg');
     expect(container).not.toHaveTextContent('❓');
   });
 
@@ -33,15 +34,15 @@ describe('AvatarTile', () => {
 
     expect(screen.getByLabelText('Leader of the House').querySelector('img')).toHaveAttribute(
       'src',
-      '/assets/avatar_badges/badge_loh.svg',
+      '/assets/avatar_badges/badge_loh_rounded.svg',
     );
     expect(screen.getByLabelText('Power of Safety').querySelector('img')).toHaveAttribute(
       'src',
-      '/assets/avatar_badges/badge_pos.svg',
+      '/assets/avatar_badges/badge_pos_rounded.svg',
     );
   });
 
-  it('renders the fitted glass-bed shell and cracked-glass eviction overlay', () => {
+  it('renders the CSS glass shell layers and cracked-glass eviction overlay', () => {
     const { container } = render(
       <AvatarTile
         name="Taylor"
@@ -50,7 +51,13 @@ describe('AvatarTile', () => {
       />,
     );
 
-    expect(container.querySelector('img[src="/assets/avatar_badges/bed_avatar_glass_v2.svg"]')).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShell}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellBorder}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellBands}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellTopShine}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellBlobPink}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellBlobCyan}`)).not.toBeNull();
+    expect(container.querySelector(`.${styles.avatarShellBottomCurve}`)).not.toBeNull();
     expect(container.querySelector('img[src="/assets/avatar_badges/overlay_eliminated_cracked_glass.svg"]')).not.toBeNull();
   });
 });

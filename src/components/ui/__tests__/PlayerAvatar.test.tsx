@@ -33,7 +33,7 @@ describe('ui/PlayerAvatar badge assets', () => {
 
     expect(badge).toBeInTheDocument();
     expect(badgeImage).not.toBeNull();
-    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_nom.svg');
+    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_nom_rounded.svg');
     expect(container).not.toHaveTextContent('❓');
   });
 
@@ -60,7 +60,7 @@ describe('ui/PlayerAvatar badge assets', () => {
 
     expect(badge).toBeInTheDocument();
     expect(badge).not.toHaveTextContent('👑');
-    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_loh.svg');
+    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_loh_rounded.svg');
   });
 
   it('renders the POS asset badge for a POV-holding player', () => {
@@ -71,7 +71,7 @@ describe('ui/PlayerAvatar badge assets', () => {
 
     expect(badge).toBeInTheDocument();
     expect(badge).not.toHaveTextContent('🛡️');
-    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_pos.svg');
+    expect(badgeImage).toHaveAttribute('src', '/assets/avatar_badges/badge_pos_rounded.svg');
   });
 
   it('renders no badge for an active (non-status) player', () => {

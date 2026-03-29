@@ -39,16 +39,13 @@ export const STATUS_BADGE_LABEL: Record<string, string> = {
 
 /** Optional asset-backed badge artwork used by tile UIs. */
 export const STATUS_BADGE_ASSET: Record<string, string> = {
-  hoh: '/assets/avatar_badges/badge_loh.svg',
-  nominated: '/assets/avatar_badges/badge_nom.svg',
-  pov: '/assets/avatar_badges/badge_pos.svg',
+  hoh: '/assets/avatar_badges/badge_loh_rounded.svg',
+  nominated: '/assets/avatar_badges/badge_nom_rounded.svg',
+  pov: '/assets/avatar_badges/badge_pos_rounded.svg',
 };
 
 /** Evicted/cracked-glass overlay artwork used by houseguest tiles. */
 export const EVICTED_OVERLAY_ASSET = '/assets/avatar_badges/overlay_eliminated_cracked_glass.svg';
-
-/** Glass shell artwork used as the fitted avatar tile outline. */
-export const AVATAR_TILE_SHELL_ASSET = '/assets/avatar_badges/bed_avatar_glass_v2.svg';
 
 /**
  * Return the emoji for a single status code, or undefined if no badge exists.
