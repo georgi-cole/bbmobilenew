@@ -141,10 +141,10 @@ function pickDirection(
   const head = snake[0];
   const occupied = new Set(snake.map(posKey));
 
-  // Remove tail from occupied: the tail vacates this cell before the head
-  // arrives at the next position (relevant for flood-fill accuracy).
-  const tailKey = posKey(snake[snake.length - 1]);
-  occupied.delete(tailKey);
+  // NOTE: keep the tail in `occupied`.  SnakeGame.tsx checks collision before
+  // removing the tail, so moving into the tail cell is a self-collision.
+  // Matching this rule makes the AI's safety analysis consistent with the
+  // actual game logic (more conservative, avoids classifying fatal moves safe).
 
   // Collect candidate directions (no reversal, no immediate collision).
   const safe: Vec2[] = [];

@@ -620,20 +620,38 @@ const gameSlice = createSlice({
       if (session.hybridResolveOnComplete) {
         // ── Hybrid resolver path (score-based games) ─────────────────────────
         // AI scores are computed NOW, after the human score is known.
-        // This prevents precomputed scores from collapsing near a very low human score.
-        const aiParticipants = session.participants
-          .filter((id) => id !== humanPlayer?.id)
-          .map((id) => {
-            const p = state.players.find((pl) => pl.id === id);
-            return { id, profile: p?.competitionProfile };
-          });
+        let resolvedAiScores: Record<string, number>;
 
-        const resolvedAiScores = resolveHybridAiScores({
-          gameKey: session.key,
-          humanScore: payload.humanScore,
-          aiParticipants,
-          seed: session.seed,
-        });
+        if (session.key === 'snake') {
+          // Snake uses the headless simulator so the authoritative Redux scores
+          // match exactly what the SnakeGame UI displays.
+          resolvedAiScores = {};
+          for (const id of session.participants) {
+            if (id === humanPlayer?.id) continue;
+            const p = state.players.find((pl) => pl.id === id);
+            resolvedAiScores[id] = simulateSnakeAiScore({
+              sessionSeed: session.seed,
+              playerId: id,
+              profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
+            });
+          }
+        } else {
+          // Generic hybrid resolver for all other score-based games.
+          // This prevents precomputed scores from collapsing near a very low human score.
+          const aiParticipants = session.participants
+            .filter((id) => id !== humanPlayer?.id)
+            .map((id) => {
+              const p = state.players.find((pl) => pl.id === id);
+              return { id, profile: p?.competitionProfile };
+            });
+
+          resolvedAiScores = resolveHybridAiScores({
+            gameKey: session.key,
+            humanScore: payload.humanScore,
+            aiParticipants,
+            seed: session.seed,
+          });
+        }
 
         scores = { ...resolvedAiScores };
         if (humanPlayer && session.participants.includes(humanPlayer.id)) {

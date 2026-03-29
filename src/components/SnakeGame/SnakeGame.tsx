@@ -23,6 +23,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import { simulateSnakeAiScore } from '../../ai/competition/snakeAiSimulator';
+import { getDefaultCompetitionProfile } from '../../ai/competition';
 import './SnakeGame.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -238,7 +239,7 @@ export default function SnakeGame({
             resolvedAiScores[id] = simulateSnakeAiScore({
               sessionSeed: session.seed,
               playerId: id,
-              profile: p?.competitionProfile,
+              profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
             });
           }
         } else {
