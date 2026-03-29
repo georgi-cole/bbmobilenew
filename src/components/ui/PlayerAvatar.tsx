@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { Player } from '../../types';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
-import { getBadgesForPlayer } from '../../utils/statusBadges';
+import { getBadgesForPlayer, statusBadgeAsset } from '../../utils/statusBadges';
 import './PlayerAvatar.css';
+
+const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '');
 
 interface PlayerAvatarProps {
   player: Player;
@@ -19,7 +21,7 @@ interface PlayerAvatarProps {
  * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
  * Badge rendering delegates to getBadgesForPlayer() from statusBadges utility:
- *   'hoh' → 👑  'pov' → 🛡️  'nominated' → ❓  'jury' → ⚖️
+ *   'hoh' → 👑  'pov' → 🛡️  'nominated' → glow image  'jury' → ⚖️
  *   finalRank 1/2/3 → 🥇/🥈/🥉
  *
  * Image loading uses a two-step fallback chain:
@@ -53,6 +55,7 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
 
   const isEvicted = player.status === 'evicted' || player.status === 'jury';
   const badges = getBadgesForPlayer(player.status, player.finalRank);
+  const hasAssetBadge = badges.some((badge) => statusBadgeAsset(badge.code));
   // Collapsed badge string for popover status label (e.g. "👑 🛡️")
   const badgeStr = badges.map((b) => b.emoji).join(' ');
   const badgeLabels = badges.map((b) => b.label).join(', ');
@@ -80,11 +83,25 @@ export default function PlayerAvatar({ player, onSelect, size = 'md' }: PlayerAv
         )}
         {badges.length > 0 && (
           <span
-            className="player-avatar__badge"
+            className={`player-avatar__badge${hasAssetBadge ? ' player-avatar__badge--asset' : ''}`}
             aria-label={badgeLabels}
             title={badgeLabels}
           >
-            {badges.map((b) => b.emoji).join('')}
+            {badges.map((b) => {
+              const badgeAsset = statusBadgeAsset(b.code);
+
+              return badgeAsset ? (
+                <img
+                  key={b.code}
+                  src={`${assetBasePath}${badgeAsset}`}
+                  alt=""
+                  aria-hidden="true"
+                  className="player-avatar__badge-img"
+                />
+              ) : (
+                <span key={b.code}>{b.emoji}</span>
+              );
+            })}
           </span>
         )}
         {player.isUser && (
