@@ -524,11 +524,12 @@ export default function TvZone(props: TvZoneProps) {
         </div>
       </div>
 
-      {/* ── Event log (TVLog with duplicate suppression, 2 visible rows) ──── */}
+      {/* ── Event log (TVLog with duplicate suppression, compact two-line mobile feed) ──── */}
       <TVLog
         entries={mainLogFeed}
         mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
         maxVisible={2}
+        mobileTwoLineMode
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}

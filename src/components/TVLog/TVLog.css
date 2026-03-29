@@ -103,4 +103,31 @@
   .tv-log {
     --tv-log-item-h: 32px;
   }
+
+  .tv-log[data-mobile-two-line='true'] {
+    max-height: calc((0.78rem * 1.4 * 2) + 12px);
+  }
+
+  .tv-log[data-mobile-two-line='true'] .tv-log__item {
+    align-items: flex-start;
+    min-height: 0;
+    padding: 6px 12px;
+  }
+
+  .tv-log[data-mobile-two-line='true'] .tv-log__icon {
+    line-height: 1.4;
+    padding-top: 1px;
+  }
+
+  .tv-log[data-mobile-two-line='true'] .tv-log__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .tv-log[data-mobile-two-line='true'] .tv-log__item--expanded .tv-log__text {
+    display: block;
+    overflow: visible;
+  }
 }

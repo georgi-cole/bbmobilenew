@@ -423,7 +423,10 @@ describe('TvZone — TVLog usage', () => {
       store.dispatch(addTvEvent(makeEvent({ id: 'e2', text: 'The house is watching.' })));
     });
 
-    expect(screen.getByRole('list', { name: /Game event log/i })).toBeDefined();
+    const log = screen.getByRole('list', { name: /Game event log/i });
+
+    expect(log).toBeDefined();
+    expect(log.getAttribute('data-mobile-two-line')).toBe('true');
   });
 });
 

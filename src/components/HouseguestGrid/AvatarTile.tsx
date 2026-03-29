@@ -4,9 +4,6 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
-export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
-const LONG_PRESS_CLICK_SUPPRESSION_MS = 350
-
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
 /** How long (ms) after a long-press fires to suppress the subsequent click event. */
