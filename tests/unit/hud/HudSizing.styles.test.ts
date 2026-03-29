@@ -16,6 +16,10 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/components/layout/NavBar.css'),
       'utf8',
     );
+    const houseguestGridTsx = readFileSync(
+      resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.tsx'),
+      'utf8',
+    );
     const gameScreenCss = readFileSync(
       resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'),
       'utf8',
@@ -24,12 +28,22 @@ describe('HUD sizing styles', () => {
     const navGlyphRule = /\.game-bottom-nav__glyph\s*\{[\s\S]*?width:\s*22px;[\s\S]*?height:\s*22px;[\s\S]*?\}/;
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
-    expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));');
+    expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 6px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toMatch(navItemsRule);
     expect(navCss).toMatch(navGlyphRule);
+    expect(navCss).toContain('padding: 2px 3.5% 0;');
+    expect(navCss).toContain('background: rgba(255, 255, 255, 0.06);');
+    expect(navCss).toContain('border: 1px solid rgba(255, 255, 255, 0.06);');
+    expect(navCss).toContain('border-radius: 9px;');
+    expect(navCss).toContain('backdrop-filter: blur(8px);');
+    expect(navCss).toContain('inset 0 1px 0 rgba(255, 255, 255, 0.08)');
+    expect(navCss).toContain('0 0 8px rgba(0, 0, 0, 0.15)');
+    expect(navCss).toContain('filter: brightness(1.04);');
     expect(layoutNavCss).toContain('--nav-bar-height: 62px;');
-    expect(gameScreenCss).toContain('gap: 10px;');
+    expect(houseguestGridTsx).toContain('const GRID_VERTICAL_MARGIN = 6');
+    expect(gameScreenCss).toContain('gap: 8px;');
+    expect(gameScreenCss).toContain('padding: 12px 12px calc(var(--nav-bar-height) + 12px);');
   });
 
   it('keeps top chips content-sized so longer labels have room to fit', () => {

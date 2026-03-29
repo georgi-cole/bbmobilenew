@@ -61,7 +61,7 @@ const MIN_GRID_HEIGHT = 220
 /** Fallback nav-bar height (px) matching --nav-bar-height CSS variable */
 const DEFAULT_FOOTER_HEIGHT = 62
 /** Extra vertical margin subtracted from available height */
-const GRID_VERTICAL_MARGIN = 20
+const GRID_VERTICAL_MARGIN = 6
 
 export default function HouseguestGrid({
   houseguests,

@@ -2,8 +2,8 @@
 .game-screen {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 12px calc(var(--nav-bar-height) + 16px);
+  gap: 8px;
+  padding: 12px 12px calc(var(--nav-bar-height) + 12px);
 }
 
 /* Gameplay background shell */
