@@ -138,7 +138,7 @@ const TIME_LIMIT_PER_PLAYER_MS = 16_000;
 const DEFAULT_TIME_LIMIT_MS = 10 * TIME_LIMIT_PER_PLAYER_MS;
 
 export function buildGlassBridgeTimeLimitMs(participantCount: number): number {
-  return Math.max(0, participantCount) * TIME_LIMIT_PER_PLAYER_MS;
+  return Math.max(1, participantCount) * TIME_LIMIT_PER_PLAYER_MS;
 }
 
 /**

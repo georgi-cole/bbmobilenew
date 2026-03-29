@@ -403,7 +403,7 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
 
 describe('MinigameHost — Glass Bridge rules timing', () => {
   it('shows the per-player timer on the rules modal for Glass Bridge', () => {
-    render(
+    const { rerender } = render(
       <Provider store={makeStore()}>
         <MinigameHost
           game={GLASS_BRIDGE_GAME}
@@ -418,6 +418,36 @@ describe('MinigameHost — Glass Bridge rules timing', () => {
     );
 
     expect(screen.getByText('⏱ 32s')).toBeTruthy();
+
+    rerender(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={GLASS_BRIDGE_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={[PARTICIPANTS[0]]}
+          onDone={vi.fn()}
+        />
+      </Provider>,
+    );
+    expect(screen.getByText('⏱ 16s')).toBeTruthy();
+
+    rerender(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={GLASS_BRIDGE_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={Array.from({ length: 10 }, (_, idx) => ({
+            id: `p${idx}`,
+            name: `P${idx + 1}`,
+            isHuman: idx === 0,
+            precomputedScore: 0,
+            previousPR: null,
+          }))}
+          onDone={vi.fn()}
+        />
+      </Provider>,
+    );
+    expect(screen.getByText('⏱ 2m 40s')).toBeTruthy();
   });
 });
 

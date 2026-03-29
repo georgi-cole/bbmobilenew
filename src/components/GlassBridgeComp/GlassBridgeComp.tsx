@@ -568,6 +568,8 @@ export default function GlassBridgeComp({
       }
     }
 
+    // Prime the HUD immediately so players see the correct remaining time from
+    // the first frame instead of a brief visual delay before the 250 ms interval.
     tick();
     timerIntervalRef.current = window.setInterval(tick, 250);
     return () => {
