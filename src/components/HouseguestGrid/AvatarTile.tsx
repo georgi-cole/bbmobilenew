@@ -4,7 +4,8 @@ import { avatarVariants } from '../../utils/avatarCase'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
-const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
+export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
+const LONG_PRESS_CLICK_SUPPRESSION_MS = 350
 
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
@@ -256,16 +257,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
                 aria-label={b.label}
                 title={b.label}
               >
-                {b.code === 'nominated' ? (
-                  <img
-                    src={`${assetBasePath}/assets/nomination%20mark%20glow.png`}
-                    alt=""
-                    aria-hidden="true"
-                    className={styles.statusBadgeImage}
-                  />
-                ) : (
-                  b.emoji
-                )}
+                {b.emoji}
               </span>
             ))}
           </div>
