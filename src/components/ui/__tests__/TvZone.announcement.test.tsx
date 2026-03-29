@@ -809,6 +809,23 @@ describe('TvZone — phase-based announcement triggers', () => {
     });
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
+
+  it('uses presentable labels for internal-only phases in the head pills', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pre_veto_public_save')); });
+    expect(screen.getByLabelText('PUBLIC SAFETY')).toBeDefined();
+    expect(screen.queryByText('pre_veto_public_save')).toBeNull();
+
+    act(() => { store.dispatch(setPhase('jury_announcement')); });
+    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.queryByText('jury_announcement')).toBeNull();
+
+    act(() => { store.dispatch(setPhase('jury_cinematic')); });
+    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.queryByText('jury_cinematic')).toBeNull();
+  });
 });
 
 // ── TvAnnouncementModal — no-animations fast-path ─────────────────────────────

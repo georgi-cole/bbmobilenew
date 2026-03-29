@@ -30,6 +30,7 @@ const PHASE_LABELS: Record<string, string> = {
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
+  pre_veto_public_save:     'PUBLIC SAFETY',
   pov_comp_announcement:    'POS COMP',
   pov_comp:                 'POS COMP',
   pov_results:          'POS RESULTS',
@@ -48,6 +49,8 @@ const PHASE_LABELS: Record<string, string> = {
   final3_comp3:         'F3 P3',
   final3_comp3_minigame: 'F3 P3',
   final3_decision:      'FINAL LOH',
+  jury_announcement:    'TRIBUNAL',
+  jury_cinematic:       'TRIBUNAL',
   jury:                 'TRIBUNAL',
 };
 
@@ -444,12 +447,12 @@ export default function TvZone(props: TvZoneProps) {
       <div className="tv-zone__head">
         {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <GameTopChip label={phaseLabel} />
+          <GameTopChip label={phaseLabel} className="tv-zone__head-chip" />
         </div>
 
         {/* Center: scrollable single-row status chips */}
         <ul className="tv-zone__head-pills" aria-label="Game status chips">
-          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} /></li>
+          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} className="tv-zone__head-chip" /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
