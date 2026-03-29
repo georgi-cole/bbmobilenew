@@ -10,13 +10,28 @@
   user-select: none;
 }
 
+.game-bottom-nav.nav-bar {
+  background: linear-gradient(180deg, rgba(17, 24, 37, 0.96), rgba(12, 18, 31, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(2, 6, 16, 0.24);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  isolation: isolate;
+}
+
 /* Background SVG fills the nav bar area */
 .game-bottom-nav__shell {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+  filter: saturate(0.72) brightness(0.82);
   pointer-events: none;
   user-select: none;
 }
@@ -32,6 +47,7 @@
   width: 100%;
   height: var(--nav-bar-height, 60px);
   padding: 1px 2.25% 3px;
+  background: transparent;
 }
 
 .game-bottom-nav__item {

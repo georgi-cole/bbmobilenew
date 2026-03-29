@@ -33,9 +33,14 @@ describe('HUD sizing styles', () => {
     expect(navCss).toContain('overflow: hidden;');
     expect(navCss).toContain('border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;');
     expect(navCss).toContain('clip-path: inset(0 round 18px 18px 28px 28px / 12px 12px 24px 24px);');
+    expect(navCss).toContain('background: linear-gradient(180deg, rgba(17, 24, 37, 0.96), rgba(12, 18, 31, 0.98));');
+    expect(navCss).toContain('border: 1px solid rgba(255, 255, 255, 0.06);');
+    expect(navCss).toContain('mix-blend-mode: soft-light;');
+    expect(navCss).toContain('opacity: 0.16;');
     expect(navCss).toMatch(navItemsRule);
     expect(navCss).toContain('column-gap: 7px;');
     expect(navCss).toContain('padding: 1px 2.25% 3px;');
+    expect(navCss).toContain('background: transparent;');
     expect(navCss).toMatch(navGlyphRule);
     expect(navCss).toContain('width: 100%;');
     expect(navCss).toContain('min-width: 0;');
