@@ -124,3 +124,13 @@ describe('TVLog — expand on click', () => {
     expect(screen.getByText(longText)).toBeDefined();
   });
 });
+
+describe('TVLog — mobile compact mode', () => {
+  it('marks the feed for two-line mobile rendering when enabled', () => {
+    const entries: TvEvent[] = [makeEvent({ id: 'e1', text: 'Compact mobile log message' })];
+
+    render(<TVLog entries={entries} mobileTwoLineMode />);
+
+    expect(screen.getByRole('list', { name: /Game event log/i }).getAttribute('data-mobile-two-line')).toBe('true');
+  });
+});

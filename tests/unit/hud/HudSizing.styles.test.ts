@@ -24,8 +24,14 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'),
       'utf8',
     );
+    const tvZoneCss = readFileSync(
+      resolve(process.cwd(), 'src/components/ui/TvZone.css'),
+      'utf8',
+    );
     const navItemsRule = /\.game-bottom-nav__items\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?\}/;
     const navGlyphRule = /\.game-bottom-nav__glyph\s*\{[\s\S]*?width:\s*22px;[\s\S]*?height:\s*22px;[\s\S]*?\}/;
+    const tvHeadRule = /\.tv-zone__head\s*\{[\s\S]*?gap:\s*5px;[\s\S]*?padding:\s*6px 10px;[\s\S]*?\}/;
+    const tvHeadChipRule = /\.tv-zone__head-chip\s*\{[\s\S]*?height:\s*30px;[\s\S]*?min-width:\s*30px;[\s\S]*?padding:\s*0 11px;[\s\S]*?\}/;
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 3px + env(safe-area-inset-bottom, 0px));');
@@ -58,6 +64,9 @@ describe('HUD sizing styles', () => {
     expect(houseguestGridTsx).toContain('const GRID_VERTICAL_MARGIN = 4');
     expect(gameScreenCss).toContain('gap: 6px;');
     expect(gameScreenCss).toContain('padding: 12px 12px calc(var(--nav-bar-height) + 10px);');
+    expect(tvZoneCss).toContain('.tv-zone__head-chip {');
+    expect(tvZoneCss).toMatch(tvHeadRule);
+    expect(tvZoneCss).toMatch(tvHeadChipRule);
   });
 
   it('keeps top chips content-sized so longer labels have room to fit', () => {

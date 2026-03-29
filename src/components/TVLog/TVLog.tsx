@@ -26,6 +26,11 @@ export interface TVLogProps {
    * @default 3
    */
   maxVisible?: number;
+  /**
+   * When enabled, small screens collapse the feed to a two-line viewport so the
+   * TV area can stay taller while older messages remain reachable via scroll.
+   */
+  mobileTwoLineMode?: boolean;
 }
 
 /**
@@ -35,8 +40,14 @@ export interface TVLogProps {
  *   - Duplicate suppression: hides the first entry when it matches the main TV message.
  *   - Shows `maxVisible` (default 3) rows; older entries are accessible via scroll.
  *   - Teaser truncation: long lines are clipped to 60 chars; tap/click to expand.
+ *   - Optional mobile two-line mode that reduces the visible feed height on phones.
  */
-export default function TVLog({ entries, mainTVMessage, maxVisible = 3 }: TVLogProps) {
+export default function TVLog({
+  entries,
+  mainTVMessage,
+  maxVisible = 3,
+  mobileTwoLineMode = false,
+}: TVLogProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Suppress the first entry when its text duplicates the main viewport message.
@@ -64,6 +75,7 @@ export default function TVLog({ entries, mainTVMessage, maxVisible = 3 }: TVLogP
     <ul
       className="tv-log"
       data-testid="tv-feed"
+      data-mobile-two-line={mobileTwoLineMode ? 'true' : undefined}
       style={{ '--tv-log-max-vis': maxVisible } as React.CSSProperties}
       aria-label="Game event log"
     >

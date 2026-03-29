@@ -444,12 +444,12 @@ export default function TvZone(props: TvZoneProps) {
       <div className="tv-zone__head">
         {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <GameTopChip label={phaseLabel} />
+          <GameTopChip label={phaseLabel} className="tv-zone__head-chip" />
         </div>
 
         {/* Center: scrollable single-row status chips */}
         <ul className="tv-zone__head-pills" aria-label="Game status chips">
-          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} /></li>
+          <li><GameTopChip label={`S${gameState.season}D${gameState.week}`} className="tv-zone__head-chip" /></li>
         </ul>
 
         <div className="tv-zone__head-actions">
@@ -526,11 +526,12 @@ export default function TvZone(props: TvZoneProps) {
         </div>
       </div>
 
-      {/* ── Event log (TVLog with duplicate suppression, 2 visible rows) ──── */}
+      {/* ── Event log (TVLog with duplicate suppression, compact two-line mobile feed) ──── */}
       <TVLog
         entries={mainLogFeed}
         mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
         maxVisible={2}
+        mobileTwoLineMode
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}

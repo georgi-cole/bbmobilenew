@@ -642,6 +642,15 @@ export default function GameScreen() {
     Boolean(game.awaitingPublicSave) &&
     game.nomineeIds.length === 3
 
+  // Approval values for display in PublicSaveReveal
+  const publicSaveApprovals = useMemo(() => {
+    const out: Record<string, number> = {}
+    game.nomineeIds.forEach((id) => {
+      out[id] = publicOpinionProfiles[id]?.approval ?? 50
+    })
+    return out
+  }, [game.nomineeIds, publicOpinionProfiles])
+
   // Compute who would be saved; memoised to avoid recalculating on every render.
   const publicSaveWinnerId = useMemo(() => {
     if (!showPublicSaveReveal) return null
@@ -662,15 +671,6 @@ export default function GameScreen() {
       )
     }
   }, [dispatch, publicSaveApprovals, publicSaveWinnerId])
-
-  // Approval values for display in PublicSaveReveal
-  const publicSaveApprovals = useMemo(() => {
-    const out: Record<string, number> = {}
-    game.nomineeIds.forEach((id) => {
-      out[id] = publicOpinionProfiles[id]?.approval ?? 50
-    })
-    return out
-  }, [game.nomineeIds, publicOpinionProfiles])
 
   const publicSaveNominees = useMemo(
     () =>
