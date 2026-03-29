@@ -3,6 +3,9 @@
   position: relative;
   height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;
+  clip-path: inset(0 round 18px 18px 28px 28px / 12px 12px 24px 24px);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -28,7 +31,7 @@
   column-gap: 7px;
   width: 100%;
   height: var(--nav-bar-height, 60px);
-  padding: 1px 2.25% 0;
+  padding: 1px 2.25% 3px;
 }
 
 .game-bottom-nav__item {
