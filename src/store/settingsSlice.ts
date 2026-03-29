@@ -97,6 +97,11 @@ export const DEFAULT_SETTINGS: SettingsState = {
   },
 };
 
+type LegacySimSettings = Partial<SettingsState['sim']> & {
+  /** Backwards-compatibility key used before the special-safety rename. */
+  specialVetoChance?: number;
+};
+
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
 export function loadSettings(): SettingsState {
@@ -106,16 +111,17 @@ export function loadSettings(): SettingsState {
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
     // Deep-merge to preserve new defaults when schema is extended
     const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...parsed.gameUX };
-    const parsedSim = parsed.sim as
-      | (Partial<SettingsState['sim']> & { specialVetoChance?: number })
-      | undefined;
-    const mergedSim = { ...DEFAULT_SETTINGS.sim, ...parsedSim };
-    if (
-      typeof mergedSim.specialSafetyChance !== 'number' &&
-      typeof parsedSim?.specialVetoChance === 'number'
-    ) {
-      mergedSim.specialSafetyChance = parsedSim.specialVetoChance;
-    }
+    const parsedSim = parsed.sim as LegacySimSettings | undefined;
+    const normalizedSim: Partial<SettingsState['sim']> = parsedSim
+      ? (({ specialVetoChance: legacyVetoChance, ...rest }) => ({
+          ...rest,
+          ...(parsedSim.specialSafetyChance === undefined &&
+          typeof legacyVetoChance === 'number'
+            ? { specialSafetyChance: legacyVetoChance }
+            : {}),
+        }))(parsedSim)
+      : {};
+    const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim };
     // compSelection is a nested object — deep-merge so partial stored values
     // (e.g. from an older schema version) inherit any newly-added defaults.
     mergedGameUX.compSelection = {
