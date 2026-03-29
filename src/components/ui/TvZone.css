@@ -223,6 +223,30 @@
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
+  .tv-zone__head {
+    gap: 5px;
+    padding: 6px 10px;
+  }
+
+  .tv-zone__head-pills {
+    gap: 5px;
+  }
+
+  .tv-zone__head-actions {
+    gap: 6px;
+  }
+
+  .tv-zone__head-chip {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 11px;
+  }
+
+  .tv-zone__head-chip .game-top-chip__label {
+    font-size: 0.66rem;
+    letter-spacing: 0.4px;
+  }
+
   .tv-zone__viewport {
     min-height: 144px;
     padding: 18px 14px;
