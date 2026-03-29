@@ -44,6 +44,7 @@ import { selectLastSocialReport } from '../../social/socialSlice'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
+import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog'
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
 import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
 import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
@@ -125,6 +126,7 @@ export default function GameScreen() {
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
+  const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -400,6 +402,7 @@ export default function GameScreen() {
   }, [])
 
   function handleAvatarSelect(player: Player) {
+    setPreviewPlayer(null)
     // Demo: log selection to TV feed when you tap your own avatar
     if (player.isUser) {
       dispatch(
@@ -436,6 +439,8 @@ export default function GameScreen() {
       layoutId: `avatar-tile-${p.id}`,
       isEvicting: (showEvictionSplash && pendingEvictionPlayer?.id === p.id) || game.evictionOverlayPlayerId === p.id || isReturning,
       onClick: () => handleAvatarSelect(p),
+      onHoldPreviewStart: () => setPreviewPlayer(p),
+      onHoldPreviewEnd: () => setPreviewPlayer((current) => (current?.id === p.id ? null : current)),
     }
   }
 
@@ -2187,6 +2192,7 @@ export default function GameScreen() {
         overlaySelector=".game-control-dock"
         occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
       />
+      {previewPlayer && <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />}
     </div>
     </LayoutGroup>
   )
