@@ -233,6 +233,13 @@ function pushPovCompetitionAnnouncement(state: GameState) {
   );
 }
 
+type CommitPublicSavePayload =
+  | string
+  | {
+      savedId: string;
+      supportPercent?: number;
+    };
+
 /**
  * Determine whether the next evicted player should become a juror ('jury')
  * or simply go home ('evicted'), based on the configured jury size.
@@ -1149,10 +1156,12 @@ const gameSlice = createSlice({
      * Removes the saved player from nomineeIds, records publicSavedNomineeId,
      * clears awaitingPublicSave, and advances the phase to pov_comp_announcement.
      */
-    commitPublicSave(state, action: PayloadAction<string>) {
+    commitPublicSave(state, action: PayloadAction<CommitPublicSavePayload>) {
       if (!state.awaitingPublicSave || state.phase !== 'pre_veto_public_save') return;
       if (state.nomineeIds.length !== 3) return;
-      const savedId = action.payload;
+      const savedId = typeof action.payload === 'string' ? action.payload : action.payload.savedId;
+      const supportPercent =
+        typeof action.payload === 'string' ? null : action.payload.supportPercent ?? null;
       if (!state.nomineeIds.includes(savedId)) return;
 
       const savedPlayer = state.players.find((p) => p.id === savedId);
@@ -1160,6 +1169,9 @@ const gameSlice = createSlice({
 
       const remainingNomineeIds = state.nomineeIds.filter((id) => id !== savedId);
       if (remainingNomineeIds.length !== 2) return;
+      const remainingNomineeNames = remainingNomineeIds
+        .map((id) => state.players.find((p) => p.id === id)?.name)
+        .filter((name): name is string => Boolean(name));
 
       // Remove from active nominee block
       state.nomineeIds = remainingNomineeIds;
@@ -1175,12 +1187,16 @@ const gameSlice = createSlice({
       // Advance directly to pov_comp_announcement so veto starts with 2 nominees
       state.phase = 'pov_comp_announcement';
 
+      pushPovCompetitionAnnouncement(state);
       pushEvent(
         state,
-        `${savedPlayer.name} has been saved by the public! 🏆 They step off the block with the highest audience support.`,
+        supportPercent !== null && remainingNomineeNames.length === 2
+          ? `${savedPlayer.name} was saved with ${Math.round(supportPercent)}% of the public support. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
+          : remainingNomineeNames.length === 2
+            ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
+            : `${savedPlayer.name} was saved by the public.`,
         'game',
       );
-      pushPovCompetitionAnnouncement(state);
     },
 
     /**
@@ -3006,7 +3022,7 @@ const gameSlice = createSlice({
           state.awaitingPublicSave = true;
           pushEvent(
             state,
-            `Before veto night, the public has the power to save one nominee! 🗳️`,
+            `The final list of nominees today will be decided with the public's help.`,
             'game',
           );
           break;
@@ -3632,7 +3648,12 @@ export const fastForwardToEviction =
             nomineeIds: state.nomineeIds,
             profiles: rootState.publicOpinion?.profiles ?? {},
           }).savedId || state.nomineeIds[0];
-        dispatch(commitPublicSave(savedId));
+        dispatch(
+          commitPublicSave({
+            savedId,
+            supportPercent: rootState.publicOpinion?.profiles?.[savedId]?.approval,
+          }),
+        );
       } else {
         dispatch(advance());
       }

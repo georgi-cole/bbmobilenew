@@ -202,6 +202,7 @@ export default function TvZone(props: TvZoneProps) {
   );
 
   const latestEvent = tvVisibleFeed[0];
+  const publicSaveRevealActive = Boolean(props.publicSaveReveal);
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -293,6 +294,7 @@ export default function TvZone(props: TvZoneProps) {
 
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
+  const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
 
   const handleDismiss = useCallback(() => {
     if (phaseAnnouncement) {
@@ -490,7 +492,7 @@ export default function TvZone(props: TvZoneProps) {
             <div className="tv-zone__scanlines" aria-hidden="true" />
             <div className="tv-zone__vignette"  aria-hidden="true" />
             <div className="tv-zone__glare"     aria-hidden="true" />
-            <p className="tv-zone__now" style={(postDismissBlocked || !!activeAnnouncement) ? { opacity: 0 } : undefined}>
+            <p className="tv-zone__now" style={hideViewportMessage ? { opacity: 0 } : undefined}>
               {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
             </p>
 

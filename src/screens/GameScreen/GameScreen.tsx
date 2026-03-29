@@ -654,9 +654,14 @@ export default function GameScreen() {
 
   const handlePublicSaveDone = useCallback(() => {
     if (publicSaveWinnerId) {
-      dispatch(commitPublicSave(publicSaveWinnerId))
+      dispatch(
+        commitPublicSave({
+          savedId: publicSaveWinnerId,
+          supportPercent: publicSaveApprovals[publicSaveWinnerId],
+        }),
+      )
     }
-  }, [dispatch, publicSaveWinnerId])
+  }, [dispatch, publicSaveApprovals, publicSaveWinnerId])
 
   // Approval values for display in PublicSaveReveal
   const publicSaveApprovals = useMemo(() => {
