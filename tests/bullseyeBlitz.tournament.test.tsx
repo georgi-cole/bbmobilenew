@@ -137,8 +137,8 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(screen.queryByText(/Player 1/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Finn/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Mimi/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Bomb mistakes will sting more\./i)).toBeInTheDocument();
     const finnEntry = screen.getAllByText(/Finn/i)[0]?.closest('li');
     expect(finnEntry?.textContent).toMatch(/[1-9]\d* pts/);
     expect(onFinish).not.toHaveBeenCalled();

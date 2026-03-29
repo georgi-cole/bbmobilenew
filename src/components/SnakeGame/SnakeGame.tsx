@@ -22,7 +22,8 @@ import React, {
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
-import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
+import { simulateSnakeAiScore } from '../../ai/competition/snakeAiSimulator';
+import { getDefaultCompetitionProfile } from '../../ai/competition';
 import './SnakeGame.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -226,21 +227,21 @@ export default function SnakeGame({
 
       if (session) {
         // HOH/LOH path — build ranked leaderboard.
-        // For hybrid sessions, resolve AI scores after the human score is known.
+        // AI scores come from real headless simulation runs using the same
+        // board rules as the human game.  Each AI plays its own board and
+        // produces a genuine food-eaten count rather than a precomputed value.
         let resolvedAiScores: Record<string, number>;
         if (session.hybridResolveOnComplete) {
-          const aiParticipants = session.participants
-            .filter((id) => id !== humanId)
-            .map((id) => {
-              const p = players.find((pl) => pl.id === id);
-              return { id, profile: p?.competitionProfile };
+          resolvedAiScores = {};
+          for (const id of session.participants) {
+            if (id === humanId) continue;
+            const p = players.find((pl) => pl.id === id);
+            resolvedAiScores[id] = simulateSnakeAiScore({
+              sessionSeed: session.seed,
+              playerId: id,
+              profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
             });
-          resolvedAiScores = resolveHybridAiScores({
-            gameKey: session.key,
-            humanScore,
-            aiParticipants,
-            seed: session.seed,
-          });
+          }
         } else {
           resolvedAiScores = session.aiScores;
         }

@@ -74,7 +74,7 @@ const ROUND_PRESETS = [
     targetWeights: { standard: 0.54, bonus: 0.24, hazard: 0.22 },
     lifetimeMultiplier: 0.94,
     hazardPenalty: -20,
-    difficultyLabel: 'Round heats up — faster spawns and more hazards.',
+    difficultyLabel: 'Things speed up — and the bombs get cheekier.',
   },
   {
     durationSeconds: 16,
@@ -83,7 +83,7 @@ const ROUND_PRESETS = [
     targetWeights: { standard: 0.5, bonus: 0.22, hazard: 0.28 },
     lifetimeMultiplier: 0.88,
     hazardPenalty: -25,
-    difficultyLabel: 'Pressure round — targets vanish faster and bombs pile up.',
+    difficultyLabel: 'Pressure round — blink and you might miss your shot.',
   },
   {
     durationSeconds: 15,
@@ -92,7 +92,7 @@ const ROUND_PRESETS = [
     targetWeights: { standard: 0.46, bonus: 0.21, hazard: 0.33 },
     lifetimeMultiplier: 0.82,
     hazardPenalty: -30,
-    difficultyLabel: 'Semi-final pace — dense spawns and very little breathing room.',
+    difficultyLabel: 'Semi-final scramble — the arena gets wild now.',
   },
   {
     durationSeconds: 14,
@@ -101,7 +101,7 @@ const ROUND_PRESETS = [
     targetWeights: { standard: 0.42, bonus: 0.2, hazard: 0.38 },
     lifetimeMultiplier: 0.76,
     hazardPenalty: -35,
-    difficultyLabel: 'Final sprint — relentless spawns and danger everywhere.',
+    difficultyLabel: 'Final sprint — pure chaos, pure glory.',
   },
 ] as const;
 

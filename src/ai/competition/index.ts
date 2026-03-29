@@ -638,6 +638,12 @@ export {
   isHybridScoredGame,
   resolveHybridAiScores,
 } from './hybridScoreResolver';
+
+export {
+  simulateSnakeAiRun,
+  simulateSnakeAiScore,
+  normaliseSnakeScore,
+} from './snakeAiSimulator';
 export type {
   HybridAiParticipant,
   ResolveHybridAiScoresArgs,
