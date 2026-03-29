@@ -123,7 +123,7 @@ describe('BullseyeBlitz tournament flow', () => {
   it('displays knockout hint text on the standalone ready screen', () => {
     renderBullseyeChallenge(makePlayers(3));
 
-    expect(screen.getByText(/1 players will be cut this round\./i)).toBeInTheDocument();
+    expect(screen.getByText(/1 player will be cut this round\./i)).toBeInTheDocument();
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
   });
 

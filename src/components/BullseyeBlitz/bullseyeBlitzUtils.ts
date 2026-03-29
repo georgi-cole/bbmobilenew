@@ -152,6 +152,14 @@ export function getBullseyeRoundConfig(roundNumber: number): BullseyeRoundConfig
   };
 }
 
+/**
+ * Compute how many players to cut after a Bullseye Blitz round.
+ *
+ * The default target is to remove roughly the bottom 20% of the active field,
+ * while also pacing the bracket so a five-round tournament reaches a final
+ * duel with two contestants by the last round. Once exactly two contestants
+ * remain, callers should treat that as the final duel and skip this helper.
+ */
 export function getBullseyeEliminationCount(
   activeCount: number,
   roundNumber: number,

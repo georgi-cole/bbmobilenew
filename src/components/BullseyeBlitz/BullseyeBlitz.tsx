@@ -220,7 +220,7 @@ function buildRoundOutcome(params: {
   }
 
   const isFinal = activeParticipantIds.length <= FINAL_SHOWDOWN_THRESHOLD
-    || roundNumber >= BULLSEYE_CHALLENGE_ROUNDS;
+    || roundNumber === BULLSEYE_CHALLENGE_ROUNDS;
   if (isFinal) {
     return {
       roundNumber,
@@ -347,11 +347,37 @@ function getReadyHintText(activeCount: number, roundNumber: number): string {
   if (activeCount <= FINAL_SHOWDOWN_THRESHOLD) {
     return 'Final showdown — the highest score wins it all.';
   }
-  return `${getBullseyeEliminationCount(activeCount, roundNumber)} players will be cut this round.`;
+  const eliminationCount = getBullseyeEliminationCount(activeCount, roundNumber);
+  return `${eliminationCount} ${eliminationCount === 1 ? 'player' : 'players'} will be cut this round.`;
 }
 
+/**
+ * Returns true when a player maps cleanly onto the canonical houseguest data.
+ * Standalone Bullseye uses this to decide whether it can trust the incoming
+ * roster or should backfill AI slots with named houseguest records instead of
+ * placeholder "Player X" entries.
+ */
 function isRecognizedHouseguestPlayer(player: Player): boolean {
   return !!(getById(player.id) ?? findByName(player.name));
+}
+
+function renderEntryAvatar(entry: ScoreEntry) {
+  if (entry.avatar.includes('/')) {
+    return (
+      <img
+        className="bbl__entry-avatar"
+        src={entry.avatar}
+        alt=""
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return (
+    <span className="bbl__entry-avatar bbl__entry-avatar--emoji" aria-hidden="true">
+      {entry.avatar}
+    </span>
+  );
 }
 
 function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Player[] {
@@ -378,10 +404,14 @@ function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Pla
   const humanDisplayName = isRecognizedHouseguestPlayer(humanPlayer) ? humanPlayer.name : 'You';
 
   const takenIds = new Set<string>([humanPlayer.id]);
+  const seenAiIds = new Set<string>(takenIds);
   const aiPlayers = [...resolvedSourcePlayers, ...fallbackHouseguests]
-    .filter((player) => !takenIds.has(player.id))
     .filter((player) => !player.isUser)
-    .filter((player, index, players) => players.findIndex((candidate) => candidate.id === player.id) === index)
+    .filter((player) => {
+      if (seenAiIds.has(player.id)) return false;
+      seenAiIds.add(player.id);
+      return true;
+    })
     .slice(0, CHALLENGE_PARTICIPANT_COUNT - 1)
     .map((player) => {
       takenIds.add(player.id);
@@ -1051,18 +1081,7 @@ export default function BullseyeBlitz({
                     <span className="bbl__rank">
                       {i < 3 ? MEDALS[i] : `${i + 1}.`}
                     </span>
-                    {entry.avatar.includes('/') ? (
-                      <img
-                        className="bbl__entry-avatar"
-                        src={entry.avatar}
-                        alt=""
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <span className="bbl__entry-avatar bbl__entry-avatar--emoji" aria-hidden="true">
-                        {entry.avatar}
-                      </span>
-                    )}
+                    {renderEntryAvatar(entry)}
                     <span className="bbl__entry-name">
                       {entry.name}
                       {entry.isHuman && (
@@ -1178,18 +1197,7 @@ export default function BullseyeBlitz({
                   <span className="bbl__rank">
                     {i < 3 ? MEDALS[i] : `${i + 1}.`}
                   </span>
-                  {entry.avatar.includes('/') ? (
-                    <img
-                      className="bbl__entry-avatar"
-                      src={entry.avatar}
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <span className="bbl__entry-avatar bbl__entry-avatar--emoji" aria-hidden="true">
-                      {entry.avatar}
-                    </span>
-                  )}
+                  {renderEntryAvatar(entry)}
                   <span className="bbl__entry-name">
                     {entry.name}
                     {entry.isHuman && (
