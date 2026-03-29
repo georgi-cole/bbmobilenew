@@ -26,24 +26,27 @@ describe('HUD sizing styles', () => {
     );
     const navItemsRule = /\.game-bottom-nav__items\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?\}/;
     const navGlyphRule = /\.game-bottom-nav__glyph\s*\{[\s\S]*?width:\s*22px;[\s\S]*?height:\s*22px;[\s\S]*?\}/;
+    const dockPositionRules = [
+      'width: 18.8%;',
+      'left: 40.6%;',
+      'left: 20.15%;',
+      'left: 32.85%;',
+      'left: 67.15%;',
+      'left: 79.85%;',
+      'left: 15.4%;',
+      'left: 28.1%;',
+      'left: 40.2%;',
+      'left: 62.4%;',
+      'left: 75.1%;',
+      'width: 9.5%;',
+      'height: 36%;',
+      'top: -6px;',
+      'right: -5px;',
+    ];
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 3px + env(safe-area-inset-bottom, 0px));');
-    expect(dockCss).toContain('width: 18.8%;');
-    expect(dockCss).toContain('left: 40.6%;');
-    expect(dockCss).toContain('left: 20.15%;');
-    expect(dockCss).toContain('left: 32.85%;');
-    expect(dockCss).toContain('left: 67.15%;');
-    expect(dockCss).toContain('left: 79.85%;');
-    expect(dockCss).toContain('left: 15.4%;');
-    expect(dockCss).toContain('left: 28.1%;');
-    expect(dockCss).toContain('left: 40.2%;');
-    expect(dockCss).toContain('left: 62.4%;');
-    expect(dockCss).toContain('left: 75.1%;');
-    expect(dockCss).toContain('width: 9.5%;');
-    expect(dockCss).toContain('height: 36%;');
-    expect(dockCss).toContain('top: -6px;');
-    expect(dockCss).toContain('right: -5px;');
+    dockPositionRules.forEach((rule) => expect(dockCss).toContain(rule));
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 60px) + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('overflow: hidden;');
     expect(navCss).toContain('border-radius: 18px 18px 28px 28px / 12px 12px 24px 24px;');
