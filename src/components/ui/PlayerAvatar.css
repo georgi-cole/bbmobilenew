@@ -84,6 +84,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 2px;
+}
+
+.player-avatar__badge--asset {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 /* Nomination glow badge image */

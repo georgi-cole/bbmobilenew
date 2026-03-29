@@ -2,9 +2,9 @@
  * statusBadges — Unified badge emoji/label mapping for houseguest statuses.
  *
  * Badge code ↔ emoji mapping:
- *   'hoh'       → 👑  (Head of Household)
- *   'pov'       → 🛡️  (Power of Veto holder)
- *   'nominated' → ❓  (Nominated for eviction)
+ *   'hoh'       → 👑  (Leader of the House; some tile UIs render an asset instead)
+ *   'pov'       → 🛡️  (Power of Safety holder; some tile UIs render an asset instead)
+ *   'nominated' → ❓  (Nominated for eviction; some tile UIs render an asset instead)
  *   'jury'      → ⚖️  (Jury member)
  *   'evicted'   → (no badge — evictee X overlay used instead)
  *   'first'     → 🥇  (1st place / winner)
@@ -37,11 +37,28 @@ export const STATUS_BADGE_LABEL: Record<string, string> = {
   third: '3rd place',
 };
 
+/** Optional asset-backed badge artwork used by tile UIs. */
+export const STATUS_BADGE_ASSET: Record<string, string> = {
+  hoh: '/assets/avatar_badges/badge_loh.svg',
+  nominated: '/assets/avatar_badges/badge_nom.svg',
+  pov: '/assets/avatar_badges/badge_pos.svg',
+};
+
+/** Evicted/cracked-glass overlay artwork used by houseguest tiles. */
+export const EVICTED_OVERLAY_ASSET = '/assets/avatar_badges/overlay_eliminated_cracked_glass.svg';
+
+/** Glass shell artwork used as the fitted avatar tile outline. */
+export const AVATAR_TILE_SHELL_ASSET = '/assets/avatar_badges/bed_avatar_glass_v2.svg';
+
 /**
  * Return the emoji for a single status code, or undefined if no badge exists.
  */
 export function statusBadgeEmoji(status: string): string | undefined {
   return STATUS_BADGE_EMOJI[status];
+}
+
+export function statusBadgeAsset(status: string): string | undefined {
+  return STATUS_BADGE_ASSET[status];
 }
 
 /**

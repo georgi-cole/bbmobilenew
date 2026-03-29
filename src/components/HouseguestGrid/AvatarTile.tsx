@@ -1,10 +1,18 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { avatarVariants } from '../../utils/avatarCase'
-import { getBadgesForPlayer } from '../../utils/statusBadges'
+import {
+  AVATAR_TILE_SHELL_ASSET,
+  EVICTED_OVERLAY_ASSET,
+  getBadgesForPlayer,
+  statusBadgeAsset,
+} from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
 const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
+
+export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
+const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 
 type Props = {
   name: string
@@ -202,36 +210,47 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
 
+        <img
+          src={`${assetBasePath}${AVATAR_TILE_SHELL_ASSET}`}
+          alt=""
+          aria-hidden="true"
+          className={styles.avatarShell}
+        />
+
         {/* Status badge stack — top-left corner, stacked vertically */}
         {showPermanentBadge && badges.length > 0 && (
           <div className={styles.badgeStack} role="list">
-            {badges.map((b) => (
-              <span
-                key={b.code}
-                className={`${styles.statusBadge} ${styles[`badge_${b.code}`] ?? ''}`}
-                role="listitem"
-                aria-label={b.label}
-                title={b.label}
-              >
-                {b.code === 'nominated' ? (
-                  <img
-                    src={`${assetBasePath}/assets/nomination%20mark%20glow.png`}
-                    alt=""
-                    aria-hidden="true"
-                    className={styles.statusBadgeImage}
-                  />
-                ) : (
-                  b.emoji
-                )}
-              </span>
-            ))}
+            {badges.map((b) => {
+              const badgeAsset = statusBadgeAsset(b.code)
+
+              return (
+                <span
+                  key={b.code}
+                  className={`${styles.statusBadge} ${styles[`badge_${b.code}`] ?? ''} ${badgeAsset ? styles.statusBadgeAsset : ''}`}
+                  role="listitem"
+                  aria-label={b.label}
+                  title={b.label}
+                >
+                  {badgeAsset ? (
+                    <img
+                      src={`${assetBasePath}${badgeAsset}`}
+                      alt=""
+                      aria-hidden="true"
+                      className={styles.statusBadgeImage}
+                    />
+                  ) : (
+                    b.emoji
+                  )}
+                </span>
+              )
+            })}
           </div>
         )}
 
         {/* Evictee mark — paint brushstroke PNG overlay */}
         {isEvicted && (
           <img
-            src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
+            src={`${assetBasePath}${EVICTED_OVERLAY_ASSET}`}
             alt=""
             aria-hidden="true"
             className={styles.cross}

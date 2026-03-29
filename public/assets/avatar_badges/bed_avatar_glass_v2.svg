@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7c7ff" stop-opacity="0.10"/>
+      <stop offset="0.45" stop-color="#7fb2ff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#3d6cff" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7ea5"/>
+      <stop offset="0.22" stop-color="#ffd7ea"/>
+      <stop offset="0.55" stop-color="#d8f0ff"/>
+      <stop offset="1" stop-color="#76d7ff"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6bddff" stop-opacity="0.10"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="roundmask">
+      <rect x="26" y="26" width="460" height="588" rx="42" fill="white"/>
+    </mask>
+  </defs>
+
+  <rect x="26" y="26" width="460" height="588" rx="42" fill="url(#bg)"/>
+  <rect x="26" y="26" width="460" height="588" rx="42" fill="none" stroke="url(#stroke)" stroke-width="4.5" filter="url(#glow)"/>
+  <rect x="41" y="41" width="430" height="558" rx="34" fill="none" stroke="url(#inner)" stroke-opacity="0.55" stroke-width="1.6"/>
+
+  <path d="M65 58 C180 18, 315 24, 445 60" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2.2"/>
+  <path d="M54 594 C170 616, 338 616, 458 593" fill="none" stroke="#7ddcff" stroke-opacity="0.18" stroke-width="2"/>
+
+  <ellipse cx="110" cy="92" rx="76" ry="34" fill="#ff7ea5" fill-opacity="0.18" filter="url(#soft)"/>
+  <ellipse cx="400" cy="548" rx="96" ry="40" fill="#7ee1ff" fill-opacity="0.18" filter="url(#soft)"/>
+
+  <g mask="url(#roundmask)">
+    <path d="M52 72 L170 42" stroke="url(#shine)" stroke-width="14" stroke-linecap="round" opacity="0.65"/>
+    <path d="M382 36 C440 50, 462 86, 468 124" stroke="#ffffff" stroke-opacity="0.48" stroke-width="10" stroke-linecap="round"/>
+    <path d="M48 606 C112 614, 202 616, 278 611" stroke="#ffffff" stroke-opacity="0.18" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>
