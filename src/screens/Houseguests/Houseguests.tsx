@@ -41,8 +41,14 @@ export default function Houseguests() {
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted: p.status === 'evicted' || p.status === 'jury',
       isYou: p.isUser,
-      onClick: () => setSelectedPlayer(p),
-      onHoldPreviewStart: () => setPreviewPlayer(p),
+      onClick: () => {
+        setPreviewPlayer(null)
+        setSelectedPlayer(p)
+      },
+      onHoldPreviewStart: () => {
+        setSelectedPlayer(null)
+        setPreviewPlayer(p)
+      },
       onHoldPreviewEnd: () => setPreviewPlayer(null),
     }
   })

@@ -125,7 +125,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   }
 
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-    if (!onHoldPreviewStart && !onClick) return
+    if (!onHoldPreviewStart) return
     clearLongPressTimeout()
     isHoldActiveRef.current = false
     const touch = e.touches[0]
@@ -133,10 +133,12 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     const timeoutId = window.setTimeout(() => {
       if (longPressTimeoutRef.current !== timeoutId) return
       longPressTimeoutRef.current = null
+      // If there is no hold-preview behavior, don't mark a hold as active or suppress clicks.
+      if (!onHoldPreviewStart) return
       // Mark hold as active and notify the parent to show the transient preview.
       isHoldActiveRef.current = true
       suppressClickUntilRef.current = Date.now() + LONG_PRESS_CLICK_SUPPRESSION_MS
-      if (onHoldPreviewStart) onHoldPreviewStart()
+      onHoldPreviewStart()
     }, AVATAR_TILE_LONG_PRESS_DELAY_MS)
     longPressTimeoutRef.current = timeoutId
   }
@@ -176,18 +178,20 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   }
 
   function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-    if (!onClick) return
+    if (!onClick && !onHoldPreviewStart) return
     e.preventDefault()
     e.stopPropagation()
   }
+
+  const isInteractive = Boolean(onClick ?? onHoldPreviewStart)
 
   return (
     <div
       className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
       aria-label={ariaLabel}
       title={name}
-      role={onClick ? 'button' : 'group'}
-      tabIndex={onClick ? 0 : undefined}
+      role={isInteractive ? 'button' : 'group'}
+      tabIndex={isInteractive ? 0 : undefined}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onTouchStart={handleTouchStart}
