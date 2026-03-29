@@ -106,7 +106,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
         sim: {
           ...DEFAULT_SETTINGS.sim,
           enableTwists: true,
-          specialVetoChance: 100,
+          specialSafetyChance: 100,
         },
       },
     },

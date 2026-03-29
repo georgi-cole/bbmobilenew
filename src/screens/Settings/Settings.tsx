@@ -418,7 +418,7 @@ export default function Settings() {
             {settings.sim.enableTwists && (
               <div className="settings-row settings-row--col">
                 <label className="settings-row__label">
-                  Special Safety Chance — {settings.sim.specialVetoChance ?? 25}%
+                  Special Safety Chance — {settings.sim.specialSafetyChance ?? 25}%
                 </label>
                 <input
                   type="range"
@@ -426,9 +426,9 @@ export default function Settings() {
                   min={0}
                   max={100}
                   step={5}
-                  value={settings.sim.specialVetoChance ?? 25}
+                  value={settings.sim.specialSafetyChance ?? 25}
                   onChange={(e) =>
-                    dispatch(setSim({ specialVetoChance: Number(e.target.value) }))
+                    dispatch(setSim({ specialSafetyChance: Number(e.target.value) }))
                   }
                   aria-label="Special Safety chance percentage"
                 />

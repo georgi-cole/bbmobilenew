@@ -197,7 +197,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when phase is not pov_results', () => {
     const store = makeStore(
       { phase: 'nominations' },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -207,7 +207,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
     // Only 4 evictions — too early for special veto
     const store = makeStore(
       { phase: 'pov_results', players: makePlayersWithEvictions(8, 4) },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -217,7 +217,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
     // 5 evictions, but only 5 alive — too close to the end
     const store = makeStore(
       { phase: 'pov_results', players: makePlayersWithEvictions(5, 5) },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -230,7 +230,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
         week: 3,
         doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
       },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -242,7 +242,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
         phase: 'pov_results',
         twistActivatedThisWeek: true,
       },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -255,17 +255,17 @@ describe('tryActivateSpecialVeto eligibility', () => {
         week: 3,
         specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true },
       },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
   });
 
   it('returns false when chance roll does not pass', () => {
-    // specialVetoChance=0 means roll is always >= chance
+    // specialSafetyChance=0 means roll is always >= chance
     const store = makeStore(
       { phase: 'pov_results', week: 3 },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 0 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 0 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(false);
@@ -274,7 +274,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('activates when all conditions are met (chance=100)', () => {
     const store = makeStore(
       { phase: 'pov_results', week: 3 },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
     expect(result).toBe(true);
@@ -285,7 +285,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('sets twistActivatedThisWeek=true when activated', () => {
     const store = makeStore(
       { phase: 'pov_results', week: 3 },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     store.dispatch(tryActivateSpecialVeto());
     expect(store.getState().game.twistActivatedThisWeek).toBe(true);
@@ -298,7 +298,7 @@ describe('season one-per-season rule', () => {
   it('second activateSpecialVeto call in same season still sets state but tryActivate prevents it via seasonUsed', () => {
     const store = makeStore(
       { phase: 'pov_results', week: 3 },
-      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialVetoChance: 100 } },
+      { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     store.dispatch(tryActivateSpecialVeto());
     expect(store.getState().game.specialVeto?.seasonUsed).toBe(true);

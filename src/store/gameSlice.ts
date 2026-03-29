@@ -3867,7 +3867,7 @@ export const tryActivateDoubleEviction =
  *  - no other twist has already activated this week (`twistActivatedThisWeek`)
  *  - the season must not already have had a special veto activated
  *
- * If eligible, rolls `settings.sim.specialVetoChance` (0-100, default 25) and
+ * If eligible, rolls `settings.sim.specialSafetyChance` (0-100, default 25) and
  * picks a random veto type deterministically.
  *
  * Returns `true` if activated, `false` otherwise.
@@ -3895,7 +3895,7 @@ export const tryActivateSpecialVeto =
     ).length;
     if (evictionsSoFar < 5) return false;
 
-    const chance = settings.sim.specialVetoChance ?? 25;
+    const chance = settings.sim.specialSafetyChance ?? 25;
     // Use a twist-specific RNG offset so this roll is independent of the main game seed
     // sequence and does not perturb future HOH/POV/vote outcomes.
     const SPECIAL_VETO_RNG_SALT = 0x5e7c7074; // arbitrary constant distinguishing this roll from others
