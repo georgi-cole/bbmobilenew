@@ -568,16 +568,6 @@ export default function DiaryRoom() {
                           ticTacToeDraw
                         }
                         onClick={() => {
-                          if (
-                            ticTacToeBoard[index] !== null ||
-                            ticTacToeNextTurn !== 'X' ||
-                            ticTacToeThinking ||
-                            ticTacToeWinner ||
-                            ticTacToeDraw
-                          ) {
-                            return;
-                          }
-
                           const nextBoard = [...ticTacToeBoard];
                           nextBoard[index] = 'X';
                           setTicTacToeBoard(nextBoard);
