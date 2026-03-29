@@ -28,7 +28,13 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: () => <div data-testid="tv-zone" />,
+  default: (props: { publicSaveReveal?: { savedId: string } | null }) => (
+    <div data-testid="tv-zone">
+      {props.publicSaveReveal ? (
+        <div data-testid="public-save-tv" data-saved-id={props.publicSaveReveal.savedId} />
+      ) : null}
+    </div>
+  ),
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -451,9 +457,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
 
     await act(async () => {});
 
-    expect(screen.getByRole('status')).toBeTruthy();
-    expect(screen.getByText('Reading the live audience…')).toBeTruthy();
-    expect(document.querySelector('.psr__spotlight')).toBeTruthy();
+    expect(screen.getByTestId('public-save-tv')).toHaveAttribute('data-saved-id', 'p2');
     expect(screen.queryByRole('toolbar', { name: 'Game actions' })).toBeNull();
   });
 

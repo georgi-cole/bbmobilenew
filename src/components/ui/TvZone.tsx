@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import type { Phase } from '../../types';
+import type { Phase, Player } from '../../types';
 import { useStore } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -14,6 +14,7 @@ import TvAnnouncementOverlay, {
 } from './TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
+import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
@@ -162,7 +163,7 @@ const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
  *
  * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
-export default function TvZone() {
+export default function TvZone({ publicSaveReveal = null, onPublicSaveDone }: TvZoneProps) {
   const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
@@ -494,6 +495,15 @@ export default function TvZone() {
                 paused={modalOpen}
               />
             )}
+
+            {publicSaveReveal && onPublicSaveDone && (
+              <PublicSaveReveal
+                nominees={publicSaveReveal.nominees}
+                approvals={publicSaveReveal.approvals}
+                savedId={publicSaveReveal.savedId}
+                onDone={onPublicSaveDone}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -526,4 +536,12 @@ export default function TvZone() {
       />
     </section>
   );
+}
+interface TvZoneProps {
+  publicSaveReveal?: {
+    nominees: Player[];
+    approvals: Record<string, number>;
+    savedId: string;
+  } | null;
+  onPublicSaveDone?: () => void;
 }

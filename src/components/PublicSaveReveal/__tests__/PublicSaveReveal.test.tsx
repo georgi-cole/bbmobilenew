@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import type { Player } from '../../../types';
 import PublicSaveReveal from '../PublicSaveReveal';
 
@@ -60,7 +60,7 @@ describe('PublicSaveReveal', () => {
     expect(screen.getByText('50%')).toBeTruthy();
   });
 
-  it('shows saved and nominated outcome badges before auto-dismiss', () => {
+  it('highlights the saved nominee before auto-dismiss', () => {
     render(
       <PublicSaveReveal
         nominees={nominees}
@@ -74,29 +74,26 @@ describe('PublicSaveReveal', () => {
       vi.advanceTimersByTime(7600);
     });
 
-    expect(screen.getByText('Saved')).toBeTruthy();
-    expect(document.querySelectorAll('.psr__status-pill--nominated')).toHaveLength(2);
+    expect(document.querySelector('.psr__nominee--saved')).toBeTruthy();
+    expect(document.querySelectorAll('.psr__status-pill')).toHaveLength(0);
   });
 
-  it('supports tap-to-skip and only fires onDone once', () => {
-    const onDone = vi.fn();
+  it('keeps only the trimmed tv copy visible', () => {
     render(
       <PublicSaveReveal
         nominees={nominees}
         approvals={approvals}
         savedId="p3"
-        onDone={onDone}
+        onDone={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Skip reveal animation' }));
-    expect(onDone).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      vi.advanceTimersByTime(10000);
-    });
-
-    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Public Save')).toBeTruthy();
+    expect(
+      screen.getByText('Before safety battle, the housemate with highest public support is saved.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('The Audience Decides')).toBeNull();
+    expect(screen.queryByText('Tap to skip')).toBeNull();
   });
 
   it('auto-completes after the full ten-second sequence', () => {
