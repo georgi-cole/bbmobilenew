@@ -74,8 +74,8 @@ const OUTCOME_BUCKETS = [
 const GAME_ENVELOPES: Record<string, { minScore: number; maxScore: number; baseline: number }> = {
   // Quick Tap Race — 30s tap game, boosters active; human typically scores 130–200+
   quickTap: { minScore: 80, maxScore: 280, baseline: 165 },
-  // Bullseye Blitz — precision tap game, human typically scores 80–160
-  targetPractice: { minScore: 30, maxScore: 220, baseline: 120 },
+  // Bullseye Blitz — precision tap game; calibrated to actual per-round human play (~250–380 pts)
+  targetPractice: { minScore: 80, maxScore: 500, baseline: 300 },
   // Snake — arcade game with open-ended scoring; typical casual play ~100–400
   snake: { minScore: 0, maxScore: 500, baseline: 200 },
   // Estimation Game — total-score 0–300

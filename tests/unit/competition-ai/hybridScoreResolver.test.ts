@@ -306,7 +306,7 @@ describe('resolveHybridAiScores — lower-is-better games', () => {
 describe('resolveHybridAiScores — score envelopes across games', () => {
   const GAME_CASES: Array<{ key: string; human: number; min: number; max: number }> = [
     { key: 'quickTap',       human: 150, min: 80,  max: 280 },
-    { key: 'targetPractice', human: 100, min: 30,  max: 220 },
+    { key: 'targetPractice', human: 300, min: 80,  max: 500 },
     { key: 'snake',          human: 200, min: 0,   max: 500 },
     { key: 'estimationGame', human: 200, min: 0,   max: 300 },
     { key: 'travelingDots',  human: 500, min: 150, max: 880 },

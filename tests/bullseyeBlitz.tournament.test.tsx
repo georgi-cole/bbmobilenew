@@ -225,6 +225,9 @@ describe('BullseyeBlitz tournament flow', () => {
       participants: players.map((player) => player.id),
       seed: 12,
       options: { timeLimit: 20 },
+      // Negative base scores → skill ≈ 0 for all AI.  The specific eliminated
+      // player is determined by per-player seeded RNG.  With seed=12 the
+      // simulation deterministically produces the order below.
       aiScores: { p1: -20, p2: -20, p3: -100, p4: -100, p5: -100, p6: -100 },
     };
 
@@ -233,10 +236,12 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 1, Player 2, Player 0 (You), Player 3, Player 4, and Player 5.'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 2, Player 1, Player 6, Player 4, Player 3, and Player 0 (You).'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Out this round: Player 6\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Out this round: Player 5\./i)).toBeInTheDocument();
     expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
+    // Spawn-speed preview is suppressed by the test mock (all rounds share the same
+    // TEST_SPAWN_INTERVAL_MS), but the hazard and penalty preview lines still fire.
     expect(screen.getByText(/More bombs will crash the party\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
