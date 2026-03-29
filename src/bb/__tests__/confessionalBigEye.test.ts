@@ -15,6 +15,7 @@ describe('confessionalBigEye', () => {
   it('maps yes/no variations to global intents', () => {
     expect(detectIntent('why not')).toBe('yes');
     expect(detectIntent('not really')).toBe('no');
+    expect(detectIntent("I don't think so")).toBe('no');
   });
 
   it('matches phrase variants to the same intent', () => {
@@ -57,5 +58,16 @@ describe('confessionalBigEye', () => {
 
     expect(second.text).toBe('Then sit with it. Discomfort reveals truth.');
     expect(second.nextState.lastQuestion).toBeNull();
+  });
+
+  it('uses the normalized user input when seeding deterministic replies', () => {
+    const state = createInitialBigEyeState();
+    const first = resolveBigEyeTurn('I am bored', { seed: 7 }, state);
+    const second = resolveBigEyeTurn('This is boring', { seed: 7 }, state);
+
+    expect({ text: first.text, delayMs: first.delayMs }).not.toEqual({
+      text: second.text,
+      delayMs: second.delayMs,
+    });
   });
 });

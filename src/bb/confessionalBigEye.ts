@@ -439,9 +439,14 @@ export function createInitialBigEyeState(): BigEyeConversationState {
   };
 }
 
+/**
+ * Lowercase input, flatten punctuation, and remove apostrophes entirely so
+ * contractions like "I'm" and "don't" consistently become "im" / "dont".
+ * This keeps authored synonym phrases and deterministic reply seeding aligned.
+ */
 export function normalizeInput(input: string): string {
   return input
-    .replace(/’/g, "'")
+    .replace(/[’']/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -477,10 +482,10 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function getTurnRandom(input: string, state: BigEyeConversationState, context: BigEyeContext): () => number {
+function getTurnRandom(inputText: string, state: BigEyeConversationState, context: BigEyeContext): () => number {
   if (context.random) return context.random;
   const seedBase = context.seed ?? 0;
-  const seed = hashText(`${seedBase}:${state.turnCount}:${input}`);
+  const seed = hashText(`${seedBase}:${state.turnCount}:${inputText}`);
   return mulberry32(seed);
 }
 
@@ -558,8 +563,9 @@ export function getResponse(
   intent: BigEyeIntent,
   context: BigEyeContext,
   state: BigEyeConversationState,
+  inputText: string = intent,
 ): BigEyeReply {
-  const rng = getTurnRandom(intent, state, context);
+  const rng = getTurnRandom(inputText, state, context);
   const flowRule = QUESTION_FLOW_RULES.find(
     (rule) => rule.question === state.lastQuestion && rule.intent === intent,
   );
@@ -584,6 +590,7 @@ export function resolveBigEyeTurn(
   context: BigEyeContext,
   state: BigEyeConversationState,
 ): BigEyeReply {
-  const intent = detectIntent(input);
-  return getResponse(intent, context, state);
+  const normalizedInput = normalizeInput(input);
+  const intent = detectIntent(normalizedInput);
+  return getResponse(intent, context, state, normalizedInput);
 }

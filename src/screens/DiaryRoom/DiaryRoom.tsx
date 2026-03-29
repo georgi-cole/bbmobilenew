@@ -89,6 +89,10 @@ function summaryKey(playerId: string): string {
   return `bb_dr_summary_emitted_${playerId}`;
 }
 
+function conversationStateKey(playerId: string): string {
+  return `bb_dr_state_${playerId}`;
+}
+
 function loadChat(playerId: string): ChatMessage[] {
   try {
     const raw = sessionStorage.getItem(chatKey(playerId));
@@ -103,6 +107,27 @@ function saveChat(playerId: string, messages: ChatMessage[]): void {
     sessionStorage.setItem(chatKey(playerId), JSON.stringify(messages));
   } catch {
     // sessionStorage may be unavailable in some contexts — fail silently
+  }
+}
+
+function loadConversationState(playerId: string): BigEyeConversationState {
+  try {
+    if (loadChat(playerId).length === 0) {
+      return createInitialBigEyeState();
+    }
+
+    const raw = sessionStorage.getItem(conversationStateKey(playerId));
+    return raw ? (JSON.parse(raw) as BigEyeConversationState) : createInitialBigEyeState();
+  } catch {
+    return createInitialBigEyeState();
+  }
+}
+
+function saveConversationState(playerId: string, state: BigEyeConversationState): void {
+  try {
+    sessionStorage.setItem(conversationStateKey(playerId), JSON.stringify(state));
+  } catch {
+    // fail silently
   }
 }
 
@@ -214,7 +239,7 @@ export default function DiaryRoom() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
   const [conversationState, setConversationState] = useState<BigEyeConversationState>(
-    () => createInitialBigEyeState(),
+    () => loadConversationState(playerId),
   );
   const { active: ticTacToeActive, launchTicTacToe, dismissTicTacToe } = useConfessionalTicTacToeTrigger();
 
@@ -314,6 +339,7 @@ export default function DiaryRoom() {
         state: conversationState,
       });
       setConversationState(resp.nextState);
+      saveConversationState(playerId, resp.nextState);
 
       // Simulate BB thinking before replying.
       const typingDelay = Math.max(300, Math.min(1200, resp.delayMs));

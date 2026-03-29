@@ -15,7 +15,7 @@ function renderDiaryRoom(initialEntries = ['/game', '/diary-room']) {
     },
   });
 
-  render(
+  return render(
     <Provider store={store}>
       <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
         <Routes>
@@ -26,8 +26,6 @@ function renderDiaryRoom(initialEntries = ['/game', '/diary-room']) {
       </MemoryRouter>
     </Provider>,
   );
-
-  return { store };
 }
 
 async function flushConversationTimers() {
@@ -97,5 +95,32 @@ describe('DiaryRoom', () => {
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByRole('button', { name: /yes, leave/i })).toBeTruthy();
+  });
+
+  it('persists conversation state so a remounted chat still understands follow-up yes/no replies', async () => {
+    const firstRender = renderDiaryRoom();
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: "I'm bored" },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    expect(screen.getByText(/want to play a game|offer tic tac toe|wake the board/i)).toBeTruthy();
+
+    firstRender.unmount();
+
+    renderDiaryRoom();
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: "I don't think so" },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText(/then sit with it|no game, then|boredom will keep you company/i)).toBeTruthy();
   });
 });
