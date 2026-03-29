@@ -5,8 +5,6 @@ import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
 const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
-export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
-const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
@@ -21,6 +19,16 @@ type Props = {
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
+  /**
+   * Called when the user has held their finger down long enough to trigger the
+   * hold-preview threshold. The caller should show a transient profile preview.
+   */
+  onHoldPreviewStart?: () => void
+  /**
+   * Called when the user lifts or cancels their finger after a hold-preview was
+   * triggered. The caller should dismiss the transient preview.
+   */
+  onHoldPreviewEnd?: () => void
   /**
    * Game statuses to display as badge overlays on the avatar.
    * Accepts a single PlayerStatus string (e.g. 'hoh', 'nominated+pov')
@@ -54,13 +62,14 @@ type Props = {
   isEvicting?: boolean
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
+export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
   const longPressTimeoutRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const suppressClickUntilRef = React.useRef(0)
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
+  const isHoldActiveRef = React.useRef(false)
 
   React.useEffect(() => {
     attemptRef.current = 0
@@ -115,22 +124,21 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     }
   }
 
-  function triggerPressAction() {
-    if (!onClick) return
-    suppressClickUntilRef.current = Date.now() + LONG_PRESS_CLICK_SUPPRESSION_MS
-    onClick()
-  }
-
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-    if (!onClick) return
+    if (!onHoldPreviewStart) return
     clearLongPressTimeout()
+    isHoldActiveRef.current = false
     const touch = e.touches[0]
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY }
     const timeoutId = window.setTimeout(() => {
       if (longPressTimeoutRef.current !== timeoutId) return
       longPressTimeoutRef.current = null
-      touchStartPosRef.current = null
-      triggerPressAction()
+      // If there is no hold-preview behavior, don't mark a hold as active or suppress clicks.
+      if (!onHoldPreviewStart) return
+      // Mark hold as active and notify the parent to show the transient preview.
+      isHoldActiveRef.current = true
+      suppressClickUntilRef.current = Date.now() + LONG_PRESS_CLICK_SUPPRESSION_MS
+      onHoldPreviewStart()
     }, AVATAR_TILE_LONG_PRESS_DELAY_MS)
     longPressTimeoutRef.current = timeoutId
   }
@@ -143,12 +151,20 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD_PX) {
       clearLongPressTimeout()
       touchStartPosRef.current = null
+      if (isHoldActiveRef.current) {
+        isHoldActiveRef.current = false
+        if (onHoldPreviewEnd) onHoldPreviewEnd()
+      }
     }
   }
 
   function handleTouchEnd() {
     clearLongPressTimeout()
     touchStartPosRef.current = null
+    if (isHoldActiveRef.current) {
+      isHoldActiveRef.current = false
+      if (onHoldPreviewEnd) onHoldPreviewEnd()
+    }
   }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -162,18 +178,20 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   }
 
   function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-    if (!onClick) return
+    if (!onClick && !onHoldPreviewStart) return
     e.preventDefault()
     e.stopPropagation()
   }
+
+  const isInteractive = Boolean(onClick ?? onHoldPreviewStart)
 
   return (
     <div
       className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
       aria-label={ariaLabel}
       title={name}
-      role={onClick ? 'button' : 'group'}
-      tabIndex={onClick ? 0 : undefined}
+      role={isInteractive ? 'button' : 'group'}
+      tabIndex={isInteractive ? 0 : undefined}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onTouchStart={handleTouchStart}
