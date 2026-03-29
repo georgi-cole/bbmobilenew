@@ -38,8 +38,8 @@ export interface SettingsState {
     allowSelfEvict: boolean;
     /** Probability (0–100) that the Battle Back twist activates after an eligible eviction. */
     battleBackChance: number;
-    /** Probability (0–100) that a special veto twist activates after the POV winner is revealed on eligible weeks (after ≥5 evictions, with more than 5 players still in, and only if no other twist has already fired via `twistActivatedThisWeek`). */
-    specialVetoChance: number;
+    /** Probability (0–100) that a special safety twist activates after the POS winner is revealed on eligible weeks (after ≥5 evictions, with more than 5 players still in, and only if no other twist has already fired via `twistActivatedThisWeek`). */
+    specialSafetyChance: number;
     /** Probability (0–100) that a Double Eviction activates on each eligible week (after 5 evictions, above final 5). */
     doubleEvictionChance: number;
     /** When true, show the "Public's Favorite Player" vote after the finale winner reveal. */
@@ -87,7 +87,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     enableTwists: false,
     allowSelfEvict: false,
     battleBackChance: 30,
-    specialVetoChance: 25,
+    specialSafetyChance: 25,
     doubleEvictionChance: 35,
     enableFavoritePlayer: false,
     favoritePlayerAwardAmount: 25000,
@@ -95,6 +95,11 @@ export const DEFAULT_SETTINGS: SettingsState = {
   visual: {
     enableZoom: false,
   },
+};
+
+type LegacySimSettings = Partial<SettingsState['sim']> & {
+  /** Backwards-compatibility key used before the special-safety rename. */
+  specialVetoChance?: number;
 };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -106,6 +111,17 @@ export function loadSettings(): SettingsState {
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
     // Deep-merge to preserve new defaults when schema is extended
     const mergedGameUX = { ...DEFAULT_SETTINGS.gameUX, ...parsed.gameUX };
+    const parsedSim = parsed.sim as LegacySimSettings | undefined;
+    const normalizedSim: Partial<SettingsState['sim']> = parsedSim
+      ? (({ specialVetoChance: legacyVetoChance, ...rest }) => ({
+          ...rest,
+          ...(parsedSim.specialSafetyChance === undefined &&
+          typeof legacyVetoChance === 'number'
+            ? { specialSafetyChance: legacyVetoChance }
+            : {}),
+        }))(parsedSim)
+      : {};
+    const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim };
     // compSelection is a nested object — deep-merge so partial stored values
     // (e.g. from an older schema version) inherit any newly-added defaults.
     mergedGameUX.compSelection = {
@@ -116,7 +132,7 @@ export function loadSettings(): SettingsState {
       audio:   { ...DEFAULT_SETTINGS.audio,   ...parsed.audio },
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX:  mergedGameUX,
-      sim:     { ...DEFAULT_SETTINGS.sim,     ...parsed.sim },
+      sim:     mergedSim,
       visual:  { ...DEFAULT_SETTINGS.visual,  ...parsed.visual },
     };
   } catch {

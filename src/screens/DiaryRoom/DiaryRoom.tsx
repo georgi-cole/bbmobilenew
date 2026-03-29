@@ -391,7 +391,7 @@ export default function DiaryRoom() {
         return withReply;
       });
     } catch (err) {
-      console.error('Big Brother AI error:', err);
+      console.error('The Big Eye AI error:', err);
       const detail = err instanceof Error ? err.message : 'Unknown error.';
       const bbErr: ChatMessage = {
         id: crypto.randomUUID(),
@@ -466,7 +466,7 @@ export default function DiaryRoom() {
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             {bbTyping && (
               <div className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
-                <span className="diary-room__bb-typing-label">📺 Big Brother</span>
+                <span className="diary-room__bb-typing-label">📺 The Big Eye</span>
                 <span className="diary-room__typing-dot" />
                 <span className="diary-room__typing-dot" />
                 <span className="diary-room__typing-dot" />

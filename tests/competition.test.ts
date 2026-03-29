@@ -241,6 +241,31 @@ describe('completeChallenge — positive-score winner preference', () => {
   });
 });
 
+describe('eviction tie-break copy', () => {
+  it('uses LOH terminology when prompting a human tie-breaker', () => {
+    const players = makePlayers(5);
+    players[0].name = 'Jordan';
+
+    const store = makeStore({
+      phase: 'live_vote',
+      hohId: 'p0',
+      nomineeIds: ['p1', 'p2'],
+      votes: {
+        p3: 'p1',
+        p4: 'p2',
+      },
+      players,
+    });
+
+    store.dispatch(advance());
+
+    const state = store.getState().game;
+    expect(state.awaitingTieBreak).toBe(true);
+    expect(state.tvFeed[0]?.text).toContain('as LOH you must break the tie');
+    expect(state.tvFeed[0]?.text).not.toContain('as HOH you must break the tie');
+  });
+});
+
 // ── Advance guard (hoh_results random pick) ───────────────────────────────────
 
 describe('advance() — HOH results picks an alive player', () => {

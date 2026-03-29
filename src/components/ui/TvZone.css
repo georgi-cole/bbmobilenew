@@ -19,8 +19,8 @@
 .tv-zone__head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 5px;
+  padding: 7px 11px;
   background: rgba(0, 0, 0, 0.35);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -33,7 +33,7 @@
 /* Center: single-row scrollable pill strip */
 .tv-zone__head-pills {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -53,8 +53,27 @@
 .tv-zone__head-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+.tv-zone__head-chip {
+  min-width: auto;
+  height: 24px;
+  padding: 0 10px;
+}
+
+.tv-zone__head-chip::after {
+  top: 5px;
+}
+
+.tv-zone__head-chip .game-top-chip__content {
+  gap: 4px;
+}
+
+.tv-zone__head-chip .game-top-chip__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.35px;
 }
 
 .tv-zone__audio-btn {

@@ -418,7 +418,7 @@ export default function Settings() {
             {settings.sim.enableTwists && (
               <div className="settings-row settings-row--col">
                 <label className="settings-row__label">
-                  Special Veto Chance — {settings.sim.specialVetoChance ?? 25}%
+                  Special Safety Chance — {settings.sim.specialSafetyChance ?? 25}%
                 </label>
                 <input
                   type="range"
@@ -426,14 +426,14 @@ export default function Settings() {
                   min={0}
                   max={100}
                   step={5}
-                  value={settings.sim.specialVetoChance ?? 25}
+                  value={settings.sim.specialSafetyChance ?? 25}
                   onChange={(e) =>
-                    dispatch(setSim({ specialVetoChance: Number(e.target.value) }))
+                    dispatch(setSim({ specialSafetyChance: Number(e.target.value) }))
                   }
-                  aria-label="Special Veto chance percentage"
+                  aria-label="Special Safety chance percentage"
                 />
                 <p className="settings-helper-text">
-                  Per-week chance (checked during PoV results, after 5 evictions, with 6+ players and no Double Eviction) for a season-limited special veto power to activate. Only one special veto may occur per season.
+                  Per-week chance (checked during POS results, after 5 evictions, with 6+ players and no Double Eviction) for a season-limited special safety power to activate. Only one special safety may occur per season.
                 </p>
               </div>
             )}
@@ -544,7 +544,7 @@ export default function Settings() {
         {activeTab === 'about' && (
           <section className="settings-section settings-section--about">
             <div className="settings-about__hero" aria-hidden="true">📺</div>
-            <h2 className="settings-about__name">Big Brother Mobile</h2>
+            <h2 className="settings-about__name">The Big Eye</h2>
             <p className="settings-about__version">Version 0.0.0</p>
             <p className="settings-about__tagline">AI Edition — React + TypeScript + Vite</p>
 

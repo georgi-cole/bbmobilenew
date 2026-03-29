@@ -30,6 +30,7 @@ const PHASE_LABELS: Record<string, string> = {
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
+  pre_veto_public_save:     'PUBLIC SAFETY',
   pov_comp_announcement:    'POS COMP',
   pov_comp:                 'POS COMP',
   pov_results:          'POS RESULTS',
@@ -48,6 +49,8 @@ const PHASE_LABELS: Record<string, string> = {
   final3_comp3:         'F3 P3',
   final3_comp3_minigame: 'F3 P3',
   final3_decision:      'FINAL LOH',
+  jury_announcement:    'TRIBUNAL',
+  jury_cinematic:       'TRIBUNAL',
   jury:                 'TRIBUNAL',
 };
 

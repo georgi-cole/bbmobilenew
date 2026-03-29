@@ -629,7 +629,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('shows Veto Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
+  it('shows Safety Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -639,7 +639,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Safety Ceremony/i })).toBeDefined();
   });
 
-  it('shows Final 4 — Veto Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
+  it('shows Final 4 — Safety Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
     const store = makeStore();
 
     // Evict players until only 4 remain
@@ -811,6 +811,23 @@ describe('TvZone — phase-based announcement triggers', () => {
       store.dispatch(addTvEvent(makeEvent({ id: 'ev-extra', text: 'Houseguests deliberate.' })));
     });
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+  });
+
+  it('uses presentable labels for internal-only phases in the head pills', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => { store.dispatch(setPhase('pre_veto_public_save')); });
+    expect(screen.getByLabelText('PUBLIC SAFETY')).toBeDefined();
+    expect(screen.queryByText('pre_veto_public_save')).toBeNull();
+
+    act(() => { store.dispatch(setPhase('jury_announcement')); });
+    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.queryByText('jury_announcement')).toBeNull();
+
+    act(() => { store.dispatch(setPhase('jury_cinematic')); });
+    expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
+    expect(screen.queryByText('jury_cinematic')).toBeNull();
   });
 });
 

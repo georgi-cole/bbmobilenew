@@ -81,9 +81,9 @@ export default function Leaderboard() {
                 </button>
                 {isExpanded && (
                   <ul className="leaderboard-screen__breakdown">
-                    {bd.hohWins > 0 && <li>HOH wins: +{bd.hohWins}</li>}
-                    {bd.povWins > 0 && <li>POV wins: +{bd.povWins}</li>}
-                    {bd.wonFinalHoh > 0 && <li>Final HOH: +{bd.wonFinalHoh}</li>}
+                    {bd.hohWins > 0 && <li>LOH wins: +{bd.hohWins}</li>}
+                    {bd.povWins > 0 && <li>POS wins: +{bd.povWins}</li>}
+                    {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
                     {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}
                     {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}
@@ -131,9 +131,9 @@ export default function Leaderboard() {
                   <ul className="leaderboard-screen__breakdown">
                     <li>Seasons played: {entry.seasonsPlayed}</li>
                     <li>Wins: {entry.wins}</li>
-                    {bd.hohWins > 0 && <li>HOH wins: +{bd.hohWins}</li>}
-                    {bd.povWins > 0 && <li>POV wins: +{bd.povWins}</li>}
-                    {bd.wonFinalHoh > 0 && <li>Final HOH: +{bd.wonFinalHoh}</li>}
+                    {bd.hohWins > 0 && <li>LOH wins: +{bd.hohWins}</li>}
+                    {bd.povWins > 0 && <li>POS wins: +{bd.povWins}</li>}
+                    {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
                     {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}
                     {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}

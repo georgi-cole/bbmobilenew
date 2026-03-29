@@ -74,6 +74,10 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/components/GameTopChip/GameTopChip.css'),
       'utf8',
     );
+    const tvZoneCss = readFileSync(
+      resolve(process.cwd(), 'src/components/ui/TvZone.css'),
+      'utf8',
+    );
     const houseguestGridCss = readFileSync(
       resolve(process.cwd(), 'src/components/HouseguestGrid/HouseguestGrid.module.css'),
       'utf8',
@@ -86,6 +90,13 @@ describe('HUD sizing styles', () => {
     expect(chipCss).toContain('border-radius: 999px;');
     expect(chipCss).toContain('padding: 0 var(--game-top-chip-inline-padding, 13px);');
     expect(chipCss).toContain('font-size: 0.68rem;');
+    expect(tvZoneCss).toContain('gap: 5px;');
+    expect(tvZoneCss).toContain('padding: 7px 11px;');
+    expect(tvZoneCss).toContain('.tv-zone__head-chip {');
+    expect(tvZoneCss).toContain('min-width: auto;');
+    expect(tvZoneCss).toContain('height: 24px;');
+    expect(tvZoneCss).toContain('padding: 0 10px;');
+    expect(tvZoneCss).toContain('font-size: 0.62rem;');
     expect(houseguestGridCss).toContain('padding: 4px 8px 6px;');
     expect(houseguestGridCss).toContain('margin-bottom: 10px;');
   });

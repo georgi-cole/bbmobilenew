@@ -2177,7 +2177,7 @@ const gameSlice = createSlice({
         if (player.status === 'hoh') player.status = 'hoh+pov';
         else if (player.status === 'nominated') player.status = 'nominated+pov';
         else player.status = 'pov';
-        pushEvent(state, `[DEBUG] ${player.name} forced as POV winner. 🎭`, 'game');
+        pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game');
       }
     },
     /** Force entry into Final 4 eviction phase (debug only). */
@@ -2435,7 +2435,7 @@ const gameSlice = createSlice({
         // Emit plea sequence: POV holder asks nominees for their pleas
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The POV holder'} asks nominees for their pleas. 🎤`,
+          `${povHolder?.name ?? 'The POS holder'} asks nominees for their pleas. 🎤`,
           'game',
         );
         nominees.forEach((nominee, idx) => {
@@ -2513,7 +2513,7 @@ const gameSlice = createSlice({
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         pushEvent(
           state,
-          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final HOH. 🏁`,
+          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final LOH. 🏁`,
           'game',
         );
 
@@ -2937,7 +2937,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_1': {
-          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The new HOH';
+          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The new LOH';
           pushEvent(state, `Housemates congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
           break;
         }
@@ -3473,7 +3473,7 @@ const gameSlice = createSlice({
                 .join(' and ');
               pushEvent(
                 state,
-                `It's a tie between ${tiedNames}! ${hohPlayer.name}, as HOH you must break the tie. 🗳️`,
+                `It's a tie between ${tiedNames}! ${hohPlayer.name}, as LOH you must break the tie. 🗳️`,
                 'game',
               );
             } else {
@@ -3884,7 +3884,7 @@ export const tryActivateDoubleEviction =
   };
 
 /**
- * Attempt to activate a special veto twist after the POV winner is determined.
+ * Attempt to activate a special safety twist after the POV winner is determined.
  *
  * Activation rules:
  *  - `settings.sim.enableTwists` must be true
@@ -3893,10 +3893,13 @@ export const tryActivateDoubleEviction =
  *  - at least 6 alive players (above final 5)
  *  - not a Double Eviction week
  *  - no other twist has already activated this week (`twistActivatedThisWeek`)
- *  - the season must not already have had a special veto activated
+ *  - the season must not already have had a special safety activated
  *
- * If eligible, rolls `settings.sim.specialVetoChance` (0-100, default 25) and
- * picks a random veto type deterministically.
+ * If eligible, rolls `settings.sim.specialSafetyChance` (0-100, default 25) and
+ * picks a random safety type deterministically.
+ *
+ * Note: the thunk/function name and `specialVeto` state key remain legacy internal
+ * identifiers for compatibility, even though the user-facing terminology is Safety.
  *
  * Returns `true` if activated, `false` otherwise.
  */
@@ -3923,7 +3926,7 @@ export const tryActivateSpecialVeto =
     ).length;
     if (evictionsSoFar < 5) return false;
 
-    const chance = settings.sim.specialVetoChance ?? 25;
+    const chance = settings.sim.specialSafetyChance ?? 25;
     // Use a twist-specific RNG offset so this roll is independent of the main game seed
     // sequence and does not perturb future HOH/POV/vote outcomes.
     const SPECIAL_VETO_RNG_SALT = 0x5e7c7074; // arbitrary constant distinguishing this roll from others
