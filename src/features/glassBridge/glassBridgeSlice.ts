@@ -134,7 +134,12 @@ export interface GlassBridgeState {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ROWS_COUNT = 16;
-const DEFAULT_TIME_LIMIT_MS = 179_000;
+const TIME_LIMIT_PER_PLAYER_MS = 16_000;
+const DEFAULT_TIME_LIMIT_MS = 10 * TIME_LIMIT_PER_PLAYER_MS;
+
+export function buildGlassBridgeTimeLimitMs(participantCount: number): number {
+  return Math.max(1, participantCount) * TIME_LIMIT_PER_PLAYER_MS;
+}
 
 /**
  * Default accuracy when AI observes one broken tile and infers the safe side.
@@ -323,7 +328,7 @@ const glassBridgeSlice = createSlice({
         competitionType,
         seed,
         rowsCount = DEFAULT_ROWS_COUNT,
-        globalTimeLimitMs = DEFAULT_TIME_LIMIT_MS,
+        globalTimeLimitMs = buildGlassBridgeTimeLimitMs(participantIds.length),
         humanPlayerId = null,
       } = action.payload;
 
