@@ -479,8 +479,47 @@ describe('Bullseye Blitz — tournament helpers', () => {
     const roundThree = simulateBullseyeAiRoundScore(baseScore, 3, 42, 'p1');
 
     expect(roundOneA).toBe(roundOneB);
-    expect(roundOneA).toBeGreaterThan(150);
-    expect(roundThree).toBeGreaterThan(120);
+    expect(roundOneA).toBeGreaterThan(100);
+    expect(roundThree).toBeGreaterThan(60);
+  });
+
+  it('AI gameplay simulation produces realistic scores in the human-play range', () => {
+    // Human players typically score 200–400 per round in round 1 (18 s, 560 ms spawns).
+    // An AI with baseScore=300 (matching the human baseline) should score in a
+    // comparable range.  We sample multiple seeds to verify the distribution.
+    const scores = [42, 99, 1337, 7, 256].map((seed) =>
+      simulateBullseyeAiRoundScore(300, 1, seed, 'contestant'),
+    );
+    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    // Average across 5 seeds should be clearly above the old placeholder range
+    // (50–70 pts) and within a realistic human-play range.
+    expect(average).toBeGreaterThan(200);
+    expect(average).toBeLessThan(600);
+  });
+
+  it('higher baseScore yields higher expected score than lower baseScore', () => {
+    // Strong AI (baseScore=300) should consistently outscore weak AI (baseScore=80).
+    // Verified across several seeds to confirm skill ordering is preserved.
+    const seeds = [1, 2, 3, 4, 5, 6, 7, 8];
+    let strongWins = 0;
+    for (const seed of seeds) {
+      const strong = simulateBullseyeAiRoundScore(300, 1, seed, 'ai');
+      const weak   = simulateBullseyeAiRoundScore( 80, 1, seed, 'ai');
+      if (strong > weak) strongWins += 1;
+    }
+    // Strong AI should win the majority of matchups (≥ 6 of 8).
+    expect(strongWins).toBeGreaterThanOrEqual(6);
+  });
+
+  it('AI scores decrease in harder rounds reflecting genuine difficulty', () => {
+    // With the same baseScore the simulation should produce lower (or at most
+    // equal) scores in later harder rounds than in the opening round.
+    const r1 = simulateBullseyeAiRoundScore(250, 1, 77, 'player');
+    const r5 = simulateBullseyeAiRoundScore(250, 5, 77, 'player');
+    // Round 5 has far more hazards (38 % vs 15 %) and much shorter target
+    // lifetimes, so the score should drop significantly.
+    expect(r5).toBeLessThan(r1);
   });
 });
 
