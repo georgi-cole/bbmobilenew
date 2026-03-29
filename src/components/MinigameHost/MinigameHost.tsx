@@ -26,6 +26,7 @@ import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
 import SilentSaboteurComp from '../SilentSaboteurComp/SilentSaboteurComp';
 import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/silentSaboteurSlice';
+import { buildGlassBridgeTimeLimitMs } from '../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
 import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
@@ -120,6 +121,16 @@ export default function MinigameHost({
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
+  const rulesGame = useMemo(
+    () =>
+      game.key === 'glass_bridge_brutal'
+        ? {
+            ...game,
+            timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length),
+          }
+        : game,
+    [game, participants],
+  );
 
   // ── Rules confirmed ─────────────────────────────────────────────────────
   const handleRulesConfirm = useCallback(() => {
@@ -219,7 +230,7 @@ export default function MinigameHost({
     <div className="minigame-host" role="dialog" aria-modal="true" aria-label={`${game.title} minigame`}>
       {phase === 'rules' && (
         <MinigameRules
-          game={game}
+          game={rulesGame}
           onConfirm={handleRulesConfirm}
           onSkip={skipRules ? handleRulesConfirm : undefined}
           onDismiss={handleRulesDismiss}

@@ -74,6 +74,10 @@ const DEATH_FLASH_MS = 120;
 const DEATH_MARKER_DURATION_MS = 750;
 /** Landing animation duration for a finisher reaching the safe platform (ms). Aligned with gb-player-land (0.55s), plus a short grace period. */
 const LANDING_ANIM_DURATION_MS = 600;
+/** Stagger between timeout-triggered bridge rows collapsing. */
+const TIMEOUT_ROW_BREAK_STAGGER_MS = 60;
+/** Small offset so the two tiles in a row do not break at the exact same moment. */
+const TIMEOUT_SIDE_BREAK_OFFSET_MS = 24;
 /** Keeps 1–2 letter initials comfortably inside the circular fallback avatars. */
 const AVATAR_INITIALS_FONT_SIZE_RATIO = 0.42;
 
@@ -161,6 +165,13 @@ function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
 }
 
+function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): number {
+  if (noAnimations) return 0;
+  const finalTileDelay = Math.max(0, rowsCount - 1) * TIMEOUT_ROW_BREAK_STAGGER_MS
+    + TIMEOUT_SIDE_BREAK_OFFSET_MS;
+  return finalTileDelay + SHATTER_ANIM_MS + POST_SHATTER_DELAY_MS;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
@@ -235,6 +246,10 @@ export default function GlassBridgeComp({
   } | null>(null);
   /** IDs of players currently playing the safe-landing animation. */
   const [landingPlayerIds, setLandingPlayerIds] = useState<string[]>([]);
+  /** IDs of players eliminated specifically by the time-expired bridge collapse. */
+  const [timedOutPlayerIds, setTimedOutPlayerIds] = useState<string[]>([]);
+  /** While true, the remaining bridge tiles shatter before results are shown. */
+  const [timeoutCollapseActive, setTimeoutCollapseActive] = useState(false);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const timerIntervalRef = useRef<number | null>(null);
@@ -246,6 +261,7 @@ export default function GlassBridgeComp({
   const flashResetRef = useRef<number | null>(null);
   const deathMarkerClearRef = useRef<number | null>(null);
   const landingTimersRef = useRef<number[]>([]);
+  const timeoutCollapseResolveRef = useRef<number | null>(null);
   const initParamsRef = useRef({ participantIds, prizeType, seed, humanId, participants });
 
   // ── Order-selection AI pick queue refs (sequential pacing) ───────────────
@@ -269,6 +285,10 @@ export default function GlassBridgeComp({
   const prevFinishersRef = useRef<Set<string>>(new Set());
   /** Tracks the last (phase, currentTurnIndex) combo that triggered a new-turn sound. */
   const lastNewTurnSoundRef = useRef<string>('');
+  /** Tracks unfinished players before timer expiry so the timeout death sequence can animate them. */
+  const unfinishedPlayerIdsRef = useRef<string[]>([]);
+  /** One-shot guard for the timer-expiry collapse sequence. */
+  const timeoutSequenceStartedRef = useRef(false);
 
   // Stable RNG for AI step timing (different sub-seed so it doesn't affect bridge layout).
   const aiRngRef = useRef(mulberry32(seed + 9999));
@@ -309,6 +329,10 @@ export default function GlassBridgeComp({
     if (deathMarkerClearRef.current !== null) {
       window.clearTimeout(deathMarkerClearRef.current);
       deathMarkerClearRef.current = null;
+    }
+    if (timeoutCollapseResolveRef.current !== null) {
+      window.clearTimeout(timeoutCollapseResolveRef.current);
+      timeoutCollapseResolveRef.current = null;
     }
     for (const t of landingTimersRef.current) window.clearTimeout(t);
     landingTimersRef.current = [];
@@ -540,12 +564,11 @@ export default function GlassBridgeComp({
       // Preserve the logical selection moment for a tile that was chosen before time expired,
       // even if its suspense animation is still playing.
       if (remaining <= 0 && !gb.timerExpired && !pendingSelectedBeforeExpiry) {
-        // Expire timer first (eliminates unfinished players) then finalise rankings.
         dispatch(expireTimer());
-        dispatch(completeGame());
       }
     }
 
+    tick();
     timerIntervalRef.current = window.setInterval(tick, 250);
     return () => {
       if (timerIntervalRef.current !== null) {
@@ -555,6 +578,19 @@ export default function GlassBridgeComp({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.phase, gb.challengeStartTimeMs, gb.timerExpired, pendingStep, dispatch]);
+
+  // ── 5b. Track unfinished players before timer expiry for the collapse sequence ─
+  useEffect(() => {
+    if (gb.phase !== 'playing') {
+      unfinishedPlayerIdsRef.current = [];
+      return;
+    }
+    if (gb.timerExpired) return;
+    unfinishedPlayerIdsRef.current = gb.turnOrder.filter(pid => {
+      const progress = gb.progress[pid];
+      return !!progress && !progress.eliminated && progress.finishTimeMs === undefined;
+    });
+  }, [gb.phase, gb.progress, gb.timerExpired, gb.turnOrder]);
 
   // ── 6. AI step automation ──────────────────────────────────────────────────
   useEffect(() => {
@@ -647,27 +683,69 @@ export default function GlassBridgeComp({
     };
   }, [gb.phase, gb.currentTurnIndex, gb.currentPlayerRow, gb.timerExpired, humanId, pendingStep, gb, dispatch, playSafeStep, playDeath]);
 
-  // ── 7. Detect end-of-game conditions ──────────────────────────────────────
+  // ── 7. Timer expiry sequence — collapse the bridge before showing results ─
+  useEffect(() => {
+    if (gb.phase !== 'playing') {
+      timeoutSequenceStartedRef.current = false;
+      setTimeoutCollapseActive(false);
+      setTimedOutPlayerIds([]);
+      return;
+    }
+    if (!gb.timerExpired || timeoutSequenceStartedRef.current) return;
+
+    timeoutSequenceStartedRef.current = true;
+
+    const doomedIds = unfinishedPlayerIdsRef.current;
+    if (doomedIds.length === 0) {
+      dispatch(completeGame());
+      return;
+    }
+
+    const noAnimations = areAnimationsDisabled();
+    const collapseDuration = getTimeoutCollapseDuration(gb.rows.length, noAnimations);
+
+    setShowSpectatorModal(false);
+    setTimedOutPlayerIds(doomedIds);
+    setTimeoutCollapseActive(true);
+    setShowEliminationFlash(true);
+    setShowScreenShake(true);
+    playDeath();
+
+    if (flashResetRef.current !== null) {
+      window.clearTimeout(flashResetRef.current);
+    }
+    flashResetRef.current = window.setTimeout(() => {
+      setShowEliminationFlash(false);
+      setShowScreenShake(false);
+    }, noAnimations ? 0 : DEATH_FLASH_MS);
+
+    timeoutCollapseResolveRef.current = window.setTimeout(() => {
+      dispatch(completeGame());
+    }, collapseDuration);
+  }, [gb.phase, gb.timerExpired, gb.rows.length, dispatch, playDeath]);
+
+  // ── 8. Detect end-of-game conditions ──────────────────────────────────────
   useEffect(() => {
     if (gb.phase !== 'playing') return;
+    if (timeoutSequenceStartedRef.current) return;
     if (selectIsGameOver(gb)) {
       dispatch(completeGame());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.currentTurnIndex, gb.timerExpired, gb.progress]);
 
-  // ── 8. Resolve outcome when complete ─────────────────────────────────────
+  // ── 9. Resolve outcome when complete ─────────────────────────────────────
   useEffect(() => {
     if (gb.phase === 'complete' && !gb.outcomeResolved) {
       dispatch(resolveGlassBridgeOutcome());
     }
   }, [gb.phase, gb.outcomeResolved, dispatch]);
 
-  // ── 9. Complete — outcome is applied by effect #8; user advances via the
+  // ── 10. Complete — outcome is applied by effect #9; user advances via the
   //        Continue button. No auto-advance timer so the results screen persists
   //        until the player taps Continue (matches spec requirement 5.1).
 
-  // ── 10. Human eliminated → show spectator modal ───────────────────────────
+  // ── 11. Human eliminated → show spectator modal ───────────────────────────
   useEffect(() => {
     if (!humanId) return;
     const progress = gb.progress[humanId];
@@ -677,7 +755,7 @@ export default function GlassBridgeComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gb.progress, humanId, gb.phase]);
 
-  // ── 11. Safe-landing animation — detect newly-finished players ────────────
+  // ── 12. Safe-landing animation — detect newly-finished players ────────────
   useEffect(() => {
     if (gb.phase !== 'playing') return;
     let isFirstFinisher = prevFinishersRef.current.size === 0;
@@ -698,7 +776,7 @@ export default function GlassBridgeComp({
     }
   }, [gb.progress, gb.phase, playWinner]);
 
-  // ── 12. New-turn sound — play whenever a new player starts their turn ──────
+  // ── 13. New-turn sound — play whenever a new player starts their turn ──────
   useEffect(() => {
     if (gb.phase !== 'playing') {
       // Reset the guard so a fresh game session starts clean.
@@ -813,6 +891,7 @@ export default function GlassBridgeComp({
       : timerDisplay <= 30_000
         ? 'gb-timer-warning'
         : '';
+  const isTimeoutPlayer = (playerId: string) => timedOutPlayerIds.includes(playerId);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -921,7 +1000,9 @@ export default function GlassBridgeComp({
       {gb.phase === 'playing' && (
         <div className="gb-playing">
           <div className="gb-active-banner" aria-live="polite">
-            {isHumanTurn && !pendingStep
+            {timeoutCollapseActive
+              ? "Time's up! The bridge is collapsing."
+              : isHumanTurn && !pendingStep
               ? 'Select a highlighted tile to step.'
               : activeId
                 ? `${getName(activeId)} is on the bridge`
@@ -940,12 +1021,17 @@ export default function GlassBridgeComp({
               // Find players on this row (those who have reached exactly this row and are active).
               const playersOnRow = gb.turnOrder.filter(pid => {
                 const p = gb.progress[pid];
+                const timedOutOnBridge =
+                  timeoutCollapseActive &&
+                  isTimeoutPlayer(pid) &&
+                  activeId === pid &&
+                  isCurrentRow;
                 return (
                   p &&
-                  !p.eliminated &&
                   p.finishTimeMs === undefined &&
                   activeId === pid &&
-                  isCurrentRow
+                  isCurrentRow &&
+                  (!p.eliminated || timedOutOnBridge)
                 );
               });
 
@@ -967,11 +1053,18 @@ export default function GlassBridgeComp({
                         isHumanTurn &&
                         isCurrentRow &&
                         !isBroken &&
-                        !pendingStep;
+                        !pendingStep &&
+                        !timeoutCollapseActive;
+                      const timeoutDelayMs =
+                        rowIdx * TIMEOUT_ROW_BREAK_STAGGER_MS
+                        + (side === 'right' ? TIMEOUT_SIDE_BREAK_OFFSET_MS : 0);
 
                       let tileClass = 'gb-tile';
                       if (isBroken || isShatterAnim) tileClass += ' gb-tile-broken';
                       if (isShatterAnim) tileClass += ' gb-tile-shatter';
+                      if (timeoutCollapseActive && !isBroken && !isShatterAnim) {
+                        tileClass += ' gb-tile-timeout-break';
+                      }
                       if (canActivate && !isBroken) tileClass += ' gb-tile-active';
                       if (isCurrentRow) tileClass += ' gb-tile-current-row';
                       if (!isCurrentRow) tileClass += ' gb-tile-inactive';
@@ -981,6 +1074,11 @@ export default function GlassBridgeComp({
                         <div
                           key={side}
                           className={tileClass}
+                          style={
+                            timeoutCollapseActive && !isBroken && !isShatterAnim
+                              ? { animationDelay: `${timeoutDelayMs}ms` }
+                              : undefined
+                          }
                           onClick={canActivate ? () => handleHumanStep(side) : undefined}
                           role={canActivate ? 'button' : undefined}
                           tabIndex={canActivate ? 0 : undefined}
@@ -1014,7 +1112,7 @@ export default function GlassBridgeComp({
                     {playersOnRow.map(pid => (
                       <div
                         key={pid}
-                        className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}${pendingActorId === pid && shatteringTile ? ' gb-player-falling' : ''}`}
+                        className={`gb-player-marker${pid === activeId ? ' gb-player-active' : ''}${pid === humanId ? ' gb-player-you' : ''}${pendingActorId === pid && shatteringTile ? ' gb-player-falling' : ''}${timeoutCollapseActive && isTimeoutPlayer(pid) ? ' gb-player-falling' : ''}`}
                         title={getName(pid)}
                       >
                         <GlassBridgeAvatar
@@ -1051,7 +1149,11 @@ export default function GlassBridgeComp({
             {gb.turnOrder
               .filter(pid => {
                 const p = gb.progress[pid];
-                return p && !p.eliminated && p.finishTimeMs === undefined;
+                return (
+                  !!p &&
+                  p.finishTimeMs === undefined &&
+                  (!p.eliminated || (timeoutCollapseActive && isTimeoutPlayer(pid)))
+                );
               })
               .map((pid, idx) => {
                 const isActive = activeId === pid;
@@ -1060,7 +1162,7 @@ export default function GlassBridgeComp({
                 return (
                   <div
                     key={pid}
-                    className={`gb-avatar-bar-item${isActive ? ' gb-avatar-bar-active' : ''}${isYou ? ' gb-avatar-bar-you' : ''}`}
+                    className={`gb-avatar-bar-item${isActive ? ' gb-avatar-bar-active' : ''}${isYou ? ' gb-avatar-bar-you' : ''}${timeoutCollapseActive && isTimeoutPlayer(pid) ? ' gb-avatar-bar-timeout' : ''}`}
                     title={getName(pid)}
                     role="listitem"
                     aria-label={`${getName(pid)}${isActive ? ' — current turn' : ''}${isLeader ? ', leader' : ''}`}

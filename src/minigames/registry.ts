@@ -1008,7 +1008,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     resultMode: 'placement',
     metricKind: 'accuracy',
     metricLabel: 'Placement',
-    timeLimitMs: 179_000,
+    timeLimitMs: 160_000,
     authoritative: true,
     scoringAdapter: 'authoritative',
     implementation: 'react',

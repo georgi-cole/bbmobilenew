@@ -107,6 +107,28 @@ const PLACEMENT_GAME = {
   retired: false,
 };
 
+const GLASS_BRIDGE_GAME = {
+  key: 'glass_bridge_brutal',
+  title: 'Glass Bridge — Brutal Mode',
+  description: 'Cross a bridge of paired glass tiles one row at a time. One wrong step and you die.',
+  instructions: [
+    'Players cross a bridge of glass tiles row by row.',
+    'Each row has two tiles: LEFT and RIGHT. Only one is safe.',
+  ],
+  resultMode: 'placement' as const,
+  metricKind: 'accuracy' as const,
+  metricLabel: 'Placement',
+  timeLimitMs: 160_000,
+  authoritative: true,
+  scoringAdapter: 'authoritative' as const,
+  implementation: 'react' as const,
+  reactComponentKey: 'GlassBridge' as const,
+  legacy: false,
+  weight: 1,
+  category: 'endurance' as const,
+  retired: false,
+};
+
 const PARTICIPANTS = [
   { id: 'p0', name: 'Human', isHuman: true,  precomputedScore: 0,  previousPR: null },
   { id: 'p1', name: 'AI-1',  isHuman: false, precomputedScore: 80, previousPR: null },
@@ -376,6 +398,26 @@ describe('MinigameHost — dismiss / close buttons route through results screen'
     // onDone fired with the reported score and partial=false
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(onDone).toHaveBeenCalledWith(42, false);
+  });
+});
+
+describe('MinigameHost — Glass Bridge rules timing', () => {
+  it('shows the per-player timer on the rules modal for Glass Bridge', () => {
+    render(
+      <Provider store={makeStore()}>
+        <MinigameHost
+          game={GLASS_BRIDGE_GAME}
+          gameOptions={{ seed: 1 }}
+          participants={[
+            PARTICIPANTS[0],
+            PARTICIPANTS[1],
+          ]}
+          onDone={vi.fn()}
+        />
+      </Provider>,
+    );
+
+    expect(screen.getByText('⏱ 32s')).toBeTruthy();
   });
 });
 

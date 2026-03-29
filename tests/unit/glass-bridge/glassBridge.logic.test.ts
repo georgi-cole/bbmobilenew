@@ -41,6 +41,7 @@ import glassBridgeReducer, {
   buildPlacements,
   buildAiNumberChoices,
   aiDecideStep,
+  buildGlassBridgeTimeLimitMs,
   deriveAiObviousSafeAccuracy,
   simulateAiTurn,
   type BridgeRow,
@@ -547,6 +548,14 @@ describe('glassBridgeSlice — initGlassBridge', () => {
     expect(gb.progress['a']).toBeDefined();
     expect(gb.progress['a'].furthestRowReached).toBe(0);
     expect(gb.progress['a'].eliminated).toBe(false);
+  });
+
+  it('derives the global timer from the starting player count', () => {
+    expect(buildGlassBridgeTimeLimitMs(1)).toBe(16_000);
+    expect(buildGlassBridgeTimeLimitMs(10)).toBe(160_000);
+
+    const store = startGame(['a', 'b', 'c', 'd'], 7);
+    expect(store.getState().glassBridge.globalTimeLimitMs).toBe(64_000);
   });
 });
 
