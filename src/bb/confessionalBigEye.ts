@@ -441,8 +441,9 @@ export function createInitialBigEyeState(): BigEyeConversationState {
 
 export function normalizeInput(input: string): string {
   return input
+    .replace(/’/g, "'")
     .toLowerCase()
-    .replace(/[^a-z0-9\s']/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
