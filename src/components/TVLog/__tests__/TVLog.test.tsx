@@ -62,33 +62,33 @@ describe('tease()', () => {
 describe('TVLog — duplicate suppression', () => {
   it('hides the first entry when its text matches mainTVMessage', () => {
     const entries: TvEvent[] = [
-      makeEvent({ id: 'e1', text: 'Alex won the HOH competition!' }),
+      makeEvent({ id: 'e1', text: 'Alex won the LOH competition!' }),
       makeEvent({ id: 'e2', text: 'The nominations are set.' }),
     ];
-    render(<TVLog entries={entries} mainTVMessage="Alex won the HOH competition!" />);
+    render(<TVLog entries={entries} mainTVMessage="Alex won the LOH competition!" />);
 
     // e1 should be suppressed
-    expect(screen.queryByText('Alex won the HOH competition!')).toBeNull();
+    expect(screen.queryByText('Alex won the LOH competition!')).toBeNull();
     // e2 should still appear (possibly teased)
     expect(screen.getByText('The nominations are set.')).toBeDefined();
   });
 
   it('does NOT suppress the first entry when text differs from mainTVMessage', () => {
     const entries: TvEvent[] = [
-      makeEvent({ id: 'e1', text: 'Alex won the HOH competition!' }),
+      makeEvent({ id: 'e1', text: 'Alex won the LOH competition!' }),
     ];
     render(<TVLog entries={entries} mainTVMessage="Something else entirely" />);
 
-    expect(screen.getByText('Alex won the HOH competition!')).toBeDefined();
+    expect(screen.getByText('Alex won the LOH competition!')).toBeDefined();
   });
 
   it('does NOT suppress any entry when mainTVMessage is undefined', () => {
     const entries: TvEvent[] = [
-      makeEvent({ id: 'e1', text: 'Alex won the HOH competition!' }),
+      makeEvent({ id: 'e1', text: 'Alex won the LOH competition!' }),
     ];
     render(<TVLog entries={entries} />);
 
-    expect(screen.getByText('Alex won the HOH competition!')).toBeDefined();
+    expect(screen.getByText('Alex won the LOH competition!')).toBeDefined();
   });
 
   it('only suppresses the first matching entry, not subsequent ones', () => {
@@ -108,7 +108,7 @@ describe('TVLog — duplicate suppression', () => {
 
 describe('TVLog — expand on click', () => {
   it('shows full text after clicking a teased entry', async () => {
-    const longText = 'Big Brother drama unfolded as ' + 'x'.repeat(50);
+    const longText = 'The Big Eye drama unfolded as ' + 'x'.repeat(50);
     const entries: TvEvent[] = [makeEvent({ id: 'e1', text: longText })];
 
     render(<TVLog entries={entries} />);

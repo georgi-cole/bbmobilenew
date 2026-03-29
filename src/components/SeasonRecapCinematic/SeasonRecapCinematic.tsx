@@ -155,7 +155,7 @@ function buildRecapData(players: Player[], week: number): RecapData {
       accent: `${firstName(topComp)} took command`,
     },
     {
-      label: 'Vetoes Won',
+      label: 'Safeties Won',
       value: String(topVeto?.stats?.povWins ?? Math.max(1, Math.floor(week / 2))),
       accent: `${firstName(topVeto)} kept the power shifting`,
     },
@@ -184,7 +184,7 @@ function buildRecapData(players: Player[], week: number): RecapData {
     },
     {
       kicker: 'THE GAME TURNED',
-      line: `${firstName(topVeto)} turned veto wins into leverage when everything shifted.`,
+      line: `${firstName(topVeto)} turned safety wins into leverage when everything shifted.`,
       subject: topVeto,
     },
   ];

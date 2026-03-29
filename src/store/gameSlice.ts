@@ -2158,7 +2158,7 @@ const gameSlice = createSlice({
         if (player.status === 'hoh') player.status = 'hoh+pov';
         else if (player.status === 'nominated') player.status = 'nominated+pov';
         else player.status = 'pov';
-        pushEvent(state, `[DEBUG] ${player.name} forced as POV winner. 🎭`, 'game');
+        pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game');
       }
     },
     /** Force entry into Final 4 eviction phase (debug only). */
@@ -2416,7 +2416,7 @@ const gameSlice = createSlice({
         // Emit plea sequence: POV holder asks nominees for their pleas
         pushEvent(
           state,
-          `${povHolder?.name ?? 'The POV holder'} asks nominees for their pleas. 🎤`,
+          `${povHolder?.name ?? 'The POS holder'} asks nominees for their pleas. 🎤`,
           'game',
         );
         nominees.forEach((nominee, idx) => {
@@ -2494,7 +2494,7 @@ const gameSlice = createSlice({
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         pushEvent(
           state,
-          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final HOH. 🏁`,
+          `Final 3 Part 1 is underway! All three houseguests compete for the first leg of the Final LOH. 🏁`,
           'game',
         );
 
@@ -2918,7 +2918,7 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_1': {
-          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The new HOH';
+          const hohName = state.players.find((p) => p.id === state.hohId)?.name ?? 'The new LOH';
           pushEvent(state, `Housemates congratulate ${hohName}. Alliances are already forming… 💬`, 'social');
           break;
         }

@@ -281,9 +281,9 @@ export default function DebugPanel() {
                 <dt>Day</dt>             <dd>{game.week}</dd>
                 <dt>Phase</dt>           <dd>{game.phase}</dd>
                 <dt>Seed</dt>            <dd>{game.seed}</dd>
-                <dt>HOH</dt>             <dd>{hohName}</dd>
+                <dt>LOH</dt>             <dd>{hohName}</dd>
                 <dt>Nominees</dt>        <dd>{nomineeNames}</dd>
-                <dt>POV Winner</dt>      <dd>{povName}</dd>
+                <dt>POS Winner</dt>      <dd>{povName}</dd>
                 <dt>Replacement?</dt>    <dd>{game.replacementNeeded ? 'yes' : 'no'}</dd>
                 <dt>Minigame?</dt>       <dd>{game.pendingMinigame ? game.pendingMinigame.key : '—'}</dd>
                 <dt>Alive</dt>           <dd>{alive.length}</dd>
@@ -336,7 +336,7 @@ export default function DebugPanel() {
               </div>
 
               <div className="dbg-row">
-                <label className="dbg-label">Force HOH</label>
+                <label className="dbg-label">Force LOH</label>
                 <select
                   className="dbg-select"
                   value={selectedHoH}
@@ -394,7 +394,7 @@ export default function DebugPanel() {
               </div>
 
               <div className="dbg-row">
-                <label className="dbg-label">Force POV</label>
+                <label className="dbg-label">Force POS</label>
                 <select
                   className="dbg-select"
                   value={selectedPov}
@@ -485,7 +485,7 @@ export default function DebugPanel() {
                     onClick={() => {
                       dispatch(advance());
                     }}
-                    title="⚠ Overrides human POV holder decision — for debug use only"
+                    title="⚠ Overrides human POS holder decision — for debug use only"
                   >
                     AI Pick ⚠
                   </button>

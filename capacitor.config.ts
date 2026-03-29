@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
    * Display name shown on the iOS home screen.
    * Keep in sync with the apple-mobile-web-app-title meta tag in index.html.
    */
-  appName: 'Big Brother',
+  appName: 'The Big Eye',
 
   /**
    * Where the Vite production build is written.

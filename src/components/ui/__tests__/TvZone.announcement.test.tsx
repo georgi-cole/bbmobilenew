@@ -626,7 +626,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('shows Veto Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
+  it('shows Safety Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -636,7 +636,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Safety Ceremony/i })).toBeDefined();
   });
 
-  it('shows Final 4 — Veto Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
+  it('shows Final 4 — Safety Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
     const store = makeStore();
 
     // Evict players until only 4 remain

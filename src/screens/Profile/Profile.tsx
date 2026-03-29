@@ -95,7 +95,7 @@ export default function Profile() {
     // POV holder
     if (povWinnerId === 'user') {
       chips.push(
-        <StatusPill key="pov" variant="warning" icon="🔑" label="POV Holder" />,
+        <StatusPill key="pov" variant="warning" icon="🔑" label="POS Holder" />,
       );
     }
 
@@ -290,11 +290,11 @@ export default function Profile() {
             </div>
             <div className="profile-screen__stat">
               <span className="profile-screen__stat-val">{careerStats.hohWins}</span>
-              <span className="profile-screen__stat-key">HOH Wins</span>
+              <span className="profile-screen__stat-key">LOH Wins</span>
             </div>
             <div className="profile-screen__stat">
               <span className="profile-screen__stat-val">{careerStats.povWins}</span>
-              <span className="profile-screen__stat-key">POV Wins</span>
+              <span className="profile-screen__stat-key">POS Wins</span>
             </div>
           </div>
         </div>

@@ -95,4 +95,21 @@ describe('Settings screen', () => {
 
     expect(vi.mocked(restartApp)).toHaveBeenCalledWith('#/game');
   });
+
+  it('shows the renamed brand and twist copy in the UI', async () => {
+    renderSettings();
+
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
+    fireEvent.click(screen.getByLabelText(/toggle twists/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/special safety chance/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /about/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /the big eye/i })).toBeTruthy();
+    });
+  });
 });
