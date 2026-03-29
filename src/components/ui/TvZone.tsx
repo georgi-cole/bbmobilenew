@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, startTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import type { Phase } from '../../types';
+import type { Phase, Player } from '../../types';
 import { useStore } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectAlivePlayers } from '../../store/gameSlice';
@@ -14,6 +14,7 @@ import TvAnnouncementOverlay, {
 } from './TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
+import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
@@ -148,6 +149,22 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
 
+type TvZonePublicSaveReveal = {
+  nominees: Player[];
+  approvals: Record<string, number>;
+  savedId: string;
+};
+
+type TvZoneProps =
+  | {
+      publicSaveReveal: TvZonePublicSaveReveal;
+      onPublicSaveDone: () => void;
+    }
+  | {
+      publicSaveReveal?: null | undefined;
+      onPublicSaveDone?: undefined;
+    };
+
 /**
  * TvZone — the central "TV-like" action zone.
  *
@@ -162,7 +179,7 @@ const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
  *
  * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
-export default function TvZone() {
+export default function TvZone(props: TvZoneProps) {
   const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
@@ -492,6 +509,15 @@ export default function TvZone() {
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
                 paused={modalOpen}
+              />
+            )}
+
+            {props.publicSaveReveal && (
+              <PublicSaveReveal
+                nominees={props.publicSaveReveal.nominees}
+                approvals={props.publicSaveReveal.approvals}
+                savedId={props.publicSaveReveal.savedId}
+                onDone={props.onPublicSaveDone}
               />
             )}
           </div>

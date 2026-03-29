@@ -73,21 +73,6 @@ export default function PublicSaveReveal({
     return clearTimers;
   }, [clearTimers, fireDone]);
 
-  const phaseCopy =
-    phase === 'entering'
-      ? 'Reading the live audience…'
-      : phase === 'revealing' && !valuesRevealed
-        ? 'Every point matters tonight.'
-        : phase === 'revealing'
-          ? 'The percentages are in.'
-          : phase === 'saved'
-            ? 'The public has spoken.'
-            : 'Locking in the result…';
-
-  const handleSkip = useCallback(() => {
-    fireDone();
-  }, [fireDone]);
-
   const approvalLabel = (player: Player, approval: number) =>
     `${player.name} approval: ${valuesRevealed ? `${Math.round(approval)}%` : 'pending reveal'}`;
 
@@ -102,30 +87,25 @@ export default function PublicSaveReveal({
       aria-live="assertive"
       aria-label={`Public Save: ${nominees.find((n) => n.id === savedId)?.name ?? ''} is saved`}
     >
-      <div className="psr__backdrop" />
-      <div className="psr__spotlight" aria-hidden="true" />
       <div className="psr__panel">
         <div className="psr__heading">
           <span className="psr__heading-eyebrow">Public Save</span>
-          <h2 className="psr__heading-title">The Audience Decides</h2>
           <p className="psr__heading-sub">
-            Before veto night, the houseguest with the highest public approval steps off the block.
+            Before safety battle, the housemate with highest public support is saved.
           </p>
-          <p className="psr__phase-copy">{phaseCopy}</p>
         </div>
 
         <div className="psr__nominees">
           {nominees.map((player, idx) => {
             const isSaved = player.id === savedId;
             const approval = approvals[player.id] ?? 50;
-            const showOutcomeBadge = phase === 'saved' || phase === 'exiting';
             return (
               <div
                 key={player.id}
                 className={[
                   'psr__nominee',
-                  isSaved && showOutcomeBadge ? 'psr__nominee--saved' : '',
-                  !isSaved && showOutcomeBadge ? 'psr__nominee--nominated' : '',
+                  isSaved && (phase === 'saved' || phase === 'exiting') ? 'psr__nominee--saved' : '',
+                  !isSaved && (phase === 'saved' || phase === 'exiting') ? 'psr__nominee--nominated' : '',
                 ].filter(Boolean).join(' ')}
                 style={
                   {
@@ -136,18 +116,7 @@ export default function PublicSaveReveal({
                 }
               >
                 <div className="psr__avatar-wrap">
-                  <PlayerAvatar player={player} size="md" />
-                  {showOutcomeBadge && (
-                    <span
-                      className={[
-                        'psr__status-pill',
-                        isSaved ? 'psr__status-pill--saved' : 'psr__status-pill--nominated',
-                      ].join(' ')}
-                      aria-label={isSaved ? `${player.name} saved` : `${player.name} remains nominated`}
-                    >
-                      {isSaved ? 'Saved' : '?'}
-                    </span>
-                  )}
+                  <PlayerAvatar player={player} size="sm" />
                 </div>
                 <span className="psr__name">{player.name}</span>
                 <div className="psr__bar-track">
@@ -173,23 +142,6 @@ export default function PublicSaveReveal({
             );
           })}
         </div>
-
-        {phase === 'saved' && (
-          <div className="psr__result">
-            <span className="psr__result-text">
-              🏆 {nominees.find((n) => n.id === savedId)?.name} is safe!
-            </span>
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="psr__skip"
-          onClick={handleSkip}
-          aria-label="Skip reveal animation"
-        >
-          Tap to skip
-        </button>
       </div>
     </div>
   );

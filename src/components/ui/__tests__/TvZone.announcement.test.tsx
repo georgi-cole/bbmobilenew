@@ -17,6 +17,7 @@
  * 13. New pre-comp announcement phases: hoh_comp_announcement and pov_comp_announcement show overlays.
  */
 
+import type { ComponentProps } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -32,7 +33,7 @@ import settingsReducer from '../../../store/settingsSlice';
 import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
-import type { TvEvent } from '../../../types';
+import type { Player, TvEvent } from '../../../types';
 
 // ── Store helpers ─────────────────────────────────────────────────────────────
 
@@ -61,11 +62,14 @@ function makeStoreWithSettings() {
   });
 }
 
-function renderTvZone(store: ReturnType<typeof makeStore>) {
+function renderTvZone(
+  store: ReturnType<typeof makeStore>,
+  props?: ComponentProps<typeof TvZone>,
+) {
   return render(
     <Provider store={store}>
       <MemoryRouter>
-        <TvZone />
+        <TvZone {...props} />
       </MemoryRouter>
     </Provider>,
   );
@@ -73,6 +77,15 @@ function renderTvZone(store: ReturnType<typeof makeStore>) {
 
 function makeEvent(overrides: Partial<TvEvent> & Pick<TvEvent, 'id' | 'text'>): TvEvent {
   return { type: 'game', timestamp: Date.now(), ...overrides };
+}
+
+function makePlayer(id: string, name: string): Player {
+  return {
+    id,
+    name,
+    avatar: '🧑',
+    status: 'nominated',
+  };
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -108,6 +121,31 @@ describe('TvZone — announcement overlay', () => {
 
     // Overlay should be visible with the correct title
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
+  });
+
+  it('renders the public save reveal inside the main tv viewport', () => {
+    const store = makeStore();
+    const nominees = [
+      makePlayer('p1', 'Blue'),
+      makePlayer('p2', 'Kian'),
+      makePlayer('p3', 'Georgi'),
+    ];
+
+    renderTvZone(store, {
+      publicSaveReveal: {
+        nominees,
+        approvals: { p1: 42, p2: 43, p3: 50 },
+        savedId: 'p3',
+      },
+      onPublicSaveDone: vi.fn(),
+    });
+
+    const viewport = document.querySelector('.tv-zone__viewport');
+    const reveal = document.querySelector('.tv-zone__viewport .psr');
+
+    expect(viewport).toBeTruthy();
+    expect(reveal).toBeTruthy();
+    expect(screen.getByText('Public Save')).toBeTruthy();
   });
 
   it('renders without a settings reducer by falling back to default audio settings', () => {

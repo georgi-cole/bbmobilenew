@@ -80,7 +80,6 @@ import { simulateBattleBackCompetition } from '../../features/twists/battleBackC
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
-import PublicSaveReveal from '../../components/PublicSaveReveal/PublicSaveReveal'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
@@ -667,6 +666,14 @@ export default function GameScreen() {
     })
     return out
   }, [game.nomineeIds, publicOpinionProfiles])
+
+  const publicSaveNominees = useMemo(
+    () =>
+      game.nomineeIds
+        .map((id) => game.players.find((p) => p.id === id))
+        .filter((p): p is Player => p != null),
+    [game.nomineeIds, game.players],
+  )
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -1428,7 +1435,18 @@ export default function GameScreen() {
   return (
     <LayoutGroup id="game-layout">
     <div className="game-screen game-screen-shell">
-      <TvZone />
+      {showPublicSaveReveal && publicSaveWinnerId ? (
+        <TvZone
+          publicSaveReveal={{
+            nominees: publicSaveNominees,
+            approvals: publicSaveApprovals,
+            savedId: publicSaveWinnerId,
+          }}
+          onPublicSaveDone={handlePublicSaveDone}
+        />
+      ) : (
+        <TvZone />
+      )}
 
       {/* ── Outgoing HOH ineligibility warning ──────────────────────────── */}
       {showOutgoingHohWarning && (
@@ -1503,16 +1521,6 @@ export default function GameScreen() {
           }
           onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
           ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
-        />
-      )}
-
-      {/* ── Pre-veto public save reveal ─────────────────────────────────── */}
-      {showPublicSaveReveal && publicSaveWinnerId && (
-        <PublicSaveReveal
-          nominees={game.nomineeIds.map((id) => game.players.find((p) => p.id === id)).filter(Boolean) as Player[]}
-          approvals={publicSaveApprovals}
-          savedId={publicSaveWinnerId}
-          onDone={handlePublicSaveDone}
         />
       )}
 
