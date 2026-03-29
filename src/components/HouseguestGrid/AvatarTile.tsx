@@ -14,6 +14,7 @@ export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
 type Props = {
   name: string
   avatarUrl?: string
+  compact?: boolean
   isEvicted?: boolean
   isYou?: boolean
   onClick?: () => void
@@ -60,7 +61,20 @@ type Props = {
   isEvicting?: boolean
 }
 
-export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
+function GlassShellOverlay() {
+  return (
+    <div className={styles.glassShell} aria-hidden="true">
+      <span className={styles.glassShellBorder} />
+      <span className={styles.glassShellBands} />
+      <span className={styles.glassShellTopShine} />
+      <span className={styles.glassShellBlobPink} />
+      <span className={styles.glassShellBlobCyan} />
+      <span className={styles.glassShellBottomCurve} />
+    </div>
+  )
+}
+
+export default function AvatarTile({ name, avatarUrl, compact = false, isEvicted, isYou, onClick, onHoldPreviewStart, onHoldPreviewEnd, statuses, finalRank, showPermanentBadge = true, layoutId, isEvicting }: Props) {
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
   const exhaustedRef = React.useRef(false)
@@ -184,7 +198,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
 
   return (
     <div
-      className={`${styles.tile} ${isEvicted ? styles.evicted : ''}`}
+      className={`${styles.tile} ${compact ? styles.compactTile : ''} ${isEvicted ? styles.evicted : ''}`}
       aria-label={ariaLabel}
       title={name}
       role={isInteractive ? 'button' : 'group'}
@@ -219,19 +233,6 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
         } : undefined}
       >
-        <span className={styles.glassOutline} aria-hidden="true" />
-        <span className={styles.glassReflection} aria-hidden="true" />
-
-        <div className={styles.nameOverlay} aria-hidden="true">
-          {name}
-        </div>
-
-        {isYou && (
-          <span className={styles.youBadge} aria-hidden="true">
-            YOU
-          </span>
-        )}
-
         {avatarUrl ? (
           <img
             src={avatarUrl}
@@ -244,6 +245,8 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true" />
         )}
+
+        <GlassShellOverlay />
 
         {/* Status badge stack — top-left corner, stacked vertically */}
         {showPermanentBadge && badges.length > 0 && (
@@ -261,6 +264,16 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
             ))}
           </div>
         )}
+
+        {isYou && (
+          <span className={styles.youBadge} aria-hidden="true">
+            YOU
+          </span>
+        )}
+
+        <div className={styles.nameOverlay} aria-hidden="true">
+          {name}
+        </div>
 
         {/* Evictee mark — paint brushstroke PNG overlay */}
         {isEvicted && (

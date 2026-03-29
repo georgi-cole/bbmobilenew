@@ -19,7 +19,7 @@ describe('AvatarTile', () => {
     expect(badge.querySelector('img')).toBeNull()
   })
 
-  it('renders the glass outline layers inside the avatar frame', () => {
+  it('renders the layered glass shell inside the avatar frame', () => {
     const { container } = render(
       <AvatarTile
         name="Taylor"
@@ -28,11 +28,33 @@ describe('AvatarTile', () => {
     )
 
     const avatarWrap = container.querySelector(`.${styles.avatarWrap}`)
-    const glassOutline = container.querySelector(`.${styles.glassOutline}`)
-    const glassReflection = container.querySelector(`.${styles.glassReflection}`)
+    const glassShell = container.querySelector(`.${styles.glassShell}`)
+    const glassShellBorder = container.querySelector(`.${styles.glassShellBorder}`)
+    const glassShellBands = container.querySelector(`.${styles.glassShellBands}`)
+    const glassShellTopShine = container.querySelector(`.${styles.glassShellTopShine}`)
+    const glassShellBlobPink = container.querySelector(`.${styles.glassShellBlobPink}`)
+    const glassShellBlobCyan = container.querySelector(`.${styles.glassShellBlobCyan}`)
+    const glassShellBottomCurve = container.querySelector(`.${styles.glassShellBottomCurve}`)
 
     expect(avatarWrap).not.toBeNull()
-    expect(avatarWrap?.contains(glassOutline)).toBe(true)
-    expect(avatarWrap?.contains(glassReflection)).toBe(true)
+    expect(avatarWrap?.contains(glassShell)).toBe(true)
+    expect(glassShell?.contains(glassShellBorder)).toBe(true)
+    expect(glassShell?.contains(glassShellBands)).toBe(true)
+    expect(glassShell?.contains(glassShellTopShine)).toBe(true)
+    expect(glassShell?.contains(glassShellBlobPink)).toBe(true)
+    expect(glassShell?.contains(glassShellBlobCyan)).toBe(true)
+    expect(glassShell?.contains(glassShellBottomCurve)).toBe(true)
+  })
+
+  it('supports compact avatar shell radius hooks', () => {
+    const { container } = render(
+      <AvatarTile
+        name="Taylor"
+        avatarUrl="/avatars/Taylor.png"
+        compact
+      />,
+    )
+
+    expect(container.querySelector(`.${styles.compactTile}`)).not.toBeNull()
   })
 })

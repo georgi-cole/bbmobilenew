@@ -44,6 +44,11 @@
 }
 
 .tile {
+  --avatar-tile-radius: 10px;
+  --avatar-name-font-size: 10px;
+  --avatar-name-bottom: 5px;
+  --avatar-name-left: 6px;
+  --avatar-name-right: 6px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -55,17 +60,27 @@
   touch-action: manipulation;
 }
 
+.compactTile {
+  --avatar-tile-radius: 7px;
+  --avatar-name-font-size: 8px;
+  --avatar-name-bottom: 3px;
+  --avatar-name-left: 4px;
+  --avatar-name-right: 4px;
+}
+
 .avatarWrap {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 10px;
+  border-radius: var(--avatar-tile-radius);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #242b36, #191d26);
-  border: 1px solid rgba(186, 210, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(72, 97, 145, 0.2), rgba(17, 24, 36, 0.12)),
+    linear-gradient(180deg, #242b36, #191d26);
+  border: 1px solid rgba(175, 204, 246, 0.2);
   box-shadow:
     0 6px 14px rgba(0,0,0,0.56),
     inset 0 1px 0 rgba(255,255,255,0.05),
@@ -74,47 +89,101 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.glassOutline,
-.glassReflection {
+.glassShell,
+.glassShellBorder,
+.glassShellBands,
+.glassShellTopShine,
+.glassShellBlobPink,
+.glassShellBlobCyan,
+.glassShellBottomCurve {
   position: absolute;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
 }
 
-.glassOutline {
-  inset: 1px;
-  border-radius: inherit;
+.glassShell {
+  width: 100%;
+  height: 100%;
   z-index: 1;
-  border: 1px solid transparent;
-  opacity: 0.98;
   background:
-    linear-gradient(160deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02) 30%, rgba(255,255,255,0) 56%) padding-box,
-    linear-gradient(145deg, rgba(170, 238, 255, 0.82), rgba(255,255,255,0.36) 34%, rgba(123, 170, 255, 0.52) 72%, rgba(204, 150, 255, 0.42)) border-box;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.32),
-    inset 0 -1px 0 rgba(116, 156, 255, 0.24),
-    0 0 0 1px rgba(134, 194, 255, 0.12),
-    0 0 16px rgba(118, 203, 255, 0.22),
-    0 0 10px rgba(161, 127, 255, 0.12);
+    linear-gradient(180deg, rgba(202, 229, 255, 0.18), rgba(143, 174, 227, 0.08) 38%, rgba(45, 68, 112, 0.1) 100%),
+    radial-gradient(circle at 88% 12%, rgba(120, 185, 255, 0.12), rgba(120, 185, 255, 0) 26%);
+  overflow: hidden;
+  opacity: 0.92;
 }
 
-.glassReflection {
-  inset: 5% 40% 64% 6%;
-  border-radius: 999px 18px 18px 10px;
-  z-index: 1;
+.glassShellBorder {
+  inset: 0;
+  border: 1px solid rgba(226, 242, 255, 0.4);
   background:
-    linear-gradient(135deg, rgba(214, 247, 255, 0.72), rgba(255,255,255,0.24) 44%, rgba(255,255,255,0) 100%);
-  clip-path: polygon(0 0, 100% 0, 62% 54%, 0 100%);
-  opacity: 0.9;
-  filter: blur(0.7px);
-  transform: rotate(-6deg);
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03) 28%, rgba(255,255,255,0) 56%) padding-box,
+    linear-gradient(145deg, rgba(244, 251, 255, 0.42), rgba(152, 214, 255, 0.24) 34%, rgba(112, 155, 236, 0.22) 70%, rgba(196, 147, 245, 0.2)) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.32),
+    inset 0 -1px 0 rgba(121, 169, 245, 0.22),
+    inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.glassShellBands {
+  inset: 12% 6% 18%;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0) 0%,
+      rgba(236, 246, 255, 0.12) 12%,
+      rgba(255,255,255,0.02) 18%,
+      rgba(255,255,255,0) 28%,
+      rgba(210, 232, 255, 0.09) 40%,
+      rgba(255,255,255,0.02) 47%,
+      rgba(255,255,255,0) 58%,
+      rgba(198, 224, 255, 0.06) 74%,
+      rgba(255,255,255,0) 100%);
+  opacity: 0.48;
+}
+
+.glassShellTopShine {
+  inset: 3% 28% 64% 8%;
+  border-radius: 999px 20px 18px 10px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.72), rgba(215, 239, 255, 0.26) 48%, rgba(255,255,255,0) 100%);
+  clip-path: polygon(0 0, 100% 0, 68% 58%, 0 100%);
+  opacity: 0.92;
+  filter: blur(0.6px);
+}
+
+.glassShellBlobPink {
+  inset: 4% 46% 54% 10%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 42%, rgba(255, 194, 221, 0.34), rgba(255, 194, 221, 0.16) 42%, rgba(255, 194, 221, 0) 72%);
+  opacity: 0.54;
+  filter: blur(2px);
+  transform: rotate(-12deg);
+}
+
+.glassShellBlobCyan {
+  inset: 62% 10% 10% 34%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 52% 48%, rgba(111, 222, 255, 0.3), rgba(111, 222, 255, 0.16) 46%, rgba(111, 222, 255, 0) 74%);
+  opacity: 0.62;
+  filter: blur(3px);
+}
+
+.glassShellBottomCurve {
+  inset: auto 10% 7% 10%;
+  height: 19%;
+  border-radius: 999px 999px 24px 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.08) 36%, rgba(110, 198, 255, 0.2) 100%);
+  opacity: 0.64;
+  clip-path: ellipse(48% 78% at 50% 100%);
+  filter: blur(0.4px);
 }
 
 .nameOverlay {
   position: absolute;
-  bottom: 5px;
-  right: 6px;
-  left: 6px;
-  font-size: 10px;
+  bottom: var(--avatar-name-bottom);
+  right: var(--avatar-name-right);
+  left: var(--avatar-name-left);
+  font-size: var(--avatar-name-font-size);
   color: #ffffff;
   opacity: 0.95;
   text-align: right;
@@ -131,7 +200,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 10px;
+  border-radius: inherit;
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -274,18 +343,7 @@
   gap: 3px;
 }
 
-.compact .avatarWrap {
-  border-radius: 7px;
-}
-
-.compact .nameOverlay {
-  font-size: 8px;
-  bottom: 3px;
-  right: 4px;
-  left: 4px;
-}
-
-.compact .statusBadge {
+.compactTile .statusBadge {
   font-size: 9px;
   padding: 1px 2px;
 }

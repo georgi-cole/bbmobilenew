@@ -150,6 +150,7 @@ export default function HouseguestGrid({
             <AvatarTile
               name={hg.name}
               avatarUrl={hg.avatarUrl}
+              compact={compact}
               isEvicted={hg.isEvicted}
               isYou={hg.isYou}
               onClick={hg.onClick}
