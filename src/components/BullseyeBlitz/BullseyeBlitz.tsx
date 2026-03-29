@@ -133,13 +133,13 @@ function buildNextRoundPreview(roundNumber: number): string[] {
   const preview: string[] = [];
 
   if (nextConfig.spawnIntervalMs < currentConfig.spawnIntervalMs) {
-    preview.push(`Targets spawn ${currentConfig.spawnIntervalMs - nextConfig.spawnIntervalMs}ms faster.`);
+    preview.push('Targets will pop up quicker.');
   }
   if (nextConfig.targetWeights.hazard > currentConfig.targetWeights.hazard) {
-    preview.push(`Hazards rise to ${Math.round(nextConfig.targetWeights.hazard * 100)}% of spawns.`);
+    preview.push('More bombs will crash the party.');
   }
   if (nextConfig.hazardPenalty < currentConfig.hazardPenalty) {
-    preview.push(`Bomb taps drop to ${nextConfig.hazardPenalty} pts.`);
+    preview.push('Bomb mistakes will sting more.');
   }
 
   return preview;
@@ -1111,17 +1111,17 @@ export default function BullseyeBlitz({
             {!roundOutcome.isFinal && (
               <div className="bbl__round-feedback" aria-label="Round recap">
                 <p className="bbl__spectator-copy">
-                  Advancing: {formatNameList(advancingEntries)}.
+                  Still in it: {formatNameList(advancingEntries)}.
                 </p>
                 {roundOutcome.eliminatedEntries.length > 0 && (
                   <p className="bbl__spectator-copy">
-                    Eliminated: {formatNameList(roundOutcome.eliminatedEntries)}.
+                    Out this round: {formatNameList(roundOutcome.eliminatedEntries)}.
                   </p>
                 )}
                 {nextRoundConfig && (
                   <div className="bbl__next-round-preview">
                     <p className="bbl__spectator-copy">
-                      Next round: {nextRoundConfig.difficultyLabel}
+                      Up next: {nextRoundConfig.difficultyLabel}
                     </p>
                     {nextRoundPreview.length > 0 && (
                       <ul className="bbl__preview-list">
@@ -1136,7 +1136,7 @@ export default function BullseyeBlitz({
             )}
             {humanWasEliminated && !isSpectatorMode && (
               <p className="bbl__spectator-copy">
-                You&apos;ve been eliminated. Skip ahead or keep watching the rest of the bracket in spectator mode.
+                You&apos;re out of this round. Skip to the ending or keep watching the chaos unfold.
               </p>
             )}
             {isSpectatorMode && !roundOutcome.isFinal && (

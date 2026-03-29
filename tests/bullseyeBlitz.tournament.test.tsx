@@ -137,8 +137,8 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(screen.queryByText(/Player 1/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Finn/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Mimi/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Bomb mistakes will sting more\./i)).toBeInTheDocument();
     const finnEntry = screen.getAllByText(/Finn/i)[0]?.closest('li');
     expect(finnEntry?.textContent).toMatch(/[1-9]\d* pts/);
     expect(onFinish).not.toHaveBeenCalled();
@@ -233,11 +233,11 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
-      screen.getByText((_content, node) => node?.textContent?.trim() === 'Advancing: Player 1, Player 2, Player 0 (You), Player 3, Player 4, and Player 5.'),
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Still in it: Player 1, Player 2, Player 0 (You), Player 3, Player 4, and Player 5.'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Eliminated: Player 6\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Out this round: Player 6\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Up next: Things speed up — and the bombs get cheekier\./i)).toBeInTheDocument();
+    expect(screen.getByText(/More bombs will crash the party\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
     await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i));
