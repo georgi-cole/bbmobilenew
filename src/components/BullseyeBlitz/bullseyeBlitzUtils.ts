@@ -1,5 +1,6 @@
 import type { Player } from '../../types';
 import { mulberry32 } from '../../store/rng';
+import { resolveAvatar } from '../../utils/avatar';
 
 export type TargetKind = 'standard' | 'bonus' | 'hazard';
 
@@ -151,14 +152,24 @@ export function getBullseyeRoundConfig(roundNumber: number): BullseyeRoundConfig
   };
 }
 
-export function getBullseyeEliminationCount(activeCount: number): number {
-  if (activeCount <= 1) return 0;
-  return Math.min(activeCount - 1, Math.ceil(activeCount / 2));
+export function getBullseyeEliminationCount(
+  activeCount: number,
+  roundNumber: number,
+  totalRounds: number = BULLSEYE_CHALLENGE_ROUNDS,
+): number {
+  if (activeCount <= 2) return 0;
+
+  const remainingEliminationRounds = Math.max(1, totalRounds - roundNumber);
+  const minimumCut = Math.max(1, Math.floor(activeCount * 0.2));
+  const paceCut = Math.floor((activeCount - 2) / remainingEliminationRounds);
+
+  return Math.min(activeCount - 2, Math.max(minimumCut, paceCut));
 }
 
 export interface ScoreEntry {
   id: string;
   name: string;
+  avatar: string;
   score: number;
   hits: { standard: number; bonus: number; hazard: number };
   isHuman: boolean;
@@ -187,6 +198,7 @@ export function buildRankedLeaderboard(
     return {
       id,
       name: p?.name ?? id,
+      avatar: p ? resolveAvatar(p) : '🧑',
       score: scores[id] ?? 0,
       hits: isHuman && humanHits
         ? humanHits

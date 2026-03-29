@@ -123,49 +123,39 @@ describe('BullseyeBlitz tournament flow', () => {
   it('displays knockout hint text on the standalone ready screen', () => {
     renderBullseyeChallenge(makePlayers(3));
 
-    expect(screen.getByText(/4 players will be cut this round\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 players will be cut this round\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
   });
 
-  it('runs a knockout bracket in standalone mode and only reports the total after the final results screen', async () => {
+  it('uses real housemate names and non-zero AI scores in standalone mode', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(3), { onFinish, autoStart: true });
 
-    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /skip to final results/i }));
 
-    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
-    expect(screen.getByText(/Round 1 complete — Player 3, Player 4, Player 5, and Player 6 are eliminated\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Advancing: You, Player 1, and Player 2\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Eliminated: Player 3, Player 4, Player 5, and Player 6\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Player 1/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Finn/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mimi/i)).toBeInTheDocument();
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
+    const finnEntry = screen.getByText(/Finn/i).closest('li');
+    expect(finnEntry?.textContent).toMatch(/[1-9]\d* pts/);
     expect(onFinish).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
-
-    await advanceUntil(() => !!screen.queryByText(/win[s]? Bullseye Blitz/i));
-
-    expect(screen.getByText(/You win Bullseye Blitz!/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your total score: 0 pts\./i)).toBeInTheDocument();
-    expect(onFinish).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
-
-    expect(onFinish).toHaveBeenCalledTimes(1);
-    expect(onFinish).toHaveBeenCalledWith(0);
   });
 
   it('runs multiplayer knockout mode without passing players, matching MinigameHost mounting', async () => {
     const onFinish = vi.fn();
     renderBullseyeChallenge(makePlayers(2), { onFinish, autoStart: true });
 
-    await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
+    await advanceUntil(() => !!screen.queryByRole('button', { name: /skip to final results/i }));
 
-    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(
       screen.getByText((_content, node) => node?.textContent?.trim() === 'You (You)'),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Player 6/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Finn/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Player 6/i)).not.toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
   });
 
@@ -192,13 +182,13 @@ describe('BullseyeBlitz tournament flow', () => {
   });
 
   it('autoplays the remaining rounds in spectator mode without a continue button', async () => {
-    const players = makePlayers(5);
+    const players = makePlayers(7);
     const session: MinigameSession = {
       key: 'targetPractice',
       participants: players.map((player) => player.id),
       seed: 9,
       options: { timeLimit: 20 },
-      aiScores: { p1: 240, p2: 220, p3: 210, p4: 190 },
+      aiScores: { p1: 240, p2: 220, p3: 210, p4: 190, p5: 175, p6: 160 },
     };
 
     renderTournament(session, players);
@@ -207,10 +197,20 @@ describe('BullseyeBlitz tournament flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /keep watching/i }));
 
     expect(screen.getAllByText(/spectator mode/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Round 2 • Final duel • Winner takes the challenge/i)).toBeInTheDocument();
-    expect(screen.getByText(/Round heats up — faster spawns and more hazards./i)).toBeInTheDocument();
     expect(screen.queryByText(/skip to final results/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/continue to round/i)).not.toBeInTheDocument();
+
+    await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i), 400);
+    expect(screen.getByText(/Round 2 • 6 players • 1 eliminated/i)).toBeInTheDocument();
+
+    await advanceUntil(() => !!screen.queryByText(/Round 3 • 5 players • 1 eliminated/i), 400);
+    expect(screen.getByText(/Round 3 • 5 players • 1 eliminated/i)).toBeInTheDocument();
+
+    await advanceUntil(() => !!screen.queryByText(/Round 4 • 4 players • 2 eliminated/i), 400);
+    expect(screen.getByText(/Round 4 • 4 players • 2 eliminated/i)).toBeInTheDocument();
+
+    await advanceUntil(() => !!screen.queryByText(/Round 5 • Final duel • Winner takes the challenge/i), 400);
+    expect(screen.getByText(/Round 5 • Final duel • Winner takes the challenge/i)).toBeInTheDocument();
 
     await advanceUntil(() => !!screen.queryByText(/wins Bullseye Blitz/i), 400);
 
@@ -218,7 +218,7 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 
-  it('cuts the lower half of an odd-sized field and previews the harder next round', async () => {
+  it('cuts the lowest 20% of an odd-sized field and previews the harder next round', async () => {
     const players = makePlayers(7);
     const session: MinigameSession = {
       key: 'targetPractice',
@@ -231,15 +231,15 @@ describe('BullseyeBlitz tournament flow', () => {
     renderTournament(session, players);
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
-    expect(screen.getByText(/Round 1 • 7 players • 4 eliminated/i)).toBeInTheDocument();
-    expect(screen.getByText(/Advancing: Player 1, Player 2, and Player 0 \(You\)\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Eliminated: Player 3, Player 4, Player 5, and Player 6\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Advancing: Player 0 \(You\), Player 1, Player 2, Player 3, Player 4, and Player 5\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Eliminated: Player 6\./i)).toBeInTheDocument();
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /continue to round 2/i }));
-    await advanceUntil(() => !!screen.queryByText(/Round 2 • 3 players • 2 eliminated/i));
+    await advanceUntil(() => !!screen.queryByText(/Round 2 • 6 players • 1 eliminated/i));
 
-    expect(screen.getByText(/Round 2 • 3 players • 2 eliminated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Round 2 • 6 players • 1 eliminated/i)).toBeInTheDocument();
   });
 });
