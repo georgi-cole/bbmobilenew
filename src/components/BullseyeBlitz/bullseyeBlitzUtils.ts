@@ -269,7 +269,8 @@ function runBullseyeAiRound(
   const totalSpawns = Math.floor(durationMs / config.spawnIntervalMs);
 
   // Reaction-time penalty: slower players miss short-lived targets before they expire.
-  // Maximum penalty is 315 ms at skill 0; penalty approaches 0 ms at skill 1.
+  // At skill 0: reactionSpeed=0.30 → penalty = (1−0.30)×450 = 315 ms.
+  // At skill 1: reactionSpeed=0.90 → penalty = (1−0.90)×450 =  45 ms.
   const reactionPenaltyMs = (1 - reactionSpeed) * 450;
 
   const standardWindow = config.targetLifetimes.standard - reactionPenaltyMs;
