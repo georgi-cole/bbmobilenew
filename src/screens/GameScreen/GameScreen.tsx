@@ -668,7 +668,10 @@ export default function GameScreen() {
   }, [game.nomineeIds, publicOpinionProfiles])
 
   const publicSaveNominees = useMemo(
-    () => game.nomineeIds.map((id) => game.players.find((p) => p.id === id)).filter(Boolean) as Player[],
+    () =>
+      game.nomineeIds
+        .map((id) => game.players.find((p) => p.id === id))
+        .filter((p): p is Player => p != null),
     [game.nomineeIds, game.players],
   )
 
@@ -1432,18 +1435,18 @@ export default function GameScreen() {
   return (
     <LayoutGroup id="game-layout">
     <div className="game-screen game-screen-shell">
-      <TvZone
-        publicSaveReveal={
-          showPublicSaveReveal && publicSaveWinnerId
-            ? {
-                nominees: publicSaveNominees,
-                approvals: publicSaveApprovals,
-                savedId: publicSaveWinnerId,
-              }
-            : null
-        }
-        onPublicSaveDone={showPublicSaveReveal ? handlePublicSaveDone : undefined}
-      />
+      {showPublicSaveReveal && publicSaveWinnerId ? (
+        <TvZone
+          publicSaveReveal={{
+            nominees: publicSaveNominees,
+            approvals: publicSaveApprovals,
+            savedId: publicSaveWinnerId,
+          }}
+          onPublicSaveDone={handlePublicSaveDone}
+        />
+      ) : (
+        <TvZone />
+      )}
 
       {/* ── Outgoing HOH ineligibility warning ──────────────────────────── */}
       {showOutgoingHohWarning && (

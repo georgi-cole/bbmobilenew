@@ -149,6 +149,22 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
 
+type TvZonePublicSaveReveal = {
+  nominees: Player[];
+  approvals: Record<string, number>;
+  savedId: string;
+};
+
+type TvZoneProps =
+  | {
+      publicSaveReveal: TvZonePublicSaveReveal;
+      onPublicSaveDone: () => void;
+    }
+  | {
+      publicSaveReveal?: null | undefined;
+      onPublicSaveDone?: undefined;
+    };
+
 /**
  * TvZone — the central "TV-like" action zone.
  *
@@ -163,7 +179,7 @@ const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
  *
  * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
-export default function TvZone({ publicSaveReveal = null, onPublicSaveDone }: TvZoneProps) {
+export default function TvZone(props: TvZoneProps) {
   const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
@@ -496,12 +512,12 @@ export default function TvZone({ publicSaveReveal = null, onPublicSaveDone }: Tv
               />
             )}
 
-            {publicSaveReveal && onPublicSaveDone && (
+            {props.publicSaveReveal && (
               <PublicSaveReveal
-                nominees={publicSaveReveal.nominees}
-                approvals={publicSaveReveal.approvals}
-                savedId={publicSaveReveal.savedId}
-                onDone={onPublicSaveDone}
+                nominees={props.publicSaveReveal.nominees}
+                approvals={props.publicSaveReveal.approvals}
+                savedId={props.publicSaveReveal.savedId}
+                onDone={props.onPublicSaveDone}
               />
             )}
           </div>
@@ -536,12 +552,4 @@ export default function TvZone({ publicSaveReveal = null, onPublicSaveDone }: Tv
       />
     </section>
   );
-}
-interface TvZoneProps {
-  publicSaveReveal?: {
-    nominees: Player[];
-    approvals: Record<string, number>;
-    savedId: string;
-  } | null;
-  onPublicSaveDone?: () => void;
 }
