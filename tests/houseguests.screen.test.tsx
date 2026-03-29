@@ -286,7 +286,7 @@ describe('Houseguests screen', () => {
     ).toBeNull();
   });
 
-  it('dismisses hold-preview when finger moves beyond threshold after hold fires', () => {
+  it('keeps the hold-preview visible when the finger moves after hold fires, then dismisses on release', () => {
     vi.useFakeTimers();
 
     const store = makeStore();
@@ -311,8 +311,15 @@ describe('Houseguests screen', () => {
       }),
     ).toBeInTheDocument();
 
-    // Move finger beyond threshold: preview should close
+    // Move finger beyond threshold: preview should stay open until the finger lifts
     fireEvent.touchMove(tile, { touches: [{ clientX: 0, clientY: LONG_PRESS_MOVE_THRESHOLD_PX + 1 }] });
+    expect(
+      screen.getByRole('dialog', {
+        name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i'),
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.touchEnd(tile);
     expect(
       screen.queryByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i') }),
     ).toBeNull();

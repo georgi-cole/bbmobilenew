@@ -149,12 +149,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     const dx = touch.clientX - touchStartPosRef.current.x
     const dy = touch.clientY - touchStartPosRef.current.y
     if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD_PX) {
+      if (isHoldActiveRef.current) return
       clearLongPressTimeout()
       touchStartPosRef.current = null
-      if (isHoldActiveRef.current) {
-        isHoldActiveRef.current = false
-        if (onHoldPreviewEnd) onHoldPreviewEnd()
-      }
     }
   }
 
