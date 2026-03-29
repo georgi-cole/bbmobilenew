@@ -5,6 +5,8 @@ import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
 
 const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
+export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
+const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 
 type Props = {
   name: string
