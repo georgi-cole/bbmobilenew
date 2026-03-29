@@ -31,6 +31,8 @@ type DiaryTab = 'confess' | 'log' | 'weekly';
 
 /** Delivery status of a user-sent message. */
 type MessageStatus = 'sending' | 'delivered' | 'seen';
+type TicTacToeMark = 'X' | 'O';
+type TicTacToeCell = TicTacToeMark | null;
 
 /** A single message in the private chat. */
 interface ChatMessage {
@@ -72,6 +74,58 @@ const SUMMARY_POOL = [
   'The Confessional light is off — {name} just wrapped up a private session.',
   '{name} visited the Confessional. Whatever was said, it stays private.',
 ];
+
+const TIC_TAC_TOE_LINES: ReadonlyArray<readonly [number, number, number]> = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+];
+
+function createEmptyTicTacToeBoard(): TicTacToeCell[] {
+  return Array.from({ length: 9 }, () => null);
+}
+
+function getTicTacToeWinner(board: TicTacToeCell[]): TicTacToeMark | null {
+  for (const [a, b, c] of TIC_TAC_TOE_LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+
+  return null;
+}
+
+function findTicTacToeLineMove(board: TicTacToeCell[], mark: TicTacToeMark): number | null {
+  for (const [a, b, c] of TIC_TAC_TOE_LINES) {
+    const line = [board[a], board[b], board[c]];
+    const markCount = line.filter((cell) => cell === mark).length;
+    const emptyCount = line.filter((cell) => cell === null).length;
+
+    if (markCount === 2 && emptyCount === 1) {
+      if (board[a] === null) return a;
+      if (board[b] === null) return b;
+      return c;
+    }
+  }
+
+  return null;
+}
+
+function pickBigEyeTicTacToeMove(board: TicTacToeCell[]): number | null {
+  const winningMove = findTicTacToeLineMove(board, 'O');
+  if (winningMove !== null) return winningMove;
+
+  const blockingMove = findTicTacToeLineMove(board, 'X');
+  if (blockingMove !== null) return blockingMove;
+
+  const fallbackOrder = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+  return fallbackOrder.find((index) => board[index] === null) ?? null;
+}
 
 /** Select a summary message deterministically from the pool. */
 function pickSummary(name: string, seed: number): string {
@@ -242,6 +296,9 @@ export default function DiaryRoom() {
     () => loadConversationState(playerId),
   );
   const { active: ticTacToeActive, launchTicTacToe, dismissTicTacToe } = useConfessionalTicTacToeTrigger();
+  const [ticTacToeBoard, setTicTacToeBoard] = useState<TicTacToeCell[]>(() => createEmptyTicTacToeBoard());
+  const [ticTacToeNextTurn, setTicTacToeNextTurn] = useState<TicTacToeMark>('X');
+  const [ticTacToeThinking, setTicTacToeThinking] = useState(false);
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
@@ -266,6 +323,36 @@ export default function DiaryRoom() {
       logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, activeTab]);
+
+  const ticTacToeWinner = getTicTacToeWinner(ticTacToeBoard);
+  const ticTacToeDraw = !ticTacToeWinner && ticTacToeBoard.every((cell) => cell !== null);
+
+  useEffect(() => {
+    if (!ticTacToeActive || ticTacToeNextTurn !== 'O' || ticTacToeWinner || ticTacToeDraw) {
+      setTicTacToeThinking(false);
+      return;
+    }
+
+    setTicTacToeThinking(true);
+
+    const timeoutId = window.setTimeout(() => {
+      setTicTacToeBoard((prev) => {
+        const move = pickBigEyeTicTacToeMove(prev);
+        if (move === null) return prev;
+
+        const nextBoard = [...prev];
+        nextBoard[move] = 'O';
+        return nextBoard;
+      });
+      setTicTacToeNextTurn('X');
+      setTicTacToeThinking(false);
+    }, 420);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      setTicTacToeThinking(false);
+    };
+  }, [ticTacToeActive, ticTacToeDraw, ticTacToeNextTurn, ticTacToeWinner]);
 
   // On unmount: emit a single generic summary to tvFeed if chat is non-empty.
   // Use loadChat() from sessionStorage rather than messagesRef so the check
@@ -365,6 +452,9 @@ export default function DiaryRoom() {
       });
 
       if (resp.action === 'launch_tic_tac_toe') {
+        setTicTacToeBoard(createEmptyTicTacToeBoard());
+        setTicTacToeNextTurn('X');
+        setTicTacToeThinking(false);
         launchTicTacToe();
       }
       if (resp.action === 'open_self_evict_modal') {
@@ -445,14 +535,82 @@ export default function DiaryRoom() {
             </p>
             {ticTacToeActive && (
               <div className="diary-room__mini-game-card" role="status" aria-live="polite">
-                <div>
-                  <strong>The Big Eye opened a game.</strong>
-                  <div>Tic Tac Toe would launch here. Keep your nerve.</div>
+                <div className="diary-room__mini-game-copy">
+                  <div className="diary-room__mini-game-header">
+                    <div>
+                      <strong>The Big Eye opened a game.</strong>
+                      <div className="diary-room__mini-game-subtitle">Tic Tac Toe is awake. Keep your nerve.</div>
+                    </div>
+                    <div className="diary-room__mini-game-status" aria-label="Tic tac toe status">
+                      {ticTacToeWinner === 'X'
+                        ? 'You win.'
+                        : ticTacToeWinner === 'O'
+                          ? 'The Big Eye wins.'
+                          : ticTacToeDraw
+                            ? "It's a draw."
+                            : ticTacToeThinking
+                              ? 'The Big Eye is thinking…'
+                              : 'Your turn.'}
+                    </div>
+                  </div>
+                  <div className="diary-room__tic-tac-toe-board" role="group" aria-label="Tic Tac Toe board">
+                    {ticTacToeBoard.map((cell, index) => (
+                      <button
+                        key={index}
+                        className={`diary-room__tic-tac-toe-cell${cell ? ' diary-room__tic-tac-toe-cell--filled' : ''}`}
+                        type="button"
+                        aria-label={`Tic tac toe square ${index + 1}${cell ? `, ${cell}` : ''}`}
+                        disabled={
+                          cell !== null ||
+                          ticTacToeNextTurn !== 'X' ||
+                          ticTacToeThinking ||
+                          ticTacToeWinner !== null ||
+                          ticTacToeDraw
+                        }
+                        onClick={() => {
+                          if (
+                            ticTacToeBoard[index] !== null ||
+                            ticTacToeNextTurn !== 'X' ||
+                            ticTacToeThinking ||
+                            ticTacToeWinner ||
+                            ticTacToeDraw
+                          ) {
+                            return;
+                          }
+
+                          const nextBoard = [...ticTacToeBoard];
+                          nextBoard[index] = 'X';
+                          setTicTacToeBoard(nextBoard);
+                          setTicTacToeNextTurn('O');
+                        }}
+                      >
+                        {cell ?? ''}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="diary-room__mini-game-actions">
+                    <button
+                      className="diary-room__mini-game-btn"
+                      type="button"
+                      onClick={() => {
+                        setTicTacToeBoard(createEmptyTicTacToeBoard());
+                        setTicTacToeNextTurn('X');
+                        setTicTacToeThinking(false);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
                 <button
                   className="diary-room__mini-game-btn"
                   type="button"
-                  onClick={dismissTicTacToe}
+                  onClick={() => {
+                    setTicTacToeBoard(createEmptyTicTacToeBoard());
+                    setTicTacToeNextTurn('X');
+                    setTicTacToeThinking(false);
+                    dismissTicTacToe();
+                  }}
                 >
                   Close
                 </button>
