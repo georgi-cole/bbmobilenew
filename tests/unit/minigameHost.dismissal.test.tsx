@@ -417,7 +417,7 @@ describe('MinigameHost — Glass Bridge rules timing', () => {
       </Provider>,
     );
 
-    expect(screen.getByText('⏱ 32s')).toBeTruthy();
+    expect(screen.getByText('⏱ 32s')).toBeInTheDocument();
 
     rerender(
       <Provider store={makeStore()}>
@@ -429,7 +429,7 @@ describe('MinigameHost — Glass Bridge rules timing', () => {
         />
       </Provider>,
     );
-    expect(screen.getByText('⏱ 16s')).toBeTruthy();
+    expect(screen.getByText('⏱ 16s')).toBeInTheDocument();
 
     rerender(
       <Provider store={makeStore()}>
@@ -447,7 +447,7 @@ describe('MinigameHost — Glass Bridge rules timing', () => {
         />
       </Provider>,
     );
-    expect(screen.getByText('⏱ 2m 40s')).toBeTruthy();
+    expect(screen.getByText('⏱ 2m 40s')).toBeInTheDocument();
   });
 });
 
