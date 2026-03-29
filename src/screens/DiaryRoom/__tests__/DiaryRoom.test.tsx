@@ -73,7 +73,39 @@ describe('DiaryRoom', () => {
 
     await flushConversationTimers();
 
-    expect(screen.getByText(/tic tac toe would launch here/i)).toBeTruthy();
+    expect(screen.getByRole('group', { name: /tic tac toe board/i })).toBeTruthy();
+    expect(screen.getByLabelText(/tic tac toe status/i).textContent).toMatch(/your turn/i);
+    expect(screen.getByRole('button', { name: /reset/i })).toBeTruthy();
+  });
+
+  it('lets the player make a move and the big eye answers with a simple move', async () => {
+    renderDiaryRoom();
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: 'I am bored' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: 'yeah' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    fireEvent.click(screen.getByRole('button', { name: /tic tac toe square 1/i }));
+
+    expect(screen.getByRole('button', { name: /tic tac toe square 1, x/i })).toBeTruthy();
+    expect(screen.getByLabelText(/tic tac toe status/i).textContent).toMatch(/thinking/i);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(420);
+    });
+
+    expect(screen.getByRole('button', { name: /tic tac toe square 5, o/i })).toBeTruthy();
+    expect(screen.getByLabelText(/tic tac toe status/i).textContent).toMatch(/your turn/i);
   });
 
   it('opens the self-evict modal after a clear confirmation', async () => {
