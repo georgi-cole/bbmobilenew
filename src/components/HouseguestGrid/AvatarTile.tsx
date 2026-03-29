@@ -8,6 +8,13 @@ const assetBasePath = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
 const LONG_PRESS_CLICK_SUPPRESSION_MS = 700
 
+/** How long (ms) a finger must be held before it is treated as a long-press. */
+export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
+/** How long (ms) after a long-press fires to suppress the subsequent click event. */
+export const LONG_PRESS_CLICK_SUPPRESSION_MS = 600
+/** Pixel-distance threshold: if the finger moves more than this the long-press is cancelled. */
+export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
+
 type Props = {
   name: string
   avatarUrl?: string
@@ -53,6 +60,7 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
   const exhaustedRef = React.useRef(false)
   const longPressTimeoutRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const suppressClickUntilRef = React.useRef(0)
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
 
   React.useEffect(() => {
     attemptRef.current = 0
@@ -113,19 +121,34 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
     onClick()
   }
 
-  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!onClick || e.pointerType !== 'touch') return
+  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    if (!onClick) return
     clearLongPressTimeout()
+    const touch = e.touches[0]
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY }
     const timeoutId = window.setTimeout(() => {
       if (longPressTimeoutRef.current !== timeoutId) return
       longPressTimeoutRef.current = null
+      touchStartPosRef.current = null
       triggerPressAction()
     }, AVATAR_TILE_LONG_PRESS_DELAY_MS)
     longPressTimeoutRef.current = timeoutId
   }
 
-  function handlePointerEnd() {
+  function handleTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (!touchStartPosRef.current) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartPosRef.current.x
+    const dy = touch.clientY - touchStartPosRef.current.y
+    if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD_PX) {
+      clearLongPressTimeout()
+      touchStartPosRef.current = null
+    }
+  }
+
+  function handleTouchEnd() {
     clearLongPressTimeout()
+    touchStartPosRef.current = null
   }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -153,10 +176,10 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
       tabIndex={onClick ? 0 : undefined}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerEnd}
-      onPointerCancel={handlePointerEnd}
-      onPointerLeave={handlePointerEnd}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onKeyDown={
         onClick
           ? (e) => {

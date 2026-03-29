@@ -6,7 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import Houseguests from '../src/screens/Houseguests/Houseguests';
-import { AVATAR_TILE_LONG_PRESS_DELAY_MS } from '../src/components/HouseguestGrid/AvatarTile';
+import { AVATAR_TILE_LONG_PRESS_DELAY_MS, LONG_PRESS_MOVE_THRESHOLD_PX } from '../src/components/HouseguestGrid/AvatarTile';
 import { enrichPlayer } from '../src/utils/houseguestLookup';
 
 function makeStore() {
@@ -91,8 +91,8 @@ describe('Houseguests screen', () => {
 
     const tile = screen.getByRole('button', { name: new RegExp(player.name, 'i') });
 
-    fireEvent.pointerDown(tile, { pointerType: 'touch' });
-    fireEvent.pointerUp(tile, { pointerType: 'touch' });
+    fireEvent.touchStart(tile, { touches: [{ clientX: 0, clientY: 0 }] });
+    fireEvent.touchEnd(tile);
     fireEvent.click(tile);
 
     expect(
@@ -125,7 +125,7 @@ describe('Houseguests screen', () => {
 
     const tile = screen.getByRole('button', { name: new RegExp(player.name, 'i') });
 
-    fireEvent.pointerDown(tile, { pointerType: 'touch' });
+    fireEvent.touchStart(tile, { touches: [{ clientX: 0, clientY: 0 }] });
     act(() => {
       vi.advanceTimersByTime(AVATAR_TILE_LONG_PRESS_DELAY_MS);
     });
@@ -157,5 +157,38 @@ describe('Houseguests screen', () => {
         name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i'),
       }),
     ).toBeInTheDocument();
+  });
+
+  it('does not open the dialog when the finger moves beyond the threshold before long-press fires', () => {
+    vi.useFakeTimers();
+
+    const store = makeStore();
+    const player = store.getState().game.players.find((candidate) => {
+      const enriched = enrichPlayer(candidate);
+      return enriched.age !== undefined && Boolean(enriched.profession);
+    });
+    if (!player) {
+      throw new Error('Expected at least one player with profile metadata');
+    }
+    const enrichedPlayer = enrichPlayer(player);
+
+    render(
+      <Provider store={store}>
+        <Houseguests />
+      </Provider>,
+    );
+
+    const tile = screen.getByRole('button', { name: new RegExp(player.name, 'i') });
+
+    // Start touch, then move significantly (scroll gesture) before the timer fires
+    fireEvent.touchStart(tile, { touches: [{ clientX: 0, clientY: 0 }] });
+    fireEvent.touchMove(tile, { touches: [{ clientX: 0, clientY: LONG_PRESS_MOVE_THRESHOLD_PX + 1 }] });
+    act(() => {
+      vi.advanceTimersByTime(AVATAR_TILE_LONG_PRESS_DELAY_MS);
+    });
+
+    expect(
+      screen.queryByRole('dialog', { name: new RegExp(`${enrichedPlayer.fullName ?? player.name} details`, 'i') }),
+    ).toBeNull();
   });
 });
