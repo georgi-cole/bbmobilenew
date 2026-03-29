@@ -28,6 +28,7 @@ import {
   isHybridScoredGame,
   resolveHybridAiScores,
 } from '../ai/competition/hybridScoreResolver';
+import { simulateSnakeAiScore } from '../ai/competition/snakeAiSimulator';
 import HOUSEGUESTS from '../data/houseguests';
 import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from './profilesSlice';
 import { loadSettings } from './settingsSlice';
@@ -3698,6 +3699,7 @@ export const startMinigame =
     if (!isHybrid || !hasHuman) {
       // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games
       const isQuickTap = opts.key === 'quickTap';
+      const isSnake = opts.key === 'snake';
       opts.participants.forEach((id, index) => {
         const p = state.players.find((pl) => pl.id === id);
         if (p && !p.isUser) {
@@ -3710,6 +3712,14 @@ export const startMinigame =
               participantIndex: index,
               profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
               timeLimitSeconds: opts.options.timeLimit,
+            });
+          } else if (isSnake) {
+            // Snake AI uses real headless play simulation — same board rules as
+            // the human game — rather than a generic statistical model.
+            aiScores[id] = simulateSnakeAiScore({
+              sessionSeed: opts.seed,
+              playerId: id,
+              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
             });
           } else {
             aiScores[id] = simulateAiPerformance({
