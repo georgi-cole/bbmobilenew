@@ -3454,7 +3454,7 @@ const gameSlice = createSlice({
                 .join(' and ');
               pushEvent(
                 state,
-                `It's a tie between ${tiedNames}! ${hohPlayer.name}, as HOH you must break the tie. 🗳️`,
+                `It's a tie between ${tiedNames}! ${hohPlayer.name}, as LOH you must break the tie. 🗳️`,
                 'game',
               );
             } else {
@@ -3856,7 +3856,7 @@ export const tryActivateDoubleEviction =
   };
 
 /**
- * Attempt to activate a special veto twist after the POV winner is determined.
+ * Attempt to activate a special safety twist after the POV winner is determined.
  *
  * Activation rules:
  *  - `settings.sim.enableTwists` must be true
@@ -3865,10 +3865,13 @@ export const tryActivateDoubleEviction =
  *  - at least 6 alive players (above final 5)
  *  - not a Double Eviction week
  *  - no other twist has already activated this week (`twistActivatedThisWeek`)
- *  - the season must not already have had a special veto activated
+ *  - the season must not already have had a special safety activated
  *
  * If eligible, rolls `settings.sim.specialSafetyChance` (0-100, default 25) and
- * picks a random veto type deterministically.
+ * picks a random safety type deterministically.
+ *
+ * Note: the thunk/function name and `specialVeto` state key remain legacy internal
+ * identifiers for compatibility, even though the user-facing terminology is Safety.
  *
  * Returns `true` if activated, `false` otherwise.
  */
