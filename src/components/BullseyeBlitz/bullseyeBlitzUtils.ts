@@ -281,7 +281,7 @@ function runBullseyeAiRound(
 
   // Reaction-time penalty determines how much of a target's visible lifetime
   // is consumed by the AI "noticing" it.  A larger multiplier means short-lived
-  // targets (bonus: 1 300 ms) are much harder to reach for slow AI.
+  // targets (bonus: 1300 ms) are much harder to reach for slow AI.
   //
   // At skill 0: reactionSpeed=0.30 → penalty = 0.70 × 1050 = 735 ms
   //   → bonus reachable fraction ≈ (1300−735)/1300 ≈ 0.43  (over half missed!)
