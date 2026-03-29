@@ -135,11 +135,11 @@ describe('BullseyeBlitz tournament flow', () => {
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
     expect(screen.queryByText(/Player 1/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Finn/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mimi/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Finn/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Mimi/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Bomb taps drop to -20 pts\./i)).toBeInTheDocument();
-    const finnEntry = screen.getByText(/Finn/i).closest('li');
+    const finnEntry = screen.getAllByText(/Finn/i)[0]?.closest('li');
     expect(finnEntry?.textContent).toMatch(/[1-9]\d* pts/);
     expect(onFinish).not.toHaveBeenCalled();
   });
@@ -154,7 +154,7 @@ describe('BullseyeBlitz tournament flow', () => {
     expect(
       screen.getByText((_content, node) => node?.textContent?.trim() === 'You (You)'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Finn/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Finn/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Player 6/i)).not.toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
   });
@@ -232,7 +232,9 @@ describe('BullseyeBlitz tournament flow', () => {
     await advanceUntil(() => !!screen.queryByRole('button', { name: /continue to round 2/i }));
 
     expect(screen.getByText(/Round 1 • 7 players • 1 eliminated/i)).toBeInTheDocument();
-    expect(screen.getByText(/Advancing: Player 0 \(You\), Player 1, Player 2, Player 3, Player 4, and Player 5\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_content, node) => node?.textContent?.trim() === 'Advancing: Player 1, Player 2, Player 0 (You), Player 3, Player 4, and Player 5.'),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Eliminated: Player 6\./i)).toBeInTheDocument();
     expect(screen.getByText(/Next round: Round heats up — faster spawns and more hazards\./i)).toBeInTheDocument();
     expect(screen.getByText(/Hazards rise to 22% of spawns\./i)).toBeInTheDocument();

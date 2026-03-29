@@ -362,6 +362,7 @@ function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Pla
     name: houseguest.name,
     avatar: '',
     status: 'active' as const,
+    isUser: false,
     competitionProfile: houseguest.competitionProfile,
   }));
 

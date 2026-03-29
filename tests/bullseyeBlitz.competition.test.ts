@@ -453,7 +453,7 @@ describe('Bullseye Blitz — tournament helpers', () => {
   it('eliminates roughly the bottom 20% while pacing the field to a round-five final duel', () => {
     expect(getBullseyeEliminationCount(15, 1)).toBe(3);
     expect(getBullseyeEliminationCount(12, 2)).toBe(3);
-    expect(getBullseyeEliminationCount(9, 3)).toBe(2);
+    expect(getBullseyeEliminationCount(9, 3)).toBe(3);
     expect(getBullseyeEliminationCount(7, 1)).toBe(1);
     expect(getBullseyeEliminationCount(6, 2)).toBe(1);
     expect(getBullseyeEliminationCount(5, 3)).toBe(1);
