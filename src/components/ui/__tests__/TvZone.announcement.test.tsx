@@ -148,6 +148,37 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByText('Public Save')).toBeTruthy();
   });
 
+  it('clears the previous viewport message while the public save reveal is active', () => {
+    const store = makeStore();
+    const nominees = [
+      makePlayer('p1', 'Blue'),
+      makePlayer('p2', 'Kian'),
+      makePlayer('p3', 'Georgi'),
+    ];
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-public-save',
+            text: "The final list of nominees today will be decided with the public's help.",
+          }),
+        ),
+      );
+    });
+
+    renderTvZone(store, {
+      publicSaveReveal: {
+        nominees,
+        approvals: { p1: 42, p2: 43, p3: 50 },
+        savedId: 'p3',
+      },
+      onPublicSaveDone: vi.fn(),
+    });
+
+    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+  });
+
   it('renders without a settings reducer by falling back to default audio settings', () => {
     const store = makeStore();
     renderTvZone(store);

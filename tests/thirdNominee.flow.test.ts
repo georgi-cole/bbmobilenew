@@ -351,6 +351,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pre_veto_public_save');
     expect(state.awaitingPublicSave).toBe(true);
+    expect(state.tvFeed[0]?.text).toBe("The final list of nominees today will be decided with the public's help.");
   });
 
   it('skips pre_veto_public_save in double eviction weeks (goes directly to pov_comp_announcement)', () => {
@@ -418,7 +419,7 @@ describe('pre_veto_public_save phase', () => {
       players,
     });
 
-    store.dispatch(commitPublicSave('p1'));
+    store.dispatch(commitPublicSave({ savedId: 'p1', supportPercent: 52 }));
     const state = store.getState().game;
 
     expect(state.phase).toBe('pov_comp_announcement');
@@ -430,8 +431,14 @@ describe('pre_veto_public_save phase', () => {
     expect(state.nomineeIds).toContain('p5');
     // Saved player reverts to active
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('active');
-    expect(state.tvFeed.some((event) => event.text.includes('has been saved by the public'))).toBe(true);
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
+    expect(state.tvFeed[0]?.text).toBe(
+      'Player 1 was saved with 52% of the public support. Player 2 and Player 5 will face the live eviction.',
+    );
+    expect(
+      state.tvFeed.some((event) =>
+        event.text.includes('It is time for the Power of Safety competition'),
+      ),
+    ).toBe(true);
   });
 
   it('commitPublicSave is a no-op when phase is not pre_veto_public_save', () => {

@@ -605,7 +605,12 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
   // ── Public-save twist: apply save reactions when commitPublicSave fires ───────
   if (actionType === 'game/commitPublicSave') {
-    const savedId = actionPayload as string | undefined;
+    const savedId =
+      typeof actionPayload === 'string'
+        ? actionPayload
+        : typeof actionPayload === 'object' && actionPayload !== null && 'savedId' in actionPayload
+          ? String(actionPayload.savedId)
+          : undefined;
     if (savedId) {
       const week = game.week ?? 1;
       const profiles = nextState.publicOpinion?.profiles ?? {};
