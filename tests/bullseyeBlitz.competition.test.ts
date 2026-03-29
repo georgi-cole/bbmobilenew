@@ -450,14 +450,16 @@ describe('Bullseye Blitz — pickTargetKind', () => {
 });
 
 describe('Bullseye Blitz — tournament helpers', () => {
-  it('eliminates the lower half each round until only one player can remain', () => {
-    expect(getBullseyeEliminationCount(15)).toBe(8);
-    expect(getBullseyeEliminationCount(8)).toBe(4);
-    expect(getBullseyeEliminationCount(7)).toBe(4);
-    expect(getBullseyeEliminationCount(5)).toBe(3);
-    expect(getBullseyeEliminationCount(3)).toBe(2);
-    expect(getBullseyeEliminationCount(2)).toBe(1);
-    expect(getBullseyeEliminationCount(1)).toBe(0);
+  it('eliminates roughly the bottom 20% while pacing the field to a round-five final duel', () => {
+    expect(getBullseyeEliminationCount(15, 1)).toBe(3);
+    expect(getBullseyeEliminationCount(12, 2)).toBe(3);
+    expect(getBullseyeEliminationCount(9, 3)).toBe(3);
+    expect(getBullseyeEliminationCount(7, 1)).toBe(1);
+    expect(getBullseyeEliminationCount(6, 2)).toBe(1);
+    expect(getBullseyeEliminationCount(5, 3)).toBe(1);
+    expect(getBullseyeEliminationCount(4, 4)).toBe(2);
+    expect(getBullseyeEliminationCount(2, 5)).toBe(0);
+    expect(getBullseyeEliminationCount(1, 5)).toBe(0);
   });
 
   it('later rounds are harder than earlier rounds', () => {

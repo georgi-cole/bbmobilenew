@@ -28,6 +28,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import {
+  BULLSEYE_CHALLENGE_ROUNDS,
   TARGET_CONFIGS,
   buildRankedLeaderboard,
   getBullseyeEliminationCount,
@@ -41,6 +42,7 @@ import type {
   TargetKind,
 } from './bullseyeBlitzUtils';
 import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
+import { findByName, getAll as getAllHouseguests, getById } from '../../data/houseguests';
 import './BullseyeBlitz.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -57,7 +59,6 @@ const SPECTATOR_RESULTS_DELAY_MS = 2400;
 const READY_TICK_MS = 1000;
 const READY_GO_MS = 200;
 const CHALLENGE_PARTICIPANT_COUNT = 7;
-const CHALLENGE_AI_BASELINE_SCORE = -100;
 
 // ── Internal target state ─────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ interface RoundOutcome {
   roundNumber: number;
   activeParticipantIds: string[];
   rankedScores: ScoreEntry[];
+  cumulativeScores: Record<string, number>;
   advancingIds: string[];
   eliminatedIds: string[];
   eliminatedEntries: ScoreEntry[];
@@ -143,18 +145,26 @@ function buildNextRoundPreview(roundNumber: number): string[] {
   return preview;
 }
 
-function buildFinalStandings(finalists: ScoreEntry[], eliminationHistory: ScoreEntry[][]): ScoreEntry[] {
-  const seen = new Set<string>();
-  return [...finalists, ...[...eliminationHistory].reverse().flat()].filter((entry) => {
-    if (seen.has(entry.id)) return false;
-    seen.add(entry.id);
-    return true;
-  });
+function buildFinalStandings(params: {
+  allParticipantIds: string[];
+  cumulativeScores: Record<string, number>;
+  humanId?: string;
+  players: Player[];
+}): ScoreEntry[] {
+  const {
+    allParticipantIds,
+    cumulativeScores,
+    humanId,
+    players,
+  } = params;
+
+  return buildRankedLeaderboard(allParticipantIds, cumulativeScores, humanId, players);
 }
 
 function buildRoundOutcome(params: {
   activeParticipantIds: string[];
   aiScores: Record<string, number>;
+  cumulativeScores: Record<string, number>;
   humanId?: string;
   humanScore?: number;
   humanHits?: { standard: number; bonus: number; hazard: number };
@@ -165,6 +175,7 @@ function buildRoundOutcome(params: {
   const {
     activeParticipantIds,
     aiScores,
+    cumulativeScores,
     humanId,
     humanScore,
     humanHits,
@@ -182,9 +193,14 @@ function buildRoundOutcome(params: {
     roundScores[id] = simulateBullseyeAiRoundScore(aiScores[id] ?? 0, roundNumber, seed, id);
   });
 
+  const updatedCumulativeScores = { ...cumulativeScores };
+  activeParticipantIds.forEach((id) => {
+    updatedCumulativeScores[id] = (updatedCumulativeScores[id] ?? 0) + (roundScores[id] ?? 0);
+  });
+
   const rankedScores = buildRankedLeaderboard(
     activeParticipantIds,
-    roundScores,
+    updatedCumulativeScores,
     humanId,
     players,
     humanHits,
@@ -195,6 +211,7 @@ function buildRoundOutcome(params: {
       roundNumber,
       activeParticipantIds,
       rankedScores,
+      cumulativeScores: updatedCumulativeScores,
       advancingIds: rankedScores.slice(0, 1).map((entry) => entry.id),
       eliminatedIds: [],
       eliminatedEntries: [],
@@ -202,58 +219,97 @@ function buildRoundOutcome(params: {
     };
   }
 
-  const eliminationCount = getBullseyeEliminationCount(activeParticipantIds.length);
+  const isFinal = activeParticipantIds.length <= FINAL_SHOWDOWN_THRESHOLD
+    || roundNumber === BULLSEYE_CHALLENGE_ROUNDS;
+  if (isFinal) {
+    return {
+      roundNumber,
+      activeParticipantIds,
+      rankedScores,
+      cumulativeScores: updatedCumulativeScores,
+      advancingIds: rankedScores.slice(0, 1).map((entry) => entry.id),
+      eliminatedIds: rankedScores.slice(1).map((entry) => entry.id),
+      eliminatedEntries: rankedScores.slice(1),
+      isFinal: true,
+    };
+  }
+
+  const eliminationCount = getBullseyeEliminationCount(activeParticipantIds.length, roundNumber);
   const survivingCount = rankedScores.length - eliminationCount;
-  const isFinal = survivingCount <= 1;
 
   return {
     roundNumber,
     activeParticipantIds,
     rankedScores,
+    cumulativeScores: updatedCumulativeScores,
     advancingIds: rankedScores.slice(0, survivingCount).map((entry) => entry.id),
     eliminatedIds: rankedScores.slice(survivingCount).map((entry) => entry.id),
     eliminatedEntries: rankedScores.slice(survivingCount),
-    isFinal,
+    isFinal: false,
   };
 }
 
 function simulateRemainingRounds(params: {
   activeParticipantIds: string[];
+  allParticipantIds: string[];
   aiScores: Record<string, number>;
+  cumulativeScores: Record<string, number>;
+  humanId?: string;
   players: Player[];
   roundNumber: number;
   seed: number;
-  eliminationHistory: ScoreEntry[][];
 }): { rounds: RoundOutcome[]; finalStandings: ScoreEntry[] } {
-  const { aiScores, players, seed } = params;
+  const {
+    aiScores,
+    allParticipantIds,
+    cumulativeScores,
+    humanId,
+    players,
+    seed,
+  } = params;
   let activeParticipantIds = [...params.activeParticipantIds];
   let roundNumber = params.roundNumber;
-  const eliminationHistory = [...params.eliminationHistory];
+  let runningScores = { ...cumulativeScores };
   const rounds: RoundOutcome[] = [];
 
   while (activeParticipantIds.length >= 2) {
     const outcome = buildRoundOutcome({
       activeParticipantIds,
       aiScores,
+      cumulativeScores: runningScores,
+      humanId,
       players,
       roundNumber,
       seed,
     });
     rounds.push(outcome);
+    runningScores = outcome.cumulativeScores;
 
     if (outcome.isFinal) {
       return {
         rounds,
-        finalStandings: buildFinalStandings(outcome.rankedScores, eliminationHistory),
+        finalStandings: buildFinalStandings({
+          allParticipantIds,
+          cumulativeScores: runningScores,
+          humanId,
+          players,
+        }),
       };
     }
 
-    eliminationHistory.push(outcome.eliminatedEntries);
     activeParticipantIds = outcome.advancingIds;
     roundNumber += 1;
   }
 
-  return { rounds, finalStandings: [] };
+  return {
+    rounds,
+    finalStandings: buildFinalStandings({
+      allParticipantIds,
+      cumulativeScores: runningScores,
+      humanId,
+      players,
+    }),
+  };
 }
 
 function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFinalRound: boolean): string {
@@ -264,7 +320,7 @@ function buildRoundBanner(config: BullseyeRoundConfig, activeCount: number, isFi
     return `Round ${config.roundNumber} • Final duel • Winner takes the challenge`;
   }
 
-  const eliminated = getBullseyeEliminationCount(activeCount);
+  const eliminated = getBullseyeEliminationCount(activeCount, config.roundNumber);
   return `Round ${config.roundNumber} • ${activeCount} players • ${eliminated} eliminated`;
 }
 
@@ -287,41 +343,94 @@ function getDisplayedRoundNumber(params: {
   return roundNumber;
 }
 
-function getReadyHintText(activeCount: number): string {
+function getReadyHintText(activeCount: number, roundNumber: number): string {
   if (activeCount <= FINAL_SHOWDOWN_THRESHOLD) {
     return 'Final showdown — the highest score wins it all.';
   }
-  return `${getBullseyeEliminationCount(activeCount)} players will be cut this round.`;
+  const eliminationCount = getBullseyeEliminationCount(activeCount, roundNumber);
+  return `${eliminationCount} ${eliminationCount === 1 ? 'player' : 'players'} will be cut this round.`;
 }
 
-function buildChallengePlayers(humanId: string): Player[] {
-  return [
-    { id: humanId, name: 'You', avatar: '🧑', status: 'active', isUser: true },
-    ...Array.from({ length: CHALLENGE_PARTICIPANT_COUNT - 1 }, (_, index) => ({
-      id: `challenge-ai-${index + 1}`,
-      name: `Player ${index + 1}`,
+/**
+ * Returns true when a player maps cleanly onto the canonical houseguest data.
+ * Standalone Bullseye uses this to decide whether it can trust the incoming
+ * roster or should backfill AI slots with named houseguest records instead of
+ * placeholder "Player X" entries.
+ */
+function isRecognizedHouseguestPlayer(player: Player): boolean {
+  return !!(getById(player.id) ?? findByName(player.name));
+}
+
+function renderEntryAvatar(entry: ScoreEntry) {
+  if (entry.avatar.includes('/')) {
+    return (
+      <img
+        className="bbl__entry-avatar"
+        src={entry.avatar}
+        alt=""
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return (
+    <span className="bbl__entry-avatar bbl__entry-avatar--emoji" aria-hidden="true">
+      {entry.avatar}
+    </span>
+  );
+}
+
+function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Player[] {
+  const sourcePlayers = availablePlayers.filter((player) => player.status !== 'evicted');
+  const resolvedSourcePlayers = sourcePlayers.filter(isRecognizedHouseguestPlayer);
+  const fallbackHouseguests = getAllHouseguests().map((houseguest) => ({
+    id: houseguest.id,
+    name: houseguest.name,
+    avatar: '',
+    status: 'active' as const,
+    isUser: false,
+    competitionProfile: houseguest.competitionProfile,
+  }));
+
+  const humanPlayer = sourcePlayers.find((player) => player.id === humanId)
+    ?? sourcePlayers.find((player) => !!player.isUser)
+    ?? {
+      id: humanId,
+      name: 'You',
       avatar: '🧑',
       status: 'active' as const,
-      isUser: false,
-    })),
-  ];
-}
+      isUser: true,
+    };
+  const humanDisplayName = isRecognizedHouseguestPlayer(humanPlayer) ? humanPlayer.name : 'You';
 
-function appendRoundEliminations(
-  eliminationHistory: ScoreEntry[][],
-  roundOutcome: RoundOutcome,
-): ScoreEntry[][] {
-  if (roundOutcome.isFinal || roundOutcome.eliminatedEntries.length === 0) {
-    return eliminationHistory;
-  }
-  const lastEliminationBatch = eliminationHistory[eliminationHistory.length - 1];
-  if (
-    lastEliminationBatch?.length === roundOutcome.eliminatedEntries.length
-    && lastEliminationBatch.every((entry, index) => entry.id === roundOutcome.eliminatedEntries[index]?.id)
-  ) {
-    return eliminationHistory;
-  }
-  return [...eliminationHistory, roundOutcome.eliminatedEntries];
+  const takenIds = new Set<string>([humanPlayer.id]);
+  const seenAiIds = new Set<string>(takenIds);
+  const aiPlayers = [...resolvedSourcePlayers, ...fallbackHouseguests]
+    .filter((player) => !player.isUser)
+    .filter((player) => {
+      if (seenAiIds.has(player.id)) return false;
+      seenAiIds.add(player.id);
+      return true;
+    })
+    .slice(0, CHALLENGE_PARTICIPANT_COUNT - 1)
+    .map((player) => {
+      takenIds.add(player.id);
+      return {
+        ...player,
+        status: 'active' as const,
+        isUser: false,
+      };
+    });
+
+  return [
+    {
+      ...humanPlayer,
+      name: humanDisplayName,
+      status: 'active',
+      isUser: true,
+    },
+    ...aiPlayers,
+  ];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -334,11 +443,12 @@ export default function BullseyeBlitz({
   autoStart = false,
 }: Props) {
   const dispatch = useAppDispatch();
-  const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
+  const storePlayers = useAppSelector((s) => s.game.players);
+  const humanId = storePlayers.find((player) => player.isUser)?.id;
   const challengeParticipantId = humanId ?? 'human';
   const challengePlayers = useMemo(
-    () => buildChallengePlayers(challengeParticipantId),
-    [challengeParticipantId],
+    () => buildChallengePlayers(challengeParticipantId, storePlayers),
+    [challengeParticipantId, storePlayers],
   );
   const effectivePlayers = session ? players : challengePlayers;
   const effectiveParticipantIds = session?.participants ?? challengePlayers.map((player) => player.id);
@@ -346,12 +456,22 @@ export default function BullseyeBlitz({
   const effectiveHumanId = session ? humanId : challengeParticipantId;
   const isKnockoutMode = effectiveParticipantIds.length > 1;
   const challengeAiScores = useMemo(
-    () => Object.fromEntries(
-      challengePlayers
+    () => resolveHybridAiScores({
+      gameKey: 'targetPractice',
+      humanScore: 0,
+      aiParticipants: challengePlayers
         .filter((player) => !player.isUser)
-        .map((player) => [player.id, CHALLENGE_AI_BASELINE_SCORE]),
-    ),
-    [challengePlayers],
+        .map((player) => ({
+          id: player.id,
+          profile: player.competitionProfile,
+        })),
+      seed: effectiveSeed,
+    }),
+    [challengePlayers, effectiveSeed],
+  );
+  const initialCumulativeScores = useMemo(
+    () => Object.fromEntries(effectiveParticipantIds.map((id) => [id, 0])),
+    [effectiveParticipantIds],
   );
   const [autoStartEnabled] = useState(autoStart);
   const initialRoundConfig = getBullseyeRoundConfig(1);
@@ -368,10 +488,10 @@ export default function BullseyeBlitz({
   const [targets, setTargets] = useState<ActiveTarget[]>([]);
   const [hits, setHits] = useState(EMPTY_HITS);
   const [popEffects, setPopEffects] = useState<{ id: number; emoji: string; x: number; y: number; kind: TargetKind }[]>([]);
+  const [cumulativeScores, setCumulativeScores] = useState<Record<string, number>>(initialCumulativeScores);
   const [rankedScores, setRankedScores] = useState<ScoreEntry[]>([]);
   const [roundOutcome, setRoundOutcome] = useState<RoundOutcome | null>(null);
   const [finalStandings, setFinalStandings] = useState<ScoreEntry[]>([]);
-  const [eliminationHistory, setEliminationHistory] = useState<ScoreEntry[][]>([]);
   const [spectatorPlan, setSpectatorPlan] = useState<SpectatorPlan | null>(null);
   const [isSpectatorMode, setIsSpectatorMode] = useState(false);
   const [tournamentScoreTotal, setTournamentScoreTotal] = useState(0);
@@ -456,11 +576,11 @@ export default function BullseyeBlitz({
     // HOH/LOH tournament path.
     // For hybrid sessions, resolve per-player AI base scores once (round 1 only),
     // using the cumulative total that will ultimately be dispatched to the store.
-    // `tournamentScoreTotal` at this point holds all previous rounds' scores;
+    // `cumulativeScores` at this point holds all previous rounds' totals;
     // adding `humanFinalScore` gives the same value that `handleDone` will pass
     // to `completeMinigame` as `humanScore`.
     if (session?.hybridResolveOnComplete && resolvedAiScoresRef.current === null) {
-      const finalTotal = tournamentScoreTotal + humanFinalScore;
+      const finalTotal = (cumulativeScores[effectiveHumanId ?? ''] ?? 0) + humanFinalScore;
       const aiParticipants = session.participants
         .filter((id) => id !== humanId)
         .map((id) => {
@@ -484,6 +604,7 @@ export default function BullseyeBlitz({
     const outcome = buildRoundOutcome({
       activeParticipantIds,
       aiScores: effectiveAiScores,
+      cumulativeScores,
       humanId: effectiveHumanId,
       humanScore: humanFinalScore,
       humanHits: humanFinalHits,
@@ -492,24 +613,30 @@ export default function BullseyeBlitz({
       seed: effectiveSeed,
     });
 
-    setTournamentScoreTotal((prev) => prev + humanFinalScore);
+    setCumulativeScores(outcome.cumulativeScores);
+    setTournamentScoreTotal(outcome.cumulativeScores[effectiveHumanId ?? ''] ?? 0);
     setRoundOutcome(outcome);
     setRankedScores(outcome.rankedScores);
 
     if (outcome.isFinal) {
-      setFinalStandings(buildFinalStandings(outcome.rankedScores, eliminationHistory));
+      setFinalStandings(buildFinalStandings({
+        allParticipantIds: effectiveParticipantIds,
+        cumulativeScores: outcome.cumulativeScores,
+        humanId: effectiveHumanId,
+        players: effectivePlayers,
+      }));
       setGamePhase('final_results');
       return;
     }
 
-    setEliminationHistory((prev) => [...prev, outcome.eliminatedEntries]);
     setGamePhase('round_results');
   }, [
     activeParticipantIds,
     challengeAiScores,
     clearPopTimeouts,
     clearRoundTimers,
-    eliminationHistory,
+    cumulativeScores,
+    effectiveParticipantIds,
     effectiveHumanId,
     effectivePlayers,
     effectiveSeed,
@@ -517,7 +644,6 @@ export default function BullseyeBlitz({
     players,
     roundNumber,
     session,
-    tournamentScoreTotal,
   ]);
 
   // ── Playing — game timer ───────────────────────────────────────────────────
@@ -673,25 +799,29 @@ export default function BullseyeBlitz({
     if (!roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
+      allParticipantIds: effectiveParticipantIds,
       aiScores: session ? resolvedAiScoresRef.current ?? session.aiScores : challengeAiScores,
+      cumulativeScores: roundOutcome.cumulativeScores,
+      humanId: effectiveHumanId,
       players: effectivePlayers,
       roundNumber: roundOutcome.roundNumber + 1,
       seed: effectiveSeed,
-      eliminationHistory: appendRoundEliminations(eliminationHistory, roundOutcome),
     });
     setFinalStandings(simulation.finalStandings);
     setGamePhase('final_results');
-  }, [challengeAiScores, effectivePlayers, effectiveSeed, eliminationHistory, roundOutcome, session]);
+  }, [challengeAiScores, effectiveHumanId, effectiveParticipantIds, effectivePlayers, effectiveSeed, roundOutcome, session]);
 
   const handleKeepWatching = useCallback(() => {
     if (!roundOutcome) return;
     const simulation = simulateRemainingRounds({
       activeParticipantIds: roundOutcome.advancingIds,
+      allParticipantIds: effectiveParticipantIds,
       aiScores: session ? resolvedAiScoresRef.current ?? session.aiScores : challengeAiScores,
+      cumulativeScores: roundOutcome.cumulativeScores,
+      humanId: effectiveHumanId,
       players: effectivePlayers,
       roundNumber: roundOutcome.roundNumber + 1,
       seed: effectiveSeed,
-      eliminationHistory: appendRoundEliminations(eliminationHistory, roundOutcome),
     });
 
     setIsSpectatorMode(true);
@@ -699,7 +829,7 @@ export default function BullseyeBlitz({
     setSpectatorPlan({ rounds: simulation.rounds, currentIndex: 0 });
     setActiveParticipantIds(roundOutcome.advancingIds);
     setGamePhase('spectating');
-  }, [challengeAiScores, effectivePlayers, effectiveSeed, eliminationHistory, roundOutcome, session]);
+  }, [challengeAiScores, effectiveHumanId, effectiveParticipantIds, effectivePlayers, effectiveSeed, roundOutcome, session]);
 
   const handleDone = useCallback(() => {
     if (!session) {
@@ -800,7 +930,7 @@ export default function BullseyeBlitz({
             <span className="bbl__countdown" aria-live="assertive">
               {countdown === 0 ? 'GO!' : countdown}
             </span>
-              <p className="bbl__hint">{getReadyHintText(activeCount)}</p>
+              <p className="bbl__hint">{getReadyHintText(activeCount, roundNumber)}</p>
           </div>
         )}
 
@@ -951,6 +1081,7 @@ export default function BullseyeBlitz({
                     <span className="bbl__rank">
                       {i < 3 ? MEDALS[i] : `${i + 1}.`}
                     </span>
+                    {renderEntryAvatar(entry)}
                     <span className="bbl__entry-name">
                       {entry.name}
                       {entry.isHuman && (
@@ -1066,6 +1197,7 @@ export default function BullseyeBlitz({
                   <span className="bbl__rank">
                     {i < 3 ? MEDALS[i] : `${i + 1}.`}
                   </span>
+                  {renderEntryAvatar(entry)}
                   <span className="bbl__entry-name">
                     {entry.name}
                     {entry.isHuman && (
