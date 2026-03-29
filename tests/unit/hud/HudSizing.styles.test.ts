@@ -20,12 +20,14 @@ describe('HUD sizing styles', () => {
       resolve(process.cwd(), 'src/screens/GameScreen/GameScreen.css'),
       'utf8',
     );
+    const navItemsRule = /\.game-bottom-nav__items\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?\}/;
+    const navGlyphRule = /\.game-bottom-nav__glyph\s*\{[\s\S]*?width:\s*22px;[\s\S]*?height:\s*22px;[\s\S]*?\}/;
 
     expect(dockCss).toContain('width: min(80vw, 340px);');
     expect(dockCss).toContain('bottom: calc(var(--nav-bar-height) + 8px + env(safe-area-inset-bottom, 0px));');
     expect(navCss).toContain('height: calc(var(--nav-bar-height, 62px) + env(safe-area-inset-bottom, 0px));');
-    expect(navCss).toContain('width: 22px;');
-    expect(navCss).toContain('height: 22px;');
+    expect(navCss).toMatch(navItemsRule);
+    expect(navCss).toMatch(navGlyphRule);
     expect(layoutNavCss).toContain('--nav-bar-height: 62px;');
     expect(gameScreenCss).toContain('gap: 10px;');
   });
