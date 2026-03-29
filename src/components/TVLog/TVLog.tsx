@@ -23,8 +23,8 @@ export interface TVLogProps {
   /**
    * Maximum number of rows visible before the list scrolls.
    * Exposed as the `--tv-log-max-vis` CSS variable on the root element.
-  * @default 3
-  */
+   * @default 3
+   */
   maxVisible?: number;
   /**
    * When enabled, small screens collapse the feed to a two-line viewport so the
