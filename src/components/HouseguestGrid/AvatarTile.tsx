@@ -219,6 +219,9 @@ export default function AvatarTile({ name, avatarUrl, isEvicted, isYou, onClick,
           opacity: isEvicting ? { duration: 0.1 } : { duration: 0.2, delay: 0.3 },
         } : undefined}
       >
+        <span className={styles.glassOutline} aria-hidden="true" />
+        <span className={styles.glassReflection} aria-hidden="true" />
+
         <div className={styles.nameOverlay} aria-hidden="true">
           {name}
         </div>
