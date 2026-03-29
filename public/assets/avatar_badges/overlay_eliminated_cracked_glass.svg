@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 460">
+  <defs>
+    <linearGradient id="edgeFade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.22)"/>
+      <stop offset="100%" stop-color="rgba(173,216,255,0.06)"/>
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.8" flood-color="#E7F5FF" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect x="9" y="9" width="342" height="442" rx="18" ry="18"
+        fill="none" stroke="url(#edgeFade)" stroke-width="2" opacity="0.45"/>
+  <rect x="14" y="14" width="332" height="432" rx="15" ry="15"
+        fill="rgba(18,24,38,0.08)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+  <g filter="url(#softGlow)" stroke="rgba(235,245,255,0.28)" stroke-width="1.5" stroke-linecap="round" fill="none">
+    <path d="M178 230 L163 176 L170 126 L146 88"/>
+    <path d="M178 230 L132 246 L95 252 L52 272"/>
+    <path d="M178 230 L214 252 L246 284 L286 318"/>
+    <path d="M178 230 L209 194 L254 172 L298 154"/>
+    <path d="M178 230 L178 290 L164 334 L151 389"/>
+    <path d="M178 230 L146 209 L110 197"/>
+    <path d="M178 230 L198 207 L231 194"/>
+    <path d="M170 126 L187 102 L193 79"/>
+    <path d="M132 246 L110 231 L84 226"/>
+    <path d="M214 252 L236 245 L257 248"/>
+    <path d="M164 334 L180 352 L185 383"/>
+    <path d="M209 194 L226 174 L230 148"/>
+    <path d="M246 284 L253 303 L269 316"/>
+    <path d="M95 252 L83 271 L72 293"/>
+  </g>
+
+  <g stroke="rgba(255,255,255,0.13)" stroke-width="0.8" stroke-linecap="round" fill="none">
+    <path d="M178 230 L150 221"/>
+    <path d="M178 230 L195 239"/>
+    <path d="M178 230 L171 257"/>
+    <path d="M178 230 L190 210"/>
+    <path d="M146 88 L126 64"/>
+    <path d="M298 154 L321 140"/>
+    <path d="M151 389 L145 414"/>
+  </g>
+
+  <g opacity="0.23">
+    <circle cx="146" cy="88" r="8" fill="rgba(255,255,255,0.13)"/>
+    <circle cx="178" cy="230" r="7" fill="rgba(255,255,255,0.16)"/>
+    <circle cx="298" cy="154" r="6" fill="rgba(255,255,255,0.10)"/>
+    <circle cx="151" cy="389" r="5" fill="rgba(255,255,255,0.08)"/>
+  </g>
+</svg>
