@@ -358,6 +358,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  majorityRules: {
+    key: 'majorityRules',
+    title: 'Majority Rules',
+    description:
+      'Pick the answer you think the crowd will choose. Fall into the minority and you are out.',
+    instructions: [
+      'Every round a social question appears with 3 answer options.',
+      'Everyone locks in an answer at the same time.',
+      'Players in the minority are eliminated.',
+      'If everyone picks the same answer, nobody leaves and the next round becomes double elimination.',
+      'If the minority is tied, everyone must re-vote and switch off their previous answer.',
+      'At the Final 2, the game becomes a dice duel.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'MajorityRules',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
+
   tiltedLedge: {
     key: 'tiltedLedge',
     title: 'The Tilted Ledge',
