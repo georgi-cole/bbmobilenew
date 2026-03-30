@@ -181,6 +181,29 @@ export function trapAuctionReducer(
     case 'CONTINUE_AFTER_ELIMINATION': {
       if (state.phase !== 'elimination') return state;
 
+      const alive = state.players.filter((p) => p.isAlive);
+
+      // Edge case: all remaining players tied for lowest bid and were all eliminated.
+      // Pick the player with the most remaining bank as a tiebreaker winner.
+      if (alive.length === 0) {
+        const lastEliminated = state.players
+          .filter((p) => state.lastEliminatedIds.includes(p.id))
+          .sort((a, b) => b.bank - a.bank);
+        const tiebreakerWinner = lastEliminated[0] ?? null;
+        if (tiebreakerWinner) {
+          const withWinner = state.players.map((p) =>
+            p.id === tiebreakerWinner.id ? { ...p, placement: 1, isAlive: true } : p,
+          );
+          return {
+            ...state,
+            players: withWinner,
+            winner: { ...tiebreakerWinner, placement: 1, isAlive: true },
+            phase: 'complete',
+          };
+        }
+        return { ...state, phase: 'complete' };
+      }
+
       const winner = getWinner(state.players);
       if (winner) {
         // Assign placement 1 to winner

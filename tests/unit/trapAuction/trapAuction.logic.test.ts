@@ -638,6 +638,40 @@ describe('trapAuctionReducer', () => {
       expect(complete.phase).toBe('complete');
       expect(complete.winner).not.toBeNull();
     });
+
+    it('handles complete-tie (all players eliminated simultaneously) gracefully', () => {
+      // 2 players both bid the same amount → both eliminated → game must still complete
+      const players = makePlayers(2, [
+        { bank: 50 },
+        { bank: 80 },
+      ]);
+      const playersWithBids = players.map((p) => ({ ...p, currentBid: 20 }));
+      const reveals = buildRoundReveals(playersWithBids);
+      const state: TrapAuctionState = {
+        phase: 'resolve',
+        round: 1,
+        players: playersWithBids,
+        roundReveals: reveals,
+        revealIndex: reveals.length,
+        lastEliminatedIds: [],
+        lastHighestBidderId: null,
+        winner: null,
+        humanEliminated: false,
+        spectating: false,
+        fastForward: false,
+        prizeType: 'HOH',
+        seed: 42,
+      };
+      const elimination = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+      // After ADVANCE_TO_ELIMINATION, both players are eliminated (tied for lowest)
+      expect(elimination.lastEliminatedIds).toHaveLength(2);
+
+      const complete = trapAuctionReducer(elimination, { type: 'CONTINUE_AFTER_ELIMINATION' });
+      // Game must resolve to complete, not get stuck in bid with 0 players
+      expect(complete.phase).toBe('complete');
+      // Tiebreaker winner selected (player with most bank remaining after bids)
+      expect(complete.winner).not.toBeNull();
+    });
   });
 
   describe('TOGGLE_FAST_FORWARD', () => {

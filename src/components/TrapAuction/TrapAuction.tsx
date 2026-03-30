@@ -485,34 +485,22 @@ export default function TrapAuction({
         </div>
 
         {/* Controls — only show when not auto-advancing */}
-        {!state.fastForward && !state.spectating && (
+        {!state.fastForward && !state.spectating && !allRevealed && (
           <div className="ta-reveal-controls">
-            {!allRevealed ? (
-              <>
-                <button
-                  className="ta-btn ta-btn--primary"
-                  onClick={() => dispatch({ type: 'ADVANCE_REVEAL' })}
-                  type="button"
-                >
-                  Flip Next Card
-                </button>
-                <button
-                  className="ta-btn ta-btn--ghost"
-                  onClick={() => dispatch({ type: 'REVEAL_ALL' })}
-                  type="button"
-                >
-                  Reveal All
-                </button>
-              </>
-            ) : (
-              <button
-                className="ta-btn ta-btn--primary"
-                onClick={() => dispatch({ type: 'ADVANCE_TO_ELIMINATION' })}
-                type="button"
-              >
-                See Results →
-              </button>
-            )}
+            <button
+              className="ta-btn ta-btn--primary"
+              onClick={() => dispatch({ type: 'ADVANCE_REVEAL' })}
+              type="button"
+            >
+              Flip Next Card
+            </button>
+            <button
+              className="ta-btn ta-btn--ghost"
+              onClick={() => dispatch({ type: 'REVEAL_ALL' })}
+              type="button"
+            >
+              Reveal All
+            </button>
           </div>
         )}
         {allRevealed && (state.fastForward || state.spectating) && (
