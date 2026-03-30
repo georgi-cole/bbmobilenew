@@ -1043,6 +1043,32 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     category: 'logic',
     retired: false,
   },
+
+  trapAuction: {
+    key: 'trapAuction',
+    title: 'Trap Auction',
+    description: 'Secretly bid Eyeolens every round — the lowest bidder is eliminated.',
+    instructions: [
+      'Every player starts with 100 Eyeolens.',
+      'Each round, secretly choose how much to bid.',
+      'After all bids lock, they are revealed one by one.',
+      'The player who bid the LOWEST is eliminated. Ties eliminate all tied players.',
+      'The player who bid the HIGHEST is exposed — their bid is public and they face a penalty next round.',
+      'All players pay their bid from their bank.',
+      'Last player standing wins!',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'TrapAuction',
+    legacy: false,
+    weight: 2,
+    category: 'logic',
+    retired: false,
+  },
 };
 
 // ─── Helper functions ─────────────────────────────────────────────────────────

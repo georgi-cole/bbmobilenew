@@ -41,6 +41,7 @@ import HouseOfCardsComp from '../HouseOfCardsComp/HouseOfCardsComp';
 import type { HouseOfCardsPrizeType } from '../../features/houseOfCards/houseOfCardsSlice';
 import MemoryColorsComp from '../MemoryColorsComp/MemoryColorsComp';
 import type { MemoryColorsCompetitionType } from '../../features/memoryColors/memoryColorsSlice';
+import TrapAuctionComp from '../TrapAuction/TrapAuction';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -423,6 +424,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as MemoryColorsCompetitionType ?? 'HOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'TrapAuction') {
+              return (
+                <TrapAuctionComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
