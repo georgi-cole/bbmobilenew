@@ -200,6 +200,10 @@ function PlayerRoster({
   compact?: boolean;
   badgeMode?: 'you' | 'turn';
   pulseId?: string | null;
+  /**
+   * Optional manual override used by call sites that want the rail placement
+   * even before the automatic crowded-roster fallback would kick in.
+   */
   variant?: 'cards' | 'rail';
 }) {
   const rows = getAvatarGridRows(ids, dense);
