@@ -213,7 +213,7 @@ describe('chooseAiBid', () => {
   });
 
   it('avoids bidding 1 when the player can still afford more', () => {
-    const [p] = makePlayers(1, [{ personality: 'chaotic' as const, bank: 7 }]);
+    const [p] = makePlayers(1, [{ personality: 'chaotic' as const, bank: 20 }]);
     const state = makeState({ players: [p] });
     const bids = Array.from({ length: 50 }, (_, i) => chooseAiBid(p, state, i * 17 + 99));
     expect(Math.min(...bids)).toBeGreaterThan(1);

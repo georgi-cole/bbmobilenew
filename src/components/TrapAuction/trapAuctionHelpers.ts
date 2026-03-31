@@ -200,7 +200,7 @@ export function chooseAiBid(
   }
 
   const clamped = Math.max(min, Math.min(max, raw));
-  const safeFloor = max > min ? min + 1 : min;
+  const safeFloor = max > TRAP_AUCTION_CONFIG.minBid ? min + 1 : min;
   return Math.max(safeFloor, clamped);
 }
 
