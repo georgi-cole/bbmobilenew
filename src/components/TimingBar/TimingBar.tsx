@@ -79,6 +79,21 @@ type GamePhase =
   | 'spectating'     // AI-only simulation advancing automatically
   | 'final_results'; // game over
 
+// ── AI profile type ────────────────────────────────────────────────────────────
+
+/** Competition skill profile shape used to drive AI behaviour. */
+type AiSkillProfile = {
+  precision: number;
+  nerve: number;
+  clutch: number;
+  chokeRisk: number;
+  consistency: number;
+  physical: number;
+  mental: number;
+  luck: number;
+  overall?: number;
+};
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -198,7 +213,7 @@ export default function TimingBar({
 
   /** AI skill profiles keyed by participant id. */
   const aiProfileMap = useMemo(() => {
-    const map: Record<string, ReturnType<typeof getMinigameAiModel>['weights'] & { precision: number; nerve: number; clutch: number; chokeRisk: number; consistency: number; physical: number; mental: number; luck: number; overall?: number }> = {};
+    const map: Record<string, AiSkillProfile> = {};
     effectivePlayers.forEach((p) => {
       if (!p.isUser && p.id !== effectiveHumanId) {
         map[p.id] = p.competitionProfile ?? {
@@ -737,9 +752,7 @@ export default function TimingBar({
             <p className="tbg__intro-hint">
               Stop the bar multiple times if you need to, but only{' '}
               <strong>lock once</strong> per round.
-              {softAttempts.length === 0 && currentPenalty === 0
-                ? ''
-                : ` Each extra stop costs −${NON_LOCKING_PENALTY_PP}%.`}
+              {currentPenalty > 0 && ` Each extra stop costs −${NON_LOCKING_PENALTY_PP}%.`}
             </p>
 
             <div className="tbg__action-area" style={{ width: '100%', paddingBottom: 0 }}>

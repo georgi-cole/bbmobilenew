@@ -15,6 +15,12 @@ import type { TimingSubmission } from './timingBarLogic';
 import { BAR_TRACK_WIDTH, TARGET_POSITION, getRoundDurationSeconds } from './timingBarLogic';
 import type { CompetitionSkillProfile } from '../../ai/competition/types';
 
+// ── Timeout probability constants ─────────────────────────────────────────────
+/** Probability that a nervous AI times out in a 5-second or shorter round. */
+const NERVOUS_SHORT_ROUND_TIMEOUT_CHANCE = 0.12;
+/** Baseline timeout probability for all other AI / round combinations. */
+const DEFAULT_TIMEOUT_CHANCE = 0.02;
+
 // ── Personality archetypes ─────────────────────────────────────────────────────
 
 export type AiPersonality =
@@ -187,7 +193,10 @@ export function simulateAiRoundSubmission(
   const timeRemainingMs = Math.round((1 - lockFraction) * durationSeconds * 1000);
 
   // Rare timeout: nervous AI in a very short round may not lock at all.
-  const timeoutChance = personality === 'nervous' && durationSeconds <= 5 ? 0.12 : 0.02;
+  const timeoutChance =
+    personality === 'nervous' && durationSeconds <= 5
+      ? NERVOUS_SHORT_ROUND_TIMEOUT_CHANCE
+      : DEFAULT_TIMEOUT_CHANCE;
   const timedOut = rng() < timeoutChance;
 
   if (timedOut) {
