@@ -63,18 +63,18 @@ describe('MajorityRulesComp', () => {
   });
 
   it('switches to a compact avatar rail when the roster is large', async () => {
-    const ids = ['user', ...Array.from({ length: 11 }, (_, idx) => `p${idx + 2}`)];
-    const players = ids.map((id, idx) => buildPlayer(id, idx === 0 ? 'You' : `Player ${idx + 1}`, idx === 0));
+    const ids = ['user', ...Array.from({ length: 11 }, (_, index) => `p${index + 2}`)];
+    const players = ids.map((id, index) => buildPlayer(id, index === 0 ? 'You' : `Player ${index + 1}`, index === 0));
     const store = makeStore(players);
 
     render(
       <Provider store={store}>
         <MajorityRulesComp
           participantIds={ids}
-          participants={ids.map((id, idx) => ({
+          participants={ids.map((id, index) => ({
             id,
-            name: idx === 0 ? 'USER' : `AI_${idx}`,
-            isHuman: idx === 0,
+            name: index === 0 ? 'USER' : `AI_${index}`,
+            isHuman: index === 0,
             precomputedScore: 0,
             previousPR: null,
           }))}

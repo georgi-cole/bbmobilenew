@@ -112,7 +112,7 @@ function getAvatarGridRows(ids: string[], dense = false): string[][] {
 }
 
 function shouldUseRosterRail(ids: string[]) {
-  return ids.length >= 10;
+  return ids.length >= 8;
 }
 
 function MajorityRulesPortrait({
