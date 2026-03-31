@@ -21,7 +21,6 @@ import {
   eliminatePlayers,
   getWinner,
   nextPlacementFor,
-  getAllowedBidRange,
 } from './trapAuctionHelpers';
 import { mulberry32 } from '../../store/rng';
 
@@ -281,7 +280,7 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
     const roundSeed = (mulberry32((s.seed ^ (s.round * 0x9e3779b9)) >>> 0)() * 0x100000000) >>> 0;
 
     // Use the same AI bid computation as in real rounds to preserve determinism
-    const withBids = computeAiBids(s.players, s.round, roundSeed);
+    const withBids = computeAiBids(s.players, { round: s.round, players: s.players }, roundSeed);
 
     const lowestIds = findLowestBidders(withBids);
     const highestId = findHighestBidder(withBids);

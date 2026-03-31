@@ -22,7 +22,7 @@
  * TODO: Wire in cinematic overlay components at the TODO_OVERLAY markers below.
  */
 
-import { useReducer, useEffect, useRef, useState, useMemo } from 'react';
+import { useReducer, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { trapAuctionReducer } from './trapAuctionReducer';
 import type { TrapAuctionState, TrapAuctionPlayer, TrapAuctionPrizeType } from './trapAuctionTypes';
@@ -144,7 +144,6 @@ export default function TrapAuction({
       buildInitialState(resolvedParticipants, seed, prizeType),
   );
   const [bidValue, setBidValue] = useState<number>(0);
-  const [personalityMapOpen, setPersonalityMapOpen] = useState(false);
   const [personalityMapOpen, setPersonalityMapOpen] = useState(false);
   const [showSpectatePrompt, setShowSpectatePrompt] = useState(false);
   const autoRevealRef = useRef<ReturnType<typeof setTimeout> | null>(null);
