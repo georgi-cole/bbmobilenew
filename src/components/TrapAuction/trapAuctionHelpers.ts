@@ -270,8 +270,8 @@ export function exposeHighestBidder(
         },
       };
     }
-    // Clear penalty if it was for a past round
-    if (cleared.penalty && cleared.penalty.penaltyRound < nextRound) {
+    // Clear penalty if it was for a past round (strictly earlier than the current round)
+    if (cleared.penalty && cleared.penalty.penaltyRound < nextRound - 1) {
       return { ...cleared, penalty: null };
     }
     return cleared;
