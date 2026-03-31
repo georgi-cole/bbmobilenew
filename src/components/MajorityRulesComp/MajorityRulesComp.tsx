@@ -20,7 +20,7 @@ import { resolveMajorityRulesOutcome } from '../../features/majorityRules/thunks
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import './MajorityRulesComp.css';
 
-const INTRO_DELAY_MS = 1200;
+const INTRO_DELAY_MS = 5000;
 const AI_LOCK_DELAY_MS = 950;
 const AI_DUEL_DELAY_MS = 1250;
 
@@ -190,6 +190,7 @@ function PlayerRoster({
   badgeMode = 'you',
   pulseId,
   variant,
+  wrap = false,
 }: {
   ids: string[];
   getPlayer: (id: string) => DisplayPlayer;
@@ -205,6 +206,7 @@ function PlayerRoster({
    * even before the automatic crowded-roster fallback would kick in.
    */
   variant?: 'cards' | 'rail';
+  wrap?: boolean;
 }) {
   const rows = getAvatarGridRows(ids, dense);
   const eliminatedSet = new Set(eliminatedIds);
@@ -213,7 +215,15 @@ function PlayerRoster({
 
   if (rosterVariant === 'rail') {
     return (
-      <div className="majority-rules-avatar-rail" data-testid="mr-avatar-rail">
+      <div
+        className={[
+          'majority-rules-avatar-rail',
+          wrap ? 'majority-rules-avatar-rail--wrapped' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        data-testid="mr-avatar-rail"
+      >
         {ids.map((id, idx) => {
           const player = getPlayer(id);
           const isSelected = selectedId === id;
@@ -954,6 +964,7 @@ export default function MajorityRulesComp({
               compact={true}
               dense={true}
               variant={shouldUseRosterRail(game.activeIds) ? 'rail' : 'cards'}
+              wrap={shouldUseRosterRail(game.activeIds)}
             />
           </motion.div>
         )}

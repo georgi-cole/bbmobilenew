@@ -2,6 +2,16 @@
   position: relative;
   width: min(100%, 760px);
   margin: 0 auto;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  display: grid;
+  align-content: start;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem 0.85rem 1.5rem;
 }
 
 .majority-rules-ambient {
@@ -223,6 +233,12 @@
   overflow-x: auto;
   padding: 0.1rem 0.05rem 0.35rem;
   scrollbar-width: thin;
+}
+
+.majority-rules-avatar-rail--wrapped {
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: visible;
 }
 
 .majority-rules-avatar-chip {
@@ -637,6 +653,7 @@ body.no-animations .majority-rules-avatar-chip--pulse .majority-rules-portrait {
 @media (max-width: 560px) {
   .majority-rules-shell {
     width: 100%;
+    padding: 0.85rem 0.7rem 1.35rem;
   }
 
   .majority-rules-card {
