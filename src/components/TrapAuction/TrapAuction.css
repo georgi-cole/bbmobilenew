@@ -107,7 +107,9 @@
 
 .ta-main {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -331,6 +333,10 @@
 .ta-player-card__bank {
   font-size: 10px;
   color: #e2c76b;
+}
+
+.ta-player-card__bank--hidden {
+  color: #666880;
 }
 
 .ta-player-card__penalty {
@@ -855,10 +861,12 @@
 .ta-complete-phase {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 20px;
   flex: 1;
   padding-top: 8px;
+  width: 100%;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
 }
 
 .ta-complete-winner {

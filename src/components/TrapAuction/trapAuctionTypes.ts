@@ -6,8 +6,7 @@
  * Game summary:
  *  - Active players secretly bid Eyeolens each round to buy safety.
  *  - The lowest bidder(s) are eliminated.
- *  - The highest bidder is exposed (name + amount revealed) and
- *    receives a next-round surcharge penalty (see TRAP_AUCTION_CONFIG.penaltyAmount).
+ *  - The highest bidder is exposed (name + amount revealed).
  *  - All players pay their bid from their bank each round.
  *  - Last alive player wins.
  */
@@ -19,13 +18,6 @@ export const TRAP_AUCTION_CONFIG = {
   startingBank: 100,
   /** Default maximum bid when unconstrained by bank. */
   baseMaxBid: 100,
-  /**
-   * Penalty rule: the highest bidder in round N must pay this extra
-   * surcharge on top of their normal bid in round N+1.
-   * The surcharge is deducted automatically when bids are resolved.
-   * It is visible in the UI as "⚠️ +X penalty" next to the player.
-   */
-  penaltyAmount: 10,
   /** Milliseconds between each card flip during the reveal phase. */
   revealStepMs: 700,
   /** Fast-forward reveal step. */
@@ -39,11 +31,11 @@ export const TRAP_AUCTION_CONFIG = {
 // ─── Personalities ────────────────────────────────────────────────────────────
 
 export type AiPersonality =
-  | 'cautious'   // Bids conservatively, avoids the top; sensitive to penalty
+  | 'cautious'   // Bids conservatively, avoids the top
   | 'balanced'   // Mid-range bids, adapts to round and bank
-  | 'desperate'  // High bids driven by fear, ignores penalty risk
+  | 'desperate'  // High bids driven by fear
   | 'chaotic'    // Wildcard; large variance, unpredictable
-  | 'dominant'   // Always bids high to project power; will accept penalty
+  | 'dominant'   // Always bids high to project power
   | 'strategic'; // Reads the field; adjusts based on surviving players and rounds
 
 /** Human-readable description per personality for the personality map. */
@@ -53,11 +45,11 @@ export const PERSONALITY_DESCRIPTIONS: Record<AiPersonality, string> = {
   balanced:
     'Adapts to each round. Neither reckless nor overly timid — reads the middle ground.',
   desperate:
-    'Fear drives every decision. Tends to overbid to secure safety, ignoring penalties.',
+    'Fear drives every decision. Tends to overbid to secure safety.',
   chaotic:
     'Completely unpredictable. Could go low or high — even they do not know.',
   dominant:
-    'Commands the room with big bids. Seeks to control and intimidate. Penalty means little.',
+    'Commands the room with big bids. Seeks to control and intimidate.',
   strategic:
     'Cold and calculated. Adjusts bid based on round number, remaining players, and stakes.',
 };
@@ -81,16 +73,15 @@ export const PERSONALITY_ICONS: Record<AiPersonality, string> = {
   strategic: '🧠',
 };
 
-// ─── Penalty ──────────────────────────────────────────────────────────────────
+// ─── Exposure metadata ────────────────────────────────────────────────────────
 
 /**
- * A next-round penalty applied to the player who bid the highest.
- * In round N+1 they automatically pay `surcharge` extra on top of their bid.
+ * Legacy metadata retained on the player shape for compatibility.
  */
 export interface PlayerPenalty {
-  /** Extra Eyeolens deducted automatically on top of bid in the penalised round. */
+  /** Legacy value retained for compatibility; no longer applied in gameplay. */
   surcharge: number;
-  /** Round number in which the penalty must be paid. */
+  /** Legacy round marker retained for compatibility. */
   penaltyRound: number;
 }
 
@@ -111,7 +102,7 @@ export interface TrapAuctionPlayer {
   currentBid: number | null;
   /** Whether this player's bid has been flipped / revealed. */
   bidRevealed: boolean;
-  /** Next-round penalty if this player was the highest bidder last round. */
+  /** Legacy field retained for compatibility; current rules do not apply penalties. */
   penalty: PlayerPenalty | null;
   /** Round on which this player was eliminated (null = still alive). */
   eliminatedRound: number | null;
@@ -126,7 +117,7 @@ export interface TrapAuctionPlayer {
 export interface BidRangeInfo {
   /** Minimum allowed bid this round (at least 1). */
   min: number;
-  /** Maximum allowed bid — clamped to current bank minus surcharge if penalised. */
+  /** Maximum allowed bid — clamped to the player's current bank. */
   max: number;
   /** Suggested starting value for the UI slider. */
   recommended: number;
@@ -149,8 +140,8 @@ export type GamePhase =
   | 'intro'        // Opening screen with rules recap
   | 'bid'          // Human picks a bid; AI waits
   | 'reveal'       // Bids flipped one by one (or all at once in FF mode)
-  | 'resolve'      // Show highlights; apply penalty badge; human confirms
-  | 'elimination'  // Cinematic: eliminated player fades out; human confirms
+  | 'resolve'      // Legacy transition state retained for compatibility
+  | 'elimination'  // Cinematic: eliminated player fades out before auto-advance
   | 'complete';    // Game over, winner declared
 
 export type TrapAuctionPrizeType = 'HOH' | 'POV';

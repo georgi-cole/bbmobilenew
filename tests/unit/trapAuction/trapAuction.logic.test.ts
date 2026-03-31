@@ -18,6 +18,7 @@ import {
   getWinner,
   buildRoundReveals,
   nextPlacementFor,
+  shouldRevealPlayerBank,
   MOCK_PARTICIPANTS,
 } from '../../../src/components/TrapAuction/trapAuctionHelpers';
 import { trapAuctionReducer } from '../../../src/components/TrapAuction/trapAuctionReducer';
@@ -137,22 +138,21 @@ describe('getAllowedBidRange', () => {
     expect(range.max).toBeLessThanOrEqual(30);
   });
 
-  it('reduces max by surcharge when penalty applies', () => {
+  it('does not reduce max for legacy penalty metadata', () => {
     const [p] = makePlayers(1, [{
       bank: 40,
-      penalty: { surcharge: TRAP_AUCTION_CONFIG.penaltyAmount, penaltyRound: 1 },
+      penalty: { surcharge: 10, penaltyRound: 1 },
     }]);
     const range = getAllowedBidRange(p, 1);
-    expect(range.max).toBeLessThanOrEqual(40 - TRAP_AUCTION_CONFIG.penaltyAmount);
+    expect(range.max).toBe(40);
   });
 
-  it('does not reduce max for penalty in a different round', () => {
+  it('does not reduce max for legacy penalty metadata in a different round', () => {
     const [p] = makePlayers(1, [{
       bank: 40,
-      penalty: { surcharge: TRAP_AUCTION_CONFIG.penaltyAmount, penaltyRound: 3 },
+      penalty: { surcharge: 10, penaltyRound: 3 },
     }]);
     const rangeRound1 = getAllowedBidRange(p, 1);
-    // Round 1 has no active penalty — max should be 40 (or baseMaxBid if lower)
     expect(rangeRound1.max).toBe(Math.min(40, TRAP_AUCTION_CONFIG.baseMaxBid));
   });
 
@@ -210,6 +210,19 @@ describe('chooseAiBid', () => {
     const avg = bids.reduce((a, b) => a + b, 0) / bids.length;
     // Cautious should average below 55% of max
     expect(avg).toBeLessThan(TRAP_AUCTION_CONFIG.baseMaxBid * 0.65);
+  });
+
+  it('avoids bidding 1 when the player can still afford more', () => {
+    const [p] = makePlayers(1, [{ personality: 'chaotic' as const, bank: 7 }]);
+    const state = makeState({ players: [p] });
+    const bids = Array.from({ length: 50 }, (_, i) => chooseAiBid(p, state, i * 17 + 99));
+    expect(Math.min(...bids)).toBeGreaterThan(1);
+  });
+
+  it('still bids 1 when only 1 Eyeolens remains', () => {
+    const [p] = makePlayers(1, [{ personality: 'chaotic' as const, bank: 1 }]);
+    const state = makeState({ players: [p] });
+    expect(chooseAiBid(p, state, 42)).toBe(1);
   });
 });
 
@@ -304,12 +317,11 @@ describe('exposeHighestBidder', () => {
     expect(result.find((p) => p.id === 'p2')?.isExposed).toBe(false);
   });
 
-  it('assigns penalty for the next round', () => {
+  it('clears legacy penalty metadata on the exposed player', () => {
     const players = makePlayers(3);
     const result = exposeHighestBidder(players, 'p2', 2);
     const pen = result.find((p) => p.id === 'p2')?.penalty;
-    expect(pen?.surcharge).toBe(TRAP_AUCTION_CONFIG.penaltyAmount);
-    expect(pen?.penaltyRound).toBe(2);
+    expect(pen).toBeNull();
   });
 
   it('handles null highestId gracefully', () => {
@@ -339,24 +351,25 @@ describe('applyBidCosts', () => {
     expect(result[1].bank).toBe(70);
   });
 
-  it('deducts surcharge when penalty applies this round', () => {
+  it('ignores legacy penalty metadata when deducting bids', () => {
     const players = makePlayers(1, [{
       currentBid: 20,
       bank: 100,
-      penalty: { surcharge: TRAP_AUCTION_CONFIG.penaltyAmount, penaltyRound: 1 },
-    }]);
-    const result = applyBidCosts(players, 1);
-    expect(result[0].bank).toBe(100 - 20 - TRAP_AUCTION_CONFIG.penaltyAmount);
-  });
-
-  it('does not deduct surcharge for a different round', () => {
-    const players = makePlayers(1, [{
-      currentBid: 20,
-      bank: 100,
-      penalty: { surcharge: TRAP_AUCTION_CONFIG.penaltyAmount, penaltyRound: 3 },
+      penalty: { surcharge: 10, penaltyRound: 1 },
     }]);
     const result = applyBidCosts(players, 1);
     expect(result[0].bank).toBe(80);
+  });
+
+  it('clears legacy penalty metadata after deduction', () => {
+    const players = makePlayers(1, [{
+      currentBid: 20,
+      bank: 100,
+      penalty: { surcharge: 10, penaltyRound: 3 },
+    }]);
+    const result = applyBidCosts(players, 1);
+    expect(result[0].bank).toBe(80);
+    expect(result[0].penalty).toBeNull();
   });
 
   it('clamps bank to 0, never negative', () => {
@@ -522,6 +535,28 @@ describe('nextPlacementFor', () => {
   });
 });
 
+describe('shouldRevealPlayerBank', () => {
+  it('shows every bank in round 1', () => {
+    const [player] = makePlayers(1);
+    expect(shouldRevealPlayerBank(player, 1)).toBe(true);
+  });
+
+  it('hides active non-exposed banks after round 1', () => {
+    const [player] = makePlayers(1, [{ bank: 72 }]);
+    expect(shouldRevealPlayerBank(player, 2)).toBe(false);
+  });
+
+  it('shows exposed active players after round 1', () => {
+    const [player] = makePlayers(1, [{ isExposed: true, bank: 72 }]);
+    expect(shouldRevealPlayerBank(player, 2)).toBe(true);
+  });
+
+  it('shows eliminated players after round 1', () => {
+    const [player] = makePlayers(1, [{ isAlive: false, bank: 0 }]);
+    expect(shouldRevealPlayerBank(player, 2)).toBe(true);
+  });
+});
+
 // ─── Reducer: phase transitions ──────────────────────────────────────────────
 
 describe('trapAuctionReducer', () => {
@@ -579,33 +614,33 @@ describe('trapAuctionReducer', () => {
       expect(next.revealIndex).toBe(1);
     });
 
-    it('transitions to resolve when all bids revealed', () => {
+    it('stays in reveal when all bids are visible', () => {
       let state = setupRevealState();
       const totalReveals = state.roundReveals.length;
       for (let i = 0; i < totalReveals; i++) {
         state = trapAuctionReducer(state, { type: 'ADVANCE_REVEAL' });
       }
-      expect(state.phase).toBe('resolve');
+      expect(state.phase).toBe('reveal');
+      expect(state.revealIndex).toBe(totalReveals);
     });
   });
 
   describe('REVEAL_ALL', () => {
-    it('transitions to resolve immediately', () => {
+    it('reveals all cards without adding a separate results phase', () => {
       const bid = makeState({ phase: 'bid' });
       const reveal = trapAuctionReducer(bid, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
       const next = trapAuctionReducer(reveal, { type: 'REVEAL_ALL' });
-      expect(next.phase).toBe('resolve');
+      expect(next.phase).toBe('reveal');
       expect(next.roundReveals.every((r) => r.revealed)).toBe(true);
     });
   });
 
   describe('ADVANCE_TO_ELIMINATION', () => {
-    it('transitions from resolve to elimination', () => {
+    it('transitions from the fully revealed state to elimination', () => {
       const bid = makeState({ phase: 'bid' });
       const reveal = trapAuctionReducer(bid, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
       const allRevealed = trapAuctionReducer(reveal, { type: 'REVEAL_ALL' });
-      const resolve = allRevealed; // phase is already 'resolve'
-      const next = trapAuctionReducer(resolve, { type: 'ADVANCE_TO_ELIMINATION' });
+      const next = trapAuctionReducer(allRevealed, { type: 'ADVANCE_TO_ELIMINATION' });
       expect(next.phase).toBe('elimination');
     });
 
@@ -640,7 +675,7 @@ describe('trapAuctionReducer', () => {
       const playersWithBids = players.map((p, i) => ({ ...p, currentBid: i === 0 ? 5 : 30 }));
       const reveals = buildRoundReveals(playersWithBids);
       const state: TrapAuctionState = {
-        phase: 'resolve',
+        phase: 'reveal',
         round: 1,
         players: playersWithBids,
         roundReveals: reveals,
@@ -669,7 +704,7 @@ describe('trapAuctionReducer', () => {
       const playersWithBids = players.map((p) => ({ ...p, currentBid: 20 }));
       const reveals = buildRoundReveals(playersWithBids);
       const state: TrapAuctionState = {
-        phase: 'resolve',
+        phase: 'reveal',
         round: 1,
         players: playersWithBids,
         roundReveals: reveals,
@@ -742,7 +777,7 @@ describe('Full round integration', () => {
 
     // Reveal all
     state = trapAuctionReducer(state, { type: 'REVEAL_ALL' });
-    expect(state.phase).toBe('resolve');
+    expect(state.phase).toBe('reveal');
 
     // Advance to elimination
     state = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
@@ -763,7 +798,7 @@ describe('Full round integration', () => {
         state = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 15 });
       } else if (state.phase === 'reveal') {
         state = trapAuctionReducer(state, { type: 'REVEAL_ALL' });
-      } else if (state.phase === 'resolve') {
+      } else if (state.phase === 'reveal' && state.revealIndex >= state.roundReveals.length) {
         state = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
       } else if (state.phase === 'elimination') {
         state = trapAuctionReducer(state, { type: 'CONTINUE_AFTER_ELIMINATION' });
