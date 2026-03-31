@@ -21,6 +21,7 @@ describe('MajorityRules styles', () => {
 
     expect(vhIndex).toBeGreaterThanOrEqual(0);
     expect(dvhIndex).toBeGreaterThan(vhIndex);
+    expect(shellRuleBody).toContain('overflow-x: hidden;');
     expect(shellRuleBody).toContain('overflow-y: auto;');
     expect(shellRuleBody).toContain('overscroll-behavior: contain;');
     expect(shellRuleBody).toContain('-webkit-overflow-scrolling: touch;');

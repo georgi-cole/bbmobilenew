@@ -8,6 +8,7 @@
   display: grid;
   align-content: start;
   box-sizing: border-box;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
