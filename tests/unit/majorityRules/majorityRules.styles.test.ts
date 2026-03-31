@@ -44,4 +44,24 @@ describe('MajorityRules styles', () => {
     expect(wrappedRailRuleBody).toContain('justify-content: center;');
     expect(wrappedRailRuleBody).toContain('overflow-x: visible;');
   });
+
+  it('lets tall phase cards scroll vertically so the action buttons stay reachable', () => {
+    const css = readFileSync(
+      resolve(process.cwd(), 'src/components/MajorityRulesComp/MajorityRulesComp.css'),
+      'utf8',
+    );
+
+    const cardRuleStart = css.indexOf('.majority-rules-card {');
+    expect(cardRuleStart).toBeGreaterThanOrEqual(0);
+
+    const cardRuleEnd = css.indexOf('}', cardRuleStart);
+    expect(cardRuleEnd).toBeGreaterThan(cardRuleStart);
+
+    const cardRuleBody = css.slice(cardRuleStart, cardRuleEnd);
+    expect(cardRuleBody).toContain('overflow-x: hidden;');
+    expect(cardRuleBody).toContain('overflow-y: auto;');
+    expect(cardRuleBody).toContain('max-height: 100%;');
+    expect(cardRuleBody).toContain('min-height: 0;');
+    expect(cardRuleBody).toContain('-webkit-overflow-scrolling: touch;');
+  });
 });
