@@ -572,11 +572,14 @@ export default function TimingBar({
 
   /** Done — dispatch outcome or call onFinish. */
   const handleDone = useCallback(() => {
-    const allResults = [...finalResults];
-    if (roundResult) allResults.push(roundResult);
-
-    // Find the final round result for winner / last place
-    const lastResult = allResults[allResults.length - 1];
+    // Derive the true final round result for winner / last place.
+    // In the skip/spectate flow, finalResults contains all simulated rounds played
+    // after the human was eliminated — the last entry is the actual final round.
+    // In the normal play-through flow finalResults is empty and roundResult is the
+    // last (and final) round the human played.
+    const lastResult = finalResults.length > 0
+      ? finalResults[finalResults.length - 1]
+      : roundResult ?? null;
 
     // Average accuracy across all rounds the human played (0–100 envelope).
     const averageScore = humanRoundsPlayedRef.current > 0

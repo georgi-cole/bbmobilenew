@@ -143,6 +143,15 @@ export function formatAccuracy(value: number): string {
   return `${value.toFixed(1).replace('.', ',')}%`;
 }
 
+/**
+ * Rounds a value to 1 decimal place (tenths precision).
+ * Used to quantize accuracy values so the sort order matches the displayed values,
+ * preventing hidden floating-point differences from affecting rankings.
+ */
+function quantizeToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 // ── Elimination ────────────────────────────────────────────────────────────────
 
 /**
@@ -178,14 +187,26 @@ export function assignRanks(
   entries: Omit<TimingRoundEntry, 'rank' | 'isEliminated'>[],
   roundSeed: number,
 ): (Omit<TimingRoundEntry, 'isEliminated'> & { rank: number })[] {
+  // Precompute deterministic per-participant tiebreak keys so the comparator
+  // remains pure and anti-symmetric while still producing a seeded ordering.
+  const tiebreakKey = new Map<string, number>();
+  for (const entry of entries) {
+    const id = entry.participantId;
+    const combinedSeed = (roundSeed ^ hashString(id)) >>> 0;
+    const rng = mulberry32(combinedSeed);
+    tiebreakKey.set(id, rng());
+  }
+
   const sorted = [...entries].sort((a, b) => {
     if (b.finalAccuracy !== a.finalAccuracy) return b.finalAccuracy - a.finalAccuracy;
     if (b.timeRemainingMs !== a.timeRemainingMs) return b.timeRemainingMs - a.timeRemainingMs;
     if (a.nonLockingAttempts !== b.nonLockingAttempts) return a.nonLockingAttempts - b.nonLockingAttempts;
-    // Final 2 random seed tiebreak
+    // Final 2 deterministic seed-based tiebreak: compare per-participant keys
     if (entries.length === 2) {
-      const rng = mulberry32(roundSeed);
-      return rng() < 0.5 ? -1 : 1;
+      const keyA = tiebreakKey.get(a.participantId) ?? 0;
+      const keyB = tiebreakKey.get(b.participantId) ?? 0;
+      if (keyA < keyB) return -1;
+      if (keyA > keyB) return 1;
     }
     return 0;
   });
@@ -243,8 +264,8 @@ export function buildTimingRoundResult(params: {
       };
     }
 
-    const rawAccuracy = computeRawAccuracy(submission.lockedPosition);
-    const finalAccuracy = applyAttemptPenalty(rawAccuracy, submission.nonLockingAttempts);
+    const rawAccuracy = quantizeToOneDecimal(computeRawAccuracy(submission.lockedPosition));
+    const finalAccuracy = quantizeToOneDecimal(applyAttemptPenalty(rawAccuracy, submission.nonLockingAttempts));
 
     return {
       participantId: participant.id,
@@ -266,14 +287,21 @@ export function buildTimingRoundResult(params: {
   const maxEliminations = Math.max(0, activeParticipants.length - 2);
   const actualEliminations = Math.min(eliminationCount, maxEliminations);
 
-  // Sort by rank desc to find the worst performers.
-  // When multiple players share the worst rank at the elimination boundary,
-  // use a seeded deterministic shuffle so the choice is reproducible.
+  // Precompute per-participant shuffle keys for a deterministic, transitive tie-break
+  // at the elimination boundary. Using a plain hash XOR (not RNG-per-a) ensures the
+  // comparator is anti-symmetric and produces the same order regardless of engine.
+  const eliminationKey = new Map<string, number>();
+  for (const entry of ranked) {
+    eliminationKey.set(
+      entry.participantId,
+      (hashString(entry.participantId) ^ roundSeed) >>> 0,
+    );
+  }
   const worstFirst = [...ranked].sort((a, b) => {
     if (b.rank !== a.rank) return b.rank - a.rank;
-    // Tie at the boundary: break deterministically with a full-string hash of the id.
-    const rng = mulberry32(roundSeed ^ hashString(a.participantId));
-    return rng() < 0.5 ? -1 : 1;
+    const keyA = eliminationKey.get(a.participantId) ?? 0;
+    const keyB = eliminationKey.get(b.participantId) ?? 0;
+    return keyA - keyB;
   });
   const eliminatedIds = worstFirst.slice(0, actualEliminations).map((e) => e.participantId);
 
