@@ -358,22 +358,18 @@ export default function MajorityRulesComp({
   const game = useAppSelector((state: RootState) => state.majorityRules);
   const gamePlayers = useAppSelector((state: RootState) => state.game.players);
   const completedRef = useRef(false);
-  const initConfigRef = useRef<{
+  const [initialConfig] = useState<{
     participantIds: string[];
     competitionType: MajorityRulesCompetitionType;
     seed: number;
     humanPlayerId: string | null;
-  } | null>(null);
+  }>(() => ({
+    participantIds: [...participantIds],
+    competitionType: prizeType,
+    seed,
+    humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
+  }));
   const motionEnabled = !areAnimationsDisabled();
-
-  if (!initConfigRef.current) {
-    initConfigRef.current = {
-      participantIds: [...participantIds],
-      competitionType: prizeType,
-      seed,
-      humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
-    };
-  }
 
   const playerMap = useMemo<Record<string, DisplayPlayer>>(() => {
     const livePlayers = Object.fromEntries(gamePlayers.map((player) => [player.id, player]));
@@ -417,9 +413,8 @@ export default function MajorityRulesComp({
   const getName = (id: string) => getPlayer(id).name;
 
   useEffect(() => {
-    if (!initConfigRef.current) return;
-    dispatch(initMajorityRules(initConfigRef.current));
-  }, [dispatch]);
+    dispatch(initMajorityRules(initialConfig));
+  }, [dispatch, initialConfig]);
 
   useEffect(() => {
     if (game.phase !== 'intro') return undefined;

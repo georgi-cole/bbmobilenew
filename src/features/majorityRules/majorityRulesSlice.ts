@@ -173,13 +173,19 @@ function advanceToFinalDuel(state: MajorityRulesState) {
   ensureAiFinalDuelPicks(state);
 }
 
+function seedOpeningFinalDuel(state: MajorityRulesState) {
+  const finalists = getFinalists(state);
+  if (!finalists) return;
+  state.finalDuel = initializeDiceDuel(finalists);
+}
+
 function prepareOpeningPhase(state: MajorityRulesState) {
   if (state.activeIds.length === 2) {
     state.currentQuestion = null;
     state.draftAnswers = {};
     state.revealState = null;
     clearRoundHintState(state);
-    state.finalDuel = initializeDiceDuel([state.activeIds[0], state.activeIds[1]]);
+    seedOpeningFinalDuel(state);
     return;
   }
 
@@ -227,7 +233,7 @@ const majorityRulesSlice = createSlice({
       if (state.phase !== 'intro') return;
       if (state.activeIds.length === 2) {
         if (!state.finalDuel) {
-          state.finalDuel = initializeDiceDuel([state.activeIds[0], state.activeIds[1]]);
+          seedOpeningFinalDuel(state);
         }
         state.phase = 'final_duel_pick';
         ensureAiFinalDuelPicks(state);
