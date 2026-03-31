@@ -24,9 +24,12 @@ import {
   assignRanks,
   buildTimingRoundResult,
   deriveRoundSeed,
+  getRankedTimingEntries,
+  getTimingRoundWinner,
   NON_LOCKING_PENALTY_PP,
   TARGET_POSITION,
   type TimingParticipant,
+  type TimingRoundResult,
   type TimingSubmission,
 } from '../../../src/components/TimingBar/timingBarLogic';
 
@@ -206,6 +209,60 @@ describe('assignRanks', () => {
     expect(rankB).toBe(1);
     const rankC = ranked.find((e) => e.participantId === 'c')?.rank;
     expect(rankC).toBe(3);
+  });
+});
+
+describe('authoritative final ranking helpers', () => {
+  const finalRoundResult: TimingRoundResult = {
+    roundNumber: 3,
+    roundDurationSeconds: 10,
+    entries: [
+      {
+        participantId: 'runner-up',
+        name: 'Runner Up',
+        avatar: '🥈',
+        isHuman: false,
+        finalAccuracy: 95,
+        rawAccuracy: 95,
+        timeRemainingMs: 5000,
+        nonLockingAttempts: 0,
+        timedOut: false,
+        rank: 2,
+        isEliminated: false,
+      },
+      {
+        participantId: 'winner',
+        name: 'Winner',
+        avatar: '🥇',
+        isHuman: true,
+        finalAccuracy: 97.7,
+        rawAccuracy: 97.7,
+        timeRemainingMs: 4000,
+        nonLockingAttempts: 0,
+        timedOut: false,
+        rank: 1,
+        isEliminated: false,
+      },
+    ],
+    advancingIds: ['runner-up', 'winner'],
+    eliminatedIds: [],
+    isFinalRound: true,
+  };
+
+  it('sorts final-round entries by rank even when the input order is wrong', () => {
+    expect(getRankedTimingEntries(finalRoundResult).map((entry) => entry.participantId)).toEqual([
+      'winner',
+      'runner-up',
+    ]);
+  });
+
+  it('returns the rank-1 winner even when no final-round player is eliminated', () => {
+    expect(getTimingRoundWinner(finalRoundResult)?.participantId).toBe('winner');
+  });
+
+  it('returns null for missing results', () => {
+    expect(getRankedTimingEntries(null)).toEqual([]);
+    expect(getTimingRoundWinner(null)).toBeNull();
   });
 });
 

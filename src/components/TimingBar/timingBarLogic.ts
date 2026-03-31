@@ -93,6 +93,17 @@ export interface TimingRoundResult {
   isFinalRound: boolean;
 }
 
+/** Returns round entries sorted by their authoritative rank (best → worst). */
+export function getRankedTimingEntries(roundResult: TimingRoundResult | null | undefined): TimingRoundEntry[] {
+  if (!roundResult) return [];
+  return [...roundResult.entries].sort((a, b) => a.rank - b.rank);
+}
+
+/** Returns the authoritative winner for a round based on rank, not array order. */
+export function getTimingRoundWinner(roundResult: TimingRoundResult | null | undefined): TimingRoundEntry | null {
+  return getRankedTimingEntries(roundResult)[0] ?? null;
+}
+
 // ── Round configuration ────────────────────────────────────────────────────────
 
 /**

@@ -31,6 +31,8 @@ import {
   buildParticipants,
   simulateRemainingRounds,
   deriveRoundSeed,
+  getRankedTimingEntries,
+  getTimingRoundWinner,
   NON_LOCKING_PENALTY_PP,
   type TimingParticipant,
   type TimingSubmission,
@@ -591,7 +593,7 @@ export default function TimingBar({
       return;
     }
 
-    const winner = lastResult?.entries.find((e) => !e.isEliminated) ?? lastResult?.entries[0];
+    const winner = getTimingRoundWinner(lastResult) ?? lastResult?.entries[0];
     const lastPlace = lastResult?.entries[lastResult.entries.length - 1];
 
     const payload: CompleteMinigamePayload = {
@@ -666,15 +668,17 @@ export default function TimingBar({
   const humanEntry = roundResult?.entries.find((e) => e.isHuman);
   const humanWasEliminated = !!humanEntry?.isEliminated;
 
-  // Final results — collect all-time entries for display, sorted by official rank.
-  const allFinalEntries = useMemo(() => {
-    if (finalResults.length === 0) return [];
-    const last = finalResults[finalResults.length - 1];
-    // Sort by the authoritative rank (already encodes accuracy + tiebreakers).
-    return [...last.entries].sort((a, b) => a.rank - b.rank);
-  }, [finalResults]);
+  const finalRoundResult = finalResults.length > 0
+    ? finalResults[finalResults.length - 1]
+    : roundResult ?? null;
 
-  const winnerName = allFinalEntries[0]?.name ?? roundResult?.entries[0]?.name ?? 'Unknown';
+  // Final results — collect all-time entries for display, sorted by official rank.
+  const allFinalEntries = useMemo(
+    () => getRankedTimingEntries(finalRoundResult),
+    [finalRoundResult],
+  );
+
+  const winnerName = getTimingRoundWinner(finalRoundResult)?.name ?? 'Unknown';
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
