@@ -356,9 +356,15 @@ export function getWinner(players: TrapAuctionPlayer[]): TrapAuctionPlayer | nul
 // ─── buildRoundReveals ────────────────────────────────────────────────────────
 
 /**
- * Builds the ordered reveal sequence for the current round.
- * Reveals are ordered from highest bid to lowest for maximum drama.
- * Lowest/highest flags are set for UI highlighting.
+ * Builds the reveal sequence for the current round.
+ *
+ * Only the highest bidder (exposed) and all lowest bidder(s) (eliminated) are
+ * included. All other players' bids remain hidden — only the key outcomes are
+ * shown to the audience.
+ *
+ * Order: highest first (dramatic tension), then lowest (elimination verdict).
+ * When highest and lowest are the same player (complete-tie edge case) they
+ * appear once with both `isHighest` and `isLowest` set to `true`.
  */
 export function buildRoundReveals(players: TrapAuctionPlayer[]): RoundReveal[] {
   const alive = players.filter((p) => p.isAlive && p.currentBid !== null);
@@ -368,16 +374,33 @@ export function buildRoundReveals(players: TrapAuctionPlayer[]): RoundReveal[] {
   const minBid = Math.min(...bids);
   const maxBid = Math.max(...bids);
 
-  // Sort highest first for dramatic reveal
-  const sorted = [...alive].sort((a, b) => (b.currentBid as number) - (a.currentBid as number));
+  // First player with the max bid is the exposed one (deterministic tiebreaker)
+  const highestPlayer = alive.find((p) => p.currentBid === maxBid) ?? null;
+  // All players tied for the minimum are eliminated
+  const lowestPlayers = alive.filter((p) => p.currentBid === minBid);
 
-  return sorted.map((p) => ({
-    playerId: p.id,
-    bid: p.currentBid as number,
-    revealed: false,
-    isLowest: p.currentBid === minBid,
-    isHighest: p.currentBid === maxBid,
-  }));
+  const highestEntry: RoundReveal | null = highestPlayer
+    ? {
+        playerId: highestPlayer.id,
+        bid: maxBid,
+        revealed: false,
+        isLowest: maxBid === minBid,
+        isHighest: true,
+      }
+    : null;
+
+  // Lowest entries — deduplicated against the highest entry
+  const lowestEntries: RoundReveal[] = lowestPlayers
+    .filter((p) => p.id !== highestPlayer?.id)
+    .map((p) => ({
+      playerId: p.id,
+      bid: p.currentBid as number,
+      revealed: false,
+      isLowest: true,
+      isHighest: false,
+    }));
+
+  return [...(highestEntry ? [highestEntry] : []), ...lowestEntries];
 }
 
 // ─── computeAiBids ────────────────────────────────────────────────────────────

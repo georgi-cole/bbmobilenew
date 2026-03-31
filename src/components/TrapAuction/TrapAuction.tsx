@@ -355,7 +355,6 @@ export default function TrapAuction({
     }
 
     const range = getAllowedBidRange(human, state.round);
-    const hasPenalty = human.penalty?.penaltyRound === state.round;
 
     return (
       <div className="ta-bid-phase">
@@ -369,11 +368,6 @@ export default function TrapAuction({
             <span className="ta-bid-control__bank-amount">
               {human.bank} <span className="ta-eyeolens">👁</span>
             </span>
-            {hasPenalty && (
-              <span className="ta-bid-control__penalty-notice">
-                ⚠️ +{TRAP_AUCTION_CONFIG.penaltyAmount} surcharge applies
-              </span>
-            )}
           </div>
 
           <div className="ta-bid-control__label">
@@ -689,32 +683,24 @@ export default function TrapAuction({
   function renderPlayerGrid(players: TrapAuctionPlayer[], compact: boolean): ReactNode {
     return (
       <div className={`ta-player-grid ${compact ? 'ta-player-grid--compact' : ''}`} role="list" aria-label="Players">
-        {players.map((p) => {
-          const hasPenalty = p.penalty && p.penalty.penaltyRound === state.round;
-          return (
-            <div
-              key={p.id}
-              className={`ta-player-card ${!p.isAlive ? 'ta-player-card--eliminated' : ''} ${p.isHuman ? 'ta-player-card--human' : ''}`}
-              role="listitem"
-              aria-label={`${p.name}${!p.isAlive ? ' (eliminated)' : ''}`}
-            >
-              <AvatarImg player={p} className="ta-player-card__avatar" />
-              <span className="ta-player-card__name">{p.name}</span>
-              <span className="ta-player-card__bank">{p.bank} 👁</span>
-              {hasPenalty && (
-                <span className="ta-player-card__penalty" title="Penalty next round">
-                  ⚠️ +{TRAP_AUCTION_CONFIG.penaltyAmount}
-                </span>
-              )}
-              {!p.isAlive && (
-                <span className="ta-player-card__eliminated-badge">OUT</span>
-              )}
-              {p.isHuman && p.isAlive && (
-                <span className="ta-player-card__you">YOU</span>
-              )}
-            </div>
-          );
-        })}
+        {players.map((p) => (
+          <div
+            key={p.id}
+            className={`ta-player-card ${!p.isAlive ? 'ta-player-card--eliminated' : ''} ${p.isHuman ? 'ta-player-card--human' : ''}`}
+            role="listitem"
+            aria-label={`${p.name}${!p.isAlive ? ' (eliminated)' : ''}`}
+          >
+            <AvatarImg player={p} className="ta-player-card__avatar" />
+            <span className="ta-player-card__name">{p.name}</span>
+            <span className="ta-player-card__bank">{p.bank} 👁</span>
+            {!p.isAlive && (
+              <span className="ta-player-card__eliminated-badge">OUT</span>
+            )}
+            {p.isHuman && p.isAlive && (
+              <span className="ta-player-card__you">YOU</span>
+            )}
+          </div>
+        ))}
       </div>
     );
   }
@@ -758,11 +744,6 @@ function PersonalityMapModal({ players, onClose }: PersonalityMapModalProps) {
                   )}
                   {p.isAlive && p.isExposed && (
                     <span className="ta-pm-card__status ta-pm-card__status--exposed">⚠️ Exposed</span>
-                  )}
-                  {p.isAlive && p.penalty && (
-                    <span className="ta-pm-card__status ta-pm-card__status--penalty">
-                      🔴 +{p.penalty.surcharge} surcharge R{p.penalty.penaltyRound}
-                    </span>
                   )}
                 </div>
               </div>

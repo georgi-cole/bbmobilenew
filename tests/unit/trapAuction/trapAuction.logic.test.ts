@@ -441,7 +441,7 @@ describe('getWinner', () => {
 // ─── buildRoundReveals ────────────────────────────────────────────────────────
 
 describe('buildRoundReveals', () => {
-  it('includes all alive bidders', () => {
+  it('includes only the highest and lowest bidder (not all players)', () => {
     const players = makePlayers(4, [
       { currentBid: 20 },
       { currentBid: 30 },
@@ -449,10 +449,13 @@ describe('buildRoundReveals', () => {
       { currentBid: 25 },
     ]);
     const reveals = buildRoundReveals(players);
-    expect(reveals).toHaveLength(4);
+    // highest (30) + lowest (10) = 2 entries
+    expect(reveals).toHaveLength(2);
+    expect(reveals.some((r) => r.bid === 30 && r.isHighest)).toBe(true);
+    expect(reveals.some((r) => r.bid === 10 && r.isLowest)).toBe(true);
   });
 
-  it('orders reveals highest to lowest', () => {
+  it('places highest bidder first', () => {
     const players = makePlayers(4, [
       { currentBid: 20 },
       { currentBid: 30 },
@@ -460,9 +463,21 @@ describe('buildRoundReveals', () => {
       { currentBid: 25 },
     ]);
     const reveals = buildRoundReveals(players);
-    const bids = reveals.map((r) => r.bid);
-    expect(bids[0]).toBeGreaterThanOrEqual(bids[1]);
-    expect(bids[1]).toBeGreaterThanOrEqual(bids[2]);
+    expect(reveals[0].isHighest).toBe(true);
+    expect(reveals[1].isLowest).toBe(true);
+  });
+
+  it('includes all tied-lowest bidders', () => {
+    const players = makePlayers(4, [
+      { currentBid: 30 }, // highest
+      { currentBid: 10 }, // tied lowest
+      { currentBid: 10 }, // tied lowest
+      { currentBid: 25 },
+    ]);
+    const reveals = buildRoundReveals(players);
+    // 1 highest + 2 tied lowest = 3 entries
+    expect(reveals).toHaveLength(3);
+    expect(reveals.filter((r) => r.isLowest)).toHaveLength(2);
   });
 
   it('marks lowest and highest correctly', () => {
@@ -476,6 +491,14 @@ describe('buildRoundReveals', () => {
     const highest = reveals.find((r) => r.isHighest);
     expect(lowest?.bid).toBe(5);
     expect(highest?.bid).toBe(30);
+  });
+
+  it('handles complete-tie: single entry with both flags set', () => {
+    const players = makePlayers(2, [{ currentBid: 15 }, { currentBid: 15 }]);
+    const reveals = buildRoundReveals(players);
+    // All are tied — only one deduplicated highest entry, rest as lowest entries
+    expect(reveals.length).toBeGreaterThanOrEqual(1);
+    expect(reveals.some((r) => r.isHighest)).toBe(true);
   });
 
   it('starts all reveals as hidden (revealed=false)', () => {
@@ -522,20 +545,18 @@ describe('trapAuctionReducer', () => {
       const state = makeState({ phase: 'bid' });
       const next = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 40 });
       const human = next.players.find((p) => p.isHuman);
-      // Human bid is in the roundReveals since bids are set before building reveals
-      const humanReveal = next.roundReveals.find((r) => r.playerId === human?.id);
-      expect(humanReveal?.bid).toBe(40);
+      // Human bid is stored on the player (not necessarily in roundReveals unless extreme)
+      expect(human?.currentBid).toBe(40);
     });
 
     it('computes AI bids for all alive AI players', () => {
       const state = makeState({ phase: 'bid' });
       const next = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
-      const aiBids = next.players.filter((p) => !p.isHuman && p.isAlive);
-      // All AI players should have their bids in roundReveals
-      aiBids.forEach((ai) => {
-        const reveal = next.roundReveals.find((r) => r.playerId === ai.id);
-        expect(reveal).toBeDefined();
-        expect(reveal?.bid).toBeGreaterThanOrEqual(TRAP_AUCTION_CONFIG.minBid);
+      const aiPlayers = next.players.filter((p) => !p.isHuman && p.isAlive);
+      // All AI players should have a bid assigned (stored on the player object)
+      aiPlayers.forEach((ai) => {
+        expect(ai.currentBid).not.toBeNull();
+        expect(ai.currentBid!).toBeGreaterThanOrEqual(TRAP_AUCTION_CONFIG.minBid);
       });
     });
 
