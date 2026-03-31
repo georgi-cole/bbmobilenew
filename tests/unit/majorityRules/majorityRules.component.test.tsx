@@ -63,7 +63,7 @@ describe('MajorityRulesComp', () => {
   });
 
   it('switches to a compact avatar rail when the roster is large', async () => {
-    const ids = ['user', ...Array.from({ length: 11 }, (_, index) => `p${index + 2}`)];
+    const ids = ['user', ...Array.from({ length: 11 }, (_, playerNumber) => `p${playerNumber + 2}`)];
     const players = ids.map((id, index) => buildPlayer(id, index === 0 ? 'You' : `AI_${index}`, index === 0));
     const store = makeStore(players);
 
