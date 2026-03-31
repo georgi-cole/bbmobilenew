@@ -194,8 +194,17 @@ const majorityRulesSlice = createSlice({
         seed,
         participantIds: [...participantIds],
         activeIds: [...participantIds],
+        eliminatedIds: [],
         humanPlayerId,
+        usedQuestionIds: [],
+        draftAnswers: {},
+        blockedAnswers: {},
+        previousDistribution: null,
         hintInventories: buildHintInventories(participantIds),
+        revealState: null,
+        finalDuel: null,
+        winnerId: null,
+        outcomeResolved: false,
       };
       prepareQuestion(state);
       return state;
