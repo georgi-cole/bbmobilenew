@@ -102,7 +102,7 @@ export const MOCK_PARTICIPANTS: MinigameParticipant[] = [
  */
 export function getAllowedBidRange(
   player: TrapAuctionPlayer,
-  round: number,
+  _round: number,
 ): BidRangeInfo {
   const min = TRAP_AUCTION_CONFIG.minBid;
   const max = Math.min(TRAP_AUCTION_CONFIG.baseMaxBid, Math.max(min, player.bank));

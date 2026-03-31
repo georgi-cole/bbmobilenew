@@ -796,10 +796,10 @@ describe('Full round integration', () => {
     while (state.phase !== 'complete' && iterations < 100) {
       if (state.phase === 'bid') {
         state = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 15 });
-      } else if (state.phase === 'reveal') {
-        state = trapAuctionReducer(state, { type: 'REVEAL_ALL' });
       } else if (state.phase === 'reveal' && state.revealIndex >= state.roundReveals.length) {
         state = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+      } else if (state.phase === 'reveal') {
+        state = trapAuctionReducer(state, { type: 'REVEAL_ALL' });
       } else if (state.phase === 'elimination') {
         state = trapAuctionReducer(state, { type: 'CONTINUE_AFTER_ELIMINATION' });
       }
