@@ -658,8 +658,6 @@ export default function TimingBar({
     ? applyAttemptPenalty(lockedRawAccuracy, softAttempts.length)
     : null;
 
-  // Penalty preview during playing
-  const currentPenalty = softAttempts.length * NON_LOCKING_PENALTY_PP;
 
   // Whether the human player was eliminated this round
   const humanEntry = roundResult?.entries.find((e) => e.isHuman);
@@ -737,9 +735,15 @@ export default function TimingBar({
 
             <ul className="tbg__preround-rules" aria-label="Game rules">
               <li>A bar bounces left and right — stop it near the centre.</li>
-              <li>You can stop the bar multiple times to test your timing.</li>
-              <li>Only one stop can be <strong>locked in</strong> as your final answer.</li>
-              <li>Each extra soft stop costs <strong>−{NON_LOCKING_PENALTY_PP}%</strong> accuracy.</li>
+              <li>
+                Press <strong>Lock In 🔒</strong> at any moment to freeze your score —{' '}
+                no stopping required.
+              </li>
+              <li>
+                <strong>Stop ✋</strong> is optional: it pauses the bar so you can{' '}
+                inspect your position, then resume and try again.
+              </li>
+              <li>Each soft stop costs <strong>−{NON_LOCKING_PENALTY_PP}%</strong> accuracy. Lock In alone is free.</li>
               <li>If you don&apos;t lock in before time runs out, you score 0%.</li>
             </ul>
 
@@ -784,9 +788,8 @@ export default function TimingBar({
             )}
 
             <p className="tbg__intro-hint">
-              Stop the bar multiple times if you need to, but only{' '}
-              <strong>lock once</strong> per round.
-              {currentPenalty > 0 && ` Each extra stop costs −${NON_LOCKING_PENALTY_PP}%.`}
+              Hit <strong>Lock In 🔒</strong> directly for a penalty-free score, or use{' '}
+              <strong>Stop ✋</strong> to pause and reposition (−{NON_LOCKING_PENALTY_PP}% per stop).
             </p>
 
             <div className="tbg__action-area" style={{ width: '100%', paddingBottom: 0 }}>
