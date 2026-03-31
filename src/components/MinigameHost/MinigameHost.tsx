@@ -26,6 +26,8 @@ import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp';
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice';
 import SilentSaboteurComp from '../SilentSaboteurComp/SilentSaboteurComp';
 import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/silentSaboteurSlice';
+import MajorityRulesComp from '../MajorityRulesComp/MajorityRulesComp';
+import type { MajorityRulesCompetitionType } from '../../features/majorityRules/majorityRulesSlice';
 import { buildGlassBridgeTimeLimitMs } from '../../features/glassBridge/glassBridgeSlice';
 import GlassBridgeComp from '../GlassBridgeComp/GlassBridgeComp';
 import BlackjackTournamentComp from '../BlackjackTournamentComp/BlackjackTournamentComp';
@@ -322,6 +324,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as SilentSaboteurPrizeType}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'MajorityRules') {
+              return (
+                <MajorityRulesComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as MajorityRulesCompetitionType ?? 'HOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
