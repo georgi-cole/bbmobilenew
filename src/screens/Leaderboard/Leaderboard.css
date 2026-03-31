@@ -1,4 +1,18 @@
 /* Leaderboard */
+.leaderboard-screen__back {
+  align-self: flex-start;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .leaderboard-screen__tabs {
   display: flex;
   gap: 8px;

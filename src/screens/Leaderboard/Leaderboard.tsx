@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
@@ -8,6 +9,7 @@ import './Leaderboard.css';
 type Tab = 'season' | 'alltime';
 
 export default function Leaderboard() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('season');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const players = useAppSelector((s) => s.game.players);
@@ -37,6 +39,15 @@ export default function Leaderboard() {
 
   return (
     <div className="placeholder-screen leaderboard-screen">
+      <button
+        className="leaderboard-screen__back"
+        type="button"
+        aria-label="Go back"
+        onClick={() => navigate(-1)}
+      >
+        ← Back
+      </button>
+
       <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
 
       <div className="leaderboard-screen__tabs">
