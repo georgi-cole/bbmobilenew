@@ -137,14 +137,14 @@ export default function TrapAuction({
     ? participants
     : MOCK_PARTICIPANTS;
 
-  const initialState = useMemo(
-    () => buildInitialState(resolvedParticipants, seed, prizeType),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const [state, dispatch] = useReducer(
+    trapAuctionReducer,
+    { resolvedParticipants, seed, prizeType },
+    ({ resolvedParticipants, seed, prizeType }) =>
+      buildInitialState(resolvedParticipants, seed, prizeType),
   );
-
-  const [state, dispatch] = useReducer(trapAuctionReducer, initialState);
   const [bidValue, setBidValue] = useState<number>(0);
+  const [personalityMapOpen, setPersonalityMapOpen] = useState(false);
   const [personalityMapOpen, setPersonalityMapOpen] = useState(false);
   const [showSpectatePrompt, setShowSpectatePrompt] = useState(false);
   const autoRevealRef = useRef<ReturnType<typeof setTimeout> | null>(null);
