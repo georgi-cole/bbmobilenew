@@ -280,15 +280,8 @@ function simulateToCompletion(state: TrapAuctionState): TrapAuctionState {
     // Simulate all bids for this round
     const roundSeed = (mulberry32((s.seed ^ (s.round * 0x9e3779b9)) >>> 0)() * 0x100000000) >>> 0;
 
-    // All alive players (human included in simulation) get AI-style bids
-    const withBids = s.players.map((p, idx) => {
-      if (!p.isAlive || p.currentBid !== null) return p;
-      const playerSeed = (mulberry32((roundSeed ^ (idx * 0x1337)) >>> 0)() * 0x100000000) >>> 0;
-      const { min, max } = getAllowedBidRange(p, s.round);
-      const rng = mulberry32(playerSeed);
-      const bid = min + Math.floor(rng() * (max - min + 1));
-      return { ...p, currentBid: bid };
-    });
+    // Use the same AI bid computation as in real rounds to preserve determinism
+    const withBids = computeAiBids(s.players, s.round, roundSeed);
 
     const lowestIds = findLowestBidders(withBids);
     const highestId = findHighestBidder(withBids);
