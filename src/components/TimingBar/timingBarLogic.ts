@@ -29,6 +29,22 @@ export const ROUND_TIME_DECREMENT = 5;
 /** Minimum round duration in seconds. */
 export const MIN_ROUND_SECONDS = 5;
 
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+/**
+ * djb2-style string hash — produces a 32-bit unsigned integer from a string.
+ * Used to derive a unique per-participant seed component so tied-rank elimination
+ * tiebreaks don't collide when participant IDs share a common prefix or first char.
+ */
+function hashString(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h) ^ s.charCodeAt(i);
+    h = h >>> 0; // keep 32-bit unsigned
+  }
+  return h;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface TimingParticipant {
@@ -255,8 +271,8 @@ export function buildTimingRoundResult(params: {
   // use a seeded deterministic shuffle so the choice is reproducible.
   const worstFirst = [...ranked].sort((a, b) => {
     if (b.rank !== a.rank) return b.rank - a.rank;
-    // Tie at the boundary: break deterministically with a per-entry hash of the seed.
-    const rng = mulberry32(roundSeed ^ a.participantId.charCodeAt(0));
+    // Tie at the boundary: break deterministically with a full-string hash of the id.
+    const rng = mulberry32(roundSeed ^ hashString(a.participantId));
     return rng() < 0.5 ? -1 : 1;
   });
   const eliminatedIds = worstFirst.slice(0, actualEliminations).map((e) => e.participantId);
