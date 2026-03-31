@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import majorityRulesReducer, {
+  advanceIntro,
+  initMajorityRules,
   markMajorityRulesOutcomeResolved,
   type MajorityRulesState,
 } from '../../src/features/majorityRules/majorityRulesSlice';
@@ -97,5 +99,34 @@ describe('resolveMajorityRulesOutcome', () => {
     store.dispatch(markMajorityRulesOutcomeResolved());
     await store.dispatch(resolveMajorityRulesOutcome());
     expect(store.getState().game.applyCount).toBe(0);
+  });
+});
+
+describe('majorityRules initialization flow', () => {
+  it('skips straight into the final duel flow when only two participants start', () => {
+    const store = configureStore({
+      reducer: {
+        majorityRules: majorityRulesReducer,
+      },
+    });
+
+    store.dispatch(
+      initMajorityRules({
+        participantIds: ['p1', 'p2'],
+        competitionType: 'HOH',
+        seed: 11,
+        humanPlayerId: 'p1',
+      }),
+    );
+
+    expect(store.getState().majorityRules.phase).toBe('intro');
+    expect(store.getState().majorityRules.currentQuestion).toBeNull();
+
+    store.dispatch(advanceIntro());
+
+    const majorityRules = store.getState().majorityRules;
+    expect(majorityRules.phase).toBe('final_duel_pick');
+    expect(majorityRules.finalDuel?.finalists).toEqual(['p1', 'p2']);
+    expect(majorityRules.finalDuel?.chosenNumbers.p2).toBeTypeOf('number');
   });
 });

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import majorityRulesReducer from '../../../src/features/majorityRules/majorityRulesSlice';
+import majorityRulesReducer, {
+  advanceIntro,
+  setHumanAnswer,
+} from '../../../src/features/majorityRules/majorityRulesSlice';
 import MajorityRulesComp from '../../../src/components/MajorityRulesComp/MajorityRulesComp';
 
 function buildPlayer(id: string, name: string, isUser = false) {
@@ -89,5 +92,58 @@ describe('MajorityRulesComp', () => {
     expect(screen.getByTestId('mr-avatar-rail')).toBeInTheDocument();
     expect(screen.getByTestId('mr-avatar-rail-item-user')).toBeInTheDocument();
     expect(screen.getByTestId('mr-avatar-rail-item-p12')).toBeInTheDocument();
+  });
+
+  it('does not reinitialize when parent rerenders pass new participant array references', async () => {
+    const store = makeStore();
+    const participantIds = ['user', 'finn', 'mimi', 'rae'];
+    const participants = [
+      { id: 'user', name: 'PLAYER_1', isHuman: true, precomputedScore: 0, previousPR: null },
+      { id: 'finn', name: 'PLAYER_2', isHuman: false, precomputedScore: 0, previousPR: null },
+      { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
+      { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
+    ];
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={participantIds}
+          participants={participants}
+          prizeType="HOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+
+    act(() => {
+      store.dispatch(advanceIntro());
+    });
+
+    const chosenOptionId = store.getState().majorityRules.currentQuestion?.options[0]?.id;
+    expect(chosenOptionId).toBeTruthy();
+
+    act(() => {
+      store.dispatch(setHumanAnswer({ playerId: 'user', optionId: chosenOptionId! }));
+    });
+
+    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
+
+    rerender(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={[...participantIds]}
+          participants={participants.map((participant) => ({ ...participant }))}
+          prizeType="HOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+
+    expect(store.getState().majorityRules.phase).toBe('question');
+    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
   });
 });

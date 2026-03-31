@@ -358,7 +358,22 @@ export default function MajorityRulesComp({
   const game = useAppSelector((state: RootState) => state.majorityRules);
   const gamePlayers = useAppSelector((state: RootState) => state.game.players);
   const completedRef = useRef(false);
+  const initConfigRef = useRef<{
+    participantIds: string[];
+    competitionType: MajorityRulesCompetitionType;
+    seed: number;
+    humanPlayerId: string | null;
+  } | null>(null);
   const motionEnabled = !areAnimationsDisabled();
+
+  if (!initConfigRef.current) {
+    initConfigRef.current = {
+      participantIds: [...participantIds],
+      competitionType: prizeType,
+      seed,
+      humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
+    };
+  }
 
   const playerMap = useMemo<Record<string, DisplayPlayer>>(() => {
     const livePlayers = Object.fromEntries(gamePlayers.map((player) => [player.id, player]));
@@ -402,15 +417,9 @@ export default function MajorityRulesComp({
   const getName = (id: string) => getPlayer(id).name;
 
   useEffect(() => {
-    dispatch(
-      initMajorityRules({
-        participantIds,
-        competitionType: prizeType,
-        seed,
-        humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
-      }),
-    );
-  }, [dispatch, participantIds, participants, prizeType, seed]);
+    if (!initConfigRef.current) return;
+    dispatch(initMajorityRules(initConfigRef.current));
+  }, [dispatch]);
 
   useEffect(() => {
     if (game.phase !== 'intro') return undefined;
