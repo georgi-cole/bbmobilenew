@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('MajorityRules styles', () => {
-  it('keeps the shell vertically scrollable and wraps crowded intro avatar rails', () => {
+  it('keeps the shell vertically scrollable on mobile-sized viewports', () => {
     const css = readFileSync(
       resolve(process.cwd(), 'src/components/MajorityRulesComp/MajorityRulesComp.css'),
       'utf8',
@@ -24,6 +24,13 @@ describe('MajorityRules styles', () => {
     expect(shellRuleBody).toContain('overflow-y: auto;');
     expect(shellRuleBody).toContain('overscroll-behavior: contain;');
     expect(shellRuleBody).toContain('-webkit-overflow-scrolling: touch;');
+  });
+
+  it('wraps crowded intro avatar rails into centered rows', () => {
+    const css = readFileSync(
+      resolve(process.cwd(), 'src/components/MajorityRulesComp/MajorityRulesComp.css'),
+      'utf8',
+    );
 
     const wrappedRailRuleStart = css.indexOf('.majority-rules-avatar-rail--wrapped {');
     expect(wrappedRailRuleStart).toBeGreaterThanOrEqual(0);
