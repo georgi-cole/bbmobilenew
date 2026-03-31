@@ -382,6 +382,12 @@
   color: #fff;
 }
 
+/* Resume variant — distinct from stop so the mode-change is visible. */
+.tbg__btn--resume {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
 .tbg__btn--lock {
   background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;

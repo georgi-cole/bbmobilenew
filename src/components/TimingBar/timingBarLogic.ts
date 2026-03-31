@@ -154,8 +154,7 @@ export function getEliminationCount(activeCount: number): number {
  *  4. Shared rank
  *
  * Special case: if exactly 2 players remain and all three criteria are tied,
- * break the tie with a random seed. The seed is derived from the round number
- * and the two participant ids.
+ * break the tie using a pseudorandom choice based on the provided `roundSeed`.
  *
  * Returns a new array with the `rank` field populated.
  */
@@ -251,8 +250,15 @@ export function buildTimingRoundResult(params: {
   const maxEliminations = Math.max(0, activeParticipants.length - 2);
   const actualEliminations = Math.min(eliminationCount, maxEliminations);
 
-  // Sort by rank desc to find the worst performers
-  const worstFirst = [...ranked].sort((a, b) => b.rank - a.rank);
+  // Sort by rank desc to find the worst performers.
+  // When multiple players share the worst rank at the elimination boundary,
+  // use a seeded deterministic shuffle so the choice is reproducible.
+  const worstFirst = [...ranked].sort((a, b) => {
+    if (b.rank !== a.rank) return b.rank - a.rank;
+    // Tie at the boundary: break deterministically with a per-entry hash of the seed.
+    const rng = mulberry32(roundSeed ^ a.participantId.charCodeAt(0));
+    return rng() < 0.5 ? -1 : 1;
+  });
   const eliminatedIds = worstFirst.slice(0, actualEliminations).map((e) => e.participantId);
 
   const entries: TimingRoundEntry[] = ranked.map((entry) => ({
@@ -298,7 +304,6 @@ export function buildParticipants(players: Player[], humanId: string | undefined
  */
 export function simulateRemainingRounds(params: {
   activeParticipantIds: string[];
-  allParticipantIds: string[];
   allParticipants: TimingParticipant[];
   aiSubmissionFn: (participantId: string, roundNumber: number, seed: number) => TimingSubmission;
   startingRoundNumber: number;

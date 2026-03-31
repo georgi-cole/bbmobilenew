@@ -31,7 +31,6 @@ import {
   buildParticipants,
   simulateRemainingRounds,
   deriveRoundSeed,
-  TARGET_POSITION,
   NON_LOCKING_PENALTY_PP,
   type TimingParticipant,
   type TimingSubmission,
@@ -41,9 +40,7 @@ import {
   simulateAiRoundSubmission,
   buildAiSubmissionFn,
 } from './timingBarAi';
-import { getMinigameAiModel } from '../../ai/competition/index';
 import { getAll as getAllHouseguests, getById, findByName } from '../../data/houseguests';
-import { resolveAvatar } from '../../utils/avatar';
 import './TimingBar.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -251,7 +248,10 @@ export default function TimingBar({
 
   // ── Game state ─────────────────────────────────────────────────────────────
 
-  const [gamePhase, setGamePhase] = useState<GamePhase>(initialRound > 1 ? 'intro' : 'preround');
+  // autoStart: skip the preround overview and go directly to the round intro.
+  const [gamePhase, setGamePhase] = useState<GamePhase>(
+    initialRound > 1 || autoStart ? 'intro' : 'preround',
+  );
   const [roundNumber, setRoundNumber] = useState(initialRound);
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
     effectiveParticipantIds,
@@ -259,6 +259,7 @@ export default function TimingBar({
 
   // Bar animation state
   const [barPosition, setBarPosition] = useState(0); // 0–100
+  const [barStopped, setBarStopped] = useState(false); // true during soft-stop pause
   const barDirectionRef = useRef<1 | -1>(1);
   const barPositionRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -289,17 +290,19 @@ export default function TimingBar({
   const [isSpectatorMode, setIsSpectatorMode] = useState(false);
   const [spectatorQueue, setSpectatorQueue] = useState<TimingRoundResult[]>([]);
 
-  // Human's final score (sum of final accuracies across rounds)
-  const [humanTotalScore, setHumanTotalScore] = useState(0);
+  // Human's accumulated score (sum for averaging later; ref-only for stability)
   const humanTotalScoreRef = useRef(0);
+  const humanRoundsPlayedRef = useRef(0);
 
   // ── Bar animation ──────────────────────────────────────────────────────────
 
-  const startBarAnimation = useCallback(() => {
+  /**
+   * Resume (or start) the bar animation from its current position.
+   * Calling this when already animating is safe — the existing RAF is cancelled first.
+   */
+  const resumeBarAnimation = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    barPositionRef.current = 0;
-    barDirectionRef.current = 1;
-    lastFrameTimeRef.current = null;
+    lastFrameTimeRef.current = null; // reset dt so first frame doesn't jump
 
     const speedPct = BAR_BASE_SPEED_PCT_PER_S * getRoundBarSpeed(roundNumber);
 
@@ -328,6 +331,15 @@ export default function TimingBar({
     rafRef.current = requestAnimationFrame(tick);
   }, [roundNumber]);
 
+  /** Start bar from position 0 (new round). */
+  const startBarAnimation = useCallback(() => {
+    barPositionRef.current = 0;
+    barDirectionRef.current = 1;
+    setBarPosition(0);
+    setBarStopped(false);
+    resumeBarAnimation();
+  }, [resumeBarAnimation]);
+
   const stopBarAnimation = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
@@ -338,6 +350,11 @@ export default function TimingBar({
   // ── Timer ──────────────────────────────────────────────────────────────────
 
   const startTimer = useCallback(() => {
+    // Clear any previously running interval before starting a new one.
+    if (timerIntervalRef.current !== null) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
     timeRemainingMsRef.current = roundDurationSeconds * 1000;
     setTimeRemainingMs(roundDurationSeconds * 1000);
 
@@ -375,7 +392,8 @@ export default function TimingBar({
   useEffect(() => {
     if (gamePhase !== 'playing') return;
     if (timeRemainingMs <= 0) {
-      handleRoundTimeout();
+      const t = setTimeout(() => { handleRoundTimeout(); }, 0);
+      return () => clearTimeout(t);
     }
   }, [gamePhase, handleRoundTimeout, timeRemainingMs]);
 
@@ -421,12 +439,11 @@ export default function TimingBar({
       seed: effectiveSeed,
     });
 
-    // Add human's accuracy to total score
+    // Accumulate human's accuracy for final average score
     const humanEntry = result.entries.find((e) => e.isHuman);
     if (humanEntry) {
-      const newTotal = humanTotalScoreRef.current + humanEntry.finalAccuracy;
-      humanTotalScoreRef.current = newTotal;
-      setHumanTotalScore(newTotal);
+      humanTotalScoreRef.current += humanEntry.finalAccuracy;
+      humanRoundsPlayedRef.current += 1;
     }
 
     setRoundResult(result);
@@ -453,12 +470,27 @@ export default function TimingBar({
 
   // ── Player actions ─────────────────────────────────────────────────────────
 
-  /** Stop the bar (soft attempt). Does not lock in. */
+  /**
+   * Stop the bar (soft attempt).
+   * - First press: pauses the bar at its current position and records the attempt.
+   * - Second press (while paused): resumes the bar so the player can try again.
+   * Does not lock in the position.
+   */
   const handleStop = useCallback(() => {
     if (gamePhase !== 'playing') return;
-    const pos = barPositionRef.current;
-    setSoftAttempts((prev) => [...prev, pos]);
-  }, [gamePhase]);
+
+    if (!barStopped) {
+      // Pause the bar and record this soft attempt position.
+      stopBarAnimation();
+      const pos = barPositionRef.current;
+      setSoftAttempts((prev) => [...prev, pos]);
+      setBarStopped(true);
+    } else {
+      // Resume the bar so the player can try again.
+      setBarStopped(false);
+      resumeBarAnimation();
+    }
+  }, [barStopped, gamePhase, resumeBarAnimation, stopBarAnimation]);
 
   /** Lock in the current bar position as the final answer. */
   const handleLockIn = useCallback(() => {
@@ -478,6 +510,7 @@ export default function TimingBar({
     setSoftAttempts([]);
     setLockedPosition(null);
     setIsLocked(false);
+    setBarStopped(false);
     lockedPositionRef.current = null;
     barPositionRef.current = 0;
     setBarPosition(0);
@@ -511,7 +544,6 @@ export default function TimingBar({
     if (!roundResult) return;
     const remaining = simulateRemainingRounds({
       activeParticipantIds: roundResult.advancingIds,
-      allParticipantIds: effectiveParticipantIds,
       allParticipants,
       aiSubmissionFn,
       startingRoundNumber: roundResult.roundNumber + 1,
@@ -522,14 +554,13 @@ export default function TimingBar({
     setIsSpectatorMode(true);
     setActiveParticipantIds(roundResult.advancingIds);
     setGamePhase('spectating');
-  }, [aiSubmissionFn, allParticipants, effectiveParticipantIds, effectiveSeed, roundResult]);
+  }, [aiSubmissionFn, allParticipants, effectiveSeed, roundResult]);
 
   /** Human was eliminated — skip to final results. */
   const handleSkipToFinal = useCallback(() => {
     if (!roundResult) return;
     const remaining = simulateRemainingRounds({
       activeParticipantIds: roundResult.advancingIds,
-      allParticipantIds: effectiveParticipantIds,
       allParticipants,
       aiSubmissionFn,
       startingRoundNumber: roundResult.roundNumber + 1,
@@ -537,7 +568,7 @@ export default function TimingBar({
     });
     setFinalResults(remaining);
     setGamePhase('final_results');
-  }, [aiSubmissionFn, allParticipants, effectiveParticipantIds, effectiveSeed, roundResult]);
+  }, [aiSubmissionFn, allParticipants, effectiveSeed, roundResult]);
 
   /** Done — dispatch outcome or call onFinish. */
   const handleDone = useCallback(() => {
@@ -547,8 +578,13 @@ export default function TimingBar({
     // Find the final round result for winner / last place
     const lastResult = allResults[allResults.length - 1];
 
+    // Average accuracy across all rounds the human played (0–100 envelope).
+    const averageScore = humanRoundsPlayedRef.current > 0
+      ? Math.round(humanTotalScoreRef.current / humanRoundsPlayedRef.current)
+      : 0;
+
     if (!session) {
-      if (onFinish) onFinish(humanTotalScoreRef.current);
+      if (onFinish) onFinish(averageScore);
       return;
     }
 
@@ -556,7 +592,7 @@ export default function TimingBar({
     const lastPlace = lastResult?.entries[lastResult.entries.length - 1];
 
     const payload: CompleteMinigamePayload = {
-      humanScore: Math.round(humanTotalScoreRef.current),
+      humanScore: averageScore,
       winnerId: winner?.participantId,
       lastPlaceId: lastPlace?.participantId,
     };
@@ -568,8 +604,8 @@ export default function TimingBar({
   useEffect(() => {
     if (gamePhase !== 'spectating') return;
     if (spectatorQueue.length === 0) {
-      setGamePhase('final_results');
-      return;
+      const t = setTimeout(() => { setGamePhase('final_results'); }, 0);
+      return () => clearTimeout(t);
     }
 
     const next = spectatorQueue[0];
@@ -629,14 +665,12 @@ export default function TimingBar({
   const humanEntry = roundResult?.entries.find((e) => e.isHuman);
   const humanWasEliminated = !!humanEntry?.isEliminated;
 
-  // Final results — collect all-time entries for display
+  // Final results — collect all-time entries for display, sorted by official rank.
   const allFinalEntries = useMemo(() => {
     if (finalResults.length === 0) return [];
     const last = finalResults[finalResults.length - 1];
-    return [...last.entries].sort((a, b) => {
-      if (b.finalAccuracy !== a.finalAccuracy) return b.finalAccuracy - a.finalAccuracy;
-      return 0;
-    });
+    // Sort by the authoritative rank (already encodes accuracy + tiebreakers).
+    return [...last.entries].sort((a, b) => a.rank - b.rank);
   }, [finalResults]);
 
   const winnerName = allFinalEntries[0]?.name ?? roundResult?.entries[0]?.name ?? 'Unknown';
@@ -889,12 +923,15 @@ export default function TimingBar({
             {!isLocked && (
               <div className="tbg__controls">
                 <button
-                  className="tbg__btn tbg__btn--stop"
+                  className={[
+                    'tbg__btn',
+                    barStopped ? 'tbg__btn--resume' : 'tbg__btn--stop',
+                  ].join(' ')}
                   type="button"
                   onClick={handleStop}
-                  aria-label="Stop the bar (soft attempt)"
+                  aria-label={barStopped ? 'Resume the bar' : 'Stop the bar (soft attempt)'}
                 >
-                  Stop ✋
+                  {barStopped ? 'Resume ▶' : 'Stop ✋'}
                 </button>
                 <button
                   className="tbg__btn tbg__btn--lock"
