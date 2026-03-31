@@ -32,7 +32,7 @@ describe('Leaderboard screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /go back/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Game route')).toBeTruthy();
+      expect(screen.getByText('Game route')).toBeInTheDocument();
     });
   });
 });
