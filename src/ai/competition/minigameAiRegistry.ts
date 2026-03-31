@@ -212,6 +212,13 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_MENTAL_PRECISION,
   },
+  majorityRules: {
+    key: 'majorityRules',
+    category: 'mental',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_PUZZLE,
+    weights: WEIGHTS_MENTAL_PRECISION,
+  },
   tiltedLedge: {
     key: 'tiltedLedge',
     category: 'endurance',

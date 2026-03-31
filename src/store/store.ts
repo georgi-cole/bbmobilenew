@@ -23,6 +23,7 @@ import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice';
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic';
 import famousFiguresReducer from '../features/famousFigures/famousFiguresSlice';
 import silentSaboteurReducer from '../features/silentSaboteur/silentSaboteurSlice';
+import majorityRulesReducer from '../features/majorityRules/majorityRulesSlice';
 import glassBridgeReducer from '../features/glassBridge/glassBridgeSlice';
 import blackjackTournamentReducer from '../features/blackjackTournament/blackjackTournamentSlice';
 import riskWheelReducer from '../features/riskWheel/riskWheelSlice';
@@ -50,6 +51,7 @@ export const store = configureStore({
     biographyBlitz: biographyBlitzReducer,
     famousFigures: famousFiguresReducer,
     silentSaboteur: silentSaboteurReducer,
+    majorityRules: majorityRulesReducer,
     glassBridge: glassBridgeReducer,
     blackjackTournament: blackjackTournamentReducer,
     riskWheel: riskWheelReducer,
