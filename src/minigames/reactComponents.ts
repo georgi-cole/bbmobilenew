@@ -27,6 +27,7 @@ import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz';
 import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp';
 import SnakeGame from '../components/SnakeGame/SnakeGame';
 import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
+import TimingBar from '../components/TimingBar/TimingBar';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -55,6 +56,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   ColorMatch: ColorMatchComp as ComponentType<GenericMinigameProps>,
   SnakeGame: SnakeGame as ComponentType<GenericMinigameProps>,
   RescueTheKing: RescueTheKingGame as ComponentType<GenericMinigameProps>,
+  TimingBar: TimingBar as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;

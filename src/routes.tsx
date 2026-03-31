@@ -69,6 +69,11 @@ const WildcardWesternTestPage = import.meta.env.DEV
   ? lazy(() => import('./screens/WildcardWesternTestPage/WildcardWesternTestPage'))
   : null;
 
+// Dev-only Timing Bar test page.
+const TimingBarTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/TimingBarTestPage/TimingBarTestPage'))
+  : null;
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -111,6 +116,9 @@ export const router = createHashRouter([
         : []),
       ...(import.meta.env.DEV && WildcardWesternTestPage != null
         ? [{ path: 'ww-test', element: <Suspense fallback={null}><WildcardWesternTestPage /></Suspense> }]
+        : []),
+      ...(import.meta.env.DEV && TimingBarTestPage != null
+        ? [{ path: 'tb-test', element: <Suspense fallback={null}><TimingBarTestPage /></Suspense> }]
         : []),
       { path: 'gamedebug',        element: <GameDebug />    },
       { path: '*',                element: <NotFound />     },
