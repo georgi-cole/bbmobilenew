@@ -310,6 +310,15 @@
   letter-spacing: 0.03em;
 }
 
+.bjt-pick {
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 .bjt-opponent-grid {
   display: flex;
   flex-wrap: wrap;
@@ -829,6 +838,9 @@
   cursor: pointer;
   border: none;
   transition: background 0.15s, box-shadow 0.15s;
+  position: sticky;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  z-index: 11;
 }
 
 .bjt-btn--confirm:hover {
