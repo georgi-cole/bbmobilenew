@@ -239,7 +239,7 @@ export function findHighestBidder(players: TrapAuctionPlayer[]): string | null {
   if (alive.length === 0) return null;
   const maxBid = Math.max(...alive.map((p) => p.currentBid as number));
   const highestPlayers = alive.filter((p) => p.currentBid === maxBid);
-  // Don't expose a player that is also the lowest (edge case: 1 player left)
+  // In a tie for highest, return the first highest bidder (including the edge case of 1 player left)
   return highestPlayers[0]?.id ?? null;
 }
 
