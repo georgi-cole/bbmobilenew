@@ -260,7 +260,7 @@ describe('authoritative final ranking helpers', () => {
     expect(getTimingRoundWinner(finalRoundResult)?.participantId).toBe('winner');
   });
 
-  it('returns an empty winner for missing results', () => {
+  it('returns null for missing results', () => {
     expect(getRankedTimingEntries(null)).toEqual([]);
     expect(getTimingRoundWinner(null)).toBeNull();
   });
