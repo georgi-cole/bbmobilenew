@@ -204,11 +204,95 @@
   gap: 0.55rem;
 }
 
+.majority-rules-status-dock {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.2rem;
+}
+
 .majority-rules-roster__row {
   display: flex;
   justify-content: center;
   gap: 0.65rem;
   flex-wrap: nowrap;
+}
+
+.majority-rules-avatar-rail {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding: 0.1rem 0.05rem 0.35rem;
+  scrollbar-width: thin;
+}
+
+.majority-rules-avatar-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  flex: 0 0 auto;
+  min-width: 52px;
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  opacity: 0.98;
+  transition: transform 140ms ease, opacity 140ms ease, filter 140ms ease;
+}
+
+button.majority-rules-avatar-chip {
+  cursor: pointer;
+}
+
+button.majority-rules-avatar-chip:hover {
+  transform: translateY(-1px);
+}
+
+.majority-rules-avatar-chip__portrait {
+  position: relative;
+}
+
+.majority-rules-avatar-chip__badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  padding: 0.12rem 0.3rem;
+  font-size: 0.53rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.majority-rules-avatar-chip__name {
+  max-width: 56px;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  color: #cbd5e1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.majority-rules-avatar-chip--selected .majority-rules-portrait,
+.majority-rules-avatar-chip--human .majority-rules-portrait {
+  border-color: rgba(96, 165, 250, 0.72);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2), 0 8px 18px rgba(15, 23, 42, 0.26);
+}
+
+.majority-rules-avatar-chip--selected .majority-rules-portrait {
+  border-color: rgba(250, 204, 21, 0.72);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.2), 0 10px 24px rgba(17, 24, 39, 0.28);
+}
+
+.majority-rules-avatar-chip--eliminated {
+  opacity: 0.45;
+  filter: grayscale(0.9);
+}
+
+.majority-rules-avatar-chip--pulse .majority-rules-portrait {
+  animation: majority-rules-pulse 1s ease-in-out infinite alternate;
 }
 
 .majority-rules-player-card {
@@ -506,7 +590,8 @@ button.majority-rules-player-card:hover {
 }
 
 body.no-animations .majority-rules-ambient,
-body.no-animations .majority-rules-player-card--pulse {
+body.no-animations .majority-rules-player-card--pulse,
+body.no-animations .majority-rules-avatar-chip--pulse .majority-rules-portrait {
   animation: none;
 }
 
@@ -568,6 +653,20 @@ body.no-animations .majority-rules-player-card--pulse {
   .majority-rules-player-card {
     padding: 0.58rem;
     border-radius: 18px;
+  }
+
+  .majority-rules-avatar-rail {
+    gap: 0.52rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .majority-rules-avatar-chip {
+    min-width: 48px;
+  }
+
+  .majority-rules-avatar-chip__name {
+    max-width: 50px;
+    font-size: 0.62rem;
   }
 
   .majority-rules-player-card__name {

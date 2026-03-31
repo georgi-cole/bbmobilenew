@@ -5,15 +5,21 @@ import { configureStore } from '@reduxjs/toolkit';
 import majorityRulesReducer from '../../../src/features/majorityRules/majorityRulesSlice';
 import MajorityRulesComp from '../../../src/components/MajorityRulesComp/MajorityRulesComp';
 
-function makeStore() {
+function buildPlayer(id: string, name: string, isUser = false) {
+  return { id, name, avatar: '', status: 'active', isUser };
+}
+
+function makeStore(
+  players = [
+    buildPlayer('user', 'You', true),
+    buildPlayer('finn', 'Finn'),
+    buildPlayer('mimi', 'Mimi'),
+    buildPlayer('rae', 'Rae'),
+  ],
+) {
   const gameReducer = (
     state = {
-      players: [
-        { id: 'user', name: 'You', avatar: '😀', status: 'active', isUser: true },
-        { id: 'finn', name: 'Finn', avatar: '', status: 'active' },
-        { id: 'mimi', name: 'Mimi', avatar: '', status: 'active' },
-        { id: 'rae', name: 'Rae', avatar: '', status: 'active' },
-      ],
+      players,
       phase: 'hoh_comp',
     },
   ) => state;
@@ -54,5 +60,34 @@ describe('MajorityRulesComp', () => {
 
     const finnPortrait = screen.getAllByTestId('mr-portrait-finn')[0];
     expect(finnPortrait.getAttribute('src')).toContain('avatars/Finn.png');
+  });
+
+  it('switches to a compact avatar rail when the roster is large', async () => {
+    const ids = ['user', ...Array.from({ length: 11 }, (_, idx) => `p${idx + 2}`)];
+    const players = ids.map((id, idx) => buildPlayer(id, idx === 0 ? 'You' : `Player ${idx + 1}`, idx === 0));
+    const store = makeStore(players);
+
+    render(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={ids}
+          participants={ids.map((id, idx) => ({
+            id,
+            name: idx === 0 ? 'USER' : `AI_${idx}`,
+            isHuman: idx === 0,
+            precomputedScore: 0,
+            previousPR: null,
+          }))}
+          prizeType="HOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+
+    expect(screen.getByTestId('mr-avatar-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('mr-avatar-rail-item-user')).toBeInTheDocument();
+    expect(screen.getByTestId('mr-avatar-rail-item-p12')).toBeInTheDocument();
   });
 });

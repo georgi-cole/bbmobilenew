@@ -111,6 +111,10 @@ function getAvatarGridRows(ids: string[], dense = false): string[][] {
   return rows;
 }
 
+function shouldUseRosterRail(ids: string[]) {
+  return ids.length >= 10;
+}
+
 function MajorityRulesPortrait({
   player,
   size = 'md',
@@ -185,6 +189,7 @@ function PlayerRoster({
   compact = false,
   badgeMode = 'you',
   pulseId,
+  variant,
 }: {
   ids: string[];
   getPlayer: (id: string) => DisplayPlayer;
@@ -195,10 +200,75 @@ function PlayerRoster({
   compact?: boolean;
   badgeMode?: 'you' | 'turn';
   pulseId?: string | null;
+  variant?: 'cards' | 'rail';
 }) {
   const rows = getAvatarGridRows(ids, dense);
   const eliminatedSet = new Set(eliminatedIds);
   const motionEnabled = !areAnimationsDisabled();
+  const rosterVariant = variant ?? (shouldUseRosterRail(ids) ? 'rail' : 'cards');
+
+  if (rosterVariant === 'rail') {
+    return (
+      <div className="majority-rules-avatar-rail" data-testid="mr-avatar-rail">
+        {ids.map((id, idx) => {
+          const player = getPlayer(id);
+          const isSelected = selectedId === id;
+          const isEliminated = eliminatedSet.has(id);
+          const isHuman = player.isHuman;
+          const badgeText =
+            badgeMode === 'turn' && pulseId === id ? 'ROLL' : isHuman ? 'YOU' : null;
+          const className = [
+            'majority-rules-avatar-chip',
+            isSelected ? 'majority-rules-avatar-chip--selected' : '',
+            isHuman ? 'majority-rules-avatar-chip--human' : '',
+            isEliminated ? 'majority-rules-avatar-chip--eliminated' : '',
+            pulseId === id ? 'majority-rules-avatar-chip--pulse' : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          const content = (
+            <>
+              <div className="majority-rules-avatar-chip__portrait">
+                <MajorityRulesPortrait player={player} size="sm" />
+                {badgeText && <span className="majority-rules-avatar-chip__badge">{badgeText}</span>}
+              </div>
+              <span className="majority-rules-avatar-chip__name">{player.name}</span>
+            </>
+          );
+
+          const sharedMotion = motionEnabled
+            ? {
+                initial: { opacity: 0, y: 8 },
+                animate: { opacity: 1, y: 0, transition: { duration: 0.2, delay: idx * 0.02 } },
+              }
+            : {};
+
+          return onSelect ? (
+            <motion.button
+              key={id}
+              type="button"
+              className={className}
+              data-testid={`mr-avatar-rail-item-${id}`}
+              onClick={() => onSelect(id)}
+              whileTap={motionEnabled ? { scale: 0.96 } : undefined}
+              {...sharedMotion}
+            >
+              {content}
+            </motion.button>
+          ) : (
+            <motion.div
+              key={id}
+              className={className}
+              data-testid={`mr-avatar-rail-item-${id}`}
+              {...sharedMotion}
+            >
+              {content}
+            </motion.div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className={`majority-rules-roster ${compact ? 'majority-rules-roster--compact' : ''}`}>
@@ -370,6 +440,7 @@ export default function MajorityRulesComp({
     game.humanPlayerId && game.activeIds.includes(game.humanPlayerId) ? game.humanPlayerId : null;
   const finalists: string[] = game.finalDuel?.finalists ?? [];
   const selectedHumanOption = activeHumanId ? game.draftAnswers[activeHumanId] : null;
+  const useActiveStatusRail = shouldUseRosterRail(game.activeIds);
 
   const renderQuestion = () => (
     <motion.div
@@ -405,7 +476,9 @@ export default function MajorityRulesComp({
         </p>
       </div>
 
-      <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} compact={true} dense={true} />
+      {!useActiveStatusRail && (
+        <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} compact={true} dense={true} />
+      )}
 
       <div className="majority-rules-options">
         {game.currentQuestion?.options.map((option, idx) => {
@@ -596,6 +669,15 @@ export default function MajorityRulesComp({
           Lock answers
         </button>
       </div>
+      {useActiveStatusRail && (
+        <div className="majority-rules-status-dock">
+          <div className="majority-rules-section-title">
+            <h3>House status</h3>
+            <span>Scroll the avatar rail to track who is still in.</span>
+          </div>
+          <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} variant="rail" />
+        </div>
+      )}
     </motion.div>
   );
 
@@ -858,7 +940,13 @@ export default function MajorityRulesComp({
             <p className="majority-rules-copy">
               The safest answer is whatever most people believe everyone else will pick.
             </p>
-            <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} compact={true} dense={true} />
+            <PlayerRoster
+              ids={game.activeIds}
+              getPlayer={getPlayer}
+              compact={true}
+              dense={true}
+              variant={shouldUseRosterRail(game.activeIds) ? 'rail' : 'cards'}
+            />
           </motion.div>
         )}
         {game.phase === 'question' && renderQuestion()}
