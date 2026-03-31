@@ -1051,7 +1051,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'Every player starts with 100 Eyeolens.',
       'Each round, secretly choose how much to bid.',
-      'After all bids lock, they are revealed one by one.',
+      'After all bids lock, first the highest bid is revealed, then the lowest bid(s); other bids stay hidden.',
       'The player who bid the LOWEST is eliminated. Ties eliminate all tied players.',
       'The player who bid the HIGHEST is exposed — their bid is public and they face a penalty next round.',
       'All players pay their bid from their bank.',
