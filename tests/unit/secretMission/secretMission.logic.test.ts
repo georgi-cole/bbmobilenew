@@ -21,8 +21,10 @@ import gameReducer, {
   declineSecretMission,
   updateMissionTaskProgress,
   completeMission,
+  hydrateGame,
+  tryActivateSecretMission,
 } from '../../../src/store/gameSlice';
-import settingsReducer from '../../../src/store/settingsSlice';
+import settingsReducer, { setSim } from '../../../src/store/settingsSlice';
 import {
   DEFAULT_TRIGGER_CHANCES,
   getSecretMissionTriggerChance,
@@ -184,6 +186,66 @@ describe('checkSecretMissionTrigger — override=100 always triggers on Day 5', 
   });
 });
 
+describe('tryActivateSecretMission thunk', () => {
+  function setGameWeek(store: ReturnType<typeof makeStore>, week: number) {
+    const state = store.getState();
+    store.dispatch(
+      hydrateGame({
+        ...state.game,
+        week,
+        phase: 'week_start',
+      }),
+    );
+  }
+
+  it('triggers on Day 5 when override is 100', () => {
+    const store = makeStore();
+    setGameWeek(store, 5);
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+    expect(store.getState().game.secretMission?.triggeredDay).toBe(5);
+  });
+
+  it('does not trigger on Day 5 when override is 0', () => {
+    const store = makeStore();
+    setGameWeek(store, 5);
+    store.dispatch(setSim({ secretMissionTriggerOverride: 0 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMission).toBeUndefined();
+  });
+
+  it('does not trigger before Day 5 even with override 100', () => {
+    const store = makeStore();
+    setGameWeek(store, 4);
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMission).toBeUndefined();
+  });
+
+  it('does not trigger after Day 12 even with override 100', () => {
+    const store = makeStore();
+    setGameWeek(store, 13);
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMission).toBeUndefined();
+  });
+
+  it('does not trigger if a mission already exists for the season', () => {
+    const store = makeStore();
+    setGameWeek(store, 5);
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+
+    setGameWeek(store, 6);
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMission?.triggeredDay).toBe(5);
+  });
+});
+
 // ── 5. Accept / decline flow ──────────────────────────────────────────────────
 
 describe('offerSecretMission reducer', () => {
@@ -322,12 +384,11 @@ describe('completeMission reducer', () => {
     return store;
   }
 
-  it('marks all tasks completed and sets rewardPending', () => {
+  it('marks all tasks completed and transitions to rewardPending', () => {
     const store = setupAcceptedMission();
     store.dispatch(completeMission());
     const sm = store.getState().game.secretMission!;
-    expect(sm.status).toBe('completed');
-    expect(sm.rewardPending).toBe(true);
+    expect(sm.status).toBe('rewardPending');
     sm.tasks.forEach((t) => expect(t.completed).toBe(true));
   });
 
@@ -342,7 +403,7 @@ describe('completeMission reducer', () => {
 });
 
 describe('updateMissionTaskProgress — auto-completes when all tasks done', () => {
-  it('transitions status to completed when the last task is ticked', () => {
+  it('transitions status to rewardPending when the last task is ticked', () => {
     const store = makeStore();
     store.dispatch(triggerSecretMission(5));
     store.dispatch(offerSecretMission(5));
@@ -359,8 +420,7 @@ describe('updateMissionTaskProgress — auto-completes when all tasks done', () 
     const lastTask = tasks[tasks.length - 1];
     store.dispatch(updateMissionTaskProgress({ taskId: lastTask.id, current: lastTask.target }));
     const sm = store.getState().game.secretMission!;
-    expect(sm.status).toBe('completed');
-    expect(sm.rewardPending).toBe(true);
+    expect(sm.status).toBe('rewardPending');
   });
 });
 
@@ -418,16 +478,6 @@ describe('selectConfessionalMissionBadge', () => {
     expect(selectConfessionalMissionBadge(s)).toBe(false);
   });
 
-  it('returns false when status is completed (reward not pending via this field)', () => {
-    // 'completed' is the brief transition state; badge is actually driven by
-    // 'rewardPending' once the mission is done.
-    const s = stateWith({ status: 'completed', rewardPending: false });
-    // 'completed' status alone does not show badge (PR 1 design decision: only
-    // 'rewardPending' state shows badge for completed missions).
-    // selectConfessionalMissionBadge uses 'rewardPending' status not 'completed'.
-    // Check implementation comment in selectors.ts.
-    expect(selectConfessionalMissionBadge(s)).toBe(false);
-  });
 });
 
 // ── Helper unit tests ─────────────────────────────────────────────────────────
@@ -441,7 +491,6 @@ describe('createSecretMissionState', () => {
     expect(state.offerCount).toBe(0);
     expect(state.declinedDay).toBeNull();
     expect(state.tasks).toHaveLength(0); // tasks added on accept
-    expect(state.rewardPending).toBe(false);
     expect(state.templateId).toBeDefined();
   });
 });

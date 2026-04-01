@@ -26,6 +26,7 @@ import {
   completeBattleBack,
   dismissBattleBack,
   tryActivateBattleBack,
+  tryActivateSecretMission,
   openBattleBackCompetition,
   tryActivateDoubleEviction,
   tryActivateSpecialVeto,
@@ -507,6 +508,18 @@ export default function GameScreen() {
     if (specialVetoActivationWeekRef.current === game.week) return
     specialVetoActivationWeekRef.current = game.week
     dispatch(tryActivateSpecialVeto())
+  }, [game.phase, game.week, dispatch])
+
+  // ── Secret Mission activation on week-start entry ───────────────────────
+  // Fire tryActivateSecretMission once per day when the game enters week_start.
+  // The thunk centralizes the daily chance table, testing override, and
+  // one-per-season guard.
+  const secretMissionActivationWeekRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (game.phase !== 'week_start') return
+    if (secretMissionActivationWeekRef.current === game.week) return
+    secretMissionActivationWeekRef.current = game.week
+    dispatch(tryActivateSecretMission())
   }, [game.phase, game.week, dispatch])
 
   const [pendingNominees, setPendingNominees] = useState<string[]>([])

@@ -40,6 +40,7 @@ import { resolvePublicSaveNominee } from '../publicOpinion/PublicSaveService';
 import {
   createSecretMissionState,
   buildMissionTasks,
+  checkSecretMissionTrigger,
   MISSION_TEMPLATES,
 } from '../bb/secretMission';
 
@@ -3564,7 +3565,7 @@ const gameSlice = createSlice({
     /**
      * Update progress on a single mission task.
      * Automatically marks the task completed when current >= target.
-     * If all tasks complete, transitions the mission to 'completed' + sets rewardPending.
+     * If all tasks complete, transitions the mission to 'rewardPending'.
      */
     updateMissionTaskProgress(
       state,
@@ -3579,22 +3580,20 @@ const gameSlice = createSlice({
       // Check if all tasks are done
       const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
       if (allDone) {
-        sm.status = 'completed';
-        sm.rewardPending = true;
+        sm.status = 'rewardPending';
       }
     },
 
     /**
      * Explicitly mark the mission as completed (e.g. when the final task
      * is ticked via a passive update path).
-     * Sets rewardPending = true.
+     * Transitions to rewardPending.
      */
     completeMission(state) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'accepted') return;
       sm.tasks.forEach((t) => { t.completed = true; t.current = t.target; });
-      sm.status = 'completed';
-      sm.rewardPending = true;
+      sm.status = 'rewardPending';
     },
   },
 });
@@ -3877,6 +3876,34 @@ export const startMinigame =
     };
     dispatch(launchMinigame(session));
     return undefined;
+  };
+
+/**
+ * Attempt to trigger the seasonal secret mission for the current day.
+ *
+ * Rules:
+ *  - Evaluates only on Day 5–12 via the centralized chance helper
+ *  - At most one mission may trigger per season
+ *  - The testing override affects only this calculation
+ *  - Uses a twist-specific RNG path so it does not perturb other outcomes
+ *
+ * Returns `true` if the mission triggered for the current day.
+ */
+export const tryActivateSecretMission =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState();
+
+    if (game.phase !== 'week_start') return false;
+    if (game.secretMission) return false;
+
+    const override = settings.sim.secretMissionTriggerOverride;
+    const rng = mulberry32((game.seed ^ Math.imul(game.week, 0x9e3779b1)) >>> 0);
+
+    if (!checkSecretMissionTrigger(game.week, rng, override)) return false;
+
+    dispatch(triggerSecretMission(game.week));
+    return true;
   };
 
 /**

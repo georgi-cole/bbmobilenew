@@ -748,11 +748,11 @@ export default function DiaryRoom() {
             )}
 
             {/* ── Secret mission checklist (active) ─────────────────────── */}
-            {secretMission && (secretMission.status === 'accepted' || secretMission.status === 'completed' || secretMission.status === 'rewardPending') && (
+            {secretMission && (secretMission.status === 'accepted' || secretMission.status === 'rewardPending') && (
               <div className="diary-room__mission-checklist" aria-label="Secret mission checklist">
                 <p className="diary-room__mission-title">
                   🕵️ Secret Mission
-                  {secretMission.status === 'completed' || secretMission.status === 'rewardPending'
+                  {secretMission.status === 'rewardPending'
                     ? ' — Complete!'
                     : ''}
                 </p>
@@ -772,7 +772,7 @@ export default function DiaryRoom() {
                     )}
                   </div>
                 ))}
-                {(secretMission.status === 'completed' || secretMission.status === 'rewardPending') && (
+                {secretMission.status === 'rewardPending' && (
                   <p className="diary-room__mission-reward-pending">
                     🎁 Reward pending — the Big Eye will reveal your prize soon.
                   </p>

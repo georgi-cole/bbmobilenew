@@ -82,7 +82,7 @@ export const selectHumanIsActive = (state: RootState): boolean => {
  * secret-mission badge (PR 1 conditions):
  *  - A mission offer is available / currently being offered
  *  - A mission is accepted (Big Eye has an active prompt)
- *  - A mission is completed and a reward is pending
+ *  - A mission checklist is complete and reward reveal is pending
  */
 export const selectConfessionalMissionBadge = (state: RootState): boolean => {
   const sm = state.game?.secretMission;

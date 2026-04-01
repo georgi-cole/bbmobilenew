@@ -23,10 +23,9 @@
  *
  *  available    → mission has triggered; Big Eye hasn't offered it yet
  *  offered      → Big Eye offered it in the Confessional; awaiting player response
- *  accepted     → player accepted; checklist is active
- *  declined     → player declined; one re-offer may still be pending
- *  completed    → all required tasks ticked; sets rewardPending
- *  rewardPending → reward awaiting claim (mystery box – implemented in later PR)
+ *  accepted      → player accepted; checklist is active
+ *  declined      → player declined; one re-offer may still be pending
+ *  rewardPending → checklist completed; reward awaiting claim
  *  expired      → time window closed without completion
  */
 export type SecretMissionStatus =
@@ -34,7 +33,6 @@ export type SecretMissionStatus =
   | 'offered'
   | 'accepted'
   | 'declined'
-  | 'completed'
   | 'rewardPending'
   | 'expired';
 
@@ -71,8 +69,6 @@ export interface SecretMissionState {
   declinedDay: number | null;
   /** Active checklist tasks. Populated when status moves to 'accepted'. */
   tasks: MissionTask[];
-  /** True once all required tasks are completed and reward is pending. */
-  rewardPending: boolean;
   /** Template identifier used to generate this mission instance. */
   templateId: string;
 }
@@ -220,7 +216,6 @@ export function createSecretMissionState(day: number): SecretMissionState {
     offerCount: 0,
     declinedDay: null,
     tasks: [],
-    rewardPending: false,
     templateId: template.id,
   };
 }
