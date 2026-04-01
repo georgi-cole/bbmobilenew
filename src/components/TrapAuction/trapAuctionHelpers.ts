@@ -152,6 +152,16 @@ export function chooseAiBid(
   const bankFraction = player.bank / TRAP_AUCTION_CONFIG.startingBank;
   // Round pressure: later rounds are more dangerous (more to lose)
   const roundPressure = Math.min(1, state.round / 8);
+  const safetyFloor = max > TRAP_AUCTION_CONFIG.minBid
+    ? Math.min(
+        max,
+        Math.max(
+          min + 1,
+          player.bank > 10 ? 3 : min + 1,
+          Math.floor(player.bank * (aliveCount <= 3 ? 0.12 : 0.08)),
+        ),
+      )
+    : min;
 
   let raw: number;
 
@@ -207,8 +217,7 @@ export function chooseAiBid(
   }
 
   const clamped = Math.max(min, Math.min(max, raw));
-  const safeFloor = max > TRAP_AUCTION_CONFIG.minBid ? min + 1 : min;
-  return Math.max(safeFloor, clamped);
+  return Math.max(safetyFloor, clamped);
 }
 
 // ─── findLowestBidders ────────────────────────────────────────────────────────

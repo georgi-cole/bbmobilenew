@@ -683,88 +683,6 @@
   50%       { opacity: 1;   transform: scale(1.1); }
 }
 
-/* ─── Resolve Phase ──────────────────────────────────────────────────────────── */
-
-.ta-resolve-phase {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  flex: 1;
-}
-
-.ta-resolve-phase__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #e2c76b;
-  margin: 0;
-}
-
-.ta-resolve-summary {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ta-resolve-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  flex-wrap: wrap;
-}
-
-.ta-resolve-row--out {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.35);
-}
-
-.ta-resolve-row--exposed {
-  background: rgba(251, 191, 36, 0.07);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
-.ta-resolve-row__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.ta-resolve-row__name {
-  font-size: 14px;
-  font-weight: 600;
-  flex: 1;
-  min-width: 60px;
-}
-
-.ta-resolve-row__bid {
-  font-size: 15px;
-  font-weight: 700;
-  color: #e2c76b;
-}
-
-.ta-resolve-row__tag {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 5px;
-}
-
-.ta-resolve-row__tag--out {
-  background: rgba(239, 68, 68, 0.25);
-  color: #f87171;
-}
-
-.ta-resolve-row__tag--exposed {
-  background: rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
-}
-
 /* ─── Elimination Phase ──────────────────────────────────────────────────────── */
 
 .ta-elimination-phase {
@@ -864,6 +782,7 @@
   align-items: stretch;
   gap: 20px;
   flex: 1;
+  min-height: 0;
   padding-top: 8px;
   width: 100%;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
@@ -922,6 +841,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
 }
 
 .ta-complete-placements__title {
@@ -931,6 +852,16 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 6px;
+}
+
+.ta-complete-placements__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 12px;
 }
 
 .ta-complete-placement {
@@ -975,6 +906,14 @@
 .ta-complete-placement__elim {
   font-size: 11px;
   color: #666880;
+}
+
+.ta-complete-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: 8px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  background: linear-gradient(180deg, rgba(14, 14, 24, 0) 0%, rgba(14, 14, 24, 0.92) 30%, #0e0e18 100%);
 }
 
 /* ─── Personality Map ────────────────────────────────────────────────────────── */

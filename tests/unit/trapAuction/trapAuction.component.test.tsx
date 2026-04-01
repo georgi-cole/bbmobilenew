@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import TrapAuction from '../../../src/components/TrapAuction/TrapAuction';
 
 const participants = [
@@ -10,6 +10,10 @@ const participants = [
 ];
 
 describe('TrapAuction component', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('skips the in-component intro when autoStart is enabled', async () => {
     render(<TrapAuction participants={participants} seed={42} autoStart />);
 
@@ -19,7 +23,9 @@ describe('TrapAuction component', () => {
     expect(screen.getByText('Your Bank')).toBeInTheDocument();
   });
 
-  it('shows a single next-round action after all reveal cards are visible', async () => {
+  it('auto-advances to elimination after all reveal cards are visible', async () => {
+    vi.useFakeTimers();
+
     render(<TrapAuction participants={participants} seed={42} autoStart />);
 
     await act(async () => {});
@@ -29,6 +35,13 @@ describe('TrapAuction component', () => {
 
     expect(screen.queryByRole('button', { name: /flip next card/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reveal all$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /next round/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next round/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/continuing to elimination/i)).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(950);
+    });
+
+    expect(screen.getByText(/player.*remain/i)).toBeInTheDocument();
   });
 });

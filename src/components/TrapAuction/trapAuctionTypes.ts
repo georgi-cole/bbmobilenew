@@ -140,7 +140,6 @@ export type GamePhase =
   | 'intro'        // Opening screen with rules recap
   | 'bid'          // Human picks a bid; AI waits
   | 'reveal'       // Bids flipped one by one (or all at once in FF mode)
-  | 'resolve'      // Legacy transition state retained for compatibility
   | 'elimination'  // Cinematic: eliminated player fades out before auto-advance
   | 'complete';    // Game over, winner declared
 
