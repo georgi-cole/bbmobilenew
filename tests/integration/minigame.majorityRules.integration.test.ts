@@ -82,6 +82,13 @@ describe('majorityRules registry entry', () => {
     expect(entry?.scoringAdapter).toBe('authoritative');
     expect(entry?.resultMode).toBe('placement');
   });
+
+  it('documents the fully split round re-vote rule in the instructions', () => {
+    const entry = getGame('majorityRules');
+    expect(entry?.instructions).toContain(
+      "If all 3 answers are split evenly, everyone re-votes until there's a clear majority and minority.",
+    );
+  });
 });
 
 describe('resolveMajorityRulesOutcome', () => {

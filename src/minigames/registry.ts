@@ -371,6 +371,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Everyone locks in an answer at the same time.',
       'Players in the minority are eliminated.',
       'If everyone picks the same answer, nobody leaves and the next round starts fresh.',
+      "If all 3 answers are split evenly, everyone re-votes until there's a clear majority and minority.",
       'If multiple minority answers tie beneath the majority, every tied minority player is eliminated.',
       'At the Final 2, the game becomes a dice duel.',
     ],

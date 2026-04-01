@@ -69,14 +69,20 @@ describe('majorityRules logic', () => {
     const seededOptionTexts1Repeat = seededQuestion1Repeat.options.map((option) => option.text);
     expect(seededOptionTexts1Repeat).toEqual(seededOptionTexts1);
 
-    // 3. With a different seed, the order can change for at least one seeded question.
-    const seededQuestion2 = pickMajorityRulesQuestion(18, 1, []);
-    const seededOptionTexts2 = seededQuestion2.options.map((option) => option.text);
-    expect([...seededOptionTexts2].sort()).toEqual([...baseOptionTexts].sort());
+    // 3. Across deterministic seed/round picks, at least one picked question has a reordered option list.
+    const foundReorderedQuestion = Array.from({ length: 20 }, (_, seedOffset) =>
+      pickMajorityRulesQuestion(17 + seedOffset, (seedOffset % 5) + 1, []),
+    ).some((pickedQuestion) => {
+      const pickedBaseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === pickedQuestion.id);
+      const pickedBaseOptions = pickedBaseQuestion?.options.map((option) => option.text) ?? [];
+      const pickedOptions = pickedQuestion.options.map((option) => option.text);
 
-    const differsFromBase1 = seededOptionTexts1.join('||') !== baseOptionTexts.join('||');
-    const differsFromBase2 = seededOptionTexts2.join('||') !== baseOptionTexts.join('||');
-    expect(differsFromBase1 || differsFromBase2).toBe(true);
+      expect([...pickedOptions].sort()).toEqual([...pickedBaseOptions].sort());
+
+      return pickedOptions.join('||') !== pickedBaseOptions.join('||');
+    });
+
+    expect(foundReorderedQuestion).toBe(true);
   });
 
   it('flags unanimous rounds without eliminating anyone', () => {
