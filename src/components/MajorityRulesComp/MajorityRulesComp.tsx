@@ -60,6 +60,13 @@ function formatPercent(value: number) {
   return `${Math.max(0, Math.round(value))}%`;
 }
 
+function formatQuotedList(items: string[]) {
+  if (items.length === 0) return '';
+  if (items.length === 1) return `“${items[0]}”`;
+  if (items.length === 2) return `“${items[0]}” and “${items[1]}”`;
+  return `${items.slice(0, -1).map((item) => `“${item}”`).join(', ')}, and “${items[items.length - 1]}”`;
+}
+
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || '?';
 }
@@ -467,22 +474,17 @@ export default function MajorityRulesComp({
       {...(motionEnabled ? PHASE_MOTION : {})}
     >
       <div className="majority-rules-glow majority-rules-glow--question" aria-hidden="true" />
-      <div className="majority-rules-badge-row">
-        <span className="majority-rules-badge">Round {game.roundNumber}</span>
-        <span className="majority-rules-badge majority-rules-badge--cool">
-          {game.activeIds.length} houseguests left
-        </span>
-        {game.revoteNumber > 0 && (
-          <span className="majority-rules-badge majority-rules-badge--warn">
-            Re-vote {game.revoteNumber}
+        <div className="majority-rules-badge-row">
+          <span className="majority-rules-badge">Round {game.roundNumber}</span>
+          <span className="majority-rules-badge majority-rules-badge--cool">
+            {game.activeIds.length} houseguests left
           </span>
-        )}
-        {game.doubleEliminationArmed && (
-          <span className="majority-rules-badge majority-rules-badge--danger">
-            Double Elimination Armed
-          </span>
-        )}
-      </div>
+          {game.revoteNumber > 0 && (
+            <span className="majority-rules-badge majority-rules-badge--warn">
+              Re-vote {game.revoteNumber}
+            </span>
+          )}
+        </div>
 
       <div className="majority-rules-header-copy">
         <span className="majority-rules-kicker">Read the room. Stay with the crowd.</span>
@@ -707,6 +709,10 @@ export default function MajorityRulesComp({
     const minorityLabel = game.currentQuestion?.options.find(
       (option) => option.id === reveal?.result.minorityOptionId,
     )?.text;
+    const tiedMinorityLabels =
+      game.currentQuestion?.options
+        .filter((option) => reveal?.result.tiedOptionIds.includes(option.id))
+        .map((option) => option.text) ?? [];
 
     return (
       <motion.div
@@ -717,9 +723,6 @@ export default function MajorityRulesComp({
         <div className="majority-rules-glow majority-rules-glow--reveal" aria-hidden="true" />
         <div className="majority-rules-badge-row">
           <span className="majority-rules-badge">Reveal</span>
-          {reveal?.doubleEliminationWasActive && (
-            <span className="majority-rules-badge majority-rules-badge--danger">Double Elimination</span>
-          )}
         </div>
 
         <div className="majority-rules-header-copy">
@@ -729,16 +732,20 @@ export default function MajorityRulesComp({
               ? 'Split house. Nobody is safe yet.'
               : reveal?.result.kind === 'unanimous'
                 ? 'A full sweep. Nobody falls this time.'
-                : 'Minority found. The trap door opens.'}
+                : tiedMinorityLabels.length > 0
+                  ? 'Tie at the bottom. Every minority answer drops.'
+                  : 'Minority found. The trap door opens.'}
           </h2>
           <p className="majority-rules-copy">
             {reveal?.result.kind === 'revote'
-              ? 'Tie for the minority. Everyone must switch off their previous answer and vote again.'
+              ? 'Every answer tied, so the house votes again.'
               : reveal?.result.kind === 'unanimous'
-                ? 'No elimination this round. The next one becomes a double elimination showdown.'
-                : minorityLabel
-                  ? `The minority answer was “${minorityLabel}”.`
-                  : 'The minority has been eliminated.'}
+                ? 'No elimination this round. The next question starts fresh.'
+                : tiedMinorityLabels.length > 0
+                  ? `The tied minority answers were ${formatQuotedList(tiedMinorityLabels)}.`
+                  : minorityLabel
+                   ? `The minority answer was “${minorityLabel}”.`
+                   : 'The minority has been eliminated.'}
           </p>
         </div>
 

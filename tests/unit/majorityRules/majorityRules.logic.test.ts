@@ -4,6 +4,7 @@ import {
   buildBaseAiAnswers,
   initializeDiceDuel,
   pickAiDuelNumber,
+  pickMajorityRulesQuestion,
   resolveDiceDuelRoll,
   resolveMajorityRulesBallot,
   simulateMajorityRulesBallot,
@@ -49,7 +50,19 @@ describe('majorityRules logic', () => {
     expect(first).toEqual(second);
   });
 
-  it('flags unanimous rounds and arms double elimination for the next vote', () => {
+  it('uses the expanded question bank and shuffles seeded question options', () => {
+    expect(MAJORITY_RULES_QUESTIONS).toHaveLength(200);
+
+    const seededQuestion = pickMajorityRulesQuestion(17, 1, []);
+    const baseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === seededQuestion.id);
+
+    expect(baseQuestion).toBeDefined();
+    expect(seededQuestion.options.map((option) => option.text)).not.toEqual(
+      baseQuestion?.options.map((option) => option.text),
+    );
+  });
+
+  it('flags unanimous rounds without eliminating anyone', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4'],
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'a' },
@@ -63,21 +76,22 @@ describe('majorityRules logic', () => {
     expect(result.eliminatedIds).toEqual([]);
   });
 
-  it('forces a revote when the minority is tied', () => {
+  it('eliminates every player tied in the minority', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4'],
-      answers: { p1: 'a', p2: 'b', p3: 'a', p4: 'b' },
+      answers: { p1: 'a', p2: 'a', p3: 'b', p4: 'c' },
       question,
       eliminationCount: 1,
       seed: 12,
       roundNumber: 1,
     });
 
-    expect(result.kind).toBe('revote');
-    expect(result.tiedOptionIds.sort()).toEqual(['a', 'b']);
+    expect(result.kind).toBe('elimination');
+    expect(result.tiedOptionIds.sort()).toEqual(['b', 'c']);
+    expect(result.eliminatedIds.sort()).toEqual(['p3', 'p4']);
   });
 
-  it('adds a deterministic extra elimination when double elimination is active', () => {
+  it('keeps elimination normal even when a caller requests double elimination', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'],
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'b', p5: 'b', p6: 'c' },
@@ -88,8 +102,7 @@ describe('majorityRules logic', () => {
     });
 
     expect(result.kind).toBe('elimination');
-    expect(result.eliminatedIds).toHaveLength(2);
-    expect(result.eliminatedIds).toContain('p6');
+    expect(result.eliminatedIds).toEqual(['p6']);
   });
 
   it('respects revote answer blocks when recomputing AI answers', () => {
