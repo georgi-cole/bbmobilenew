@@ -32,8 +32,6 @@ export type MajorityRulesPhase =
 
 export interface MajorityRulesRevealState {
   result: MajorityRulesBallotResolution;
-  doubleEliminationWasActive: boolean;
-  nextDoubleEliminationArmed: boolean;
   revoteNumber: number;
 }
 
@@ -371,28 +369,17 @@ const majorityRulesSlice = createSlice({
           activeIds: state.activeIds,
           answers: simulation.answers,
           question: state.currentQuestion,
-          eliminationCount: state.doubleEliminationArmed ? 2 : 1,
-          seed: state.seed,
-          roundNumber: state.roundNumber,
+          eliminationCount: 1,
         }),
-        doubleEliminationWasActive: state.doubleEliminationArmed,
-        nextDoubleEliminationArmed: false,
         revoteNumber: state.revoteNumber,
       };
-
-      if (state.revealState.result.kind === 'unanimous') {
-        state.revealState.nextDoubleEliminationArmed = true;
-      }
 
       state.phase = 'reveal';
     },
 
     advanceReveal(state) {
       if (state.phase !== 'reveal' || !state.revealState) return;
-      const {
-        result,
-        nextDoubleEliminationArmed,
-      } = state.revealState;
+      const { result } = state.revealState;
 
       state.previousDistribution = result.distribution;
 
@@ -408,7 +395,7 @@ const majorityRulesSlice = createSlice({
       }
 
       if (result.kind === 'unanimous') {
-        state.doubleEliminationArmed = nextDoubleEliminationArmed;
+        state.doubleEliminationArmed = false;
         state.roundNumber += 1;
         state.revoteNumber = 0;
         state.blockedAnswers = {};

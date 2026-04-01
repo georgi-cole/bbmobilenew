@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import majorityRulesReducer, {
   advanceIntro,
+  advanceReveal,
   initMajorityRules,
   markMajorityRulesOutcomeResolved,
   type MajorityRulesState,
 } from '../../src/features/majorityRules/majorityRulesSlice';
 import { resolveMajorityRulesOutcome } from '../../src/features/majorityRules/thunks';
+import { MAJORITY_RULES_QUESTIONS } from '../../src/features/majorityRules/helpers';
 import { getGame } from '../../src/minigames/registry';
 
 function makeStore(initialMajorityRules?: Partial<MajorityRulesState>) {
@@ -80,6 +82,13 @@ describe('majorityRules registry entry', () => {
     expect(entry?.scoringAdapter).toBe('authoritative');
     expect(entry?.resultMode).toBe('placement');
   });
+
+  it('documents the fully split round re-vote rule in the instructions', () => {
+    const entry = getGame('majorityRules');
+    expect(entry?.instructions).toContain(
+      "If all 3 answers are split evenly, everyone re-votes until there's a clear majority and minority.",
+    );
+  });
 });
 
 describe('resolveMajorityRulesOutcome', () => {
@@ -128,5 +137,60 @@ describe('majorityRules initialization flow', () => {
     expect(majorityRules.phase).toBe('final_duel_pick');
     expect(majorityRules.finalDuel?.finalists).toEqual(['p1', 'p2']);
     expect(majorityRules.finalDuel?.chosenNumbers.p2).toBeTypeOf('number');
+  });
+
+  it('does not arm double elimination after a unanimous reveal', () => {
+    const question = MAJORITY_RULES_QUESTIONS[0];
+    const store = configureStore({
+      reducer: {
+        majorityRules: majorityRulesReducer,
+      },
+      preloadedState: {
+        majorityRules: {
+          phase: 'reveal',
+          competitionType: 'HOH',
+          seed: 11,
+          participantIds: ['p1', 'p2', 'p3', 'p4'],
+          activeIds: ['p1', 'p2', 'p3', 'p4'],
+          eliminatedIds: [],
+          humanPlayerId: 'p1',
+          roundNumber: 1,
+          revoteNumber: 0,
+          currentQuestion: question,
+          usedQuestionIds: [question.id],
+          draftAnswers: {},
+          previousDistribution: null,
+          blockedAnswers: {},
+          doubleEliminationArmed: true,
+          hintInventories: {},
+          roundHintUsedBy: null,
+          roundHintType: null,
+          roundHintTargetId: null,
+          roundHintPollEstimate: null,
+          roundHintPeekedAnswers: null,
+          revealState: {
+            result: {
+              kind: 'unanimous',
+              distribution: { a: 4, b: 0, c: 0 },
+              answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'a' },
+              eliminatedIds: [],
+              minorityOptionId: 'a',
+              tiedOptionIds: [],
+              eliminationCount: 1,
+            },
+            revoteNumber: 0,
+          },
+          finalDuel: null,
+          winnerId: null,
+          outcomeResolved: false,
+        },
+      },
+    });
+
+    store.dispatch(advanceReveal());
+
+    const majorityRules = store.getState().majorityRules;
+    expect(majorityRules.phase).toBe('question');
+    expect(majorityRules.doubleEliminationArmed).toBe(false);
   });
 });

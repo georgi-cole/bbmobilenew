@@ -1,4 +1,5 @@
 import { mulberry32 } from '../../store/rng';
+import { MAJORITY_RULES_QUESTION_BANK } from './majorityRulesQuestions';
 
 export type MajorityRulesHintType = 'pollHint' | 'peekTwo' | 'followPlayer';
 
@@ -77,99 +78,85 @@ const PREVIOUS_TREND_WEIGHT = 0.6;
 const PERSONALITY_WEIGHT = 0.18;
 const NOISE_WEIGHT = 0.16;
 const MAX_SUDDEN_DEATH_ROUNDS = 10;
+const MAJORITY_RULES_OPTION_IDS = ['a', 'b', 'c'] as const;
+const MAJORITY_RULES_OPTION_LABELS = ['A', 'B', 'C'] as const;
+const MAJORITY_RULES_OPTION_BIASES = [0.94, 0.72, 0.46] as const;
 
-export const MAJORITY_RULES_QUESTIONS: MajorityRulesQuestion[] = [
-  {
-    id: 'snack-stash',
-    prompt: 'Which snack disappears first during a late-night alliance meeting?',
-    options: [
-      { id: 'a', label: 'A', text: 'Buttery popcorn', baseBias: 0.98 },
-      { id: 'b', label: 'B', text: 'Chocolate cookies', baseBias: 0.78 },
-      { id: 'c', label: 'C', text: 'Veggie chips', baseBias: 0.43 },
+function normalizeMajorityRulesPrompt(prompt: string) {
+  const qualifierMatch = prompt.match(/^(.*)\?\s+(.+)\?$/);
+  if (!qualifierMatch) return prompt;
+
+  const [, rawBase, rawQualifier] = qualifierMatch;
+  const base = rawBase.trim();
+  const qualifier = rawQualifier.trim();
+
+  if (base === 'What would people choose' && qualifier === 'for most people') {
+    return 'What would most people choose?';
+  }
+
+  return `${base} ${qualifier}?`;
+}
+
+function buildMajorityRulesQuestion(
+  id: string,
+  prompt: string,
+  options: [string, string, string],
+): MajorityRulesQuestion {
+  return {
+    id,
+    prompt: normalizeMajorityRulesPrompt(prompt),
+    options: options.map((text, index) => ({
+      id: MAJORITY_RULES_OPTION_IDS[index],
+      label: MAJORITY_RULES_OPTION_LABELS[index],
+      text,
+      baseBias: MAJORITY_RULES_OPTION_BIASES[index],
+    })) as [
+      MajorityRulesQuestionOption,
+      MajorityRulesQuestionOption,
+      MajorityRulesQuestionOption,
     ],
-  },
-  {
-    id: 'wake-up-call',
-    prompt: 'What gets the house up fastest on eviction morning?',
-    options: [
-      { id: 'a', label: 'A', text: 'Coffee brewing', baseBias: 0.97 },
-      { id: 'b', label: 'B', text: 'The lights snapping on', baseBias: 0.71 },
-      { id: 'c', label: 'C', text: 'A dramatic pep talk', baseBias: 0.49 },
-    ],
-  },
-  {
-    id: 'safe-corner',
-    prompt: 'Where do most people hide when they need a private strategy chat?',
-    options: [
-      { id: 'a', label: 'A', text: 'By the kitchen island', baseBias: 0.82 },
-      { id: 'b', label: 'B', text: 'Up in the loft', baseBias: 0.91 },
-      { id: 'c', label: 'C', text: 'Inside the gym', baseBias: 0.47 },
-    ],
-  },
-  {
-    id: 'showmance-risk',
-    prompt: 'What is the biggest red flag in a showmance this late in the game?',
-    options: [
-      { id: 'a', label: 'A', text: 'Leaking plans to everyone', baseBias: 0.94 },
-      { id: 'b', label: 'B', text: 'Winning too many comps together', baseBias: 0.89 },
-      { id: 'c', label: 'C', text: 'Matching outfits', baseBias: 0.31 },
-    ],
-  },
-  {
-    id: 'jury-speech',
-    prompt: 'What usually wins the jury over the most?',
-    options: [
-      { id: 'a', label: 'A', text: 'Owning every move', baseBias: 0.96 },
-      { id: 'b', label: 'B', text: 'A heartfelt apology tour', baseBias: 0.73 },
-      { id: 'c', label: 'C', text: 'A giant surprise reveal', baseBias: 0.4 },
-    ],
-  },
-  {
-    id: 'panic-move',
-    prompt: 'When a vote flips at the last second, what do most players do first?',
-    options: [
-      { id: 'a', label: 'A', text: 'Denial', baseBias: 0.79 },
-      { id: 'b', label: 'B', text: 'Start whispering immediately', baseBias: 0.98 },
-      { id: 'c', label: 'C', text: 'Pretend they planned it', baseBias: 0.68 },
-    ],
-  },
-  {
-    id: 'loyalty-test',
-    prompt: 'What is the best quick test of loyalty in the house?',
-    options: [
-      { id: 'a', label: 'A', text: 'Share a small secret', baseBias: 0.93 },
-      { id: 'b', label: 'B', text: 'Ask for a public promise', baseBias: 0.67 },
-      { id: 'c', label: 'C', text: 'Challenge them to a race', baseBias: 0.29 },
-    ],
-  },
-  {
-    id: 'power-flex',
-    prompt: 'What makes someone look the most dangerous after winning HOH?',
-    options: [
-      { id: 'a', label: 'A', text: 'Making a flashy speech', baseBias: 0.7 },
-      { id: 'b', label: 'B', text: 'Putting up safe nominees', baseBias: 0.54 },
-      { id: 'c', label: 'C', text: 'Showing they already have backup plans', baseBias: 0.95 },
-    ],
-  },
-  {
-    id: 'late-game-bag',
-    prompt: 'Which item would most players grab first if they had to leave in 30 seconds?',
-    options: [
-      { id: 'a', label: 'A', text: 'Their mic pack', baseBias: 0.28 },
-      { id: 'b', label: 'B', text: 'Their hoodie and slides', baseBias: 0.88 },
-      { id: 'c', label: 'C', text: 'Their goodbye speech notes', baseBias: 0.74 },
-    ],
-  },
-  {
-    id: 'alliance-crack',
-    prompt: 'What usually exposes the first crack in a powerful alliance?',
-    options: [
-      { id: 'a', label: 'A', text: 'Uneven trust', baseBias: 0.95 },
-      { id: 'b', label: 'B', text: 'Too many promises', baseBias: 0.81 },
-      { id: 'c', label: 'C', text: 'Bad sleeping schedules', baseBias: 0.33 },
-    ],
-  },
-];
+  };
+}
+
+function shuffleMajorityRulesQuestion(
+  question: MajorityRulesQuestion,
+  seed: number,
+  roundNumber: number,
+  usedQuestionIds: string[],
+): MajorityRulesQuestion {
+  const shuffledOptions = question.options
+    .map((option) => ({
+      option,
+      sortKey: seededValue(
+        seed,
+        'question-option',
+        roundNumber,
+        question.id,
+        usedQuestionIds.join('|'),
+        option.id,
+      ),
+    }))
+    .sort((left, right) => {
+      if (left.sortKey !== right.sortKey) {
+        return left.sortKey - right.sortKey;
+      }
+      return left.option.id.localeCompare(right.option.id);
+    })
+    .map(({ option }, index) => ({
+      ...option,
+      id: MAJORITY_RULES_OPTION_IDS[index],
+      label: MAJORITY_RULES_OPTION_LABELS[index],
+    })) as [MajorityRulesQuestionOption, MajorityRulesQuestionOption, MajorityRulesQuestionOption];
+
+  return {
+    ...question,
+    options: shuffledOptions,
+  };
+}
+
+export const MAJORITY_RULES_QUESTIONS: MajorityRulesQuestion[] = MAJORITY_RULES_QUESTION_BANK.map(
+  (question) => buildMajorityRulesQuestion(question.id, question.prompt, question.options),
+);
 
 export function fnv1a32(value: string): number {
   let hash = 0x811c9dc5;
@@ -607,10 +594,8 @@ export function resolveMajorityRulesBallot(params: {
   answers: Record<string, string>;
   question: MajorityRulesQuestion;
   eliminationCount: number;
-  seed: number;
-  roundNumber: number;
 }): MajorityRulesBallotResolution {
-  const { activeIds, answers, question, eliminationCount, seed, roundNumber } = params;
+  const { activeIds, answers, question, eliminationCount } = params;
   const distribution = countAnswerDistribution(answers, question.options);
   const populatedOptionIds = question.options
     .map((option) => option.id)
@@ -631,6 +616,17 @@ export function resolveMajorityRulesBallot(params: {
   const minCount = Math.min(...populatedOptionIds.map((optionId) => distribution[optionId] ?? 0));
   const tiedOptionIds = populatedOptionIds.filter((optionId) => (distribution[optionId] ?? 0) === minCount);
   if (tiedOptionIds.length !== 1) {
+    if (tiedOptionIds.length < populatedOptionIds.length) {
+      return {
+        kind: 'elimination',
+        distribution,
+        answers,
+        eliminatedIds: activeIds.filter((playerId) => tiedOptionIds.includes(answers[playerId] ?? '')),
+        minorityOptionId: null,
+        tiedOptionIds,
+        eliminationCount,
+      };
+    }
     return {
       kind: 'revote',
       distribution,
@@ -644,28 +640,6 @@ export function resolveMajorityRulesBallot(params: {
 
   const minorityOptionId = tiedOptionIds[0];
   const eliminatedIds = activeIds.filter((playerId) => answers[playerId] === minorityOptionId);
-  if (eliminationCount > eliminatedIds.length) {
-    const rng = seededRng(seed, 'double-elim', roundNumber, minorityOptionId);
-    const remainingCandidates = activeIds
-      .filter((playerId) => !eliminatedIds.includes(playerId))
-      .sort((left, right) => {
-        const leftCount = distribution[answers[left]] ?? Number.MAX_SAFE_INTEGER;
-        const rightCount = distribution[answers[right]] ?? Number.MAX_SAFE_INTEGER;
-        if (leftCount !== rightCount) return leftCount - rightCount;
-        const jitter = rng() - 0.5;
-        if (Math.abs(jitter) > 0.3) return jitter > 0 ? 1 : -1;
-        return left.localeCompare(right);
-      });
-    while (
-      eliminatedIds.length < eliminationCount &&
-      remainingCandidates.length > 0 &&
-      activeIds.length - eliminatedIds.length > 1
-    ) {
-      const nextId = remainingCandidates.shift();
-      if (!nextId) break;
-      eliminatedIds.push(nextId);
-    }
-  }
 
   return {
     kind: 'elimination',
@@ -687,7 +661,8 @@ export function pickMajorityRulesQuestion(
   const pool = remaining.length > 0 ? remaining : MAJORITY_RULES_QUESTIONS;
   const rng = seededRng(seed, 'question', roundNumber, usedQuestionIds.join('|'));
   const index = Math.floor(rng() * pool.length);
-  return pool[index] ?? MAJORITY_RULES_QUESTIONS[0];
+  const selectedQuestion = pool[index] ?? MAJORITY_RULES_QUESTIONS[0];
+  return shuffleMajorityRulesQuestion(selectedQuestion, seed, roundNumber, usedQuestionIds);
 }
 
 export function initializeDiceDuel(finalists: [string, string]): MajorityRulesDiceDuelState {

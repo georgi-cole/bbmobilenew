@@ -4,6 +4,7 @@ import {
   buildBaseAiAnswers,
   initializeDiceDuel,
   pickAiDuelNumber,
+  pickMajorityRulesQuestion,
   resolveDiceDuelRoll,
   resolveMajorityRulesBallot,
   simulateMajorityRulesBallot,
@@ -49,47 +50,76 @@ describe('majorityRules logic', () => {
     expect(first).toEqual(second);
   });
 
-  it('flags unanimous rounds and arms double elimination for the next vote', () => {
+  it('uses the expanded question bank and shuffles seeded question options', () => {
+    expect(MAJORITY_RULES_QUESTIONS).toHaveLength(200);
+
+    const seededQuestion1 = pickMajorityRulesQuestion(17, 1, []);
+    const baseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === seededQuestion1.id);
+
+    expect(baseQuestion).toBeDefined();
+
+    const baseOptionTexts = baseQuestion!.options.map((option) => option.text);
+    const seededOptionTexts1 = seededQuestion1.options.map((option) => option.text);
+
+    // 1. Seeded options are a permutation of the base options.
+    expect([...seededOptionTexts1].sort()).toEqual([...baseOptionTexts].sort());
+
+    // 2. Shuffling is deterministic for the same seed/round/question.
+    const seededQuestion1Repeat = pickMajorityRulesQuestion(17, 1, []);
+    const seededOptionTexts1Repeat = seededQuestion1Repeat.options.map((option) => option.text);
+    expect(seededOptionTexts1Repeat).toEqual(seededOptionTexts1);
+
+    // 3. Across deterministic seed/round picks, at least one picked question has a reordered option list.
+    const foundReorderedQuestion = Array.from({ length: 20 }, (_, seedOffset) =>
+      pickMajorityRulesQuestion(17 + seedOffset, (seedOffset % 5) + 1, []),
+    ).some((pickedQuestion) => {
+      const pickedBaseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === pickedQuestion.id);
+      const pickedBaseOptions = pickedBaseQuestion?.options.map((option) => option.text) ?? [];
+      const pickedOptions = pickedQuestion.options.map((option) => option.text);
+
+      expect([...pickedOptions].sort()).toEqual([...pickedBaseOptions].sort());
+
+      return pickedOptions.join('||') !== pickedBaseOptions.join('||');
+    });
+
+    expect(foundReorderedQuestion).toBe(true);
+  });
+
+  it('flags unanimous rounds without eliminating anyone', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4'],
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'a' },
       question,
       eliminationCount: 1,
-      seed: 10,
-      roundNumber: 1,
     });
 
     expect(result.kind).toBe('unanimous');
     expect(result.eliminatedIds).toEqual([]);
   });
 
-  it('forces a revote when the minority is tied', () => {
+  it('eliminates every player tied in the minority', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4'],
-      answers: { p1: 'a', p2: 'b', p3: 'a', p4: 'b' },
+      answers: { p1: 'a', p2: 'a', p3: 'b', p4: 'c' },
       question,
       eliminationCount: 1,
-      seed: 12,
-      roundNumber: 1,
     });
 
-    expect(result.kind).toBe('revote');
-    expect(result.tiedOptionIds.sort()).toEqual(['a', 'b']);
+    expect(result.kind).toBe('elimination');
+    expect(result.tiedOptionIds.sort()).toEqual(['b', 'c']);
+    expect(result.eliminatedIds.sort()).toEqual(['p3', 'p4']);
   });
 
-  it('adds a deterministic extra elimination when double elimination is active', () => {
+  it('keeps elimination normal even when a caller requests double elimination', () => {
     const result = resolveMajorityRulesBallot({
       activeIds: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'],
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'b', p5: 'b', p6: 'c' },
       question,
       eliminationCount: 2,
-      seed: 45,
-      roundNumber: 3,
     });
 
     expect(result.kind).toBe('elimination');
-    expect(result.eliminatedIds).toHaveLength(2);
-    expect(result.eliminatedIds).toContain('p6');
+    expect(result.eliminatedIds).toEqual(['p6']);
   });
 
   it('respects revote answer blocks when recomputing AI answers', () => {

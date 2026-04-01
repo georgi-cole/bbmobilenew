@@ -4,8 +4,10 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import majorityRulesReducer, {
   advanceIntro,
+  type MajorityRulesState,
   setHumanAnswer,
 } from '../../../src/features/majorityRules/majorityRulesSlice';
+import { MAJORITY_RULES_QUESTIONS } from '../../../src/features/majorityRules/helpers';
 import MajorityRulesComp from '../../../src/components/MajorityRulesComp/MajorityRulesComp';
 
 function buildPlayer(id: string, name: string, isUser = false) {
@@ -19,6 +21,7 @@ function makeStore(
     buildPlayer('mimi', 'Mimi'),
     buildPlayer('rae', 'Rae'),
   ],
+  initialMajorityRules?: MajorityRulesState,
 ) {
   const gameReducer = (
     state = {
@@ -27,11 +30,19 @@ function makeStore(
     },
   ) => state;
 
+  const majorityReducer = (state: MajorityRulesState | undefined, action: { type: string }) => {
+    if (initialMajorityRules && state && action.type === 'majorityRules/initMajorityRules') {
+      return state;
+    }
+    return majorityRulesReducer(state, action);
+  };
+
   return configureStore({
     reducer: {
-      majorityRules: majorityRulesReducer,
+      majorityRules: majorityReducer,
       game: gameReducer,
     },
+    preloadedState: initialMajorityRules ? { majorityRules: initialMajorityRules } : undefined,
   });
 }
 
@@ -186,5 +197,135 @@ describe('MajorityRulesComp', () => {
 
     expect(store.getState().majorityRules.phase).toBe('question');
     expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
+  });
+
+  it('auto-advances reveal in 3 seconds when the eliminated user keeps spectating', async () => {
+    vi.useFakeTimers();
+    const question = MAJORITY_RULES_QUESTIONS[0];
+    const store = makeStore(undefined, {
+      phase: 'reveal',
+      competitionType: 'HOH',
+      seed: 42,
+      participantIds: ['user', 'finn', 'mimi', 'rae', 'zoe'],
+      activeIds: ['finn', 'mimi', 'rae', 'zoe'],
+      eliminatedIds: ['user'],
+      humanPlayerId: 'user',
+      roundNumber: 1,
+      revoteNumber: 0,
+      currentQuestion: question,
+      usedQuestionIds: [question.id],
+      draftAnswers: {},
+      previousDistribution: null,
+      blockedAnswers: {},
+      doubleEliminationArmed: false,
+      hintInventories: {},
+      roundHintUsedBy: null,
+      roundHintType: null,
+      roundHintTargetId: null,
+      roundHintPollEstimate: null,
+      roundHintPeekedAnswers: null,
+      revealState: {
+        result: {
+          kind: 'elimination',
+          distribution: { a: 3, b: 1, c: 1 },
+          answers: { user: 'c', finn: 'a', mimi: 'a', rae: 'b', zoe: 'a' },
+          eliminatedIds: ['user', 'rae'],
+          minorityOptionId: null,
+          tiedOptionIds: ['b', 'c'],
+          eliminationCount: 1,
+        },
+        revoteNumber: 0,
+      },
+      finalDuel: null,
+      winnerId: null,
+      outcomeResolved: false,
+    });
+
+    render(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={['user', 'finn', 'mimi', 'rae']}
+          participants={[
+            { id: 'user', name: 'PLAYER_1', isHuman: true, precomputedScore: 0, previousPR: null },
+            { id: 'finn', name: 'PLAYER_2', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
+          ]}
+          prizeType="HOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+    expect(store.getState().majorityRules.phase).toBe('reveal');
+
+    act(() => {
+      vi.advanceTimersByTime(2999);
+    });
+    expect(store.getState().majorityRules.phase).toBe('reveal');
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(store.getState().majorityRules.phase).toBe('question');
+    vi.useRealTimers();
+  });
+
+  it('keeps the winner screen manual even after the spectator auto-advance timeout', async () => {
+    vi.useFakeTimers();
+    const store = makeStore(undefined, {
+      phase: 'winner',
+      competitionType: 'HOH',
+      seed: 42,
+      participantIds: ['user', 'finn', 'mimi', 'rae'],
+      activeIds: ['finn'],
+      eliminatedIds: ['user', 'mimi', 'rae'],
+      humanPlayerId: 'user',
+      roundNumber: 3,
+      revoteNumber: 0,
+      currentQuestion: null,
+      usedQuestionIds: [],
+      draftAnswers: {},
+      previousDistribution: null,
+      blockedAnswers: {},
+      doubleEliminationArmed: false,
+      hintInventories: {},
+      roundHintUsedBy: null,
+      roundHintType: null,
+      roundHintTargetId: null,
+      roundHintPollEstimate: null,
+      roundHintPeekedAnswers: null,
+      revealState: null,
+      finalDuel: null,
+      winnerId: 'finn',
+      outcomeResolved: false,
+    });
+
+    render(
+      <Provider store={store}>
+        <MajorityRulesComp
+          participantIds={['user', 'finn', 'mimi', 'rae']}
+          participants={[
+            { id: 'user', name: 'PLAYER_1', isHuman: true, precomputedScore: 0, previousPR: null },
+            { id: 'finn', name: 'PLAYER_2', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
+            { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
+          ]}
+          prizeType="HOH"
+          seed={42}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(store.getState().majorityRules.phase).toBe('winner');
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });
