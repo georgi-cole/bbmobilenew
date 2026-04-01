@@ -82,6 +82,21 @@ const MAJORITY_RULES_OPTION_IDS = ['a', 'b', 'c'] as const;
 const MAJORITY_RULES_OPTION_LABELS = ['A', 'B', 'C'] as const;
 const MAJORITY_RULES_OPTION_BIASES = [0.94, 0.72, 0.46] as const;
 
+function normalizeMajorityRulesPrompt(prompt: string) {
+  const qualifierMatch = prompt.match(/^(.*)\?\s+(.+)\?$/);
+  if (!qualifierMatch) return prompt;
+
+  const [, rawBase, rawQualifier] = qualifierMatch;
+  const base = rawBase.trim();
+  const qualifier = rawQualifier.trim();
+
+  if (base === 'What would people choose' && qualifier === 'for most people') {
+    return 'What would most people choose?';
+  }
+
+  return `${base} ${qualifier}?`;
+}
+
 function buildMajorityRulesQuestion(
   id: string,
   prompt: string,
@@ -89,7 +104,7 @@ function buildMajorityRulesQuestion(
 ): MajorityRulesQuestion {
   return {
     id,
-    prompt,
+    prompt: normalizeMajorityRulesPrompt(prompt),
     options: options.map((text, index) => ({
       id: MAJORITY_RULES_OPTION_IDS[index],
       label: MAJORITY_RULES_OPTION_LABELS[index],
@@ -121,7 +136,12 @@ function shuffleMajorityRulesQuestion(
         option.id,
       ),
     }))
-    .sort((left, right) => left.sortKey - right.sortKey || left.option.id.localeCompare(right.option.id))
+    .sort((left, right) => {
+      if (left.sortKey !== right.sortKey) {
+        return left.sortKey - right.sortKey;
+      }
+      return left.option.id.localeCompare(right.option.id);
+    })
     .map(({ option }, index) => ({
       ...option,
       id: MAJORITY_RULES_OPTION_IDS[index],
@@ -574,8 +594,6 @@ export function resolveMajorityRulesBallot(params: {
   answers: Record<string, string>;
   question: MajorityRulesQuestion;
   eliminationCount: number;
-  seed: number;
-  roundNumber: number;
 }): MajorityRulesBallotResolution {
   const { activeIds, answers, question, eliminationCount } = params;
   const distribution = countAnswerDistribution(answers, question.options);

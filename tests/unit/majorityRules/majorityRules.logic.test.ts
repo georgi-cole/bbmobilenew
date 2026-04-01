@@ -68,8 +68,6 @@ describe('majorityRules logic', () => {
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'a' },
       question,
       eliminationCount: 1,
-      seed: 10,
-      roundNumber: 1,
     });
 
     expect(result.kind).toBe('unanimous');
@@ -82,8 +80,6 @@ describe('majorityRules logic', () => {
       answers: { p1: 'a', p2: 'a', p3: 'b', p4: 'c' },
       question,
       eliminationCount: 1,
-      seed: 12,
-      roundNumber: 1,
     });
 
     expect(result.kind).toBe('elimination');
@@ -97,8 +93,6 @@ describe('majorityRules logic', () => {
       answers: { p1: 'a', p2: 'a', p3: 'a', p4: 'b', p5: 'b', p6: 'c' },
       question,
       eliminationCount: 2,
-      seed: 45,
-      roundNumber: 3,
     });
 
     expect(result.kind).toBe('elimination');

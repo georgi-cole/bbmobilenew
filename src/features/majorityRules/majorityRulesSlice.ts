@@ -370,8 +370,6 @@ const majorityRulesSlice = createSlice({
           answers: simulation.answers,
           question: state.currentQuestion,
           eliminationCount: 1,
-          seed: state.seed,
-          roundNumber: state.roundNumber,
         }),
         revoteNumber: state.revoteNumber,
       };
