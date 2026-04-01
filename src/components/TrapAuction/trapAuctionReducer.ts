@@ -92,8 +92,9 @@ export function trapAuctionReducer(
     // ── reveal: flip next card ────────────────────────────────────────────────
     case 'ADVANCE_REVEAL': {
       if (state.phase !== 'reveal') return state;
+      if (state.revealIndex >= state.roundReveals.length) return state;
 
-      const nextIndex = state.revealIndex + 1;
+      const nextIndex = Math.min(state.revealIndex + 1, state.roundReveals.length);
 
       // Mark the just-revealed bid in roundReveals
       const updatedReveals = state.roundReveals.map((r, i) =>

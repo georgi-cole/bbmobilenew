@@ -169,6 +169,12 @@ describe('getAllowedBidRange', () => {
     expect(range.min).toBe(1);
     expect(range.max).toBeGreaterThanOrEqual(1);
   });
+
+  it('returns a zero range when the player is bankrupt', () => {
+    const [p] = makePlayers(1, [{ bank: 0 }]);
+    const range = getAllowedBidRange(p, 1);
+    expect(range).toEqual({ min: 0, max: 0, recommended: 0 });
+  });
 });
 
 // ─── chooseAiBid ─────────────────────────────────────────────────────────────
@@ -622,6 +628,18 @@ describe('trapAuctionReducer', () => {
       }
       expect(state.phase).toBe('reveal');
       expect(state.revealIndex).toBe(totalReveals);
+    });
+
+    it('does not increment revealIndex after every card is already shown', () => {
+      let state = setupRevealState();
+      const totalReveals = state.roundReveals.length;
+      for (let i = 0; i < totalReveals; i++) {
+        state = trapAuctionReducer(state, { type: 'ADVANCE_REVEAL' });
+      }
+
+      const next = trapAuctionReducer(state, { type: 'ADVANCE_REVEAL' });
+      expect(next.revealIndex).toBe(totalReveals);
+      expect(next.roundReveals).toEqual(state.roundReveals);
     });
   });
 
