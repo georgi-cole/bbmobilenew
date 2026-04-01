@@ -155,8 +155,9 @@ export function chooseAiBid(
 
   // ── Survival floor ────────────────────────────────────────────────────────
   // AI bids 1 ONLY when bank === 1 (that is literally all they have left).
-  // When bank > 1, the floor scales up with alive count and round to avoid
-  // trivially suicidal bids while still leaving personality room above it.
+  // When bank > 1, the floor scales up with alive count, bank, and round
+  // pressure to avoid trivially suicidal bids while leaving personality
+  // room above it.
   function endgameFloor(count: number): number {
     if (count <= 3) return 6;
     if (count <= 5) return 4;
@@ -171,6 +172,7 @@ export function chooseAiBid(
           2,                         // hard minimum when bank > 1
           endgameFloor(aliveCount),  // late-game lift
           Math.floor(player.bank * (aliveCount <= 3 ? 0.12 : 0.08)),
+          Math.floor(2 + roundPressure * 4),  // round pressure: up to +4 by round 8
         ),
       );
 
