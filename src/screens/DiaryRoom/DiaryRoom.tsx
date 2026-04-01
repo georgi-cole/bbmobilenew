@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict } from '../../store/gameSlice';
+import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress } from '../../store/gameSlice';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -285,6 +285,8 @@ export default function DiaryRoom() {
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
   const playerName = userPlayer?.name ?? 'Housemate';
   const playerId = userPlayer?.id ?? 'user';
+  const secretMission = useAppSelector((s) => s.game.secretMission);
+  const currentWeekForMission = useAppSelector((s) => s.game.week);
 
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
@@ -368,6 +370,75 @@ export default function DiaryRoom() {
       }
     };
   }, []);
+
+  // ── Secret mission: inject Big Eye offer when entering the Confessional ──
+  // Fires once on mount when there is an untriggered offer (available) or a
+  // re-offerable decline (declined + offerCount < 2).
+  const secretMissionRef = useRef(secretMission);
+  useEffect(() => { secretMissionRef.current = secretMission; }, [secretMission]);
+  const currentWeekRef = useRef(currentWeekForMission);
+  useEffect(() => { currentWeekRef.current = currentWeekForMission; }, [currentWeekForMission]);
+
+  useEffect(() => {
+    const sm = secretMissionRef.current;
+    const week = currentWeekRef.current;
+    const shouldOffer =
+      sm &&
+      (sm.status === 'available' ||
+        (sm.status === 'declined' && sm.offerCount < 2));
+    if (!shouldOffer) return;
+
+    // Dispatch offer state change
+    dispatchRef.current(offerSecretMission(week));
+
+    // Inject Big Eye offer as a chat bubble (after a brief delay for tone)
+    const timeoutId = window.setTimeout(() => {
+      const offerMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'bb',
+        text: `Welcome, ${playerNameRef.current}. This day seems to have been quite tough for you so far. But the Big Eye may have an offer that could lift your spirits. Would you like to hear it?`,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => {
+        const updated = [...prev, offerMsg];
+        saveChat(playerIdRef.current, updated);
+        return updated;
+      });
+    }, 600);
+
+    return () => { window.clearTimeout(timeoutId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount
+
+  // ── Secret mission: track confessional visit count on unmount ─────────────
+  useEffect(() => {
+    return () => {
+      const sm = secretMissionRef.current;
+      if (!sm || sm.status !== 'accepted') return;
+      const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
+      if (!visitTask || visitTask.completed) return;
+      dispatchRef.current(
+        updateMissionTaskProgress({
+          taskId: visitTask.id,
+          current: visitTask.current + 1,
+        }),
+      );
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on unmount
+
+  // ── Secret mission: passive survive_days task update ──────────────────────
+  // Runs whenever week advances while the mission is accepted.
+  useEffect(() => {
+    const sm = secretMission;
+    if (!sm || sm.status !== 'accepted') return;
+    const surviveTask = sm.tasks.find((t) => t.type === 'survive_days');
+    if (!surviveTask || surviveTask.completed) return;
+    if (currentWeekForMission >= surviveTask.target) {
+      dispatch(updateMissionTaskProgress({ taskId: surviveTask.id, current: currentWeekForMission }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWeekForMission]);
 
   // ── Weekly tab state ──────────────────────────────────────────────────────
   const isAdmin = useIsAdmin();
@@ -459,6 +530,20 @@ export default function DiaryRoom() {
       }
       if (resp.action === 'open_self_evict_modal') {
         setShowSelfEvictConfirm(true);
+      }
+
+      // Passive mission progress: count conversation turns (1 per exchange = 1 user + 1 BB reply)
+      const smSnap = secretMissionRef.current;
+      if (smSnap?.status === 'accepted') {
+        const turnTask = smSnap.tasks.find((t) => t.type === 'conversation_turns');
+        if (turnTask && !turnTask.completed) {
+          dispatch(
+            updateMissionTaskProgress({
+              taskId: turnTask.id,
+              current: turnTask.current + 1,
+            }),
+          );
+        }
       }
     } catch (err) {
       console.error('The Big Eye AI error:', err);
@@ -613,6 +698,85 @@ export default function DiaryRoom() {
                 <span className="diary-room__typing-dot" />
                 <span className="diary-room__typing-dot" />
                 <span className="diary-room__typing-dot" />
+              </div>
+            )}
+
+            {/* ── Secret mission offer buttons ───────────────────────────── */}
+            {secretMission?.status === 'offered' && (
+              <div className="diary-room__mission-offer" aria-label="Secret mission offer">
+                <button
+                  className="diary-room__mission-btn diary-room__mission-btn--accept"
+                  type="button"
+                  onClick={() => {
+                    dispatch(acceptSecretMission());
+                    const acceptMsg: ChatMessage = {
+                      id: crypto.randomUUID(),
+                      role: 'bb',
+                      text: `Complete this private checklist, and the Big Eye will reward you. But choose carefully — not every gift comes without a price.`,
+                      timestamp: Date.now(),
+                    };
+                    setMessages((prev) => {
+                      const updated = [...prev, acceptMsg];
+                      saveChat(playerId, updated);
+                      return updated;
+                    });
+                  }}
+                >
+                  ✅ Accept the mission
+                </button>
+                <button
+                  className="diary-room__mission-btn diary-room__mission-btn--decline"
+                  type="button"
+                  onClick={() => {
+                    dispatch(declineSecretMission(currentWeekForMission));
+                    const declineMsg: ChatMessage = {
+                      id: crypto.randomUUID(),
+                      role: 'bb',
+                      text: `Very well. The Big Eye respects your caution. Return if you change your mind.`,
+                      timestamp: Date.now(),
+                    };
+                    setMessages((prev) => {
+                      const updated = [...prev, declineMsg];
+                      saveChat(playerId, updated);
+                      return updated;
+                    });
+                  }}
+                >
+                  ❌ Decline
+                </button>
+              </div>
+            )}
+
+            {/* ── Secret mission checklist (active) ─────────────────────── */}
+            {secretMission && (secretMission.status === 'accepted' || secretMission.status === 'completed' || secretMission.status === 'rewardPending') && (
+              <div className="diary-room__mission-checklist" aria-label="Secret mission checklist">
+                <p className="diary-room__mission-title">
+                  🕵️ Secret Mission
+                  {secretMission.status === 'completed' || secretMission.status === 'rewardPending'
+                    ? ' — Complete!'
+                    : ''}
+                </p>
+                {secretMission.tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`diary-room__mission-task${task.completed ? ' diary-room__mission-task--done' : ''}`}
+                  >
+                    <span className="diary-room__mission-task-icon">
+                      {task.completed ? '✅' : '⬜'}
+                    </span>
+                    <span className="diary-room__mission-task-desc">{task.description}</span>
+                    {!task.completed && (
+                      <span className="diary-room__mission-task-progress">
+                        {task.current}/{task.target}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {(secretMission.status === 'completed' || secretMission.status === 'rewardPending') && (
+                  <p className="diary-room__mission-reward-pending">
+                    🎁 Reward pending — the Big Eye will reveal your prize soon.
+                  </p>
+                )}
               </div>
             )}
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>

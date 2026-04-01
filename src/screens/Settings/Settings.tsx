@@ -475,6 +475,41 @@ export default function Settings() {
               </>
             )}
 
+            {/* ── 🧪 TESTING/DEBUG — Secret Mission Trigger Override ──────
+                 This slider is for development & QA use only.
+                 Remove or hide behind a build flag before shipping to live players.
+                 ──────────────────────────────────────────────────────────── */}
+            <p className="settings-section__heading" style={{ marginTop: '1.25rem', color: '#f97316' }}>
+              🧪 Testing / Debug
+            </p>
+            <div className="settings-row settings-row--col">
+              <label className="settings-row__label" style={{ color: '#f97316' }}>
+                Secret Mission Trigger Override —{' '}
+                {settings.sim.secretMissionTriggerOverride === null ||
+                 settings.sim.secretMissionTriggerOverride === undefined
+                  ? 'Default (per-day chances)'
+                  : `${settings.sim.secretMissionTriggerOverride}% (override)`}
+              </label>
+              <input
+                type="range"
+                className="settings-slider"
+                min={-1}
+                max={100}
+                step={1}
+                value={settings.sim.secretMissionTriggerOverride ?? -1}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  dispatch(setSim({ secretMissionTriggerOverride: v < 0 ? null : v }));
+                }}
+                aria-label="Secret mission trigger override (debug)"
+              />
+              <p className="settings-helper-text" style={{ color: '#f97316' }}>
+                DEBUG ONLY. Set to 100 to guarantee a trigger on Day 5; set to 0 to prevent
+                any trigger. Slide to the left-most position to restore default chances.
+                Remove this slider before shipping to live players.
+              </p>
+            </div>
+
             <div className="settings-row">
               <label className="settings-row__label">Spectator Mode</label>
               <input

@@ -13,6 +13,7 @@ import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectHumanIsActive,
+  selectConfessionalMissionBadge,
 } from '../../store/selectors';
 import GameControlDock from '../GameControlDock/GameControlDock';
 
@@ -34,6 +35,7 @@ export default function FloatingActionBar() {
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
   const humanIsActive = useAppSelector(selectHumanIsActive);
+  const confessionalMissionBadge = useAppSelector(selectConfessionalMissionBadge);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
@@ -86,6 +88,7 @@ export default function FloatingActionBar() {
       incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
       publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
       primaryPulse={canAdvance && !isWaiting}
+      confessionalBadge={confessionalMissionBadge}
     />
   );
 }

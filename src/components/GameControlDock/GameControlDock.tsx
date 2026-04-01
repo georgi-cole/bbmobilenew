@@ -23,6 +23,8 @@ export interface GameControlDockProps {
   publicMeterBadgeCount?: number;
   /** Whether the center button should pulse */
   primaryPulse?: boolean;
+  /** Whether to show the Turkish blue secret-mission badge on the Confessional button */
+  confessionalBadge?: boolean;
 }
 
 export default function GameControlDock({
@@ -38,6 +40,7 @@ export default function GameControlDock({
   incomingRequestsBadgeCount,
   publicMeterBadgeCount,
   primaryPulse = false,
+  confessionalBadge = false,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
@@ -143,7 +146,11 @@ export default function GameControlDock({
         aria-label="Confessional"
         disabled={disabled}
         onClick={disabled ? undefined : onToolClick}
-      />
+      >
+        {confessionalBadge && (
+          <span className="dock-hit-area__badge dock-hit-area__badge--mission" aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }

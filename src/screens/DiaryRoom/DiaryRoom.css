@@ -907,3 +907,89 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── Secret Mission UI ──────────────────────────────────────────────────── */
+
+.diary-room__mission-offer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(66, 152, 169, 0.12);
+  border-top: 1px solid rgba(66, 152, 169, 0.3);
+}
+
+.diary-room__mission-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.diary-room__mission-btn:hover {
+  transform: translateY(-1px);
+}
+
+.diary-room__mission-btn--accept {
+  background: #4298a9;
+  color: #fff;
+}
+
+.diary-room__mission-btn--decline {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.diary-room__mission-checklist {
+  padding: 12px 16px;
+  background: rgba(66, 152, 169, 0.08);
+  border-top: 1px solid rgba(66, 152, 169, 0.25);
+}
+
+.diary-room__mission-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4298a9;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.diary-room__mission-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.diary-room__mission-task--done {
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: line-through;
+}
+
+.diary-room__mission-task-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.diary-room__mission-task-desc {
+  flex: 1;
+}
+
+.diary-room__mission-task-progress {
+  font-size: 0.75rem;
+  color: #4298a9;
+  font-weight: 600;
+}
+
+.diary-room__mission-reward-pending {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #f59e0b;
+  font-weight: 600;
+}

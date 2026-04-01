@@ -699,6 +699,12 @@ export interface GameState {
    * transition from racing past the overlay. Cleared by closeSpectator.
    */
   spectatorActive?: SpectatorActiveState | null;
+  /**
+   * Active secret mission for this season.
+   * At most one per season; undefined until the mission triggers.
+   * Managed by secretMission reducers in gameSlice.
+   */
+  secretMission?: import('../bb/secretMission').SecretMissionState;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────
