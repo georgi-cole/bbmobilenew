@@ -19,6 +19,8 @@ import cwgoReducer from '../src/features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../src/features/holdTheWall/holdTheWallSlice';
 import gameReducer from '../src/store/gameSlice';
 
+const AUTHORITATIVE_WINNER_SEED = 99;
+
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 // Mock the reactComponents map so TiltedLedge calls onFinish when rendered.
@@ -32,9 +34,9 @@ vi.mock('../src/minigames/reactComponents', () => ({
       seed?: number;
     }) => (
       <div
-        data-testid={seed === 99 ? 'tilted-ledge-comp-authoritative' : 'tilted-ledge-comp'}
+        data-testid={seed === AUTHORITATIVE_WINNER_SEED ? 'tilted-ledge-comp-authoritative' : 'tilted-ledge-comp'}
         onClick={() => (
-          seed === 99
+          seed === AUTHORITATIVE_WINNER_SEED
             ? onFinish?.(42, undefined, { authoritativeWinnerId: 'p2' })
             : onFinish?.(42)
         )}
@@ -190,7 +192,7 @@ describe('MinigameHost — TiltedLedge routing', () => {
       <Provider store={store}>
         <MinigameHost
           game={TILTED_LEDGE_GAME}
-          gameOptions={{ seed: 99 }}
+          gameOptions={{ seed: AUTHORITATIVE_WINNER_SEED }}
           onDone={onDone}
           skipRules
           skipCountdown

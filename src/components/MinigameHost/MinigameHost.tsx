@@ -122,7 +122,6 @@ export default function MinigameHost({
   const [countdown, setCountdown] = useState(3);
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
-  const [finalAuthoritativeWinnerId, setFinalAuthoritativeWinnerId] = useState<string | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const rulesGame = useMemo(
@@ -199,10 +198,9 @@ export default function MinigameHost({
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
     const completion: ReactMinigameCompletion | undefined =
-      finalTiebreakerMs != null || finalAuthoritativeWinnerId != null
+      finalTiebreakerMs != null
         ? {
-            tiebreakerMs: finalTiebreakerMs ?? undefined,
-            authoritativeWinnerId: finalAuthoritativeWinnerId,
+            tiebreakerMs: finalTiebreakerMs,
           }
         : undefined;
     if (completion != null) {
@@ -210,7 +208,7 @@ export default function MinigameHost({
     } else {
       onDone(finalValue ?? 0, wasPartial);
     }
-  }, [finalAuthoritativeWinnerId, finalTiebreakerMs, finalValue, onDone, wasPartial]);
+  }, [finalTiebreakerMs, finalValue, onDone, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────
   const leaderboard = useMemo(() => {
@@ -487,7 +485,6 @@ export default function MinigameHost({
                     }
                     setFinalValue(value);
                     setFinalTiebreakerMs(tiebreakerMs ?? null);
-                    setFinalAuthoritativeWinnerId(completion?.authoritativeWinnerId ?? null);
                     setWasPartial(false);
                     setPhase('results');
                   }}
