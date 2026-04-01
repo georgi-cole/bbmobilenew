@@ -173,7 +173,10 @@ export default function TrapAuction({
     }, delay);
 
     return () => {
-      if (autoRevealRef.current) clearTimeout(autoRevealRef.current);
+      if (autoRevealRef.current !== null) {
+        clearTimeout(autoRevealRef.current);
+        autoRevealRef.current = null;
+      }
     };
   }, [state.phase, state.revealIndex, state.fastForward, state.roundReveals.length]);
 
