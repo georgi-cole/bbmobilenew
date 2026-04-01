@@ -122,6 +122,7 @@ export default function MinigameHost({
   const [countdown, setCountdown] = useState(3);
   const [finalValue, setFinalValue] = useState<number | null>(null);
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
+  const [finalAuthoritativeWinnerId, setFinalAuthoritativeWinnerId] = useState<string | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
   const rulesGame = useMemo(
@@ -198,13 +199,18 @@ export default function MinigameHost({
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
     const completion: ReactMinigameCompletion | undefined =
-      finalTiebreakerMs != null ? { tiebreakerMs: finalTiebreakerMs } : undefined;
+      finalTiebreakerMs != null || finalAuthoritativeWinnerId != null
+        ? {
+            tiebreakerMs: finalTiebreakerMs ?? undefined,
+            authoritativeWinnerId: finalAuthoritativeWinnerId,
+          }
+        : undefined;
     if (completion != null) {
       onDone(finalValue ?? 0, wasPartial, completion);
     } else {
       onDone(finalValue ?? 0, wasPartial);
     }
-  }, [onDone, finalValue, finalTiebreakerMs, wasPartial]);
+  }, [finalAuthoritativeWinnerId, finalTiebreakerMs, finalValue, onDone, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────
   const leaderboard = useMemo(() => {
@@ -474,9 +480,14 @@ export default function MinigameHost({
                 <GenericComp
                   seed={seed}
                   autoStart={true}
-                  onFinish={(value: number, tiebreakerMs?: number) => {
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
                     setFinalValue(value);
                     setFinalTiebreakerMs(tiebreakerMs ?? null);
+                    setFinalAuthoritativeWinnerId(completion?.authoritativeWinnerId ?? null);
                     setWasPartial(false);
                     setPhase('results');
                   }}

@@ -24,10 +24,20 @@ import gameReducer from '../src/store/gameSlice';
 // Mock the reactComponents map so TiltedLedge calls onFinish when rendered.
 vi.mock('../src/minigames/reactComponents', () => ({
   default: {
-    TiltedLedge: ({ onFinish }: { onFinish?: (v: number) => void }) => (
+    TiltedLedge: ({
+      onFinish,
+      seed,
+    }: {
+      onFinish?: (v: number, t?: number, c?: { authoritativeWinnerId?: string | null }) => void;
+      seed?: number;
+    }) => (
       <div
-        data-testid="tilted-ledge-comp"
-        onClick={() => onFinish?.(42)}
+        data-testid={seed === 99 ? 'tilted-ledge-comp-authoritative' : 'tilted-ledge-comp'}
+        onClick={() => (
+          seed === 99
+            ? onFinish?.(42, undefined, { authoritativeWinnerId: 'p2' })
+            : onFinish?.(42)
+        )}
       >
         TiltedLedge Component
       </div>
@@ -170,6 +180,34 @@ describe('MinigameHost — TiltedLedge routing', () => {
     });
 
     expect(onDone).toHaveBeenCalledWith(42, false);
+  });
+
+  it('skips the host results screen when a generic React minigame reports an authoritative winner', async () => {
+    const store = makeStore();
+    const onDone = vi.fn();
+
+    render(
+      <Provider store={store}>
+        <MinigameHost
+          game={TILTED_LEDGE_GAME}
+          gameOptions={{ seed: 99 }}
+          onDone={onDone}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tilted-ledge-comp-authoritative'));
+    });
+
+    expect(screen.queryByText('🏁 Finished!')).toBeNull();
+    expect(onDone).toHaveBeenCalledWith(42, false, { authoritativeWinnerId: 'p2' });
   });
 
   it('renders LegacyMinigameWrapper for a legacy game', async () => {

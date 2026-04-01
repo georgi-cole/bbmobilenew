@@ -38,7 +38,11 @@ import TimingBar from '../components/TimingBar/TimingBar';
  * seeded-RNG games start deterministically without an extra user click.
  */
 export interface GenericMinigameProps {
-  onFinish?: (value: number, tiebreakerMs?: number) => void;
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: { authoritativeWinnerId?: string | null },
+  ) => void;
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number;
   /** When true the game starts immediately on mount (no Start button needed). */
