@@ -53,13 +53,30 @@ describe('majorityRules logic', () => {
   it('uses the expanded question bank and shuffles seeded question options', () => {
     expect(MAJORITY_RULES_QUESTIONS).toHaveLength(200);
 
-    const seededQuestion = pickMajorityRulesQuestion(17, 1, []);
-    const baseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === seededQuestion.id);
+    const seededQuestion1 = pickMajorityRulesQuestion(17, 1, []);
+    const baseQuestion = MAJORITY_RULES_QUESTIONS.find((entry) => entry.id === seededQuestion1.id);
 
     expect(baseQuestion).toBeDefined();
-    expect(seededQuestion.options.map((option) => option.text)).not.toEqual(
-      baseQuestion?.options.map((option) => option.text),
-    );
+
+    const baseOptionTexts = baseQuestion!.options.map((option) => option.text);
+    const seededOptionTexts1 = seededQuestion1.options.map((option) => option.text);
+
+    // 1. Seeded options are a permutation of the base options.
+    expect([...seededOptionTexts1].sort()).toEqual([...baseOptionTexts].sort());
+
+    // 2. Shuffling is deterministic for the same seed/round/question.
+    const seededQuestion1Repeat = pickMajorityRulesQuestion(17, 1, []);
+    const seededOptionTexts1Repeat = seededQuestion1Repeat.options.map((option) => option.text);
+    expect(seededOptionTexts1Repeat).toEqual(seededOptionTexts1);
+
+    // 3. With a different seed, the order can change for at least one seeded question.
+    const seededQuestion2 = pickMajorityRulesQuestion(18, 1, []);
+    const seededOptionTexts2 = seededQuestion2.options.map((option) => option.text);
+    expect([...seededOptionTexts2].sort()).toEqual([...baseOptionTexts].sort());
+
+    const differsFromBase1 = seededOptionTexts1.join('||') !== baseOptionTexts.join('||');
+    const differsFromBase2 = seededOptionTexts2.join('||') !== baseOptionTexts.join('||');
+    expect(differsFromBase1 || differsFromBase2).toBe(true);
   });
 
   it('flags unanimous rounds without eliminating anyone', () => {
