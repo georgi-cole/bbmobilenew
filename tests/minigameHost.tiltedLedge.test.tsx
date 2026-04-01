@@ -88,6 +88,12 @@ const TILTED_LEDGE_GAME = {
   retired: false,
 };
 
+const AUTHORITATIVE_SCORING_GAME = {
+  ...TILTED_LEDGE_GAME,
+  key: 'authoritativeTiltedLedge',
+  scoringAdapter: 'authoritative' as const,
+};
+
 // Minimal GameRegistryEntry for a legacy game
 const LEGACY_GAME = {
   key: 'quickTap',
@@ -210,6 +216,34 @@ describe('MinigameHost — TiltedLedge routing', () => {
 
     expect(screen.queryByText('🏁 Finished!')).toBeNull();
     expect(onDone).toHaveBeenCalledWith(42, false, { authoritativeWinnerId: 'p2' });
+  });
+
+  it('skips the host results screen for authoritative-scoring generic React minigames', async () => {
+    const store = makeStore();
+    const onDone = vi.fn();
+
+    render(
+      <Provider store={store}>
+        <MinigameHost
+          game={AUTHORITATIVE_SCORING_GAME}
+          gameOptions={{ seed: 1 }}
+          onDone={onDone}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tilted-ledge-comp'));
+    });
+
+    expect(screen.queryByText('🏁 Finished!')).toBeNull();
+    expect(onDone).toHaveBeenCalledWith(42, false, undefined);
   });
 
   it('renders LegacyMinigameWrapper for a legacy game', async () => {

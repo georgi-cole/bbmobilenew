@@ -479,7 +479,7 @@ export default function MinigameHost({
                   seed={seed}
                   autoStart={true}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
-                    if (completion?.authoritativeWinnerId) {
+                    if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
                       onDone(value, false, completion);
                       return;
                     }
