@@ -598,8 +598,9 @@ export default function TimingBar({
       ? Math.round(humanTotalScoreRef.current / humanRoundsPlayedRef.current)
       : 0;
 
+    const lastEntries = lastResult?.entries ?? [];
     const winner = getTimingRoundWinner(lastResult) ?? lastResult?.entries[0];
-    const lastPlace = lastResult?.entries[lastResult.entries.length - 1];
+    const lastPlace = lastEntries[lastEntries.length - 1];
 
     if (!session) {
       if (onFinish) {
