@@ -56,7 +56,7 @@ function assignPersonality(id: string, seed: number, isHuman: boolean): AiPerson
 
 /**
  * Builds the initial player list from competition participants.
- * Each player starts with `startingBank` Eyeolens and no penalty.
+ * Each player starts with `startingBank` Eyeolens.
  * Personalities are assigned deterministically from the seed.
  */
 export function createInitialPlayers(
@@ -96,24 +96,23 @@ export const MOCK_PARTICIPANTS: MinigameParticipant[] = [
 /**
  * Returns the allowed bid range for a player in the current round.
  *
- * - min is always at least 1 (can never bid 0).
- * - max is clamped to the player's bank minus any active surcharge,
- *   ensuring the player can always afford to pay both the bid and penalty.
+ * - min is 1 while the player can afford the minimum bid (bank >= minBid),
+ *   otherwise 0 for bankrupt edge cases.
+ * - max is clamped to the player's current bank.
  * - recommended is the midpoint of [min, max], biased slightly lower.
  */
 export function getAllowedBidRange(
   player: TrapAuctionPlayer,
-  round: number,
+  _round: number,
 ): BidRangeInfo {
-  const surcharge =
-    player.penalty && player.penalty.penaltyRound === round
-      ? player.penalty.surcharge
-      : 0;
+  if (player.bank < TRAP_AUCTION_CONFIG.minBid) {
+    return { min: 0, max: 0, recommended: 0 };
+  }
 
   const min = TRAP_AUCTION_CONFIG.minBid;
-  // Reserve enough bank to pay the surcharge; clamp to at least min
-  const maxAfterPenalty = Math.max(min, player.bank - surcharge);
-  const max = Math.min(TRAP_AUCTION_CONFIG.baseMaxBid, maxAfterPenalty);
+  // The early return above handles bankrupt players, so any player reaching
+  // this path can afford at least the minimum bid.
+  const max = Math.min(TRAP_AUCTION_CONFIG.baseMaxBid, player.bank);
 
   const recommended = Math.max(min, Math.floor((min + max) / 2));
 
@@ -128,7 +127,7 @@ export function getAllowedBidRange(
  * Strategy varies by personality:
  *  - cautious:   Low bids, avoids top slot; stays near floor + small buffer.
  *  - balanced:   Middle of the range, mild adjustment for round pressure.
- *  - desperate:  High bids, fear of elimination dominates; ignores penalty.
+ *  - desperate:  High bids, fear of elimination dominates.
  *  - chaotic:    Full random within range — intentionally unpredictable.
  *  - dominant:   Near-maximum every round; embraces exposure.
  *  - strategic:  Reads round / alive count; bids higher as stakes rise.
@@ -151,8 +150,6 @@ export function chooseAiBid(
   const range = max - min;
   const aliveCount = state.players.filter((p) => p.isAlive).length;
   const bankFraction = player.bank / TRAP_AUCTION_CONFIG.startingBank;
-  const hasPenalty = player.penalty?.penaltyRound === state.round;
-
   // Round pressure: later rounds are more dangerous (more to lose)
   const roundPressure = Math.min(1, state.round / 8);
 
@@ -177,12 +174,10 @@ export function chooseAiBid(
       break;
     }
     case 'desperate': {
-      // High bids; fear of being lowest outweighs penalty concern
+      // High bids; fear of being lowest dominates
       const base = min + Math.floor(range * (0.6 + roundPressure * 0.2));
       const jitter = Math.floor(rng() * range * 0.18);
       raw = base + jitter;
-      // Desperate penalty override: they bid even higher when penalised
-      if (hasPenalty) raw = Math.min(max, raw + Math.floor(range * 0.1));
       break;
     }
     case 'chaotic': {
@@ -211,7 +206,9 @@ export function chooseAiBid(
       raw = min + Math.floor(rng() * (range + 1));
   }
 
-  return Math.max(min, Math.min(max, raw));
+  const clamped = Math.max(min, Math.min(max, raw));
+  const safeFloor = max > TRAP_AUCTION_CONFIG.minBid ? min + 1 : min;
+  return Math.max(safeFloor, clamped);
 }
 
 // ─── findLowestBidders ────────────────────────────────────────────────────────
@@ -246,8 +243,8 @@ export function findHighestBidder(players: TrapAuctionPlayer[]): string | null {
 // ─── exposeHighestBidder ─────────────────────────────────────────────────────
 
 /**
- * Marks the highest bidder as exposed (isExposed = true) and assigns
- * their next-round penalty. Does not eliminate them.
+ * Marks the highest bidder as exposed (isExposed = true).
+ * Does not eliminate them.
  *
  * NOTE: The problem statement named this helper "ExposeHighestBiffer" —
  * we export both spellings for compatibility.
@@ -255,27 +252,13 @@ export function findHighestBidder(players: TrapAuctionPlayer[]): string | null {
 export function exposeHighestBidder(
   players: TrapAuctionPlayer[],
   highestId: string | null,
-  nextRound: number,
+  _nextRound: number,
 ): TrapAuctionPlayer[] {
-  return players.map((p) => {
-    // Clear previous exposure from last round
-    const cleared = { ...p, isExposed: false, penalty: p.penalty };
-    if (p.id === highestId) {
-      return {
-        ...cleared,
-        isExposed: true,
-        penalty: {
-          surcharge: TRAP_AUCTION_CONFIG.penaltyAmount,
-          penaltyRound: nextRound,
-        },
-      };
-    }
-    // Clear penalty if it was for a past round (strictly earlier than the current round)
-    if (cleared.penalty && cleared.penalty.penaltyRound < nextRound - 1) {
-      return { ...cleared, penalty: null };
-    }
-    return cleared;
-  });
+  return players.map((p) => ({
+    ...p,
+    isExposed: p.id === highestId,
+    penalty: null,
+  }));
 }
 
 /** Alias matching the problem statement's spelling request. */
@@ -285,27 +268,31 @@ export const ExposeHighestBiffer = exposeHighestBidder;
 
 /**
  * Deducts each player's currentBid from their bank.
- * Also deducts any active surcharge penalty.
  * Clamps bank to 0 (cannot go negative).
  * Resets currentBid and bidRevealed for the next round.
  */
 export function applyBidCosts(
   players: TrapAuctionPlayer[],
-  round: number,
+  _round: number,
 ): TrapAuctionPlayer[] {
   return players.map((p) => {
     if (!p.isAlive || p.currentBid === null) return p;
     const bid = p.currentBid;
-    const surcharge =
-      p.penalty && p.penalty.penaltyRound === round ? p.penalty.surcharge : 0;
-    const totalCost = bid + surcharge;
     return {
       ...p,
-      bank: Math.max(0, p.bank - totalCost),
+      bank: Math.max(0, p.bank - bid),
       currentBid: null,
       bidRevealed: false,
+      penalty: null,
     };
   });
+}
+
+export function shouldRevealPlayerBank(
+  player: TrapAuctionPlayer,
+  round: number,
+): boolean {
+  return round <= 1 || !player.isAlive || player.isExposed;
 }
 
 // ─── eliminatePlayers ────────────────────────────────────────────────────────

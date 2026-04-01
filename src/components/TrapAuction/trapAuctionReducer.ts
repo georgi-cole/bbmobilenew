@@ -4,7 +4,7 @@
  * Pure React useReducer-compatible reducer for the Trap Auction minigame.
  *
  * Phase transitions:
- *  intro → bid → reveal → resolve → elimination → (bid | complete)
+ *  intro → bid → reveal → elimination → (bid | complete)
  *
  * Designed to be used with:
  *   const [state, dispatch] = useReducer(trapAuctionReducer, initialState);
@@ -92,6 +92,7 @@ export function trapAuctionReducer(
     // ── reveal: flip next card ────────────────────────────────────────────────
     case 'ADVANCE_REVEAL': {
       if (state.phase !== 'reveal') return state;
+      if (state.revealIndex >= state.roundReveals.length) return state;
 
       const nextIndex = state.revealIndex + 1;
 
@@ -108,15 +109,14 @@ export function trapAuctionReducer(
 
       const allRevealed = nextIndex >= state.roundReveals.length;
 
-      if (allRevealed) {
-        return {
-          ...state,
-          players: updatedPlayers,
-          roundReveals: updatedReveals,
-          revealIndex: nextIndex,
-          phase: 'resolve',
-        };
-      }
+       if (allRevealed) {
+         return {
+           ...state,
+           players: updatedPlayers,
+           roundReveals: updatedReveals,
+           revealIndex: nextIndex,
+         };
+       }
 
       return {
         ...state,
@@ -141,21 +141,22 @@ export function trapAuctionReducer(
         players: updatedPlayers,
         roundReveals: allReveals,
         revealIndex: allReveals.length,
-        phase: 'resolve',
       };
     }
 
-    // ── resolve: compute lowest/highest, apply expose, set up elimination ────
+    // ── reveal/resolve: compute lowest/highest, apply exposure, set up elimination ─
     case 'ADVANCE_TO_ELIMINATION': {
-      if (state.phase !== 'resolve') return state;
+      const readyFromReveal =
+        state.phase === 'reveal' && state.revealIndex >= state.roundReveals.length;
+      if (state.phase !== 'resolve' && !readyFromReveal) return state;
 
       const lowestIds = findLowestBidders(state.players);
       const highestId = findHighestBidder(state.players);
 
-      // Apply exposure + penalty for next round
+      // Apply exposure for the next round
       const withExposure = exposeHighestBidder(state.players, highestId, state.round + 1);
 
-      // Deduct bid costs (including surcharge)
+      // Deduct bid costs
       const afterCosts = applyBidCosts(withExposure, state.round);
 
       // Eliminate lowest bidders

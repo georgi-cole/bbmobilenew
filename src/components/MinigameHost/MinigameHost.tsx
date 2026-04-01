@@ -449,6 +449,7 @@ export default function MinigameHost({
                   participants={participants}
                   prizeType={gameOptions?.prizeType as 'HOH' | 'POV' ?? 'HOH'}
                   seed={seed}
+                  autoStart={true}
                   onComplete={handleReactComplete}
                 />
               );

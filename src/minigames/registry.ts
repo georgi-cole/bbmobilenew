@@ -1083,7 +1083,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Each round, secretly choose how much to bid.',
       'After all bids lock, first the highest bid is revealed, then the lowest bid(s); other bids stay hidden.',
       'The player who bid the LOWEST is eliminated. Ties eliminate all tied players.',
-      'The player who bid the HIGHEST is exposed — their bid is public and they face a penalty next round.',
+      'The player who bid the HIGHEST is exposed — their bid is public.',
       'All players pay their bid from their bank.',
       'Last player standing wins!',
     ],
