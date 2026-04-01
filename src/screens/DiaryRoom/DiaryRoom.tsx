@@ -13,7 +13,10 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress } from '../../store/gameSlice';
+import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress, claimMissionReward } from '../../store/gameSlice';
+import { applyInfluenceDelta } from '../../social/socialSlice';
+import type { MissionRewardType } from '../../bb/secretMission';
+import { MYSTERY_BOX_POOL } from '../../bb/secretMission';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -75,6 +78,27 @@ const SUMMARY_POOL = [
   '{name} visited the Confessional. Whatever was said, it stays private.',
 ];
 
+// ─── Mystery box reward messages ──────────────────────────────────────────────
+
+const REWARD_PENDING_MSG =
+  `Well done. You fulfilled the mission — the Big Eye is impressed. ` +
+  `Four mystery boxes await you. Only one is yours. Choose wisely… or rely on luck. 📦`;
+
+const REWARD_MESSAGES: Record<string, string> = {
+  plus1000Influence:
+    `The Big Eye smiles. You have been granted 1 000 units of influence. ` +
+    `Use this wisely — social capital is everything in this house. 🤝✨`,
+  doubleVote:
+    `A rare gift: the power of a Double Vote. When the time is right, ` +
+    `you will cast two votes instead of one. Guard this secret carefully. 🗳️🗳️`,
+  voteDeduction:
+    `Cunning choice. One vote cast against you will vanish without a trace. ` +
+    `The power is yours — stored, ready, waiting. 🪄`,
+  emptyBox:
+    `…The box is empty. Not every mystery holds treasure. ` +
+    `But perhaps the real prize was the courage to open it. 😶‍🌫️ The Big Eye is amused.`,
+};
+
 const TIC_TAC_TOE_LINES: ReadonlyArray<readonly [number, number, number]> = [
   [0, 1, 2],
   [3, 4, 5],
@@ -132,6 +156,32 @@ function pickSummary(name: string, seed: number): string {
   const idx = seed % SUMMARY_POOL.length;
   return SUMMARY_POOL[idx].replace('{name}', name);
 }
+
+/**
+ * Shuffle the mystery box pool using a seeded Fisher-Yates algorithm so the
+ * box order is different each game but reproducible within a session.
+ *
+ * Note: mutates and returns the input array — always pass a spread copy,
+ * e.g. `shuffleMysteryPool([...MYSTERY_BOX_POOL], seed)`.
+ */
+function shuffleMysteryPool(pool: MissionRewardType[], seed: number): MissionRewardType[] {
+  let s = ((seed >>> 0) || 1);
+  // Simple seeded LCG
+  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+}
+
+/** Human-readable labels for each reward type used in the UI. */
+const REWARD_LABELS: Record<string, string> = {
+  plus1000Influence: '+1 000 Influence (applied)',
+  doubleVote: 'Double Vote',
+  voteDeduction: 'Vote Deduction',
+  emptyBox: 'Empty Box',
+};
 
 // ─── sessionStorage helpers ───────────────────────────────────────────────────
 
@@ -302,6 +352,16 @@ export default function DiaryRoom() {
   const [ticTacToeNextTurn, setTicTacToeNextTurn] = useState<TicTacToeMark>('X');
   const [ticTacToeThinking, setTicTacToeThinking] = useState(false);
 
+  // ── Mystery box state (PR 2) ──────────────────────────────────────────────
+  // A shuffled copy of the pool is created once when entering rewardPending so
+  // each visit produces the same ordering within a session but the assignments
+  // are not obvious to the player.
+  const [shuffledBoxes, setShuffledBoxes] = useState<MissionRewardType[]>(() =>
+    shuffleMysteryPool([...MYSTERY_BOX_POOL], seed ?? 0),
+  );
+  // Track whether the reward reveal message has been injected this visit.
+  const rewardMsgInjectedRef = useRef(false);
+
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
 
@@ -407,7 +467,35 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once on mount
+
+  // ── Secret mission: inject reward-pending message on mount (PR 2) ─────────
+  // When the player returns to the Confessional with a completed mission,
+  // Big Eye acknowledges the success and prompts box selection.
+  useEffect(() => {
+    const sm = secretMissionRef.current;
+    if (!sm || sm.status !== 'rewardPending') return;
+    if (rewardMsgInjectedRef.current) return;
+    rewardMsgInjectedRef.current = true;
+
+    // Re-shuffle boxes so layout is stable within this visit
+    setShuffledBoxes(shuffleMysteryPool([...MYSTERY_BOX_POOL], seedRef.current ?? 0));
+
+    const timeoutId = window.setTimeout(() => {
+      const revealMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'bb',
+        text: REWARD_PENDING_MSG,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => {
+        const updated = [...prev, revealMsg];
+        saveChat(playerIdRef.current, updated);
+        return updated;
+      });
+    }, 600);
+
+    return () => { window.clearTimeout(timeoutId); };
   }, []); // intentionally runs once on mount
 
   // ── Secret mission: track confessional visit count on unmount ─────────────
@@ -424,7 +512,6 @@ export default function DiaryRoom() {
         }),
       );
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once on unmount
 
   // ── Secret mission: passive survive_days task update ──────────────────────
@@ -748,11 +835,11 @@ export default function DiaryRoom() {
             )}
 
             {/* ── Secret mission checklist (active) ─────────────────────── */}
-            {secretMission && (secretMission.status === 'accepted' || secretMission.status === 'rewardPending') && (
+            {secretMission && (secretMission.status === 'accepted' || secretMission.status === 'rewardPending' || secretMission.status === 'rewardClaimed') && (
               <div className="diary-room__mission-checklist" aria-label="Secret mission checklist">
                 <p className="diary-room__mission-title">
                   🕵️ Secret Mission
-                  {secretMission.status === 'rewardPending'
+                  {secretMission.status === 'rewardPending' || secretMission.status === 'rewardClaimed'
                     ? ' — Complete!'
                     : ''}
                 </p>
@@ -772,10 +859,69 @@ export default function DiaryRoom() {
                     )}
                   </div>
                 ))}
+
+                {/* ── Mystery box selection (rewardPending) ────────────── */}
                 {secretMission.status === 'rewardPending' && (
-                  <p className="diary-room__mission-reward-pending">
-                    🎁 Reward pending — the Big Eye will reveal your prize soon.
-                  </p>
+                  <div className="diary-room__mystery-boxes" aria-label="Mystery box selection">
+                    <p className="diary-room__mystery-boxes-prompt">
+                      🎁 Choose your mystery box:
+                    </p>
+                    <div className="diary-room__mystery-boxes-grid">
+                      {shuffledBoxes.map((rewardType, idx) => (
+                        <button
+                          key={idx}
+                          className="diary-room__mystery-box-btn"
+                          type="button"
+                          aria-label={`Mystery Box ${idx + 1}`}
+                          onClick={() => {
+                            dispatch(claimMissionReward(rewardType));
+                            // Apply +1000 influence instantly
+                            if (rewardType === 'plus1000Influence' && userPlayer) {
+                              dispatch(applyInfluenceDelta({ playerId: userPlayer.id, delta: 1000 }));
+                            }
+                            // Inject Big Eye reveal message
+                            const revealMsg: ChatMessage = {
+                              id: crypto.randomUUID(),
+                              role: 'bb',
+                              text: REWARD_MESSAGES[rewardType] ?? REWARD_MESSAGES.emptyBox,
+                              timestamp: Date.now(),
+                            };
+                            setMessages((prev) => {
+                              const updated = [...prev, revealMsg];
+                              saveChat(playerIdRef.current, updated);
+                              return updated;
+                            });
+                          }}
+                        >
+                          📦 Box {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Claimed reward status (rewardClaimed) ────────────── */}
+                {secretMission.status === 'rewardClaimed' && secretMission.reward && (
+                  <div className="diary-room__reward-claimed" aria-label="Claimed reward">
+                    {secretMission.reward.type === 'emptyBox' ? (
+                      <p className="diary-room__reward-claimed-empty">
+                        📭 Empty box — no power granted.
+                      </p>
+                    ) : secretMission.reward.expired ? (
+                      <p className="diary-room__reward-claimed-expired">
+                        ⏳ Your power has expired — Final 4 has been reached.
+                      </p>
+                    ) : secretMission.reward.consumed ? (
+                      <p className="diary-room__reward-claimed-used">
+                        ✔️ Power used.
+                      </p>
+                    ) : (
+                      <p className="diary-room__reward-claimed-active">
+                        🔮 Secret power stored:{' '}
+                        <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

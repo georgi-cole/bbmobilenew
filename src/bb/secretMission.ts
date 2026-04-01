@@ -1,5 +1,5 @@
 /**
- * secretMission.ts — Centralized secret mission framework (PR 1).
+ * secretMission.ts — Centralized secret mission framework (PR 1 + PR 2).
  *
  * Responsibilities:
  *  - Types for secret mission state & mission templates
@@ -7,11 +7,12 @@
  *  - getSecretMissionTriggerChance() — pure lookup, easy to test
  *  - checkSecretMissionTrigger()    — pure roll, easy to test
  *  - MISSION_TEMPLATES              — pool of templates for the season
+ *  - Reward types, pool, and helpers (PR 2)
  *
  * What is NOT here:
- *  - Mystery box / reward powers (future PRs)
  *  - Redux reducers (gameSlice.ts)
  *  - UI rendering (DiaryRoom.tsx)
+ *  - Vote / ceremony activation logic (PR 3)
  *
  * Keep this file free of side effects so it can be unit-tested in isolation.
  */
@@ -21,12 +22,13 @@
 /**
  * Lifecycle states for a single secret mission.
  *
- *  available    → mission has triggered; Big Eye hasn't offered it yet
- *  offered      → Big Eye offered it in the Confessional; awaiting player response
+ *  available     → mission has triggered; Big Eye hasn't offered it yet
+ *  offered       → Big Eye offered it in the Confessional; awaiting player response
  *  accepted      → player accepted; checklist is active
  *  declined      → player declined; one re-offer may still be pending
- *  rewardPending → checklist completed; reward awaiting claim
- *  expired      → time window closed without completion
+ *  rewardPending → checklist completed; reward selection (mystery boxes) awaiting
+ *  rewardClaimed → player selected a box; reward stored in `reward` field
+ *  expired       → time window closed without completion
  */
 export type SecretMissionStatus =
   | 'available'
@@ -34,6 +36,7 @@ export type SecretMissionStatus =
   | 'accepted'
   | 'declined'
   | 'rewardPending'
+  | 'rewardClaimed'
   | 'expired';
 
 // ── Task types ─────────────────────────────────────────────────────────────
@@ -56,6 +59,68 @@ export interface MissionTask {
 
 // ── Mission state (stored in GameState.secretMission) ────────────────────────
 
+// ── Reward types (PR 2) ──────────────────────────────────────────────────────
+
+/**
+ * The four possible mystery box outcomes.
+ *  - plus1000Influence : immediately add 1 000 influence to the player's bank
+ *  - doubleVote        : stored power — cast two votes in a future live vote (PR 3)
+ *  - voteDeduction     : stored power — deduct one vote cast against player (PR 3)
+ *  - emptyBox          : dud; no power granted
+ */
+export type MissionRewardType =
+  | 'plus1000Influence'
+  | 'doubleVote'
+  | 'voteDeduction'
+  | 'emptyBox';
+
+/**
+ * Ordered pool: exactly one of each outcome.
+ * The UI shuffles a copy of this array at render time so each reveal is
+ * unpredictable, but the reducer only ever records the chosen type.
+ */
+export const MYSTERY_BOX_POOL: readonly MissionRewardType[] = [
+  'plus1000Influence',
+  'doubleVote',
+  'voteDeduction',
+  'emptyBox',
+] as const;
+
+/**
+ * Centralized storage for a claimed mystery-box reward.
+ *
+ * Design notes for PR 3:
+ *  - `consumed` is flipped to true when the power is activated in live gameplay.
+ *  - `expired`  is flipped to true when Final 4 is reached before use.
+ *  - `eligible` is a derived convenience flag (not consumed AND not expired AND type ≠ emptyBox).
+ *    It is recomputed whenever consumed/expired change so PR 3 can read it cheaply.
+ */
+export interface SecretMissionReward {
+  type: MissionRewardType;
+  /** True once the power has been activated / used in live gameplay. */
+  consumed: boolean;
+  /** True once the Final 4 week is reached and the reward can no longer be used. */
+  expired: boolean;
+  /**
+   * True when the reward is available for future use.
+   * Equivalent to: !consumed && !expired && type !== 'emptyBox'.
+   */
+  eligible: boolean;
+}
+
+/**
+ * Create a fresh SecretMissionReward for the given type.
+ * The empty box is never eligible (it is a harmless dud).
+ */
+export function createMissionReward(type: MissionRewardType): SecretMissionReward {
+  return {
+    type,
+    consumed: false,
+    expired: false,
+    eligible: type !== 'emptyBox',
+  };
+}
+
 export interface SecretMissionState {
   /** Which game week (= day) the mission triggered. */
   triggeredDay: number;
@@ -71,6 +136,12 @@ export interface SecretMissionState {
   tasks: MissionTask[];
   /** Template identifier used to generate this mission instance. */
   templateId: string;
+  /**
+   * The mystery-box reward claimed after mission completion.
+   * Populated when status transitions to 'rewardClaimed'.
+   * Undefined until the player opens the Confessional and selects a box.
+   */
+  reward?: SecretMissionReward;
 }
 
 // ── Mission templates ────────────────────────────────────────────────────────

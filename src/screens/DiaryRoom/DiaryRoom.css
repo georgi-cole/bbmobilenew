@@ -993,3 +993,87 @@
   color: #f59e0b;
   font-weight: 600;
 }
+
+/* ── Mystery box UI (PR 2) ─────────────────────────────────────────────────── */
+
+.diary-room__mystery-boxes {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(66, 152, 169, 0.2);
+}
+
+.diary-room__mystery-boxes-prompt {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #4298a9;
+  margin: 0 0 10px;
+}
+
+.diary-room__mystery-boxes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.diary-room__mystery-box-btn {
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(66, 152, 169, 0.4);
+  background: rgba(66, 152, 169, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.diary-room__mystery-box-btn:hover {
+  background: rgba(66, 152, 169, 0.22);
+  border-color: #4298a9;
+  transform: translateY(-1px);
+}
+
+.diary-room__mystery-box-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Reward claimed status (PR 2) ─────────────────────────────────────────── */
+
+.diary-room__reward-claimed {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(66, 152, 169, 0.07);
+  border: 1px solid rgba(66, 152, 169, 0.2);
+}
+
+.diary-room__reward-claimed-active {
+  font-size: 0.82rem;
+  color: #4298a9;
+  font-weight: 600;
+  margin: 0;
+}
+
+.diary-room__reward-claimed-active strong {
+  color: #7dd3e0;
+}
+
+.diary-room__reward-claimed-empty {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  margin: 0;
+}
+
+.diary-room__reward-claimed-expired {
+  font-size: 0.8rem;
+  color: #f59e0b;
+  font-weight: 600;
+  margin: 0;
+}
+
+.diary-room__reward-claimed-used {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
