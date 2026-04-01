@@ -23,6 +23,7 @@ import './MajorityRulesComp.css';
 const INTRO_DELAY_MS = 5000;
 const AI_LOCK_DELAY_MS = 950;
 const AI_DUEL_DELAY_MS = 1250;
+const SPECTATOR_REVEAL_ADVANCE_DELAY_MS = 3000;
 
 const PHASE_MOTION = {
   initial: { opacity: 0, y: 18, scale: 0.985 },
@@ -453,6 +454,17 @@ export default function MajorityRulesComp({
     const timeout = window.setTimeout(() => dispatch(rollFinalDuel()), AI_DUEL_DELAY_MS);
     return () => window.clearTimeout(timeout);
   }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase]);
+
+  useEffect(() => {
+    const humanIsStillActive =
+      game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
+    if (game.phase !== 'reveal' || humanIsStillActive) return undefined;
+    const timeout = window.setTimeout(
+      () => dispatch(advanceReveal()),
+      SPECTATOR_REVEAL_ADVANCE_DELAY_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase]);
 
   useEffect(() => {
     if (game.phase !== 'complete' || completedRef.current) return;
