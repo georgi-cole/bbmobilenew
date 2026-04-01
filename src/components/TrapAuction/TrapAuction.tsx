@@ -158,7 +158,7 @@ export default function TrapAuction({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase, state.round]);
 
-  // Auto-advance reveal cards when fast-forward is on (or spectating without human)
+  // Auto-advance reveal cards — always timed; no manual flip controls
   useEffect(() => {
     if (state.phase !== 'reveal') return;
     const remaining = state.roundReveals.length - state.revealIndex;
@@ -166,32 +166,31 @@ export default function TrapAuction({
 
     const delay = state.fastForward
       ? TRAP_AUCTION_CONFIG.fastRevealStepMs
-      : state.spectating
-        ? TRAP_AUCTION_CONFIG.revealStepMs
-        : null;
+      : TRAP_AUCTION_CONFIG.revealStepMs;
 
-    if (delay !== null) {
-      autoRevealRef.current = setTimeout(() => {
-        dispatch({ type: 'ADVANCE_REVEAL' });
-      }, delay);
-    }
+    autoRevealRef.current = setTimeout(() => {
+      dispatch({ type: 'ADVANCE_REVEAL' });
+    }, delay);
 
     return () => {
-      if (autoRevealRef.current) clearTimeout(autoRevealRef.current);
+      if (autoRevealRef.current !== null) {
+        clearTimeout(autoRevealRef.current);
+        autoRevealRef.current = null;
+      }
     };
-  }, [state.phase, state.revealIndex, state.fastForward, state.spectating, state.roundReveals.length]);
+  }, [state.phase, state.revealIndex, state.fastForward, state.roundReveals.length]);
 
   // Auto-advance when all reveal cards are visible
   useEffect(() => {
     if (state.phase !== 'reveal') return;
     if (state.revealIndex < state.roundReveals.length) return;
 
-    const delay = state.fastForward ? 500 : state.spectating ? 1200 : 900;
+    const delay = state.fastForward ? 500 : 900;
     const t = setTimeout(() => {
       dispatch({ type: 'ADVANCE_TO_ELIMINATION' });
     }, delay);
     return () => clearTimeout(t);
-  }, [state.phase, state.revealIndex, state.roundReveals.length, state.spectating, state.fastForward]);
+  }, [state.phase, state.revealIndex, state.roundReveals.length, state.fastForward]);
 
   // Auto-advance the elimination cinematic unless the human needs a spectate choice
   useEffect(() => {
@@ -491,24 +490,6 @@ export default function TrapAuction({
           })}
         </div>
 
-        {!state.fastForward && !state.spectating && !allRevealed && (
-          <div className="ta-reveal-controls">
-            <button
-              className="ta-btn ta-btn--primary"
-              onClick={() => dispatch({ type: 'ADVANCE_REVEAL' })}
-              type="button"
-            >
-              Flip Next Card
-            </button>
-            <button
-              className="ta-btn ta-btn--ghost"
-              onClick={() => dispatch({ type: 'REVEAL_ALL' })}
-              type="button"
-            >
-              Reveal All
-            </button>
-          </div>
-        )}
         {allRevealed && (
           <div className="ta-reveal-auto-advance" aria-label="Continuing to elimination">
             <span className="ta-reveal-auto-advance__dot" />

@@ -859,3 +859,97 @@ describe('Full round integration', () => {
     }
   });
 });
+
+// ─── AI bid strategy: survival floor ─────────────────────────────────────────
+
+describe('chooseAiBid survival floor', () => {
+  const personalities: Array<import('../../../src/components/TrapAuction/trapAuctionTypes').AiPersonality> = [
+    'cautious', 'balanced', 'desperate', 'chaotic', 'dominant', 'strategic',
+  ];
+
+  it('bids 1 when bank === 1 (that is all they have)', () => {
+    const player = makePlayers(2)[1]!;
+    const bankOnePlayer = { ...player, bank: 1, personality: 'chaotic' as const };
+    const state = { round: 1, players: makePlayers(4) };
+    const bid = chooseAiBid(bankOnePlayer, state, 9999);
+    expect(bid).toBe(1);
+  });
+
+  it('never bids 1 when bank > 1, across all personalities and seeds', () => {
+    const state = { round: 1, players: makePlayers(6) };
+    for (const personality of personalities) {
+      for (let bank = 2; bank <= 100; bank += 10) {
+        for (let seed = 0; seed < 20; seed++) {
+          const player = makePlayers(2)[1]!;
+          const aiPlayer = { ...player, bank, personality };
+          const bid = chooseAiBid(aiPlayer, state, seed * 1337 + bank);
+          expect(bid).toBeGreaterThan(1);
+        }
+      }
+    }
+  });
+
+  it('never bids 1 when bank > 1 in endgame (2 players alive)', () => {
+    const alivePlayers = makePlayers(2);
+    const state = { round: 8, players: alivePlayers };
+    for (const personality of personalities) {
+      for (let bank = 2; bank <= 50; bank += 5) {
+        const aiPlayer = { ...alivePlayers[1]!, bank, personality };
+        const bid = chooseAiBid(aiPlayer, state, bank * 31 + 7);
+        expect(bid).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it('bid is always within the allowed range', () => {
+    const state = { round: 3, players: makePlayers(4) };
+    for (const personality of personalities) {
+      for (let bank = 1; bank <= 100; bank += 7) {
+        const player = makePlayers(2)[1]!;
+        const aiPlayer = { ...player, bank, personality };
+        const { min, max } = getAllowedBidRange(aiPlayer, state.round);
+        const bid = chooseAiBid(aiPlayer, state, bank * 17);
+        expect(bid).toBeGreaterThanOrEqual(min);
+        expect(bid).toBeLessThanOrEqual(max);
+      }
+    }
+  });
+});
+
+// ─── Reveal phase simplification ─────────────────────────────────────────────
+
+describe('Reveal phase flow', () => {
+  it('SUBMIT_HUMAN_BID transitions to reveal with unflipped cards ready for auto-reveal', () => {
+    const state = makeState({ phase: 'bid' });
+    const next = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
+    expect(next.phase).toBe('reveal');
+    // roundReveals should be built; auto-reveal will flip them one by one
+    expect(next.roundReveals.length).toBeGreaterThan(0);
+    expect(next.revealIndex).toBe(0);
+    // Cards start hidden — auto-reveal timer flips them
+    expect(next.roundReveals.every((r) => !r.revealed)).toBe(true);
+  });
+
+  it('ADVANCE_REVEAL flips one card at a time', () => {
+    let state = makeState({ phase: 'bid' });
+    state = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
+    expect(state.revealIndex).toBe(0);
+
+    state = trapAuctionReducer(state, { type: 'ADVANCE_REVEAL' });
+    expect(state.revealIndex).toBe(1);
+    expect(state.roundReveals[0]?.revealed).toBe(true);
+  });
+
+  it('ADVANCE_TO_ELIMINATION requires all cards revealed first', () => {
+    let state = makeState({ phase: 'bid' });
+    state = trapAuctionReducer(state, { type: 'SUBMIT_HUMAN_BID', bid: 20 });
+    // Not all revealed yet — should be a no-op
+    const stillReveal = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+    expect(stillReveal.phase).toBe('reveal');
+
+    // Reveal all, then advance
+    state = trapAuctionReducer(state, { type: 'REVEAL_ALL' });
+    state = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
+    expect(state.phase).toBe('elimination');
+  });
+});
