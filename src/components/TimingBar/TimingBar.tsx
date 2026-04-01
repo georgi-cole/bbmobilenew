@@ -51,25 +51,24 @@ import './TimingBar.css';
 const CHALLENGE_PARTICIPANT_COUNT = 7;
 
 /** Bar bounces back and forth: pixels per second at base speed (% of track per second). */
-const BAR_BASE_SPEED_PCT_PER_S = 35;
+const BAR_BASE_SPEED_PCT_PER_S = 50;
 
-/** Half-width of the moving bar as % of track. */
-const BAR_WIDTH_PCT = 10;
+/** Width of the moving bar as % of track. */
+const BAR_WIDTH_PCT = 6;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 const WALL_CLOCKS = [
-  { city: 'London', emoji: '🕐', cls: 'tbg__clock-item--1' },
-  { city: 'Tokyo',  emoji: '🕓', cls: 'tbg__clock-item--2' },
-  { city: 'New York', emoji: '🕛', cls: 'tbg__clock-item--3' },
-  { city: 'Dubai', emoji: '🕔', cls: 'tbg__clock-item--4' },
-  { city: 'Sydney', emoji: '🕙', cls: 'tbg__clock-item--5' },
+  { city: 'London',   utcHour: 12, utcMin: 0,  cls: 'tbg__clock-item--1' },
+  { city: 'Tokyo',    utcHour: 21, utcMin: 0,  cls: 'tbg__clock-item--2' },
+  { city: 'New York', utcHour: 7,  utcMin: 30, cls: 'tbg__clock-item--3' },
+  { city: 'Dubai',    utcHour: 16, utcMin: 15, cls: 'tbg__clock-item--4' },
+  { city: 'Sydney',   utcHour: 23, utcMin: 45, cls: 'tbg__clock-item--5' },
 ];
 
 // ── Game phases ────────────────────────────────────────────────────────────────
 
 type GamePhase =
-  | 'preround'       // waiting to start the first round
   | 'intro'          // round intro card (with optional timer-decrease notice)
   | 'playing'        // active round — bar is moving
   | 'locked'         // player has locked in; waiting for round to end
@@ -100,8 +99,12 @@ interface Props {
   players?: Player[];
   onFinish?: (value: number, tiebreakerMs?: number) => void;
   seed?: number;
+  /**
+   * When true, automatically begin the first round on mount (respecting `initialRound`),
+   * mirroring the behavior of clicking "Begin Round …".
+   */
   autoStart?: boolean;
-  /** Dev-only: start at a specific round number (skips preround, goes straight to intro). */
+  /** Dev-only: start at a specific round number (goes straight to the round intro). */
   initialRound?: number;
 }
 
@@ -250,10 +253,7 @@ export default function TimingBar({
 
   // ── Game state ─────────────────────────────────────────────────────────────
 
-  // autoStart: skip the preround overview and go directly to the round intro.
-  const [gamePhase, setGamePhase] = useState<GamePhase>(
-    initialRound > 1 || autoStart ? 'intro' : 'preround',
-  );
+  const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [roundNumber, setRoundNumber] = useState(initialRound);
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
     effectiveParticipantIds,
@@ -279,6 +279,7 @@ export default function TimingBar({
   const [timeRemainingMs, setTimeRemainingMs] = useState(roundDurationSeconds * 1000);
   const timeRemainingMsRef = useRef(roundDurationSeconds * 1000);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoStartedRef = useRef(false);
 
   // Attempt tracking
   const [softAttempts, setSoftAttempts] = useState<number[]>([]); // bar positions of soft stops
@@ -506,7 +507,7 @@ export default function TimingBar({
     setGamePhase('locked');
   }, [gamePhase, isLocked, stopBarAnimation, stopTimer]);
 
-  /** Start the round (called from pre-round or intro). */
+  /** Start the round from the intro card. */
   const handleStartRound = useCallback(() => {
     // Reset round state
     setSoftAttempts([]);
@@ -526,10 +527,14 @@ export default function TimingBar({
     startTimer();
   }, [roundDurationSeconds, startBarAnimation, startTimer]);
 
-  /** Move from pre-round to intro before round 1, or directly from pre-round. */
-  const handleGoToIntro = useCallback(() => {
-    setGamePhase('intro');
-  }, []);
+  useEffect(() => {
+    if (!autoStart || hasAutoStartedRef.current || gamePhase !== 'intro') return;
+    hasAutoStartedRef.current = true;
+    const timeoutId = setTimeout(() => {
+      handleStartRound();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [autoStart, gamePhase, handleStartRound]);
 
   /** Continue to next round. */
   const handleContinueToNextRound = useCallback(() => {
@@ -692,12 +697,45 @@ export default function TimingBar({
     >
       {/* Decorative wall clocks */}
       <div className="tbg__clocks-bg" aria-hidden="true">
-        {WALL_CLOCKS.map((clock) => (
-          <div key={clock.city} className={`tbg__clock-item ${clock.cls}`}>
-            <span className="tbg__clock-face">{clock.emoji}</span>
-            <span className="tbg__clock-city">{clock.city}</span>
-          </div>
-        ))}
+        {WALL_CLOCKS.map((clock) => {
+          const hourAngle = ((clock.utcHour % 12) + clock.utcMin / 60) * 30;
+          const minAngle = clock.utcMin * 6;
+          return (
+            <div key={clock.city} className={`tbg__clock-item ${clock.cls}`}>
+              <svg className="tbg__clock-face-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+                {/* Clock bezel */}
+                <circle cx="40" cy="40" r="38" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="3" />
+                <circle cx="40" cy="40" r="35" fill="rgba(15,15,30,0.7)" />
+                {/* Hour tick marks */}
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const a = (i * 30 * Math.PI) / 180;
+                  const x1 = 40 + 29 * Math.sin(a);
+                  const y1 = 40 - 29 * Math.cos(a);
+                  const x2 = 40 + 33 * Math.sin(a);
+                  const y2 = 40 - 33 * Math.cos(a);
+                  return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.6)" strokeWidth={i % 3 === 0 ? 2.5 : 1.2} strokeLinecap="round" />;
+                })}
+                {/* Minute hand */}
+                <line
+                  x1="40" y1="40"
+                  x2={40 + 26 * Math.sin((minAngle * Math.PI) / 180)}
+                  y2={40 - 26 * Math.cos((minAngle * Math.PI) / 180)}
+                  stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round"
+                />
+                {/* Hour hand */}
+                <line
+                  x1="40" y1="40"
+                  x2={40 + 17 * Math.sin((hourAngle * Math.PI) / 180)}
+                  y2={40 - 17 * Math.cos((hourAngle * Math.PI) / 180)}
+                  stroke="rgba(255,255,255,0.9)" strokeWidth="2.8" strokeLinecap="round"
+                />
+                {/* Center dot */}
+                <circle cx="40" cy="40" r="2.5" fill="rgba(139,92,246,0.9)" />
+              </svg>
+              <span className="tbg__clock-city">{clock.city}</span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="tbg__card">
@@ -712,13 +750,13 @@ export default function TimingBar({
         </header>
 
         {/* Round + timer-decrease notice (shown in intro / playing / locked / results) */}
-        {gamePhase !== 'preround' && gamePhase !== 'final_results' && (
+        {gamePhase !== 'final_results' && (
           <div className="tbg__round-banner" aria-live="polite">
             <strong>
               Round {roundNumber} • {activeParticipants.length} players •{' '}
-              {getEliminationCount(activeParticipants.length) > 0
-                ? `${getEliminationCount(activeParticipants.length)} eliminated this round`
-                : 'Final duel'}
+              {activeParticipants.length === 2
+                ? '⚡ Sudden death — last player standing wins!'
+                : `${getEliminationCount(activeParticipants.length)} eliminated this round`}
             </strong>
             <span>{roundDurationSeconds}s per round</span>
           </div>
@@ -732,50 +770,6 @@ export default function TimingBar({
 
         {isSpectatorMode && gamePhase !== 'final_results' && (
           <p className="tbg__spectator-notice">📹 You&apos;re spectating — sit back and watch.</p>
-        )}
-
-        {/* ── Pre-round (waiting) ── */}
-        {gamePhase === 'preround' && (
-          <div className="tbg__preround">
-            <span className="tbg__preround-icon">⏱</span>
-            <h3 className="tbg__preround-title">Ready to compete?</h3>
-
-            <ul className="tbg__preround-rules" aria-label="Game rules">
-              <li>A bar bounces left and right — stop it near the centre.</li>
-              <li>
-                Press <strong>Lock In 🔒</strong> at any moment to freeze your score —{' '}
-                no stopping required.
-              </li>
-              <li>
-                <strong>Stop ✋</strong> is optional: it pauses the bar so you can{' '}
-                inspect your position, then resume and try again.
-              </li>
-              <li>Each soft stop costs <strong>−{NON_LOCKING_PENALTY_PP}%</strong> accuracy. Lock In alone is free.</li>
-              <li>If you don&apos;t lock in before time runs out, you score 0%.</li>
-            </ul>
-
-            <div className="tbg__players-preview" aria-label="Participants">
-              {activeParticipants.map((p) => (
-                <div
-                  key={p.id}
-                  className={`tbg__player-chip${p.isHuman ? ' tbg__player-chip--human' : ''}`}
-                >
-                  {renderAvatar(p, 'tbg__player-avatar')}
-                  <span>{p.name}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="tbg__action-area" style={{ width: '100%', paddingBottom: 0 }}>
-              <button
-                className="tbg__btn tbg__btn--start"
-                type="button"
-                onClick={handleGoToIntro}
-              >
-                Start Round {roundNumber} ▶
-              </button>
-            </div>
-          </div>
         )}
 
         {/* ── Round intro ── */}
@@ -868,9 +862,9 @@ export default function TimingBar({
             {/* Bar track */}
             <div className="tbg__track-wrap">
               <div className="tbg__track-label">
-                <span>0%</span>
-                <span>Centre ◆</span>
-                <span>100%</span>
+                <span>Miss</span>
+                <span>Precision Track</span>
+                <span>Miss</span>
               </div>
 
               <div
@@ -878,11 +872,8 @@ export default function TimingBar({
                 role="presentation"
                 aria-label="Timing bar track"
               >
-                {/* Target zone highlight */}
-                <div className="tbg__target-zone" aria-hidden="true" />
-
-                {/* Centre marker */}
-                <div className="tbg__center-mark" aria-hidden="true" />
+                {/* Score zone gradient overlay — no central emphasis */}
+                <div className="tbg__score-zones" aria-hidden="true" />
 
                 {/* Soft attempt markers */}
                 {softAttempts.map((pos, i) => (
@@ -902,7 +893,7 @@ export default function TimingBar({
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  style={{ left: `${barPosition}%` }}
+                  style={{ left: `${barPosition}%`, width: `${BAR_WIDTH_PCT}%` }}
                   aria-hidden="true"
                 />
               </div>
@@ -961,7 +952,7 @@ export default function TimingBar({
           <div className="tbg__results">
             <h3 className="tbg__results-title">
               {roundResult.isFinalRound
-                ? `🏆 ${winnerName} wins!`
+                ? `🏆 ${winnerName} — Last Player Standing!`
                 : roundResult.eliminatedIds.length > 0
                   ? `Round ${roundResult.roundNumber} — ${roundResult.eliminatedIds.length} player${roundResult.eliminatedIds.length > 1 ? 's' : ''} eliminated`
                   : `Round ${roundResult.roundNumber} complete`}
@@ -1091,10 +1082,10 @@ export default function TimingBar({
         {gamePhase === 'final_results' && (
           <div className="tbg__final">
             <span className="tbg__final-icon">🏆</span>
-            <h3 className="tbg__final-title">Timing Bar Complete!</h3>
+            <h3 className="tbg__final-title">Last Player Standing!</h3>
 
             <div className="tbg__final-winner">
-              <span className="tbg__final-winner-label">Winner</span>
+              <span className="tbg__final-winner-label">⚡ Survivor — Winner</span>
               <span className="tbg__final-winner-name">
                 {allFinalEntries[0]?.name ?? winnerName}
               </span>

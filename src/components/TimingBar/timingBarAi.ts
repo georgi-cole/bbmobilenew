@@ -45,35 +45,35 @@ interface AiPersonalityConfig {
 
 const PERSONALITY_CONFIGS: Record<AiPersonality, AiPersonalityConfig> = {
   precise: {
-    errorSigma: 0.08,
+    errorSigma: 0.12,
     meanNonLockingAttempts: 0.3,
     lockTimeFraction: 0.45,
     pressureSensitivity: 0.15,
     clutchBonus: 0,
   },
   nervous: {
-    errorSigma: 0.18,
-    meanNonLockingAttempts: 2.2,
+    errorSigma: 0.22,
+    meanNonLockingAttempts: 2.5,
     lockTimeFraction: 0.72,
     pressureSensitivity: 0.5,
     clutchBonus: 0,
   },
   aggressive: {
-    errorSigma: 0.22,
+    errorSigma: 0.28,
     meanNonLockingAttempts: 0.1,
     lockTimeFraction: 0.2,
     pressureSensitivity: 0.1,
     clutchBonus: 0,
   },
   consistent: {
-    errorSigma: 0.13,
+    errorSigma: 0.16,
     meanNonLockingAttempts: 0.8,
     lockTimeFraction: 0.55,
     pressureSensitivity: 0.2,
     clutchBonus: 0,
   },
   clutch: {
-    errorSigma: 0.20,
+    errorSigma: 0.24,
     meanNonLockingAttempts: 1.0,
     lockTimeFraction: 0.6,
     pressureSensitivity: 0.05,

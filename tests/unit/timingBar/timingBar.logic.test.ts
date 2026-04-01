@@ -3,20 +3,21 @@
  *
  * Covers:
  *  1. getRoundDurationSeconds: 20→15→10→5→5 sequence.
- *  2. computeRawAccuracy: centre = 100%, edges = 0%.
- *  3. applyAttemptPenalty: deducts 6pp per non-locking attempt, clamped to 0.
+ *  2. computeRawAccuracy: centre = 100%, edges = 0%, steeper curve (×4).
+ *  3. applyAttemptPenalty: deducts 10pp per non-locking attempt, clamped to 0.
  *  4. formatAccuracy: comma decimal separator, 1 decimal place.
- *  5. getEliminationCount: 5+→2, 3-4→1, 2→0.
+ *  5. getEliminationCount: 5+→2, 3-4→1, 2→1 (last-player-standing).
  *  6. assignRanks: sort order (accuracy → time → attempts → shared).
  *  7. buildTimingRoundResult: computes entries, ranks, and eliminations.
  *  8. buildTimingRoundResult: timed-out player scores 0%.
- *  9. Elimination never reduces below 2 remaining.
+ *  9. Final round (2 players) eliminates 1 — last player standing wins.
  * 10. deriveRoundSeed: deterministic per round.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
   getRoundDurationSeconds,
+  getRoundBarSpeed,
   computeRawAccuracy,
   applyAttemptPenalty,
   formatAccuracy,
@@ -59,7 +60,18 @@ describe('getRoundDurationSeconds', () => {
   });
 });
 
-// ── 2. computeRawAccuracy ──────────────────────────────────────────────────────
+// ── 2. getRoundBarSpeed ────────────────────────────────────────────────────────
+
+describe('getRoundBarSpeed', () => {
+  it('uses the retuned speed step curve by round', () => {
+    expect(getRoundBarSpeed(1)).toBe(1.0);
+    expect(getRoundBarSpeed(2)).toBe(1.3);
+    expect(getRoundBarSpeed(3)).toBe(1.65);
+    expect(getRoundBarSpeed(5)).toBe(2.0);
+  });
+});
+
+// ── 3. computeRawAccuracy ──────────────────────────────────────────────────────
 
 describe('computeRawAccuracy', () => {
   it('returns 100 when bar is at centre (50)', () => {
@@ -74,12 +86,20 @@ describe('computeRawAccuracy', () => {
     expect(computeRawAccuracy(100)).toBe(0);
   });
 
-  it('returns 50 when bar is at position 25 (halfway from edge to centre)', () => {
-    expect(computeRawAccuracy(25)).toBe(50);
+  it('returns 0 at position 25 (25pp from centre × 4 = 100 penalty)', () => {
+    expect(computeRawAccuracy(25)).toBe(0);
   });
 
-  it('returns 50 when bar is at position 75', () => {
-    expect(computeRawAccuracy(75)).toBe(50);
+  it('returns 0 at position 75 (25pp from centre × 4 = 100 penalty)', () => {
+    expect(computeRawAccuracy(75)).toBe(0);
+  });
+
+  it('returns 50 when bar is at position 37.5 (12.5pp × 4 = 50 penalty)', () => {
+    expect(computeRawAccuracy(37.5)).toBe(50);
+  });
+
+  it('returns 80 when bar is at position 45 (5pp × 4 = 20 penalty)', () => {
+    expect(computeRawAccuracy(45)).toBe(80);
   });
 
   it('never goes below 0', () => {
@@ -139,8 +159,8 @@ describe('getEliminationCount', () => {
     expect(getEliminationCount(4)).toBe(1);
   });
 
-  it('eliminates 0 when 2 players', () => {
-    expect(getEliminationCount(2)).toBe(0);
+  it('eliminates 1 when 2 players (sudden-death — last player standing wins)', () => {
+    expect(getEliminationCount(2)).toBe(1);
   });
 });
 
@@ -228,7 +248,7 @@ describe('authoritative final ranking helpers', () => {
         nonLockingAttempts: 0,
         timedOut: false,
         rank: 2,
-        isEliminated: false,
+        isEliminated: true,
       },
       {
         participantId: 'winner',
@@ -244,8 +264,8 @@ describe('authoritative final ranking helpers', () => {
         isEliminated: false,
       },
     ],
-    advancingIds: ['runner-up', 'winner'],
-    eliminatedIds: [],
+    advancingIds: ['winner'],
+    eliminatedIds: ['runner-up'],
     isFinalRound: true,
   };
 
@@ -256,7 +276,7 @@ describe('authoritative final ranking helpers', () => {
     ]);
   });
 
-  it('returns the rank-1 winner even when no final-round player is eliminated', () => {
+  it('returns the rank-1 survivor as the authoritative last-player-standing winner', () => {
     expect(getTimingRoundWinner(finalRoundResult)?.participantId).toBe('winner');
   });
 
@@ -361,10 +381,10 @@ describe('buildTimingRoundResult — timeout', () => {
   });
 });
 
-// ── 9. Elimination never reduces below 2 remaining ────────────────────────────
+// ── 9. Final round (2 players) eliminates 1 — last player standing ────────────
 
-describe('buildTimingRoundResult — never below 2 remaining', () => {
-  it('does not eliminate anyone when exactly 2 players remain', () => {
+describe('buildTimingRoundResult — final sudden-death round', () => {
+  it('eliminates 1 when exactly 2 players remain (last player standing wins)', () => {
     const participants: TimingParticipant[] = [
       { id: 'p1', name: 'Alice', avatar: '🧑', isHuman: true },
       { id: 'p2', name: 'Bob', avatar: '🤖', isHuman: false },
@@ -380,9 +400,13 @@ describe('buildTimingRoundResult — never below 2 remaining', () => {
       allPlayers: [],
       seed: 42,
     });
-    expect(result.eliminatedIds).toHaveLength(0);
-    expect(result.advancingIds).toHaveLength(2);
+    // One player is eliminated, one survives
+    expect(result.eliminatedIds).toHaveLength(1);
+    expect(result.advancingIds).toHaveLength(1);
     expect(result.isFinalRound).toBe(true);
+    // The better player (p1 at centre) should survive
+    expect(result.advancingIds[0]).toBe('p1');
+    expect(result.eliminatedIds[0]).toBe('p2');
   });
 });
 
