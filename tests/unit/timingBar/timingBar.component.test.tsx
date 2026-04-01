@@ -131,6 +131,6 @@ describe('TimingBar', () => {
     expect(screen.queryByRole('button', { name: '📹 Remain as spectator' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '⏩ Skip to final results' })).not.toBeInTheDocument();
     expect(screen.getByText('⚡ Survivor — Winner')).toBeInTheDocument();
-    expect(screen.getAllByText('Nico')).not.toHaveLength(0);
+    expect(screen.getAllByText('Nico').length).toBeGreaterThan(0);
   });
 });
