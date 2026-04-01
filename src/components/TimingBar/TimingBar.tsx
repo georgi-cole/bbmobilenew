@@ -455,7 +455,7 @@ export default function TimingBar({
     }
 
     setRoundResult(result);
-    setGamePhase('round_results');
+    setGamePhase(result.isFinalRound && !!humanEntry?.isEliminated ? 'final_results' : 'round_results');
   }, [
     activeParticipantIds,
     aiProfileMap,
