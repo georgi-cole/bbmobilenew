@@ -7,7 +7,8 @@
  * Supports two rendering modes:
  *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`.
  *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same knockout
- *     bracket flow and calls `onFinish(totalScore)` after the final results screen.
+ *     bracket flow and reports the authoritative survivor after the final results
+ *     screen so MinigameHost can advance straight to the ceremony.
  */
 
 import {
@@ -97,7 +98,11 @@ type AiSkillProfile = {
 interface Props {
   session?: MinigameSession;
   players?: Player[];
-  onFinish?: (value: number, tiebreakerMs?: number) => void;
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: { authoritativeWinnerId?: string | null },
+  ) => void;
   seed?: number;
   /**
    * When true, automatically begin the first round on mount (respecting `initialRound`),
@@ -593,13 +598,18 @@ export default function TimingBar({
       ? Math.round(humanTotalScoreRef.current / humanRoundsPlayedRef.current)
       : 0;
 
+    const lastEntries = lastResult?.entries ?? [];
+    const winner = getTimingRoundWinner(lastResult) ?? lastResult?.entries[0];
+    const lastPlace = lastEntries[lastEntries.length - 1];
+
     if (!session) {
-      if (onFinish) onFinish(averageScore);
+      if (onFinish) {
+        onFinish(averageScore, undefined, {
+          authoritativeWinnerId: winner?.participantId ?? null,
+        });
+      }
       return;
     }
-
-    const winner = getTimingRoundWinner(lastResult) ?? lastResult?.entries[0];
-    const lastPlace = lastResult?.entries[lastResult.entries.length - 1];
 
     const payload: CompleteMinigamePayload = {
       humanScore: averageScore,

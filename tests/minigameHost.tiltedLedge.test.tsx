@@ -19,15 +19,27 @@ import cwgoReducer from '../src/features/cwgo/cwgoCompetitionSlice';
 import holdTheWallReducer from '../src/features/holdTheWall/holdTheWallSlice';
 import gameReducer from '../src/store/gameSlice';
 
+const AUTHORITATIVE_WINNER_SEED = 99;
+
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 // Mock the reactComponents map so TiltedLedge calls onFinish when rendered.
 vi.mock('../src/minigames/reactComponents', () => ({
   default: {
-    TiltedLedge: ({ onFinish }: { onFinish?: (v: number) => void }) => (
+    TiltedLedge: ({
+      onFinish,
+      seed,
+    }: {
+      onFinish?: (v: number, t?: number, c?: { authoritativeWinnerId?: string | null }) => void;
+      seed?: number;
+    }) => (
       <div
-        data-testid="tilted-ledge-comp"
-        onClick={() => onFinish?.(42)}
+        data-testid={seed === AUTHORITATIVE_WINNER_SEED ? 'tilted-ledge-comp-authoritative' : 'tilted-ledge-comp'}
+        onClick={() => (
+          seed === AUTHORITATIVE_WINNER_SEED
+            ? onFinish?.(42, undefined, { authoritativeWinnerId: 'p2' })
+            : onFinish?.(42)
+        )}
       >
         TiltedLedge Component
       </div>
@@ -74,6 +86,12 @@ const TILTED_LEDGE_GAME = {
   weight: 1,
   category: 'endurance' as const,
   retired: false,
+};
+
+const AUTHORITATIVE_SCORING_GAME = {
+  ...TILTED_LEDGE_GAME,
+  key: 'authoritativeTiltedLedge',
+  scoringAdapter: 'authoritative' as const,
 };
 
 // Minimal GameRegistryEntry for a legacy game
@@ -170,6 +188,62 @@ describe('MinigameHost — TiltedLedge routing', () => {
     });
 
     expect(onDone).toHaveBeenCalledWith(42, false);
+  });
+
+  it('skips the host results screen when a generic React minigame reports an authoritative winner', async () => {
+    const store = makeStore();
+    const onDone = vi.fn();
+
+    render(
+      <Provider store={store}>
+        <MinigameHost
+          game={TILTED_LEDGE_GAME}
+          gameOptions={{ seed: AUTHORITATIVE_WINNER_SEED }}
+          onDone={onDone}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tilted-ledge-comp-authoritative'));
+    });
+
+    expect(screen.queryByText('🏁 Finished!')).toBeNull();
+    expect(onDone).toHaveBeenCalledWith(42, false, { authoritativeWinnerId: 'p2' });
+  });
+
+  it('skips the host results screen for authoritative-scoring generic React minigames', async () => {
+    const store = makeStore();
+    const onDone = vi.fn();
+
+    render(
+      <Provider store={store}>
+        <MinigameHost
+          game={AUTHORITATIVE_SCORING_GAME}
+          gameOptions={{ seed: 1 }}
+          onDone={onDone}
+          skipRules
+          skipCountdown
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      vi.runAllTimers();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tilted-ledge-comp'));
+    });
+
+    expect(screen.queryByText('🏁 Finished!')).toBeNull();
+    expect(onDone).toHaveBeenCalledWith(42, false, undefined);
   });
 
   it('renders LegacyMinigameWrapper for a legacy game', async () => {

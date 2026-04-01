@@ -198,13 +198,17 @@ export default function MinigameHost({
   // ── Continue from results ────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
     const completion: ReactMinigameCompletion | undefined =
-      finalTiebreakerMs != null ? { tiebreakerMs: finalTiebreakerMs } : undefined;
+      finalTiebreakerMs != null
+        ? {
+            tiebreakerMs: finalTiebreakerMs,
+          }
+        : undefined;
     if (completion != null) {
       onDone(finalValue ?? 0, wasPartial, completion);
     } else {
       onDone(finalValue ?? 0, wasPartial);
     }
-  }, [onDone, finalValue, finalTiebreakerMs, wasPartial]);
+  }, [finalTiebreakerMs, finalValue, onDone, wasPartial]);
 
   // ── Build leaderboard when participants are provided ─────────────────────
   const leaderboard = useMemo(() => {
@@ -474,7 +478,11 @@ export default function MinigameHost({
                 <GenericComp
                   seed={seed}
                   autoStart={true}
-                  onFinish={(value: number, tiebreakerMs?: number) => {
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
                     setFinalValue(value);
                     setFinalTiebreakerMs(tiebreakerMs ?? null);
                     setWasPartial(false);

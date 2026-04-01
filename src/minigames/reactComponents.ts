@@ -9,9 +9,15 @@
 // Component contract for generic mounting
 // ─────────────────────────────────────────
 // Each component in this map must accept (at minimum):
-//   onFinish?: (value: number, tiebreakerMs?: number) => void
+//   onFinish?: (
+//                value: number,
+//                tiebreakerMs?: number,
+//                completion?: { authoritativeWinnerId?: string | null },
+//              ) => void
 //                        — called with the final score; tiebreakerMs is an
-//                          optional secondary sort key (lower = faster = better)
+//                          optional secondary sort key (lower = faster = better),
+//                          and completion.authoritativeWinnerId preserves a
+//                          minigame-declared winner through MinigameHost
 //   seed?: number        — competition seed forwarded from gameOptions.seed
 //   autoStart?: boolean  — when true the game begins immediately on mount
 
@@ -38,7 +44,11 @@ import TimingBar from '../components/TimingBar/TimingBar';
  * seeded-RNG games start deterministically without an extra user click.
  */
 export interface GenericMinigameProps {
-  onFinish?: (value: number, tiebreakerMs?: number) => void;
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: { authoritativeWinnerId?: string | null },
+  ) => void;
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number;
   /** When true the game starts immediately on mount (no Start button needed). */
