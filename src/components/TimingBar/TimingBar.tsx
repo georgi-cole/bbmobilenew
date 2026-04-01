@@ -69,7 +69,6 @@ const WALL_CLOCKS = [
 // ── Game phases ────────────────────────────────────────────────────────────────
 
 type GamePhase =
-  | 'preround'       // waiting to start the first round
   | 'intro'          // round intro card (with optional timer-decrease notice)
   | 'playing'        // active round — bar is moving
   | 'locked'         // player has locked in; waiting for round to end
@@ -100,8 +99,7 @@ interface Props {
   players?: Player[];
   onFinish?: (value: number, tiebreakerMs?: number) => void;
   seed?: number;
-  autoStart?: boolean;
-  /** Dev-only: start at a specific round number (skips preround, goes straight to intro). */
+  /** Dev-only: start at a specific round number (goes straight to the round intro). */
   initialRound?: number;
 }
 
@@ -186,7 +184,6 @@ export default function TimingBar({
   players = [],
   onFinish,
   seed,
-  autoStart = false,
   initialRound = 1,
 }: Props) {
   const dispatch = useAppDispatch();
@@ -250,10 +247,7 @@ export default function TimingBar({
 
   // ── Game state ─────────────────────────────────────────────────────────────
 
-  // autoStart: skip the preround overview and go directly to the round intro.
-  const [gamePhase, setGamePhase] = useState<GamePhase>(
-    initialRound > 1 || autoStart ? 'intro' : 'preround',
-  );
+  const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [roundNumber, setRoundNumber] = useState(initialRound);
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
     effectiveParticipantIds,
@@ -506,7 +500,7 @@ export default function TimingBar({
     setGamePhase('locked');
   }, [gamePhase, isLocked, stopBarAnimation, stopTimer]);
 
-  /** Start the round (called from pre-round or intro). */
+  /** Start the round from the intro card. */
   const handleStartRound = useCallback(() => {
     // Reset round state
     setSoftAttempts([]);
@@ -525,11 +519,6 @@ export default function TimingBar({
     startBarAnimation();
     startTimer();
   }, [roundDurationSeconds, startBarAnimation, startTimer]);
-
-  /** Move from pre-round to intro before round 1, or directly from pre-round. */
-  const handleGoToIntro = useCallback(() => {
-    setGamePhase('intro');
-  }, []);
 
   /** Continue to next round. */
   const handleContinueToNextRound = useCallback(() => {
@@ -745,7 +734,7 @@ export default function TimingBar({
         </header>
 
         {/* Round + timer-decrease notice (shown in intro / playing / locked / results) */}
-        {gamePhase !== 'preround' && gamePhase !== 'final_results' && (
+        {gamePhase !== 'final_results' && (
           <div className="tbg__round-banner" aria-live="polite">
             <strong>
               Round {roundNumber} • {activeParticipants.length} players •{' '}
@@ -765,51 +754,6 @@ export default function TimingBar({
 
         {isSpectatorMode && gamePhase !== 'final_results' && (
           <p className="tbg__spectator-notice">📹 You&apos;re spectating — sit back and watch.</p>
-        )}
-
-        {/* ── Pre-round (waiting) ── */}
-        {gamePhase === 'preround' && (
-          <div className="tbg__preround">
-            <span className="tbg__preround-icon">⏱</span>
-            <h3 className="tbg__preround-title">Ready to compete?</h3>
-
-            <ul className="tbg__preround-rules" aria-label="Game rules">
-              <li>A bar bounces left and right — stop it near the centre.</li>
-              <li>
-                Press <strong>Lock In 🔒</strong> at any moment to freeze your score —{' '}
-                no stopping required.
-              </li>
-              <li>
-                <strong>Stop ✋</strong> is optional: it pauses the bar so you can{' '}
-                inspect your position, then resume and try again.
-              </li>
-              <li>Each soft stop costs <strong>−{NON_LOCKING_PENALTY_PP}%</strong> accuracy. Lock In alone is free.</li>
-              <li>Eliminate every opponent to become the <strong>last player standing</strong>.</li>
-              <li>If you don&apos;t lock in before time runs out, you score 0%.</li>
-            </ul>
-
-            <div className="tbg__players-preview" aria-label="Participants">
-              {activeParticipants.map((p) => (
-                <div
-                  key={p.id}
-                  className={`tbg__player-chip${p.isHuman ? ' tbg__player-chip--human' : ''}`}
-                >
-                  {renderAvatar(p, 'tbg__player-avatar')}
-                  <span>{p.name}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="tbg__action-area" style={{ width: '100%', paddingBottom: 0 }}>
-              <button
-                className="tbg__btn tbg__btn--start"
-                type="button"
-                onClick={handleGoToIntro}
-              >
-                Start Round {roundNumber} ▶
-              </button>
-            </div>
-          </div>
         )}
 
         {/* ── Round intro ── */}
