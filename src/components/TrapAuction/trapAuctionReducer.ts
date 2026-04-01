@@ -94,7 +94,7 @@ export function trapAuctionReducer(
       if (state.phase !== 'reveal') return state;
       if (state.revealIndex >= state.roundReveals.length) return state;
 
-      const nextIndex = Math.min(state.revealIndex + 1, state.roundReveals.length);
+      const nextIndex = state.revealIndex + 1;
 
       // Mark the just-revealed bid in roundReveals
       const updatedReveals = state.roundReveals.map((r, i) =>

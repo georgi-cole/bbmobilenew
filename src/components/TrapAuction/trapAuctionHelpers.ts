@@ -96,7 +96,8 @@ export const MOCK_PARTICIPANTS: MinigameParticipant[] = [
 /**
  * Returns the allowed bid range for a player in the current round.
  *
- * - min is 1 while the player can afford to bid, otherwise 0 for bankrupt edge cases.
+ * - min is 1 while the player can afford the minimum bid (bank >= minBid),
+ *   otherwise 0 for bankrupt edge cases.
  * - max is clamped to the player's current bank.
  * - recommended is the midpoint of [min, max], biased slightly lower.
  */
@@ -109,6 +110,8 @@ export function getAllowedBidRange(
   }
 
   const min = TRAP_AUCTION_CONFIG.minBid;
+  // The early return above handles bankrupt players, so any player reaching
+  // this path can afford at least the minimum bid.
   const max = Math.min(TRAP_AUCTION_CONFIG.baseMaxBid, player.bank);
 
   const recommended = Math.max(min, Math.floor((min + max) / 2));
