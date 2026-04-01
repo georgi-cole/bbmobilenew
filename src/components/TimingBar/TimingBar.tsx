@@ -53,7 +53,7 @@ const CHALLENGE_PARTICIPANT_COUNT = 7;
 /** Bar bounces back and forth: pixels per second at base speed (% of track per second). */
 const BAR_BASE_SPEED_PCT_PER_S = 50;
 
-/** Half-width of the moving bar as % of track. */
+/** Width of the moving bar as % of track. */
 const BAR_WIDTH_PCT = 6;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -99,6 +99,11 @@ interface Props {
   players?: Player[];
   onFinish?: (value: number, tiebreakerMs?: number) => void;
   seed?: number;
+  /**
+   * When true, automatically begin the first round on mount (respecting `initialRound`),
+   * mirroring the behavior of clicking "Begin Round …".
+   */
+  autoStart?: boolean;
   /** Dev-only: start at a specific round number (goes straight to the round intro). */
   initialRound?: number;
 }
@@ -184,6 +189,7 @@ export default function TimingBar({
   players = [],
   onFinish,
   seed,
+  autoStart = false,
   initialRound = 1,
 }: Props) {
   const dispatch = useAppDispatch();
@@ -273,6 +279,7 @@ export default function TimingBar({
   const [timeRemainingMs, setTimeRemainingMs] = useState(roundDurationSeconds * 1000);
   const timeRemainingMsRef = useRef(roundDurationSeconds * 1000);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoStartedRef = useRef(false);
 
   // Attempt tracking
   const [softAttempts, setSoftAttempts] = useState<number[]>([]); // bar positions of soft stops
@@ -519,6 +526,15 @@ export default function TimingBar({
     startBarAnimation();
     startTimer();
   }, [roundDurationSeconds, startBarAnimation, startTimer]);
+
+  useEffect(() => {
+    if (!autoStart || hasAutoStartedRef.current || gamePhase !== 'intro') return;
+    hasAutoStartedRef.current = true;
+    const timeoutId = setTimeout(() => {
+      handleStartRound();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [autoStart, gamePhase, handleStartRound]);
 
   /** Continue to next round. */
   const handleContinueToNextRound = useCallback(() => {

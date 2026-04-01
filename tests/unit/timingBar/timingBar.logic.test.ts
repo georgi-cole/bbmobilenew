@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getRoundDurationSeconds,
+  getRoundBarSpeed,
   computeRawAccuracy,
   applyAttemptPenalty,
   formatAccuracy,
@@ -59,7 +60,18 @@ describe('getRoundDurationSeconds', () => {
   });
 });
 
-// ── 2. computeRawAccuracy ──────────────────────────────────────────────────────
+// ── 2. getRoundBarSpeed ────────────────────────────────────────────────────────
+
+describe('getRoundBarSpeed', () => {
+  it('uses the retuned speed step curve by round', () => {
+    expect(getRoundBarSpeed(1)).toBe(1.0);
+    expect(getRoundBarSpeed(2)).toBe(1.3);
+    expect(getRoundBarSpeed(3)).toBe(1.65);
+    expect(getRoundBarSpeed(5)).toBe(2.0);
+  });
+});
+
+// ── 3. computeRawAccuracy ──────────────────────────────────────────────────────
 
 describe('computeRawAccuracy', () => {
   it('returns 100 when bar is at centre (50)', () => {

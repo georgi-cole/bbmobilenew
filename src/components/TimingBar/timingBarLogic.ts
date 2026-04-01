@@ -115,7 +115,7 @@ export function getRoundDurationSeconds(roundNumber: number): number {
   return Math.max(MIN_ROUND_SECONDS, raw);
 }
 
-/** Returns the bar speed multiplier for a given round (increases after round 2). */
+/** Returns the bar speed multiplier for a given round (increases starting in round 2). */
 export function getRoundBarSpeed(roundNumber: number): number {
   if (roundNumber <= 1) return 1.0;
   if (roundNumber <= 2) return 1.3;
