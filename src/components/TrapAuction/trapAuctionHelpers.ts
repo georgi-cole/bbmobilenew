@@ -152,16 +152,27 @@ export function chooseAiBid(
   const bankFraction = player.bank / TRAP_AUCTION_CONFIG.startingBank;
   // Round pressure: later rounds are more dangerous (more to lose)
   const roundPressure = Math.min(1, state.round / 8);
-  const safetyFloor = max > TRAP_AUCTION_CONFIG.minBid
-    ? Math.min(
+
+  // ── Survival floor ────────────────────────────────────────────────────────
+  // AI bids 1 ONLY when bank === 1 (that is literally all they have left).
+  // When bank > 1, the floor scales up with alive count and round to avoid
+  // trivially suicidal bids while still leaving personality room above it.
+  function endgameFloor(count: number): number {
+    if (count <= 3) return 6;
+    if (count <= 5) return 4;
+    return 3;
+  }
+
+  const survivalFloor: number = player.bank === 1
+    ? 1
+    : Math.min(
         max,
         Math.max(
-          min + 1,
-          player.bank > 10 ? 3 : min + 1,
+          2,                         // hard minimum when bank > 1
+          endgameFloor(aliveCount),  // late-game lift
           Math.floor(player.bank * (aliveCount <= 3 ? 0.12 : 0.08)),
         ),
-      )
-    : min;
+      );
 
   let raw: number;
 
@@ -217,7 +228,7 @@ export function chooseAiBid(
   }
 
   const clamped = Math.max(min, Math.min(max, raw));
-  return Math.max(safetyFloor, clamped);
+  return Math.max(survivalFloor, clamped);
 }
 
 // ─── findLowestBidders ────────────────────────────────────────────────────────

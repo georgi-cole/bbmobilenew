@@ -6,12 +6,12 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background: #0e0e18;
   color: #f0f0f5;
   font-family: inherit;
-  overflow-x: hidden;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────────── */
@@ -781,11 +781,8 @@
   flex-direction: column;
   align-items: stretch;
   gap: 20px;
-  flex: 1;
-  min-height: 0;
   padding-top: 8px;
   width: 100%;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
 }
 
 .ta-complete-winner {
@@ -841,8 +838,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
 }
 
 .ta-complete-placements__title {
@@ -858,10 +853,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 12px;
 }
 
 .ta-complete-placement {
@@ -912,7 +903,7 @@
   position: sticky;
   bottom: 0;
   padding-top: 8px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   background: linear-gradient(180deg, rgba(14, 14, 24, 0) 0%, rgba(14, 14, 24, 0.92) 30%, #0e0e18 100%);
 }
 

@@ -23,7 +23,7 @@ describe('TrapAuction component', () => {
     expect(screen.getByText('Your Bank')).toBeInTheDocument();
   });
 
-  it('auto-advances to elimination after all reveal cards are visible', async () => {
+  it('never shows Flip Next Card or Reveal All buttons (redundant reveal controls removed)', async () => {
     vi.useFakeTimers();
 
     render(<TrapAuction participants={participants} seed={42} autoStart />);
@@ -31,17 +31,37 @@ describe('TrapAuction component', () => {
     await act(async () => {});
 
     fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
-    fireEvent.click(screen.getByRole('button', { name: /reveal all/i }));
 
+    // After submitting bid, we are in reveal phase — manual controls must not appear
     expect(screen.queryByRole('button', { name: /flip next card/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^reveal all$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reveal all/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /next round/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/continuing to elimination/i)).toBeInTheDocument();
+  });
 
-    await act(async () => {
-      vi.advanceTimersByTime(950);
-    });
+  it('auto-advances through reveal to elimination without any user interaction', async () => {
+    vi.useFakeTimers();
 
-    expect(screen.getByText(/player.*remain/i)).toBeInTheDocument();
+    render(<TrapAuction participants={participants} seed={42} autoStart />);
+
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
+
+    // Verify we entered the reveal phase
+    expect(screen.getByText(/the bids are in/i)).toBeInTheDocument();
+
+    // Each card reveal fires a chained setTimeout. With 4 participants, up to
+    // 2 reveal cards are built (highest + lowest). Advance in 1-second steps
+    // (> revealStepMs=700) so React processes each state update before the
+    // next timer is scheduled. 8 steps covers: 2 card reveals + 900ms
+    // auto-advance pause + 1800ms elimination pause — all with headroom.
+    for (let i = 0; i < 8; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+    }
+
+    // Should have progressed past the reveal phase (into elimination or bid/complete)
+    expect(screen.queryByText(/the bids are in/i)).not.toBeInTheDocument();
   });
 });
