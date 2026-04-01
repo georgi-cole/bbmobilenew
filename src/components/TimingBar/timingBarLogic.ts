@@ -18,7 +18,7 @@ export const BAR_TRACK_WIDTH = 100;
 export const TARGET_POSITION = 50;
 
 /** Penalty in percentage points for each non-locking (soft) attempt. */
-export const NON_LOCKING_PENALTY_PP = 6.0;
+export const NON_LOCKING_PENALTY_PP = 10.0;
 
 /** Round 1 starts with this many seconds. */
 export const INITIAL_ROUND_SECONDS = 20;
@@ -115,11 +115,12 @@ export function getRoundDurationSeconds(roundNumber: number): number {
   return Math.max(MIN_ROUND_SECONDS, raw);
 }
 
-/** Returns the bar speed multiplier for a given round (increases after round 3). */
+/** Returns the bar speed multiplier for a given round (increases after round 2). */
 export function getRoundBarSpeed(roundNumber: number): number {
-  if (roundNumber <= 2) return 1.0;
-  if (roundNumber <= 4) return 1.25;
-  return 1.5;
+  if (roundNumber <= 1) return 1.0;
+  if (roundNumber <= 2) return 1.3;
+  if (roundNumber <= 4) return 1.65;
+  return 2.0;
 }
 
 // ── Scoring ────────────────────────────────────────────────────────────────────
@@ -127,13 +128,16 @@ export function getRoundBarSpeed(roundNumber: number): number {
 /**
  * Computes raw accuracy (0–100) for a given bar position.
  * Accuracy is 100% when position equals TARGET_POSITION (50) and decreases
- * linearly to 0% at the edges (0 or 100).
+ * steeply to 0% at ±25pp from centre (positions 25 or 75).
  *
- * Formula: rawAccuracy = max(0, 100 − |position − 50| × 2)
+ * Formula: rawAccuracy = max(0, 100 − |position − 50| × 4)
+ *
+ * This tighter curve makes near-perfect scores much harder to achieve —
+ * a 5pp deviation already costs 20 accuracy points.
  */
 export function computeRawAccuracy(barPosition: number): number {
   const error = Math.abs(barPosition - TARGET_POSITION);
-  return Math.max(0, 100 - error * 2);
+  return Math.max(0, 100 - error * 4);
 }
 
 /**
@@ -171,11 +175,11 @@ function quantizeToOneDecimal(value: number): number {
  * Rules:
  *  - 5 or more active players → eliminate 2
  *  - 3 or 4 active players    → eliminate 1
- *  - 2 active players         → eliminate 0 (final duel)
+ *  - 2 active players         → eliminate 1 (sudden-death final — last player standing wins)
  */
 export function getEliminationCount(activeCount: number): number {
   if (activeCount >= 5) return 2;
-  if (activeCount >= 3) return 1;
+  if (activeCount >= 2) return 1;
   return 0;
 }
 
@@ -294,8 +298,8 @@ export function buildTimingRoundResult(params: {
   const ranked = assignRanks(baseEntries, roundSeed);
 
   // Determine eliminations: take the bottom `eliminationCount` by rank.
-  // Never go below 2 remaining.
-  const maxEliminations = Math.max(0, activeParticipants.length - 2);
+  // For the final sudden-death round (2 players), allow reducing to 1 survivor.
+  const maxEliminations = Math.max(0, activeParticipants.length - 1);
   const actualEliminations = Math.min(eliminationCount, maxEliminations);
 
   // Precompute per-participant shuffle keys for a deterministic, transitive tie-break
@@ -384,7 +388,7 @@ export function simulateRemainingRounds(params: {
 
     results.push(result);
 
-    if (result.isFinalRound || result.eliminatedIds.length === 0) break;
+    if (result.isFinalRound || result.eliminatedIds.length === 0 || result.advancingIds.length <= 1) break;
 
     activeIds = result.advancingIds;
     roundNumber += 1;

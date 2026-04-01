@@ -51,19 +51,19 @@ import './TimingBar.css';
 const CHALLENGE_PARTICIPANT_COUNT = 7;
 
 /** Bar bounces back and forth: pixels per second at base speed (% of track per second). */
-const BAR_BASE_SPEED_PCT_PER_S = 35;
+const BAR_BASE_SPEED_PCT_PER_S = 50;
 
 /** Half-width of the moving bar as % of track. */
-const BAR_WIDTH_PCT = 10;
+const BAR_WIDTH_PCT = 6;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 const WALL_CLOCKS = [
-  { city: 'London', emoji: '🕐', cls: 'tbg__clock-item--1' },
-  { city: 'Tokyo',  emoji: '🕓', cls: 'tbg__clock-item--2' },
-  { city: 'New York', emoji: '🕛', cls: 'tbg__clock-item--3' },
-  { city: 'Dubai', emoji: '🕔', cls: 'tbg__clock-item--4' },
-  { city: 'Sydney', emoji: '🕙', cls: 'tbg__clock-item--5' },
+  { city: 'London',   utcHour: 12, utcMin: 0,  cls: 'tbg__clock-item--1' },
+  { city: 'Tokyo',    utcHour: 21, utcMin: 0,  cls: 'tbg__clock-item--2' },
+  { city: 'New York', utcHour: 7,  utcMin: 30, cls: 'tbg__clock-item--3' },
+  { city: 'Dubai',    utcHour: 16, utcMin: 15, cls: 'tbg__clock-item--4' },
+  { city: 'Sydney',   utcHour: 23, utcMin: 45, cls: 'tbg__clock-item--5' },
 ];
 
 // ── Game phases ────────────────────────────────────────────────────────────────
@@ -692,12 +692,45 @@ export default function TimingBar({
     >
       {/* Decorative wall clocks */}
       <div className="tbg__clocks-bg" aria-hidden="true">
-        {WALL_CLOCKS.map((clock) => (
-          <div key={clock.city} className={`tbg__clock-item ${clock.cls}`}>
-            <span className="tbg__clock-face">{clock.emoji}</span>
-            <span className="tbg__clock-city">{clock.city}</span>
-          </div>
-        ))}
+        {WALL_CLOCKS.map((clock) => {
+          const hourAngle = ((clock.utcHour % 12) + clock.utcMin / 60) * 30;
+          const minAngle = clock.utcMin * 6;
+          return (
+            <div key={clock.city} className={`tbg__clock-item ${clock.cls}`}>
+              <svg className="tbg__clock-face-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+                {/* Clock bezel */}
+                <circle cx="40" cy="40" r="38" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="3" />
+                <circle cx="40" cy="40" r="35" fill="rgba(15,15,30,0.7)" />
+                {/* Hour tick marks */}
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const a = (i * 30 * Math.PI) / 180;
+                  const x1 = 40 + 29 * Math.sin(a);
+                  const y1 = 40 - 29 * Math.cos(a);
+                  const x2 = 40 + 33 * Math.sin(a);
+                  const y2 = 40 - 33 * Math.cos(a);
+                  return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.6)" strokeWidth={i % 3 === 0 ? 2.5 : 1.2} strokeLinecap="round" />;
+                })}
+                {/* Minute hand */}
+                <line
+                  x1="40" y1="40"
+                  x2={40 + 26 * Math.sin((minAngle * Math.PI) / 180)}
+                  y2={40 - 26 * Math.cos((minAngle * Math.PI) / 180)}
+                  stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round"
+                />
+                {/* Hour hand */}
+                <line
+                  x1="40" y1="40"
+                  x2={40 + 17 * Math.sin((hourAngle * Math.PI) / 180)}
+                  y2={40 - 17 * Math.cos((hourAngle * Math.PI) / 180)}
+                  stroke="rgba(255,255,255,0.9)" strokeWidth="2.8" strokeLinecap="round"
+                />
+                {/* Center dot */}
+                <circle cx="40" cy="40" r="2.5" fill="rgba(139,92,246,0.9)" />
+              </svg>
+              <span className="tbg__clock-city">{clock.city}</span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="tbg__card">
@@ -716,9 +749,9 @@ export default function TimingBar({
           <div className="tbg__round-banner" aria-live="polite">
             <strong>
               Round {roundNumber} • {activeParticipants.length} players •{' '}
-              {getEliminationCount(activeParticipants.length) > 0
-                ? `${getEliminationCount(activeParticipants.length)} eliminated this round`
-                : 'Final duel'}
+              {activeParticipants.length === 2
+                ? '⚡ Sudden death — last player standing wins!'
+                : `${getEliminationCount(activeParticipants.length)} eliminated this round`}
             </strong>
             <span>{roundDurationSeconds}s per round</span>
           </div>
@@ -751,6 +784,7 @@ export default function TimingBar({
                 inspect your position, then resume and try again.
               </li>
               <li>Each soft stop costs <strong>−{NON_LOCKING_PENALTY_PP}%</strong> accuracy. Lock In alone is free.</li>
+              <li>Eliminate every opponent to become the <strong>last player standing</strong>.</li>
               <li>If you don&apos;t lock in before time runs out, you score 0%.</li>
             </ul>
 
@@ -868,9 +902,9 @@ export default function TimingBar({
             {/* Bar track */}
             <div className="tbg__track-wrap">
               <div className="tbg__track-label">
-                <span>0%</span>
-                <span>Centre ◆</span>
-                <span>100%</span>
+                <span>Miss</span>
+                <span>Precision Track</span>
+                <span>Miss</span>
               </div>
 
               <div
@@ -878,11 +912,8 @@ export default function TimingBar({
                 role="presentation"
                 aria-label="Timing bar track"
               >
-                {/* Target zone highlight */}
-                <div className="tbg__target-zone" aria-hidden="true" />
-
-                {/* Centre marker */}
-                <div className="tbg__center-mark" aria-hidden="true" />
+                {/* Score zone gradient overlay — no central emphasis */}
+                <div className="tbg__score-zones" aria-hidden="true" />
 
                 {/* Soft attempt markers */}
                 {softAttempts.map((pos, i) => (
@@ -902,7 +933,7 @@ export default function TimingBar({
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  style={{ left: `${barPosition}%` }}
+                  style={{ left: `${barPosition}%`, width: `${BAR_WIDTH_PCT}%` }}
                   aria-hidden="true"
                 />
               </div>
@@ -961,7 +992,7 @@ export default function TimingBar({
           <div className="tbg__results">
             <h3 className="tbg__results-title">
               {roundResult.isFinalRound
-                ? `🏆 ${winnerName} wins!`
+                ? `🏆 ${winnerName} — Last Player Standing!`
                 : roundResult.eliminatedIds.length > 0
                   ? `Round ${roundResult.roundNumber} — ${roundResult.eliminatedIds.length} player${roundResult.eliminatedIds.length > 1 ? 's' : ''} eliminated`
                   : `Round ${roundResult.roundNumber} complete`}
@@ -1091,10 +1122,10 @@ export default function TimingBar({
         {gamePhase === 'final_results' && (
           <div className="tbg__final">
             <span className="tbg__final-icon">🏆</span>
-            <h3 className="tbg__final-title">Timing Bar Complete!</h3>
+            <h3 className="tbg__final-title">Last Player Standing!</h3>
 
             <div className="tbg__final-winner">
-              <span className="tbg__final-winner-label">Winner</span>
+              <span className="tbg__final-winner-label">⚡ Survivor — Winner</span>
               <span className="tbg__final-winner-name">
                 {allFinalEntries[0]?.name ?? winnerName}
               </span>

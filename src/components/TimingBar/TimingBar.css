@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 12, 20, 0.94);
+  background: rgba(8, 10, 20, 0.96);
   padding: 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -26,28 +26,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  opacity: 0.07;
+  gap: 6px;
+  opacity: 0.13;
   user-select: none;
   pointer-events: none;
 }
 
-.tbg__clock-item--1 { top: 6%; left: 5%; transform: rotate(-6deg); }
-.tbg__clock-item--2 { top: 8%; right: 6%; transform: rotate(5deg); }
-.tbg__clock-item--3 { bottom: 10%; left: 3%; transform: rotate(3deg); }
-.tbg__clock-item--4 { bottom: 8%; right: 4%; transform: rotate(-4deg); }
-.tbg__clock-item--5 { top: 42%; left: 2%; transform: rotate(2deg); }
+.tbg__clock-item--1 { top: 5%;  left: 4%;   transform: rotate(-7deg); }
+.tbg__clock-item--2 { top: 6%;  right: 5%;  transform: rotate(6deg); }
+.tbg__clock-item--3 { bottom: 9%;  left: 2%;  transform: rotate(4deg); }
+.tbg__clock-item--4 { bottom: 7%;  right: 3%; transform: rotate(-5deg); }
+.tbg__clock-item--5 { top: 40%; left: 1%;   transform: rotate(3deg); }
 
-.tbg__clock-face {
-  font-size: 3.4rem;
-  line-height: 1;
+.tbg__clock-face-svg {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.4));
 }
 
 .tbg__clock-city {
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #fff;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #c4b5fd;
   text-transform: uppercase;
 }
 
@@ -60,12 +61,15 @@
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   margin-block: auto;
-  background: var(--color-surface, #1a1b2e);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(170deg, #13142a 0%, #0f1023 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(139, 92, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
 }
@@ -276,65 +280,76 @@
 .tbg__track-label {
   display: flex;
   justify-content: space-between;
-  font-size: 0.68rem;
-  color: var(--color-text-muted, #9090a8);
-  margin-bottom: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 6px;
   padding: 0 2px;
 }
 
+/* Premium precision track */
 .tbg__track {
   position: relative;
   width: 100%;
-  height: 38px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  height: 44px;
+  background:
+    linear-gradient(to right,
+      rgba(220, 38, 38, 0.35) 0%,
+      rgba(245, 158, 11, 0.25) 18%,
+      rgba(99, 102, 241, 0.18) 35%,
+      rgba(17, 24, 39, 0.1) 48%,
+      rgba(17, 24, 39, 0.1) 52%,
+      rgba(99, 102, 241, 0.18) 65%,
+      rgba(245, 158, 11, 0.25) 82%,
+      rgba(220, 38, 38, 0.35) 100%
+    );
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* Target zone highlight */
-.tbg__target-zone {
+/* Score zone gradient overlay — positioned via CSS, not a visible "aim here" marker */
+.tbg__score-zones {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 35%;
-  width: 30%;
-  background: rgba(139, 92, 246, 0.15);
-  border-left: 2px solid rgba(139, 92, 246, 0.5);
-  border-right: 2px solid rgba(139, 92, 246, 0.5);
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 30% 100% at 50% 50%,
+      rgba(99, 102, 241, 0.12) 0%,
+      transparent 100%
+    );
   pointer-events: none;
 }
 
-/* Center hairline */
-.tbg__center-mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-}
-
-/* Moving bar */
+/* Moving bar — neon cursor style, thinner and sharper */
 .tbg__bar {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 10%;
-  background: linear-gradient(90deg, #8b5cf6, #60a5fa);
-  border-radius: 4px;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+  top: 3px;
+  bottom: 3px;
+  background: linear-gradient(180deg, #e0d7ff 0%, #a78bfa 40%, #7c3aed 100%);
+  border-radius: 6px;
+  box-shadow:
+    0 0 8px rgba(167, 139, 250, 0.9),
+    0 0 20px rgba(139, 92, 246, 0.5),
+    0 0 40px rgba(109, 40, 217, 0.3);
   pointer-events: none;
   transition: background 0.15s;
 }
 
 .tbg__bar--locked {
-  background: linear-gradient(90deg, #22c55e, #4ade80);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+  background: linear-gradient(180deg, #bbf7d0 0%, #4ade80 40%, #16a34a 100%);
+  box-shadow:
+    0 0 8px rgba(74, 222, 128, 0.9),
+    0 0 20px rgba(34, 197, 94, 0.5),
+    0 0 40px rgba(22, 163, 74, 0.3);
 }
 
 /* Soft-attempt marker */
@@ -342,10 +357,11 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 3px;
-  background: rgba(251, 191, 36, 0.6);
+  width: 2px;
+  background: rgba(251, 191, 36, 0.7);
   pointer-events: none;
   transform: translateX(-50%);
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
 }
 
 /* ── Controls row ─────────────────────────────────────────────────────────── */
@@ -637,9 +653,10 @@
   align-items: center;
   gap: 6px;
   padding: 16px;
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
   border-radius: 16px;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.08);
 }
 
 .tbg__final-winner-label {
@@ -752,5 +769,5 @@
     gap: 10px;
   }
 
-  .tbg__clock-face { font-size: 2.2rem; }
+  .tbg__clock-face-svg { width: 52px; height: 52px; }
 }
