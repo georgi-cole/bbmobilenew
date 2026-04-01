@@ -46,6 +46,13 @@ export interface SettingsState {
     enableFavoritePlayer: boolean;
     /** Cash prize (USD) awarded to the Public's Favorite Player winner. */
     favoritePlayerAwardAmount: number;
+    /**
+     * DEBUG/TESTING ONLY — overrides the secret mission trigger chance for all eligible days.
+     * Set to 100 to guarantee a trigger on Day 5; set to 0 to prevent any trigger.
+     * Set to null to use the default per-day chances from the trigger table.
+     * Remove or ignore this field in production builds.
+     */
+    secretMissionTriggerOverride: number | null;
   };
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -91,6 +98,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     doubleEvictionChance: 35,
     enableFavoritePlayer: false,
     favoritePlayerAwardAmount: 25000,
+    // DEBUG/TESTING ONLY — null means default per-day chances are used.
+    secretMissionTriggerOverride: null,
   },
   visual: {
     enableZoom: false,

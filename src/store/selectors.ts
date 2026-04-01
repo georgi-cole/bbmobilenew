@@ -76,3 +76,21 @@ export const selectHumanIsActive = (state: RootState): boolean => {
   return humanPlayer?.status === 'active';
 };
 
+
+/**
+ * Returns true when the Confessional FAB should show the Turkish blue
+ * secret-mission badge (PR 1 conditions):
+ *  - A mission offer is available / currently being offered
+ *  - A mission is accepted (Big Eye has an active prompt)
+ *  - A mission checklist is complete and reward reveal is pending
+ */
+export const selectConfessionalMissionBadge = (state: RootState): boolean => {
+  const sm = state.game?.secretMission;
+  if (!sm) return false;
+  return (
+    sm.status === 'available' ||
+    sm.status === 'offered' ||
+    sm.status === 'accepted' ||
+    sm.status === 'rewardPending'
+  );
+};
