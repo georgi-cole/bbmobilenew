@@ -22,12 +22,13 @@
 /**
  * Lifecycle states for a single secret mission.
  *
- *  available    → mission has triggered; Big Eye hasn't offered it yet
- *  offered      → Big Eye offered it in the Confessional; awaiting player response
+ *  available     → mission has triggered; Big Eye hasn't offered it yet
+ *  offered       → Big Eye offered it in the Confessional; awaiting player response
  *  accepted      → player accepted; checklist is active
  *  declined      → player declined; one re-offer may still be pending
- *  rewardPending → checklist completed; reward awaiting claim
- *  expired      → time window closed without completion
+ *  rewardPending → checklist completed; reward selection (mystery boxes) awaiting
+ *  rewardClaimed → player selected a box; reward stored in `reward` field
+ *  expired       → time window closed without completion
  */
 export type SecretMissionStatus =
   | 'available'

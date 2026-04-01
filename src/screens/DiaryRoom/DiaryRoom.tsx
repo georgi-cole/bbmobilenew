@@ -888,7 +888,7 @@ export default function DiaryRoom() {
                             };
                             setMessages((prev) => {
                               const updated = [...prev, revealMsg];
-                              saveChat(playerId, updated);
+                              saveChat(playerIdRef.current, updated);
                               return updated;
                             });
                           }}

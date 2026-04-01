@@ -3617,8 +3617,9 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Expire an unclaimed/unconsumed reward when Final 4 is reached.
-     * Idempotent — safe to call multiple times.
+     * Expire a claimed reward when Final 4 is reached.
+     * Only runs when the reward exists and is still eligible (i.e. not consumed
+     * and not already an empty box).  Idempotent — safe to call multiple times.
      *
      * The Final 4 restriction: rewards can only be used BEFORE Final 4 week.
      * Once Final 4 begins, any stored eligible reward is expired and becomes unusable.
@@ -3627,6 +3628,7 @@ const gameSlice = createSlice({
       const sm = state.secretMission;
       if (!sm || !sm.reward) return;
       if (sm.reward.consumed) return; // already used — nothing to expire
+      if (!sm.reward.eligible) return; // emptyBox or already expired — skip
       sm.reward.expired = true;
       sm.reward.eligible = false;
     },

@@ -275,6 +275,15 @@ describe('expireMissionReward — Final 4 restriction', () => {
     expect(reward.consumed).toBe(true);
     expect(reward.expired).toBe(false);
   });
+
+  it('does NOT expire an emptyBox reward (ineligible)', () => {
+    const store = setupClaimedReward('emptyBox');
+    store.dispatch(expireMissionReward());
+    // emptyBox is not eligible so the guard skips it — expired stays false
+    const reward = store.getState().game.secretMission!.reward!;
+    expect(reward.expired).toBe(false);
+    expect(reward.eligible).toBe(false);
+  });
 });
 
 // ── 8. Turkish blue badge selector ───────────────────────────────────────────
