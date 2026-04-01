@@ -41,7 +41,9 @@ import {
   createSecretMissionState,
   buildMissionTasks,
   checkSecretMissionTrigger,
+  createMissionReward,
   MISSION_TEMPLATES,
+  type MissionRewardType,
 } from '../bb/secretMission';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
@@ -3595,6 +3597,39 @@ const gameSlice = createSlice({
       sm.tasks.forEach((t) => { t.completed = true; t.current = t.target; });
       sm.status = 'rewardPending';
     },
+
+    /**
+     * Record the mystery-box reward the player selected (status → 'rewardClaimed').
+     * Only valid from 'rewardPending'.
+     *
+     * @param rewardType  The MissionRewardType outcome assigned to the chosen box.
+     *
+     * Note: +1000 influence application is handled separately by the caller
+     * (DiaryRoom) by dispatching applyInfluenceDelta immediately after this.
+     * Vote-related rewards (doubleVote, voteDeduction) are stored here but
+     * not yet wired into live voting — that is PR 3 work.
+     */
+    claimMissionReward(state, action: PayloadAction<MissionRewardType>) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'rewardPending') return;
+      sm.reward = createMissionReward(action.payload);
+      sm.status = 'rewardClaimed';
+    },
+
+    /**
+     * Expire an unclaimed/unconsumed reward when Final 4 is reached.
+     * Idempotent — safe to call multiple times.
+     *
+     * The Final 4 restriction: rewards can only be used BEFORE Final 4 week.
+     * Once Final 4 begins, any stored eligible reward is expired and becomes unusable.
+     */
+    expireMissionReward(state) {
+      const sm = state.secretMission;
+      if (!sm || !sm.reward) return;
+      if (sm.reward.consumed) return; // already used — nothing to expire
+      sm.reward.expired = true;
+      sm.reward.eligible = false;
+    },
   },
 });
 
@@ -3676,6 +3711,8 @@ export const {
   declineSecretMission,
   updateMissionTaskProgress,
   completeMission,
+  claimMissionReward,
+  expireMissionReward,
 } = gameSlice.actions;
 export default gameSlice.reducer;
 

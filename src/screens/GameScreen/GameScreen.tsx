@@ -39,6 +39,7 @@ import {
   openFavoritePlayerVoting,
   resumeAfterPublicFavorite,
   commitPublicSave,
+  expireMissionReward,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -521,6 +522,17 @@ export default function GameScreen() {
     secretMissionActivationWeekRef.current = game.week
     dispatch(tryActivateSecretMission())
   }, [game.phase, game.week, dispatch])
+
+  // ── Secret Mission Final 4 expiry (PR 2) ──────────────────────────────────
+  // When the game reaches final4_eviction, expire any stored unclaimed reward
+  // because powers can only be used BEFORE Final 4 week.
+  const final4ExpiryFiredRef = useRef(false)
+  useEffect(() => {
+    if (game.phase !== 'final4_eviction') return
+    if (final4ExpiryFiredRef.current) return
+    final4ExpiryFiredRef.current = true
+    dispatch(expireMissionReward())
+  }, [game.phase, dispatch])
 
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])
