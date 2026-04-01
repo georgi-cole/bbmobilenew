@@ -230,6 +230,17 @@ describe('chooseAiBid', () => {
     const state = makeState({ players: [p] });
     expect(chooseAiBid(p, state, 42)).toBe(1);
   });
+
+  it('keeps AI bids above desperation-only values while they still have a double-digit bank', () => {
+    const personalities = ['cautious', 'balanced', 'desperate', 'chaotic', 'dominant', 'strategic'] as const;
+    const bids = personalities.map((personality, i) => {
+      const [player] = makePlayers(1, [{ personality, bank: 20 }]);
+      const state = makeState({ players: [player] });
+      return chooseAiBid(player, state, 400 + i);
+    });
+
+    expect(Math.min(...bids)).toBeGreaterThanOrEqual(3);
+  });
 });
 
 // ─── findLowestBidders ───────────────────────────────────────────────────────

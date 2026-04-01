@@ -7,7 +7,7 @@
  *
  * Human interactions:
  *  - bid:         Choose bid amount via slider; confirm with button.
- *  - reveal:      Watch staged card flips; tap "Reveal Next", "Reveal All", or "Next Round".
+ *  - reveal:      Watch staged card flips; tap "Reveal Next" or "Reveal All".
  *  - elimination: See eliminated player(s) fade out, then auto-advance.
  *  - complete:    See winner; tap to finish.
  *  - If human eliminated: choose "Watch as Spectator" or "Skip to Results".
@@ -181,13 +181,12 @@ export default function TrapAuction({
     };
   }, [state.phase, state.revealIndex, state.fastForward, state.spectating, state.roundReveals.length]);
 
-  // Auto-advance when all reveal cards are visible in fast-forward / spectator mode
+  // Auto-advance when all reveal cards are visible
   useEffect(() => {
     if (state.phase !== 'reveal') return;
     if (state.revealIndex < state.roundReveals.length) return;
-    if (!state.fastForward && !state.spectating) return;
 
-    const delay = state.fastForward ? 500 : 1200;
+    const delay = state.fastForward ? 500 : state.spectating ? 1200 : 900;
     const t = setTimeout(() => {
       dispatch({ type: 'ADVANCE_TO_ELIMINATION' });
     }, delay);
@@ -307,7 +306,6 @@ export default function TrapAuction({
         {state.phase === 'intro' && renderIntro()}
         {state.phase === 'bid' && renderBid()}
         {state.phase === 'reveal' && renderReveal()}
-        {state.phase === 'resolve' && renderResolve()}
         {state.phase === 'elimination' && renderElimination()}
         {state.phase === 'complete' && renderComplete()}
       </main>
@@ -511,70 +509,12 @@ export default function TrapAuction({
             </button>
           </div>
         )}
-        {allRevealed && !state.fastForward && !state.spectating && (
-          <button
-            className="ta-btn ta-btn--primary ta-btn--lg"
-            onClick={() => dispatch({ type: 'ADVANCE_TO_ELIMINATION' })}
-            type="button"
-          >
-            Next Round →
-          </button>
-        )}
-        {allRevealed && (state.fastForward || state.spectating) && (
-          <div className="ta-reveal-auto-advance">
+        {allRevealed && (
+          <div className="ta-reveal-auto-advance" aria-label="Continuing to elimination">
             <span className="ta-reveal-auto-advance__dot" />
             <span className="ta-reveal-auto-advance__dot" />
             <span className="ta-reveal-auto-advance__dot" />
           </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderResolve(): ReactNode {
-    const lowestIds = new Set(state.lastEliminatedIds.length > 0
-      ? state.lastEliminatedIds
-      : state.roundReveals.filter((r) => r.isLowest).map((r) => r.playerId));
-    const highestId = state.roundReveals.find((r) => r.isHighest)?.playerId;
-
-    return (
-      <div className="ta-resolve-phase">
-        <h3 className="ta-resolve-phase__title">Results</h3>
-
-        <div className="ta-resolve-summary">
-          {state.roundReveals.map((reveal) => {
-            const player = state.players.find((p) => p.id === reveal.playerId);
-            if (!player) return null;
-            const isOut = lowestIds.has(reveal.playerId);
-            const isExposed = reveal.playerId === highestId;
-
-            return (
-              <div
-                key={reveal.playerId}
-                className={`ta-resolve-row ${isOut ? 'ta-resolve-row--out' : ''} ${isExposed ? 'ta-resolve-row--exposed' : ''}`}
-              >
-                <AvatarImg player={player} className="ta-resolve-row__avatar" />
-                <span className="ta-resolve-row__name">{player.name}</span>
-                <span className="ta-resolve-row__bid">{reveal.bid} 👁</span>
-                {isOut && <span className="ta-resolve-row__tag ta-resolve-row__tag--out">❌ Eliminated</span>}
-                {isExposed && (
-                  <span className="ta-resolve-row__tag ta-resolve-row__tag--exposed">
-                    ⚠️ Exposed
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {!state.spectating && (
-          <button
-            className="ta-btn ta-btn--primary ta-btn--lg"
-            onClick={() => dispatch({ type: 'ADVANCE_TO_ELIMINATION' })}
-            type="button"
-          >
-            Next Round →
-          </button>
         )}
       </div>
     );
@@ -673,31 +613,35 @@ export default function TrapAuction({
 
         <div className="ta-complete-placements">
           <h3 className="ta-complete-placements__title">Final Standings</h3>
-          {sortedPlayers.map((p, i) => (
-            <div
-              key={p.id}
-              className={`ta-complete-placement ${p.id === winner?.id ? 'ta-complete-placement--winner' : ''}`}
-            >
-              <span className="ta-complete-placement__rank">
-                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${(p.placement ?? i + 1)}`}
-              </span>
-              <AvatarImg player={p} className="ta-complete-placement__avatar" />
-              <span className="ta-complete-placement__name">{p.name}</span>
-              <span className="ta-complete-placement__bank">{p.bank} 👁</span>
-              {p.eliminatedRound && (
-                <span className="ta-complete-placement__elim">Round {p.eliminatedRound}</span>
-              )}
-            </div>
-          ))}
+          <div className="ta-complete-placements__list">
+            {sortedPlayers.map((p, i) => (
+              <div
+                key={p.id}
+                className={`ta-complete-placement ${p.id === winner?.id ? 'ta-complete-placement--winner' : ''}`}
+              >
+                <span className="ta-complete-placement__rank">
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${(p.placement ?? i + 1)}`}
+                </span>
+                <AvatarImg player={p} className="ta-complete-placement__avatar" />
+                <span className="ta-complete-placement__name">{p.name}</span>
+                <span className="ta-complete-placement__bank">{p.bank} 👁</span>
+                {p.eliminatedRound && (
+                  <span className="ta-complete-placement__elim">Round {p.eliminatedRound}</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <button
-          className="ta-btn ta-btn--primary ta-btn--lg"
-          onClick={handleGameComplete}
-          type="button"
-        >
-          Finish
-        </button>
+        <div className="ta-complete-actions">
+          <button
+            className="ta-btn ta-btn--primary ta-btn--lg"
+            onClick={handleGameComplete}
+            type="button"
+          >
+            Finish
+          </button>
+        </div>
       </div>
     );
   }

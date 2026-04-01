@@ -33,12 +33,12 @@ export type TrapAuctionAction =
   | { type: 'SUBMIT_HUMAN_BID'; bid: number }
   /**
    * Reveal the next bid in the staged reveal sequence.
-   * When all bids are revealed, transitions to 'resolve'.
+   * Once all bids are revealed, the UI auto-advances to elimination.
    */
   | { type: 'ADVANCE_REVEAL' }
   /** Skip remaining hidden bids and reveal all at once. */
   | { type: 'REVEAL_ALL' }
-  /** Human (or spectator) acknowledges the resolve screen and sees who was eliminated. */
+  /** Advances from the fully revealed bids into the elimination results. */
   | { type: 'ADVANCE_TO_ELIMINATION' }
   /** Human (or spectator) acknowledges the elimination screen; starts next round or ends game. */
   | { type: 'CONTINUE_AFTER_ELIMINATION' }
@@ -144,11 +144,11 @@ export function trapAuctionReducer(
       };
     }
 
-    // ── reveal/resolve: compute lowest/highest, apply exposure, set up elimination ─
+    // ── reveal: compute lowest/highest, apply exposure, set up elimination ─────
     case 'ADVANCE_TO_ELIMINATION': {
       const readyFromReveal =
         state.phase === 'reveal' && state.revealIndex >= state.roundReveals.length;
-      if (state.phase !== 'resolve' && !readyFromReveal) return state;
+      if (!readyFromReveal) return state;
 
       const lowestIds = findLowestBidders(state.players);
       const highestId = findHighestBidder(state.players);
