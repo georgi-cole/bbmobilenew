@@ -289,9 +289,19 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
     );
 
     store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '9' }));
-    const updated = getVisitTask(store);
+    let updated = getVisitTask(store);
     expect(updated?.current).toBe(2);
     expect(updated?.uniqueDays).toEqual(['9']);
+
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '10' }));
+    updated = getVisitTask(store);
+    expect(updated?.current).toBe(2);
+    expect(updated?.uniqueDays).toEqual(['9', '10']);
+
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '11' }));
+    updated = getVisitTask(store);
+    expect(updated?.current).toBe(3);
+    expect(updated?.uniqueDays).toEqual(['9', '10', '11']);
   });
 });
 
