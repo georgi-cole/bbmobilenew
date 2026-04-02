@@ -13,6 +13,7 @@ import type { RootState } from './store';
  * - replacement nominee picker (pov_ceremony_results)
  * - human live vote (live_vote)
  * - doubleVote Big Eye offer (live_vote — must resolve before vote modal)
+ * - voteDeduction Big Eye offer (eviction_results — must resolve before results dismiss)
  * - tie-break (eviction_results)
  * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
  * - Final 3 HOH eviction (awaitingFinal3Eviction)
@@ -28,6 +29,7 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.awaitingPovSaveTarget) ||
     Boolean(game.awaitingHumanVote) ||
     Boolean(game.awaitingDoubleVoteOffer) ||
+    Boolean(game.awaitingVoteDeductionPrompt) ||
     Boolean(game.awaitingTieBreak) ||
     Boolean(game.awaitingFinal3Eviction) ||
     Boolean(sv?.awaitingHolderReplacement) ||

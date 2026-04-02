@@ -40,7 +40,7 @@ import {
   hasVoteDeductionConflict,
   type ActivationCheckState,
 } from '../../../src/bb/secretMission';
-import { selectConfessionalMissionBadge } from '../../../src/store/selectors';
+import { selectConfessionalMissionBadge, selectIsWaitingForInput } from '../../../src/store/selectors';
 import type { GameState, Player } from '../../../src/types';
 import type { RootState } from '../../../src/store/store';
 
@@ -1087,5 +1087,26 @@ describe('no regression when no stored reward exists', () => {
     const store = makeStore();
     const rootState = store.getState() as RootState;
     expect(selectConfessionalMissionBadge(rootState)).toBe(false);
+  });
+
+  it('selectIsWaitingForInput is true when awaitingVoteDeductionPrompt is set', () => {
+    const store = makeVoteDeductionStore('eviction_results', {
+      awaitingVoteDeductionPrompt: true,
+      voteResults: { user: 3, p1: 1 },
+    });
+    expect(selectIsWaitingForInput(store.getState() as RootState)).toBe(true);
+  });
+
+  it('selectIsWaitingForInput is true when awaitingDoubleVoteOffer is set', () => {
+    const store = makeVoteStore('live_vote', {
+      awaitingDoubleVoteOffer: true,
+      awaitingHumanVote: true,
+    });
+    expect(selectIsWaitingForInput(store.getState() as RootState)).toBe(true);
+  });
+
+  it('selectIsWaitingForInput is false when no decision flags are set', () => {
+    const store = makeVoteStore('week_start', {});
+    expect(selectIsWaitingForInput(store.getState() as RootState)).toBe(false);
   });
 });
