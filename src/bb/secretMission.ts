@@ -1,5 +1,5 @@
 /**
- * secretMission.ts — Centralized secret mission framework (PR 1 + PR 2).
+ * secretMission.ts — Centralized secret mission framework (PR 1 + PR 2 + PR 3).
  *
  * Responsibilities:
  *  - Types for secret mission state & mission templates
@@ -8,11 +8,11 @@
  *  - checkSecretMissionTrigger()    — pure roll, easy to test
  *  - MISSION_TEMPLATES              — pool of templates for the season
  *  - Reward types, pool, and helpers (PR 2)
+ *  - Activation guard helpers: canUseDoubleVote / canUseVoteDeduction (PR 3)
  *
  * What is NOT here:
  *  - Redux reducers (gameSlice.ts)
  *  - UI rendering (DiaryRoom.tsx)
- *  - Vote / ceremony activation logic (PR 3)
  *
  * Keep this file free of side effects so it can be unit-tested in isolation.
  */
@@ -289,4 +289,153 @@ export function createSecretMissionState(day: number): SecretMissionState {
     tasks: [],
     templateId: template.id,
   };
+}
+
+// ── PR 3: Activation guard helpers ──────────────────────────────────────────
+
+/**
+ * Minimal game-state shape needed by the activation guard functions.
+ * Keeps this file free of circular imports from types/index.ts.
+ */
+export interface ActivationCheckState {
+  phase: string;
+  secretMission?: SecretMissionState;
+  /** IDs of players currently nominated (on the block). */
+  nomineeIds: readonly string[];
+  /** ID of the current HOH. */
+  hohId?: string | null;
+  /** Full player list (only id, isUser, and status are inspected). */
+  players: ReadonlyArray<{ id: string; isUser?: boolean; status: string }>;
+  /** Double-eviction twist state — weekActive means double eviction is running. */
+  doubleEviction?: { weekActive?: boolean } | null;
+  /**
+   * Vote results tally (nomineeId → vote count).
+   * Set by advance() during eviction_results; null/undefined before that.
+   */
+  voteResults?: Record<string, number> | null;
+  /** True when a tie-break decision is pending (used as a conflict guard). */
+  awaitingTieBreak?: boolean;
+}
+
+/**
+ * Game phases at or beyond the Final 4 cutoff.
+ * Secret powers may NOT be used once any of these phases is reached.
+ */
+const FINAL4_OR_LATER_PHASES = new Set([
+  'final4_eviction',
+  'final3',
+  'final3_comp1',
+  'final3_comp1_minigame',
+  'final3_comp2',
+  'final3_comp2_minigame',
+  'final3_comp3',
+  'final3_comp3_minigame',
+  'final3_decision',
+  'jury_announcement',
+  'jury_cinematic',
+  'jury',
+]);
+
+/**
+ * True when the current game phase is Final 4 or beyond.
+ * Powers must expire before this point.
+ */
+export function isFinal4OrLater(phase: string): boolean {
+  return FINAL4_OR_LATER_PHASES.has(phase);
+}
+
+/**
+ * True when a twist that conflicts with the doubleVote power is currently active.
+ *
+ * Conflicts:
+ *  - Double Eviction week: the vote tally is modified to evict 2 players at once;
+ *    stacking a personal double-vote on top would create ambiguous ballot semantics.
+ */
+export function hasDoubleVoteConflict(state: ActivationCheckState): boolean {
+  return state.doubleEviction?.weekActive === true;
+}
+
+/**
+ * True when a twist that conflicts with the voteDeduction power is currently active.
+ *
+ * Conflicts:
+ *  - Double Eviction week: special tally logic; deduction would be applied to
+ *    an already-modified result set.
+ *  - Tie-break pending: the vote count is already tied; subtracting a vote
+ *    from one nominee would create ambiguous or game-breaking state transitions.
+ */
+export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
+  return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true;
+}
+
+/**
+ * Returns true when the stored `doubleVote` reward can be offered for activation
+ * in the current game context.
+ *
+ * All of the following must be true:
+ *  1. A secret-mission reward of type `doubleVote` exists and is eligible
+ *     (not consumed, not expired).
+ *  2. The current phase is `live_vote` — the only moment when a vote can be cast.
+ *  3. The human player is an eligible voter (alive, not HOH, not nominated).
+ *  4. No conflicting twist is active (e.g. Double Eviction).
+ *  5. The game is not at or beyond Final 4.
+ */
+export function canUseDoubleVote(state: ActivationCheckState): boolean {
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'doubleVote' || !reward.eligible) return false;
+  if (state.phase !== 'live_vote') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (hasDoubleVoteConflict(state)) return false;
+
+  const humanPlayer = state.players.find((p) => p.isUser);
+  if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
+
+  // Human must be an eligible voter: not the HOH and not currently nominated.
+  if (humanPlayer.id === state.hohId) return false;
+  if (state.nomineeIds.includes(humanPlayer.id)) return false;
+
+  return true;
+}
+
+/**
+ * Returns true when the stored `voteDeduction` reward can be offered for
+ * activation in the current game context.
+ *
+ * All of the following must be true:
+ *  1. A secret-mission reward of type `voteDeduction` exists and is eligible.
+ *  2. The current phase is `eviction_results` — the vote tally is now visible.
+ *  3. The human player is one of the nominees (on the block).
+ *  4. The human player has at least 1 vote against them in `voteResults`.
+ *  5. Applying the deduction would NOT create a vote tie (tie-break ambiguity).
+ *  6. No conflicting twist is active.
+ *  7. The game is not at or beyond Final 4.
+ */
+export function canUseVoteDeduction(state: ActivationCheckState): boolean {
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'voteDeduction' || !reward.eligible) return false;
+  if (state.phase !== 'eviction_results') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (hasVoteDeductionConflict(state)) return false;
+  if (!state.voteResults) return false;
+
+  const humanPlayer = state.players.find((p) => p.isUser);
+  if (!humanPlayer) return false;
+
+  // Human must be on the block for this eviction
+  if (!state.nomineeIds.includes(humanPlayer.id)) return false;
+
+  const humanVoteCount = state.voteResults[humanPlayer.id] ?? 0;
+  if (humanVoteCount <= 0) return false; // nothing to deduct
+
+  // Guard: ensure the deduction doesn't create a tie with another nominee.
+  // If afterDeduction ties with any other nominee's count, the outcome becomes
+  // ambiguous (tie-break handling would need to re-run). Skip the offer instead.
+  const afterDeduction = humanVoteCount - 1;
+  const otherNomineeCounts = state.nomineeIds
+    .filter((id) => id !== humanPlayer.id)
+    .map((id) => state.voteResults![id] ?? 0);
+
+  if (otherNomineeCounts.some((c) => c === afterDeduction)) return false;
+
+  return true;
 }

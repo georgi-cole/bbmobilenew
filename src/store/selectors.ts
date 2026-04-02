@@ -12,6 +12,7 @@ import type { RootState } from './store';
  * - POV save target (pov_ceremony_results, human POV holder chose to use it)
  * - replacement nominee picker (pov_ceremony_results)
  * - human live vote (live_vote)
+ * - doubleVote Big Eye offer (live_vote — must resolve before vote modal)
  * - tie-break (eviction_results)
  * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
  * - Final 3 HOH eviction (awaitingFinal3Eviction)
@@ -26,6 +27,7 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.awaitingPovDecision) ||
     Boolean(game.awaitingPovSaveTarget) ||
     Boolean(game.awaitingHumanVote) ||
+    Boolean(game.awaitingDoubleVoteOffer) ||
     Boolean(game.awaitingTieBreak) ||
     Boolean(game.awaitingFinal3Eviction) ||
     Boolean(sv?.awaitingHolderReplacement) ||
@@ -79,11 +81,14 @@ export const selectHumanIsActive = (state: RootState): boolean => {
 
 /**
  * Returns true when the Confessional FAB should show the Turkish blue
- * secret-mission badge (PR 1 + PR 2 conditions):
+ * secret-mission badge (PR 1 + PR 2 + PR 3 conditions):
  *  - A mission offer is available / currently being offered
  *  - A mission is accepted (Big Eye has an active prompt)
  *  - A mission checklist is complete and reward reveal is pending
  *  - A reward has been claimed and is still eligible for future use (PR 2)
+ *  - A doubleVote offer is pending (PR 3)
+ *  - A doubleVote is currently active for the live vote (PR 3)
+ *  - A voteDeduction prompt is pending (PR 3)
  */
 export const selectConfessionalMissionBadge = (state: RootState): boolean => {
   const sm = state.game?.secretMission;
@@ -95,7 +100,11 @@ export const selectConfessionalMissionBadge = (state: RootState): boolean => {
     sm.status === 'rewardPending'
   ) return true;
   // Show badge for a claimed (non-empty, non-expired, non-consumed) reward so
-  // the player is reminded they have a power waiting (prep for PR 3 activation).
+  // the player is reminded they have a power waiting.
   if (sm.status === 'rewardClaimed' && sm.reward?.eligible) return true;
+  // PR 3: show badge when an activation offer is pending or active.
+  if (state.game?.awaitingDoubleVoteOffer) return true;
+  if (state.game?.humanDoubleVoteActive) return true;
+  if (state.game?.awaitingVoteDeductionPrompt) return true;
   return false;
 };
