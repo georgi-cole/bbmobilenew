@@ -441,7 +441,7 @@ export default function Settings() {
             {settings.sim.enableTwists && (
               <>
                 <div className="settings-row">
-                  <label className="settings-row__label">Public's Favorite (America's Vote)</label>
+                  <label className="settings-row__label">Public's Favorite (Public Vote)</label>
                   <input
                     type="checkbox"
                     className="settings-toggle"
@@ -454,7 +454,7 @@ export default function Settings() {
                 {settings.sim.enableFavoritePlayer && (
                   <div className="settings-row settings-row--col">
                     <label className="settings-row__label">
-                      Award Amount — ${settings.sim.favoritePlayerAwardAmount ?? 25000}
+                      Award Amount — {settings.sim.favoritePlayerAwardAmount ?? 25000} Eyeoleans
                     </label>
                     <input
                       type="number"
@@ -468,7 +468,7 @@ export default function Settings() {
                       aria-label="Public's Favorite award amount"
                     />
                     <p className="settings-helper-text">
-                      Cash prize awarded to the Public's Favorite Player (requires Twists on).
+                      Eyeolean prize awarded to the Public's Favorite Player (requires Twists on).
                     </p>
                   </div>
                 )}

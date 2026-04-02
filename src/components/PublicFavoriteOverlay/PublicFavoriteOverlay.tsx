@@ -37,14 +37,12 @@ type Step = 'voting' | 'winner';
 
 const ELIM_INTERVAL_MS = 3500;
 const TICKER_MSG =
-  "America is voting for their Favorite Player… One houseguest wins the grand prize! ✦  ";
+  "The public is voting for their Favorite Player… One houseguest wins the grand prize! ✦  ";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+function formatEyeoleans(amount: number): string {
+  return `${new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount)} Eyeoleans`;
 }
 
 export default function PublicFavoriteOverlay({
@@ -184,7 +182,7 @@ export default function PublicFavoriteOverlay({
           tabIndex={0}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClose()}
         >
-          <p className="pf-overlay__eyebrow">America's Favorite Player</p>
+          <p className="pf-overlay__eyebrow">Public's Favorite Player</p>
           <div className="pf-overlay__winner-avatar" aria-hidden="true">
             {winnerPlayer ? (
               <img
@@ -199,9 +197,9 @@ export default function PublicFavoriteOverlay({
             {winnerPlayer?.name ?? 'Unknown'}
           </h2>
           <p className="pf-overlay__winner-prize">
-            Wins {formatCurrency(awardAmount)}!
+            Wins {formatEyeoleans(awardAmount)}!
           </p>
-          <p className="pf-overlay__sub">Congratulations from America! 🎉</p>
+          <p className="pf-overlay__sub">Congratulations from the public! 🎉</p>
           <p className="pf-overlay__tap-hint">Tap to close →</p>
         </div>
       )}

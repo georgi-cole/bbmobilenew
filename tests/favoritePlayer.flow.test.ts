@@ -133,6 +133,8 @@ describe('startFavoritePlayerPhase', () => {
     const ev = events.find((e) => e.type === 'twist');
     expect(ev).toBeDefined();
     expect((ev as TvEvent)?.major).toBe('twist');
+    expect((ev as TvEvent)?.text).toContain('THE PUBLIC DECIDES');
+    expect((ev as TvEvent)?.text).not.toContain('AMERICA');
   });
 });
 
