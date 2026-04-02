@@ -281,6 +281,25 @@ describe('FloatingActionBar – navigation buttons', () => {
     expect(screen.getByText('2')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Confessional (2)' })).toBeDefined();
   });
+
+  it('hides confessional alerts once the human player is evicted', () => {
+    const store = makeStore(true, {
+      secretMission: createSecretMissionState(1),
+      awaitingDoubleVoteOffer: true,
+    });
+    const game = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...game,
+      players: game.players.map((player) =>
+        player.isUser ? { ...player, status: 'evicted' } : player,
+      ),
+    }));
+
+    renderFAB(store, '/game');
+
+    expect(screen.queryByText('2')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Confessional' })).toBeDefined();
+  });
 });
 
 describe('FloatingActionBar – confessional alert animation', () => {

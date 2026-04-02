@@ -301,6 +301,7 @@ export default function DiaryRoom() {
   const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
   const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
+  const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury';
 
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
@@ -328,6 +329,8 @@ export default function DiaryRoom() {
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
+  const confessionalLockedRef = useRef(confessionalLocked);
+  useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   // Stable refs for summary calculation (avoid stale closure on unmount)
   const playerNameRef = useRef(playerName);
@@ -342,10 +345,15 @@ export default function DiaryRoom() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
+    if (confessionalLocked) return;
     confessEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [confessionalLocked, messages]);
 
   useEffect(() => {
+    if (confessionalLocked) {
+      setShowEntryAnimation(false);
+      return;
+    }
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -362,7 +370,7 @@ export default function DiaryRoom() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [confessionalLocked]);
 
   const ticTacToeWinner = getTicTacToeWinner(ticTacToeBoard);
   const ticTacToeDraw = !ticTacToeWinner && ticTacToeBoard.every((cell) => cell !== null);
@@ -410,14 +418,15 @@ export default function DiaryRoom() {
   }, []);
 
   // ── Secret mission: inject Big Eye offer when entering the Confessional ──
-  // Fires once on mount when there is an untriggered offer (available) or a
-  // re-offerable decline (declined + offerCount < 2).
+  // Runs on entry and also when the lock state changes so any pending timeout
+  // is cleaned up if the player becomes ineligible mid-visit.
   const secretMissionRef = useRef(secretMission);
   useEffect(() => { secretMissionRef.current = secretMission; }, [secretMission]);
   const currentWeekRef = useRef(currentWeekForMission);
   useEffect(() => { currentWeekRef.current = currentWeekForMission; }, [currentWeekForMission]);
 
   useEffect(() => {
+    if (confessionalLocked) return;
     const sm = secretMissionRef.current;
     const week = currentWeekRef.current;
     const shouldOffer =
@@ -445,12 +454,14 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, []); // intentionally runs once on mount
+  }, [confessionalLocked]);
 
   // ── Secret mission: inject reward-pending message on mount (PR 2) ─────────
-  // When the player returns to the Confessional with a completed mission,
-  // Big Eye acknowledges the success and prompts box selection.
+  // When the player returns with a completed mission, Big Eye acknowledges the
+  // success and prompts box selection. Also re-runs on lock changes so any
+  // pending reveal timeout is canceled if the player becomes ineligible.
   useEffect(() => {
+    if (confessionalLocked) return;
     const sm = secretMissionRef.current;
     if (!sm || sm.status !== 'rewardPending') return;
     if (rewardMsgInjectedRef.current) return;
@@ -474,13 +485,14 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, []); // intentionally runs once on mount
+  }, [confessionalLocked]);
 
   // ── Secret mission: track confessional visit count on unmount ─────────────
   // Anti-cheese: visits are counted once per unique calendar day (= game week).
   // Rapidly entering/exiting the Confessional on the same day only credits 1 visit.
   useEffect(() => {
     return () => {
+      if (confessionalLockedRef.current) return;
       const sm = secretMissionRef.current;
       if (!sm || sm.status !== 'accepted') return;
       const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
@@ -498,6 +510,7 @@ export default function DiaryRoom() {
   // ── Secret mission: passive survive_days task update ──────────────────────
   // Runs whenever week advances while the mission is accepted.
   useEffect(() => {
+    if (confessionalLocked) return;
     const sm = secretMission;
     if (!sm || sm.status !== 'accepted') return;
     const surviveTask = sm.tasks.find((t) => t.type === 'survive_days');
@@ -506,10 +519,11 @@ export default function DiaryRoom() {
       dispatch(updateMissionTaskProgress({ taskId: surviveTask.id, current: currentWeekForMission }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWeekForMission]);
+  }, [confessionalLocked, currentWeekForMission]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (confessionalLocked) return;
     const text = entry.trim();
     if (!text) return;
 
@@ -624,7 +638,7 @@ export default function DiaryRoom() {
 
   return (
     <div className="diary-room">
-      {showEntryAnimation && (
+      {!confessionalLocked && showEntryAnimation && (
         <div
           className="diary-room__entry-overlay"
           data-testid="confessional-entry-overlay"
@@ -674,79 +688,93 @@ export default function DiaryRoom() {
       </div>
 
       <div className="diary-room__body">
-        <div className="diary-room__confess">
-          <p className="diary-room__prompt">
-            "You are now in the Confessional. No one can hear you. Speak freely."
-          </p>
-          {ticTacToeActive && (
-            <div className="diary-room__mini-game-card" role="status" aria-live="polite">
-              <div className="diary-room__mini-game-copy">
-                <div className="diary-room__mini-game-header">
-                  <div>
-                    <strong>The Big Eye opened a game.</strong>
-                    <div className="diary-room__mini-game-subtitle">Tic Tac Toe is awake. Keep your nerve.</div>
+        {confessionalLocked ? (
+          <section className="diary-room__locked" aria-label="Confessional locked">
+            <div className="diary-room__locked-door" data-testid="confessional-locked-door" aria-hidden="true">
+              <div className="diary-room__locked-door-light" />
+              <div className="diary-room__locked-door-panel diary-room__locked-door-panel--left" />
+              <div className="diary-room__locked-door-panel diary-room__locked-door-panel--right" />
+            </div>
+            <span className="diary-room__locked-eyebrow">Confessional</span>
+            <h2 className="diary-room__locked-title">The door is locked.</h2>
+            <p className="diary-room__locked-copy">
+              Once you are out of the game, the Big Eye will not open the Confessional again.
+            </p>
+          </section>
+        ) : (
+          <div className="diary-room__confess">
+            <p className="diary-room__prompt">
+              "You are now in the Confessional. No one can hear you. Speak freely."
+            </p>
+            {ticTacToeActive && (
+              <div className="diary-room__mini-game-card" role="status" aria-live="polite">
+                <div className="diary-room__mini-game-copy">
+                  <div className="diary-room__mini-game-header">
+                    <div>
+                      <strong>The Big Eye opened a game.</strong>
+                      <div className="diary-room__mini-game-subtitle">Tic Tac Toe is awake. Keep your nerve.</div>
+                    </div>
+                    <div className="diary-room__mini-game-status" aria-label="Tic tac toe status">
+                      {ticTacToeWinner === 'X'
+                        ? 'You win.'
+                        : ticTacToeWinner === 'O'
+                          ? 'The Big Eye wins.'
+                          : ticTacToeDraw
+                            ? "It's a draw."
+                            : ticTacToeThinking
+                              ? 'The Big Eye is thinking…'
+                              : 'Your turn.'}
+                    </div>
                   </div>
-                  <div className="diary-room__mini-game-status" aria-label="Tic tac toe status">
-                    {ticTacToeWinner === 'X'
-                      ? 'You win.'
-                      : ticTacToeWinner === 'O'
-                        ? 'The Big Eye wins.'
-                        : ticTacToeDraw
-                          ? "It's a draw."
-                          : ticTacToeThinking
-                            ? 'The Big Eye is thinking…'
-                            : 'Your turn.'}
+                  <div className="diary-room__tic-tac-toe-board" role="group" aria-label="Tic Tac Toe board">
+                    {ticTacToeBoard.map((cell, index) => (
+                      <button
+                        key={index}
+                        className={`diary-room__tic-tac-toe-cell${cell ? ' diary-room__tic-tac-toe-cell--filled' : ''}`}
+                        type="button"
+                        aria-label={`Tic tac toe square ${index + 1}${cell ? `, ${cell}` : ''}`}
+                        disabled={
+                          cell !== null ||
+                          ticTacToeNextTurn !== 'X' ||
+                          ticTacToeThinking ||
+                          ticTacToeWinner !== null ||
+                          ticTacToeDraw
+                        }
+                        onClick={() => {
+                          const nextBoard = [...ticTacToeBoard];
+                          nextBoard[index] = 'X';
+                          setTicTacToeBoard(nextBoard);
+                          setTicTacToeNextTurn('O');
+                        }}
+                      >
+                        {cell ?? ''}
+                      </button>
+                    ))}
                   </div>
-                </div>
-                <div className="diary-room__tic-tac-toe-board" role="group" aria-label="Tic Tac Toe board">
-                  {ticTacToeBoard.map((cell, index) => (
+                  <div className="diary-room__mini-game-actions">
                     <button
-                      key={index}
-                      className={`diary-room__tic-tac-toe-cell${cell ? ' diary-room__tic-tac-toe-cell--filled' : ''}`}
+                      className="diary-room__mini-game-btn"
                       type="button"
-                      aria-label={`Tic tac toe square ${index + 1}${cell ? `, ${cell}` : ''}`}
-                      disabled={
-                        cell !== null ||
-                        ticTacToeNextTurn !== 'X' ||
-                        ticTacToeThinking ||
-                        ticTacToeWinner !== null ||
-                        ticTacToeDraw
-                      }
                       onClick={() => {
-                        const nextBoard = [...ticTacToeBoard];
-                        nextBoard[index] = 'X';
-                        setTicTacToeBoard(nextBoard);
-                        setTicTacToeNextTurn('O');
+                        setTicTacToeBoard(createEmptyTicTacToeBoard());
+                        setTicTacToeNextTurn('X');
+                        setTicTacToeThinking(false);
                       }}
                     >
-                      {cell ?? ''}
+                      Reset
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <div className="diary-room__mini-game-actions">
-                  <button
-                    className="diary-room__mini-game-btn"
-                    type="button"
-                    onClick={() => {
-                      setTicTacToeBoard(createEmptyTicTacToeBoard());
-                      setTicTacToeNextTurn('X');
-                      setTicTacToeThinking(false);
-                    }}
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-              <button
-                className="diary-room__mini-game-btn"
-                type="button"
-                onClick={() => {
-                  setTicTacToeBoard(createEmptyTicTacToeBoard());
-                  setTicTacToeNextTurn('X');
-                  setTicTacToeThinking(false);
-                  dismissTicTacToe();
-                }}
-              >
+                <button
+                  className="diary-room__mini-game-btn"
+                  type="button"
+                  onClick={() => {
+                    setTicTacToeBoard(createEmptyTicTacToeBoard());
+                    setTicTacToeNextTurn('X');
+                    setTicTacToeThinking(false);
+                    dismissTicTacToe();
+                  }}
+                >
                   Close
                 </button>
               </div>
@@ -848,11 +876,9 @@ export default function DiaryRoom() {
                           aria-label={`Mystery Box ${idx + 1}`}
                           onClick={() => {
                             dispatch(claimMissionReward(rewardType));
-                            // Apply +1000 influence instantly
                             if (rewardType === 'plus1000Influence' && userPlayer) {
                               dispatch(applyInfluenceDelta({ playerId: userPlayer.id, delta: 1000 }));
                             }
-                            // Inject Big Eye reveal message
                             const revealMsg: ChatMessage = {
                               id: crypto.randomUUID(),
                               role: 'bb',
@@ -860,8 +886,6 @@ export default function DiaryRoom() {
                               timestamp: Date.now(),
                             };
                             const msgs: ChatMessage[] = [revealMsg];
-                            // PR 4: For doubleVote, append a timing clarification so the
-                            // player knows exactly when the power will become usable.
                             if (rewardType === 'doubleVote') {
                               msgs.push({
                                 id: crypto.randomUUID(),
@@ -905,7 +929,6 @@ export default function DiaryRoom() {
                           🔮 Secret power stored:{' '}
                           <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
                         </p>
-                        {/* PR 3 — contextual hints when a power is currently actionable */}
                         {secretMission.reward.type === 'doubleVote' && awaitingDoubleVoteOffer && (
                           <p className="diary-room__reward-active-hint">
                             📺 The Big Eye is watching. Your Double Vote is ready — return to the game to decide.
@@ -963,6 +986,7 @@ export default function DiaryRoom() {
               </div>
             </form>
           </div>
+        )}
       </div>
     </div>
   );

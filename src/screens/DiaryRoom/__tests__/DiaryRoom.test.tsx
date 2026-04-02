@@ -8,8 +8,10 @@ import gameReducer, {
   triggerSecretMission,
   offerSecretMission,
   acceptSecretMission,
+  hydrateGame,
 } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
+import type { RootState } from '../../../store/store';
 
 function renderDiaryRoom(
   initialEntries = ['/game', '/diary-room'],
@@ -24,17 +26,20 @@ function renderDiaryRoom(
 
   options?.setupStore?.(store);
 
-  return render(
-    <Provider store={store}>
-      <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
-        <Routes>
-          <Route path="/game" element={<div>Game route</div>} />
-          <Route path="/diary-room" element={<DiaryRoom />} />
-          <Route path="/self-evicted" element={<div>Self-evicted route</div>} />
-        </Routes>
-      </MemoryRouter>
-    </Provider>,
-  );
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+          <Routes>
+            <Route path="/game" element={<div>Game route</div>} />
+            <Route path="/diary-room" element={<DiaryRoom />} />
+            <Route path="/self-evicted" element={<div>Self-evicted route</div>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    ),
+  };
 }
 
 async function flushConversationTimers() {
@@ -215,5 +220,28 @@ describe('DiaryRoom', () => {
     expect(screen.queryByText('Visit the Confessional on 3 different days')).toBeNull();
     screen.getByText('Survive until Day 9');
     screen.getByText('Complete 8 exchanges with the Big Eye');
+  });
+
+  it('shows only the locked door for eliminated players and leaves secret missions inactive', async () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        appStore.dispatch(triggerSecretMission(5));
+        const game = (appStore.getState() as RootState).game;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          players: game.players.map((player) =>
+            player.isUser ? { ...player, status: 'evicted' } : player,
+          ),
+        }));
+      },
+    });
+
+    await flushConversationTimers();
+
+    expect(screen.getByTestId('confessional-locked-door')).toBeTruthy();
+    expect(screen.getByText('The door is locked.')).toBeTruthy();
+    expect(screen.queryByLabelText(/confessional chat/i)).toBeNull();
+    expect(screen.queryByLabelText(/secret mission checklist/i)).toBeNull();
+    expect(store.getState().game.secretMission?.status).toBe('available');
   });
 });
