@@ -1424,7 +1424,7 @@ export default function GameScreen() {
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  /** True whenever a native React LOH/LOH minigame overlay should be displayed. */
+  /** True whenever a native React LOH/POS minigame overlay should be displayed. */
   const showLohMinigame = !showMinigameHost && humanIsParticipant
   const showPressurePlank = showLohMinigame && pendingMinigame?.key === 'pressurePlank'
   const showBullseyeBlitz = showLohMinigame && pendingMinigame?.key === 'targetPractice'
@@ -2087,7 +2087,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Native LOH/LOH minigame overlays (routed by session key) ────────── */}
+      {/* ── Native LOH/POS minigame overlays (routed by session key) ────────── */}
       {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
       )}

@@ -6,7 +6,7 @@
  * natural drift and periodic surge events.
  *
  * Supports two rendering modes:
- *  1. LOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(score)`.
  *
@@ -114,9 +114,9 @@ interface ScoreEntry {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** LOH/LOH minigame path: full session data. */
+  /** LOH/POS minigame path: full session data. */
   session?: MinigameSession;
-  /** LOH/LOH minigame path: all game players (for name lookup). */
+  /** LOH/POS minigame path: all game players (for name lookup). */
   players?: Player[];
   /** MinigameHost path: called with the human's final score. */
   onFinish?: (value: number) => void;
@@ -257,7 +257,7 @@ export default function PressurePlank({
       const currentPlayers = playersRef.current;
 
       if (currentSession) {
-        // LOH/LOH path: build full leaderboard
+        // LOH/POS path: build full leaderboard
         const allScores: Record<string, number> = { ...currentSession.aiScores };
         if (currentHumanId) allScores[currentHumanId] = humanScore;
 
