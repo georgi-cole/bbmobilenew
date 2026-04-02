@@ -252,6 +252,17 @@
   z-index: 1;
 }
 
+.src-drama-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.src-scene-heading--drama {
+  max-width: 18rem;
+}
+
 .src-drama-beat {
   padding: 1rem 1rem 1.05rem;
   border-radius: 1.1rem;
@@ -505,6 +516,15 @@
 
   .src-stat-burst {
     max-width: 9rem;
+  }
+
+  .src-press-card__body {
+    grid-template-columns: 1fr;
+  }
+
+  .src-press-card__img {
+    width: 100%;
+    max-width: 5rem;
   }
 }
 
