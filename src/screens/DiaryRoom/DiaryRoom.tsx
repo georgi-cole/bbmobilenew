@@ -443,7 +443,7 @@ export default function DiaryRoom() {
       const offerMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'bb',
-        text: `Welcome, ${playerNameRef.current}. This day seems to have been quite tough for you so far. But the Big Eye may have an offer that could lift your spirits. Would you like to hear it?`,
+        text: `Welcome, ${playerNameRef.current}. Each day offers a new challenge, sometimes more than we can take. But the Big Eye may have an offer that could lift your spirits. Would you like to hear it?`,
         timestamp: Date.now(),
       };
       setMessages((prev) => {
@@ -820,7 +820,7 @@ export default function DiaryRoom() {
                     const declineMsg: ChatMessage = {
                       id: crypto.randomUUID(),
                       role: 'bb',
-                      text: `Very well. The Big Eye respects your caution. Return if you change your mind.`,
+                      text: `Very well. The Big Eye respects your caution. Return if you change your mind. Take too much and you may run out of luck.`,
                       timestamp: Date.now(),
                     };
                     setMessages((prev) => {
