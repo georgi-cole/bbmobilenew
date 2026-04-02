@@ -3612,9 +3612,8 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Dev/test-only helper that rotates an accepted mission to the next template
-     * in the pool and rebuilds its checklist from scratch for the original
-     * trigger day.
+     * Rotate an accepted mission to the next template in the pool and rebuild
+     * its checklist from scratch for the original trigger day.
      */
     reshuffleSecretMission(state) {
       const sm = state.secretMission;

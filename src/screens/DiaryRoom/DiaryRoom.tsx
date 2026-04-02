@@ -290,7 +290,6 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
 export default function DiaryRoom() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const showDevMissionShuffle = import.meta.env.DEV || import.meta.env.MODE === 'test';
   const phase = useAppSelector((s) => s.game.phase);
   const seed = useAppSelector((s) => s.game.seed);
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
@@ -941,7 +940,7 @@ export default function DiaryRoom() {
               <div className="diary-room__footer">
                 <span className="diary-room__charcount">{entry.length}/280</span>
                 <div className="diary-room__footer-actions">
-                  {showDevMissionShuffle && secretMission?.status === 'accepted' && (
+                  {secretMission?.status === 'accepted' && (
                     <button
                       className="diary-room__submit diary-room__submit--secondary"
                       type="button"
