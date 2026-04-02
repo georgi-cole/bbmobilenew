@@ -299,7 +299,7 @@ export default function TvZone(props: TvZoneProps) {
   const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
   const viewportMessageKey = latestEvent?.id
-    ?? (latestEvent ? `tv-zone-ts-${latestEvent.timestamp}` : 'tv-zone-default');
+    ?? (latestEvent?.timestamp != null ? `tv-zone-ts-${latestEvent.timestamp}` : 'tv-zone-default');
 
   const handleDismiss = useCallback(() => {
     if (phaseAnnouncement) {
