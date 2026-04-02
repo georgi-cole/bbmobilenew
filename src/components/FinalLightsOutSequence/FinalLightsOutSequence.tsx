@@ -64,38 +64,43 @@ export default function FinalLightsOutSequence({
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
+    const getViewport = () => document.querySelector<HTMLElement>('.tv-zone__viewport');
 
-    const updateTvViewportRect = () => {
-      const viewport = document.querySelector<HTMLElement>('.tv-zone__viewport');
+    const measureTvViewport = (viewport: HTMLElement | null) => {
       if (!viewport) {
         setTvViewportRect(null);
-        return;
+        return null;
       }
 
       const { top, left, width, height } = viewport.getBoundingClientRect();
       if (width <= 0 || height <= 0) {
         setTvViewportRect(null);
-        return;
+        return viewport;
       }
 
       setTvViewportRect({ top, left, width, height });
+      return viewport;
     };
 
-    updateTvViewportRect();
+    const refreshTvViewportRect = () => measureTvViewport(getViewport());
 
-    const resizeObserver = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(updateTvViewportRect)
-      : null;
-    const viewport = document.querySelector<HTMLElement>('.tv-zone__viewport');
+    const viewport = refreshTvViewportRect();
+
+    const resizeObserver =
+      viewport && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+          refreshTvViewportRect();
+        })
+        : null;
     if (resizeObserver && viewport) resizeObserver.observe(viewport);
 
-    window.addEventListener('resize', updateTvViewportRect);
-    window.addEventListener('scroll', updateTvViewportRect, true);
+    window.addEventListener('resize', refreshTvViewportRect);
+    window.addEventListener('scroll', refreshTvViewportRect, true);
 
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', updateTvViewportRect);
-      window.removeEventListener('scroll', updateTvViewportRect, true);
+      window.removeEventListener('resize', refreshTvViewportRect);
+      window.removeEventListener('scroll', refreshTvViewportRect, true);
     };
   }, []);
 

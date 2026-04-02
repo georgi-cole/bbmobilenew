@@ -40,6 +40,7 @@ describe('FinalLightsOutSequence', () => {
       height: '180px',
     });
 
+    // Stage 0→1, 1→2, 2→3, then 3→4 where the farewell message appears.
     for (const ms of [800, 1400, 1400, 1400]) {
       await act(async () => {
         vi.advanceTimersByTime(ms);
