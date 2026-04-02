@@ -298,6 +298,7 @@ export default function TvZone(props: TvZoneProps) {
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
+  const viewportMessageKey = latestEvent?.id ?? latestEvent?.text ?? 'tv-zone-welcome';
 
   const handleDismiss = useCallback(() => {
     if (phaseAnnouncement) {
@@ -492,10 +493,7 @@ export default function TvZone(props: TvZoneProps) {
           </div>
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
-            <div className="tv-zone__scanlines" aria-hidden="true" />
-            <div className="tv-zone__vignette"  aria-hidden="true" />
-            <div className="tv-zone__glare tv-zone__glare--corner" aria-hidden="true" />
-            <p className="tv-zone__now" style={hideViewportMessage ? { opacity: 0 } : undefined}>
+            <p key={viewportMessageKey} className="tv-zone__now" style={hideViewportMessage ? { opacity: 0 } : undefined}>
               {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
             </p>
 

@@ -31,9 +31,13 @@ function renderTvZone() {
 }
 
 describe('TvZone screen styling', () => {
-  it('renders the localized upper-left reflection layer inside the viewport', () => {
+  it('keeps the viewport markup clean so reflection and scanlines can come from pseudo-elements', () => {
     const { container } = renderTvZone();
+    const viewport = container.querySelector('.tv-zone__viewport');
 
-    expect(container.querySelector('.tv-zone__viewport .tv-zone__glare--corner')).toBeTruthy();
+    expect(viewport).toBeTruthy();
+    expect(viewport?.querySelector('.tv-zone__glare')).toBeNull();
+    expect(viewport?.querySelector('.tv-zone__scanlines')).toBeNull();
+    expect(viewport?.querySelector('.tv-zone__vignette')).toBeNull();
   });
 });
