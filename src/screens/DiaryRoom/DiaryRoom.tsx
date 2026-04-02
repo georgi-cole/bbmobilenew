@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
+import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import type { MissionRewardType } from '../../bb/secretMission';
 import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
@@ -290,6 +290,7 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
 export default function DiaryRoom() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const showDevMissionShuffle = import.meta.env.DEV || import.meta.env.MODE === 'test';
   const phase = useAppSelector((s) => s.game.phase);
   const seed = useAppSelector((s) => s.game.seed);
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
@@ -939,14 +940,27 @@ export default function DiaryRoom() {
               />
               <div className="diary-room__footer">
                 <span className="diary-room__charcount">{entry.length}/280</span>
-                <button
-                  className="diary-room__submit"
-                  type="submit"
-                  disabled={!entry.trim() || loading}
-                  aria-label="Send message"
-                >
-                  {loading ? '⏳ Waiting…' : '📣 Send'}
-                </button>
+                <div className="diary-room__footer-actions">
+                  {showDevMissionShuffle && secretMission?.status === 'accepted' && (
+                    <button
+                      className="diary-room__submit diary-room__submit--secondary"
+                      type="button"
+                      onClick={() => dispatch(reshuffleSecretMission())}
+                      disabled={loading}
+                      aria-label="Shuffle mission"
+                    >
+                      🔀 Shuffle
+                    </button>
+                  )}
+                  <button
+                    className="diary-room__submit"
+                    type="submit"
+                    disabled={!entry.trim() || loading}
+                    aria-label="Send message"
+                  >
+                    {loading ? '⏳ Waiting…' : '📣 Send'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -45,6 +45,7 @@ import {
   MISSION_TEMPLATES,
   canUseDoubleVote,
   canUseVoteDeduction,
+  type MissionTask,
   type MissionRewardType,
 } from '../bb/secretMission';
 
@@ -77,6 +78,23 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
   name: hg.name,
   avatar: hg.sex === 'Female' ? '👩' : '🧑',
 }));
+
+type SecretMissionTaskBuildResult = {
+  templateId: string;
+  tasks: MissionTask[];
+};
+
+function buildSecretMissionTasksForTemplate(
+  templateId: string,
+  triggeredDay: number,
+): SecretMissionTaskBuildResult {
+  const template = MISSION_TEMPLATES.find((t) => t.id === templateId)
+    ?? MISSION_TEMPLATES[0];
+  return {
+    templateId: template.id,
+    tasks: buildMissionTasks(template, triggeredDay),
+  };
+}
 
 const GAME_ROSTER_SIZE = DEFAULT_ROSTER_SIZE;
 
@@ -3587,10 +3605,30 @@ const gameSlice = createSlice({
     acceptSecretMission(state) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'offered') return;
-      const template = MISSION_TEMPLATES.find((t) => t.id === sm.templateId)
-        ?? MISSION_TEMPLATES[0];
+      const nextMission = buildSecretMissionTasksForTemplate(sm.templateId, sm.triggeredDay);
       sm.status = 'accepted';
-      sm.tasks = buildMissionTasks(template, sm.triggeredDay);
+      sm.templateId = nextMission.templateId;
+      sm.tasks = nextMission.tasks;
+    },
+
+    /**
+     * Dev/test-only helper that rotates an accepted mission to the next template
+     * in the pool and rebuilds its checklist from scratch for the original
+     * trigger day.
+     */
+    reshuffleSecretMission(state) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const currentIndex = MISSION_TEMPLATES.findIndex((t) => t.id === sm.templateId);
+      const nextIndex = currentIndex >= 0
+        ? (currentIndex + 1) % MISSION_TEMPLATES.length
+        : 0;
+      const nextMission = buildSecretMissionTasksForTemplate(
+        MISSION_TEMPLATES[nextIndex]?.id ?? MISSION_TEMPLATES[0].id,
+        sm.triggeredDay,
+      );
+      sm.templateId = nextMission.templateId;
+      sm.tasks = nextMission.tasks;
     },
 
     /**
@@ -3910,6 +3948,7 @@ export const {
   triggerSecretMission,
   offerSecretMission,
   acceptSecretMission,
+  reshuffleSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
   addUniqueDayToTask,
