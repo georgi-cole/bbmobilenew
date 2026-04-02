@@ -33,6 +33,7 @@ export default function TopUtilityButton({
 }: TopUtilityButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const isInactive = pressed === false;
 
   const shellSrc = `${BASE}/assets/control_dock/top_utility_shell.svg`;
   const glyphSrc = `${BASE}/assets/control_dock/${icon}.svg`;
@@ -47,7 +48,7 @@ export default function TopUtilityButton({
 
   return (
     <button
-      className={`top-utility-btn${disabled ? ' top-utility-btn--disabled' : ''}${pressed ? ' top-utility-btn--active' : ''}`}
+      className={`top-utility-btn${disabled ? ' top-utility-btn--disabled' : ''}${pressed ? ' top-utility-btn--active' : ''}${isInactive ? ' top-utility-btn--inactive' : ''}`}
       type="button"
       aria-label={ariaLabel}
       aria-pressed={pressed}

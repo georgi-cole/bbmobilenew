@@ -224,7 +224,9 @@ describe('TvZone — announcement overlay', () => {
     await user.click(sfxButton);
 
     expect(screen.getByRole('button', { name: /^Music$/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /^Music$/i })).toHaveClass('top-utility-btn--inactive');
     expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveClass('top-utility-btn--inactive');
   });
 
   it('shows the overlay when the latest event has a top-level major field', () => {
