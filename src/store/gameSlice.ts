@@ -4127,7 +4127,7 @@ export const startMinigame =
  * Rules:
  *  - Evaluates only on Day 5–12 via the centralized chance helper
  *  - At most one mission may trigger per season
- *  - The testing override affects only this calculation
+ *  - The testing overrides affect only this calculation
  *  - Uses a twist-specific RNG path so it does not perturb other outcomes
  *
  * Returns `true` if the mission triggered for the current day.
@@ -4139,6 +4139,13 @@ export const tryActivateSecretMission =
 
     if (game.phase !== 'week_start') return false;
     if (game.secretMission) return false;
+
+    const forcedWeek = settings.sim.secretMissionTriggerWeekOverride;
+    if (forcedWeek !== null && forcedWeek !== undefined) {
+      if (game.week !== forcedWeek) return false;
+      dispatch(triggerSecretMission(game.week));
+      return true;
+    }
 
     const override = settings.sim.secretMissionTriggerOverride;
     const rng = mulberry32((game.seed ^ Math.imul(game.week, 0x9e3779b1)) >>> 0);

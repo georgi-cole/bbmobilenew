@@ -53,6 +53,12 @@ export interface SettingsState {
      * Remove or ignore this field in production builds.
      */
     secretMissionTriggerOverride: number | null;
+    /**
+     * DEBUG/TESTING ONLY — force the secret mission to trigger on an exact week.
+     * Set to null to disable. When set, this takes precedence over the percent
+     * override and the mission will trigger on that exact week_start entry.
+     */
+    secretMissionTriggerWeekOverride: number | null;
   };
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -100,6 +106,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
     favoritePlayerAwardAmount: 25000,
     // DEBUG/TESTING ONLY — null means default per-day chances are used.
     secretMissionTriggerOverride: null,
+    // DEBUG/TESTING ONLY — null means no forced trigger week is set.
+    secretMissionTriggerWeekOverride: null,
   },
   visual: {
     enableZoom: false,
