@@ -130,6 +130,10 @@
 /* ── Viewport (the "screen") ───────────────────────────────────────────────── */
 .tv-zone__viewport {
   --tv-screen-texture-opacity: 0.04;
+  --tv-reflection-width: 43%;
+  --tv-reflection-height: 30%;
+  --tv-reflection-x: 18%;
+  --tv-reflection-y: 12%;
   position: relative;
   flex: 1 1 0;
   min-height: 192px; /* ~20% larger than original 160px — constant, not dynamic */
@@ -156,7 +160,13 @@
   background:
     linear-gradient(134deg, rgba(255, 255, 255, 0.1) 0%, rgba(122, 162, 255, 0.08) 16%, rgba(255, 255, 255, 0) 42%),
     radial-gradient(ellipse at 18% 10%, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.05) 28%, rgba(255, 255, 255, 0) 65%);
-  clip-path: ellipse(43% 30% at 18% 12%);
+  clip-path: ellipse(
+    var(--tv-reflection-width)
+    var(--tv-reflection-height)
+    at
+    var(--tv-reflection-x)
+    var(--tv-reflection-y)
+  );
   filter: blur(2px);
   pointer-events: none;
   z-index: 2;

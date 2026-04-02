@@ -133,7 +133,7 @@ function getViewportMessageKey(ev: TvEvent | undefined): string {
 
   const textHash = Array.from(ev.text).reduce(
     (hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0,
-    7,
+    0,
   );
 
   return `tv-zone-${ev.type}-${ev.timestamp ?? 'na'}-${textHash}`;
