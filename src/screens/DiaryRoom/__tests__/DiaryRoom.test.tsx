@@ -195,13 +195,13 @@ describe('DiaryRoom', () => {
       },
     });
 
-    expect(screen.getByText('Visit the Confessional on 3 different days')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
+    screen.getByText('Visit the Confessional on 3 different days');
+    screen.getByRole('button', { name: /shuffle mission/i });
 
     fireEvent.click(screen.getByRole('button', { name: /shuffle mission/i }));
 
     expect(screen.queryByText('Visit the Confessional on 3 different days')).toBeNull();
-    expect(screen.getByText('Survive until Day 9')).toBeTruthy();
-    expect(screen.getByText('Complete 8 exchanges with the Big Eye')).toBeTruthy();
+    screen.getByText('Survive until Day 9');
+    screen.getByText('Complete 8 exchanges with the Big Eye');
   });
 });
