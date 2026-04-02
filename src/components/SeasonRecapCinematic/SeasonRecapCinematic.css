@@ -256,7 +256,11 @@
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
+}
+
+.src-scene-heading--drama {
+  max-width: 18rem;
 }
 
 .src-drama-beat {

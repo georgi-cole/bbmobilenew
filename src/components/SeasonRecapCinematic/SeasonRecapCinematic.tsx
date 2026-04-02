@@ -5,6 +5,14 @@ import type { Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import useSound from '../../hooks/useSound';
 import { resolveAvatar } from '../../utils/avatar';
+import FinaleNewspaperMontage from './FinaleNewspaperMontage';
+import {
+  SAMPLE_FINALE_NEWSPAPER_PAGES,
+  createNewspaperFrontPage,
+  type NewspaperArticleSnippet,
+  type NewspaperFrontPageData,
+  type NewspaperSeasonEvent,
+} from './newspaperFrontPages';
 import './SeasonRecapCinematic.css';
 
 export interface SeasonRecapProps {
@@ -34,15 +42,6 @@ interface RecapBeat {
   subject?: Player | null;
 }
 
-interface RecapPressArticle {
-  masthead: string;
-  title: string;
-  line: string;
-  badge: string;
-  tone: 'positive' | 'negative';
-  subject?: Player | null;
-}
-
 interface RecapTwistMoment {
   id: string;
   title: string;
@@ -54,7 +53,7 @@ interface RecapData {
   headline: string;
   stats: RecapStat[];
   dramaBeats: RecapBeat[];
-  pressArticles: RecapPressArticle[];
+  newspaperPages: NewspaperFrontPageData[];
   twistMoments: RecapTwistMoment[];
   evictionLadder: Player[];
   finalists: Player[];
@@ -159,6 +158,22 @@ function approvalPercent(value: number | null | undefined, fallback = 50): strin
   return `${Math.round(value ?? fallback)}%`;
 }
 
+function buildIssueDate(week: number, offset = 0): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[(week + offset) % months.length];
+  const day = ((week * 3 + offset * 2) % 27) + 1;
+  return `${month} ${day}, 2026`;
+}
+
+function uniquePlayers(players: Array<Player | null | undefined>): Player[] {
+  const seen = new Set<string>();
+  return players.filter((player): player is Player => {
+    if (!player || seen.has(player.id)) return false;
+    seen.add(player.id);
+    return true;
+  });
+}
+
 function buildRecapData(
   players: Player[],
   week: number,
@@ -194,11 +209,18 @@ function buildRecapData(
           publicProfiles.reduce((sum, entry) => sum + entry.profile.approval, 0) / publicProfiles.length,
         )
       : null;
-  const fallbackPowerWins = topComp ? totalCompWins(topComp) : Math.max(1, Math.floor(week / 2));
   const showMostHatedArticle = mostHated != null && mostHated.player.id !== mostLiked?.player.id;
   const shockFeed = [...(publicOpinion?.feed ?? [])]
     .filter((entry) => entry.isHeadline || Math.abs(entry.delta) >= MIN_PUBLIC_SHOCK_DELTA)
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.timestamp - a.timestamp);
+  const spotlightPlayers = uniquePlayers([
+    mostLiked?.player,
+    mostHated?.player,
+    topComp,
+    mostNom,
+    topVeto,
+    ...finalists,
+  ]);
 
   const stats: RecapStat[] = [
     {
@@ -259,42 +281,138 @@ function buildRecapData(
     },
   ];
 
-  const pressArticles: RecapPressArticle[] = [
+  const seasonEvents: NewspaperSeasonEvent[] = [
     {
-      masthead: 'The Big Eye Bulletin',
-      title:
+      id: 'favorite-headline',
+      week: Math.max(1, week - 5),
+      type: 'fan-favorite',
+      subjectName: firstName(mostLiked?.player ?? topComp),
+      detail:
         mostLiked != null
-          ? `${firstName(mostLiked.player)} becomes the people’s headline`
-          : `${firstName(topComp)} set the pace for the whole season`,
-      line:
-        mostLiked != null
-          ? `With ${approvalPercent(mostLiked.profile.approval)} on the public meter, every move felt front-page worthy.`
-          : `${firstName(topComp)} kept landing in the middle of every conversation the house could not ignore.`,
-      badge:
-        mostLiked != null
-          ? `Most liked • ${approvalPercent(mostLiked.profile.approval)}`
-          : `Power player • ${fallbackPowerWins} wins`,
-      tone: 'positive',
-      subject: mostLiked?.player ?? topComp,
+          ? `The approval meter peaked at ${approvalPercent(mostLiked.profile.approval)} and never really came back down.`
+          : `${firstName(topComp)} built a season-long reputation for making the decisive move.`,
     },
     {
-      masthead: 'House Watch Daily',
-      title:
+      id: 'house-backlash',
+      week: Math.max(1, week - 4),
+      type: 'backlash',
+      subjectName: firstName(showMostHatedArticle ? mostHated?.player : mostNom),
+      detail:
         showMostHatedArticle
-          ? `${firstName(mostHated.player)} could not outrun the backlash`
-          : `${firstName(mostNom)} lived on the front page of the block`,
-      line:
-        showMostHatedArticle
-          ? `The ratings slipped to ${approvalPercent(mostHated.profile.approval)} as every feud and fallout kept the spotlight burning.`
-          : `${firstName(mostNom)} heard their name again and again, then turned every nomination into another headline.`,
-      badge:
-        showMostHatedArticle
-          ? `Most hated • ${approvalPercent(mostHated.profile.approval)}`
-          : `Block survivor • ${mostNom?.stats?.timesNominated ?? Math.max(2, jurySize)} noms`,
-      tone: 'negative',
-      subject: showMostHatedArticle ? mostHated.player : mostNom,
+          ? `The ratings slipped to ${approvalPercent(mostHated?.profile.approval)} as every feud and fallout stayed on the record.`
+          : `${firstName(mostNom)} kept hearing their name, then finding another way off the page-one panic list.`,
+    },
+    {
+      id: 'alliance-whispers',
+      week: Math.max(1, week - 8),
+      type: 'alliance',
+      subjectName: firstName(topComp),
+      secondaryName: firstName(topVeto),
+      detail: `${firstName(topComp)} and ${firstName(topVeto)} kept turning quiet strategy chats into loud results.`,
+    },
+    {
+      id: 'betrayal-night',
+      week: Math.max(1, week - 7),
+      type: 'betrayal',
+      subjectName: firstName(mostNom),
+      detail: `${firstName(mostNom)} survived the pressure cooker and left everyone else trying to explain the fallout.`,
+    },
+    {
+      id: 'veto-drama',
+      week: Math.max(1, week - 6),
+      type: 'veto',
+      subjectName: firstName(topVeto),
+      detail: `${firstName(topVeto)} turned safety wins into leverage every time the ceremony lights came on.`,
+    },
+    {
+      id: 'shockwave-week',
+      week: shockFeed[0]?.week ?? Math.max(1, week - 3),
+      type: 'chaos',
+      subjectName: firstName(mostHated?.player ?? topComp),
+      detail: shockFeed[0]?.text ?? 'One vote flipped the room, then the whispers took over the night.',
+    },
+    {
+      id: 'block-comeback',
+      week: Math.max(1, week - 5),
+      type: 'underdog',
+      subjectName: firstName(mostNom),
+      detail: `${firstName(mostNom)} made survival look like an art form with ${
+        mostNom?.stats?.timesNominated ?? Math.max(2, jurySize)
+      } nominations on the board.`,
+    },
+    {
+      id: 'garden-rumors',
+      week: Math.max(1, week - 2),
+      type: 'romance-rumor',
+      subjectName: firstName(spotlightPlayers[0]),
+      secondaryName: firstName(spotlightPlayers[1] ?? spotlightPlayers[0]),
+      detail: 'A few too many late-night garden chats gave the tabloids plenty to play with.',
+    },
+    {
+      id: 'dynamic-duo',
+      week: Math.max(1, week - 1),
+      type: 'duo',
+      subjectName: firstName(spotlightPlayers[1] ?? topComp),
+      secondaryName: firstName(spotlightPlayers[2] ?? topVeto),
+      detail: 'The season’s biggest conversations kept circling back to the same two faces.',
+    },
+    {
+      id: 'finale-special',
+      week,
+      type: 'finale',
+      subjectName: firstName(finalists[0]),
+      secondaryName: firstName(finalists[1] ?? finalists[0]),
+      detail: `${firstName(finalists[0])} and ${firstName(finalists[1] ?? finalists[0])} now carry every headline straight into the tribunal.`,
     },
   ];
+
+  const newspaperPages: NewspaperFrontPageData[] = seasonEvents.map((event, index) => {
+    const featuredPlayer = spotlightPlayers[index % Math.max(spotlightPlayers.length, 1)] ?? finalists[0] ?? topComp ?? players[0];
+    const secondaryPlayer =
+      spotlightPlayers[(index + 1) % Math.max(spotlightPlayers.length, 1)] ?? finalists[1] ?? mostNom ?? players[1];
+    const matchingShock = shockFeed.find((entry) => entry.week === event.week);
+    const snippets: NewspaperArticleSnippet[] = [
+      { label: 'Front Row', text: event.detail },
+      {
+        label: 'House Note',
+        text: matchingShock?.text ?? `${firstName(featuredPlayer)} kept finding a way onto the front page.`,
+      },
+      {
+        label: 'By Dawn',
+        text:
+          index % 2 === 0
+            ? 'The cameras caught every look, every whisper, and every last-minute scramble.'
+            : 'By sunrise, the strategy was already changing again.',
+      },
+    ];
+
+    return createNewspaperFrontPage(event, index, {
+      newspaperName: index === 0 ? 'The Big Eye Bulletin' : undefined,
+      featuredImage: featuredPlayer ? resolveAvatar(featuredPlayer) : SAMPLE_FINALE_NEWSPAPER_PAGES[index].featuredImage,
+      featuredImageAlt: featuredPlayer?.name ?? event.subjectName ?? 'Featured houseguest',
+      secondaryImage:
+        index % 3 === 1 && secondaryPlayer
+          ? resolveAvatar(secondaryPlayer)
+          : SAMPLE_FINALE_NEWSPAPER_PAGES[index % SAMPLE_FINALE_NEWSPAPER_PAGES.length].secondaryImage,
+      secondaryImageAlt: secondaryPlayer?.name ?? event.secondaryName,
+      issueDate: buildIssueDate(event.week, index),
+      issueNumber: `Issue ${seasonEvents.length * 10 + week + index}`,
+      edition: index % 2 === 0 ? 'City Final' : 'Late Night Final',
+      price: index === 0 ? '50¢' : undefined,
+      articleSnippets: snippets,
+      decorativeTeaserLabels: [
+        index === 0 ? 'EXCLUSIVE' : index === 1 ? 'HOUSE IN CHAOS' : index === 9 ? 'FINAL 3 SPECIAL' : 'SEASON SPECIAL',
+        index === 2 ? 'SECRET ALLIANCE' : index === 7 ? 'LOVE TRIANGLE?' : 'PRINT WATCH',
+      ],
+      pageTeasers: ['Sports p.32', 'Weather p.4', 'Editorial p.7', index % 2 === 0 ? 'Culture p.12' : 'Night Feed p.3'],
+      layoutVariant: index % 3 === 0 ? 'hero' : index % 3 === 1 ? 'collage' : 'headline',
+      blackAndWhite: index % 4 === 0,
+      headlineHighlight:
+        matchingShock?.delta != null
+          ? `${matchingShock.delta > 0 ? '+' : ''}${matchingShock.delta} buzz`
+          : event.subjectName ?? 'Season special',
+    });
+  });
 
   const twistMoments: RecapTwistMoment[] = shockFeed.slice(0, 3).map((entry, index) => ({
     id: entry.id || `public-shock-${entry.week}-${index}`,
@@ -339,7 +457,7 @@ function buildRecapData(
     headline: 'The Road to the Finale',
     stats,
     dramaBeats,
-    pressArticles,
+    newspaperPages,
     twistMoments,
     evictionLadder,
     finalists,
@@ -408,65 +526,31 @@ function StatsScene({ stats }: { stats: RecapStat[] }) {
 
 function DramaScene({
   beats,
-  articles,
+  pages,
+  durationMs,
+  reducedMotion,
 }: {
   beats: RecapBeat[];
-  articles: RecapPressArticle[];
+  pages: NewspaperFrontPageData[];
+  durationMs: number;
+  reducedMotion: boolean;
 }) {
   return (
     <SceneFrame className="src-scene--drama">
       <div className="src-drama-layout">
-        <div className="src-drama-stack">
-          {beats.map((beat, index) => (
-            <motion.article
-              key={beat.kicker}
-              className={`src-drama-beat src-drama-beat--${index + 1}`}
-              initial={{ opacity: 0, x: index % 2 === 0 ? -24 : 24, y: 18 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ delay: 0.18 * index, duration: 0.45 }}
-            >
-              <span className="src-drama-beat__kicker">{beat.kicker}</span>
-              <p className="src-drama-beat__line">{beat.line}</p>
-              {beat.subject && (
-                <div className="src-avatar-chip">
-                  <img src={resolveAvatar(beat.subject)} alt={beat.subject.name} className="src-avatar-chip__img" />
-                  <span>{beat.subject.name}</span>
-                </div>
-              )}
-            </motion.article>
-          ))}
+        <div className="src-scene-heading src-scene-heading--drama">
+          <span className="src-scene-heading__eyebrow">Press Montage</span>
+          <h2 className="src-scene-heading__title">The season splashed across every front page.</h2>
         </div>
-
-        <div className="src-press-wall">
-          {articles.map((article, index) => (
-            <motion.article
-              key={article.title}
-              className={`src-press-card src-press-card--${article.tone}`}
-              initial={{ opacity: 0, y: 26, rotate: index % 2 === 0 ? -3 : 3 }}
-              animate={{ opacity: 1, y: 0, rotate: index % 2 === 0 ? -1.5 : 1.5 }}
-              transition={{ delay: 0.2 * index, duration: 0.45 }}
-            >
-              <span className="src-press-card__masthead">{article.masthead}</span>
-              <div className="src-press-card__body">
-                {article.subject && (
-                  <img
-                    src={resolveAvatar(article.subject)}
-                    alt={article.subject.name}
-                    className="src-press-card__img"
-                  />
-                )}
-                <div className="src-press-card__copy">
-                  <span className="src-press-card__badge">{article.badge}</span>
-                  <h3 className="src-press-card__title">{article.title}</h3>
-                  <p className="src-press-card__line">{article.line}</p>
-                </div>
-              </div>
-            </motion.article>
-          ))}
-        </div>
+        <FinaleNewspaperMontage
+          pages={pages}
+          notes={beats}
+          durationMs={durationMs}
+          reducedMotion={reducedMotion}
+        />
       </div>
       <div className="src-scene-wordmark" aria-hidden="true">
-        TRUST • POWER • CHAOS
+        EXTRA • EXTRA • CHAOS
       </div>
     </SceneFrame>
   );
@@ -655,7 +739,13 @@ export default function SeasonRecapCinematic({
         )}
         {currentScene?.id === 'stats' && <StatsScene key="stats" stats={recapData.stats} />}
         {currentScene?.id === 'drama' && (
-          <DramaScene key="drama" beats={recapData.dramaBeats} articles={recapData.pressArticles} />
+          <DramaScene
+            key="drama"
+            beats={recapData.dramaBeats}
+            pages={recapData.newspaperPages}
+            durationMs={currentScene.durationMs}
+            reducedMotion={reducedMotion}
+          />
         )}
         {currentScene?.id === 'twists' && <TwistsScene key="twists" moments={recapData.twistMoments} />}
         {currentScene?.id === 'ladder' && (

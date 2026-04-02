@@ -2,6 +2,7 @@ import { act } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic';
+import { SAMPLE_FINALE_NEWSPAPER_PAGES, generatePlayfulHeadline } from '../src/components/SeasonRecapCinematic/newspaperFrontPages';
 import type { Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
@@ -215,7 +216,7 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 
-  it('shows public meter and press coverage when public data exists', async () => {
+  it('shows public meter and newspaper montage coverage when public data exists', async () => {
     const onComplete = vi.fn();
 
     render(
@@ -241,9 +242,10 @@ describe('SeasonRecapCinematic', () => {
     });
 
     expect(screen.getByText('The Big Eye Bulletin')).toBeTruthy();
-    expect(screen.getByText('House Watch Daily')).toBeTruthy();
     expect(screen.getByText(/Avery becomes the people’s headline/i)).toBeTruthy();
-    expect(screen.getByText(/Drew could not outrun the backlash/i)).toBeTruthy();
+    expect(screen.getByText('50¢')).toBeTruthy();
+    expect(screen.getByText('Sports p.32')).toBeTruthy();
+    expect(screen.getByText(/front page special report/i)).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -269,6 +271,21 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.queryByText('Public Meter')).toBeNull();
     expect(screen.queryByText('Top Rating')).toBeNull();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('ships reusable sample newspaper data and headline generation helpers', () => {
+    expect(SAMPLE_FINALE_NEWSPAPER_PAGES).toHaveLength(10);
+    expect(SAMPLE_FINALE_NEWSPAPER_PAGES[0]?.featuredImage).toContain('/assets/houseguests/houseguest-');
+    expect(
+      generatePlayfulHeadline({
+        id: 'helper-check',
+        week: 7,
+        type: 'duo',
+        subjectName: 'Avery',
+        secondaryName: 'Blake',
+        detail: 'They kept owning the strategy chat.',
+      }).headline,
+    ).toMatch(/Avery and Blake/i);
   });
 
   it('uses tribunal wording in the finale scene', async () => {
