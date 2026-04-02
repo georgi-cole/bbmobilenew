@@ -92,6 +92,11 @@ export const selectHumanIsActive = (state: RootState): boolean => {
  *  - A voteDeduction prompt is pending
  */
 export const selectConfessionalAlertCount = (state: RootState): number => {
+  const humanPlayer = state.game?.players?.find((p) => p.isUser);
+  if (humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury') {
+    return 0;
+  }
+
   const sm = state.game?.secretMission;
   let count = 0;
 
