@@ -298,7 +298,7 @@ export default function TvZone(props: TvZoneProps) {
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
-  const viewportMessageKey = latestEvent?.id ?? latestEvent?.text ?? 'tv-zone-welcome';
+  const viewportMessageKey = latestEvent?.id ?? `tv-zone-${latestEvent?.timestamp ?? 'welcome'}`;
 
   const handleDismiss = useCallback(() => {
     if (phaseAnnouncement) {
