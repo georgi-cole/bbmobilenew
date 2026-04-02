@@ -3628,6 +3628,37 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Anti-cheese: credit a unique day for a task that requires visits on
+     * separate calendar days (e.g. `confessional_visits`).
+     *
+     * Rules:
+     *  - The day string must NOT already be in `task.uniqueDays`.
+     *  - `task.current` is set to `uniqueDays.length` after the insert.
+     *  - If `current >= target` the task is marked completed and, if all
+     *    tasks finish, the mission transitions to 'rewardPending'.
+     *
+     * Idempotent: re-crediting a day that was already counted is a no-op.
+     */
+    addUniqueDayToTask(
+      state,
+      action: PayloadAction<{ taskId: string; day: string }>,
+    ) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const task = sm.tasks.find((t) => t.id === action.payload.taskId);
+      if (!task || task.completed) return;
+      if (!task.uniqueDays) task.uniqueDays = [];
+      if (task.uniqueDays.includes(action.payload.day)) return; // already counted
+      task.uniqueDays.push(action.payload.day);
+      task.current = task.uniqueDays.length;
+      task.completed = task.current >= task.target;
+      const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
+      if (allDone) {
+        sm.status = 'rewardPending';
+      }
+    },
+
+    /**
      * Explicitly mark the mission as completed (e.g. when the final task
      * is ticked via a passive update path).
      * Transitions to rewardPending.
@@ -3879,6 +3910,7 @@ export const {
   acceptSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
+  addUniqueDayToTask,
   completeMission,
   claimMissionReward,
   expireMissionReward,

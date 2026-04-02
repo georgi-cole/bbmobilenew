@@ -13,10 +13,10 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress, claimMissionReward } from '../../store/gameSlice';
+import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import type { MissionRewardType } from '../../bb/secretMission';
-import { MYSTERY_BOX_POOL } from '../../bb/secretMission';
+import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
 import {
   createInitialBigEyeState,
   generateBigBrotherReply,
@@ -503,16 +503,19 @@ export default function DiaryRoom() {
   }, []); // intentionally runs once on mount
 
   // ── Secret mission: track confessional visit count on unmount ─────────────
+  // Anti-cheese: visits are counted once per unique calendar day (= game week).
+  // Rapidly entering/exiting the Confessional on the same day only credits 1 visit.
   useEffect(() => {
     return () => {
       const sm = secretMissionRef.current;
       if (!sm || sm.status !== 'accepted') return;
       const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
       if (!visitTask || visitTask.completed) return;
+      const day = String(currentWeekRef.current);
       dispatchRef.current(
-        updateMissionTaskProgress({
+        addUniqueDayToTask({
           taskId: visitTask.id,
-          current: visitTask.current + 1,
+          day,
         }),
       );
     };
@@ -890,8 +893,19 @@ export default function DiaryRoom() {
                               text: REWARD_MESSAGES[rewardType] ?? REWARD_MESSAGES.emptyBox,
                               timestamp: Date.now(),
                             };
+                            const msgs: ChatMessage[] = [revealMsg];
+                            // PR 4: For doubleVote, append a timing clarification so the
+                            // player knows exactly when the power will become usable.
+                            if (rewardType === 'doubleVote') {
+                              msgs.push({
+                                id: crypto.randomUUID(),
+                                role: 'bb',
+                                text: doubleVoteTimingMessage(phase),
+                                timestamp: Date.now() + 50,
+                              });
+                            }
                             setMessages((prev) => {
-                              const updated = [...prev, revealMsg];
+                              const updated = [...prev, ...msgs];
                               saveChat(playerIdRef.current, updated);
                               return updated;
                             });
