@@ -59,9 +59,50 @@ export default function FinalFaceoff() {
   // 'revealVotes' → vote chips + tally animate in
   type Phase = 'clues' | 'recap' | 'revealVotes';
   const [phase, setPhase] = useState<Phase>('clues');
+  const winnerPersistedRef = useRef(false);
   const handleRecapComplete = useCallback(() => {
     setPhase('revealVotes');
   }, []);
+
+  const persistWinnerToSeasonFinale = useCallback(() => {
+    if (winnerPersistedRef.current) return;
+    if (!finale.winnerId || !finale.runnerUpId) return;
+
+    winnerPersistedRef.current = true;
+
+    const publicFavoriteEnabled =
+      settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
+    const winnerAlreadyMarked = game.players.some(
+      (player) => player.id === finale.winnerId && player.isWinner,
+    );
+    const runnerUpAlreadyMarked = game.players.some(
+      (player) => player.id === finale.runnerUpId && player.finalRank === 2,
+    );
+
+    stopMusic();
+    if (!winnerAlreadyMarked || !runnerUpAlreadyMarked) {
+      dispatch(
+        finalizeGame({ winnerId: finale.winnerId, runnerUpId: finale.runnerUpId }),
+      );
+    }
+    dispatch(
+      startWinnerCinematic({
+        winnerId: finale.winnerId,
+        seed: game.seed,
+        publicFavoriteEnabled,
+      }),
+    );
+    dispatch(dismissFinale());
+  }, [
+    dispatch,
+    finale.runnerUpId,
+    finale.winnerId,
+    game.players,
+    game.seed,
+    settings.sim.enableFavoritePlayer,
+    settings.sim.enableTwists,
+    stopMusic,
+  ]);
 
   // ── Staged vote reveal: tracks which jurors have their chip visible ────
   // During 'clues' phase this stays empty. On entering 'revealVotes' we
@@ -219,42 +260,43 @@ export default function FinalFaceoff() {
   // ── Persist winner to game state once decided ──────────────────────────
   // Only act in 'revealVotes' so that clues/recap phases aren't short-circuited.
   // Delay dismissal until all vote chips have had time to pop in (+1.5 s grace).
-  const winnerPersistedRef = useRef(false);
   useEffect(() => {
     if (phase === 'clues' || phase === 'recap') return;
     if (finale.isComplete && finale.winnerId && finale.runnerUpId && !winnerPersistedRef.current) {
-      winnerPersistedRef.current = true;
-      const publicFavoriteEnabled =
-        settings.sim.enableFavoritePlayer && settings.sim.enableTwists;
       // Wait for all vote chips to animate in before showing the winner.
       const chipDelay = 800 + revealed.length * 2000 + 1500;
       const t = setTimeout(() => {
-        stopMusic();
-        dispatch(
-          finalizeGame({ winnerId: finale.winnerId!, runnerUpId: finale.runnerUpId! }),
-        );
-        dispatch(
-          startWinnerCinematic({
-            winnerId: finale.winnerId!,
-            seed: game.seed,
-            publicFavoriteEnabled,
-          }),
-        );
-        dispatch(dismissFinale());
+        persistWinnerToSeasonFinale();
       }, chipDelay);
       return () => clearTimeout(t);
     }
   }, [
     phase,
-    dispatch,
-    game.seed,
     finale.isComplete,
     finale.winnerId,
     finale.runnerUpId,
+    persistWinnerToSeasonFinale,
     revealed.length,
-    settings.sim.enableFavoritePlayer,
-    settings.sim.enableTwists,
-    stopMusic,
+  ]);
+
+  // Recovery path: if jury voting already completed and the game is still on the
+  // jury screen without an active finale overlay or season-finale flow, bridge
+  // directly into the winner cinematic instead of leaving the player stuck.
+  useEffect(() => {
+    if (game.phase !== 'jury') return;
+    if (game.seasonFinale != null) return;
+    if (finale.isActive) return;
+    if (!finale.isComplete || !finale.winnerId || !finale.runnerUpId) return;
+
+    persistWinnerToSeasonFinale();
+  }, [
+    finale.isActive,
+    finale.isComplete,
+    finale.runnerUpId,
+    finale.winnerId,
+    game.phase,
+    game.seasonFinale,
+    persistWinnerToSeasonFinale,
   ]);
 
   // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────

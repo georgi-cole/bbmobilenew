@@ -63,9 +63,11 @@ export default function AppShell() {
       <NavBar />
       <DebugPanel />
       {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
-          Keep the previous safeguard: don't remount after dismissal by checking
-          hasStarted. */}
-      {phase === 'jury' && (finale.isActive || !finale.hasStarted) && <FinalFaceoff />}
+          Also remount it for the rare recovery case where jury voting already
+          completed but the season finale overlay has not started yet. */}
+      {phase === 'jury' &&
+        seasonFinale == null &&
+        (finale.isActive || !finale.hasStarted || finale.isComplete) && <FinalFaceoff />}
       {seasonFinale && <SeasonFinaleOverlay />}
     </div>
   );
