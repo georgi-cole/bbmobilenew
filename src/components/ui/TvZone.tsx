@@ -18,6 +18,7 @@ import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
+import { getViewportMessageKey } from './tvZoneKeys';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 
@@ -125,18 +126,6 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
     autoDismissMs: 4500,
   };
   return { key, ...meta };
-}
-
-function getViewportMessageKey(ev: TvEvent | undefined): string {
-  if (!ev) return 'tv-zone-default';
-  if (ev.id) return ev.id;
-
-  const textHash = Array.from(ev.text).reduce(
-    (hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0,
-    0,
-  );
-
-  return `tv-zone-${ev.type}-${ev.timestamp ?? 'na'}-${textHash}`;
 }
 
 /**

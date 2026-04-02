@@ -9,6 +9,8 @@ import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
 import finaleReducer from '../../../store/finaleSlice';
 import TvZone from '../TvZone';
+import type { TvEvent } from '../../../types';
+import { getViewportMessageKey } from '../tvZoneKeys';
 
 function renderTvZone() {
   const store = configureStore({
@@ -39,5 +41,21 @@ describe('TvZone screen styling', () => {
     expect(viewport?.querySelector('.tv-zone__glare')).toBeNull();
     expect(viewport?.querySelector('.tv-zone__scanlines')).toBeNull();
     expect(viewport?.querySelector('.tv-zone__vignette')).toBeNull();
+  });
+
+  it('builds stable fallback keys for repeated text and different keys for different text', () => {
+    const baseEvent: TvEvent = {
+      id: '',
+      text: 'Signal locked.',
+      type: 'game',
+      timestamp: 123,
+    };
+
+    const sameTextKey = getViewportMessageKey({ ...baseEvent });
+    const repeatedTextKey = getViewportMessageKey({ ...baseEvent });
+    const differentTextKey = getViewportMessageKey({ ...baseEvent, text: 'Signal updated.' });
+
+    expect(sameTextKey).toBe(repeatedTextKey);
+    expect(sameTextKey).not.toBe(differentTextKey);
   });
 });
