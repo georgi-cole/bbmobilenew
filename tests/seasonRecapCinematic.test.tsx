@@ -286,6 +286,15 @@ describe('SeasonRecapCinematic', () => {
         detail: 'They kept owning the strategy chat.',
       }).headline,
     ).toMatch(/Avery and Blake/i);
+    expect(
+      generatePlayfulHeadline({
+        id: 'betrayal-check',
+        week: 8,
+        type: 'betrayal',
+        subjectName: 'Sage',
+        detail: 'A blindside turned the whole house upside down.',
+      }).headline,
+    ).toContain('Sage');
   });
 
   it('uses tribunal wording in the finale scene', async () => {

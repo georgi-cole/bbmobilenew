@@ -124,7 +124,7 @@ export function generatePlayfulHeadline(event: NewspaperSeasonEvent): HeadlineDr
       };
     case 'betrayal':
       return {
-        headline: `House divided after ${subject.toLowerCase()}’s betrayal`,
+        headline: `House divided after ${subject}’s betrayal`,
         subheadline: `${event.detail} One late-night turn was enough to fracture trust across the entire block.`,
         category: 'Breaking Drama',
         stamp: 'SHOCK EVICTION',

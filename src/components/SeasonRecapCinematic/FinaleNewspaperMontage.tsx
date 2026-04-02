@@ -28,14 +28,14 @@ export default function FinaleNewspaperMontage({
   const stepMs = Math.max(1000, Math.floor(durationMs / Math.min(Math.max(pages.length, 1), 5)));
 
   useEffect(() => {
-    if (reducedMotion || pages.length <= 1) return;
+    if (reducedMotion || pages.length <= 1 || activeIndex >= pages.length - 1) return;
 
-    const timer = setInterval(() => {
+    const timer = setTimeout(() => {
       setActiveIndex((current) => (current >= pages.length - 1 ? current : current + 1));
     }, stepMs);
 
-    return () => clearInterval(timer);
-  }, [pages.length, reducedMotion, stepMs]);
+    return () => clearTimeout(timer);
+  }, [activeIndex, pages.length, reducedMotion, stepMs]);
 
   const visiblePages = useMemo(() => pages.slice(0, activeIndex + 1).slice(-MAX_STACKED_PAGES), [activeIndex, pages]);
 
@@ -61,6 +61,7 @@ export default function FinaleNewspaperMontage({
             <motion.div
               key={page.id}
               className={`src-news-montage__paper src-news-montage__paper--depth-${depth}`}
+              aria-hidden={!isFrontPage}
               initial={
                 reducedMotion
                   ? false
