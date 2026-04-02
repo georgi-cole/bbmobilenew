@@ -136,7 +136,14 @@
   align-items: center;
   justify-content: center;
   padding: 20px 18px;
-  background: var(--tv-surface, #0b121a);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(99, 102, 241, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, rgba(11, 18, 26, 0) 38%),
+    linear-gradient(180deg, #101a26 0%, #0b121a 58%, #070d14 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 16px 28px rgba(148, 163, 184, 0.06),
+    inset 0 -24px 32px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
 
@@ -284,7 +291,9 @@
   flex: 1 1 auto;
   align-items: stretch;
   padding: 8px 10px 4px;
-  background: var(--color-card);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
 }
 
 .tv-zone__bezel-frame {
@@ -295,12 +304,16 @@
   border-radius: 10px;
   border: 3px solid #1a1a2e;
   box-shadow:
+    0 0 0 1px rgba(129, 140, 248, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.06),
     inset 0 0 0 2px rgba(0, 0, 0, 0.5),
     0 6px 24px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(99, 102, 241, 0.06);
+    0 0 20px rgba(99, 102, 241, 0.08),
+    0 0 52px rgba(15, 23, 42, 0.35);
   overflow: hidden;
-  background: #0b121a;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 16%),
+    #0b121a;
 }
 
 /* ── Bezel brand badge ──────────────────────────────────────────────────────── */
@@ -326,18 +339,38 @@
 /* ── Glare overlay ──────────────────────────────────────────────────────────── */
 .tv-zone__glare {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  top: 12px;
+  left: 12px;
+  width: min(42%, 240px);
+  height: 34%;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0.12) 24%, rgba(255, 255, 255, 0) 64%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 30%, rgba(255, 255, 255, 0) 76%);
   pointer-events: none;
   z-index: 2;
-  border-radius: 0 0 50% 50% / 0 0 20px 20px;
+  border-radius: 16px 0 100px 0;
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  filter: blur(0.5px);
+}
+
+.tv-zone__glare::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 9%;
+  width: 72%;
+  height: 28%;
+  background: linear-gradient(142deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 36%, rgba(255, 255, 255, 0) 78%);
+  opacity: 0.9;
+  transform: skewX(-18deg);
+  transform-origin: top left;
+}
+
+.tv-zone__glare--corner {
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 24px rgba(148, 163, 184, 0.08);
 }
 
 /* ── Twist badge — broadcast-style corner ribbon ──────────────────────────── */

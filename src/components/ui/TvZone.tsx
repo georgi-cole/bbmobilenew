@@ -494,7 +494,7 @@ export default function TvZone(props: TvZoneProps) {
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
             <div className="tv-zone__scanlines" aria-hidden="true" />
             <div className="tv-zone__vignette"  aria-hidden="true" />
-            <div className="tv-zone__glare"     aria-hidden="true" />
+            <div className="tv-zone__glare tv-zone__glare--corner" aria-hidden="true" />
             <p className="tv-zone__now" style={hideViewportMessage ? { opacity: 0 } : undefined}>
               {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
             </p>
