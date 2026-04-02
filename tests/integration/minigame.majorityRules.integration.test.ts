@@ -14,8 +14,8 @@ import { getGame } from '../../src/minigames/registry';
 function makeStore(initialMajorityRules?: Partial<MajorityRulesState>) {
   const gameReducer = (
     state = {
-      phase: 'hoh_comp',
-      hohId: null as string | null,
+      phase: 'loh_comp',
+      lohId: null as string | null,
       applyCount: 0,
     },
     action: { type: string; payload?: unknown },
@@ -24,8 +24,8 @@ function makeStore(initialMajorityRules?: Partial<MajorityRulesState>) {
       const payload = action.payload as { winnerId: string };
       return {
         ...state,
-        hohId: payload.winnerId,
-        phase: 'hoh_results',
+        lohId: payload.winnerId,
+        phase: 'loh_results',
         applyCount: state.applyCount + 1,
       };
     }
@@ -41,7 +41,7 @@ function makeStore(initialMajorityRules?: Partial<MajorityRulesState>) {
       ? {
           majorityRules: {
             phase: 'complete',
-            competitionType: 'HOH',
+            competitionType: 'LOH',
             seed: 7,
             participantIds: ['p1', 'p2', 'p3'],
             activeIds: ['p2'],
@@ -96,7 +96,7 @@ describe('resolveMajorityRulesOutcome', () => {
     const store = makeStore({});
 
     await store.dispatch(resolveMajorityRulesOutcome());
-    expect(store.getState().game.hohId).toBe('p2');
+    expect(store.getState().game.lohId).toBe('p2');
     expect(store.getState().game.applyCount).toBe(1);
 
     await store.dispatch(resolveMajorityRulesOutcome());
@@ -122,7 +122,7 @@ describe('majorityRules initialization flow', () => {
     store.dispatch(
       initMajorityRules({
         participantIds: ['p1', 'p2'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 11,
         humanPlayerId: 'p1',
       }),
@@ -148,7 +148,7 @@ describe('majorityRules initialization flow', () => {
       preloadedState: {
         majorityRules: {
           phase: 'reveal',
-          competitionType: 'HOH',
+          competitionType: 'LOH',
           seed: 11,
           participantIds: ['p1', 'p2', 'p3', 'p4'],
           activeIds: ['p1', 'p2', 'p3', 'p4'],

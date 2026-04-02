@@ -42,7 +42,7 @@ import { mulberry32 } from '../../store/rng';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type BlackjackTournamentCompetitionType = 'HOH' | 'POV';
+export type BlackjackTournamentCompetitionType = 'LOH' | 'POS';
 
 export type BlackjackTournamentPhase =
   | 'idle'
@@ -332,7 +332,7 @@ export function aiPickFighters(
 // ─── Initial state ────────────────────────────────────────────────────────────
 
 const initialState: BlackjackTournamentState = {
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   phase: 'idle',
 
   allPlayerIds: [],

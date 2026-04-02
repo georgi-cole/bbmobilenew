@@ -40,13 +40,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -107,14 +107,14 @@ function setupPressurePlankSession(
 
 /**
  * `advanceToNominationResults` — dispatches three `advance()` calls to get
- * from hoh_results → social_1 → nominations → nomination_results.
+ * from loh_results → social_1 → nominations → nomination_results.
  *
  * At nomination_results:
- *  - human HOH: `awaitingNominations` is set (must call commitNominees)
- *  - AI HOH: nominees are picked immediately
+ *  - human LOH: `awaitingNominations` is set (must call commitNominees)
+ *  - AI LOH: nominees are picked immediately
  */
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -130,7 +130,7 @@ describe('Pressure Plank — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 80 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the player with the highest score (AI wins)', () => {
@@ -140,7 +140,7 @@ describe('Pressure Plank — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 50 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
   it('winner is correct when scores are very close', () => {
@@ -150,17 +150,17 @@ describe('Pressure Plank — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 74 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
-  it('phase transitions to hoh_results after completeMinigame', () => {
+  it('phase transitions to loh_results after completeMinigame', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     setupPressurePlankSession(store, ['p0', 'p1', 'p2'], { p1: 70, p2: 60 });
 
     store.dispatch(completeMinigame({ humanScore: 80 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
@@ -196,9 +196,9 @@ describe('Pressure Plank — last-place finisher correctness', () => {
     store.dispatch(completeMinigame({ humanScore: 90 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p3');
-    expect(state.hohId).not.toBe(state.lastHohCompFinisherId);
+    expect(state.lohId).not.toBe(state.lastHohCompFinisherId);
   });
 
   it('explicit lastPlaceId from the component overrides score-based derivation', () => {
@@ -225,7 +225,7 @@ describe('Pressure Plank — last-place finisher correctness', () => {
     );
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     // Score-based fallback: p3 has lowest score
     expect(state.lastHohCompFinisherId).toBe('p3');
   });
@@ -250,7 +250,7 @@ describe('Pressure Plank — public mode auto-nominee', () => {
 
     advanceToNominationResults(store);
 
-    // Human HOH must nominate — auto-third should be p5
+    // Human LOH must nominate — auto-third should be p5
     expect(store.getState().game.awaitingNominations).toBe(true);
     store.dispatch(commitNominees(['p1', 'p2']));
 
@@ -273,7 +273,7 @@ describe('Pressure Plank — public mode auto-nominee', () => {
 
     expect(store.getState().game.lastHohCompFinisherId).toBe('p0');
     // Winner should be p1
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
   it('auto-nominee is NOT added when public mode is disabled', () => {
@@ -299,18 +299,18 @@ describe('Pressure Plank — public mode auto-nominee', () => {
 // ── 4. Human nomination flow after resolution ─────────────────────────────────
 
 describe('Pressure Plank — human nomination flow', () => {
-  it('phase advances to hoh_results immediately after completeMinigame', () => {
+  it('phase advances to loh_results immediately after completeMinigame', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
     setupPressurePlankSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 70, p2: 60, p3: 50 });
 
     store.dispatch(completeMinigame({ humanScore: 80 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
-  it('awaitingNominations is set for the human HOH', () => {
+  it('awaitingNominations is set for the human LOH', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
     setupPressurePlankSession(
@@ -350,7 +350,7 @@ describe('Pressure Plank — human nomination flow', () => {
 // ── 5. AI-only nomination flow ─────────────────────────────────────────────────
 
 describe('Pressure Plank — AI-only nomination flow', () => {
-  it('AI HOH correctly sets hohId and lastHohCompFinisherId', () => {
+  it('AI LOH correctly sets lohId and lastHohCompFinisherId', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -359,11 +359,11 @@ describe('Pressure Plank — AI-only nomination flow', () => {
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p3');
   });
 
-  it('AI HOH phase transitions to hoh_results', () => {
+  it('AI LOH phase transitions to loh_results', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -371,10 +371,10 @@ describe('Pressure Plank — AI-only nomination flow', () => {
     setupPressurePlankSession(store, ['p1', 'p2', 'p3'], { p1: 80, p2: 60, p3: 30 });
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('AI HOH in public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });
@@ -391,7 +391,7 @@ describe('Pressure Plank — AI-only nomination flow', () => {
     advanceToNominationResults(store);
 
     const afterNoms = store.getState().game;
-    // p5 (last-place) must be nominated — either as auto-third or picked by AI HOH
+    // p5 (last-place) must be nominated — either as auto-third or picked by AI LOH
     expect(afterNoms.nomineeIds).toContain('p5');
     const autoNomineeOrAlreadyPicked =
       afterNoms.nominationContext?.autoNomineeId === 'p5' ||
@@ -422,7 +422,7 @@ describe('Pressure Plank — score and survival semantics', () => {
 
     store.dispatch(completeMinigame({ humanScore: 75 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
   });
 
@@ -435,8 +435,8 @@ describe('Pressure Plank — score and survival semantics', () => {
     store.dispatch(completeMinigame({ humanScore: 70 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(['p0', 'p1', 'p2']).toContain(state.hohId);
-    expect(state.phase).toBe('hoh_results');
+    expect(['p0', 'p1', 'p2']).toContain(state.lohId);
+    expect(state.phase).toBe('loh_results');
   });
 
   it('two participants — winner and last-place are different players', () => {
@@ -447,7 +447,7 @@ describe('Pressure Plank — score and survival semantics', () => {
     store.dispatch(completeMinigame({ humanScore: 75 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p1');
   });
 });
@@ -464,7 +464,7 @@ describe('Pressure Plank — backward-compat: legacy numeric payload', () => {
     store.dispatch(completeMinigame(80));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 });

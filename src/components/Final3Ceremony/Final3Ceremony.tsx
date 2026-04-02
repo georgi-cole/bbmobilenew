@@ -1,15 +1,15 @@
 /**
  * Final3Ceremony — the post-Part-3 ceremony overlay.
  *
- * Triggered when `game.awaitingFinal3Plea` is true and the Final HOH has been
- * crowned (`game.hohId` is set, phase is 'final3_decision').
+ * Triggered when `game.awaitingFinal3Plea` is true and the Final LOH has been
+ * crowned (`game.lohId` is set, phase is 'final3_decision').
  *
  * Sequence:
- *   1. Coronation animation — crown reveal for the Final HOH.
+ *   1. Coronation animation — crown reveal for the Final LOH.
  *   2. Plea overlay — nominees make their cases (reuses ChatOverlay).
- *   3. HOH decision:
- *      - Human HOH: TvDecisionModal to choose evictee.
- *      - AI HOH: deterministic auto-pick (seeded RNG, same as advance() AI path).
+ *   3. LOH decision:
+ *      - Human LOH: TvDecisionModal to choose evictee.
+ *      - AI LOH: deterministic auto-pick (seeded RNG, same as advance() AI path).
  *   4. Eviction announcement ChatOverlay.
  *   5. Eviction cinematic — SpotlightEvictionOverlay plays for the evictee.
  *   6. `finalizeFinal3Decision` is dispatched with { hohWinnerId, evicteeId }.
@@ -56,11 +56,11 @@ export default function Final3Ceremony() {
   const dispatch = useAppDispatch();
   const game = useAppSelector((s) => s.game);
 
-  const hohId = game.hohId;
-  const hohPlayer = game.players.find((p) => p.id === hohId) ?? null;
+  const lohId = game.lohId;
+  const lohPlayer = game.players.find((p) => p.id === lohId) ?? null;
   const nominees = game.players.filter((p) => game.nomineeIds.includes(p.id));
   const humanPlayer = game.players.find((p) => p.isUser) ?? null;
-  const humanIsHoh = !!humanPlayer && humanPlayer.id === hohId;
+  const humanIsLoh = !!humanPlayer && humanPlayer.id === lohId;
 
   const [stage, setStage] = useState<CeremonyStage>('coronation');
   const [pleaLines, setPleaLines] = useState<ChatLine[]>([]);
@@ -72,27 +72,27 @@ export default function Final3Ceremony() {
   // ── Build plea lines when entering the plea stage ─────────────────────────
 
   useEffect(() => {
-    if (stage !== 'pleas' || !hohPlayer || nominees.length === 0) return;
+    if (stage !== 'pleas' || !lohPlayer || nominees.length === 0) return;
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] building plea lines', { hohId, nominees: nominees.map((n) => n.id) });
+      console.log('[Final3Ceremony] building plea lines', { lohId, nominees: nominees.map((n) => n.id) });
     }
     const lines: ChatLine[] = [
       {
         id: 'f3c-intro',
         role: 'host',
-        text: `${hohPlayer.name} has won Part 3 and is the Final Leader of the House! 👑`,
+        text: `${lohPlayer.name} has won Part 3 and is the Final Leader of the House! 👑`,
       },
       {
         id: 'f3c-plea-prompt',
         role: 'hoh',
-        player: hohPlayer,
+        player: lohPlayer,
         text: `Before I make my decision, I'd like to hear from both of you. Nominees, it's time to make your pleas.`,
       },
       ...nominees.flatMap((nominee, idx): ChatLine[] => [
         {
           id: `f3c-prompt-${nominee.id}`,
           role: 'hoh',
-          player: hohPlayer,
+          player: lohPlayer,
           text: `${nominee.name}, please share why I should take you to the Final 2.`,
         },
         {
@@ -105,7 +105,7 @@ export default function Final3Ceremony() {
       {
         id: 'f3c-thinking',
         role: 'hoh-thinking',
-        player: hohPlayer,
+        player: lohPlayer,
         text: '• • •',
       },
     ];
@@ -118,7 +118,7 @@ export default function Final3Ceremony() {
   useEffect(() => {
     if (stage !== 'coronation') return;
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] coronation stage started', { hohId });
+      console.log('[Final3Ceremony] coronation stage started', { lohId });
     }
     const id = window.setTimeout(() => {
       if (import.meta.env.DEV) {
@@ -134,12 +134,12 @@ export default function Final3Ceremony() {
 
   const handlePleaComplete = useCallback(() => {
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] pleas complete → decision (humanIsHoh:', humanIsHoh, ')');
+      console.log('[Final3Ceremony] pleas complete → decision (humanIsLoh:', humanIsLoh, ')');
     }
-    if (humanIsHoh) {
+    if (humanIsLoh) {
       setStage('decision');
     } else {
-      // AI HOH: deterministically pick evictee using seeded RNG (mirrors advance()).
+      // AI LOH: deterministically pick evictee using seeded RNG (mirrors advance()).
       const aiRng = mulberry32(game.seed + 1);
       const pick = seededPick(aiRng, nominees);
       if (import.meta.env.DEV) {
@@ -150,7 +150,7 @@ export default function Final3Ceremony() {
       setStage('announcement');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [humanIsHoh, game.seed, nominees]);
+  }, [humanIsLoh, game.seed, nominees]);
 
   // ── Build eviction announcement lines ────────────────────────────────────
 
@@ -159,7 +159,7 @@ export default function Final3Ceremony() {
       {
         id: 'f3c-evict-decision',
         role: 'hoh',
-        player: hohPlayer ?? undefined,
+        player: lohPlayer ?? undefined,
         text: `I've made my decision. ${evictee.name}, I'm eliminating you from The Big Eye house. 🗳️`,
       },
       {
@@ -171,11 +171,11 @@ export default function Final3Ceremony() {
     setAnnounceLines(lines);
   }
 
-  // ── Human HOH decision ────────────────────────────────────────────────────
+  // ── Human LOH decision ────────────────────────────────────────────────────
 
   const handleHumanDecision = useCallback((chosenEvicteeId: string) => {
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] human HOH evictee chosen', chosenEvicteeId);
+      console.log('[Final3Ceremony] human LOH evictee chosen', chosenEvicteeId);
     }
     const evictee = game.players.find((p) => p.id === chosenEvicteeId);
     if (!evictee) return;
@@ -201,16 +201,16 @@ export default function Final3Ceremony() {
   // ── Eviction cinematic complete → finalize ────────────────────────────────
 
   const handleEvictionSplashDone = useCallback(() => {
-    if (!hohId || !evicteeId) return;
+    if (!lohId || !evicteeId) return;
     if (import.meta.env.DEV) {
-      console.log('[Final3Ceremony] eviction splash done → finalizeFinal3Decision + advance', { hohId, evicteeId });
+      console.log('[Final3Ceremony] eviction splash done → finalizeFinal3Decision + advance', { lohId, evicteeId });
     }
     // Clear the overlay flag before finalizing so AvatarTile returns to normal.
     dispatch(setEvictionOverlay(null));
-    dispatch(finalizeFinal3Decision({ hohWinnerId: hohId, evicteeId }));
+    dispatch(finalizeFinal3Decision({ hohWinnerId: lohId, evicteeId }));
     dispatch(advance());
     setStage('done');
-  }, [dispatch, hohId, evicteeId]);
+  }, [dispatch, lohId, evicteeId]);
 
   // ── Cleanup: clear the overlay flag on unmount (safety net) ───────────────
 
@@ -232,7 +232,7 @@ export default function Final3Ceremony() {
   return (
     <>
       {/* Coronation animation */}
-      {stage === 'coronation' && hohPlayer && (
+      {stage === 'coronation' && lohPlayer && (
         <div
           className="f3c-coronation"
           role="dialog"
@@ -240,7 +240,7 @@ export default function Final3Ceremony() {
           aria-label="Final LOH Coronation"
         >
           <div className="f3c-coronation__crown" aria-hidden="true">👑</div>
-          <div className="f3c-coronation__name">{hohPlayer.name}</div>
+          <div className="f3c-coronation__name">{lohPlayer.name}</div>
           <div className="f3c-coronation__title">Final Leader of the House</div>
           <div className="f3c-coronation__subtitle">Part 3 Winner</div>
         </div>
@@ -257,11 +257,11 @@ export default function Final3Ceremony() {
         />
       )}
 
-      {/* Human HOH decision modal */}
-      {stage === 'decision' && humanIsHoh && (
+      {/* Human LOH decision modal */}
+      {stage === 'decision' && humanIsLoh && (
         <TvDecisionModal
           title="Final LOH — Eliminate a Housemate"
-          subtitle={`${hohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining housemates.`}
+          subtitle={`${lohPlayer?.name ?? 'You'}, as Final LOH you must directly eliminate one of the remaining housemates.`}
           options={nominees}
           onSelect={handleHumanDecision}
           danger

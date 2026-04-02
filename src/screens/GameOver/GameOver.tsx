@@ -20,8 +20,8 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null): Pla
     // The winner (finalRank=1) and runner-up (finalRank=2) are NOT jury members
     // and should not receive the madeJury bonus.
     const madeJury = p.status === 'jury';
-    const hohWins = p.stats?.hohWins ?? 0;
-    const povWins = p.stats?.povWins ?? 0;
+    const lohWins = p.stats?.lohWins ?? 0;
+    const posWins = p.stats?.posWins ?? 0;
     const timesNominated = p.stats?.timesNominated ?? 0;
     const battleBackWins = p.stats?.battleBackWins ?? 0;
     const wonPublicFavorite = favoriteWinnerId != null && p.id === favoriteWinnerId;
@@ -32,9 +32,9 @@ function buildSummaries(players: Player[], favoriteWinnerId: string | null): Pla
       displayName: p.name,
       finalPlacement: p.finalRank ?? null,
       isEvicted: p.status === 'evicted' || p.status === 'jury',
-      hohWins,
-      povWins,
-      compsWon: hohWins + povWins,
+      lohWins,
+      posWins,
+      compsWon: lohWins + posWins,
       timesNominated,
       noms: timesNominated,
       madeJury,

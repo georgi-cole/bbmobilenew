@@ -5,7 +5,7 @@
 //     animation is shown (aiReplacementKey returns '').
 //  2. When the veto WAS used (povSavedId set), the AI replacement animation
 //     is triggered.
-//  3. AI HOH tiebreak choreography: AnimatedVoteResultsModal fires
+//  3. AI LOH tiebreak choreography: AnimatedVoteResultsModal fires
 //     onTiebreakerRequired → 3 s overlay → vote results dismissed → eviction splash.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -68,12 +68,12 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 1,
-    phase: 'pov_ceremony_results',
+    phase: 'pos_ceremony_results',
     seed: 42,
-    hohId: 'p1',            // AI HOH
+    lohId: 'p1',            // AI LOH
     prevHohId: null,
     nomineeIds: ['p2', 'p3'],
-    povWinnerId: 'p2',
+    posWinnerId: 'p2',
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -136,13 +136,13 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
   });
 
   it('does NOT show replacement animation when veto was not used (povSavedId = null)', async () => {
-    // pov_ceremony_results phase, AI HOH, no awaitingPovDecision/SaveTarget,
+    // pos_ceremony_results phase, AI LOH, no awaitingPovDecision/SaveTarget,
     // but povSavedId is null/absent → veto was not used → no animation.
     const store = makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p1',
+      phase: 'pos_ceremony_results',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
-      povWinnerId: 'p2',
+      posWinnerId: 'p2',
       awaitingPovDecision: false,
       awaitingPovSaveTarget: false,
       replacementNeeded: false,
@@ -160,10 +160,10 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
   it('DOES show replacement animation when veto was used (povSavedId set)', async () => {
     // povSavedId is set → veto was used → replacement animation should fire.
     const store = makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p1',
+      phase: 'pos_ceremony_results',
+      lohId: 'p1',
       nomineeIds: ['p3', 'p4'], // p2 was saved, p4 is the replacement
-      povWinnerId: 'p2',
+      posWinnerId: 'p2',
       povSavedId: 'p2',         // veto WAS used
       awaitingPovDecision: false,
       awaitingPovSaveTarget: false,
@@ -178,7 +178,7 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
   });
 });
 
-describe('Ceremony fix: AI HOH tiebreak choreography', () => {
+describe('Ceremony fix: AI LOH tiebreak choreography', () => {
   beforeEach(() => {
     capturedOnTiebreakerRequired = null;
     vi.useFakeTimers();
@@ -189,15 +189,15 @@ describe('Ceremony fix: AI HOH tiebreak choreography', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows AI thinking overlay when onTiebreakerRequired fires with non-human HOH', async () => {
-    // AI HOH (p1) — human is p0.
+  it('shows AI thinking overlay when onTiebreakerRequired fires with non-human LOH', async () => {
+    // AI LOH (p1) — human is p0.
     // Vote results show a tie, pendingEviction set (AI already picked).
     const store = makeStore({
       phase: 'eviction_results',
-      hohId: 'p1',             // AI is HOH
+      lohId: 'p1',             // AI is LOH
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 }, // tie
-      pendingEviction: { evicteeId: 'p3', evictionMessage: 'HOH breaks the tie, evicting Player 3. 🗳️' }, // AI chose p3
+      pendingEviction: { evicteeId: 'p3', evictionMessage: 'LOH breaks the tie, evicting Player 3. 🗳️' }, // AI chose p3
       awaitingTieBreak: false,
     });
     renderWithStore(store);
@@ -221,10 +221,10 @@ describe('Ceremony fix: AI HOH tiebreak choreography', () => {
   it('dismisses vote results after the 3 s choreography completes', async () => {
     const store = makeStore({
       phase: 'eviction_results',
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 },
-      pendingEviction: { evicteeId: 'p3', evictionMessage: 'HOH breaks the tie, evicting Player 3. 🗳️' },
+      pendingEviction: { evicteeId: 'p3', evictionMessage: 'LOH breaks the tie, evicting Player 3. 🗳️' },
       awaitingTieBreak: false,
     });
     renderWithStore(store);

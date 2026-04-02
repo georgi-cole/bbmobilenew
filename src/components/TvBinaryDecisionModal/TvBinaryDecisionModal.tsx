@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * TvBinaryDecisionModal — a TV-contained modal prompting the human player
- * with a Yes / No choice.  Used for the POV use decision.
+ * with a Yes / No choice.  Used for the POS use decision.
  *
  * Two-step confirm flow: first tap selects Yes or No (highlighted); the
  * player must then press Confirm to commit. A brief stinger overlay is

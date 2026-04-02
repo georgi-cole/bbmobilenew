@@ -10,11 +10,11 @@ export interface PlayerSeasonSummary {
   displayName: string;
   /** Null means explicitly no placement (e.g. evicted pre-jury). Undefined means not yet determined. */
   finalPlacement?: number | null;
-  /** Number of HOH competitions won this season. */
-  hohWins?: number;
-  /** Number of POV competitions won this season. */
-  povWins?: number;
-  /** Total comps won (HOH + POV); kept for backward compatibility. */
+  /** Number of LOH competitions won this season. */
+  lohWins?: number;
+  /** Number of POS competitions won this season. */
+  posWins?: number;
+  /** Total comps won (LOH + POS); kept for backward compatibility. */
   compsWon?: number;
   /** Number of times the player was nominated for eviction. */
   timesNominated?: number;
@@ -30,7 +30,7 @@ export interface PlayerSeasonSummary {
   survivedTripleEviction?: boolean;
   /** True if the player won the Public's Favorite Player vote. */
   wonPublicFavorite?: boolean;
-  /** True if the player won the Final HOH (Part 3 of the Final 3 competition). */
+  /** True if the player won the Final LOH (Part 3 of the Final 3 competition). */
   wonFinalHoh?: boolean;
   /** Number of weeks the player remained in the house (alive). */
   weeksAlive?: number;

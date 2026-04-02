@@ -21,7 +21,7 @@ const ALL_PARTICIPANTS = [
 ];
 
 export default function RiskWheelTestPage() {
-  const [prizeType, setPrizeType] = useState<RiskWheelCompetitionType>('HOH');
+  const [prizeType, setPrizeType] = useState<RiskWheelCompetitionType>('LOH');
   const [seed, setSeed] = useState(42);
   const [playerCount, setPlayerCount] = useState(4);
   const [humanInGame, setHumanInGame] = useState(true);
@@ -76,8 +76,8 @@ export default function RiskWheelTestPage() {
               onChange={(e) => setPrizeType(e.target.value as RiskWheelCompetitionType)}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
 

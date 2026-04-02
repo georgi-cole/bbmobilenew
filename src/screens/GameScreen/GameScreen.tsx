@@ -158,7 +158,7 @@ export default function GameScreen() {
     return rect.width > 0 || rect.height > 0 ? rect : null
   }, [])
 
-  // ── CeremonyOverlay — deferred HOH / POV winner commit ─────────────────
+  // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
   // When MinigameHost reports a winner, we show the CeremonyOverlay with a
   // spotlight cutout over the winner's tile and a badge (👑/🛡️) that
   // flies from screen centre to the tile.  Only after the animation completes
@@ -184,20 +184,20 @@ export default function GameScreen() {
     setPendingWinnerCeremony(null)
   }, [])
 
-  // ── Advance-picked HOH winner ceremony (outgoing HOH bypass) ──────────
-  // When the human is the outgoing HOH, no MinigameHost challenge runs.
-  // advance() picks the winner randomly → phase becomes hoh_results with
-  // hohId set, but no CeremonyOverlay was shown.  Detect this and fire
+  // ── Advance-picked LOH winner ceremony (outgoing LOH bypass) ──────────
+  // When the human is the outgoing LOH, no MinigameHost challenge runs.
+  // advance() picks the winner randomly → phase becomes loh_results with
+  // lohId set, but no CeremonyOverlay was shown.  Detect this and fire
   // a spotlight ceremony so the winner reveal is still animated.
   const [advanceHohConsumedKey, setAdvanceHohConsumedKey] = useState<string>('')
 
   const advanceHohKey = useMemo(() => {
-    if (game.phase !== 'hoh_results' || !game.hohId) return ''
-    // Only trigger when the human was the outgoing HOH (prevHohId === human id)
+    if (game.phase !== 'loh_results' || !game.lohId) return ''
+    // Only trigger when the human was the outgoing LOH (prevHohId === human id)
     // and the winner ceremony was NOT already shown by MinigameHost.
     if (!game.prevHohId || game.prevHohId !== humanPlayer?.id) return ''
-    return `w${game.week}-hoh-${game.hohId}`
-  }, [game.phase, game.hohId, game.week, game.prevHohId, humanPlayer?.id])
+    return `w${game.week}-hoh-${game.lohId}`
+  }, [game.phase, game.lohId, game.week, game.prevHohId, humanPlayer?.id])
 
   const showAdvanceHohCeremony = advanceHohKey !== '' && advanceHohKey !== advanceHohConsumedKey && !pendingWinnerCeremony
 
@@ -218,37 +218,37 @@ export default function GameScreen() {
 
   // ── Auto-start challenge on competition phase transitions ─────────────────
   // The challenge system (startChallenge / MinigameHost) is the sole owner of
-  // game selection for HOH and POV competitions. It picks a random game from
+  // game selection for LOH and POS competitions. It picks a random game from
   // the registry, pre-computes AI scores appropriate for that game's metric kind,
   // and handles the rules modal → countdown → game → results flow.
   //
-  // HOH eligibility rule: the outgoing HOH (prevHohId) cannot compete in the
-  // next week's HOH competition. They are excluded from the participant list.
-  // When the human player is the outgoing HOH, no challenge is started at all
+  // LOH eligibility rule: the outgoing LOH (prevHohId) cannot compete in the
+  // next week's LOH competition. They are excluded from the participant list.
+  // When the human player is the outgoing LOH, no challenge is started at all
   // (the winner is determined randomly via advance() instead).
   const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers]);
   const hohCompParticipants = useMemo(() => {
-    if (game.phase !== 'hoh_comp' || !game.prevHohId) return aliveIds;
+    if (game.phase !== 'loh_comp' || !game.prevHohId) return aliveIds;
     return aliveIds.filter((id) => id !== game.prevHohId);
   }, [game.phase, game.prevHohId, aliveIds]);
 
-  const humanIsOutgoingHoh = game.phase === 'hoh_comp' && !!game.prevHohId && game.prevHohId === humanPlayer?.id;
+  const humanIsOutgoingHoh = game.phase === 'loh_comp' && !!game.prevHohId && game.prevHohId === humanPlayer?.id;
 
-  // Warning modal state: shown once per week when the human is the outgoing HOH.
+  // Warning modal state: shown once per week when the human is the outgoing LOH.
   // Tracks which week the warning was dismissed so it resets automatically each week.
   const [outgoingHohWarningDismissedWeek, setOutgoingHohWarningDismissedWeek] = useState<number | null>(null);
   const showOutgoingHohWarning = humanIsOutgoingHoh && outgoingHohWarningDismissedWeek !== game.week;
 
   useEffect(() => {
-    const isCompPhase = game.phase === 'hoh_comp' || game.phase === 'pov_comp'
-    // Do not start a challenge when the human player is the outgoing HOH —
+    const isCompPhase = game.phase === 'loh_comp' || game.phase === 'pos_comp'
+    // Do not start a challenge when the human player is the outgoing LOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
     // Also skip when a CeremonyOverlay is pending (challenge result already
     // captured; avoid launching a second challenge while the old one is animating).
     if (isCompPhase && !pendingChallenge && !humanIsOutgoingHoh && !pendingWinnerCeremony) {
-      // Use the HOH-eligibility-filtered list only for HOH comps; POV is unrestricted.
-      const participants = game.phase === 'hoh_comp' ? hohCompParticipants : aliveIds;
-      const derivedPrizeType = game.phase === 'pov_comp' ? 'POV' : 'HOH';
+      // Use the LOH-eligibility-filtered list only for LOH comps; POS is unrestricted.
+      const participants = game.phase === 'loh_comp' ? hohCompParticipants : aliveIds;
+      const derivedPrizeType = game.phase === 'pos_comp' ? 'POS' : 'LOH';
       dispatch(startChallenge(game.seed, participants, { prizeType: derivedPrizeType }))
     }
   }, [game.phase, pendingChallenge, hohCompParticipants, aliveIds, game.seed, dispatch, humanIsOutgoingHoh, pendingWinnerCeremony])
@@ -275,7 +275,7 @@ export default function GameScreen() {
   // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
   // battle as a spectator. SpectatorView mounts and plays through the cinematic
   // sequence; advance() is dispatched only after onDone fires so the game engine
-  // computes the winner (sets game.hohId) after the spectacle completes.
+  // computes the winner (sets game.lohId) after the spectacle completes.
   const [spectatorF3Active, setSpectatorF3Active] = useState(false)
   const [spectatorF3CompetitorIds, setSpectatorF3CompetitorIds] = useState<string[]>([])
   const spectatorF3AdvancedRef = useRef(false)
@@ -420,10 +420,10 @@ export default function GameScreen() {
   function playerToHouseguest(p: Player) {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
     const parts: string[] = []
-    if (game.hohId === p.id) parts.push('hoh')
-    if (game.povWinnerId === p.id) parts.push('pov')
+    if (game.lohId === p.id) parts.push('hoh')
+    if (game.posWinnerId === p.id) parts.push('pov')
     // Suppress permanent nomination badge while the nomination animation is
-    // playing — otherwise AI-HOH nominees (already in game.nomineeIds) would
+    // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
     const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
     if (Array.isArray(game.nomineeIds) && game.nomineeIds.includes(p.id) && !isAnimatingNominee) parts.push('nominated')
@@ -450,17 +450,17 @@ export default function GameScreen() {
     }
   }
 
-  // ── Human HOH replacement picker ─────────────────────────────────────────
-  // Shown when a nominee auto-saved themselves and the human HOH must pick a
+  // ── Human LOH replacement picker ─────────────────────────────────────────
+  // Shown when a nominee auto-saved themselves and the human LOH must pick a
   // replacement. The Continue button is hidden while this modal is open.
   // (showReplacementModal is defined below after pendingReplacementCeremony.)
   const replacementNeeded = game.replacementNeeded === true
-  const humanIsHoH = humanPlayer && game.hohId === humanPlayer.id
+  const humanIsHoH = humanPlayer && game.lohId === humanPlayer.id
 
   const replacementOptions = alivePlayers.filter(
     (p) =>
-      p.id !== game.hohId &&
-      p.id !== game.povWinnerId &&
+      p.id !== game.lohId &&
+      p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.povSavedId
   )
@@ -469,10 +469,10 @@ export default function GameScreen() {
   // pendingNominees holds the player IDs while the animation plays.
   //
   // This state is driven by TWO sources:
-  //   1. Human HOH: handleCommitNominees() is called from TvMultiSelectModal's
+  //   1. Human LOH: handleCommitNominees() is called from TvMultiSelectModal's
   //      onConfirm after the stinger finishes.  commitNominees is dispatched in
   //      handleNomAnimDone — AFTER the animation completes.
-  //   2. AI HOH: a useEffect detects when nomination_results commits nominees to
+  //   2. AI LOH: a useEffect detects when nomination_results commits nominees to
   //      the store without awaitingNominations (AI flow) and triggers the same
   //      animation.  commitNominees is a no-op in this path (already committed).
   //
@@ -480,16 +480,16 @@ export default function GameScreen() {
   // regardless of stale closures after several seconds of animation.
   //
   // Two animation sources are unified here:
-  //   • Human HOH  — pendingNominees is set by handleCommitNominees; store
+  //   • Human LOH  — pendingNominees is set by handleCommitNominees; store
   //     mutation is deferred to handleNomAnimDone.
-  //   • AI HOH     — nominees are already in game.nomineeIds; the animation
+  //   • AI LOH     — nominees are already in game.nomineeIds; the animation
   //     is gated by showAiNomAnim (computed, no setState-in-effect).
   //     handleAiNomAnimDone just marks the key as consumed (no store dispatch).
   //
   // aiNomAnimConsumedKey tracks which "week-nominee-key" was most recently
   // consumed by the AI animation path so it doesn't replay.  It is also
   // pre-set by handleCommitNominees to prevent double-animation when the
-  // human HOH's commitNominees call lands and nomineeIds becomes non-empty.
+  // human LOH's commitNominees call lands and nomineeIds becomes non-empty.
 
   // ── Double Eviction activation on nominations phase entry ────────────────
   // Fire tryActivateDoubleEviction once per week when the game enters the
@@ -504,13 +504,13 @@ export default function GameScreen() {
     dispatch(tryActivateDoubleEviction())
   }, [game.phase, game.week, dispatch])
 
-  // ── Special Veto activation on POV-results entry ─────────────────────────
-  // Fire tryActivateSpecialVeto once per week when the game enters pov_results.
+  // ── Special Veto activation on POS-results entry ─────────────────────────
+  // Fire tryActivateSpecialVeto once per week when the game enters pos_results.
   // The thunk checks eligibility and probability, then dispatches
   // activateSpecialVeto() which pushes the TV overlay event.
   const specialVetoActivationWeekRef = useRef<number | null>(null)
   useEffect(() => {
-    if (game.phase !== 'pov_results') return
+    if (game.phase !== 'pos_results') return
     if (specialVetoActivationWeekRef.current === game.week) return
     specialVetoActivationWeekRef.current = game.week
     dispatch(tryActivateSpecialVeto())
@@ -548,7 +548,7 @@ export default function GameScreen() {
     pendingNomineesRef.current = pendingNominees
   }, [pendingNominees])
 
-  // AI HOH animation: computed directly from game state — no setState-in-effect.
+  // AI LOH animation: computed directly from game state — no setState-in-effect.
   const aiNomKey =
     game.phase === 'nomination_results' &&
     game.nomineeIds.length > 0 &&
@@ -587,8 +587,8 @@ export default function GameScreen() {
   // calling document.querySelector during the render phase before DOM is committed).
   const nomCeremonyTileIds = showNomAnim ? nomAnimPlayers.map((p) => p.id) : []
 
-  // ── Human HOH nomination flow (single multi-select modal) ────────────────
-  // Shown when the human HOH must pick their two nominees simultaneously.
+  // ── Human LOH nomination flow (single multi-select modal) ────────────────
+  // Shown when the human LOH must pick their two nominees simultaneously.
   // Hidden while the nomination animation is playing to prevent stacking.
   const showNominationsModal =
     game.phase === 'nomination_results' &&
@@ -596,7 +596,7 @@ export default function GameScreen() {
     humanIsHoH &&
     !showNomAnim
 
-  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.hohId)
+  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.lohId)
 
   // Compact label for the forced auto-nominee option in the nomination picker.
   // 'survival' comps show "First out"; scored/unknown comps show "Lowest Score".
@@ -605,7 +605,7 @@ export default function GameScreen() {
       ? 'First out'
       : 'Lowest Score'
 
-  // Human HOH confirmed nominees: pre-consume the AI key so the AI animation
+  // Human LOH confirmed nominees: pre-consume the AI key so the AI animation
   // path does not fire a second animation once commitNominees lands.
   const handleCommitNominees = useCallback(
     (ids: string[]) => {
@@ -623,21 +623,21 @@ export default function GameScreen() {
   const handleNomAnimDone = useCallback(() => {
     const ids = pendingNomineesRef.current
     setPendingNominees([])
-    // commitNominees is a no-op when awaitingNominations is false (AI HOH path).
+    // commitNominees is a no-op when awaitingNominations is false (AI LOH path).
     dispatch(commitNominees(ids))
   }, [dispatch])
 
-  // AI HOH onDone: mark this key consumed so the animation doesn't replay.
+  // AI LOH onDone: mark this key consumed so the animation doesn't replay.
   const handleAiNomAnimDone = useCallback(() => {
     setAiNomAnimConsumedKey(aiNomKey)
   }, [aiNomKey])
 
-  // ── Nomination labels (HOH Nominee / Last in HOH Comp) ───────────────────
+  // ── Nomination labels (LOH Nominee / Last in LOH Comp) ───────────────────
   // Used by the nomination ceremony overlay to show role pills on each nominee tile.
   const nominationLabels: Record<string, string> = useMemo(() => {
     const labels: Record<string, string> = {}
 
-    // While the human HOH animation is playing, the reducer hasn't committed
+    // While the human LOH animation is playing, the reducer hasn't committed
     // nominationContext yet, so derive the pills from the pending picks.
     if (showHumanNomAnim && pendingNominees.length > 0) {
       pendingNominees.forEach((id) => {
@@ -725,8 +725,8 @@ export default function GameScreen() {
     }
   }, [alivePlayers, setPendingNominees])
 
-  // ── Human POV holder decision (use veto or not) ──────────────────────────
-  const humanIsPovHolder = humanPlayer && game.povWinnerId === humanPlayer.id
+  // ── Human POS holder decision (use veto or not) ──────────────────────────
+  const humanIsPosHolder = humanPlayer && game.posWinnerId === humanPlayer.id
   const activeSpecialVeto = game.specialVeto?.activeType ?? null
   const specialVetoName =
     activeSpecialVeto === 'vip'
@@ -739,11 +739,11 @@ export default function GameScreen() {
             ? 'Force Majeure'
             : null
   const showPovDecisionModal =
-    game.phase === 'pov_ceremony_results' &&
+    game.phase === 'pos_ceremony_results' &&
     Boolean(game.awaitingPovDecision) &&
-    humanIsPovHolder
+    humanIsPosHolder
 
-  // ── Human POV holder picks who to save ───────────────────────────────────
+  // ── Human POS holder picks who to save ───────────────────────────────────
   // Defers submitPovSaveTarget dispatch until the save ceremony animation
   // plays, showing the 🛡️ badge landing on the saved nominee's tile.
   const [pendingSaveCeremony, setPendingSaveCeremony] = useState<{
@@ -801,29 +801,29 @@ export default function GameScreen() {
     Boolean(game.awaitingPovSaveTarget) ||
     Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
   const showPovSaveModal =
-    game.phase === 'pov_ceremony_results' &&
+    game.phase === 'pos_ceremony_results' &&
     isAwaitingAnySave &&
-    humanIsPovHolder &&
+    humanIsPosHolder &&
     !pendingSaveCeremony
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   const showVipSecondUseModal =
-    game.phase === 'pov_ceremony_results' &&
+    game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingVipSecondUseDecision) &&
-    humanIsPovHolder
+    humanIsPosHolder
 
   const showDiamondReplacementModal =
-    game.phase === 'pov_ceremony_results' &&
+    game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingHolderReplacement) &&
-    humanIsPovHolder
+    humanIsPosHolder
 
   const showCoupReplacementModal =
-    game.phase === 'pov_ceremony_results' &&
+    game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) &&
-    humanIsPovHolder
+    humanIsPosHolder
 
   // ── Replacement nominee ceremony animation ─────────────────────────────
-  // When the human HOH picks a replacement nominee via TvDecisionModal,
+  // When the human LOH picks a replacement nominee via TvDecisionModal,
   // we defer the setReplacementNominee dispatch until the CeremonyOverlay
   // animation completes.  The badge (❓) flies from the saved nominee's
   // tile to the replacement nominee's tile.
@@ -852,10 +852,10 @@ export default function GameScreen() {
       return
     }
 
-    // Badge flies from HOH tile → replacement tile (HOH is naming the replacement).
-    const hohRect = game.hohId ? getTileRect(game.hohId) : null
+    // Badge flies from LOH tile → replacement tile (LOH is naming the replacement).
+    const hohRect = game.lohId ? getTileRect(game.lohId) : null
 
-    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, hohId: game.hohId, screen: 'GameScreen' })
+    console.log('REPLACEMENT_NOM_ANIM_STARTED', { replacementId: id, lohId: game.lohId, screen: 'GameScreen' })
 
     const tiles: CeremonyTile[] = [{
       rect: replacementRect,
@@ -870,50 +870,50 @@ export default function GameScreen() {
       caption: `${replacementPlayer.name} is the backup nominee!`,
       subtitle: '🎯 Nominations are set',
     })
-  }, [dispatch, game.players, game.povSavedId, game.hohId, getTileRect])
+  }, [dispatch, game.players, game.povSavedId, game.lohId, getTileRect])
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
   const holderReplacementOptions = alivePlayers.filter(
     (p) =>
-      p.id !== game.hohId &&
-      p.id !== game.povWinnerId &&
+      p.id !== game.lohId &&
+      p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.povSavedId
   )
   const coupReplacementOptions = alivePlayers.filter(
     (p) =>
-      p.id !== game.hohId &&
-      p.id !== game.povWinnerId &&
+      p.id !== game.lohId &&
+      p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.specialVeto?.coupReplacement1Id
   )
 
   // ── AI replacement nominee animation ───────────────────────────────────
-  // When an AI HOH picks a replacement nominee, the store already has the
+  // When an AI LOH picks a replacement nominee, the store already has the
   // replacement committed. We detect this and show an animation.
   const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = useState<string>('')
 
   const aiReplacementKey = useMemo(() => {
-    // Only trigger on pov_ceremony_results phase when nominees just changed (replacement happened)
+    // Only trigger on pos_ceremony_results phase when nominees just changed (replacement happened)
     // and no human decision is pending.
-    if (game.phase !== 'pov_ceremony_results') return ''
-    if (game.replacementNeeded) return '' // human HOH hasn't picked yet
+    if (game.phase !== 'pos_ceremony_results') return ''
+    if (game.replacementNeeded) return '' // human LOH hasn't picked yet
     if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
     // Gate on the veto actually being used: if no player was saved, skip animation.
     if (!game.povSavedId) return ''
     // Wait until the staged replacement flow is complete (step 0 = replacement committed).
     if (game.aiReplacementStep) return ''
-    // If the AI HOH handled it, nomineeIds was updated in the same advance() call
+    // If the AI LOH handled it, nomineeIds was updated in the same advance() call
     // and no awaiting flags are set. Use a key based on week + nomineeIds.
-    const hohPlayer = game.players.find((p) => p.id === game.hohId)
-    if (hohPlayer?.isUser) return '' // human HOH handles this differently
+    const lohPlayer = game.players.find((p) => p.id === game.lohId)
+    if (lohPlayer?.isUser) return '' // human LOH handles this differently
     return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
-  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.hohId, game.players, game.povSavedId, game.aiReplacementStep])
+  }, [game.phase, game.week, game.nomineeIds, game.replacementNeeded, game.awaitingPovDecision, game.awaitingPovSaveTarget, game.lohId, game.players, game.povSavedId, game.aiReplacementStep])
 
   const showAiReplacementAnim = aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
 
-  // Acknowledge the step-1 "HOH must name a replacement" announcement so advance() can
+  // Acknowledge the step-1 "LOH must name a replacement" announcement so advance() can
   // proceed to step 2. Fires when the step-1 handler has run (aiReplacementStep reaches 2).
   useEffect(() => {
     if (game.aiReplacementStep === 2) {
@@ -929,7 +929,7 @@ export default function GameScreen() {
   // Stage machine drives the full Final 4 eviction sequence:
   //   idle         → not yet started (or reset after leaving final4/final3)
   //   pleas        → plea ChatOverlay (all players; blocks FAB)
-  //   decision     → TvDecisionModal (human POV only; blocks FAB)
+  //   decision     → TvDecisionModal (human POS only; blocks FAB)
   //   announcement → eviction announcement ChatOverlay (blocks FAB)
   //   splash       → EvictionSplash animation (blocks FAB)
   //   done         → complete; FAB visible so user can advance to final3 comps
@@ -954,13 +954,13 @@ export default function GameScreen() {
   }, [game.phase, final4Stage])
 
   // Enter final4_eviction → build enriched plea lines and start the overlay.
-  // For human POV: also dispatch advance() now so plea events are emitted to
+  // For human POS: also dispatch advance() now so plea events are emitted to
   // tvFeed and awaitingPovDecision is set before the decision modal appears.
   // In debug mode the plea cinematic is skipped; advance() is called by the FAB.
   useEffect(() => {
     if (isDebugMode) return
     if (game.phase !== 'final4_eviction' || final4Stage !== 'idle') return
-    const povHolder = alivePlayers.find((p) => p.id === game.povWinnerId)
+    const povHolder = alivePlayers.find((p) => p.id === game.posWinnerId)
     const nominees = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
     if (!povHolder || nominees.length === 0) return
     const lines: ChatLine[] = [
@@ -1001,22 +1001,22 @@ export default function GameScreen() {
     ]
     setFinal4PleaLines(lines)
     setFinal4Stage('pleas')
-    if (humanIsPovHolder) {
+    if (humanIsPosHolder) {
       dispatch(advance())
     }
-  }, [isDebugMode, game.phase, final4Stage, alivePlayers, game.povWinnerId, game.nomineeIds, game.seed, humanIsPovHolder, dispatch])
+  }, [isDebugMode, game.phase, final4Stage, alivePlayers, game.posWinnerId, game.nomineeIds, game.seed, humanIsPosHolder, dispatch])
 
   // Plea overlay complete:
-  //   human POV → show decision modal
-  //   AI POV    → dispatch advance() (AI evicts; phase transitions to final3)
+  //   human POS → show decision modal
+  //   AI POS    → dispatch advance() (AI evicts; phase transitions to final3)
   const handleFinal4PleaComplete = useCallback(() => {
-    if (humanIsPovHolder) {
+    if (humanIsPosHolder) {
       setFinal4Stage('decision')
     } else {
       dispatch(advance())
       // Stage transitions to 'announcement' via effect below once phase === 'final3'
     }
-  }, [humanIsPovHolder, dispatch])
+  }, [humanIsPosHolder, dispatch])
 
   // Debug mode: auto-commit pendingEviction when in final4_eviction phase and
   // final4Stage is still 'idle' (plea cinematic was skipped). This replaces the
@@ -1042,7 +1042,7 @@ export default function GameScreen() {
       setFinal4Stage('done')
       return
     }
-    const povHolder = game.players.find((p) => p.id === game.povWinnerId)
+    const povHolder = game.players.find((p) => p.id === game.posWinnerId)
     setFinal4AnnounceLines([
       {
         id: 'f4-evict-decision',
@@ -1057,19 +1057,19 @@ export default function GameScreen() {
       },
     ])
     setFinal4Stage('announcement')
-  }, [game.pendingEviction, game.phase, final4Stage, game.players, game.povWinnerId])
+  }, [game.pendingEviction, game.phase, final4Stage, game.players, game.posWinnerId])
 
   const handleFinal4AnnounceComplete = useCallback(() => {
     setFinal4Stage('splash')
   }, [])
 
   // Orchestrate 3-second delay before the Final-4 decision modal appears for
-  // the human POV holder after the plea ChatOverlay completes. Clears and resets
+  // the human POS holder after the plea ChatOverlay completes. Clears and resets
   // when the phase or stage conditions are no longer met.
   useEffect(() => {
     const conditionsMet =
       game.phase === 'final4_eviction' &&
-      Boolean(humanIsPovHolder) &&
+      Boolean(humanIsPosHolder) &&
       Boolean(game.awaitingPovDecision) &&
       final4Stage === 'decision'
 
@@ -1087,7 +1087,7 @@ export default function GameScreen() {
     final4DecisionTimerRef.current = window.setTimeout(() => {
       setFinal4DecisionReady(true)
     }, 3000)
-  }, [game.phase, humanIsPovHolder, game.awaitingPovDecision, final4Stage])
+  }, [game.phase, humanIsPosHolder, game.awaitingPovDecision, final4Stage])
 
   // If the FAB center button is pressed while the 3-second delay is running,
   // cancel the timer and open the decision modal immediately.
@@ -1107,7 +1107,7 @@ export default function GameScreen() {
   const showFinal4Modal =
     game.phase === 'final4_eviction' &&
     Boolean(game.awaitingPovDecision) &&
-    Boolean(humanIsPovHolder) &&
+    Boolean(humanIsPosHolder) &&
     ((final4Stage === 'decision' && final4DecisionReady) || (isDebugMode && final4Stage === 'idle'))
   // Announcement: show during final4_eviction (pending commit) OR after final3 transition.
   const showFinal4AnnounceChat =
@@ -1148,19 +1148,19 @@ export default function GameScreen() {
   // Local state to track the first double-vote selection
   const [doubleVoteFirst, setDoubleVoteFirst] = useState<string | null>(null)
 
-  // ── Human HOH tie-break ───────────────────────────────────────────────────
-  // Shown when the live vote ended in a tie and the human is HOH.
+  // ── Human LOH tie-break ───────────────────────────────────────────────────
+  // Shown when the live vote ended in a tie and the human is LOH.
   // Only shown after the vote results modal has been dismissed (voteResults cleared),
-  // so the house votes are always seen before the HOH is asked to break the tie.
+  // so the house votes are always seen before the LOH is asked to break the tie.
   const showTieBreakModal =
     game.phase === 'eviction_results' && Boolean(game.awaitingTieBreak) && humanIsHoH && !game.voteResults
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
 
-  // ── Final 3 human Final HOH eviction ─────────────────────────────────────
-  // Shown when phase is final3_decision and the human player is the Final HOH.
-  const humanIsFinalHoh = humanPlayer && game.hohId === humanPlayer.id
+  // ── Final 3 human Final LOH eviction ─────────────────────────────────────
+  // Shown when phase is final3_decision and the human player is the Final LOH.
+  const humanIsFinalHoh = humanPlayer && game.lohId === humanPlayer.id
   const showFinal3Modal =
     game.awaitingFinal3Eviction === true && game.phase === 'final3_decision' && humanIsFinalHoh
 
@@ -1168,7 +1168,7 @@ export default function GameScreen() {
 
   // ── Vote Results Popup ────────────────────────────────────────────────────
   // Show vote results whenever they are available, including during a tie-break
-  // wait so the house votes are always revealed before the HOH is prompted.
+  // wait so the house votes are always revealed before the LOH is prompted.
   const showVoteResults = Boolean(game.voteResults)
   const voteResultsTallies = showVoteResults
     ? game.players
@@ -1217,18 +1217,18 @@ export default function GameScreen() {
     proceedAfterVoteResults()
   }, [dispatch, proceedAfterVoteResults])
 
-  // ── AI HOH tiebreak choreography ─────────────────────────────────────────
+  // ── AI LOH tiebreak choreography ─────────────────────────────────────────
   // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
-  //   • Human HOH: dismiss the modal → showTieBreakModal appears (existing path).
-  //   • AI HOH:    pendingEviction is set (AI already picked). Show a short
-  //                "HOH is deciding…" overlay for 3 s, then dismiss to let the
+  //   • Human LOH: dismiss the modal → showTieBreakModal appears (existing path).
+  //   • AI LOH:    pendingEviction is set (AI already picked). Show a short
+  //                "LOH is deciding…" overlay for 3 s, then dismiss to let the
   //                eviction cinematic play.  No additional dispatch needed.
   const [aiTiebreakerPending, setAiTiebreakerPending] = useState(false)
 
   // For AI tiebreak: pass evictee=null to the modal so it surfaces the tie banner
   // and calls onTiebreakerRequired, giving us the hook to run choreography.
   // Condition: vote tallies have equal max counts AND AI already picked (pendingEviction set)
-  // AND the human is NOT the HOH.
+  // AND the human is NOT the LOH.
   const voteResultsEvictee = useMemo(() => {
     if (!game.voteResults) return null
 
@@ -1272,10 +1272,10 @@ export default function GameScreen() {
   const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
     console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
     if (!humanIsHoH) {
-      // AI HOH already decided; run a short choreography then proceed.
+      // AI LOH already decided; run a short choreography then proceed.
       setAiTiebreakerPending(true)
     } else {
-      // Human HOH: dismiss the vote results modal — showTieBreakModal will appear.
+      // Human LOH: dismiss the vote results modal — showTieBreakModal will appear.
       handleVoteResultsDone()
     }
   }, [humanIsHoH, handleVoteResultsDone])
@@ -1414,29 +1414,45 @@ export default function GameScreen() {
     dispatch(awardFavoritePrize());
     dispatch(resumeAfterPublicFavorite({ winnerId }));
   }, [dispatch]);
-  // Shown when a HOH or POV competition is in progress and the human player
+  // Shown when a LOH or POS competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
   const pendingMinigame = game.pendingMinigame
   const humanIsParticipant =
     !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id)
-  // MinigameHost takes priority over native HOH minigame overlays when a challenge
+  // MinigameHost takes priority over native LOH minigame overlays when a challenge
   // is pending and the human player is a participant in that challenge.
   const humanIsChallengeParticipant =
     !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
   const showMinigameHost = humanIsChallengeParticipant
-  /** True whenever a native React HOH/LOH minigame overlay should be displayed. */
-  const showHohMinigame = !showMinigameHost && humanIsParticipant
-  const showPressurePlank = showHohMinigame && pendingMinigame?.key === 'pressurePlank'
-  const showBullseyeBlitz = showHohMinigame && pendingMinigame?.key === 'targetPractice'
+  /** True whenever a native React LOH/LOH minigame overlay should be displayed. */
+  const showLohMinigame = !showMinigameHost && humanIsParticipant
+  const showPressurePlank = showLohMinigame && pendingMinigame?.key === 'pressurePlank'
+  const showBullseyeBlitz = showLohMinigame && pendingMinigame?.key === 'targetPractice'
   // TravelingDots is key-gated to its specific overlay component.
-  const showTravelingDots = showHohMinigame && pendingMinigame?.key === 'travelingDots'
+  const showTravelingDots = showLohMinigame && pendingMinigame?.key === 'travelingDots'
   // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
   // unrecognised pendingMinigame key so the human is never left with no UI.
-  const showQuickTapRace = showHohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
+  const showQuickTapRace = showLohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
   // ── Social phase panel ────────────────────────────────────────────────────
-  // Show the SocialPanel for the human player during social_1 and social_2.
-  const isSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
+  // Show the SocialPanel whenever the human player is alive and the game is in
+  // a non-vote interaction window. Blocked during live_vote and eviction phases
+  // where social interaction is not appropriate.
+  const SOCIAL_INTERACTION_PHASES = new Set<string>([
+    'week_start',
+    'loh_comp_announcement',
+    'loh_results',
+    'social_1',
+    'nominations',
+    'nomination_results',
+    'pre_veto_public_save',
+    'pos_comp_announcement',
+    'pos_results',
+    'pos_ceremony',
+    'pos_ceremony_results',
+    'social_2',
+  ])
+  const isSocialPhase = SOCIAL_INTERACTION_PHASES.has(game.phase)
   const showSocialPanel = isSocialPhase && !!humanPlayer
 
   // Hide Continue button while waiting for any human-only decision modal.
@@ -1446,11 +1462,11 @@ export default function GameScreen() {
   const showWinnerCeremony = pendingWinnerCeremony !== null
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
-  // Final-3 ceremony: shown when awaitingFinal3Plea is set (AI HOH won Part 3 via spectator).
+  // Final-3 ceremony: shown when awaitingFinal3Plea is set (AI LOH won Part 3 via spectator).
   const showFinal3Ceremony =
     game.awaitingFinal3Plea === true &&
     game.phase === 'final3_decision' &&
-    !!game.hohId
+    !!game.lohId
 
   // ── Jury reveal overlay ───────────────────────────────────────────────────
   // JuryPhaseRevealOverlay handles its own animation sequence (no-animations
@@ -1540,7 +1556,7 @@ export default function GameScreen() {
         <TvZone />
       )}
 
-      {/* ── Outgoing HOH ineligibility warning ──────────────────────────── */}
+      {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}
       {showOutgoingHohWarning && (
         <div
           className="tv-binary-modal"
@@ -1570,7 +1586,7 @@ export default function GameScreen() {
         </div>
       )}
 
-      {/* ── Human HOH nomination modal (single multi-select step) ──────── */}
+      {/* ── Human LOH nomination modal (single multi-select step) ──────── */}
       {showNominationsModal && (
         <TvMultiSelectModal
           title="Nomination Ceremony"
@@ -1588,7 +1604,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
-      {/* Shown for BOTH human HOH (deferred commit) and AI HOH (already committed). */}
+      {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
       {showNomAnim && nomCeremonyTileIds.length > 0 && (
         <CeremonyOverlay
           tiles={[]}
@@ -1616,7 +1632,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Human POV holder Yes/No decision ────────────────────────────── */}
+      {/* ── Human POS holder Yes/No decision ────────────────────────────── */}
       {showPovDecisionModal && (
         <TvBinaryDecisionModal
           title={specialVetoName ?? 'Power of Safety Ceremony'}
@@ -1663,7 +1679,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Human POV holder picks who to save ──────────────────────────── */}
+      {/* ── Human POS holder picks who to save ──────────────────────────── */}
       {showPovSaveModal && (
         <TvDecisionModal
           title={
@@ -1698,7 +1714,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Human HOH replacement picker ────────────────────────────────── */}
+      {/* ── Human LOH replacement picker ────────────────────────────────── */}
       {showReplacementModal && (
         <TvDecisionModal
           title="Name a Backup Nominee"
@@ -1784,7 +1800,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Human HOH tie-break ──────────────────────────────────────────── */}
+      {/* ── Human LOH tie-break ──────────────────────────────────────────── */}
       {showTieBreakModal && (
         <TvDecisionModal
           title="Tie-Break — LOH Casts the Deciding Vote"
@@ -1807,7 +1823,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Final 4 eviction vote (human POV holder) ────────────────────── */}
+      {/* ── Final 4 eviction vote (human POS holder) ────────────────────── */}
       {showFinal4Modal && (
         <TvDecisionModal
           title="Final 4 — Cast Your Vote"
@@ -1830,7 +1846,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Final 3 eviction (human Final HOH evicts directly) ──────────── */}
+      {/* ── Final 3 eviction (human Final LOH evicts directly) ──────────── */}
       {showFinal3Modal && (
         <TvDecisionModal
           title="Final LOH — Eliminate a Housemate"
@@ -1842,7 +1858,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Final 3 Ceremony (AI HOH: coronation → pleas → eviction) ────── */}
+      {/* ── Final 3 Ceremony (AI LOH: coronation → pleas → eviction) ────── */}
       {showFinal3Ceremony && <Final3Ceremony />}
 
       {/* ── Jury phase reveal: cinematic full-screen overlay ──────────────── */}
@@ -1862,7 +1878,7 @@ export default function GameScreen() {
             // Use the prize type stored on the pending challenge (set at creation time
             // from game.phase). This is stable even if game.phase changes later.
             // Fall back to deriving from current game.phase for backward compatibility.
-            prizeType: pendingChallenge.prizeType ?? (game.phase === 'pov_comp' ? 'POV' : 'HOH'),
+            prizeType: pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH'),
           }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);
@@ -1882,12 +1898,12 @@ export default function GameScreen() {
             const capturedGameKey = pendingChallenge.game.key;
             // prizeType was recorded at challenge-start and is reliable even
             // after the phase advances (feature thunks can transition
-            // hoh_comp → hoh_results before this callback fires).
+            // loh_comp → loh_results before this callback fires).
             // For backward compatibility with older saves where prizeType may be
             // missing, fall back to deriving from the current game.phase using
             // the same logic as MinigameHost gameOptions.
             const capturedPrizeType =
-              pendingChallenge.prizeType ?? (game.phase === 'pov_comp' ? 'POV' : 'HOH');
+              pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH');
 
             // Build raw results for all challenge participants using pre-computed
             // AI scores (appropriate for the selected game's metric kind).
@@ -1967,12 +1983,12 @@ export default function GameScreen() {
               return;
             }
 
-            // ── HOH / POV completion (ceremony overlay) ──────────────────────
+            // ── LOH / POS completion (ceremony overlay) ──────────────────────
             // Use prize type captured at challenge-start; game.phase may have
             // already advanced if a feature thunk (e.g. resolveHoldTheWallOutcome,
             // resolveGlassBridgeOutcome) applied the winner synchronously before
             // this callback fires.
-            const isHohComp = capturedPrizeType === 'HOH';
+            const isHohComp = capturedPrizeType === 'LOH';
             const winSymbol = isHohComp ? '👑' : '🛡️';
             const winLabel = isHohComp ? 'Leader of the House' : 'Power of Safety';
 
@@ -1983,8 +1999,8 @@ export default function GameScreen() {
             // onComplete() in the same handler) are also captured correctly.
             const liveState = storeRef.current.getState();
             const featureAppliedWinner = isHohComp
-              ? liveState.game.hohId
-              : liveState.game.povWinnerId;
+              ? liveState.game.lohId
+              : liveState.game.posWinnerId;
             const finalWinnerId = explicitWinnerId
               ?? ((featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner))
                 ? featureAppliedWinner
@@ -2001,15 +2017,15 @@ export default function GameScreen() {
                 scoreWinnerId,
                 finalWinnerId,
                 fallbackWasCapturedParticipants0: !explicitWinnerId && !featureAppliedWinner && !scoreWinnerId,
-                liveHohId: liveState.game.hohId,
+                liveHohId: liveState.game.lohId,
                 livePhase: liveState.game.phase,
               });
             }
 
-            // Compute the last-place finisher for the HOH third-nominee rule.
+            // Compute the last-place finisher for the LOH third-nominee rule.
             // Use computeScores with the game's actual scoringAdapter so the canonical
             // ranking matches the results screen (handles both lowerBetter and higherBetter).
-            // For POV comps this field is unused (applyMinigameWinner only uses it in hoh_comp branch).
+            // For POS comps this field is unused (applyMinigameWinner only uses it in loh_comp branch).
             // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
             // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,
             // so the idempotency guard will skip this call.
@@ -2045,7 +2061,7 @@ export default function GameScreen() {
                 winnerId: finalWinnerId,
                 label: winLabel,
                 screen: 'GameScreen',
-                storeHohId: liveState.game.hohId,
+                storeHohId: liveState.game.lohId,
                 phase: liveState.game.phase,
                 capturedGameKey,
               });
@@ -2071,7 +2087,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Native HOH/LOH minigame overlays (routed by session key) ────────── */}
+      {/* ── Native LOH/LOH minigame overlays (routed by session key) ────────── */}
       {showQuickTapRace && pendingMinigame && (
         <QuickTapRace session={pendingMinigame} players={game.players} />
       )}
@@ -2089,7 +2105,7 @@ export default function GameScreen() {
         <TravelingDots session={pendingMinigame} players={game.players} />
       )}
 
-      {/* ── SpotlightAnimation — HOH / POV winner reveal (viewport-tracking) ── */}
+      {/* ── SpotlightAnimation — LOH / POS winner reveal (viewport-tracking) ── */}
       {showWinnerCeremony && pendingWinnerCeremony && (
         <SpotlightAnimation
           tiles={pendingWinnerCeremony.tiles}
@@ -2101,14 +2117,14 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── CeremonyOverlay — advance()-picked HOH winner (outgoing HOH) ──── */}
-      {/* When the human was outgoing HOH and skipped the minigame, advance()    */}
+      {/* ── CeremonyOverlay — advance()-picked LOH winner (outgoing LOH) ──── */}
+      {/* When the human was outgoing LOH and skipped the minigame, advance()    */}
       {/* picks the winner directly. This overlay shows the 👑 ceremony.         */}
-      {showAdvanceHohCeremony && game.hohId && (
+      {showAdvanceHohCeremony && game.lohId && (
         <CeremonyOverlay
           tiles={[]}
           resolveTiles={() => {
-            const winnerId = game.hohId!
+            const winnerId = game.lohId!
             const winnerPlayer = game.players.find((p) => p.id === winnerId)
             return [{
               rect: getTileRect(winnerId),
@@ -2117,14 +2133,14 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
             }]
           }}
-          caption={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A housemate'} wins Leader of the House!`}
+          caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House!`}
           subtitle="👑"
           onDone={handleAdvanceHohCeremonyDone}
-          ariaLabel={`${game.players.find((p) => p.id === game.hohId)?.name ?? 'A housemate'} wins Leader of the House`}
+          ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A housemate'} wins Leader of the House`}
         />
       )}
 
-      {/* ── CeremonyOverlay — Replacement nominee (human HOH deferred) ──── */}
+      {/* ── CeremonyOverlay — Replacement nominee (human LOH deferred) ──── */}
       {pendingReplacementCeremony && (
         <CeremonyOverlay
           tiles={pendingReplacementCeremony.tiles}
@@ -2137,13 +2153,13 @@ export default function GameScreen() {
 
       {/* ── CeremonyOverlay — AI replacement nominee animation ─────────── */}
       {/* Only the replacement nominee (last in nomineeIds, pushed by store) gets */}
-      {/* a badge. The badge flies from the HOH tile → replacement tile.          */}
+      {/* a badge. The badge flies from the LOH tile → replacement tile.          */}
       {showAiReplacementAnim && game.nomineeIds.length > 0 && (
         <CeremonyOverlay
           tiles={[]}
           resolveTiles={() => {
             const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
-            const hohRect = game.hohId ? getTileRect(game.hohId) : null
+            const hohRect = game.lohId ? getTileRect(game.lohId) : null
             const replacementPlayer = game.players.find((p) => p.id === replacementId)
             return [{
               rect: getTileRect(replacementId),
@@ -2159,7 +2175,7 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── CeremonyOverlay — POV save ceremony (human POV holder) ────── */}
+      {/* ── CeremonyOverlay — POS save ceremony (human POS holder) ────── */}
       {showSaveCeremony && pendingSaveCeremony && (
         <CeremonyOverlay
           tiles={pendingSaveCeremony.tiles}
@@ -2192,8 +2208,8 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── AI HOH tiebreak choreography overlay ─────────────────────────── */}
-      {/* Shown for 3 s while the "AI HOH is deciding" suspense plays.        */}
+      {/* ── AI LOH tiebreak choreography overlay ─────────────────────────── */}
+      {/* Shown for 3 s while the "AI LOH is deciding" suspense plays.        */}
       {/* onTiebreakerRequired triggers this; handleVoteResultsDone fires after */}
       {aiTiebreakerPending && (
         <div

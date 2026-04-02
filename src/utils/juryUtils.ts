@@ -148,7 +148,7 @@ export const PUBLIC_JURY_VOTE_LINES: string[] = [
   'The public has cast their vote for the person who made this season shine.',
 ];
 
-/** Plea templates used when POV holder asks nominees for their pleas at Final 4. */
+/** Plea templates used when POS holder asks nominees for their pleas at Final 4. */
 export const NOMINEE_PLEA_TEMPLATES: string[] = [
   "Please keep me in this game — I haven't finished what I came here to do. 🙏",
   "I've been loyal from day one and I promise to have your back in the Final 3. Please keep me.",

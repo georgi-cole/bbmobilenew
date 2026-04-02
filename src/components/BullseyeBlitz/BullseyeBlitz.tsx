@@ -2,14 +2,14 @@
  * BullseyeBlitz — native React minigame component (migrated from legacy targetPractice).
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload`
  *     (humanScore + winnerId + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same knockout
  *     bracket flow and calls `onFinish(totalScore)` after the final results screen.
  *
  * Gameplay — "Bullseye Blitz":
- *  - HOH/LOH mode now runs as a knockout bracket with progressively harder rounds.
+ *  - LOH/LOH mode now runs as a knockout bracket with progressively harder rounds.
  *  - Standalone / MinigameHost mode still runs as a multiplayer knockout bracket,
  *    even when the player is the only human participant.
  *  - Canonical scoring: sum of all scored hits (including penalties)
@@ -96,9 +96,9 @@ type GamePhase = 'ready' | 'playing' | 'round_results' | 'spectating' | 'final_r
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** HOH/LOH minigame path: full session data. */
+  /** LOH/LOH minigame path: full session data. */
   session?: MinigameSession;
-  /** HOH/LOH minigame path: all game players (for name lookup). */
+  /** LOH/LOH minigame path: all game players (for name lookup). */
   players?: Player[];
   /** MinigameHost path: called with the human's final cumulative score. */
   onFinish?: (value: number) => void;
@@ -573,7 +573,7 @@ export default function BullseyeBlitz({
     const humanFinalScore = scoreRef.current;
     const humanFinalHits = { ...hitsRef.current };
 
-    // HOH/LOH tournament path.
+    // LOH/LOH tournament path.
     // For hybrid sessions, resolve per-player AI base scores once (round 1 only),
     // using the cumulative total that will ultimately be dispatched to the store.
     // `cumulativeScores` at this point holds all previous rounds' totals;

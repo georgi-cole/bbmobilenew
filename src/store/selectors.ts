@@ -7,16 +7,16 @@ import type { RootState } from './store';
 
 /**
  * True when the game is blocked on a human decision modal:
- * - human HOH nominations (nomination_results)
- * - POV use decision (pov_ceremony_results, human POV holder)
- * - POV save target (pov_ceremony_results, human POV holder chose to use it)
- * - replacement nominee picker (pov_ceremony_results)
+ * - human LOH nominations (nomination_results)
+ * - POS use decision (pos_ceremony_results, human POS holder)
+ * - POS save target (pos_ceremony_results, human POS holder chose to use it)
+ * - replacement nominee picker (pos_ceremony_results)
  * - human live vote (live_vote)
  * - doubleVote Big Eye offer (live_vote — must resolve before vote modal)
  * - voteDeduction Big Eye offer (eviction_results — must resolve before results dismiss)
  * - tie-break (eviction_results)
  * - Final 4 solo eviction vote (awaitingPovDecision set after plea sequence)
- * - Final 3 HOH eviction (awaitingFinal3Eviction)
+ * - Final 3 LOH eviction (awaitingFinal3Eviction)
  */
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game;

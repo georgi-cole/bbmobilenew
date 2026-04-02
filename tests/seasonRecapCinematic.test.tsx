@@ -42,14 +42,14 @@ const PLAYERS: Player[] = [
     name: 'Avery',
     status: 'active',
     avatar: '😀',
-    stats: { hohWins: 2, povWins: 1, timesNominated: 1 },
+    stats: { lohWins: 2, posWins: 1, timesNominated: 1 },
   },
   {
     id: 'f2',
     name: 'Blake',
     status: 'active',
     avatar: '😎',
-    stats: { hohWins: 1, povWins: 2, timesNominated: 2 },
+    stats: { lohWins: 1, posWins: 2, timesNominated: 2 },
   },
   {
     id: 'j1',
@@ -57,7 +57,7 @@ const PLAYERS: Player[] = [
     status: 'jury',
     avatar: '🧠',
     seasonPlacement: 3,
-    stats: { hohWins: 1, povWins: 0, timesNominated: 3 },
+    stats: { lohWins: 1, posWins: 0, timesNominated: 3 },
   },
   {
     id: 'e1',
@@ -65,7 +65,7 @@ const PLAYERS: Player[] = [
     status: 'evicted',
     avatar: '🔥',
     seasonPlacement: 4,
-    stats: { hohWins: 0, povWins: 1, timesNominated: 2 },
+    stats: { lohWins: 0, posWins: 1, timesNominated: 2 },
   },
 ];
 

@@ -49,7 +49,7 @@ describe('holdTheWallSlice — startHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -62,7 +62,7 @@ describe('holdTheWallSlice — startHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -75,7 +75,7 @@ describe('holdTheWallSlice — startHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -91,7 +91,7 @@ describe('holdTheWallSlice — startHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -101,7 +101,7 @@ describe('holdTheWallSlice — startHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 2,
       }),
     );
@@ -119,7 +119,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -133,7 +133,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -149,7 +149,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -166,7 +166,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -189,7 +189,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2', 'ai3'],
         humanId: 'human',
-        prizeType: 'POV',
+        prizeType: 'POS',
         seed: 999,
       }),
     );
@@ -207,7 +207,7 @@ describe('holdTheWallSlice — dropPlayer', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1', 'ai2'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -226,7 +226,7 @@ describe('holdTheWallSlice — outcomeResolved idempotency', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );
@@ -249,7 +249,7 @@ describe('holdTheWallSlice — resetHoldTheWall', () => {
       startHoldTheWall({
         participantIds: ['human', 'ai1'],
         humanId: 'human',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 1,
       }),
     );

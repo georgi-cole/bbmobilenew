@@ -53,7 +53,7 @@ function init(
   store: TestStore,
   ids: string[],
   seed = 42,
-  type: 'HOH' | 'POV' = 'HOH',
+  type: 'LOH' | 'POS' = 'LOH',
   humanId: string | null = null,
 ) {
   store.dispatch(
@@ -461,7 +461,7 @@ describe('initRiskWheel', () => {
 
   it('assigns persistent personalities to AI players only', () => {
     const store = makeStore();
-    init(store, ['human', 'bot1', 'bot2'], 42, 'HOH', 'human');
+    init(store, ['human', 'bot1', 'bot2'], 42, 'LOH', 'human');
     const s = getState(store);
     expect(s.aiPersonalities.human).toBeUndefined();
     expect(s.aiPersonalities.bot1).toBeTruthy();
@@ -600,7 +600,7 @@ describe('playerStop and playerSpinAgain', () => {
       seed++;
     }
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', 'a');
+    init(store, ['a', 'b'], seed, 'LOH', 'a');
     store.dispatch(performSpin());
     expect(getState(store).phase).toBe('awaiting_decision');
     store.dispatch(playerStop());
@@ -616,7 +616,7 @@ describe('playerStop and playerSpinAgain', () => {
       seed++;
     }
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', 'a');
+    init(store, ['a', 'b'], seed, 'LOH', 'a');
     store.dispatch(performSpin());
     expect(getState(store).phase).toBe('awaiting_decision');
     store.dispatch(playerSpinAgain());
@@ -822,7 +822,7 @@ describe('aiDecide', () => {
       seed++;
     }
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', null); // no human
+    init(store, ['a', 'b'], seed, 'LOH', null); // no human
     store.dispatch(performSpin());
     const before = getState(store).aiDecisionCallCount;
     const perPlayerBefore = getState(store).aiDecisionCounts.a;
@@ -840,7 +840,7 @@ describe('aiDecide', () => {
       seed++;
     }
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', 'a'); // 'a' is human
+    init(store, ['a', 'b'], seed, 'LOH', 'a'); // 'a' is human
     store.dispatch(performSpin());
     const phaseBefore = getState(store).phase;
     store.dispatch(aiDecide()); // should be no-op for human
@@ -873,7 +873,7 @@ describe('resolveAllAiTurns', () => {
   it('resolves all consecutive AI turns from awaiting_spin', () => {
     // Players: AI='a', AI='b', AI='c' (no human)
     const store = makeStore();
-    init(store, ['a', 'b', 'c'], 42, 'HOH', null); // no human (all AI)
+    init(store, ['a', 'b', 'c'], 42, 'LOH', null); // no human (all AI)
     // All in awaiting_spin; resolveAllAiTurns should run all three
     store.dispatch(resolveAllAiTurns());
     const s = getState(store);
@@ -886,7 +886,7 @@ describe('resolveAllAiTurns', () => {
   it('stops at human turn and does not advance past it', () => {
     const seed = findPointsSeed();
     const store = makeStore();
-    init(store, ['a', 'b', 'c'], seed, 'HOH', 'a'); // 'a' is human, goes first
+    init(store, ['a', 'b', 'c'], seed, 'LOH', 'a'); // 'a' is human, goes first
     // Human hasn't gone yet; resolveAllAiTurns should be a no-op
     store.dispatch(resolveAllAiTurns());
     const s = getState(store);
@@ -904,7 +904,7 @@ describe('resolveAllAiTurns', () => {
     const seed = findPointsSeed();
     const store = makeStore();
     // 'a' is human, 'b' and 'c' are AI
-    init(store, ['a', 'b', 'c'], seed, 'HOH', 'a');
+    init(store, ['a', 'b', 'c'], seed, 'LOH', 'a');
 
     // Human spins once then banks
     store.dispatch(performSpin()); // human spin → awaiting_decision (or turn_complete)
@@ -935,7 +935,7 @@ describe('resolveAllAiTurns', () => {
       seed++;
     }
     const store = makeStore();
-    init(store, ['b', 'c'], seed, 'HOH', null); // all AI
+    init(store, ['b', 'c'], seed, 'LOH', null); // all AI
     store.dispatch(performSpin()); // should be awaiting_decision for the active AI
     const s0 = getState(store);
     expect(s0.phase).toBe('awaiting_decision');
@@ -949,7 +949,7 @@ describe('resolveAllAiTurns', () => {
 
   it('is idempotent when already at round_summary', () => {
     const store = makeStore();
-    init(store, ['a', 'b'], 42, 'HOH', null); // all AI
+    init(store, ['a', 'b'], 42, 'LOH', null); // all AI
     store.dispatch(resolveAllAiTurns());
     expect(getState(store).phase).toBe('round_summary');
     // Calling again should be a no-op
@@ -962,7 +962,7 @@ describe('resolveAllAiTurns', () => {
     let seed = 0;
     while (WHEEL_SECTORS[pickSectorIndex(seed, 0)].type !== 'devil') seed++;
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', null); // all AI, 'a' will get 666
+    init(store, ['a', 'b'], seed, 'LOH', null); // all AI, 'a' will get 666
     store.dispatch(resolveAllAiTurns());
     // Should never stall in six_six_six
     const s = getState(store);
@@ -973,7 +973,7 @@ describe('resolveAllAiTurns', () => {
   it('full round with resolveAllAiTurns reaches round_summary for any seed', () => {
     for (let seed = 0; seed < 20; seed++) {
       const store = makeStore();
-      init(store, ['x', 'y', 'z'], seed, 'HOH', null);
+      init(store, ['x', 'y', 'z'], seed, 'LOH', null);
       store.dispatch(resolveAllAiTurns());
       expect(getState(store).phase).toBe('round_summary');
     }
@@ -1006,7 +1006,7 @@ describe('Spin Again direct spin regression', () => {
     }
 
     const store = makeStore();
-    init(store, ['a', 'b'], seed, 'HOH', 'a');
+    init(store, ['a', 'b'], seed, 'LOH', 'a');
 
     // Spin 1
     store.dispatch(performSpin());
@@ -1089,7 +1089,7 @@ describe('optional seed', () => {
     store.dispatch(
       initRiskWheel({
         participantIds: ['a', 'b'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         humanPlayerId: null,
         // seed deliberately omitted
       }),
@@ -1108,7 +1108,7 @@ describe('optional seed', () => {
       store.dispatch(
         initRiskWheel({
           participantIds: ['a', 'b'],
-          competitionType: 'HOH',
+          competitionType: 'LOH',
           humanPlayerId: null,
         }),
       );
@@ -1124,7 +1124,7 @@ describe('optional seed', () => {
     store.dispatch(
       initRiskWheel({
         participantIds: ['a', 'b'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         humanPlayerId: null,
       }),
     );

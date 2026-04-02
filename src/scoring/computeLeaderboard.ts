@@ -24,8 +24,8 @@ export function computeScoreBreakdown(
   summary: PlayerSeasonSummary,
   weights: ScoringWeights = DEFAULT_WEIGHTS,
 ): ScoreBreakdown {
-  const hohWins = (summary.hohWins ?? 0) * weights.perHohWin;
-  const povWins = (summary.povWins ?? 0) * weights.perPovWin;
+  const lohWins = (summary.lohWins ?? 0) * weights.perLohWin;
+  const posWins = (summary.posWins ?? 0) * weights.perPosWin;
   const madeJury = summary.madeJury ? weights.madeJury : 0;
   const battleBackWins = (summary.battleBackWins ?? 0) * weights.perBattleBackWin;
   const survivedDoubleEviction = summary.survivedDoubleEviction
@@ -52,8 +52,8 @@ export function computeScoreBreakdown(
   }
 
   const total =
-    hohWins +
-    povWins +
+    lohWins +
+    posWins +
     madeJury +
     battleBackWins +
     survivedDoubleEviction +
@@ -64,8 +64,8 @@ export function computeScoreBreakdown(
     runnerUp;
 
   return {
-    hohWins,
-    povWins,
+    lohWins,
+    posWins,
     madeJury,
     battleBackWins,
     survivedDoubleEviction,

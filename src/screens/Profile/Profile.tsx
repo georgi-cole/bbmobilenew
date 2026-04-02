@@ -14,18 +14,18 @@ function useCareerStats() {
   return useAppSelector((s) => {
     const archives = s.game.seasonArchives ?? [];
     let seasons = 0;
-    let hohWins = 0;
-    let povWins = 0;
+    let lohWins = 0;
+    let posWins = 0;
     let wins = 0;
     for (const arc of archives) {
       const me = arc.playerSummaries.find((ps) => ps.playerId === 'user');
       if (!me) continue;
       seasons++;
-      hohWins += me.hohWins ?? 0;
-      povWins += me.povWins ?? 0;
+      lohWins += me.lohWins ?? 0;
+      posWins += me.posWins ?? 0;
       if (me.finalPlacement === 1) wins++;
     }
-    return { seasons, hohWins, povWins, wins };
+    return { seasons, lohWins, posWins, wins };
   });
 }
 
@@ -38,9 +38,9 @@ export default function Profile() {
   // Game state for chips
   const week = useAppSelector((s) => s.game.week);
   const phase = useAppSelector((s) => s.game.phase);
-  const hohId = useAppSelector((s) => s.game.hohId);
+  const lohId = useAppSelector((s) => s.game.lohId);
   const nomineeIds = useAppSelector((s) => s.game.nomineeIds);
-  const povWinnerId = useAppSelector((s) => s.game.povWinnerId);
+  const posWinnerId = useAppSelector((s) => s.game.posWinnerId);
   const userPlayer = useAppSelector((s) =>
     s.game.players.find((p) => p.isUser),
   );
@@ -78,8 +78,8 @@ export default function Profile() {
       <StatusPill key="week" variant="week" icon="📅" label={`Day ${week}`} />,
     );
 
-    // HOH
-    if (hohId === 'user') {
+    // LOH
+    if (lohId === 'user') {
       chips.push(
         <StatusPill key="hoh" variant="success" icon="👑" label="LOH" />,
       );
@@ -92,8 +92,8 @@ export default function Profile() {
       );
     }
 
-    // POV holder
-    if (povWinnerId === 'user') {
+    // POS holder
+    if (posWinnerId === 'user') {
       chips.push(
         <StatusPill key="pov" variant="warning" icon="🔑" label="POS Holder" />,
       );
@@ -289,11 +289,11 @@ export default function Profile() {
               <span className="profile-screen__stat-key">Wins</span>
             </div>
             <div className="profile-screen__stat">
-              <span className="profile-screen__stat-val">{careerStats.hohWins}</span>
+              <span className="profile-screen__stat-val">{careerStats.lohWins}</span>
               <span className="profile-screen__stat-key">LOH Wins</span>
             </div>
             <div className="profile-screen__stat">
-              <span className="profile-screen__stat-val">{careerStats.povWins}</span>
+              <span className="profile-screen__stat-val">{careerStats.posWins}</span>
               <span className="profile-screen__stat-key">POS Wins</span>
             </div>
           </div>

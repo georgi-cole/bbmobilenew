@@ -53,7 +53,7 @@ function getState(store: Store): BlackjackTournamentState {
   return store.getState().blackjackTournament;
 }
 
-function initStore(store: Store, ids: string[], seed = 42, type: 'HOH' | 'POV' = 'HOH') {
+function initStore(store: Store, ids: string[], seed = 42, type: 'LOH' | 'POS' = 'LOH') {
   store.dispatch(
     initBlackjackTournament({
       participantIds: ids,

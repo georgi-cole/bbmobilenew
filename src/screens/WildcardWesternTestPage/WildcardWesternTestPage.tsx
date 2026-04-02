@@ -16,7 +16,7 @@ const ALL_PARTICIPANTS = [
 ];
 
 export default function WildcardWesternTestPage() {
-  const [prizeType, setPrizeType] = useState<'HOH' | 'POV'>('HOH');
+  const [prizeType, setPrizeType] = useState<'LOH' | 'POS'>('LOH');
   const [seed, setSeed] = useState(42);
   const [playerCount, setPlayerCount] = useState(4);
   const [running, setRunning] = useState(false);
@@ -66,11 +66,11 @@ export default function WildcardWesternTestPage() {
             Prize:
             <select
               value={prizeType}
-              onChange={(e) => setPrizeType(e.target.value as 'HOH' | 'POV')}
+              onChange={(e) => setPrizeType(e.target.value as 'LOH' | 'POS')}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
 

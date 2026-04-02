@@ -24,10 +24,10 @@ import type { DirectionType, PublicDirection } from './types';
 export type MissionGameEventType =
   | 'hoh_win'
   | 'pov_win'
-  | 'nominated_target'    // acted as HOH / influencer and nominated targetId
+  | 'nominated_target'    // acted as LOH / influencer and nominated targetId
   | 'voted_to_evict'      // cast a vote to evict targetId
   | 'saved_from_block'    // used veto / campaign to save targetId
-  | 'influenced_hoh'      // persuaded/pressured HOH (targetId = HOH)
+  | 'influenced_hoh'      // persuaded/pressured LOH (targetId = LOH)
   | 'formed_alliance'     // entered alliance with targetId
   | 'broke_alliance'      // severed alliance with targetId
   | 'confronted_player'   // publicly confronted targetId
@@ -131,7 +131,7 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
     { eventType: 'won_competition',   requiresRelatedTarget: false, weight: 100 },
   ],
 
-  // ── Win the Power of Veto ───────────────────────────────────────────────
+  // ── Win the Power of Safety ───────────────────────────────────────────────
   win_veto: [
     { eventType: 'pov_win',           requiresRelatedTarget: false, weight: 100 },
   ],
@@ -174,7 +174,7 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
     { eventType: 'spread_rumor',      requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
 
-  // ── Influence the HOH ───────────────────────────────────────────────────
+  // ── Influence the LOH ───────────────────────────────────────────────────
   influence_hoh: [
     { eventType: 'influenced_hoh',    requiresRelatedTarget: false, weight: publicOpinionConfig.missionDirectProgressWeight },
     { eventType: 'positive_social',   requiresRelatedTarget: false, weight: publicOpinionConfig.missionIndirectProgressWeight },

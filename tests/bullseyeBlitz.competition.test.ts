@@ -51,13 +51,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -116,10 +116,10 @@ function setupMinigameSession(
 }
 
 /**
- * Advance hoh_results → social_1 → nominations → nomination_results.
+ * Advance loh_results → social_1 → nominations → nomination_results.
  */
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1    → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -134,7 +134,7 @@ describe('Bullseye Blitz — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 120 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the player with the highest score (AI wins)', () => {
@@ -144,17 +144,17 @@ describe('Bullseye Blitz — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 90 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
-  it('phase transitions to hoh_results after completeMinigame', () => {
+  it('phase transitions to loh_results after completeMinigame', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 110, p2: 80 });
 
     store.dispatch(completeMinigame({ humanScore: 95 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
@@ -211,7 +211,7 @@ describe('Bullseye Blitz — last-place finisher correctness', () => {
     store.dispatch(completeMinigame({ humanScore: 130 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+    expect(state.lastHohCompFinisherId).not.toBe(state.lohId);
   });
 });
 
@@ -233,7 +233,7 @@ describe('Bullseye Blitz — Public mode auto-nominee', () => {
 
     advanceToNominationResults(store);
 
-    // Human HOH (p0) must nominate two players
+    // Human LOH (p0) must nominate two players
     expect(store.getState().game.awaitingNominations).toBe(true);
 
     store.dispatch(commitNominees(['p1', 'p2']));
@@ -267,7 +267,7 @@ describe('Bullseye Blitz — Public mode auto-nominee', () => {
 // ── 4. Human nomination flow ──────────────────────────────────────────────────
 
 describe('Bullseye Blitz — human nomination flow', () => {
-  it('awaitingNominations is true for the human HOH', () => {
+  it('awaitingNominations is true for the human LOH', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3', 'p4'], { p1: 100, p2: 90, p3: 80, p4: 70 });
@@ -298,7 +298,7 @@ describe('Bullseye Blitz — human nomination flow', () => {
 // ── 5. AI-only nomination flow ────────────────────────────────────────────────
 
 describe('Bullseye Blitz — AI-only nomination flow', () => {
-  it('AI HOH correctly sets hohId and lastHohCompFinisherId', () => {
+  it('AI LOH correctly sets lohId and lastHohCompFinisherId', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -307,11 +307,11 @@ describe('Bullseye Blitz — AI-only nomination flow', () => {
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p3');
   });
 
-  it('AI HOH in Public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in Public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });
@@ -353,7 +353,7 @@ describe('Bullseye Blitz — hazard penalty', () => {
     store.dispatch(completeMinigame({ humanScore: 55 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p0');
   });
 
@@ -384,7 +384,7 @@ describe('Bullseye Blitz — bonus target scoring', () => {
     store.dispatch(completeMinigame({ humanScore: 140 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1'); // AI just barely beats human
+    expect(state.lohId).toBe('p1'); // AI just barely beats human
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 });
@@ -564,7 +564,7 @@ describe('Bullseye Blitz — backward-compat: legacy numeric payload', () => {
     store.dispatch(completeMinigame(150));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 });

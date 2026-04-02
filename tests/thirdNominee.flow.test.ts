@@ -2,17 +2,17 @@
  * Third nominee + pre-veto public save — unit tests.
  *
  * Validates:
- *  1. Normal week: AI HOH nominates 2, auto-third (lastHohCompFinisherId) appended → 3 total.
- *  2. Normal week: if auto-nominee is already in HOH's picks, no duplicate added.
- *  3. Double eviction: HOH nominates 3, no 4th auto-nominee added.
+ *  1. Normal week: AI LOH nominates 2, auto-third (lastHohCompFinisherId) appended → 3 total.
+ *  2. Normal week: if auto-nominee is already in LOH's picks, no duplicate added.
+ *  3. Double eviction: LOH nominates 3, no 4th auto-nominee added.
  *  4. Double eviction: pre_veto_public_save phase is skipped entirely.
  *  5. Normal week: advance() enters pre_veto_public_save and sets awaitingPublicSave.
  *  6. commitPublicSave resolves the phase: removes nominee, records publicSavedNomineeId,
- *     advances to pov_comp_announcement.
+ *     advances to pos_comp_announcement.
  *  7. After commitPublicSave, nomineeIds has exactly 2 entries.
- *  8. Human HOH (commitNominees) appends auto-third in normal weeks.
- *  9. Human HOH (commitNominees) skips auto-third if already selected.
- * 10. advance() on hoh_results records lastHohCompFinisherId.
+ *  8. Human LOH (commitNominees) appends auto-third in normal weeks.
+ *  9. Human LOH (commitNominees) skips auto-third if already selected.
+ * 10. advance() on loh_results records lastHohCompFinisherId.
  * 11. resolvePublicSaveNominee ranks by approval and handles ties.
  * 12. week_start resets lastHohCompFinisherId, publicSavedNomineeId, nominationContext.
  */
@@ -50,11 +50,11 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     week: 3,
     phase: 'nominations',
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -116,11 +116,11 @@ function makeProfile(approval: number, seasonApprovals: number[] = []): PlayerPu
 
 // ── Test Suite ────────────────────────────────────────────────────────────────
 
-describe('third nominee — AI HOH normal week', () => {
+describe('third nominee — AI LOH normal week', () => {
   it('appends lastHohCompFinisherId as 3rd nominee when AI nominates 2', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       lastHohCompFinisherId: 'p5',
     });
 
@@ -139,7 +139,7 @@ describe('third nominee — AI HOH normal week', () => {
   it('formats AI public-mode nominee copy cleanly when a third nominee is auto-appended', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       lastHohCompFinisherId: 'p5',
     });
 
@@ -160,7 +160,7 @@ describe('third nominee — AI HOH normal week', () => {
   it('does not add a 4th nominee in double eviction weeks', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       lastHohCompFinisherId: 'p5',
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
     });
@@ -181,7 +181,7 @@ describe('third nominee — AI HOH normal week', () => {
 
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       players,
       lastHohCompFinisherId: 'p3',
       publicModeEnabled: true,
@@ -202,7 +202,7 @@ describe('third nominee — AI HOH normal week', () => {
     // action is rejected (no-op) to prevent ending up with only 2 nominees.
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       lastHohCompFinisherId: 'p1',
       awaitingNominations: true,
     });
@@ -216,14 +216,14 @@ describe('third nominee — AI HOH normal week', () => {
   });
 });
 
-describe('third nominee — human HOH normal week (commitNominees)', () => {
+describe('third nominee — human LOH normal week (commitNominees)', () => {
   it('auto-appends lastHohCompFinisherId after human submits 2 nominees', () => {
-    const players = makePlayers(12, 0); // p0 is human+HOH
+    const players = makePlayers(12, 0); // p0 is human+LOH
     players[0].status = 'hoh';
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p5',
       players,
@@ -241,13 +241,13 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
     expect(state.nominationContext?.autoNomineeId).toBe('p5');
   });
 
-  it('logs the auto-third nominee as game-nominated instead of attributing all three to the HOH', () => {
+  it('logs the auto-third nominee as game-nominated instead of attributing all three to the LOH', () => {
     const players = makePlayers(12, 0);
     players[0].status = 'hoh';
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p5',
       players,
@@ -272,7 +272,7 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p2', // same as one human pick
       players,
@@ -286,13 +286,13 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
     expect(state.awaitingNominations).toBe(true);
   });
 
-  it('still auto-appends a third nominee at final 4 for a human HOH', () => {
+  it('still auto-appends a third nominee at final 4 for a human LOH', () => {
     const players = makePlayers(4, 0);
     players[0].status = 'hoh';
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p3',
       publicModeEnabled: true,
@@ -317,7 +317,7 @@ describe('third nominee — human HOH normal week (commitNominees)', () => {
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p5',
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
@@ -340,7 +340,7 @@ describe('pre_veto_public_save phase', () => {
   it('enters pre_veto_public_save and sets awaitingPublicSave in normal weeks', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p5'],
       awaitingNominations: false,
       lastHohCompFinisherId: 'p5',
@@ -354,10 +354,10 @@ describe('pre_veto_public_save phase', () => {
     expect(state.tvFeed[0]?.text).toBe("The final list of nominees today will be decided with the public's help.");
   });
 
-  it('skips pre_veto_public_save in double eviction weeks (goes directly to pov_comp_announcement)', () => {
+  it('skips pre_veto_public_save in double eviction weeks (goes directly to pos_comp_announcement)', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p3'],
       awaitingNominations: false,
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
@@ -366,15 +366,15 @@ describe('pre_veto_public_save phase', () => {
     store.dispatch(advance()); // nomination_results → should skip public save
     const state = store.getState().game;
 
-    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
     expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
 
-  it('skips pre_veto_public_save and still announces POV when public mode is off', () => {
+  it('skips pre_veto_public_save and still announces POS when public mode is off', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: false,
       nomineeIds: ['p1', 'p2'],
       awaitingNominations: false,
@@ -383,7 +383,7 @@ describe('pre_veto_public_save phase', () => {
     store.dispatch(advance());
     const state = store.getState().game;
 
-    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
     expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
@@ -391,7 +391,7 @@ describe('pre_veto_public_save phase', () => {
   it('skips pre_veto_public_save when the block is not exactly 3 nominees', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingNominations: false,
       publicModeEnabled: true,
@@ -400,7 +400,7 @@ describe('pre_veto_public_save phase', () => {
     store.dispatch(advance());
     const state = store.getState().game;
 
-    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
     expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
   });
@@ -413,7 +413,7 @@ describe('pre_veto_public_save phase', () => {
 
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p5'],
       awaitingPublicSave: true,
       players,
@@ -422,7 +422,7 @@ describe('pre_veto_public_save phase', () => {
     store.dispatch(commitPublicSave({ savedId: 'p1', supportPercent: 52 }));
     const state = store.getState().game;
 
-    expect(state.phase).toBe('pov_comp_announcement');
+    expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBe(false);
     expect(state.publicSavedNomineeId).toBe('p1');
     expect(state.nomineeIds).toHaveLength(2);
@@ -444,7 +444,7 @@ describe('pre_veto_public_save phase', () => {
   it('commitPublicSave is a no-op when phase is not pre_veto_public_save', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingPublicSave: false,
     });
@@ -457,7 +457,7 @@ describe('pre_veto_public_save phase', () => {
   it('commitPublicSave is a no-op if savedId is not in nomineeIds', () => {
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p5'],
       awaitingPublicSave: true,
     });
@@ -476,7 +476,7 @@ describe('pre_veto_public_save phase', () => {
 
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingPublicSave: true,
       players,
@@ -499,7 +499,7 @@ describe('pre_veto_public_save phase', () => {
 
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingPublicSave: true,
       publicModeEnabled: true,
@@ -514,28 +514,28 @@ describe('pre_veto_public_save phase', () => {
   });
 });
 
-describe('HOH comp last-place tracking', () => {
-  it('advance() on hoh_results records a deterministic lastHohCompFinisherId', () => {
+describe('LOH comp last-place tracking', () => {
+  it('advance() on loh_results records a deterministic lastHohCompFinisherId', () => {
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       prevHohId: null,
     });
 
-    store.dispatch(advance()); // hoh_comp → hoh_results (picks HOH and last place)
+    store.dispatch(advance()); // loh_comp → loh_results (picks LOH and last place)
     const state = store.getState().game;
 
-    expect(state.phase).toBe('hoh_results');
-    expect(state.hohId).toBeTruthy();
+    expect(state.phase).toBe('loh_results');
+    expect(state.lohId).toBeTruthy();
     expect(state.lastHohCompFinisherId).toBeTruthy();
-    // HOH and last place must be different players
-    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+    // LOH and last place must be different players
+    expect(state.lastHohCompFinisherId).not.toBe(state.lohId);
   });
 
   it('week_start resets lastHohCompFinisherId and publicSavedNomineeId', () => {
     const store = makeStore({
       phase: 'week_end',
-      hohId: 'p0',
+      lohId: 'p0',
       lastHohCompFinisherId: 'p5',
       publicSavedNomineeId: 'p1',
       nominationContext: {
@@ -555,12 +555,12 @@ describe('HOH comp last-place tracking', () => {
     expect(state.awaitingPublicSave).toBe(false);
   });
 
-  it('applyMinigameWinner without scores still sets lastHohCompFinisherId in hoh_comp', () => {
+  it('applyMinigameWinner without scores still sets lastHohCompFinisherId in loh_comp', () => {
     // Simulates the challenge-flow path (GameScreen calls applyMinigameWinner without scores).
     const players = makePlayers(12);
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       publicModeEnabled: true,
       players,
     });
@@ -568,8 +568,8 @@ describe('HOH comp last-place tracking', () => {
     store.dispatch(applyMinigameWinner({ winnerId: 'p1', participants: players.map((p) => p.id) }));
     const state = store.getState().game;
 
-    expect(state.phase).toBe('hoh_results');
-    expect(state.hohId).toBe('p1');
+    expect(state.phase).toBe('loh_results');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).not.toBeNull();
     expect(state.lastHohCompFinisherId).not.toBe('p1');
   });
@@ -577,8 +577,8 @@ describe('HOH comp last-place tracking', () => {
   it('applyMinigameWinner with real scores picks the lowest scorer as lastHohCompFinisherId', () => {
     const players = makePlayers(6);
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       publicModeEnabled: true,
       players,
     });
@@ -602,8 +602,8 @@ describe('HOH comp last-place tracking', () => {
     // derived from elimination order. This should take priority over score-based logic.
     const players = makePlayers(6);
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       publicModeEnabled: true,
       players,
     });
@@ -629,8 +629,8 @@ describe('HOH comp last-place tracking', () => {
     // the system must fall back to score-based derivation.
     const players = makePlayers(4);
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       publicModeEnabled: true,
       players,
     });
@@ -654,8 +654,8 @@ describe('HOH comp last-place tracking', () => {
     // This is acceptable for legacy paths where no data is available.
     const players = makePlayers(4);
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       players,
     });
 
@@ -677,7 +677,7 @@ describe('public mode endgame boundaries', () => {
 
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p3',
       players,
@@ -692,12 +692,12 @@ describe('public mode endgame boundaries', () => {
     expect(store.getState().game.awaitingPublicSave).toBe(true);
 
     store.dispatch(commitPublicSave('p3'));
-    expect(store.getState().game.phase).toBe('pov_comp_announcement');
+    expect(store.getState().game.phase).toBe('pos_comp_announcement');
     expect(store.getState().game.nomineeIds).toHaveLength(2);
 
-    store.dispatch(advance()); // pov_comp_announcement -> pov_comp
-    store.dispatch(advance()); // pov_comp -> pov_results
-    store.dispatch(advance()); // pov_results -> final4_eviction via Final 4 bypass
+    store.dispatch(advance()); // pos_comp_announcement -> pos_comp
+    store.dispatch(advance()); // pos_comp -> pos_results
+    store.dispatch(advance()); // pos_results -> final4_eviction via Final 4 bypass
 
     const state = store.getState().game;
     expect(state.phase).toBe('final4_eviction');
@@ -713,7 +713,7 @@ describe('public mode endgame boundaries', () => {
     const store = makeStore({
       phase: 'final3',
       week: 9,
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1'],
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p2',
@@ -805,7 +805,7 @@ describe('backward compatibility', () => {
   it('public mode off keeps original 2-nominee flow', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: false,
       lastHohCompFinisherId: 'p5',
     });
@@ -819,10 +819,10 @@ describe('backward compatibility', () => {
   });
 
   it('normal week without lastHohCompFinisherId still produces 2 nominees in public mode', () => {
-    // If lastHohCompFinisherId is null (e.g., first week, no HOH comp data), AI nominates 2
+    // If lastHohCompFinisherId is null (e.g., first week, no LOH comp data), AI nominates 2
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: null,
     });
@@ -838,7 +838,7 @@ describe('backward compatibility', () => {
   it('advance() on pre_veto_public_save blocks when awaitingPublicSave is true', () => {
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p5'],
       awaitingPublicSave: true,
     });
@@ -866,8 +866,8 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
     players[0].status = 'hoh';
 
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       players,
     });
 
@@ -888,8 +888,8 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
     players[0].status = 'hoh';
 
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       players,
     });
 
@@ -909,8 +909,8 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
     players[0].status = 'hoh';
 
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       players,
     });
 
@@ -931,8 +931,8 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
     players[0].status = 'hoh';
 
     const store = makeStore({
-      phase: 'hoh_comp',
-      hohId: null,
+      phase: 'loh_comp',
+      lohId: null,
       players,
     });
 
@@ -971,7 +971,7 @@ describe('forced auto-nominee: AI nomination pool exclusion', () => {
       const store = makeStore({
         phase: 'nominations',
         seed,
-        hohId: 'p0',
+        lohId: 'p0',
         publicModeEnabled: true,
         lastHohCompFinisherId: 'p5',
       });
@@ -991,7 +991,7 @@ describe('forced auto-nominee: AI nomination pool exclusion', () => {
   it('AI pool exclusion does not affect double eviction weeks', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p5',
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
@@ -1013,7 +1013,7 @@ describe('forced auto-nominee: commitNominees defensive strip', () => {
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p3',
       publicModeEnabled: true,
@@ -1025,7 +1025,7 @@ describe('forced auto-nominee: commitNominees defensive strip', () => {
     store.dispatch(commitNominees(['p1', 'p2', 'p3']));
     const state = store.getState().game;
 
-    // p1 + p2 as HOH picks, p3 as auto-nominee = 3 total
+    // p1 + p2 as LOH picks, p3 as auto-nominee = 3 total
     expect(state.nomineeIds).toHaveLength(3);
     expect(state.nomineeIds).toContain('p1');
     expect(state.nomineeIds).toContain('p2');
@@ -1040,7 +1040,7 @@ describe('forced auto-nominee: commitNominees defensive strip', () => {
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p3',
       publicModeEnabled: true,
@@ -1062,7 +1062,7 @@ describe('forced auto-nominee: 3 unique nominees guaranteed in normal public-mod
   it('final nominees are always 3 unique players (AI path)', () => {
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p5',
     });
@@ -1081,7 +1081,7 @@ describe('forced auto-nominee: 3 unique nominees guaranteed in normal public-mod
 
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       lastHohCompFinisherId: 'p5',
       publicModeEnabled: true,

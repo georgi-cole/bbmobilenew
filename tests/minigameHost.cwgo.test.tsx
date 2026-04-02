@@ -92,7 +92,7 @@ describe('MinigameHost — CWGO routing', () => {
       <Provider store={store}>
         <MinigameHost
           game={CWGO_GAME}
-          gameOptions={{ seed: 42, prizeType: 'HOH' }}
+          gameOptions={{ seed: 42, prizeType: 'LOH' }}
           participants={[{ id: 'p1', name: 'Alice', isHuman: true, precomputedScore: 0, previousPR: null }]}
           onDone={onDone}
           skipRules

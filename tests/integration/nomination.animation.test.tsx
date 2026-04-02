@@ -1,7 +1,7 @@
 // Integration tests for the CeremonyOverlay nomination wiring in GameScreen.
 //
 // Validates:
-//  1. After the human HOH selects nominees, the CeremonyOverlay overlay
+//  1. After the human LOH selects nominees, the CeremonyOverlay overlay
 //     appears (game state is NOT yet committed — awaitingNominations remains true).
 //  2. After the animation's onDone fires, commitNominees is dispatched and
 //     the game state reflects the two nominated players.
@@ -55,11 +55,11 @@ function makeStore(overrides: Partial<GameState> = {}) {
     week: 1,
     phase: 'nomination_results',
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     prevHohId: null,
     nomineeIds: [],
     nominationContext: null,
-    povWinnerId: null,
+    posWinnerId: null,
     publicModeEnabled: false,
     replacementNeeded: false,
     awaitingNominations: true,
@@ -151,7 +151,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     const store = makeStore();
     renderWithStore(store);
 
-    // Multi-select modal should be visible (human is HOH, awaitingNominations true)
+    // Multi-select modal should be visible (human is LOH, awaitingNominations true)
     expect(screen.getByText('Nomination Ceremony')).toBeTruthy();
 
     // Select two eligible players (p1 and p2) and confirm.
@@ -232,20 +232,20 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(state.players.find((p) => p.id === 'p2')?.status).toBe('nominated');
   });
 
-  it('does not show NominationAnimator when human is not HOH', () => {
-    // p1 is HOH (not the human player p0)
-    const store = makeStore({ hohId: 'p1' });
+  it('does not show NominationAnimator when human is not LOH', () => {
+    // p1 is LOH (not the human player p0)
+    const store = makeStore({ lohId: 'p1' });
     renderWithStore(store);
 
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('Nomination Ceremony')).toBeNull();
   });
 
-  it('shows CeremonyOverlay for AI HOH nominations (nominees already in store)', async () => {
-    // AI HOH (p1) has already nominated p2 and p3 — awaitingNominations is false.
+  it('shows CeremonyOverlay for AI LOH nominations (nominees already in store)', async () => {
+    // AI LOH (p1) has already nominated p2 and p3 — awaitingNominations is false.
     // GameScreen should detect this and trigger the animation automatically.
     const store = makeStore({
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       awaitingNominations: false,
     });
@@ -263,9 +263,9 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(store.getState().game.nomineeIds).toContain('p3');
   });
 
-  it('shows role pills for HOH nominees and the auto-third nominee', async () => {
+  it('shows role pills for LOH nominees and the auto-third nominee', async () => {
     const store = makeStore({
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3', 'p4'],
       awaitingNominations: false,
       nominationContext: {
@@ -297,7 +297,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
       }));
 
       const store = makeStore({
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2', 'p3', 'p4'],
         awaitingNominations: false,
         nominationContext: {
@@ -360,7 +360,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
       }));
 
       const store = makeStore({
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2', 'p3', 'p4'],
         awaitingNominations: false,
         nominationContext: {
@@ -405,7 +405,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
     });
 
     expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
-    expect(screen.queryByText('Last in HOH Comp')).toBeNull();
+    expect(screen.queryByText('Last in LOH Comp')).toBeNull();
 
     await act(async () => { vi.advanceTimersByTime(2800); });
     await act(async () => { vi.advanceTimersByTime(500); });
@@ -447,7 +447,7 @@ describe('NominationAnimator wiring in GameScreen', () => {
   it('hides the floating action bar while the public save reveal is active', async () => {
     const store = makeStore({
       phase: 'pre_veto_public_save',
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3', 'p4'],
       awaitingNominations: false,
       awaitingPublicSave: true,
@@ -461,9 +461,9 @@ describe('NominationAnimator wiring in GameScreen', () => {
     expect(screen.queryByRole('toolbar', { name: 'Game actions' })).toBeNull();
   });
 
-  it('does not double-animate AI HOH nominees after the animation completes', async () => {
+  it('does not double-animate AI LOH nominees after the animation completes', async () => {
     const store = makeStore({
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       awaitingNominations: false,
     });

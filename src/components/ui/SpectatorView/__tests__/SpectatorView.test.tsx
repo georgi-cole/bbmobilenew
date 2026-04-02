@@ -23,12 +23,12 @@ import type { GameState, Player } from '../../../../types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makePlayers(ids: string[], hohId: string | null = null): Player[] {
+function makePlayers(ids: string[], lohId: string | null = null): Player[] {
   return ids.map((id) => ({
     id,
     name: `Player-${id}`,
     avatar: '🧑',
-    status: (id === hohId ? 'hoh' : 'active') as Player['status'],
+    status: (id === lohId ? 'hoh' : 'active') as Player['status'],
     isUser: id === 'user',
   }));
 }
@@ -38,14 +38,14 @@ function makeStore(overrides: Partial<GameState> = {}) {
     season: 1,
     week: 8,
     phase: 'final3_comp3',
-    players: makePlayers(['p1', 'p2', 'user'], overrides.hohId ?? null),
+    players: makePlayers(['p1', 'p2', 'user'], overrides.lohId ?? null),
     tvFeed: [],
     isLive: true,
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     f3Part1WinnerId: 'p1',
     f3Part2WinnerId: 'p2',
     spectatorActive: null,
@@ -102,8 +102,8 @@ describe('SpectatorView', () => {
 
   it('reconciles to the Redux authoritative winner after 10 s run + 1.2 s reveal', () => {
     vi.useFakeTimers();
-    // hohId is set — the winner is known at mount.
-    const store = makeStore({ hohId: 'p1' });
+    // lohId is set — the winner is known at mount.
+    const store = makeStore({ lohId: 'p1' });
     const onDone = vi.fn();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 
@@ -239,7 +239,7 @@ describe('SpectatorView', () => {
 
   it('clears spectatorActive (unblocks advance()) before onDone fires', () => {
     vi.useFakeTimers();
-    const store = makeStore({ hohId: 'p1', phase: 'final3_comp3' });
+    const store = makeStore({ lohId: 'p1', phase: 'final3_comp3' });
 
     let spectatorActiveAtOnDone: unknown = 'not-called';
     const onDone = vi.fn(() => {
@@ -380,7 +380,7 @@ describe('SpectatorView', () => {
     // Set the body class before rendering so SpectatorView sees it on mount.
     document.body.classList.add('no-animations');
 
-    const store = makeStore({ hohId: 'p1' });
+    const store = makeStore({ lohId: 'p1' });
     const onDone = vi.fn();
     renderSpectator(store, { competitorIds: ['p1', 'p2'], onDone });
 

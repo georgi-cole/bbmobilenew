@@ -59,8 +59,8 @@ export interface PublicFeedEntry {
    */
   eventType?: string;
   /**
-   * ID of the player who caused this approval change (e.g. the HOH who
-   * nominated the subject, or the POV holder who saved someone).
+   * ID of the player who caused this approval change (e.g. the LOH who
+   * nominated the subject, or the POS holder who saved someone).
    * Undefined when the change is not attributable to a specific actor.
    */
   attributedToId?: string;

@@ -27,7 +27,7 @@ function makePlayers(count: number, userIndex = 0): Player[] {
 function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1, week: 1, phase: 'nominations', seed: 42,
-    hohId: 'p0', nomineeIds: [], povWinnerId: null,
+    lohId: 'p0', nomineeIds: [], posWinnerId: null,
     replacementNeeded: false, awaitingNominations: false, pendingNominee1Id: null,
     awaitingPovDecision: false, awaitingPovSaveTarget: false,
     votes: {}, awaitingHumanVote: false, awaitingTieBreak: false, tiedNomineeIds: null,
@@ -41,9 +41,9 @@ function makeStore(overrides: Partial<GameState> = {}) {
   });
 }
 
-describe('Human HOH nominations', () => {
-  it('sets awaitingNominations when human is HOH at nomination_results', () => {
-    const store = makeStore({ phase: 'nominations', hohId: 'p0' });
+describe('Human LOH nominations', () => {
+  it('sets awaitingNominations when human is LOH at nomination_results', () => {
+    const store = makeStore({ phase: 'nominations', lohId: 'p0' });
     store.dispatch(advance()); // nominations → nomination_results
     const state = store.getState().game;
     expect(state.phase).toBe('nomination_results');
@@ -52,7 +52,7 @@ describe('Human HOH nominations', () => {
   });
 
   it('advance() is a no-op while awaitingNominations is true', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(advance());
     store.dispatch(advance());
     const state = store.getState().game;
@@ -62,13 +62,13 @@ describe('Human HOH nominations', () => {
   });
 
   it('selectNominee1 is a no-op when awaitingNominations is false', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: false });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: false });
     store.dispatch(selectNominee1('p1'));
     expect(store.getState().game.pendingNominee1Id).toBeNull();
   });
 
-  it('AI HOH auto-nominates without blocking', () => {
-    const store = makeStore({ phase: 'nominations', hohId: 'p1' }); // p1 is not user
+  it('AI LOH auto-nominates without blocking', () => {
+    const store = makeStore({ phase: 'nominations', lohId: 'p1' }); // p1 is not user
     store.dispatch(advance()); // nominations → nomination_results
     const state = store.getState().game;
     expect(state.phase).toBe('nomination_results');
@@ -77,13 +77,13 @@ describe('Human HOH nominations', () => {
   });
 
   it('selectNominee1 sets pendingNominee1Id', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(selectNominee1('p1'));
     expect(store.getState().game.pendingNominee1Id).toBe('p1');
   });
 
   it('finalizeNominations sets both nominees and clears awaitingNominations', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true, pendingNominee1Id: 'p1' });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true, pendingNominee1Id: 'p1' });
     store.dispatch(finalizeNominations('p2'));
     const state = store.getState().game;
     expect(state.awaitingNominations).toBe(false);
@@ -94,34 +94,34 @@ describe('Human HOH nominations', () => {
   });
 
   it('finalizeNominations rejects the same player as nominee 1', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true, pendingNominee1Id: 'p1' });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true, pendingNominee1Id: 'p1' });
     store.dispatch(finalizeNominations('p1')); // same as nominee 1
     expect(store.getState().game.awaitingNominations).toBe(true); // still blocking
   });
 });
 
-describe('Human POV decision', () => {
-  it('sets awaitingPovDecision when human is POV holder and not nominee', () => {
+describe('Human POS decision', () => {
+  it('sets awaitingPovDecision when human is POS holder and not nominee', () => {
     const players = makePlayers(6);
     // p0 is user+pov, p1 and p2 are nominees
     players[0].status = 'pov';
     players[1].status = 'nominated';
     players[2].status = 'nominated';
     const store = makeStore({
-      phase: 'pov_ceremony',
-      hohId: 'p3',
-      povWinnerId: 'p0',
+      phase: 'pos_ceremony',
+      lohId: 'p3',
+      posWinnerId: 'p0',
       nomineeIds: ['p1', 'p2'],
       players,
     });
-    store.dispatch(advance()); // pov_ceremony → pov_ceremony_results
+    store.dispatch(advance()); // pos_ceremony → pos_ceremony_results
     const state = store.getState().game;
-    expect(state.phase).toBe('pov_ceremony_results');
+    expect(state.phase).toBe('pos_ceremony_results');
     expect(state.awaitingPovDecision).toBe(true);
   });
 
   it('submitPovDecision(false) clears awaitingPovDecision and logs event', () => {
-    const store = makeStore({ phase: 'pov_ceremony_results', povWinnerId: 'p0', awaitingPovDecision: true, nomineeIds: ['p1', 'p2'] });
+    const store = makeStore({ phase: 'pos_ceremony_results', posWinnerId: 'p0', awaitingPovDecision: true, nomineeIds: ['p1', 'p2'] });
     store.dispatch(submitPovDecision(false));
     const state = store.getState().game;
     expect(state.awaitingPovDecision).toBe(false);
@@ -130,7 +130,7 @@ describe('Human POV decision', () => {
   });
 
   it('submitPovDecision(true) sets awaitingPovSaveTarget', () => {
-    const store = makeStore({ phase: 'pov_ceremony_results', povWinnerId: 'p0', awaitingPovDecision: true, nomineeIds: ['p1', 'p2'] });
+    const store = makeStore({ phase: 'pos_ceremony_results', posWinnerId: 'p0', awaitingPovDecision: true, nomineeIds: ['p1', 'p2'] });
     store.dispatch(submitPovDecision(true));
     const state = store.getState().game;
     expect(state.awaitingPovDecision).toBe(false);
@@ -143,10 +143,10 @@ describe('Live vote + eviction tally', () => {
     const players = makePlayers(6);
     players[1].status = 'nominated';
     players[2].status = 'nominated';
-    // p0 is user, p3 is HOH, p1/p2 are nominees
+    // p0 is user, p3 is LOH, p1/p2 are nominees
     const store = makeStore({
       phase: 'social_2',
-      hohId: 'p3',
+      lohId: 'p3',
       nomineeIds: ['p1', 'p2'],
       players,
     });
@@ -155,14 +155,14 @@ describe('Live vote + eviction tally', () => {
     expect(state.phase).toBe('live_vote');
     expect(state.awaitingHumanVote).toBe(true);
     // AI voters should have voted
-    const aiVoterIds = ['p4', 'p5']; // p0=user, p3=HOH, p1/p2=nominees
+    const aiVoterIds = ['p4', 'p5']; // p0=user, p3=LOH, p1/p2=nominees
     for (const voterId of aiVoterIds) {
       expect(state.votes?.[voterId]).toBeDefined();
     }
   });
 
   it('advance() is a no-op while awaitingHumanVote is true', () => {
-    const store = makeStore({ phase: 'live_vote', hohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
+    const store = makeStore({ phase: 'live_vote', lohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
     store.dispatch(advance());
     store.dispatch(advance());
     const state = store.getState().game;
@@ -172,7 +172,7 @@ describe('Live vote + eviction tally', () => {
   });
 
   it('submitHumanVote adds vote and clears awaitingHumanVote', () => {
-    const store = makeStore({ phase: 'live_vote', hohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
+    const store = makeStore({ phase: 'live_vote', lohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
     store.dispatch(submitHumanVote('p1'));
     const state = store.getState().game;
     expect(state.awaitingHumanVote).toBe(false);
@@ -186,7 +186,7 @@ describe('Live vote + eviction tally', () => {
     players[2].status = 'nominated';
     const store = makeStore({
       phase: 'live_vote',
-      hohId: 'p3',
+      lohId: 'p3',
       nomineeIds: ['p1', 'p2'],
       votes: { 'p4': 'p1', 'p5': 'p1', 'p0': 'p2' },
       players,
@@ -202,14 +202,14 @@ describe('Live vote + eviction tally', () => {
     expect(p1?.status).toMatch(/evicted|jury/);
   });
 
-  it('tie results in awaitingTieBreak when human is HOH', () => {
+  it('tie results in awaitingTieBreak when human is LOH', () => {
     const players = makePlayers(6);
     players[1].status = 'nominated';
     players[2].status = 'nominated';
-    // p0 is user+HOH, p1/p2 are nominees, each gets 1 vote
+    // p0 is user+LOH, p1/p2 are nominees, each gets 1 vote
     const store = makeStore({
       phase: 'live_vote',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       votes: { 'p3': 'p1', 'p4': 'p2' },
       players,
@@ -232,7 +232,7 @@ describe('Live vote + eviction tally', () => {
     players[2].status = 'nominated';
     const store = makeStore({
       phase: 'eviction_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingTieBreak: true,
       tiedNomineeIds: ['p1', 'p2'],
@@ -255,7 +255,7 @@ describe('Live vote + eviction tally', () => {
 
 describe('commitNominees (single-action nomination)', () => {
   it('sets both nominees and clears awaitingNominations', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1', 'p2']));
     const state = store.getState().game;
     expect(state.awaitingNominations).toBe(false);
@@ -266,7 +266,7 @@ describe('commitNominees (single-action nomination)', () => {
   });
 
   it('marks nominated players with status "nominated"', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1', 'p2']));
     const { players } = store.getState().game;
     expect(players.find(p => p.id === 'p1')?.status).toBe('nominated');
@@ -274,34 +274,34 @@ describe('commitNominees (single-action nomination)', () => {
   });
 
   it('is a no-op when awaitingNominations is false', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: false });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: false });
     store.dispatch(commitNominees(['p1', 'p2']));
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 
   it('rejects duplicate ids (same player twice)', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1', 'p1']));
     expect(store.getState().game.awaitingNominations).toBe(true); // still blocking
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 
   it('rejects a payload with wrong number of ids', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1'])); // only 1 id, needs 2
     expect(store.getState().game.awaitingNominations).toBe(true);
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 
-  it('rejects the HOH as a nominee', () => {
-    const store = makeStore({ phase: 'nomination_results', hohId: 'p0', awaitingNominations: true });
-    store.dispatch(commitNominees(['p0', 'p1'])); // p0 is HOH
+  it('rejects the LOH as a nominee', () => {
+    const store = makeStore({ phase: 'nomination_results', lohId: 'p0', awaitingNominations: true });
+    store.dispatch(commitNominees(['p0', 'p1'])); // p0 is LOH
     expect(store.getState().game.awaitingNominations).toBe(true);
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
 
   it('is a no-op when phase is not nomination_results', () => {
-    const store = makeStore({ phase: 'nominations', hohId: 'p0', awaitingNominations: true });
+    const store = makeStore({ phase: 'nominations', lohId: 'p0', awaitingNominations: true });
     store.dispatch(commitNominees(['p1', 'p2']));
     expect(store.getState().game.nomineeIds).toHaveLength(0);
   });
@@ -309,15 +309,15 @@ describe('commitNominees (single-action nomination)', () => {
 
 describe('Replacement nominee — saved player exclusion', () => {
   function makeReplacementStore() {
-    // p0 is user (HOH + POV holder), p1 and p2 are nominated
+    // p0 is user (LOH + POS holder), p1 and p2 are nominated
     const players = makePlayers(6);
     players[0].status = 'hoh+pov';
     players[1].status = 'nominated';
     players[2].status = 'nominated';
     return makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p0',
-      povWinnerId: 'p0',
+      phase: 'pos_ceremony_results',
+      lohId: 'p0',
+      posWinnerId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingPovSaveTarget: true,
       players,
@@ -346,7 +346,7 @@ describe('Replacement nominee — saved player exclusion', () => {
   it('setReplacementNominee accepts an eligible player and clears povSavedId', () => {
     const store = makeReplacementStore();
     store.dispatch(submitPovSaveTarget('p1')); // p1 is saved
-    // Pick p3 as replacement — eligible (not HOH, not POV, not saved, not already nominated)
+    // Pick p3 as replacement — eligible (not LOH, not POS, not saved, not already nominated)
     store.dispatch(setReplacementNominee('p3'));
     const state = store.getState().game;
     expect(state.replacementNeeded).toBeFalsy();
@@ -355,17 +355,17 @@ describe('Replacement nominee — saved player exclusion', () => {
   });
 });
 
-describe('AI HOH POV replacement flow', () => {
+describe('AI LOH POS replacement flow', () => {
   function makeAiHohReplacementStore() {
-    // p0 is user, p1 is AI HOH + POV holder, p2 and p3 are initially nominated
+    // p0 is user, p1 is AI LOH + POS holder, p2 and p3 are initially nominated
     const players = makePlayers(6);
     players[1].status = 'hoh+pov';
     players[2].status = 'nominated';
     players[3].status = 'nominated';
     return makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p1',
-      povWinnerId: 'p1',
+      phase: 'pos_ceremony_results',
+      lohId: 'p1',
+      posWinnerId: 'p1',
       nomineeIds: ['p2', 'p3'],
       awaitingPovSaveTarget: true,
       players,
@@ -374,7 +374,7 @@ describe('AI HOH POV replacement flow', () => {
 
   it('AI replacement never re-nominates the saved player', () => {
     const store = makeAiHohReplacementStore();
-    // AI HOH (p1) holds POV; saving p2 triggers automatic AI replacement selection
+    // AI LOH (p1) holds POS; saving p2 triggers automatic AI replacement selection
     store.dispatch(submitPovSaveTarget('p2'));
     const state = store.getState().game;
     // The saved player must not appear among the final nominees

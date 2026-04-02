@@ -42,7 +42,7 @@ describe('getPointsForHintsUsed', () => {
 describe('scoring across rounds', () => {
   it('accumulates scores across 3 rounds correctly', () => {
     const store = makeStore();
-    store.dispatch(startFamousFigures({ participantIds: [PLAYER], competitionType: 'HOH', seed: 7 }));
+    store.dispatch(startFamousFigures({ participantIds: [PLAYER], competitionType: 'LOH', seed: 7 }));
 
     // Round 1: correct with 0 hints → 10 pts
     const s0 = getState(store);
@@ -78,7 +78,7 @@ describe('tiebreaker logic', () => {
     const store = makeStore();
     const PA = 'tie-a';
     const PB = 'tie-b';
-    store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'HOH', seed: 3 }));
+    store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'LOH', seed: 3 }));
 
     // Round 1: both answer correctly with 0 hints → both get 10
     const s0 = getState(store);
@@ -116,7 +116,7 @@ describe('tiebreaker logic', () => {
     const store = makeStore();
     const PA = 'score-a';
     const PB = 'score-b';
-    store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'HOH', seed: 5 }));
+    store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'LOH', seed: 5 }));
 
     // Round 1: PA correct with 0 hints (10), PB wrong
     const s0 = getState(store);

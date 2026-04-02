@@ -35,7 +35,7 @@ describe('match-flow integration', () => {
     // ── Start match ──────────────────────────────────────────────────────
     store.dispatch(startFamousFigures({
       participantIds: [HUMAN, AI],
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed: SEED,
     }));
 
@@ -115,7 +115,7 @@ describe('match-flow integration', () => {
 
   it('handles all-wrong round correctly (no winners, 0 pts)', () => {
     const store = makeStore();
-    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'POV', seed: 99 }));
+    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'POS', seed: 99 }));
 
     // Nobody answers correctly
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: 'nobody right xyzzy abc' }));
@@ -130,7 +130,7 @@ describe('match-flow integration', () => {
 
   it('human cursor advances after advancePlayerCursor, status stays round_active while AI pending', () => {
     const store = makeStore();
-    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
+    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'LOH', seed: SEED }));
 
     expect(ff(store).status).toBe('round_active');
     expect(ff(store).currentRound).toBe(0);
@@ -152,7 +152,7 @@ describe('match-flow integration', () => {
 
   it('human can complete all 3 rounds before global endRound', () => {
     const store = makeStore();
-    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'HOH', seed: SEED }));
+    store.dispatch(startFamousFigures({ participantIds: [HUMAN, AI], competitionType: 'LOH', seed: SEED }));
 
     // Human solves all 3 rounds; AI never answers.
     // After endRound/nextRound each round becomes the current global round,

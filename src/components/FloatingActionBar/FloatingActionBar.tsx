@@ -26,7 +26,7 @@ const CONFESSIONAL_FLASH_DURATION_MS = 1800;
  *   [Social] [Actions]  ●Play●  [Public Meter] [Diary Room]
  *
  * - Center button dispatches advance(); pulses when actionable; disabled when
- *   waiting for human input (replacement nominee, Final 4 POV vote, Final 3 HOH eviction).
+ *   waiting for human input (replacement nominee, Final 4 POS vote, Final 3 LOH eviction).
  * - Left side: Social module + incoming social actions.
  * - Right side: Public Meter hook + Diary Room shortcut.
  */

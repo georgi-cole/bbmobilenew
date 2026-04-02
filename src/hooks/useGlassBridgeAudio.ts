@@ -41,7 +41,7 @@ export function useGlassBridgeAudio(shouldPlayMusic: boolean): UseGlassBridgeAud
     void SoundManager.playMusic(GB_MUSIC_KEY);
     return () => {
       SoundManager.stopMusic();
-      // Restore the track that was playing before GB started (e.g. HOH comp
+      // Restore the track that was playing before GB started (e.g. LOH comp
       // general) so phase music continues seamlessly after the minigame.
       if (prevKey && prevKey !== GB_MUSIC_KEY) {
         void SoundManager.playMusic(prevKey);

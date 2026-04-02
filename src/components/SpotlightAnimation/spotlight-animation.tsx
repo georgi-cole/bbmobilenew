@@ -15,7 +15,7 @@
  * Usage:
  *   <SpotlightAnimation
  *     tiles={[{ rect, badge: '👑' }]}
- *     caption="Alice wins HOH!"
+ *     caption="Alice wins LOH!"
  *     onDone={handleDone}
  *     measureA={() => getTileRect(winnerId)}
  *   />

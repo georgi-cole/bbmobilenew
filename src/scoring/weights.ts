@@ -13,8 +13,8 @@ import type { ScoringWeights } from './types';
  *   `wonGame` (100) + `wonPublicFavorite` (25).  See computeLeaderboard.ts.
  */
 export const DEFAULT_WEIGHTS: ScoringWeights = {
-  perHohWin: 10,
-  perPovWin: 8,
+  perLohWin: 10,
+  perPosWin: 8,
   madeJury: 5,
   perBattleBackWin: 8,
   survivedDoubleEviction: 7,

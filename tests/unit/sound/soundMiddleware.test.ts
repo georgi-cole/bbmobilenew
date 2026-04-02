@@ -134,30 +134,30 @@ afterEach(() => {
 // ── 1. game/advance phase→audio policy ───────────────────────────────────────
 
 describe('soundMiddleware — game/advance phase music policy', () => {
-  it('hoh_comp: starts music:hoh_comp_general and plays minigame:start', () => {
+  it('loh_comp: starts music:hoh_comp_general and plays minigame:start', () => {
     const store = makeTestStore();
-    advanceTo(store, 'hoh_comp');
+    advanceTo(store, 'loh_comp');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
     expect(playMock).toHaveBeenCalledWith('minigame:start');
   });
 
-  it('hoh_results: starts music:hoh_comp_general and plays tv:event stinger', () => {
+  it('loh_results: starts music:hoh_comp_general and plays tv:event stinger', () => {
     const store = makeTestStore();
-    advanceTo(store, 'hoh_results');
+    advanceTo(store, 'loh_results');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
     expect(playMock).toHaveBeenCalledWith('tv:event');
   });
 
-  it('pov_comp: starts music:hoh_comp_general and plays minigame:start', () => {
+  it('pos_comp: starts music:hoh_comp_general and plays minigame:start', () => {
     const store = makeTestStore();
-    advanceTo(store, 'pov_comp');
+    advanceTo(store, 'pos_comp');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
     expect(playMock).toHaveBeenCalledWith('minigame:start');
   });
 
-  it('pov_results: starts music:hoh_comp_general and plays tv:event stinger', () => {
+  it('pos_results: starts music:hoh_comp_general and plays tv:event stinger', () => {
     const store = makeTestStore();
-    advanceTo(store, 'pov_results');
+    advanceTo(store, 'pos_results');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
     expect(playMock).toHaveBeenCalledWith('tv:event');
   });
@@ -175,17 +175,17 @@ describe('soundMiddleware — game/advance phase music policy', () => {
     expect(playMusicMock).toHaveBeenCalledWith('music:nominations_main');
   });
 
-  it('pov_ceremony: plays tv:veto_ceremony stinger + starts music:veto_phase', () => {
+  it('pos_ceremony: plays tv:veto_ceremony stinger + starts music:veto_phase', () => {
     const store = makeTestStore();
-    advanceTo(store, 'pov_ceremony');
+    advanceTo(store, 'pos_ceremony');
     expect(playMock).toHaveBeenCalledWith('tv:veto_ceremony');
     expect(playMusicMock).toHaveBeenCalledWith('music:veto_phase');
   });
 
-  it('pov_ceremony_results: continues music:veto_phase WITHOUT replaying stinger', () => {
+  it('pos_ceremony_results: continues music:veto_phase WITHOUT replaying stinger', () => {
     const store = makeTestStore();
-    advanceTo(store, 'pov_ceremony_results');
-    // Stinger must NOT replay on results — it already fired on pov_ceremony
+    advanceTo(store, 'pos_ceremony_results');
+    // Stinger must NOT replay on results — it already fired on pos_ceremony
     expect(playMock).not.toHaveBeenCalledWith('tv:veto_ceremony');
     // Veto loop must still be started (in case of direct jump to results)
     expect(playMusicMock).toHaveBeenCalledWith('music:veto_phase');
@@ -244,9 +244,9 @@ describe('soundMiddleware — game/advance phase music policy', () => {
 // ── 2. game/setPhase and game/forcePhase apply the same policy ────────────────
 
 describe('soundMiddleware — game/setPhase / game/forcePhase', () => {
-  it('setPhase("hoh_comp") starts music:hoh_comp_general', () => {
+  it('setPhase("loh_comp") starts music:hoh_comp_general', () => {
     const store = makeTestStore();
-    setPhase(store, 'hoh_comp');
+    setPhase(store, 'loh_comp');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
   });
 
@@ -262,9 +262,9 @@ describe('soundMiddleware — game/setPhase / game/forcePhase', () => {
     expect(playMock).not.toHaveBeenCalledWith('player:evicted');
   });
 
-  it('forcePhase("pov_ceremony") plays veto_ceremony stinger + music:veto_phase', () => {
+  it('forcePhase("pos_ceremony") plays veto_ceremony stinger + music:veto_phase', () => {
     const store = makeTestStore();
-    forcePhase(store, 'pov_ceremony');
+    forcePhase(store, 'pos_ceremony');
     expect(playMock).toHaveBeenCalledWith('tv:veto_ceremony');
     expect(playMusicMock).toHaveBeenCalledWith('music:veto_phase');
   });
@@ -286,7 +286,7 @@ describe('soundMiddleware — social music override guard', () => {
     vi.clearAllMocks();
 
     // Phase advances while panel is open — music:hoh_comp_general must NOT start
-    advanceTo(store, 'hoh_comp');
+    advanceTo(store, 'loh_comp');
     expect(playMusicMock).not.toHaveBeenCalled();
   });
 
@@ -304,7 +304,7 @@ describe('soundMiddleware — social music override guard', () => {
     store.dispatch({ type: 'social/openSocialPanel' });
     vi.clearAllMocks();
 
-    advanceTo(store, 'pov_ceremony');
+    advanceTo(store, 'pos_ceremony');
     // Stinger should still fire
     expect(playMock).toHaveBeenCalledWith('tv:veto_ceremony');
     // But music should NOT start
@@ -337,7 +337,7 @@ describe('soundMiddleware — social music override guard', () => {
     playMusicMock = vi.spyOn(SoundManager, 'playMusic').mockResolvedValue(undefined);
 
     // Now phase advance should be allowed to start music
-    advanceTo(store, 'hoh_comp');
+    advanceTo(store, 'loh_comp');
     expect(playMusicMock).toHaveBeenCalledWith('music:hoh_comp_general');
   });
 });

@@ -40,13 +40,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -104,15 +104,15 @@ function setupSnakeSession(
 
 /**
  * `advanceToNominationResults` — dispatches three `advance()` calls so the store
- * transitions from hoh_results all the way to nomination_results.
+ * transitions from loh_results all the way to nomination_results.
  *
- * Phase sequence after completeMinigame sets phase = hoh_results:
+ * Phase sequence after completeMinigame sets phase = loh_results:
  *   advance() → social_1
  *   advance() → nominations
  *   advance() → nomination_results
  */
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -128,7 +128,7 @@ describe('Snake — winner correctness', () => {
     // Human score 900 > all AI scores
     store.dispatch(completeMinigame({ humanScore: 900 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the player with the highest score (AI wins)', () => {
@@ -138,17 +138,17 @@ describe('Snake — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 600 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
-  it('phase is hoh_results after completeMinigame in hoh_comp', () => {
+  it('phase is loh_results after completeMinigame in loh_comp', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     setupSnakeSession(store, ['p0', 'p1', 'p2'], { p1: 700, p2: 600 });
 
     store.dispatch(completeMinigame({ humanScore: 800 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('winner is set even when scores are close', () => {
@@ -158,7 +158,7 @@ describe('Snake — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 500 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 });
 
@@ -219,7 +219,7 @@ describe('Snake — last-place finisher correctness', () => {
     store.dispatch(completeMinigame({ humanScore: 900 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+    expect(state.lastHohCompFinisherId).not.toBe(state.lohId);
   });
 });
 
@@ -242,7 +242,7 @@ describe('Snake — Public mode auto-nominee', () => {
 
     advanceToNominationResults(store);
 
-    // Human HOH (p0) must nominate two players
+    // Human LOH (p0) must nominate two players
     expect(store.getState().game.awaitingNominations).toBe(true);
 
     store.dispatch(commitNominees(['p1', 'p2']));
@@ -277,18 +277,18 @@ describe('Snake — Public mode auto-nominee', () => {
 // ── 4. Human nomination flow after resolution ─────────────────────────────────
 
 describe('Snake — human nomination flow after resolution', () => {
-  it('phase advances to hoh_results immediately after completeMinigame', () => {
+  it('phase advances to loh_results immediately after completeMinigame', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
     setupSnakeSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 700, p2: 600, p3: 500 });
 
     store.dispatch(completeMinigame({ humanScore: 900 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
-  it('awaitingNominations is set for the human HOH', () => {
+  it('awaitingNominations is set for the human LOH', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
     setupSnakeSession(
@@ -328,7 +328,7 @@ describe('Snake — human nomination flow after resolution', () => {
 // ── 5. AI-only flow ───────────────────────────────────────────────────────────
 
 describe('Snake — AI-only nomination flow', () => {
-  it('AI HOH correctly sets hohId and lastHohCompFinisherId', () => {
+  it('AI LOH correctly sets lohId and lastHohCompFinisherId', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -337,11 +337,11 @@ describe('Snake — AI-only nomination flow', () => {
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p3');
   });
 
-  it('AI HOH phase transitions to hoh_results', () => {
+  it('AI LOH phase transitions to loh_results', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -349,10 +349,10 @@ describe('Snake — AI-only nomination flow', () => {
     setupSnakeSession(store, ['p1', 'p2', 'p3'], { p1: 800, p2: 600, p3: 400 });
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('AI HOH in public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });

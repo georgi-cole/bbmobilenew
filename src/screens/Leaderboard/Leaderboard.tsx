@@ -21,8 +21,8 @@ export default function Leaderboard() {
     playerId: p.id,
     displayName: p.name,
     finalPlacement: p.finalRank ?? null,
-    hohWins: p.stats?.hohWins ?? 0,
-    povWins: p.stats?.povWins ?? 0,
+    lohWins: p.stats?.lohWins ?? 0,
+    posWins: p.stats?.posWins ?? 0,
     timesNominated: p.stats?.timesNominated ?? 0,
     battleBackWins: p.stats?.battleBackWins ?? 0,
     wonFinalHoh: p.stats?.wonFinalHoh ?? false,
@@ -92,8 +92,8 @@ export default function Leaderboard() {
                 </button>
                 {isExpanded && (
                   <ul className="leaderboard-screen__breakdown">
-                    {bd.hohWins > 0 && <li>LOH wins: +{bd.hohWins}</li>}
-                    {bd.povWins > 0 && <li>POS wins: +{bd.povWins}</li>}
+                    {bd.lohWins > 0 && <li>LOH wins: +{bd.lohWins}</li>}
+                    {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
                     {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
                     {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}
@@ -142,8 +142,8 @@ export default function Leaderboard() {
                   <ul className="leaderboard-screen__breakdown">
                     <li>Seasons played: {entry.seasonsPlayed}</li>
                     <li>Wins: {entry.wins}</li>
-                    {bd.hohWins > 0 && <li>LOH wins: +{bd.hohWins}</li>}
-                    {bd.povWins > 0 && <li>POS wins: +{bd.povWins}</li>}
+                    {bd.lohWins > 0 && <li>LOH wins: +{bd.lohWins}</li>}
+                    {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
                     {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
                     {bd.madeJury > 0 && <li>Made jury: +{bd.madeJury}</li>}
                     {bd.battleBackWins > 0 && <li>Battle Back win(s): +{bd.battleBackWins}</li>}

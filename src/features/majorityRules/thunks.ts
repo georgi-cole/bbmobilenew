@@ -14,8 +14,8 @@ export const resolveMajorityRulesOutcome =
     if (!majorityRules.winnerId) return;
 
     const phase = state.game.phase;
-    if (majorityRules.competitionType === 'HOH' && phase !== 'hoh_comp') return;
-    if (majorityRules.competitionType === 'POV' && phase !== 'pov_comp') return;
+    if (majorityRules.competitionType === 'LOH' && phase !== 'loh_comp') return;
+    if (majorityRules.competitionType === 'POS' && phase !== 'pos_comp') return;
 
     dispatch(markMajorityRulesOutcomeResolved());
     dispatch(

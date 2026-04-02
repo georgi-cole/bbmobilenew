@@ -2,7 +2,7 @@
  * Thunk: resolveGlassBridgeOutcome
  *
  * Reads the completed Glass Bridge state, validates the current game phase
- * matches the competition type, and awards HOH or POV via `applyMinigameWinner`.
+ * matches the competition type, and awards LOH or POS via `applyMinigameWinner`.
  *
  * Idempotent — returns immediately if outcomeResolved is already true.
  */
@@ -33,16 +33,16 @@ export const resolveGlassBridgeOutcome =
       phase,
     });
 
-    if (gb.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (gb.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[glassBridge] resolveGlassBridgeOutcome: expected phase "hoh_comp" for HOH, got',
+        '[glassBridge] resolveGlassBridgeOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (gb.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (gb.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[glassBridge] resolveGlassBridgeOutcome: expected phase "pov_comp" for POV, got',
+        '[glassBridge] resolveGlassBridgeOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

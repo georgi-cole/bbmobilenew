@@ -56,13 +56,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -118,7 +118,7 @@ function setupMinigameSession(
 }
 
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -196,7 +196,7 @@ describe('Estimation Game — winner correctness', () => {
     // Human average accuracy of 88 beats everyone
     store.dispatch(completeMinigame({ humanScore: 88 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the player with the highest average accuracy (AI wins)', () => {
@@ -207,17 +207,17 @@ describe('Estimation Game — winner correctness', () => {
     // Human scores 75 — p1 beats them
     store.dispatch(completeMinigame({ humanScore: 75 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
-  it('phase advances to hoh_results after completeMinigame', () => {
+  it('phase advances to loh_results after completeMinigame', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 70, p2: 58 });
 
     store.dispatch(completeMinigame({ humanScore: 85 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('winner with explicit winnerId in payload beats derived winner', () => {
@@ -232,7 +232,7 @@ describe('Estimation Game — winner correctness', () => {
       completeMinigame({ humanScore: 75, winnerId: 'p2' } as CompleteMinigamePayload),
     );
 
-    expect(store.getState().game.hohId).toBe('p2');
+    expect(store.getState().game.lohId).toBe('p2');
   });
 });
 
@@ -265,9 +265,9 @@ describe('Estimation Game — last-place correctness', () => {
 // ── 4. Public mode auto-nominee ───────────────────────────────────────────────
 
 describe('Estimation Game — public mode auto-nominee', () => {
-  it('public mode appends last-place HOH comp finisher as auto-nominee', () => {
+  it('public mode appends last-place LOH comp finisher as auto-nominee', () => {
     const players = makePlayers(5);
-    // p1 is AI HOH so they can auto-nominate
+    // p1 is AI LOH so they can auto-nominate
     players[1].isUser = false;
     players[0].isUser = false;
 
@@ -330,7 +330,7 @@ describe('Estimation Game — human nomination flow', () => {
 // ── 6. AI-only flow ───────────────────────────────────────────────────────────
 
 describe('Estimation Game — AI-only nomination flow', () => {
-  it('AI HOH correctly sets hohId and lastHohCompFinisherId', () => {
+  it('AI LOH correctly sets lohId and lastHohCompFinisherId', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -339,7 +339,7 @@ describe('Estimation Game — AI-only nomination flow', () => {
 
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
 
     advanceToNominationResults(store);
@@ -349,7 +349,7 @@ describe('Estimation Game — AI-only nomination flow', () => {
     expect(state.awaitingNominations).toBe(false);
   });
 
-  it('AI HOH in public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });
@@ -382,12 +382,12 @@ describe('Estimation Game — tie-breaking', () => {
 
     const state = store.getState().game;
     // Winner must be one of the tied players (not p0=55 or p3=40)
-    expect(['p1', 'p2']).toContain(state.hohId);
+    expect(['p1', 'p2']).toContain(state.lohId);
     // Result must be stable (same seed, same participants → same winner every time)
     const store2 = makeStore({ players });
     setupMinigameSession(store2, ['p0', 'p1', 'p2', 'p3'], { p1: 72, p2: 72, p3: 40 });
     store2.dispatch(completeMinigame({ humanScore: 55 } as CompleteMinigamePayload));
-    expect(store2.getState().game.hohId).toBe(state.hohId);
+    expect(store2.getState().game.lohId).toBe(state.lohId);
   });
 
   it('no silent fallback: lastHohCompFinisherId is always set when session has 2+ participants', () => {
@@ -430,7 +430,7 @@ describe('Estimation Game — 5-round average accuracy model', () => {
     const humanAvg = computeAverageAccuracy([100, 97, 82, 76, 65]); // 420/5 = 84
     store.dispatch(completeMinigame({ humanScore: humanAvg } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
   });
 
@@ -450,10 +450,10 @@ describe('Estimation Game — 5-round average accuracy model', () => {
     store.dispatch(completeMinigame({ humanScore: humanAvg } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.phase).toBe('hoh_results');
-    expect(state.hohId).toBeTruthy();
+    expect(state.phase).toBe('loh_results');
+    expect(state.lohId).toBeTruthy();
     expect(state.lastHohCompFinisherId).toBeTruthy();
-    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+    expect(state.lastHohCompFinisherId).not.toBe(state.lohId);
   });
 });
 
@@ -666,7 +666,7 @@ describe('Estimation Game — AI score calibration (0–100 average accuracy)', 
     // Human scores 91 — wins
     store.dispatch(completeMinigame({ humanScore: 91 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p4');
   });
 });

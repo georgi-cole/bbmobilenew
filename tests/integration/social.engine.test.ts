@@ -92,8 +92,8 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     SocialEngine.init(store);
 
     // Transition between two non-social phases – should not throw or set lastReport
-    store.dispatch(setPhase('hoh_comp'));
-    store.dispatch(setPhase('hoh_results'));
+    store.dispatch(setPhase('loh_comp'));
+    store.dispatch(setPhase('loh_results'));
 
     expect(store.getState().social.lastReport).toBeNull();
   });

@@ -77,7 +77,7 @@ interface Props {
 export default function MemoryColorsComp({
   participantIds,
   participants,
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed = 0,
   onComplete,
 }: Props) {

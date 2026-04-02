@@ -55,13 +55,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -129,7 +129,7 @@ function dispatchCodeBreakerResult(
 }
 
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -290,7 +290,7 @@ describe('Vault Cracker — winner correctness', () => {
       lastPlaceId: 'p3',
     });
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the participant with the highest score (AI wins)', () => {
@@ -304,10 +304,10 @@ describe('Vault Cracker — winner correctness', () => {
       lastPlaceId: 'p3',
     });
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
-  it('phase transitions to hoh_results after outcome', () => {
+  it('phase transitions to loh_results after outcome', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
 
@@ -318,7 +318,7 @@ describe('Vault Cracker — winner correctness', () => {
       lastPlaceId: 'p2',
     });
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('solved players outrank unsolved players (score ordering)', () => {
@@ -333,7 +333,7 @@ describe('Vault Cracker — winner correctness', () => {
       lastPlaceId: 'p0',
     });
 
-    expect(store.getState().game.hohId).toBe('p2');
+    expect(store.getState().game.lohId).toBe('p2');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p0');
   });
 });
@@ -405,7 +405,7 @@ describe('Vault Cracker — Public mode auto-nominee', () => {
 
     advanceToNominationResults(store);
 
-    // Human HOH (p0) must nominate two players
+    // Human LOH (p0) must nominate two players
     expect(store.getState().game.awaitingNominations).toBe(true);
     store.dispatch(commitNominees(['p1', 'p2']));
 
@@ -433,7 +433,7 @@ describe('Vault Cracker — Public mode auto-nominee', () => {
 // ── 9. Human nomination flow ──────────────────────────────────────────────────
 
 describe('Vault Cracker — human nomination flow', () => {
-  it('human HOH can nominate after Vault Cracker resolves', () => {
+  it('human LOH can nominate after Vault Cracker resolves', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -459,7 +459,7 @@ describe('Vault Cracker — human nomination flow', () => {
 // ── 10. AI-only nomination flow ───────────────────────────────────────────────
 
 describe('Vault Cracker — AI-only nomination flow', () => {
-  it('AI HOH sets hohId and lastHohCompFinisherId correctly', () => {
+  it('AI LOH sets lohId and lastHohCompFinisherId correctly', () => {
     const players = makePlayers(5);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -472,11 +472,11 @@ describe('Vault Cracker — AI-only nomination flow', () => {
     });
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p0');
   });
 
-  it('AI HOH in public mode auto-nominates the last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates the last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });
@@ -496,7 +496,7 @@ describe('Vault Cracker — AI-only nomination flow', () => {
     expect(afterNoms.nomineeIds).toContain('p5');
   });
 
-  it('AI HOH phase transitions to hoh_results', () => {
+  it('AI LOH phase transitions to loh_results', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -508,16 +508,16 @@ describe('Vault Cracker — AI-only nomination flow', () => {
       lastPlaceId: 'p3',
     });
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
-// ── 11. POV competition ───────────────────────────────────────────────────────
+// ── 11. POS competition ───────────────────────────────────────────────────────
 
-describe('Vault Cracker — POV competition', () => {
-  it('resolves as POV winner when phase is pov_comp', () => {
+describe('Vault Cracker — POS competition', () => {
+  it('resolves as POS winner when phase is pos_comp', () => {
     const players = makePlayers(4);
-    const store = makeStore({ players, phase: 'pov_comp', hohId: 'p1' });
+    const store = makeStore({ players, phase: 'pos_comp', lohId: 'p1' });
 
     store.dispatch(
       applyMinigameWinner({
@@ -529,7 +529,7 @@ describe('Vault Cracker — POV competition', () => {
       }),
     );
 
-    expect(store.getState().game.povWinnerId).toBe('p2');
+    expect(store.getState().game.posWinnerId).toBe('p2');
   });
 });
 

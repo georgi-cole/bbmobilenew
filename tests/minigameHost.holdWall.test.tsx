@@ -99,7 +99,7 @@ describe('MinigameHost — HoldTheWall routing', () => {
       <Provider store={store}>
         <MinigameHost
           game={HTW_GAME}
-          gameOptions={{ seed: 42, prizeType: 'HOH' }}
+          gameOptions={{ seed: 42, prizeType: 'LOH' }}
           participants={[
             { id: 'p1', name: 'Alice', isHuman: true, precomputedScore: 0, previousPR: null },
           ]}

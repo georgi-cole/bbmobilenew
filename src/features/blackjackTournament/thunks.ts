@@ -2,7 +2,7 @@
  * Thunk: resolveBlackjackTournamentOutcome
  *
  * Reads the completed Blackjack Tournament state, validates the current game
- * phase matches the competition type, and awards HOH or POV via
+ * phase matches the competition type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * Mirrors the resolveBiographyBlitzOutcome pattern:
@@ -41,16 +41,16 @@ export const resolveBlackjackTournamentOutcome =
       phase,
     });
 
-    if (bt.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (bt.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[blackjackTournament] resolveBlackjackTournamentOutcome: expected "hoh_comp" for HOH, got',
+        '[blackjackTournament] resolveBlackjackTournamentOutcome: expected "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (bt.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (bt.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[blackjackTournament] resolveBlackjackTournamentOutcome: expected "pov_comp" for POV, got',
+        '[blackjackTournament] resolveBlackjackTournamentOutcome: expected "pos_comp" for POS, got',
         phase,
       );
       return;

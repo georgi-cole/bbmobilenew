@@ -2,8 +2,8 @@
  * statusBadges — Unified badge emoji/label mapping for houseguest statuses.
  *
  * Badge code ↔ emoji mapping:
- *   'hoh'       → 👑  (Head of Household)
- *   'pov'       → 🛡️  (Power of Veto holder)
+ *   'hoh'       → 👑  (Leader of the House)
+ *   'pov'       → 🛡️  (Power of Safety holder)
  *   'nominated' → ❓  (Nominated for eviction)
  *   'jury'      → ⚖️  (Jury member)
  *   'evicted'   → (no badge — evictee X overlay used instead)

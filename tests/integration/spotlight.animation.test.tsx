@@ -60,12 +60,12 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 1,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -127,12 +127,12 @@ describe('CeremonyOverlay', () => {
     render(
       <CeremonyOverlay
         tiles={[{ rect, badge: '👑', badgeStart: 'center' }]}
-        caption="Alice wins Head of Household!"
+        caption="Alice wins Leader of the House!"
         onDone={onDone}
         durationMs={1000}
       />,
     );
-    expect(screen.getByText('Alice wins Head of Household!')).toBeTruthy();
+    expect(screen.getByText('Alice wins Leader of the House!')).toBeTruthy();
   });
 
   it('fires onDone after durationMs (+ exit delay) when tiles are valid', async () => {
@@ -141,7 +141,7 @@ describe('CeremonyOverlay', () => {
     render(
       <CeremonyOverlay
         tiles={[{ rect, badge: '👑', badgeStart: 'center' }]}
-        caption="Alice wins Head of Household!"
+        caption="Alice wins Leader of the House!"
         onDone={onDone}
         durationMs={1000}
       />,
@@ -163,7 +163,7 @@ describe('CeremonyOverlay', () => {
     const { container } = render(
       <CeremonyOverlay
         tiles={[{ rect: null, badge: '👑' }]}
-        caption="Alice wins Head of Household!"
+        caption="Alice wins Leader of the House!"
         onDone={onDone}
       />,
     );
@@ -181,7 +181,7 @@ describe('CeremonyOverlay', () => {
     render(
       <CeremonyOverlay
         tiles={[{ rect: zeroRect, badge: '🛡️' }]}
-        caption="Bob wins Power of Veto!"
+        caption="Bob wins Power of Safety!"
         onDone={onDone}
       />,
     );
@@ -193,7 +193,7 @@ describe('CeremonyOverlay', () => {
 
 // ── GameScreen × CeremonyOverlay integration tests ────────────────────────
 
-describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => {
+describe('GameScreen – CeremonyOverlay defers LOH/POS store mutations', () => {
   beforeEach(() => {
     capturedMinigameOnDone = null;
     vi.useFakeTimers();
@@ -209,8 +209,8 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     const store = makeStore();
     renderWithStore(store);
 
-    // Start HOH comp and wait for challenge to be created.
-    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+    // Start LOH comp and wait for challenge to be created.
+    await act(async () => { store.dispatch(setPhase('loh_comp')); });
 
     // MinigameHost should be mounted (mock captures onDone).
     expect(screen.getByTestId('minigame-mock')).toBeTruthy();
@@ -220,8 +220,8 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     await act(async () => { capturedMinigameOnDone!(100); });
 
     // Zero DOMRect → no animation → phase transitions immediately.
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).not.toBeNull();
   });
 
   it('defers applyMinigameWinner until CeremonyOverlay completes when rects are valid', async () => {
@@ -235,7 +235,7 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+    await act(async () => { store.dispatch(setPhase('loh_comp')); });
 
     expect(capturedMinigameOnDone).not.toBeNull();
 
@@ -243,8 +243,8 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     await act(async () => { capturedMinigameOnDone!(100); });
 
     // Valid DOMRect → CeremonyOverlay is showing → phase NOT yet committed.
-    expect(store.getState().game.phase).toBe('hoh_comp');
-    expect(store.getState().game.hohId).toBeNull();
+    expect(store.getState().game.phase).toBe('loh_comp');
+    expect(store.getState().game.lohId).toBeNull();
 
     // CeremonyOverlay should be visible with appropriate aria label.
     const statusEl = screen.getByRole('status');
@@ -255,8 +255,8 @@ describe('GameScreen – CeremonyOverlay defers HOH/POV store mutations', () => 
     await act(async () => { vi.advanceTimersByTime(350 + 50); });
 
     // Now the store mutation should have fired.
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).not.toBeNull();
   });
 });
 

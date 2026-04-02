@@ -20,7 +20,7 @@ const ALL_PARTICIPANTS = [
 ];
 
 export default function SilentSaboteurTestPage() {
-  const [prizeType, setPrizeType] = useState<SilentSaboteurPrizeType>('HOH');
+  const [prizeType, setPrizeType] = useState<SilentSaboteurPrizeType>('LOH');
   const [seed, setSeed] = useState(42);
   const [playerCount, setPlayerCount] = useState(5);
   const [running, setRunning] = useState(false);
@@ -73,8 +73,8 @@ export default function SilentSaboteurTestPage() {
               onChange={(e) => setPrizeType(e.target.value as SilentSaboteurPrizeType)}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
 

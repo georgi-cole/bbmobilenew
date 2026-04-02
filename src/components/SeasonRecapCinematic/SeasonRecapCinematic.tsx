@@ -82,7 +82,7 @@ function firstName(player: Player | null | undefined): string {
 }
 
 function totalCompWins(player: Player): number {
-  return (player.stats?.hohWins ?? 0) + (player.stats?.povWins ?? 0);
+  return (player.stats?.lohWins ?? 0) + (player.stats?.posWins ?? 0);
 }
 
 function getPlacementValue(player: Player): number | null {
@@ -140,7 +140,7 @@ function getMostNominated(players: Player[]): Player | null {
 function getTopVetoPlayer(players: Player[]): Player | null {
   return players.reduce<Player | null>((best, player) => {
     if (!best) return player;
-    return (player.stats?.povWins ?? 0) > (best.stats?.povWins ?? 0) ? player : best;
+    return (player.stats?.posWins ?? 0) > (best.stats?.posWins ?? 0) ? player : best;
   }, null);
 }
 
@@ -239,7 +239,7 @@ function buildRecapData(
         }
       : {
           label: 'Safeties Won',
-          value: String(topVeto?.stats?.povWins ?? Math.max(1, Math.floor(week / 2))),
+          value: String(topVeto?.stats?.posWins ?? Math.max(1, Math.floor(week / 2))),
           accent: `${firstName(topVeto)} kept the power shifting`,
         },
     {

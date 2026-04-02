@@ -9,9 +9,9 @@
  *     explicit lastPlaceId, winnerId, and lastPlaceType: 'scored'.
  *  5. Idempotency: resolveMemoryColorsOutcome is a no-op if already resolved.
  *  6. Public mode auto-nominee matches scoreboard last-place finisher.
- *  7. Human HOH flow: after resolution, awaitingNominations is set and
+ *  7. Human LOH flow: after resolution, awaitingNominations is set and
  *     commitNominees appends the auto-nominee matching Memory Colors last-place.
- *  8. AI HOH flow: nominees are derived from canonical outcome data.
+ *  8. AI LOH flow: nominees are derived from canonical outcome data.
  *  9. Defensive case: explicit lastPlaceId is used over fallback participant order.
  * 10. lastHohCompFinisherType is 'scored'.
  */
@@ -60,13 +60,13 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -114,7 +114,7 @@ describe('MemoryColors slice — state machine', () => {
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 1,
         humanPlayerId: 'p0',
       }),
@@ -125,7 +125,7 @@ describe('MemoryColors slice — state machine', () => {
   it('beginInput transitions showing → input', () => {
     const store = makeStore();
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     expect(store.getState().memoryColors!.phase).toBe('input');
@@ -134,7 +134,7 @@ describe('MemoryColors slice — state machine', () => {
   it('correct inputs advance inputIndex', () => {
     const store = makeStore();
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -148,7 +148,7 @@ describe('MemoryColors slice — state machine', () => {
     const store = makeStore();
     const seed = 7;
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const seq = store.getState().memoryColors!.sequence;
@@ -161,7 +161,7 @@ describe('MemoryColors slice — state machine', () => {
   it('first wrong input → warning_beat, mistakesUsed = 1', () => {
     const store = makeStore();
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -175,7 +175,7 @@ describe('MemoryColors slice — state machine', () => {
   it('resumeAfterWarning transitions warning_beat → showing', () => {
     const store = makeStore();
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -188,7 +188,7 @@ describe('MemoryColors slice — state machine', () => {
   it('third wrong input → complete (run ends)', () => {
     const store = makeStore();
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -213,7 +213,7 @@ describe('MemoryColors slice — state machine', () => {
     const store = makeStore();
     const seed = 7;
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0'], competitionType: 'HOH', seed, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0'], competitionType: 'LOH', seed, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const seq = store.getState().memoryColors!.sequence;
@@ -352,12 +352,12 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
 
   it('dispatches applyMinigameWinner with the correct winnerId', () => {
     const players = makePlayers(3);
-    const store = makeFullStore({ players, phase: 'hoh_comp' });
+    const store = makeFullStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 999,
         humanPlayerId: 'p0',
       }),
@@ -386,17 +386,17 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     store.dispatch(resolveMemoryColorsOutcome());
 
     const game = store.getState().game;
-    expect(game.hohId).not.toBeNull();
+    expect(game.lohId).not.toBeNull();
   });
 
   it('sets lastHohCompFinisherId to the canonical last-place finisher', () => {
     const players = makePlayers(4);
-    const store = makeFullStore({ players, phase: 'hoh_comp' });
+    const store = makeFullStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2', 'p3'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 77,
         humanPlayerId: 'p0',
       }),
@@ -429,10 +429,10 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
 
   it('sets lastHohCompFinisherType to "scored"', () => {
     const players = makePlayers(3);
-    const store = makeFullStore({ players, phase: 'hoh_comp' });
+    const store = makeFullStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0', 'p1', 'p2'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0', 'p1', 'p2'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -456,10 +456,10 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
 
   it('is idempotent: does not dispatch twice', () => {
     const players = makePlayers(3);
-    const store = makeFullStore({ players, phase: 'hoh_comp' });
+    const store = makeFullStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
-      initMemoryColors({ participantIds: ['p0', 'p1', 'p2'], competitionType: 'HOH', seed: 1, humanPlayerId: 'p0' }),
+      initMemoryColors({ participantIds: ['p0', 'p1', 'p2'], competitionType: 'LOH', seed: 1, humanPlayerId: 'p0' }),
     );
     store.dispatch(beginInput());
     const mc = store.getState().memoryColors!;
@@ -477,11 +477,11 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
     store.dispatch(recordInput({ colorIndex: wrong3, now: 300 }));
 
     store.dispatch(resolveMemoryColorsOutcome());
-    const hohId1 = store.getState().game.hohId;
+    const hohId1 = store.getState().game.lohId;
 
     // Second call should be a no-op
     store.dispatch(resolveMemoryColorsOutcome());
-    const hohId2 = store.getState().game.hohId;
+    const hohId2 = store.getState().game.lohId;
 
     expect(hohId1).toBe(hohId2);
     expect(store.getState().memoryColors!.outcomeResolved).toBe(true);
@@ -498,14 +498,14 @@ describe('MemoryColors — resolveMemoryColorsOutcome thunk', () => {
 
 describe('MemoryColors — public mode auto-nominee', () => {
   it('auto-nominee matches the canonical last-place finisher from Memory Colors', () => {
-    const players = makePlayers(5, 0); // p0 is human HOH
-    // Make p0 the HOH winner via applyMinigameWinner with a specific last place
-    const store = makeStore({ players, phase: 'hoh_comp', publicModeEnabled: true });
+    const players = makePlayers(5, 0); // p0 is human LOH
+    // Make p0 the LOH winner via applyMinigameWinner with a specific last place
+    const store = makeStore({ players, phase: 'loh_comp', publicModeEnabled: true });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2', 'p3', 'p4'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 42,
         humanPlayerId: 'p0',
       }),
@@ -538,13 +538,13 @@ describe('MemoryColors — public mode auto-nominee', () => {
     expect(game1.lastHohCompFinisherType).toBe('scored');
 
     // Advance through social/nominations to nomination_results
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results
 
-    // Human HOH (p1) commits nominees — auto-third (p4) should be appended
+    // Human LOH (p1) commits nominees — auto-third (p4) should be appended
     const nominees = ['p0', 'p2'];
-    store.dispatch(commitNominees({ nomineeIds: nominees, hohId: 'p1' }));
+    store.dispatch(commitNominees({ nomineeIds: nominees, lohId: 'p1' }));
 
     const game2 = store.getState().game;
     expect(game2.nomineeIds).toContain('p4');
@@ -552,7 +552,7 @@ describe('MemoryColors — public mode auto-nominee', () => {
 
   it('auto-nominee does not duplicate if last-place is already nominated', () => {
     const players = makePlayers(5);
-    const store = makeStore({ players, phase: 'hoh_comp', publicModeEnabled: true });
+    const store = makeStore({ players, phase: 'loh_comp', publicModeEnabled: true });
 
     store.dispatch(
       applyMinigameWinner({
@@ -564,12 +564,12 @@ describe('MemoryColors — public mode auto-nominee', () => {
       }),
     );
 
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results
 
     // Include p4 (last place) in the explicit nominee picks
-    store.dispatch(commitNominees({ nomineeIds: ['p0', 'p4'], hohId: 'p1' }));
+    store.dispatch(commitNominees({ nomineeIds: ['p0', 'p4'], lohId: 'p1' }));
 
     const game = store.getState().game;
     // No duplicate
@@ -578,17 +578,17 @@ describe('MemoryColors — public mode auto-nominee', () => {
   });
 });
 
-// ── 8. Human HOH flow ─────────────────────────────────────────────────────────
+// ── 8. Human LOH flow ─────────────────────────────────────────────────────────
 
-describe('MemoryColors — human HOH nomination flow', () => {
-  it('phase advances to hoh_results after resolveMemoryColorsOutcome', () => {
+describe('MemoryColors — human LOH nomination flow', () => {
+  it('phase advances to loh_results after resolveMemoryColorsOutcome', () => {
     const players = makePlayers(4, 1); // p1 is human
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2', 'p3'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 55,
         humanPlayerId: 'p1',
       }),
@@ -612,12 +612,12 @@ describe('MemoryColors — human HOH nomination flow', () => {
 
     store.dispatch(resolveMemoryColorsOutcome());
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('awaitingNominations is set after advance through social/nominations for human HOH', () => {
+  it('awaitingNominations is set after advance through social/nominations for human LOH', () => {
     const players = makePlayers(4, 0); // p0 is human
-    const store = makeStore({ players, phase: 'hoh_comp', publicModeEnabled: false });
+    const store = makeStore({ players, phase: 'loh_comp', publicModeEnabled: false });
 
     store.dispatch(
       applyMinigameWinner({
@@ -629,7 +629,7 @@ describe('MemoryColors — human HOH nomination flow', () => {
       }),
     );
 
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results (awaitingNominations set here)
 
@@ -637,12 +637,12 @@ describe('MemoryColors — human HOH nomination flow', () => {
   });
 });
 
-// ── 9. AI HOH flow ────────────────────────────────────────────────────────────
+// ── 9. AI LOH flow ────────────────────────────────────────────────────────────
 
-describe('MemoryColors — AI HOH flow', () => {
-  it('AI HOH nominates after resolveMemoryColorsOutcome with all-AI participants', () => {
+describe('MemoryColors — AI LOH flow', () => {
+  it('AI LOH nominates after resolveMemoryColorsOutcome with all-AI participants', () => {
     const players = makePlayers(4, -1); // no human
-    const store = makeStore({ players, phase: 'hoh_comp', publicModeEnabled: false });
+    const store = makeStore({ players, phase: 'loh_comp', publicModeEnabled: false });
 
     // Simulate an AI-only game by using applyMinigameWinner directly
     store.dispatch(
@@ -655,10 +655,10 @@ describe('MemoryColors — AI HOH flow', () => {
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
 
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results
 
@@ -672,7 +672,7 @@ describe('MemoryColors — AI HOH flow', () => {
 describe('MemoryColors — authoritative outcome handling', () => {
   it('uses explicit lastPlaceId over fallback participant order', () => {
     const players = makePlayers(4);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     // Pass scores where p2 would be last by score, but explicitly set p3 as last
     store.dispatch(
@@ -690,7 +690,7 @@ describe('MemoryColors — authoritative outcome handling', () => {
 
   it('score-based derivation correctly identifies lowest scorer when no explicit lastPlaceId', () => {
     const players = makePlayers(4);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       applyMinigameWinner({
@@ -703,14 +703,14 @@ describe('MemoryColors — authoritative outcome handling', () => {
     expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
   });
 
-  it('finalRanking winner matches hohId after resolving', () => {
+  it('finalRanking winner matches lohId after resolving', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 11,
         humanPlayerId: 'p0',
       }),
@@ -737,18 +737,18 @@ describe('MemoryColors — authoritative outcome handling', () => {
     const mcFinal = store.getState().memoryColors!;
     const game = store.getState().game;
 
-    // The hohId set by the game should match the canonical winner in the slice
-    expect(game.hohId).toBe(mcFinal.winnerId);
+    // The lohId set by the game should match the canonical winner in the slice
+    expect(game.lohId).toBe(mcFinal.winnerId);
   });
 
   it('lastHohCompFinisherId from game state matches canonical lastPlaceId from slice', () => {
     const players = makePlayers(4);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       initMemoryColors({
         participantIds: ['p0', 'p1', 'p2', 'p3'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 22,
         humanPlayerId: 'p0',
       }),

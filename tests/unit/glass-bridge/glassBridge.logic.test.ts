@@ -71,7 +71,7 @@ function startGame(
         name: id,
         isHuman: id === humanPlayerId,
       })),
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed,
       humanPlayerId,
     }),
@@ -379,7 +379,7 @@ describe('glassBridgeSlice — resolveStep', () => {
     store.dispatch(
       initGlassBridge({
         participantIds: ['a'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 42,
         rowsCount: 2,
       }),
@@ -612,7 +612,7 @@ describe('glassBridgeSlice — finaliseOrderSelection', () => {
   it('is deterministic — same seed produces same order', () => {
     function runOrder(seed: number) {
       const store = makeStore();
-      store.dispatch(initGlassBridge({ participantIds: ['a', 'b', 'c'], competitionType: 'HOH', seed }));
+      store.dispatch(initGlassBridge({ participantIds: ['a', 'b', 'c'], competitionType: 'LOH', seed }));
       store.dispatch(recordNumberChoice({ playerId: 'a', number: 3 }));
       store.dispatch(recordNumberChoice({ playerId: 'b', number: 1 }));
       store.dispatch(recordNumberChoice({ playerId: 'c', number: 2 }));
@@ -653,7 +653,7 @@ describe('Full deterministic simulation', () => {
       store.dispatch(
         initGlassBridge({
           participantIds: ['a', 'b', 'c', 'd'],
-          competitionType: 'HOH',
+          competitionType: 'LOH',
           seed,
           rowsCount: 6,
         }),
@@ -711,7 +711,7 @@ describe('Broken tile persistence', () => {
     store.dispatch(
       initGlassBridge({
         participantIds: ['a', 'b'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 42,
         rowsCount: 4,
       }),

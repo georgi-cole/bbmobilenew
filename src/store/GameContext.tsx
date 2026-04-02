@@ -49,10 +49,10 @@ const INITIAL_STATE: GameState = {
   week: 1,
   phase: 'week_start',
   seed: 42,
-  hohId: null,
+  lohId: null,
   prevHohId: null,
   nomineeIds: [],
-  povWinnerId: null,
+  posWinnerId: null,
   players: buildInitialPlayers(),
   tvFeed: [
     { id: 'e0', text: 'Welcome to The Big Eye – AI Edition! 🏠 Season 1 is about to begin.', type: 'game', timestamp: Date.now() },

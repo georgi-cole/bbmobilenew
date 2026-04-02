@@ -43,8 +43,8 @@ describe('computeScoreBreakdown', () => {
   it('returns all zeros for an empty summary', () => {
     const bd = computeScoreBreakdown(makeSummary());
     expect(bd.total).toBe(0);
-    expect(bd.hohWins).toBe(0);
-    expect(bd.povWins).toBe(0);
+    expect(bd.lohWins).toBe(0);
+    expect(bd.posWins).toBe(0);
     expect(bd.madeJury).toBe(0);
     expect(bd.battleBackWins).toBe(0);
     expect(bd.survivedDoubleEviction).toBe(0);
@@ -55,14 +55,14 @@ describe('computeScoreBreakdown', () => {
     expect(bd.runnerUp).toBe(0);
   });
 
-  it('awards perHohWin points per HOH win', () => {
-    const bd = computeScoreBreakdown(makeSummary({ hohWins: 3 }));
-    expect(bd.hohWins).toBe(3 * DEFAULT_WEIGHTS.perHohWin);
+  it('awards perLohWin points per LOH win', () => {
+    const bd = computeScoreBreakdown(makeSummary({ lohWins: 3 }));
+    expect(bd.lohWins).toBe(3 * DEFAULT_WEIGHTS.perLohWin);
   });
 
-  it('awards perPovWin points per POV win', () => {
-    const bd = computeScoreBreakdown(makeSummary({ povWins: 2 }));
-    expect(bd.povWins).toBe(2 * DEFAULT_WEIGHTS.perPovWin);
+  it('awards perPosWin points per POS win', () => {
+    const bd = computeScoreBreakdown(makeSummary({ posWins: 2 }));
+    expect(bd.posWins).toBe(2 * DEFAULT_WEIGHTS.perPosWin);
   });
 
   it('awards madeJury points when madeJury is true', () => {
@@ -121,15 +121,15 @@ describe('computeScoreBreakdown', () => {
     const bd = computeScoreBreakdown(
       makeSummary({
         finalPlacement: 1,
-        hohWins: 2,
-        povWins: 1,
+        lohWins: 2,
+        posWins: 1,
         madeJury: true,
         wonFinalHoh: true,
       }),
     );
     const expected =
-      2 * DEFAULT_WEIGHTS.perHohWin +
-      1 * DEFAULT_WEIGHTS.perPovWin +
+      2 * DEFAULT_WEIGHTS.perLohWin +
+      1 * DEFAULT_WEIGHTS.perPosWin +
       DEFAULT_WEIGHTS.madeJury +
       DEFAULT_WEIGHTS.wonGame +
       DEFAULT_WEIGHTS.wonFinalHoh;
@@ -149,7 +149,7 @@ describe('computeScoreBreakdown', () => {
 
 describe('computeLeaderboardScore', () => {
   it('returns the same value as breakdown.total', () => {
-    const s = makeSummary({ hohWins: 1, povWins: 1, madeJury: true });
+    const s = makeSummary({ lohWins: 1, posWins: 1, madeJury: true });
     expect(computeLeaderboardScore(s)).toBe(computeScoreBreakdown(s).total);
   });
 });
@@ -158,15 +158,15 @@ describe('computeLeaderboardScore', () => {
 
 describe('mergeWeights', () => {
   it('keeps unchanged keys from base', () => {
-    const merged = mergeWeights({ perHohWin: 20 });
-    expect(merged.perHohWin).toBe(20);
-    expect(merged.perPovWin).toBe(DEFAULT_WEIGHTS.perPovWin);
+    const merged = mergeWeights({ perLohWin: 20 });
+    expect(merged.perLohWin).toBe(20);
+    expect(merged.perPosWin).toBe(DEFAULT_WEIGHTS.perPosWin);
   });
 
   it('does not mutate the DEFAULT_WEIGHTS object', () => {
-    const before = DEFAULT_WEIGHTS.perHohWin;
-    mergeWeights({ perHohWin: 99 });
-    expect(DEFAULT_WEIGHTS.perHohWin).toBe(before);
+    const before = DEFAULT_WEIGHTS.perLohWin;
+    mergeWeights({ perLohWin: 99 });
+    expect(DEFAULT_WEIGHTS.perLohWin).toBe(before);
   });
 });
 
@@ -175,8 +175,8 @@ describe('mergeWeights', () => {
 describe('computeSeasonLeaderboard', () => {
   it('sorts entries by score descending', () => {
     const summaries: PlayerSeasonSummary[] = [
-      makeSummary({ playerId: 'p1', displayName: 'P1', hohWins: 1 }),
-      makeSummary({ playerId: 'p2', displayName: 'P2', hohWins: 3 }),
+      makeSummary({ playerId: 'p1', displayName: 'P1', lohWins: 1 }),
+      makeSummary({ playerId: 'p2', displayName: 'P2', lohWins: 3 }),
       makeSummary({ playerId: 'p3', displayName: 'P3' }),
     ];
     const entries = computeSeasonLeaderboard(summaries);
@@ -205,14 +205,14 @@ describe('computeSeasonLeaderboard', () => {
 describe('computeAllTimeLeaderboard', () => {
   it('aggregates scores for the same playerId across seasons', () => {
     const archives: SeasonArchive[] = [
-      makeArchive(1, [makeSummary({ playerId: 'p1', displayName: 'P1', hohWins: 1 })]),
-      makeArchive(2, [makeSummary({ playerId: 'p1', displayName: 'P1', hohWins: 2 })]),
+      makeArchive(1, [makeSummary({ playerId: 'p1', displayName: 'P1', lohWins: 1 })]),
+      makeArchive(2, [makeSummary({ playerId: 'p1', displayName: 'P1', lohWins: 2 })]),
     ];
     const entries = computeAllTimeLeaderboard(archives);
     expect(entries).toHaveLength(1);
     expect(entries[0].playerId).toBe('p1');
     expect(entries[0].seasonsPlayed).toBe(2);
-    expect(entries[0].totalScore).toBe(3 * DEFAULT_WEIGHTS.perHohWin);
+    expect(entries[0].totalScore).toBe(3 * DEFAULT_WEIGHTS.perLohWin);
   });
 
   it('counts wins correctly', () => {
@@ -227,8 +227,8 @@ describe('computeAllTimeLeaderboard', () => {
   it('handles multiple players across multiple seasons', () => {
     const archives: SeasonArchive[] = [
       makeArchive(1, [
-        makeSummary({ playerId: 'p1', displayName: 'P1', hohWins: 2 }),
-        makeSummary({ playerId: 'p2', displayName: 'P2', povWins: 1 }),
+        makeSummary({ playerId: 'p1', displayName: 'P1', lohWins: 2 }),
+        makeSummary({ playerId: 'p2', displayName: 'P2', posWins: 1 }),
       ]),
     ];
     const entries = computeAllTimeLeaderboard(archives);

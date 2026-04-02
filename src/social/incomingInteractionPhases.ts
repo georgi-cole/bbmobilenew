@@ -1,8 +1,8 @@
 export const INCOMING_INTERACTION_PHASE_ORDER = [
   'week_start',
   'nominations',
-  'hoh_results',
-  'pov_results',
+  'loh_results',
+  'pos_results',
   'live_vote',
   'eviction_results',
 ] as const;

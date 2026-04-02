@@ -30,7 +30,7 @@ function makeWildcardWesternState(
 ): WildcardWesternState {
   return {
     phase: 'gameOver',
-    prizeType: 'HOH',
+    prizeType: 'LOH',
     seed: 123,
     duelNumber: 4,
     participantIds: ['p0', 'p1'],
@@ -133,9 +133,9 @@ describe('WildcardWesternComp completion flow', () => {
     vi.useRealTimers();
   });
 
-  it('resolves hosted HOH runs through the outcome thunk before notifying completion', async () => {
+  it('resolves hosted LOH runs through the outcome thunk before notifying completion', async () => {
     const { onComplete } = renderComponent({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({ outcomeResolved: false }),
     });
 
@@ -149,7 +149,7 @@ describe('WildcardWesternComp completion flow', () => {
   it('reports hosted completion only after outcomeResolved is already true', async () => {
     vi.useFakeTimers();
     const { onComplete } = renderComponent({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({ outcomeResolved: true }),
     });
 
@@ -165,7 +165,7 @@ describe('WildcardWesternComp completion flow', () => {
   it('does not report hosted completion more than once after a re-render', async () => {
     vi.useFakeTimers();
     const { onComplete, rerender, store } = renderComponent({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({ outcomeResolved: true }),
     });
 
@@ -197,7 +197,7 @@ describe('WildcardWesternComp completion flow', () => {
     vi.useFakeTimers();
     const question = WILDCARD_QUESTIONS[0];
     const { store } = renderWithLiveWildcardReducer({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({
         phase: 'resolution',
         participantIds: ['p0', 'p1', 'p2'],
@@ -232,7 +232,7 @@ describe('WildcardWesternComp completion flow', () => {
     vi.useFakeTimers();
     const question = WILDCARD_QUESTIONS[0];
     const { store } = renderWithLiveWildcardReducer({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({
         phase: 'resolution',
         participantIds: ['p0', 'p1', 'p2'],
@@ -264,7 +264,7 @@ describe('WildcardWesternComp completion flow', () => {
     vi.useFakeTimers();
     const question = WILDCARD_QUESTIONS[0];
     const { store } = renderWithLiveWildcardReducer({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       wildcardWesternState: makeWildcardWesternState({
         phase: 'resolution',
         participantIds: ['p0', 'p1', 'p2'],

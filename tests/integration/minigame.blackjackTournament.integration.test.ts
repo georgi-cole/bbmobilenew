@@ -30,16 +30,16 @@ import { minigameAiRegistry } from '../../src/ai/competition/minigameAiRegistry'
 
 // ─── Minimal integration store ────────────────────────────────────────────────
 
-function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
+function makeIntegrationStore(initialGamePhase = 'loh_comp') {
   const gameReducer = (
-    state = { phase: initialGamePhase, hohId: null as string | null, povWinnerId: null as string | null },
+    state = { phase: initialGamePhase, lohId: null as string | null, posWinnerId: null as string | null },
     action: { type: string; payload?: unknown },
   ) => {
     if (action.type === 'game/applyMinigameWinner') {
-      if (initialGamePhase === 'hoh_comp') {
-        return { ...state, hohId: action.payload as string, phase: 'hoh_results' };
+      if (initialGamePhase === 'loh_comp') {
+        return { ...state, lohId: action.payload as string, phase: 'loh_results' };
       }
-      return { ...state, povWinnerId: action.payload as string, phase: 'pov_results' };
+      return { ...state, posWinnerId: action.payload as string, phase: 'pos_results' };
     }
     return state;
   };
@@ -50,7 +50,7 @@ function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
 
 function init2PlayerStore(
   store: ReturnType<typeof makeIntegrationStore>,
-  type: 'HOH' | 'POV' = 'HOH',
+  type: 'LOH' | 'POS' = 'LOH',
   seed = 42,
 ) {
   store.dispatch(
@@ -193,8 +193,8 @@ describe('Integration — full 2-player tournament', () => {
 // ─── resolveBlackjackTournamentOutcome — idempotency ─────────────────────────
 
 describe('resolveBlackjackTournamentOutcome — idempotency', () => {
-  function reachComplete(type: 'HOH' | 'POV', seed = 42) {
-    const gamePhase = type === 'HOH' ? 'hoh_comp' : 'pov_comp';
+  function reachComplete(type: 'LOH' | 'POS', seed = 42) {
+    const gamePhase = type === 'LOH' ? 'loh_comp' : 'pos_comp';
     const store = makeIntegrationStore(gamePhase);
     store.dispatch(
       initBlackjackTournament({
@@ -209,31 +209,31 @@ describe('resolveBlackjackTournamentOutcome — idempotency', () => {
     return store;
   }
 
-  it('dispatches applyMinigameWinner for HOH competition', () => {
-    const store = reachComplete('HOH');
+  it('dispatches applyMinigameWinner for LOH competition', () => {
+    const store = reachComplete('LOH');
     store.dispatch(resolveBlackjackTournamentOutcome());
     expect(store.getState().blackjackTournament.outcomeResolved).toBe(true);
   });
 
-  it('dispatches applyMinigameWinner for POV competition', () => {
-    const store = reachComplete('POV');
+  it('dispatches applyMinigameWinner for POS competition', () => {
+    const store = reachComplete('POS');
     store.dispatch(resolveBlackjackTournamentOutcome());
     expect(store.getState().blackjackTournament.outcomeResolved).toBe(true);
   });
 
   it('is idempotent — second dispatch is a no-op', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(resolveBlackjackTournamentOutcome());
     store.dispatch(resolveBlackjackTournamentOutcome()); // second call
     expect(store.getState().blackjackTournament.outcomeResolved).toBe(true);
   });
 
-  it('is a no-op when game phase does not match competition type (HOH in pov_comp)', () => {
-    const store = makeIntegrationStore('pov_comp'); // wrong game phase for HOH
+  it('is a no-op when game phase does not match competition type (LOH in pos_comp)', () => {
+    const store = makeIntegrationStore('pos_comp'); // wrong game phase for LOH
     store.dispatch(
       initBlackjackTournament({
         participantIds: ['alice', 'bob'],
-        competitionType: 'HOH', // HOH type
+        competitionType: 'LOH', // LOH type
         seed: 42,
         humanPlayerId: null,
       }),
@@ -246,7 +246,7 @@ describe('resolveBlackjackTournamentOutcome — idempotency', () => {
   });
 
   it('outcomeResolved guard prevents re-dispatch after markBlackjackTournamentOutcomeResolved', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(markBlackjackTournamentOutcomeResolved());
     store.dispatch(resolveBlackjackTournamentOutcome()); // already resolved
     expect(store.getState().blackjackTournament.outcomeResolved).toBe(true);
@@ -256,8 +256,8 @@ describe('resolveBlackjackTournamentOutcome — idempotency', () => {
 // ─── Determinism ─────────────────────────────────────────────────────────────
 
 describe('Determinism — same seed produces same winner', () => {
-  function tournamentWinner(ids: string[], seed: number, type: 'HOH' | 'POV' = 'HOH'): string | null {
-    const gamePhase = type === 'HOH' ? 'hoh_comp' : 'pov_comp';
+  function tournamentWinner(ids: string[], seed: number, type: 'LOH' | 'POS' = 'LOH'): string | null {
+    const gamePhase = type === 'LOH' ? 'loh_comp' : 'pos_comp';
     const store = makeIntegrationStore(gamePhase);
     store.dispatch(
       initBlackjackTournament({
@@ -274,7 +274,7 @@ describe('Determinism — same seed produces same winner', () => {
     return store.getState().blackjackTournament.winnerId;
   }
 
-  it('2-player HOH: same seed gives same winner (5 runs)', () => {
+  it('2-player LOH: same seed gives same winner (5 runs)', () => {
     const seed = 12345;
     const winner = tournamentWinner(['alice', 'bob'], seed);
     for (let i = 0; i < 4; i++) {
@@ -282,7 +282,7 @@ describe('Determinism — same seed produces same winner', () => {
     }
   });
 
-  it('4-player HOH: same seed gives same winner (3 runs)', () => {
+  it('4-player LOH: same seed gives same winner (3 runs)', () => {
     const seed = 99999;
     const winner = tournamentWinner(['a', 'b', 'c', 'd'], seed);
     for (let i = 0; i < 2; i++) {

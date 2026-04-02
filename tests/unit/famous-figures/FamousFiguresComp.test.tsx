@@ -58,7 +58,7 @@ describe('FamousFiguresComp — success overlay', () => {
         <FamousFiguresComp
           participantIds={[HUMAN_ID]}
           participants={[{ id: HUMAN_ID, name: 'Human', isHuman: true }]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={SEED}
           revealPauseMs={1500}
         />
@@ -98,7 +98,7 @@ describe('FamousFiguresComp — success overlay', () => {
         <FamousFiguresComp
           participantIds={[HUMAN_ID]}
           participants={[{ id: HUMAN_ID, name: 'Human', isHuman: true }]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={SEED}
           revealPauseMs={1500}
         />
@@ -127,7 +127,7 @@ describe('FamousFiguresComp — success overlay', () => {
         <FamousFiguresComp
           participantIds={[HUMAN_ID]}
           participants={[{ id: HUMAN_ID, name: 'Human', isHuman: true }]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={SEED}
           revealPauseMs={1500}
         />

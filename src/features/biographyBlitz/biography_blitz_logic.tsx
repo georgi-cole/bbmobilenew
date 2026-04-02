@@ -28,7 +28,7 @@ import HOUSEGUESTS from '../../data/houseguests';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type BiographyBlitzCompetitionType = 'HOH' | 'POV';
+export type BiographyBlitzCompetitionType = 'LOH' | 'POS';
 
 export type BiographyBlitzPhase =
   | 'idle'
@@ -112,7 +112,7 @@ const DEBUG = import.meta.env?.DEV ?? true;
 // ─── Initial state ────────────────────────────────────────────────────────────
 
 const initialState: BiographyBlitzState = {
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   phase: 'idle',
   round: 0,
 

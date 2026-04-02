@@ -2,7 +2,7 @@
  * Thunk: resolveHoldTheWallOutcome
  *
  * Reads the completed Hold the Wall competition state, validates the current
- * game phase matches the prize type, and awards HOH or POV via
+ * game phase matches the prize type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * This thunk is idempotent — if outcomeResolved is already true it returns
@@ -37,16 +37,16 @@ export const resolveHoldTheWallOutcome =
     });
 
     // Validate game phase matches prize type before dispatching.
-    if (htw.prizeType === 'HOH' && phase !== 'hoh_comp') {
+    if (htw.prizeType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[holdTheWall] resolveHoldTheWallOutcome: expected phase "hoh_comp" for HOH prize, got',
+        '[holdTheWall] resolveHoldTheWallOutcome: expected phase "loh_comp" for LOH prize, got',
         phase,
       );
       return;
     }
-    if (htw.prizeType === 'POV' && phase !== 'pov_comp') {
+    if (htw.prizeType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[holdTheWall] resolveHoldTheWallOutcome: expected phase "pov_comp" for POV prize, got',
+        '[holdTheWall] resolveHoldTheWallOutcome: expected phase "pos_comp" for POS prize, got',
         phase,
       );
       return;

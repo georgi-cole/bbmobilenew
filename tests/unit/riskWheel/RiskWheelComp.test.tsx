@@ -61,7 +61,7 @@ describe('RiskWheelComp', () => {
             { id: 'ai-1', name: 'AI 1', isHuman: false },
             { id: 'ai-2', name: 'AI 2', isHuman: false },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={seed}
           standalone
         />
@@ -101,7 +101,7 @@ describe('RiskWheelComp', () => {
             { id: 'ai-1', name: 'AI 1', isHuman: false },
             { id: 'ai-2', name: 'AI 2', isHuman: false },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={seed}
           standalone
         />
@@ -136,7 +136,7 @@ describe('RiskWheelComp', () => {
             { id: 'ai-1', name: 'AI 1', isHuman: false },
             { id: 'ai-2', name: 'AI 2', isHuman: false },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={seed}
           standalone
         />

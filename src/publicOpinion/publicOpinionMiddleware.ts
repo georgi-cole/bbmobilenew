@@ -25,16 +25,16 @@ import type { PublicDirection } from './types';
 interface GameState {
   phase: string;
   week: number;
-  hohId: string | null;
-  povWinnerId: string | null;
+  lohId: string | null;
+  posWinnerId: string | null;
   nomineeIds: string[];
   players: Player[];
   seed: number;
-  /** True when the human HOH has not yet submitted nominations. */
+  /** True when the human LOH has not yet submitted nominations. */
   awaitingNominations?: boolean;
   /** Map of voterId → nomineeId set during live_vote. */
   votes?: Record<string, string>;
-  /** ID of the nominee saved by the POV holder (null if not used). */
+  /** ID of the nominee saved by the POS holder (null if not used). */
   povSavedId?: string | null;
   /** ID of the nominee saved by the public-save twist (null if not triggered). */
   publicSavedNomineeId?: string | null;
@@ -154,7 +154,7 @@ function applyCompetitionResultPublicOpinion(
   const profiles = ensureProfiles(store, game);
   const week = game.week ?? 1;
 
-  if (prevPhase === 'hoh_comp' && newPhase === 'hoh_results') {
+  if (prevPhase === 'loh_comp' && newPhase === 'loh_results') {
     if (
       week === 1 &&
       shouldRandomizeOpeningApprovals(profiles, game.players.map((p) => p.id))
@@ -162,10 +162,10 @@ function applyCompetitionResultPublicOpinion(
       store.dispatch(setProfileApprovals(buildOpeningApprovalMap(game.players, game.seed ?? 0)));
     }
 
-    if (game.hohId) {
+    if (game.lohId) {
       store.dispatch(
         updateApproval({
-          playerId: game.hohId,
+          playerId: game.lohId,
           delta: publicOpinionConfig.competitionImpact.hohWin,
           reason: 'hoh_win',
           week,
@@ -175,10 +175,10 @@ function applyCompetitionResultPublicOpinion(
     }
   }
 
-  if (prevPhase === 'pov_comp' && newPhase === 'pov_results' && game.povWinnerId) {
+  if (prevPhase === 'pos_comp' && newPhase === 'pos_results' && game.posWinnerId) {
     store.dispatch(
       updateApproval({
-        playerId: game.povWinnerId,
+        playerId: game.posWinnerId,
         delta: publicOpinionConfig.competitionImpact.povWin,
         reason: 'pov_win',
         week,
@@ -243,19 +243,19 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   // ── Mission action mapping for explicit gameplay actions ───────────────────
 
   if (actionType === 'game/commitNominees') {
-    // Human HOH nominated a set of players.
+    // Human LOH nominated a set of players.
     // Payload is the array of nominee IDs committed by the human player.
     const nominees = (actionPayload as string[] | undefined) ?? [];
     const week = game.week ?? 1;
-    const hohId = game.hohId;
-    if (hohId && nominees.length > 0) {
-      // Event-driven approval reactions: HOH backlash + nominee sympathy.
+    const lohId = game.lohId;
+    if (lohId && nominees.length > 0) {
+      // Event-driven approval reactions: LOH backlash + nominee sympathy.
       // Run against the updated game state so nomineeIds are current.
       const profiles = nextState.publicOpinion?.profiles ?? {};
       const approvals = buildApprovalMap(profiles);
       const reactions = computeNominationReactions({
         nomineeIds: nominees,
-        hohId,
+        lohId,
         approvals,
         week,
       });
@@ -265,14 +265,14 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       for (const targetId of nominees) {
         dispatchMissionProgress(store, {
           type: 'nominated_target',
-          actorId: hohId,
+          actorId: lohId,
           targetId,
           week,
         });
       }
       dispatchMissionProgress(store, {
         type: 'bold_move',
-        actorId: hohId,
+        actorId: lohId,
         week,
       });
     }
@@ -297,15 +297,15 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
   if (actionType === 'game/applyMinigameWinner') {
     // Payload shape: { winnerId, participants?, scores?, ... } — no competitionType field.
-    // Derive competition type from prevPhase, which is 'hoh_comp' or 'pov_comp' when
+    // Derive competition type from prevPhase, which is 'loh_comp' or 'pos_comp' when
     // this action is dispatched.
     const payload = actionPayload as { winnerId?: string } | undefined;
     const week = game.week ?? 1;
     const winnerId = payload?.winnerId;
     if (winnerId) {
-      const eventType = prevPhase === 'pov_comp'
+      const eventType = prevPhase === 'pos_comp'
         ? 'pov_win'
-        : prevPhase === 'hoh_comp'
+        : prevPhase === 'loh_comp'
         ? 'hoh_win'
         : 'won_competition';
       dispatchMissionProgress(store, { type: eventType, actorId: winnerId, week });
@@ -315,8 +315,8 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   }
 
   if (actionType === 'game/completeMinigame') {
-    // Some reducers can finalize HoH/PoV results (e.g. transition hoh_comp → hoh_results
-    // or pov_comp → pov_results) via this action. When a winner is present, we should
+    // Some reducers can finalize HoH/PoV results (e.g. transition loh_comp → loh_results
+    // or pos_comp → pos_results) via this action. When a winner is present, we should
     // also advance public-opinion missions for competition wins, similar to
     // game/applyMinigameWinner.
     const payload = actionPayload as
@@ -330,7 +330,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
     if (winnerId) {
       // Prefer an explicit competitionType from the payload if provided, otherwise
-      // infer from prevPhase (hoh_comp/pov_comp), falling back to a generic win event.
+      // infer from prevPhase (loh_comp/pos_comp), falling back to a generic win event.
       let eventType: MissionGameEvent['type'];
       const competitionType = (payload?.competitionType || '').toLowerCase();
 
@@ -338,9 +338,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         eventType = 'pov_win';
       } else if (competitionType === 'hoh') {
         eventType = 'hoh_win';
-      } else if (prevPhase === 'pov_comp') {
+      } else if (prevPhase === 'pos_comp') {
         eventType = 'pov_win';
-      } else if (prevPhase === 'hoh_comp') {
+      } else if (prevPhase === 'loh_comp') {
         eventType = 'hoh_win';
       } else {
         eventType = 'won_competition';
@@ -411,19 +411,19 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       const week = game.week ?? 1;
       applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase);
 
-      if (prevPhase === 'hoh_comp' && newPhase === 'hoh_results' && game.hohId) {
-        // Mission progress: HOH win
+      if (prevPhase === 'loh_comp' && newPhase === 'loh_results' && game.lohId) {
+        // Mission progress: LOH win
         dispatchMissionProgress(store, {
           type: 'hoh_win',
-          actorId: game.hohId,
+          actorId: game.lohId,
           week,
         });
       }
 
-      if (prevPhase === 'pov_comp' && newPhase === 'pov_results' && game.povWinnerId) {
+      if (prevPhase === 'pos_comp' && newPhase === 'pos_results' && game.posWinnerId) {
         dispatchMissionProgress(store, {
           type: 'pov_win',
-          actorId: game.povWinnerId,
+          actorId: game.posWinnerId,
           week,
         });
       }
@@ -460,20 +460,20 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         }
       }
 
-      // nomination_results: dispatch approval reactions and mission progress for AI HOH nominations.
-      // Human HOH reactions are handled earlier via `game/commitNominees`; firing them again here
+      // nomination_results: dispatch approval reactions and mission progress for AI LOH nominations.
+      // Human LOH reactions are handled earlier via `game/commitNominees`; firing them again here
       // would double-apply backlash/sympathy. Only run when awaitingNominations is false
-      // (the AI HOH path: nominations were set automatically before this phase was entered).
-      if (newPhase === 'nomination_results' && !game.awaitingNominations && game.hohId) {
+      // (the AI LOH path: nominations were set automatically before this phase was entered).
+      if (newPhase === 'nomination_results' && !game.awaitingNominations && game.lohId) {
         const profiles = nextState.publicOpinion?.profiles ?? {};
         const approvals = buildApprovalMap(profiles);
         const nomineeIds = game.nomineeIds ?? [];
 
         if (nomineeIds.length > 0) {
-          // Event-driven approval reactions: HOH backlash + nominee sympathy
+          // Event-driven approval reactions: LOH backlash + nominee sympathy
           const reactions = computeNominationReactions({
             nomineeIds,
-            hohId: game.hohId,
+            lohId: game.lohId,
             approvals,
             week,
           });
@@ -483,26 +483,26 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           for (const nomineeId of nomineeIds) {
             dispatchMissionProgress(store, {
               type: 'nominated_target',
-              actorId: game.hohId,
+              actorId: game.lohId,
               targetId: nomineeId,
               week,
             });
           }
           dispatchMissionProgress(store, {
             type: 'bold_move',
-            actorId: game.hohId,
+            actorId: game.lohId,
             week,
           });
         }
       }
 
-      // pov_ceremony_results: if POV was used, apply save reactions.
-      if (newPhase === 'pov_ceremony_results' && game.povSavedId) {
+      // pos_ceremony_results: if POS was used, apply save reactions.
+      if (newPhase === 'pos_ceremony_results' && game.povSavedId) {
         const profiles = nextState.publicOpinion?.profiles ?? {};
         const approvals = buildApprovalMap(profiles);
         const reactions = computePovSaveReactions({
           savedPlayerId: game.povSavedId,
-          saviorId: game.povWinnerId ?? null,
+          saviorId: game.posWinnerId ?? null,
           approvals,
           week,
           isPublicSave: false,
@@ -594,8 +594,8 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       const approvals = buildApprovalMap(nextState.publicOpinion?.profiles ?? {});
       const reactions = computeEvictionReactions({
         evicteeId,
-        hohId: game.hohId,
-        povHolderId: game.povSavedId ? (game.povWinnerId ?? null) : null,
+        lohId: game.lohId,
+        povHolderId: game.povSavedId ? (game.posWinnerId ?? null) : null,
         approvals,
         week,
       });

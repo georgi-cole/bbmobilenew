@@ -143,7 +143,7 @@ export type GamePhase =
   | 'elimination'  // Cinematic: eliminated player fades out before auto-advance
   | 'complete';    // Game over, winner declared
 
-export type TrapAuctionPrizeType = 'HOH' | 'POV';
+export type TrapAuctionPrizeType = 'LOH' | 'POS';
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 

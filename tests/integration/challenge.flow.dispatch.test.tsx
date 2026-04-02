@@ -1,7 +1,7 @@
 // Integration tests for the challenge flow dispatch.
 //
 // Validates:
-//  1. Dispatching setPhase('hoh_comp') causes GameScreen's useEffect to dispatch
+//  1. Dispatching setPhase('loh_comp') causes GameScreen's useEffect to dispatch
 //     startChallenge, populating state.challenge.pending.
 //  2. MinigameHost is mounted in the DOM when challenge.pending is set.
 //  3. Dispatching startChallenge directly populates challenge.pending with a
@@ -94,12 +94,12 @@ describe('challenge flow – phase transition dispatch', () => {
     vi.useRealTimers();
   });
 
-  it('populates challenge.pending when phase transitions to hoh_comp', async () => {
+  it('populates challenge.pending when phase transitions to loh_comp', async () => {
     const store = makeStore();
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     const state = store.getState();
@@ -108,12 +108,12 @@ describe('challenge flow – phase transition dispatch', () => {
     expect(state.challenge.pending?.game).toBeDefined();
   });
 
-  it('populates challenge.pending when phase transitions to pov_comp', async () => {
+  it('populates challenge.pending when phase transitions to pos_comp', async () => {
     const store = makeStore();
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('pov_comp'));
+      store.dispatch(setPhase('pos_comp'));
     });
 
     const state = store.getState();
@@ -126,14 +126,14 @@ describe('challenge flow – phase transition dispatch', () => {
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     const firstId = store.getState().challenge.pending?.id;
 
     await act(async () => {
       // Re-render won't re-dispatch because pendingChallenge guard is active.
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     expect(store.getState().challenge.pending?.id).toBe(firstId);
@@ -144,7 +144,7 @@ describe('challenge flow – phase transition dispatch', () => {
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     // MinigameHost renders with role="dialog" and an aria-label containing "minigame".

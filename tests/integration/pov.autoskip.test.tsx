@@ -1,11 +1,11 @@
 /**
- * POV minigame auto-skip fix — GameScreen integration tests.
+ * POS minigame auto-skip fix — GameScreen integration tests.
  *
  * Root cause: GameScreen's `onDone` handler did not accept or check the
  * `partial` flag.  Any early exit (accidental ✕ click, rules dismiss) would
  * flow through `completeChallenge → applyMinigameWinner` exactly as a valid
  * completion, immediately crowning a winner without gameplay.  This was most
- * noticeable in the POV competition where the player would see the rules modal
+ * noticeable in the POS competition where the player would see the rules modal
  * and countdown but then be returned to GameScreen with a winner announced.
  *
  * Fix: `GameScreen.onDone` now accepts `partial?: boolean`.  When `partial`
@@ -15,13 +15,13 @@
  * skipped so no false winner announcement is shown.
  *
  * Tests verify:
- *  1. partial=true on POV: phase advances from pov_comp → pov_results and
- *     povWinnerId is set (game is not stuck).
- *  2. partial=true on HOH: hohId is set and phase is hoh_results.
+ *  1. partial=true on POS: phase advances from pos_comp → pos_results and
+ *     posWinnerId is set (game is not stuck).
+ *  2. partial=true on LOH: lohId is set and phase is loh_results.
  *  3. partial=true does NOT trigger the winner ceremony overlay.
  *  4. partial=false (valid completion) still works normally — no regression.
- *  5. POV prizeType is correctly used even when partial=true (not confused
- *     with HOH).
+ *  5. POS prizeType is correctly used even when partial=true (not confused
+ *     with LOH).
  *  6. challenge.pending is cleared so no double-challenge can start.
  */
 
@@ -83,10 +83,10 @@ function makeStore(
     // closure corresponds to exactly the challenge started by that dispatch.
     phase: 'week_start',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -158,42 +158,42 @@ describe('GameScreen.onDone — partial=true still advances the game (no stuck s
     vi.restoreAllMocks();
   });
 
-  it('partial=true on POV comp applies a winner (game advances to pov_results)', async () => {
+  it('partial=true on POS comp applies a winner (game advances to pos_results)', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('pov_comp')); });
+    await act(async () => { store.dispatch(setPhase('pos_comp')); });
 
     expect(capturedOnDone).not.toBeNull();
 
     // Simulate the "Exited Early" path: player dismissed and confirmed via Continue
     await act(async () => { capturedOnDone!(0, true); });
 
-    // Phase must no longer be 'pov_comp' — the game has advanced
-    expect(store.getState().game.phase).toBe('pov_results');
-    // A POV winner must have been applied
-    expect(store.getState().game.povWinnerId).not.toBeNull();
+    // Phase must no longer be 'pos_comp' — the game has advanced
+    expect(store.getState().game.phase).toBe('pos_results');
+    // A POS winner must have been applied
+    expect(store.getState().game.posWinnerId).not.toBeNull();
   });
 
-  it('partial=true on HOH comp applies an HOH winner (hoh_results)', async () => {
+  it('partial=true on LOH comp applies an LOH winner (loh_results)', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+    await act(async () => { store.dispatch(setPhase('loh_comp')); });
 
     expect(capturedOnDone).not.toBeNull();
 
     await act(async () => { capturedOnDone!(0, true); });
 
-    expect(store.getState().game.hohId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.lohId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('challenge.pending is cleared after partial=true (no double-challenge)', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('pov_comp')); });
+    await act(async () => { store.dispatch(setPhase('pos_comp')); });
 
     // A challenge must have started
     expect(store.getState().challenge.pending).not.toBeNull();
@@ -220,7 +220,7 @@ describe('GameScreen.onDone — partial=true still advances the game (no stuck s
     );
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+    await act(async () => { store.dispatch(setPhase('loh_comp')); });
 
     const pending = store.getState().challenge.pending;
     expect(pending?.game.key).toBe('holdWall');
@@ -233,17 +233,17 @@ describe('GameScreen.onDone — partial=true still advances the game (no stuck s
     expect(Object.values(run?.rawScores ?? {}).sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
   });
 
-  it('POV prizeType is used (partial=true sets povWinnerId, not hohId)', async () => {
+  it('POS prizeType is used (partial=true sets posWinnerId, not lohId)', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('pov_comp')); });
+    await act(async () => { store.dispatch(setPhase('pos_comp')); });
 
     await act(async () => { capturedOnDone!(0, true); });
 
-    // POV winner set, HOH winner still null
-    expect(store.getState().game.povWinnerId).not.toBeNull();
-    expect(store.getState().game.hohId).toBeNull();
+    // POS winner set, LOH winner still null
+    expect(store.getState().game.posWinnerId).not.toBeNull();
+    expect(store.getState().game.lohId).toBeNull();
   });
 });
 
@@ -258,45 +258,45 @@ describe('GameScreen.onDone — partial=false (normal completion) — no regress
     vi.restoreAllMocks();
   });
 
-  it('partial=false on POV comp still applies the winner', async () => {
+  it('partial=false on POS comp still applies the winner', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('pov_comp')); });
+    await act(async () => { store.dispatch(setPhase('pos_comp')); });
 
     expect(capturedOnDone).not.toBeNull();
 
     // Normal valid game completion
     await act(async () => { capturedOnDone!(750, false); });
 
-    expect(store.getState().game.povWinnerId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('pov_results');
+    expect(store.getState().game.posWinnerId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('pos_results');
   });
 
-  it('partial=false on HOH comp still applies the HOH winner', async () => {
+  it('partial=false on LOH comp still applies the LOH winner', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('hoh_comp')); });
+    await act(async () => { store.dispatch(setPhase('loh_comp')); });
 
     expect(capturedOnDone).not.toBeNull();
 
     await act(async () => { capturedOnDone!(500, false); });
 
-    expect(store.getState().game.hohId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.lohId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('omitting partial (undefined) behaves like partial=false', async () => {
     const store = makeStore();
     renderWithStore(store);
 
-    await act(async () => { store.dispatch(setPhase('pov_comp')); });
+    await act(async () => { store.dispatch(setPhase('pos_comp')); });
 
     // Calling onDone with only one argument (partial omitted / undefined)
     await act(async () => { capturedOnDone!(300); });
 
-    expect(store.getState().game.povWinnerId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('pov_results');
+    expect(store.getState().game.posWinnerId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('pos_results');
   });
 });

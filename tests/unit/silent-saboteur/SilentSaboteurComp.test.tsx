@@ -54,7 +54,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
         <SilentSaboteurComp
           participantIds={PARTICIPANTS.map((p) => p.id)}
           participants={PARTICIPANTS}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
           standalone={true}
         />
@@ -102,7 +102,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
         <SilentSaboteurComp
           participantIds={PARTICIPANTS.map((p) => p.id)}
           participants={PARTICIPANTS}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={7}
           standalone={true}
         />
@@ -200,7 +200,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
         <SilentSaboteurComp
           participantIds={AI_ONLY_FINALISTS.map((p) => p.id)}
           participants={AI_ONLY_FINALISTS}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
           standalone={true}
           onComplete={onComplete}

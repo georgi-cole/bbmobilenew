@@ -277,7 +277,7 @@ function ScoreDisplay({ score, animating }: { score: number; animating?: boolean
 export default function RiskWheelComp({
   participantIds,
   participants,
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed,
   onComplete,
   standalone = false,

@@ -25,18 +25,18 @@ import './TvZoneEnhancements.css';
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
   week_start:               'DAY START',
-  hoh_comp_announcement:    'LOH COMP',
-  hoh_comp:                 'LOH COMP',
-  hoh_results:              'LOH RESULTS',
+  loh_comp_announcement:    'LOH COMP',
+  loh_comp:                 'LOH COMP',
+  loh_results:              'LOH RESULTS',
   social_1:             'SOCIAL',
   nominations:          'NOMS',
   nomination_results:       'NOMS RESULTS',
   pre_veto_public_save:     'PUBLIC SAFETY',
-  pov_comp_announcement:    'POS COMP',
-  pov_comp:                 'POS COMP',
-  pov_results:          'POS RESULTS',
-  pov_ceremony:         'SAFETY',
-  pov_ceremony_results: 'SAFETY RESULTS',
+  pos_comp_announcement:    'POS COMP',
+  pos_comp:                 'POS COMP',
+  pos_results:          'POS RESULTS',
+  pos_ceremony:         'SAFETY',
+  pos_ceremony_results: 'SAFETY RESULTS',
   social_2:             'SOCIAL',
   live_vote:            'VOTE',
   eviction_results:     'ELIM',
@@ -78,8 +78,8 @@ const MAJOR_KEYS = new Set([
   'coup_detat',
   'spotlight_veto',
   'twist',
-  'hoh_comp_announcement',
-  'pov_comp_announcement',
+  'loh_comp_announcement',
+  'pos_comp_announcement',
 ]);
 
 /** Maps a major key to its announcement title and subtitle. */
@@ -98,8 +98,8 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
   coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
   spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
   twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
-  hoh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
-  pov_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
+  loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
+  pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
 };
 
 /**
@@ -131,14 +131,14 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
 /**
  * Derive an announcement key from the current game phase and alive player count.
  * Only the phases explicitly listed here will trigger an overlay — all others
- * (week_start, hoh_comp, pov_comp, final3_comp1/2/3, …) remain normal text.
- * Note: hoh_comp_announcement and pov_comp_announcement DO trigger overlays;
- * hoh_comp and pov_comp themselves do not (they enter the actual minigame flow).
+ * (week_start, loh_comp, pos_comp, final3_comp1/2/3, …) remain normal text.
+ * Note: loh_comp_announcement and pos_comp_announcement DO trigger overlays;
+ * loh_comp and pos_comp themselves do not (they enter the actual minigame flow).
  */
 function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictionActive: boolean): string | null {
-  if (phase === 'hoh_comp_announcement') return 'hoh_comp_announcement';
-  if (phase === 'pov_comp_announcement') return 'pov_comp_announcement';
-  if (phase === 'pov_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
+  if (phase === 'loh_comp_announcement') return 'loh_comp_announcement';
+  if (phase === 'pos_comp_announcement') return 'pos_comp_announcement';
+  if (phase === 'pos_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
   if (phase === 'nominations')     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony';
   if (phase === 'live_vote')       return 'live_eviction';
   if (phase === 'final3')          return aliveCount === 3 ? 'final3_announcement' : null;

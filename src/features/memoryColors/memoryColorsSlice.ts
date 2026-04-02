@@ -20,7 +20,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
 
-export type MemoryColorsCompetitionType = 'HOH' | 'POV';
+export type MemoryColorsCompetitionType = 'LOH' | 'POS';
 
 export type MemoryColorsPhase =
   | 'idle'

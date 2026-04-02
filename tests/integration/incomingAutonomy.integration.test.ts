@@ -1,7 +1,7 @@
 /**
  * Integration tests for AI-driven incoming interaction autonomy.
  *
- * Simulates phase transitions (week_start, nominations, hoh_results, pov_results,
+ * Simulates phase transitions (week_start, nominations, loh_results, pos_results,
  * live_vote) through socialMiddleware and confirms that interactions are queued
  * into the social state.
  *
@@ -122,7 +122,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
   it('does not enqueue interactions for ineligible phases', () => {
     const store = makeStore();
 
-    scheduleIncomingInteractionsForPhase('hoh_comp', store, {
+    scheduleIncomingInteractionsForPhase('loh_comp', store, {
       random: makeSeededRng(42),
       players: [
         { id: 'user', status: 'active', isUser: true },
@@ -130,7 +130,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       ],
       week: 2,
       relationships: { ai1: { user: { affinity: 90, tags: [] } } },
-      phase: 'hoh_comp',
+      phase: 'loh_comp',
     });
 
     const pending = selectPendingIncomingInteractionCount({ social: store.getState().social });
@@ -205,7 +205,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       }),
     );
 
-    scheduleIncomingInteractionsForPhase('hoh_results', store, {
+    scheduleIncomingInteractionsForPhase('loh_results', store, {
       random: makeSeededRng(17),
       players: [
         { id: 'user', status: 'active', isUser: true },
@@ -215,7 +215,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       relationships: {
         ai1: { user: { affinity: 20, tags: [] } },
       },
-      phase: 'hoh_results',
+      phase: 'loh_results',
     });
 
     const scheduled = selectScheduledIncomingInteractions({ social: store.getState().social });
@@ -250,7 +250,7 @@ describe('incomingInteractionAutonomy – direct scheduling', () => {
       socialConfig.incomingInteractionDeliveryConfig.maxDeliveredPerPhase,
     );
 
-    deliverScheduledIncomingInteractionsForPhase('hoh_results', store);
+    deliverScheduledIncomingInteractionsForPhase('loh_results', store);
 
     const deliveredAfter = selectIncomingInteractions({ social: store.getState().social }).length;
     expect(deliveredAfter - deliveredBefore).toBeLessThanOrEqual(
@@ -273,7 +273,7 @@ describe('incomingInteractionAutonomy – middleware integration', () => {
 
     // Force week_start transition; this calls handleWeekStart which calls autonomy scheduler.
     // The store starts at week_start but we need to transition away and back to trigger it.
-    store.dispatch(setPhase('hoh_comp'));
+    store.dispatch(setPhase('loh_comp'));
     store.dispatch(setPhase('week_start'));
 
     // The middleware hooks scheduleIncomingInteractionsForPhase('week_start', store)

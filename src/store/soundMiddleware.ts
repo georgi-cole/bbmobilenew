@@ -21,12 +21,12 @@
  *
  * Phase-driven music policy
  * ─────────────────────────
- *   hoh_comp / hoh_results          → music:hoh_comp_general (loop)
- *   pov_comp / pov_results          → music:hoh_comp_general (loop)
+ *   loh_comp / loh_results          → music:hoh_comp_general (loop)
+ *   pos_comp / pos_results          → music:hoh_comp_general (loop)
  *   nominations / nomination_results→ music:nominations_main (loop)
- *   pov_ceremony                    → tv:veto_ceremony (stinger, once)
+ *   pos_ceremony                    → tv:veto_ceremony (stinger, once)
  *                                      + music:veto_phase (loop)
- *   pov_ceremony_results            → music:veto_phase (loop, no stinger)
+ *   pos_ceremony_results            → music:veto_phase (loop, no stinger)
  *   live_vote                       → tv:voting_eviction (stinger)
  *   eviction_results / final4_eviction → (no audio — evicted SFX deferred to
  *                                        game/setEvictionOverlay, see below)
@@ -59,15 +59,15 @@ interface StateWithGame {
 }
 
 /**
- * Phases that should trigger / maintain the HOH / general competition music.
- * Includes hoh_results and pov_results so the track keeps playing through the
+ * Phases that should trigger / maintain the LOH / general competition music.
+ * Includes loh_results and pos_results so the track keeps playing through the
  * results screen without an abrupt cut.
  */
-const HOH_MUSIC_PHASES = new Set<string>([
-  'hoh_comp',
-  'hoh_results',
-  'pov_comp',
-  'pov_results',
+const LOH_MUSIC_PHASES = new Set<string>([
+  'loh_comp',
+  'loh_results',
+  'pos_comp',
+  'pos_results',
 ]);
 
 /**
@@ -128,9 +128,9 @@ function _isBattleBackReturn(
  * updated game state.
  */
 function _applyPhaseAudio(newPhase: string): void {
-  if (HOH_MUSIC_PHASES.has(newPhase)) {
+  if (LOH_MUSIC_PHASES.has(newPhase)) {
     // Play the results stinger only on results screens, not on comp start
-    if (newPhase === 'hoh_results' || newPhase === 'pov_results') {
+    if (newPhase === 'loh_results' || newPhase === 'pos_results') {
       void SoundManager.play('tv:event');
     }
     if (!_socialMusicActive) {
@@ -140,13 +140,13 @@ function _applyPhaseAudio(newPhase: string): void {
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:nominations_main');
     }
-  } else if (newPhase === 'pov_ceremony') {
+  } else if (newPhase === 'pos_ceremony') {
     // Play veto ceremony stinger once (on ceremony start only), then start veto loop
     void SoundManager.play('tv:veto_ceremony');
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:veto_phase');
     }
-  } else if (newPhase === 'pov_ceremony_results') {
+  } else if (newPhase === 'pos_ceremony_results') {
     // Continue veto loop; do NOT replay the stinger
     if (!_socialMusicActive) {
       void SoundManager.playMusic('music:veto_phase');
@@ -178,7 +178,7 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     const newPhase = (api.getState() as StateWithGame).game?.phase;
 
     // Play minigame:start SFX when a competition begins
-    if (newPhase === 'hoh_comp' || newPhase === 'pov_comp') {
+    if (newPhase === 'loh_comp' || newPhase === 'pos_comp') {
       void SoundManager.play('minigame:start');
     }
 
@@ -227,7 +227,7 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── POV save ─────────────────────────────────────────────────────────────
+  // ── POS save ─────────────────────────────────────────────────────────────
   if (type === 'game/submitPovSaveTarget') {
     const result = next(action);
     void SoundManager.play('ui:confirm');

@@ -76,11 +76,11 @@ The `socialMiddleware` wires game events to resource deltas automatically:
 
 | Event | Triggered by | Delta |
 |---|---|---|
-| HOH win | phase → hoh_results; completeMinigame/applyMinigameWinner during hoh_comp | +5 energy to winner |
-| POV win | phase → pov_results; completeMinigame/applyMinigameWinner during pov_comp | +3 energy to winner |
+| LOH win | phase → loh_results; completeMinigame/applyMinigameWinner during loh_comp | +5 energy to winner |
+| POS win | phase → pos_results; completeMinigame/applyMinigameWinner during pos_comp | +3 energy to winner |
 | Survived nomination | advance() → live_vote | +4 energy to nominees still on block |
 | New alliance formed | `social/updateRelationship` with 'alliance' tag | +2 energy + 200 influence to both parties |
-| Saved by POV | advance() removes player from nomineeIds | +2 energy to saved player |
+| Saved by POS | advance() removes player from nomineeIds | +2 energy to saved player |
 | Competition skipped | `game/skipMinigame` | -3 energy to all alive players |
 | Zero score (minigame) | `game/completeMinigame` with human score = 0 | -2 energy to human player |
 | Broke alliance | `social/updateRelationship` with 'betrayal' tag | -3 energy to actor |

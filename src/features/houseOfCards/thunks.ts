@@ -2,7 +2,7 @@
  * Thunk: resolveHouseOfCardsOutcome
  *
  * Reads the completed House of Cards competition state, validates the current
- * game phase matches the prize type, and awards HOH or POV via
+ * game phase matches the prize type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * Idempotent — if outcomeResolved is already true it returns immediately
@@ -41,16 +41,16 @@ export const resolveHouseOfCardsOutcome =
       phase,
     });
 
-    if (hoc.prizeType === 'HOH' && phase !== 'hoh_comp') {
+    if (hoc.prizeType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[houseOfCards] resolveHouseOfCardsOutcome: expected phase "hoh_comp" for HOH, got',
+        '[houseOfCards] resolveHouseOfCardsOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (hoc.prizeType === 'POV' && phase !== 'pov_comp') {
+    if (hoc.prizeType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[houseOfCards] resolveHouseOfCardsOutcome: expected phase "pov_comp" for POV, got',
+        '[houseOfCards] resolveHouseOfCardsOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

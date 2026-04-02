@@ -2,7 +2,7 @@
  * Thunk: resolveSilentSaboteurOutcome
  *
  * Reads the completed Silent Saboteur state, validates the current
- * game phase matches the competition type, and awards HOH or POV via
+ * game phase matches the competition type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * This thunk is idempotent — if outcomeResolved is already true it returns
@@ -37,16 +37,16 @@ export const resolveSilentSaboteurOutcome =
     });
 
     // Validate game phase matches competition type before dispatching.
-    if (ss.prizeType === 'HOH' && phase !== 'hoh_comp') {
+    if (ss.prizeType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[silentSaboteur] resolveSilentSaboteurOutcome: expected phase "hoh_comp" for HOH, got',
+        '[silentSaboteur] resolveSilentSaboteurOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (ss.prizeType === 'POV' && phase !== 'pov_comp') {
+    if (ss.prizeType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[silentSaboteur] resolveSilentSaboteurOutcome: expected phase "pov_comp" for POV, got',
+        '[silentSaboteur] resolveSilentSaboteurOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

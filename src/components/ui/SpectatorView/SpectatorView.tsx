@@ -1,7 +1,7 @@
 /**
  * SpectatorView — fullscreen spectator mode overlay.
  *
- * Authoritative-first: subscribes to Redux game.hohId, the 'minigame:end'
+ * Authoritative-first: subscribes to Redux game.lohId, the 'minigame:end'
  * CustomEvent, and window.game.__authoritativeWinner as fallbacks.
  *
  * Props:
@@ -159,7 +159,7 @@ export default function SpectatorView({
 }: SpectatorViewProps) {
   const dispatch = useAppDispatch();
   const players = useAppSelector((s) => s.game.players);
-  const hohId   = useAppSelector((s) => s.game.hohId);
+  const lohId   = useAppSelector((s) => s.game.lohId);
 
   // Sync onDone into a ref via effect (not during render) to satisfy the
   // react-hooks/refs lint rule while still keeping the callback fresh.
@@ -215,11 +215,11 @@ export default function SpectatorView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once at mount — this is synchronous detection only
 
-  // hohId from Redux store — may be set before or after mount
-  const reduxWinner = hohId && competitorIds.includes(hohId) ? hohId : null;
+  // lohId from Redux store — may be set before or after mount
+  const reduxWinner = lohId && competitorIds.includes(lohId) ? lohId : null;
 
   // expectedWinnerId (highest priority — pre-computed before the overlay opens);
-  // falls back to initialWinnerId, then window global, then Redux hohId.
+  // falls back to initialWinnerId, then window global, then Redux lohId.
   const resolvedExpectedWinner =
     propExpectedWinnerId && competitorIds.includes(propExpectedWinnerId)
       ? propExpectedWinnerId
@@ -263,7 +263,7 @@ export default function SpectatorView({
     competitorIdsRef.current = competitorIds;
   }, [competitorIds]);
 
-  // ── Listen for Redux hohId arriving after mount ───────────────────────────
+  // ── Listen for Redux lohId arriving after mount ───────────────────────────
 
   useEffect(() => {
     if (reduxWinner) {

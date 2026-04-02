@@ -17,7 +17,7 @@ import figuresData from '../../games/famous-figures/data/famous_figures.json';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FamousFiguresPrizeType = 'HOH' | 'POV';
+export type FamousFiguresPrizeType = 'LOH' | 'POS';
 export type FamousFiguresStatus = 'idle' | 'round_active' | 'round_reveal' | 'complete';
 export type FamousFiguresTimerPhase =
   | 'clue'
@@ -88,7 +88,7 @@ export const FAMOUS_FIGURES: FigureRow[] = figuresData as FigureRow[];
 // ─── Initial state ────────────────────────────────────────────────────────────
 
 const initialState: FamousFiguresState = {
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   status: 'idle',
   currentRound: 0,
   totalRounds: 3,

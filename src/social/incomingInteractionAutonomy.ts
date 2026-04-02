@@ -143,16 +143,16 @@ export function chooseIncomingInteractionType(
     return 'deal_offer';
   }
 
-  if (phase === 'pov_results' || phase === 'pov_ceremony_results') {
+  if (phase === 'pos_results' || phase === 'pos_ceremony_results') {
     if (affinity >= interactionTypeThresholds.povResults.ally) return 'alliance_proposal';
     if (affinity <= interactionTypeThresholds.povResults.enemy) return 'warning';
     return 'check_in';
   }
 
-  if (phase === 'hoh_results' || phase === 'eviction_results') {
-    if (affinity >= interactionTypeThresholds.hohEviction.strongAlly) return 'alliance_proposal';
-    if (affinity >= interactionTypeThresholds.hohEviction.mildAlly) return 'compliment';
-    if (affinity <= interactionTypeThresholds.hohEviction.strongEnemy) return 'snide_remark';
+  if (phase === 'loh_results' || phase === 'eviction_results') {
+    if (affinity >= interactionTypeThresholds.lohEviction.strongAlly) return 'alliance_proposal';
+    if (affinity >= interactionTypeThresholds.lohEviction.mildAlly) return 'compliment';
+    if (affinity <= interactionTypeThresholds.lohEviction.strongEnemy) return 'snide_remark';
     return 'gossip';
   }
 

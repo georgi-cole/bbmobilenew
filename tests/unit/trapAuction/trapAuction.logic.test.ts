@@ -60,7 +60,7 @@ function makeState(overrides?: Partial<TrapAuctionState>): TrapAuctionState {
     humanEliminated: false,
     spectating: false,
     fastForward: false,
-    prizeType: 'HOH',
+    prizeType: 'LOH',
     seed: 1234,
     ...overrides,
   };
@@ -715,7 +715,7 @@ describe('trapAuctionReducer', () => {
         humanEliminated: false,
         spectating: false,
         fastForward: false,
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 999,
       };
       const elimination = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });
@@ -744,7 +744,7 @@ describe('trapAuctionReducer', () => {
         humanEliminated: false,
         spectating: false,
         fastForward: false,
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       };
       const elimination = trapAuctionReducer(state, { type: 'ADVANCE_TO_ELIMINATION' });

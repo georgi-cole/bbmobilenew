@@ -2,7 +2,7 @@
  * Thunk: resolveRiskWheelOutcome
  *
  * Reads the completed Risk Wheel state, validates the current game phase
- * matches the competition type, and awards HOH or POV via
+ * matches the competition type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * Mirrors the resolveBlackjackTournamentOutcome pattern:
@@ -40,16 +40,16 @@ export const resolveRiskWheelOutcome =
       phase,
     });
 
-    if (rw.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (rw.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[riskWheel] resolveRiskWheelOutcome: expected "hoh_comp" for HOH, got',
+        '[riskWheel] resolveRiskWheelOutcome: expected "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (rw.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (rw.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[riskWheel] resolveRiskWheelOutcome: expected "pov_comp" for POV, got',
+        '[riskWheel] resolveRiskWheelOutcome: expected "pos_comp" for POS, got',
         phase,
       );
       return;

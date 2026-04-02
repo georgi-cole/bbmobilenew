@@ -42,7 +42,7 @@ describe('cwgoCompetitionSlice — leaderId', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -74,7 +74,7 @@ describe('cwgoCompetitionSlice — leaderId', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol', 'dave'],
-        prizeType: 'POV',
+        prizeType: 'POS',
         seed: 100,
       }),
     );
@@ -108,7 +108,7 @@ describe('cwgoCompetitionSlice — leaderId', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol', 'dave'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 77,
       }),
     );
@@ -134,7 +134,7 @@ describe('cwgoCompetitionSlice — two-player terminal', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol', 'dave'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         // Use seed that gives a question with a large answer so our guesses don't go over.
         seed: 42,
       }),
@@ -166,7 +166,7 @@ describe('cwgoCompetitionSlice — two-player terminal', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 10,
       }),
     );
@@ -204,7 +204,7 @@ describe('cwgoCompetitionSlice — defensive seed', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['x'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 0,
       }),
     );
@@ -218,7 +218,7 @@ describe('cwgoCompetitionSlice — defensive seed', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['x'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 12345,
       }),
     );

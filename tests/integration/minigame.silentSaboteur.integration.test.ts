@@ -40,22 +40,22 @@ import {
 
 // ─── Store factory ────────────────────────────────────────────────────────────
 
-function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
+function makeIntegrationStore(initialGamePhase = 'loh_comp') {
   const gameReducer = (
     state = {
       phase: initialGamePhase,
-      hohId: null as string | null,
-      povWinnerId: null as string | null,
+      lohId: null as string | null,
+      posWinnerId: null as string | null,
       applyCount: 0,
     },
     action: { type: string; payload?: unknown },
   ) => {
     if (action.type === 'game/applyMinigameWinner') {
       const p = action.payload as { winnerId: string };
-      if (initialGamePhase === 'hoh_comp') {
-        return { ...state, hohId: p.winnerId, phase: 'hoh_results', applyCount: state.applyCount + 1 };
+      if (initialGamePhase === 'loh_comp') {
+        return { ...state, lohId: p.winnerId, phase: 'loh_results', applyCount: state.applyCount + 1 };
       }
-      return { ...state, povWinnerId: p.winnerId, phase: 'pov_results', applyCount: state.applyCount + 1 };
+      return { ...state, posWinnerId: p.winnerId, phase: 'pos_results', applyCount: state.applyCount + 1 };
     }
     return state;
   };
@@ -133,7 +133,7 @@ function simulateFull(store: TestStore, maxRounds = 50): string | null {
 function initStore(
   store: TestStore,
   ids: string[],
-  type: 'HOH' | 'POV' = 'HOH',
+  type: 'LOH' | 'POS' = 'LOH',
   seed = 42,
 ) {
   store.dispatch(
@@ -254,43 +254,43 @@ describe('Integration — 5-player full game resolves to one winner', () => {
 // ─── Outcome thunk — idempotency ──────────────────────────────────────────────
 
 describe('resolveSilentSaboteurOutcome — idempotency', () => {
-  function reachComplete(type: 'HOH' | 'POV' = 'HOH') {
-    const store = makeIntegrationStore(type === 'HOH' ? 'hoh_comp' : 'pov_comp');
+  function reachComplete(type: 'LOH' | 'POS' = 'LOH') {
+    const store = makeIntegrationStore(type === 'LOH' ? 'loh_comp' : 'pos_comp');
     initStore(store, ['p1', 'p2', 'p3', 'p4', 'p5'], type);
     simulateFull(store);
     expect(ss(store).phase).toBe('complete');
     return store;
   }
 
-  it('dispatches applyMinigameWinner for HOH competition', () => {
-    const store = reachComplete('HOH');
+  it('dispatches applyMinigameWinner for LOH competition', () => {
+    const store = reachComplete('LOH');
     store.dispatch(resolveSilentSaboteurOutcome());
     expect(ss(store).outcomeResolved).toBe(true);
   });
 
-  it('dispatches applyMinigameWinner for POV competition', () => {
-    const store = reachComplete('POV');
+  it('dispatches applyMinigameWinner for POS competition', () => {
+    const store = reachComplete('POS');
     store.dispatch(resolveSilentSaboteurOutcome());
     expect(ss(store).outcomeResolved).toBe(true);
   });
 
   it('applyMinigameWinner is dispatched exactly once', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(resolveSilentSaboteurOutcome());
     store.dispatch(resolveSilentSaboteurOutcome()); // second call — should be no-op
     expect((store.getState() as ReturnType<typeof store.getState>).game.applyCount).toBe(1);
   });
 
   it('is a no-op when game phase does not match competition type', () => {
-    const store = makeIntegrationStore('pov_comp'); // wrong phase for HOH
-    initStore(store, ['p1', 'p2', 'p3'], 'HOH');
+    const store = makeIntegrationStore('pos_comp'); // wrong phase for LOH
+    initStore(store, ['p1', 'p2', 'p3'], 'LOH');
     simulateFull(store);
     store.dispatch(resolveSilentSaboteurOutcome());
     expect(ss(store).outcomeResolved).toBe(false);
   });
 
   it('outcomeResolved guard prevents re-dispatch', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(markSilentSaboteurOutcomeResolved());
     store.dispatch(resolveSilentSaboteurOutcome()); // already resolved
     expect((store.getState() as ReturnType<typeof store.getState>).game.applyCount).toBe(0);
@@ -303,7 +303,7 @@ describe('Determinism — same seed + participants → same winner', () => {
   function runWithSeed(seed: number, ids: string[]) {
     const store = makeIntegrationStore();
     store.dispatch(
-      initSilentSaboteur({ participantIds: ids, prizeType: 'HOH', seed, humanPlayerId: null }),
+      initSilentSaboteur({ participantIds: ids, prizeType: 'LOH', seed, humanPlayerId: null }),
     );
     return simulateFull(store);
   }

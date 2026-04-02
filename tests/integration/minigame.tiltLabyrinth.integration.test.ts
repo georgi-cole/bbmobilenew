@@ -47,12 +47,12 @@ function makePlayers(count: number): Player[] {
 }
 
 /** Minimal store wiring for integration tests (game + tiltLabyrinth). */
-function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
+function makeIntegrationStore(initialGamePhase = 'loh_comp') {
   const minimalGameReducer = (
     state = {
       phase: initialGamePhase,
-      hohId: null as string | null,
-      povWinnerId: null as string | null,
+      lohId: null as string | null,
+      posWinnerId: null as string | null,
       lastHohCompFinisherId: null as string | null,
     },
     action: { type: string; payload?: unknown },
@@ -64,18 +64,18 @@ function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
         lastPlaceType?: string;
         scores?: Record<string, number>;
       };
-      if (initialGamePhase === 'hoh_comp') {
+      if (initialGamePhase === 'loh_comp') {
         return {
           ...state,
-          hohId: payload.winnerId,
+          lohId: payload.winnerId,
           lastHohCompFinisherId: payload.lastPlaceId ?? null,
-          phase: 'hoh_results',
+          phase: 'loh_results',
         };
       }
       return {
         ...state,
-        povWinnerId: payload.winnerId,
-        phase: 'pov_results',
+        posWinnerId: payload.winnerId,
+        phase: 'pos_results',
       };
     }
     return state;
@@ -91,13 +91,13 @@ function makeFullGameStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -137,7 +137,7 @@ function makeFullGameStore(overrides: Partial<GameState> = {}) {
 
 function initStore(
   store: ReturnType<typeof makeIntegrationStore>,
-  type: 'HOH' | 'POV' = 'HOH',
+  type: 'LOH' | 'POS' = 'LOH',
   seed = 42,
 ) {
   // Scores are completion times in ms — lower is better
@@ -284,8 +284,8 @@ describe('Tilt Labyrinth winner and last-place (lower-is-better)', () => {
 // ─── resolveTiltLabyrinthOutcome — idempotency ────────────────────────────────
 
 describe('resolveTiltLabyrinthOutcome — idempotency', () => {
-  function reachComplete(type: 'HOH' | 'POV' = 'HOH', humanScore = 8_000) {
-    const phase = type === 'HOH' ? 'hoh_comp' : 'pov_comp';
+  function reachComplete(type: 'LOH' | 'POS' = 'LOH', humanScore = 8_000) {
+    const phase = type === 'LOH' ? 'loh_comp' : 'pos_comp';
     const store = makeIntegrationStore(phase);
     initStore(store, type);
     store.dispatch(setHumanScore(humanScore));
@@ -293,38 +293,38 @@ describe('resolveTiltLabyrinthOutcome — idempotency', () => {
     return store;
   }
 
-  it('dispatches applyMinigameWinner for HOH', () => {
-    const store = reachComplete('HOH');
+  it('dispatches applyMinigameWinner for LOH', () => {
+    const store = reachComplete('LOH');
     store.dispatch(resolveTiltLabyrinthOutcome());
     expect(store.getState().tiltLabyrinth.outcomeResolved).toBe(true);
-    expect(store.getState().game.hohId).toBe('alice'); // alice=8000ms wins (fastest)
+    expect(store.getState().game.lohId).toBe('alice'); // alice=8000ms wins (fastest)
   });
 
-  it('dispatches applyMinigameWinner for POV', () => {
-    const store = reachComplete('POV');
+  it('dispatches applyMinigameWinner for POS', () => {
+    const store = reachComplete('POS');
     store.dispatch(resolveTiltLabyrinthOutcome());
     expect(store.getState().tiltLabyrinth.outcomeResolved).toBe(true);
-    expect(store.getState().game.povWinnerId).toBe('alice');
+    expect(store.getState().game.posWinnerId).toBe('alice');
   });
 
   it('is idempotent — second dispatch is a no-op', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(resolveTiltLabyrinthOutcome());
     store.dispatch(resolveTiltLabyrinthOutcome()); // second call — must not throw or double-apply
     expect(store.getState().tiltLabyrinth.outcomeResolved).toBe(true);
   });
 
-  it('is a no-op when game phase does not match competition type (HOH in pov_comp)', () => {
-    const store = makeIntegrationStore('pov_comp');
-    initStore(store, 'HOH');
+  it('is a no-op when game phase does not match competition type (LOH in pos_comp)', () => {
+    const store = makeIntegrationStore('pos_comp');
+    initStore(store, 'LOH');
     store.dispatch(setHumanScore(8_000));
     store.dispatch(resolveTiltLabyrinthOutcome()); // phase mismatch — should be a no-op
     expect(store.getState().tiltLabyrinth.outcomeResolved).toBe(false);
-    expect(store.getState().game.hohId).toBeNull();
+    expect(store.getState().game.lohId).toBeNull();
   });
 
   it('markTiltLabyrinthOutcomeResolved guard prevents re-dispatch', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(markTiltLabyrinthOutcomeResolved());
     store.dispatch(resolveTiltLabyrinthOutcome()); // already resolved
     expect(store.getState().tiltLabyrinth.outcomeResolved).toBe(true);
@@ -349,7 +349,7 @@ describe('auto-nominee (lastHohCompFinisherId) matches scoreboard last-place', (
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
   });
 
@@ -367,10 +367,10 @@ describe('auto-nominee (lastHohCompFinisherId) matches scoreboard last-place', (
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
     expect(store.getState().game.lastHohCompFinisherId).not.toBe(
-      store.getState().game.hohId,
+      store.getState().game.lohId,
     );
   });
 });
@@ -395,12 +395,12 @@ describe('Tilt Labyrinth — Public mode auto-nominee', () => {
 
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
-    // hoh_results → social_1 → nominations → nomination_results
-    store.dispatch(advance()); // hoh_results → social_1
+    // loh_results → social_1 → nominations → nomination_results
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
-    store.dispatch(advance()); // nominations → nomination_results (human HOH awaits commitNominees)
+    store.dispatch(advance()); // nominations → nomination_results (human LOH awaits commitNominees)
 
-    // p0 is human HOH, so awaitingNominations should be true
+    // p0 is human LOH, so awaitingNominations should be true
     expect(store.getState().game.awaitingNominations).toBe(true);
 
     // Human nominates two players
@@ -427,7 +427,7 @@ describe('Tilt Labyrinth — Public mode auto-nominee', () => {
     );
 
     // Advance through nominations without public mode auto-nominee
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results
 
@@ -439,8 +439,8 @@ describe('Tilt Labyrinth — Public mode auto-nominee', () => {
 
 // ─── Human nomination flow ────────────────────────────────────────────────────
 
-describe('Human nomination flow after Tilt Labyrinth HOH', () => {
-  it('human HOH can nominate two players after comp resolves', () => {
+describe('Human nomination flow after Tilt Labyrinth LOH', () => {
+  it('human LOH can nominate two players after comp resolves', () => {
     const players = makePlayers(6);
     const store = makeFullGameStore({ players });
 
@@ -454,12 +454,12 @@ describe('Human nomination flow after Tilt Labyrinth HOH', () => {
       }),
     );
 
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
     // Advance to nominations via normal flow
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     expect(store.getState().game.phase).toBe('nominations');
   });
@@ -467,8 +467,8 @@ describe('Human nomination flow after Tilt Labyrinth HOH', () => {
 
 // ─── AI nomination flow ───────────────────────────────────────────────────────
 
-describe('AI nomination flow after Tilt Labyrinth HOH', () => {
-  it('AI HOH nominates correctly after comp resolves', () => {
+describe('AI nomination flow after Tilt Labyrinth LOH', () => {
+  it('AI LOH nominates correctly after comp resolves', () => {
     const players = makePlayers(6);
     const store = makeFullGameStore({ players, publicModeEnabled: false });
 
@@ -483,17 +483,17 @@ describe('AI nomination flow after Tilt Labyrinth HOH', () => {
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
     // Advance through AI nomination phases
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results (AI picks)
     const state = store.getState().game;
     expect(state.phase).toBe('nomination_results');
     expect(state.nomineeIds).toHaveLength(2);
-    // HOH cannot nominate themselves
+    // LOH cannot nominate themselves
     expect(state.nomineeIds).not.toContain('p1');
   });
 });
@@ -510,7 +510,7 @@ describe('Full slice round-trip via resolveTiltLabyrinthOutcome', () => {
         participantIds: ['p0', 'p1', 'p2', 'p3'],
         participantNames: { p0: 'P0', p1: 'P1', p2: 'P2', p3: 'P3' },
         humanPlayerId: 'p0',
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 99,
         // lower times = better: p1=10s, p2=25s, p3=50s
         aiScores: { p1: 10_000, p2: 25_000, p3: 50_000 },
@@ -527,18 +527,18 @@ describe('Full slice round-trip via resolveTiltLabyrinthOutcome', () => {
     store.dispatch(resolveTiltLabyrinthOutcome());
 
     const gameState = store.getState().game;
-    expect(gameState.hohId).toBe('p0');
+    expect(gameState.lohId).toBe('p0');
     expect(gameState.lastHohCompFinisherId).toBe('p3');
   });
 
   it('timeout (DNF at 60000ms) is treated as worst time for last-place', () => {
-    const store = makeIntegrationStore('hoh_comp');
+    const store = makeIntegrationStore('loh_comp');
     store.dispatch(
       initTiltLabyrinth({
         participantIds: ['alice', 'bob', 'carol'],
         participantNames: { alice: 'Alice', bob: 'Bob', carol: 'Carol' },
         humanPlayerId: 'alice',
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 7,
         // bob and carol both finish faster
         aiScores: { bob: 15_000, carol: 30_000 },

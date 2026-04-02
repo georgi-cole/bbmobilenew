@@ -15,7 +15,7 @@
  * Usage:
  *   <CeremonyOverlay
  *     tiles={[{ rect, badge: '👑', badgeStart: 'center' }]}
- *     caption="Taylor wins Head of Household!"
+ *     caption="Taylor wins Leader of the House!"
  *     onDone={handleDone}
  *   />
  */

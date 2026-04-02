@@ -455,7 +455,7 @@ export default function BiographyBlitzComp({
               {isHumanWin ? '🏆 You win!' : `🏆 ${winnerName} wins!`}
             </p>
             <p className="bb-blitz__winner-sub">
-              {bb.competitionType === 'HOH' ? 'New Leader of the House' : 'Power of Safety winner'}
+              {bb.competitionType === 'LOH' ? 'New Leader of the House' : 'Power of Safety winner'}
             </p>
           </div>
         </MinigameCompleteWrapper>

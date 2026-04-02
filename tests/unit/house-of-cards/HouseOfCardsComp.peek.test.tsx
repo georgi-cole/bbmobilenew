@@ -26,7 +26,7 @@ function renderGame(seed = 42) {
       <HouseOfCardsComp
         participantIds={['human']}
         participants={participants}
-        prizeType="HOH"
+        prizeType="LOH"
         seed={seed}
       />
     </Provider>,

@@ -71,10 +71,10 @@ function makeVoteDeductionStore(
     week: 3,
     season: 1,
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     nomineeIds: ['user', 'p1'],
     players,
-    povWinnerId: null,
+    posWinnerId: null,
     votes: {},
     awaitingHumanVote: false,
     tvFeed: [],
@@ -479,7 +479,7 @@ describe('doubleVoteTimingMessage', () => {
   it('returns a "next vote" message when phase is NOT live_vote', () => {
     const phases = [
       'week_start', 'social_1', 'social_2', 'eviction_results',
-      'week_end', 'nominations', 'pov_comp', 'pov_ceremony',
+      'week_end', 'nominations', 'pos_comp', 'pos_ceremony',
     ];
     for (const phase of phases) {
       const msg = doubleVoteTimingMessage(phase);

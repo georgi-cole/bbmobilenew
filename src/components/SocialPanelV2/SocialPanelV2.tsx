@@ -23,8 +23,10 @@ import './SocialPanelV2.css';
 /**
  * SocialPanelV2 — full-screen modal overlay for social phases.
  *
- * Visible during game.phase === 'social_1' | 'social_2' when a human player
- * exists. Provides the layout canvas for the interactive social UI; later PRs
+ * Visible during non-vote interaction phases (LOH, POS, nomination, pre-vote,
+ * and social windows) when a human player exists and is active. Blocked during
+ * live_vote and eviction resolution phases.
+ * Provides the layout canvas for the interactive social UI; later PRs
  * will implement player cards, action cards, and execute flow.
  *
  * Features:

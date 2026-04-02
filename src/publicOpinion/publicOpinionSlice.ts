@@ -127,7 +127,7 @@ const publicOpinionSlice = createSlice({
         eventType?: string;
         /**
          * ID of the player responsible for triggering this change
-         * (e.g. the HOH who nominated the subject).
+         * (e.g. the LOH who nominated the subject).
          */
         attributedToId?: string;
       }>,

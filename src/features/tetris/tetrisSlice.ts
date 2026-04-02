@@ -23,7 +23,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type TetrisPrizeType = 'HOH' | 'POV';
+export type TetrisPrizeType = 'LOH' | 'POS';
 export type TetrisPhase = 'idle' | 'playing' | 'complete';
 
 export interface TetrisParticipant {
@@ -58,7 +58,7 @@ export interface TetrisState {
 
 const initialState: TetrisState = {
   phase: 'idle',
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   seed: 0,
   participants: [],
   humanPlayerId: null,

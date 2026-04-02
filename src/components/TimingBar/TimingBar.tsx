@@ -5,7 +5,7 @@
  * the centre as possible and lock in their best attempt once per round.
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`.
+ *  1. LOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`.
  *  2. MinigameHost (challenge) path: receives `onFinish`; runs the same knockout
  *     bracket flow and reports the authoritative survivor after the final results
  *     screen so MinigameHost can advance straight to the ceremony.

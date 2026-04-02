@@ -48,7 +48,7 @@ function startGame(ids: string[], seed = 42, testMode = false) {
   store.dispatch(
     initBiographyBlitz({
       participantIds: ids,
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed,
       humanContestantId: ids[0] ?? null,
       testMode,
@@ -192,7 +192,7 @@ describe('biographyBlitzSlice — initBiographyBlitz', () => {
     store.dispatch(
       initBiographyBlitz({
         participantIds: ['finn', 'mimi'],
-        competitionType: 'POV',
+        competitionType: 'POS',
         seed: 2,
         humanContestantId: 'finn',
         now: T0,
@@ -203,7 +203,7 @@ describe('biographyBlitzSlice — initBiographyBlitz', () => {
     expect(bb.eliminatedContestantIds).toEqual([]);
     expect(bb.competitionWinnerId).toBeNull();
     expect(bb.outcomeResolved).toBe(false);
-    expect(bb.competitionType).toBe('POV');
+    expect(bb.competitionType).toBe('POS');
   });
 
   it('stores seed and competitionType', () => {
@@ -211,14 +211,14 @@ describe('biographyBlitzSlice — initBiographyBlitz', () => {
     store.dispatch(
       initBiographyBlitz({
         participantIds: ['finn', 'mimi'],
-        competitionType: 'POV',
+        competitionType: 'POS',
         seed: 999,
         humanContestantId: 'finn',
         now: T0,
       }),
     );
     const bb = store.getState().biographyBlitz;
-    expect(bb.competitionType).toBe('POV');
+    expect(bb.competitionType).toBe('POS');
     expect(bb.seed).toBe(999);
   });
 });

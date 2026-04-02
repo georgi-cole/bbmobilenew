@@ -2,7 +2,7 @@
  * Thunk: resolveMemoryColorsOutcome
  *
  * Reads the completed Memory Colors state, validates the current game phase
- * matches the competition type, and awards HOH or POV via `applyMinigameWinner`.
+ * matches the competition type, and awards LOH or POS via `applyMinigameWinner`.
  *
  * This thunk is idempotent — if outcomeResolved is already true it returns
  * immediately without dispatching again (mirrors the pattern used by cwgo,
@@ -40,16 +40,16 @@ export const resolveMemoryColorsOutcome =
       phase,
     });
 
-    if (mc.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (mc.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[memoryColors] resolveMemoryColorsOutcome: expected "hoh_comp" for HOH, got',
+        '[memoryColors] resolveMemoryColorsOutcome: expected "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (mc.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (mc.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[memoryColors] resolveMemoryColorsOutcome: expected "pov_comp" for POV, got',
+        '[memoryColors] resolveMemoryColorsOutcome: expected "pos_comp" for POS, got',
         phase,
       );
       return;
