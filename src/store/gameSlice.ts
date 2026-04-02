@@ -45,6 +45,7 @@ import {
   MISSION_TEMPLATES,
   canUseDoubleVote,
   canUseVoteDeduction,
+  type MissionTask,
   type MissionRewardType,
 } from '../bb/secretMission';
 
@@ -78,7 +79,15 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
   avatar: hg.sex === 'Female' ? '👩' : '🧑',
 }));
 
-function buildSecretMissionTasksForTemplate(templateId: string, triggeredDay: number) {
+type SecretMissionTaskBuildResult = {
+  templateId: string;
+  tasks: MissionTask[];
+};
+
+function buildSecretMissionTasksForTemplate(
+  templateId: string,
+  triggeredDay: number,
+): SecretMissionTaskBuildResult {
   const template = MISSION_TEMPLATES.find((t) => t.id === templateId)
     ?? MISSION_TEMPLATES[0];
   return {
@@ -3602,6 +3611,11 @@ const gameSlice = createSlice({
       sm.tasks = nextMission.tasks;
     },
 
+    /**
+     * Dev/test-only helper that rotates an accepted mission to the next template
+     * in the pool and rebuilds its checklist from scratch for the original
+     * trigger day.
+     */
     reshuffleSecretMission(state) {
       const sm = state.secretMission;
       if (!sm || sm.status !== 'accepted') return;
