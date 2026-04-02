@@ -3593,6 +3593,18 @@ const gameSlice = createSlice({
       sm.tasks = buildMissionTasks(template, sm.triggeredDay);
     },
 
+    reshuffleSecretMission(state) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const currentIndex = MISSION_TEMPLATES.findIndex((t) => t.id === sm.templateId);
+      const nextIndex = currentIndex >= 0
+        ? (currentIndex + 1) % MISSION_TEMPLATES.length
+        : 0;
+      const template = MISSION_TEMPLATES[nextIndex] ?? MISSION_TEMPLATES[0];
+      sm.templateId = template.id;
+      sm.tasks = buildMissionTasks(template, sm.triggeredDay);
+    },
+
     /**
      * Player declined the mission (status → 'declined').
      * Records the day of the decline.
@@ -3910,6 +3922,7 @@ export const {
   triggerSecretMission,
   offerSecretMission,
   acceptSecretMission,
+  reshuffleSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
   addUniqueDayToTask,

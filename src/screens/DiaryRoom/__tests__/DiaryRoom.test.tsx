@@ -4,16 +4,25 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import DiaryRoom, { DIARY_ROOM_ENTRY_OVERLAY_MS } from '../DiaryRoom';
-import gameReducer from '../../../store/gameSlice';
+import gameReducer, {
+  triggerSecretMission,
+  offerSecretMission,
+  acceptSecretMission,
+} from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
 
-function renderDiaryRoom(initialEntries = ['/game', '/diary-room']) {
+function renderDiaryRoom(
+  initialEntries = ['/game', '/diary-room'],
+  options?: { setupStore?: (store: ReturnType<typeof configureStore>) => void },
+) {
   const store = configureStore({
     reducer: {
       game: gameReducer,
       settings: settingsReducer,
     },
   });
+
+  options?.setupStore?.(store);
 
   return render(
     <Provider store={store}>
@@ -175,5 +184,24 @@ describe('DiaryRoom', () => {
     });
 
     expect(screen.queryByTestId('confessional-entry-overlay')).toBeNull();
+  });
+
+  it('reshuffles accepted secret mission tasks from the confessional footer', () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+      },
+    });
+
+    expect(screen.getByText('Visit the Confessional on 3 different days')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /shuffle mission/i }));
+
+    expect(screen.queryByText('Visit the Confessional on 3 different days')).toBeNull();
+    expect(screen.getByText('Survive until Day 9')).toBeTruthy();
+    expect(screen.getByText('Complete 8 exchanges with the Big Eye')).toBeTruthy();
   });
 });

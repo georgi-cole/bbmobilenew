@@ -249,6 +249,12 @@
   justify-content: space-between;
 }
 
+.diary-room__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .diary-room__charcount {
   font-size: 0.72rem;
   color: var(--color-text-muted);
@@ -273,6 +279,11 @@
 .diary-room__submit:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.diary-room__submit--secondary {
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(139, 92, 246, 0.45);
 }
 
 /* ── Confess tab — chat layout ───────────────────────────────────────────── */
