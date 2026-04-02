@@ -20,6 +20,13 @@ export interface FinalLightsOutSequenceProps {
   onComplete: () => void;
 }
 
+type TvViewportRect = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
 // Number of light rows on each side (each pair goes off together)
 const LIGHT_ROWS = 5;
 // Durations for each stage (ms)
@@ -30,6 +37,7 @@ export default function FinalLightsOutSequence({
   onComplete,
 }: FinalLightsOutSequenceProps) {
   const [stage, setStage] = useState(0);
+  const [tvViewportRect, setTvViewportRect] = useState<TvViewportRect | null>(null);
   const [noAnim] = useState(
     () =>
       typeof document !== 'undefined' &&
@@ -53,6 +61,43 @@ export default function FinalLightsOutSequence({
 
   // How many light rows are currently dark: stage 1 → row 0, stage 2 → rows 0-1, etc.
   const darkRows = Math.max(0, stage - 1);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const updateTvViewportRect = () => {
+      const viewport = document.querySelector<HTMLElement>('.tv-zone__viewport');
+      if (!viewport) {
+        setTvViewportRect(null);
+        return;
+      }
+
+      const { top, left, width, height } = viewport.getBoundingClientRect();
+      if (width <= 0 || height <= 0) {
+        setTvViewportRect(null);
+        return;
+      }
+
+      setTvViewportRect({ top, left, width, height });
+    };
+
+    updateTvViewportRect();
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateTvViewportRect)
+      : null;
+    const viewport = document.querySelector<HTMLElement>('.tv-zone__viewport');
+    if (resizeObserver && viewport) resizeObserver.observe(viewport);
+
+    window.addEventListener('resize', updateTvViewportRect);
+    window.addEventListener('scroll', updateTvViewportRect, true);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateTvViewportRect);
+      window.removeEventListener('scroll', updateTvViewportRect, true);
+    };
+  }, []);
 
   return (
     <div
@@ -91,8 +136,18 @@ export default function FinalLightsOutSequence({
         ))}
       </div>
 
-      {/* ── Central TV frame — visible in stages 0-4, dims in stage 5 ── */}
-      <div className={`flo-tv-frame${stage >= 5 ? ' flo-tv-frame--off' : ''}`} aria-hidden={stage < 4 ? 'true' : undefined}>
+      {/* ── Main TV screen area — message appears inside the existing TV viewport ── */}
+      <div
+        className={[
+          'flo-tv-frame',
+          tvViewportRect ? 'flo-tv-frame--anchored' : 'flo-tv-frame--fallback',
+          stage >= 4 ? 'flo-tv-frame--active' : null,
+          stage >= 5 ? 'flo-tv-frame--off' : null,
+        ].filter(Boolean).join(' ')}
+        style={tvViewportRect ?? undefined}
+        aria-hidden={stage < 4 ? 'true' : undefined}
+        data-testid="final-lights-off-tv"
+      >
         <div className="flo-tv-screen-inner">
           <div className="flo-tv-scanlines" />
           {/* Farewell message appears at stage 4 */}

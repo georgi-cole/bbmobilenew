@@ -88,30 +88,46 @@
   50%       { opacity: 0.75; }
 }
 
-/* ── Central TV frame — stays lit while side lights go out ── */
+/* ── Main TV screen area — aligns to the existing TvZone viewport ─────────── */
 .flo-tv-frame {
-  position: relative;
+  position: fixed;
   z-index: 3;
-  width: min(22rem, calc(100vw - 9rem));
-  max-height: 60dvh;
-  background: #03070d;
-  border-radius: 14px;
-  border: 3px solid rgba(100, 130, 220, 0.5);
-  box-shadow:
-    0 0 50px rgba(80, 120, 255, 0.35),
-    0 0 120px rgba(60, 90, 200, 0.2),
-    inset 0 0 24px rgba(20, 50, 120, 0.25);
+  background: transparent;
+  border-radius: 12px;
+  box-shadow: none;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 12rem;
-  transition: box-shadow 1.4s ease, border-color 1.4s ease, opacity 1.6s ease;
+  transition: background 1.4s ease, box-shadow 1.4s ease, filter 1.4s ease;
 }
+
+.flo-tv-frame--anchored {
+  min-height: 0;
+}
+
+.flo-tv-frame--fallback {
+  top: 50%;
+  left: 50%;
+  width: min(22rem, calc(100vw - 9rem));
+  max-height: 60dvh;
+  transform: translate(-50%, -50%);
+}
+
+.flo-tv-frame--active {
+  background:
+    linear-gradient(180deg, rgba(16, 34, 77, 0.96), rgba(4, 10, 26, 0.98)),
+    #03070d;
+  box-shadow:
+    0 0 28px rgba(80, 120, 255, 0.22),
+    inset 0 0 22px rgba(20, 50, 120, 0.25);
+}
+
 .flo-tv-frame--off {
-  opacity: 0;
+  background: #000;
   box-shadow: none;
-  border-color: rgba(30, 40, 80, 0.15);
+  filter: brightness(0);
 }
 
 /* ── CRT scanlines on TV ── */
@@ -150,6 +166,10 @@
   align-items: center;
   gap: 0.85rem;
   animation: flo-tv-content-in 0.7s ease forwards;
+}
+.flo-tv-frame--off .flo-tv-content {
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 @keyframes flo-tv-content-in {
   from { opacity: 0; transform: scale(0.92); }
