@@ -55,6 +55,13 @@ export interface MissionTask {
   current: number;
   target: number;
   completed: boolean;
+  /**
+   * Anti-cheese tracking for tasks that must span distinct calendar days.
+   * Only populated for task types that use unique-day gating
+   * (currently `confessional_visits`).  The values are stringified week
+   * numbers (e.g. `"7"`) that have already been credited.
+   */
+  uniqueDays?: string[];
 }
 
 // ── Mission state (stored in GameState.secretMission) ────────────────────────
@@ -161,21 +168,29 @@ export interface MissionTemplate {
 }
 
 /**
- * PR 1 template pool — one simple mission that only uses already-tracked actions.
+ * Mission template pool — five distinct missions that draw on different task
+ * combinations so runs feel varied.  Tasks within each mission are designed
+ * with anti-cheese rules in mind:
+ *   - `confessional_visits` counts UNIQUE DAYS (not raw opens) to prevent
+ *     rapid-enter/exit exploitation.
+ *   - `survive_days` is always relative to the triggered day.
+ *   - `conversation_turns` target is set to a manageable number per visit.
  *
- * Expand this pool in later PRs without touching trigger or lifecycle logic.
+ * `pickMissionTemplate()` cycles through the pool deterministically so the
+ * player sees a different layout each trigger day.
  */
 export const MISSION_TEMPLATES: MissionTemplate[] = [
   {
     id: 'silent_witness',
     title: 'The Silent Witness',
     description:
-      'The Big Eye has been watching. Complete the private checklist and a reward awaits.',
+      'The Big Eye has been watching. Return to the Confessional on different days ' +
+      'and keep the conversation going.',
     buildTasks: (triggeredDay) => [
       {
         id: 'confessional_visits',
         type: 'confessional_visits' as const,
-        description: 'Visit the Confessional 3 times',
+        description: 'Visit the Confessional on 3 different days',
         target: 3,
       },
       {
@@ -183,6 +198,98 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
         type: 'conversation_turns' as const,
         description: 'Complete 6 exchanges with the Big Eye',
         target: 6,
+      },
+      {
+        id: 'survive_days',
+        type: 'survive_days' as const,
+        description: `Survive until Day ${triggeredDay + 3}`,
+        target: triggeredDay + 3,
+      },
+    ],
+  },
+  {
+    id: 'long_game',
+    title: 'The Long Game',
+    description:
+      'Patience is a weapon. Endure, observe, and keep the Big Eye company.',
+    buildTasks: (triggeredDay) => [
+      {
+        id: 'survive_days',
+        type: 'survive_days' as const,
+        description: `Survive until Day ${triggeredDay + 4}`,
+        target: triggeredDay + 4,
+      },
+      {
+        id: 'conversation_turns',
+        type: 'conversation_turns' as const,
+        description: 'Complete 8 exchanges with the Big Eye',
+        target: 8,
+      },
+    ],
+  },
+  {
+    id: 'social_butterfly',
+    title: 'The Social Butterfly',
+    description:
+      'Charm the Big Eye with words. Visit on separate days and keep talking.',
+    buildTasks: (triggeredDay) => [
+      {
+        id: 'confessional_visits',
+        type: 'confessional_visits' as const,
+        description: 'Visit the Confessional on 2 different days',
+        target: 2,
+      },
+      {
+        id: 'conversation_turns',
+        type: 'conversation_turns' as const,
+        description: 'Complete 10 exchanges with the Big Eye',
+        target: 10,
+      },
+      {
+        id: 'survive_days',
+        type: 'survive_days' as const,
+        description: `Survive until Day ${triggeredDay + 2}`,
+        target: triggeredDay + 2,
+      },
+    ],
+  },
+  {
+    id: 'the_strategist',
+    title: 'The Strategist',
+    description:
+      'Strategy takes time. Return across multiple days and weather the storm.',
+    buildTasks: (triggeredDay) => [
+      {
+        id: 'confessional_visits',
+        type: 'confessional_visits' as const,
+        description: 'Visit the Confessional on 4 different days',
+        target: 4,
+      },
+      {
+        id: 'survive_days',
+        type: 'survive_days' as const,
+        description: `Survive until Day ${triggeredDay + 5}`,
+        target: triggeredDay + 5,
+      },
+    ],
+  },
+  {
+    id: 'the_confessor',
+    title: 'The Confessor',
+    description:
+      'Bare your soul to the Big Eye. Words and days are your currency.',
+    buildTasks: (triggeredDay) => [
+      {
+        id: 'conversation_turns',
+        type: 'conversation_turns' as const,
+        description: 'Complete 12 exchanges with the Big Eye',
+        target: 12,
+      },
+      {
+        id: 'confessional_visits',
+        type: 'confessional_visits' as const,
+        description: 'Visit the Confessional on 3 different days',
+        target: 3,
       },
       {
         id: 'survive_days',
@@ -266,11 +373,20 @@ export function checkSecretMissionTrigger(
 }
 
 /**
- * Pick a mission template by cycling through the template pool with the
- * current day as the seed index.  Keeps template selection deterministic.
+ * Pick a mission template for the given trigger day.
+ *
+ * The pool has five templates.  We map the trigger day to an index via a small
+ * prime-modulo scheme so the sequence of templates across consecutive trigger
+ * days cycles through all five without repeating until the pool is exhausted.
+ * Using a prime (3) that is co-prime with the pool size (5) guarantees the
+ * full pool is visited before any template repeats.
+ *
+ *   day % 5          → 0 1 2 3 4 0 1 2 3 4 …  (simple cycle)
+ *   (day * 3) % 5    → 0 3 1 4 2 0 3 1 4 2 …  (spread cycle — used here)
  */
 export function pickMissionTemplate(day: number): MissionTemplate {
-  return MISSION_TEMPLATES[day % MISSION_TEMPLATES.length];
+  const idx = (day * 3) % MISSION_TEMPLATES.length;
+  return MISSION_TEMPLATES[idx];
 }
 
 /**
@@ -289,6 +405,33 @@ export function createSecretMissionState(day: number): SecretMissionState {
     tasks: [],
     templateId: template.id,
   };
+}
+
+/**
+ * Return a Big Eye message explaining when the `doubleVote` power will be
+ * available, based on the current game phase.
+ *
+ * - During `live_vote`: the power is active right now and the player should
+ *   return to the game immediately.
+ * - Any other phase: the power will activate automatically at the next live
+ *   elimination; this message clears up the "won but not yet usable" confusion.
+ *
+ * @param currentPhase  The current game phase string (from GameState.phase).
+ * @returns             A flavour-text string for Big Eye to deliver.
+ */
+export function doubleVoteTimingMessage(currentPhase: string): string {
+  if (currentPhase === 'live_vote') {
+    return (
+      'Your Double Vote is active right now — return to the game immediately ' +
+      'to use it before the vote closes. ⏳🗳️🗳️'
+    );
+  }
+  return (
+    'This power cannot interrupt a vote already in motion. ' +
+    'Your Double Vote will be offered automatically at the next live elimination — ' +
+    'the moment the house is asked to cast their votes. ' +
+    'Stay in the game and it will activate itself at exactly the right time. 🗳️🗳️'
+  );
 }
 
 // ── PR 3: Activation guard helpers ──────────────────────────────────────────

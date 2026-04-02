@@ -244,6 +244,42 @@ describe('tryActivateSecretMission thunk', () => {
     expect(store.dispatch(tryActivateSecretMission())).toBe(false);
     expect(store.getState().game.secretMission?.triggeredDay).toBe(5);
   });
+
+  it('forces activation on an exact configured week', () => {
+    const store = makeStore();
+    setGameWeek(store, 9);
+    store.dispatch(setSim({
+      secretMissionTriggerOverride: 0,
+      secretMissionTriggerWeekOverride: 9,
+    }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+    expect(store.getState().game.secretMission?.triggeredDay).toBe(9);
+  });
+
+  it('does not trigger before the configured force week', () => {
+    const store = makeStore();
+    setGameWeek(store, 8);
+    store.dispatch(setSim({
+      secretMissionTriggerOverride: 100,
+      secretMissionTriggerWeekOverride: 9,
+    }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMission).toBeUndefined();
+  });
+
+  it('force week takes precedence over the percent override', () => {
+    const store = makeStore();
+    setGameWeek(store, 7);
+    store.dispatch(setSim({
+      secretMissionTriggerOverride: 0,
+      secretMissionTriggerWeekOverride: 7,
+    }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+    expect(store.getState().game.secretMission?.triggeredDay).toBe(7);
+  });
 });
 
 // ── 5. Accept / decline flow ──────────────────────────────────────────────────

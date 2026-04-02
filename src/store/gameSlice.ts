@@ -3628,6 +3628,39 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Anti-cheese: credit a unique day for a task that requires visits on
+     * separate calendar days (e.g. `confessional_visits`).
+     *
+     * Rules:
+     *  - The day string must NOT already be in `task.uniqueDays`.
+     *  - `task.current` never decreases when `uniqueDays` is introduced for an
+     *    upgraded save; new credits only move progress forward.
+     *  - If `current >= target` the task is marked completed and, if all
+     *    tasks finish, the mission transitions to 'rewardPending'.
+     *
+     * Idempotent: re-crediting a day that was already counted is a no-op.
+     */
+    addUniqueDayToTask(
+      state,
+      action: PayloadAction<{ taskId: string; day: string }>,
+    ) {
+      const sm = state.secretMission;
+      if (!sm || sm.status !== 'accepted') return;
+      const task = sm.tasks.find((t) => t.id === action.payload.taskId);
+      if (!task || task.completed) return;
+      const previousCurrent = typeof task.current === 'number' ? task.current : 0;
+      if (!task.uniqueDays) task.uniqueDays = [];
+      if (task.uniqueDays.includes(action.payload.day)) return; // already counted
+      task.uniqueDays.push(action.payload.day);
+      task.current = Math.max(previousCurrent, task.uniqueDays.length);
+      task.completed = task.current >= task.target;
+      const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
+      if (allDone) {
+        sm.status = 'rewardPending';
+      }
+    },
+
+    /**
      * Explicitly mark the mission as completed (e.g. when the final task
      * is ticked via a passive update path).
      * Transitions to rewardPending.
@@ -3879,6 +3912,7 @@ export const {
   acceptSecretMission,
   declineSecretMission,
   updateMissionTaskProgress,
+  addUniqueDayToTask,
   completeMission,
   claimMissionReward,
   expireMissionReward,
@@ -4095,7 +4129,7 @@ export const startMinigame =
  * Rules:
  *  - Evaluates only on Day 5–12 via the centralized chance helper
  *  - At most one mission may trigger per season
- *  - The testing override affects only this calculation
+ *  - The testing overrides affect only this calculation
  *  - Uses a twist-specific RNG path so it does not perturb other outcomes
  *
  * Returns `true` if the mission triggered for the current day.
@@ -4107,6 +4141,13 @@ export const tryActivateSecretMission =
 
     if (game.phase !== 'week_start') return false;
     if (game.secretMission) return false;
+
+    const forcedWeek = settings.sim.secretMissionTriggerWeekOverride;
+    if (forcedWeek !== null) {
+      if (game.week !== forcedWeek) return false;
+      dispatch(triggerSecretMission(game.week));
+      return true;
+    }
 
     const override = settings.sim.secretMissionTriggerOverride;
     const rng = mulberry32((game.seed ^ Math.imul(game.week, 0x9e3779b1)) >>> 0);

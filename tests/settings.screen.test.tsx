@@ -117,4 +117,35 @@ describe('Settings screen', () => {
       expect(screen.getByRole('heading', { name: /the big eye/i })).toBeTruthy();
     });
   });
+
+  it('lets QA set a forced secret mission week in debug settings', async () => {
+    const { store } = renderSettings();
+
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/secret mission force week \(debug\)/i)).toBeTruthy();
+    });
+
+    const forceWeekSlider = screen.getByLabelText(/secret mission force week \(debug\)/i);
+    expect(screen.getByText(/secret mission force week — disabled/i)).toBeTruthy();
+
+    fireEvent.change(forceWeekSlider, {
+      target: { value: '9' },
+    });
+
+    await waitFor(() => {
+      expect(store.getState().settings.sim.secretMissionTriggerWeekOverride).toBe(9);
+    });
+    expect(screen.getByText(/secret mission force week — week 9/i)).toBeTruthy();
+
+    fireEvent.change(forceWeekSlider, {
+      target: { value: '0' },
+    });
+
+    await waitFor(() => {
+      expect(store.getState().settings.sim.secretMissionTriggerWeekOverride).toBeNull();
+    });
+    expect(screen.getByText(/secret mission force week — disabled/i)).toBeTruthy();
+  });
 });

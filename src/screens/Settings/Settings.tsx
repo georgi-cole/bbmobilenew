@@ -485,8 +485,7 @@ export default function Settings() {
             <div className="settings-row settings-row--col">
               <label className="settings-row__label" style={{ color: '#f97316' }}>
                 Secret Mission Trigger Override —{' '}
-                {settings.sim.secretMissionTriggerOverride === null ||
-                 settings.sim.secretMissionTriggerOverride === undefined
+                {settings.sim.secretMissionTriggerOverride === null
                   ? 'Default (per-day chances)'
                   : `${settings.sim.secretMissionTriggerOverride}% (override)`}
               </label>
@@ -507,6 +506,31 @@ export default function Settings() {
                 DEBUG ONLY. Set to 100 to guarantee a trigger on Day 5; set to 0 to prevent
                 any trigger. Slide to the left-most position to restore default chances.
                 Remove this slider before shipping to live players.
+              </p>
+            </div>
+            <div className="settings-row settings-row--col">
+              <label className="settings-row__label" style={{ color: '#f97316' }}>
+                Secret Mission Force Week —{' '}
+                {settings.sim.secretMissionTriggerWeekOverride === null
+                  ? 'Disabled'
+                  : `Week ${settings.sim.secretMissionTriggerWeekOverride}`}
+              </label>
+              <input
+                type="range"
+                className="settings-slider"
+                min={0}
+                max={20}
+                step={1}
+                value={settings.sim.secretMissionTriggerWeekOverride ?? 0}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  dispatch(setSim({ secretMissionTriggerWeekOverride: v <= 0 ? null : v }));
+                }}
+                aria-label="Secret mission force week (debug)"
+              />
+              <p className="settings-helper-text" style={{ color: '#f97316' }}>
+                DEBUG ONLY. Force the secret mission to trigger on an exact week_start.
+                Set to 0 to disable. When set, this takes precedence over the chance slider above.
               </p>
             </div>
 
