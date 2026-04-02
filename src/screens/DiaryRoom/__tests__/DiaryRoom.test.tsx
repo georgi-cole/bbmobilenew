@@ -186,6 +186,18 @@ describe('DiaryRoom', () => {
     expect(screen.queryByTestId('confessional-entry-overlay')).toBeNull();
   });
 
+  it('shows the shuffle mission button for accepted secret missions', () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (store) => {
+        store.dispatch(triggerSecretMission(5));
+        store.dispatch(offerSecretMission(5));
+        store.dispatch(acceptSecretMission());
+      },
+    });
+
+    expect(screen.getByRole('button', { name: /shuffle mission/i })).toBeTruthy();
+  });
+
   it('reshuffles accepted secret mission tasks from the confessional footer', () => {
     renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (store) => {
