@@ -4,6 +4,11 @@ This document describes the end-to-end lifecycle of the social subsystem,
 covering how the middleware, engine, AI driver, and Diary Room summary are
 wired together.
 
+The social subsystem is active whenever the human player is alive and the game is
+in a non-vote interaction window (LOH phases, POS phases, nomination phases,
+pre-vote phases, and `social_1`/`social_2`). It is blocked during `live_vote`
+and eviction resolution phases.
+
 ## Architecture overview
 
 ```
@@ -33,7 +38,11 @@ App bootstrap
        └─ socialAIDriver.setStore(store)
 
 game/setPhase  ──► socialMiddleware
-                    ├─ if entering social_1 / social_2:
+                    ├─ if entering a social interaction window
+                    │   (social_1, social_2, loh_results, pos_results, nominations,
+                    │    nomination_results, pre_veto_public_save, pos_comp_announcement,
+                    │    pos_ceremony, pos_ceremony_results, loh_comp_announcement,
+                    │    week_start):
                     │    SocialEngine.startPhase(phase)
                     │      ├─ computes per-player energy budgets (LCG PRNG, game seed)
                     │      ├─ dispatches social/engineReady  → state.social.energyBank
@@ -48,7 +57,7 @@ game/setPhase  ──► socialMiddleware
                     │                    └─ dispatches social/recordSocialAction
                     │                stops when all budgets = 0 or MAX_TICKS reached
                     │
-                    └─ if leaving social_1 / social_2:
+                    └─ if leaving a social interaction window:
                          SocialEngine.endPhase(phase)
                            ├─ socialAIDriver.stop()
                            ├─ computes influence weights (social/influenceUpdated)
@@ -129,7 +138,8 @@ window.store.getState().social.lastReport;
 ## Manual QA checklist
 
 1. Start dev server (`npm run dev`).
-2. Use DebugPanel to `setPhase('social_1')`.
+2. Use DebugPanel to `setPhase('social_1')` or any other social interaction window
+   (e.g. `loh_results`, `nominations`, `pos_ceremony`).
    - Verify `state.social.energyBank` is populated (Redux DevTools).
    - Confirm AI driver started: `window.__smAutoDriver.getStatus()` → `running: true`.
 3. Wait ~2 s or advance the phase via DebugPanel to a non-social phase.

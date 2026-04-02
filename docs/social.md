@@ -2,7 +2,7 @@
 
 ## Overview
 
-The social module drives player-to-player social interactions during `social_1` and `social_2` game phases. It consists of two UI layers:
+The social module drives player-to-player social interactions whenever the human player is alive and the game is in a non-vote interaction window. This includes LOH phases, POS phases, nomination phases, pre-vote phases, and the traditional `social_1` / `social_2` windows. Social interactions are blocked during `live_vote` and eviction resolution phases. It consists of two UI layers:
 
 | Layer | Component | Status |
 |---|---|---|
@@ -26,7 +26,7 @@ When the flag is **`true`** (default):
 - The legacy `SocialPanel` is **not rendered** (no DOM node, no layout gap).
 
 When the flag is **`false`**:
-- The legacy `SocialPanel` is rendered during `social_1` / `social_2` phases.
+- The legacy `SocialPanel` is rendered during non-vote interaction phases (LOH, POS, nomination, pre-vote, and social windows).
 - `SocialPanelV2` is still mounted in the tree but remains invisible unless opened via the FAB.
 
 ### Re-enabling the old module
