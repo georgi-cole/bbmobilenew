@@ -485,8 +485,7 @@ export default function Settings() {
             <div className="settings-row settings-row--col">
               <label className="settings-row__label" style={{ color: '#f97316' }}>
                 Secret Mission Trigger Override —{' '}
-                {settings.sim.secretMissionTriggerOverride === null ||
-                 settings.sim.secretMissionTriggerOverride === undefined
+                {settings.sim.secretMissionTriggerOverride === null
                   ? 'Default (per-day chances)'
                   : `${settings.sim.secretMissionTriggerOverride}% (override)`}
               </label>
@@ -512,8 +511,7 @@ export default function Settings() {
             <div className="settings-row settings-row--col">
               <label className="settings-row__label" style={{ color: '#f97316' }}>
                 Secret Mission Force Week —{' '}
-                {settings.sim.secretMissionTriggerWeekOverride === null ||
-                 settings.sim.secretMissionTriggerWeekOverride === undefined
+                {settings.sim.secretMissionTriggerWeekOverride === null
                   ? 'Disabled'
                   : `Week ${settings.sim.secretMissionTriggerWeekOverride}`}
               </label>
