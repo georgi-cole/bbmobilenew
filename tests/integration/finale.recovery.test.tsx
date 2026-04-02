@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -100,10 +100,10 @@ describe('jury finale recovery', () => {
       </Provider>,
     );
 
-    await act(async () => {});
-
-    expect(screen.getByTestId('season-finale-overlay')).toBeInTheDocument();
-    expect(store.getState().game.seasonFinale?.phase).toBe('winnerCinematic');
+    await waitFor(() => {
+      expect(screen.getByTestId('season-finale-overlay')).toBeInTheDocument();
+      expect(store.getState().game.seasonFinale?.phase).toBe('winnerCinematic');
+    });
     expect(store.getState().game.players.find((player) => player.id === 'user')?.isWinner).toBe(true);
   });
 });
