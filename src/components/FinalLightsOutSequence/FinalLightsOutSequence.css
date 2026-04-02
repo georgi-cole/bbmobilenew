@@ -236,6 +236,9 @@
     transition: none;
   }
   .flo-light-row--off { opacity: 0; }
-  .flo-tv-frame--off  { opacity: 0; }
+  .flo-tv-frame--off  {
+    filter: brightness(0);
+    opacity: 1 !important;
+  }
   .flo-tv-content     { opacity: 1; }
 }

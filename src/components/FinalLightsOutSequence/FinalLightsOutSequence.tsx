@@ -12,7 +12,7 @@
  *   5  → TV also dims to black
  *   6  → full blackout → calls onComplete
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './FinalLightsOutSequence.css';
 
 export interface FinalLightsOutSequenceProps {
@@ -27,6 +27,12 @@ type TvViewportRect = {
   height: number;
 };
 
+function areViewportRectsEqual(a: TvViewportRect | null, b: TvViewportRect | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
+}
+
 // Number of light rows on each side (each pair goes off together)
 const LIGHT_ROWS = 5;
 // Durations for each stage (ms)
@@ -38,6 +44,10 @@ export default function FinalLightsOutSequence({
 }: FinalLightsOutSequenceProps) {
   const [stage, setStage] = useState(0);
   const [tvViewportRect, setTvViewportRect] = useState<TvViewportRect | null>(null);
+  const rafRef = useRef<number>(0);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const observedViewportRef = useRef<HTMLElement | null>(null);
+  const lastMeasuredRectRef = useRef<TvViewportRect | null>(null);
   const [noAnim] = useState(
     () =>
       typeof document !== 'undefined' &&
@@ -65,42 +75,91 @@ export default function FinalLightsOutSequence({
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const getViewport = () => document.querySelector<HTMLElement>('.tv-zone__viewport');
+    const requestFrame =
+      typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame.bind(window)
+        : (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 16);
+    const cancelFrame =
+      typeof window.cancelAnimationFrame === 'function'
+        ? window.cancelAnimationFrame.bind(window)
+        : window.clearTimeout.bind(window);
+
+    const setMeasuredRect = (nextRect: TvViewportRect | null) => {
+      if (areViewportRectsEqual(lastMeasuredRectRef.current, nextRect)) return;
+      lastMeasuredRectRef.current = nextRect;
+      setTvViewportRect(nextRect);
+    };
+
+    const attachResizeObserver = (viewport: HTMLElement | null) => {
+      if (observedViewportRef.current === viewport) return;
+
+      resizeObserverRef.current?.disconnect();
+      observedViewportRef.current = viewport;
+
+      if (!viewport || typeof ResizeObserver === 'undefined') {
+        resizeObserverRef.current = null;
+        return;
+      }
+
+      resizeObserverRef.current = new ResizeObserver(() => {
+        scheduleRefresh();
+      });
+      resizeObserverRef.current.observe(viewport);
+    };
 
     const measureTvViewport = (viewport: HTMLElement | null) => {
       if (!viewport) {
-        setTvViewportRect(null);
+        setMeasuredRect(null);
         return null;
       }
 
       const { top, left, width, height } = viewport.getBoundingClientRect();
       if (width <= 0 || height <= 0) {
-        setTvViewportRect(null);
+        setMeasuredRect(null);
         return viewport;
       }
 
-      setTvViewportRect({ top, left, width, height });
+      setMeasuredRect({ top, left, width, height });
       return viewport;
     };
 
-    const refreshTvViewportRect = () => measureTvViewport(getViewport());
+    const refreshTvViewportRect = () => {
+      const viewport = getViewport();
+      attachResizeObserver(viewport);
+      measureTvViewport(viewport);
+    };
 
-    const viewport = refreshTvViewportRect();
+    const scheduleRefresh = () => {
+      if (rafRef.current) cancelFrame(rafRef.current);
+      rafRef.current = requestFrame(() => {
+        rafRef.current = 0;
+        refreshTvViewportRect();
+      });
+    };
 
-    const resizeObserver =
-      viewport && typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => {
-          refreshTvViewportRect();
+    const mutationObserver =
+      typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(() => {
+          scheduleRefresh();
         })
         : null;
-    if (resizeObserver && viewport) resizeObserver.observe(viewport);
 
-    window.addEventListener('resize', refreshTvViewportRect);
-    window.addEventListener('scroll', refreshTvViewportRect, true);
+    scheduleRefresh();
+
+    window.addEventListener('resize', scheduleRefresh);
+    window.addEventListener('scroll', scheduleRefresh, { capture: true, passive: true });
+    window.visualViewport?.addEventListener('resize', scheduleRefresh);
+    window.visualViewport?.addEventListener('scroll', scheduleRefresh);
+    mutationObserver?.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', refreshTvViewportRect);
-      window.removeEventListener('scroll', refreshTvViewportRect, true);
+      if (rafRef.current) cancelFrame(rafRef.current);
+      resizeObserverRef.current?.disconnect();
+      mutationObserver?.disconnect();
+      window.removeEventListener('resize', scheduleRefresh);
+      window.removeEventListener('scroll', scheduleRefresh, true);
+      window.visualViewport?.removeEventListener('resize', scheduleRefresh);
+      window.visualViewport?.removeEventListener('scroll', scheduleRefresh);
     };
   }, []);
 
