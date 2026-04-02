@@ -129,6 +129,11 @@
 
 /* ── Viewport (the "screen") ───────────────────────────────────────────────── */
 .tv-zone__viewport {
+  --tv-screen-texture-opacity: 0.04;
+  --tv-reflection-width: 43%;
+  --tv-reflection-height: 30%;
+  --tv-reflection-x: 18%;
+  --tv-reflection-y: 12%;
   position: relative;
   flex: 1 1 0;
   min-height: 192px; /* ~20% larger than original 160px — constant, not dynamic */
@@ -136,53 +141,145 @@
   align-items: center;
   justify-content: center;
   padding: 20px 18px;
-  background: var(--tv-surface, #0b121a);
+  background:
+    radial-gradient(circle at 16% 14%, rgba(104, 129, 255, 0.18), rgba(104, 129, 255, 0) 28%),
+    linear-gradient(180deg, rgba(21, 29, 42, 0.78) 0%, rgba(9, 14, 22, 0.9) 36%, rgba(4, 8, 14, 0.98) 100%);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -30px 40px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(80, 120, 255, 0.08);
   overflow: hidden;
+  isolation: isolate;
 }
 
-/* Scanlines */
-.tv-zone__scanlines {
+.tv-zone__viewport::before {
+  content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.022) 0 1px,
-    transparent 1px 3px
+  background:
+    linear-gradient(134deg, rgba(255, 255, 255, 0.1) 0%, rgba(122, 162, 255, 0.08) 16%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(ellipse at 18% 10%, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.05) 28%, rgba(255, 255, 255, 0) 65%);
+  clip-path: ellipse(
+    var(--tv-reflection-width)
+    var(--tv-reflection-height)
+    at
+    var(--tv-reflection-x)
+    var(--tv-reflection-y)
   );
+  filter: blur(2px);
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
+  transform: translate3d(0, 0, 0);
+  animation: tvReflectionSweep 10s ease-in-out infinite;
 }
 
-/* Vignette */
-.tv-zone__vignette {
+.tv-zone__viewport::after {
+  content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    80% 70% at 50% 50%,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.45) 100%
-  );
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0 1px,
+      rgba(0, 0, 0, 0.2) 1px 2px
+    ),
+    linear-gradient(
+      180deg,
+      rgba(15, 23, 42, 0.06) 0%,
+      rgba(15, 23, 42, 0) 34%,
+      rgba(0, 0, 0, 0.26) 100%
+    ),
+    radial-gradient(
+      110% 90% at 50% 50%,
+      rgba(255, 255, 255, 0) 58%,
+      rgba(0, 0, 0, 0.16) 100%
+    );
+  /* Intentionally faint so the screen texture reads as material detail, not a text overlay. */
+  opacity: var(--tv-screen-texture-opacity);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
+}
+
+@keyframes tvReflectionSweep {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translate3d(-1.5%, -1.5%, 0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(1.5%, 1%, 0) scale(1.03);
+  }
+}
+
+@keyframes signalLockReveal {
+  0% {
+    opacity: 0.6;
+    transform: scale(1.02);
+    filter: blur(6px);
+    text-shadow:
+      0 0 0 rgba(120, 160, 255, 0),
+      0 1px 4px rgba(0, 0, 0, 1);
+  }
+  32% {
+    opacity: 0.92;
+    transform: scale(1.01) translateX(1px) skewX(1deg);
+    filter: blur(2px);
+  }
+  36% {
+    transform: scale(1.008) translateX(-1px) skewX(-0.8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0) skewX(0);
+    filter: blur(0);
+    text-shadow:
+      0 0 20px rgba(120, 160, 255, 0.15),
+      0 0 16px rgba(0, 0, 0, 1),
+      0 1px 4px rgba(0, 0, 0, 1);
+  }
+}
+
+@keyframes signalLockGlowFade {
+  0% {
+    box-shadow: 0 0 0 rgba(120, 160, 255, 0);
+  }
+  40% {
+    box-shadow:
+      0 0 20px rgba(120, 160, 255, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(120, 160, 255, 0);
+  }
 }
 
 /* Latest event text */
 .tv-zone__now {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   margin: 0;
+  max-width: min(100%, 640px);
+  padding: 0.45rem 0.95rem;
+  border-radius: 16px;
   color: #eef2ff;
   font-size: 0.9rem;
   font-weight: 700;
   text-align: center;
   line-height: 1.55;
-  text-shadow: 0 0 16px rgba(0, 0, 0, 1), 0 1px 4px rgba(0, 0, 0, 1);
-  animation: tvEventFadeSlide 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes tvEventFadeSlide {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  background: linear-gradient(
+    180deg,
+    rgba(10, 16, 24, 0.12) 0%,
+    rgba(5, 9, 16, 0.34) 100%
+  );
+  text-shadow:
+    0 0 16px rgba(0, 0, 0, 1),
+    0 1px 4px rgba(0, 0, 0, 1);
+  animation:
+    signalLockReveal 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    signalLockGlowFade 380ms ease-out;
+  pointer-events: none;
 }
 
 /* ── Event feed ────────────────────────────────────────────────────────────── */
@@ -284,7 +381,9 @@
   flex: 1 1 auto;
   align-items: stretch;
   padding: 8px 10px 4px;
-  background: var(--color-card);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
 }
 
 .tv-zone__bezel-frame {
@@ -295,12 +394,17 @@
   border-radius: 10px;
   border: 3px solid #1a1a2e;
   box-shadow:
+    0 0 0 1px rgba(129, 140, 248, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.06),
     inset 0 0 0 2px rgba(0, 0, 0, 0.5),
     0 6px 24px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(99, 102, 241, 0.06);
+    0 0 20px rgba(99, 102, 241, 0.08),
+    0 0 52px rgba(15, 23, 42, 0.35),
+    0 0 90px rgba(67, 97, 238, 0.08);
   overflow: hidden;
-  background: #0b121a;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 16%),
+    linear-gradient(180deg, #0d1320 0%, #060a12 100%);
 }
 
 /* ── Bezel brand badge ──────────────────────────────────────────────────────── */
@@ -321,23 +425,6 @@
   letter-spacing: 2px;
   color: #e0e7ff;
   text-transform: uppercase;
-}
-
-/* ── Glare overlay ──────────────────────────────────────────────────────────── */
-.tv-zone__glare {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
-  border-radius: 0 0 50% 50% / 0 0 20px 20px;
 }
 
 /* ── Twist badge — broadcast-style corner ribbon ──────────────────────────── */
@@ -371,6 +458,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tv-zone__viewport::before {
+    animation: none;
+  }
+
+  .tv-zone__now {
+    animation: none;
+  }
+
   .tv-zone__twist-badge {
     animation: none;
   }
