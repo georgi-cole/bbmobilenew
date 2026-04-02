@@ -419,8 +419,8 @@ export default function DiaryRoom() {
   }, []);
 
   // ── Secret mission: inject Big Eye offer when entering the Confessional ──
-  // Fires once on mount when there is an untriggered offer (available) or a
-  // re-offerable decline (declined + offerCount < 2).
+  // Runs on entry and also when the lock state changes so any pending timeout
+  // is cleaned up if the player becomes ineligible mid-visit.
   const secretMissionRef = useRef(secretMission);
   useEffect(() => { secretMissionRef.current = secretMission; }, [secretMission]);
   const currentWeekRef = useRef(currentWeekForMission);
@@ -455,11 +455,12 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, [confessionalLocked]); // intentionally runs once on mount
+  }, [confessionalLocked]);
 
   // ── Secret mission: inject reward-pending message on mount (PR 2) ─────────
-  // When the player returns to the Confessional with a completed mission,
-  // Big Eye acknowledges the success and prompts box selection.
+  // When the player returns with a completed mission, Big Eye acknowledges the
+  // success and prompts box selection. Also re-runs on lock changes so any
+  // pending reveal timeout is canceled if the player becomes ineligible.
   useEffect(() => {
     if (confessionalLocked) return;
     const sm = secretMissionRef.current;
@@ -485,7 +486,7 @@ export default function DiaryRoom() {
     }, 600);
 
     return () => { window.clearTimeout(timeoutId); };
-  }, [confessionalLocked]); // intentionally runs once on mount
+  }, [confessionalLocked]);
 
   // ── Secret mission: track confessional visit count on unmount ─────────────
   // Anti-cheese: visits are counted once per unique calendar day (= game week).
