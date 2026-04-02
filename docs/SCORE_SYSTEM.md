@@ -8,8 +8,8 @@ This document describes the scoring formula used by the bbmobilenew leaderboard,
 
 | Event | Points (default) | Where recorded |
 |---|---|---|
-| LOH competition win | +10 per win | `applyHohWinner()` in `gameSlice.ts` |
-| POS competition win | +8 per win | `applyPovWinner()` in `gameSlice.ts` |
+| LOH competition win | +10 per win | `applyLohWinner()` in `gameSlice.ts` |
+| POS competition win | +8 per win | `applyPosWinner()` in `gameSlice.ts` |
 | Made jury | +5 | `buildArchive()` in `GameOver.tsx` — `status === 'jury'` (winner/runner-up excluded) |
 | Battle Back win (returned to house) | +8 per win | `completeBattleBack()` in `gameSlice.ts` |
 | Survived double eviction week | +7 | `survivedDoubleEviction` flag on `PlayerSeasonSummary` — **not yet auto-detected**; requires game logic to tag double-eviction weeks (see note below) |
@@ -73,8 +73,8 @@ Fields missing from older archives are treated as `0` / `false` in all compute f
 
 Stats are incremented **exactly once**, at the authoritative mutation site:
 
-- **`lohWins`** — `applyHohWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` loh_results).
-- **`posWins`** — `applyPovWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` pos_results).
+- **`lohWins`** — `applyLohWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` loh_results).
+- **`posWins`** — `applyPosWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` pos_results).
 - **`timesNominated`** — `finalizeNominations`, `commitNominees` (human paths) and the `nomination_results` case of `advance()` (AI path).  Replacement nominee paths also call `incrementTimesNominated()`: `setReplacementNominee` (human LOH), `submitPovSaveTarget` AI branch, and `aiReplacementStep === 2` in `advance()`.  All paths use the shared `incrementTimesNominated()` helper.
 - **`battleBackWins`** — `completeBattleBack()` reducer.
 - **`wonFinalHoh`** — `markFinalHohWinner()` helper, called from `advance()` `final3_comp3` and `applyF3MinigameWinner()` `final3_comp3_minigame`.
@@ -90,7 +90,7 @@ import { mergeWeights, DEFAULT_WEIGHTS } from './src/scoring/weights';
 import { computeSeasonLeaderboard } from './src/scoring/computeLeaderboard';
 
 const customWeights = mergeWeights({
-  perHohWin: 15,   // increase LOH value
+  perLohWin: 15,   // increase LOH value
   madeJury: 10,    // increase jury value
 });
 

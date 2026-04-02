@@ -2154,7 +2154,7 @@ const gameSlice = createSlice({
       state.phase = 'week_end';
 
       if (import.meta.env.DEV) {
-        console.log('[gameSlice] finalizeFinal3Decision: evicted', evicteeId, 'hoh', hohWinnerId);
+        console.log('[gameSlice] finalizeFinal3Decision: evicted', evicteeId, 'loh', hohWinnerId);
       }
     },
 
@@ -2523,7 +2523,7 @@ const gameSlice = createSlice({
         state.f3Part1WinnerId = null;
         state.f3Part2WinnerId = null;
         state.players.forEach((p) => {
-          if (['hoh', 'nominated', 'pov', 'loh+pos', 'nominated+pos'].includes(p.status)) {
+          if (['loh', 'nominated', 'pos', 'loh+pos', 'nominated+pos'].includes(p.status)) {
             p.status = 'active';
           }
         });
@@ -2931,7 +2931,7 @@ const gameSlice = createSlice({
           }
           state.twistActivatedThisWeek = false;
           state.players.forEach((p) => {
-            if (['hoh', 'nominated', 'pov', 'loh+pos', 'nominated+pos'].includes(p.status)) {
+            if (['loh', 'nominated', 'pos', 'loh+pos', 'nominated+pos'].includes(p.status)) {
               p.status = 'active';
             }
           });
@@ -3328,7 +3328,7 @@ const gameSlice = createSlice({
             const savedName = posWinner.name;
             const autoSavedId = posWinner.id;
             state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
-            // Update status: was 'nominated+pos', now just 'pov' (saved themselves)
+            // Update status: was 'nominated+pos', now just 'pos' (saved themselves)
             posWinner.status = 'pos';
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId;

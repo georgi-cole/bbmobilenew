@@ -28,7 +28,7 @@ function makePlayers(ids: string[], lohId: string | null = null): Player[] {
     id,
     name: `Player-${id}`,
     avatar: '🧑',
-    status: (id === lohId ? 'hoh' : 'active') as Player['status'],
+    status: (id === lohId ? 'loh' : 'active') as Player['status'],
     isUser: id === 'user',
   }));
 }

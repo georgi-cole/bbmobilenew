@@ -420,8 +420,8 @@ export default function GameScreen() {
   function playerToHouseguest(p: Player) {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
     const parts: string[] = []
-    if (game.lohId === p.id) parts.push('hoh')
-    if (game.posWinnerId === p.id) parts.push('pov')
+    if (game.lohId === p.id) parts.push('loh')
+    if (game.posWinnerId === p.id) parts.push('pos')
     // Suppress permanent nomination badge while the nomination animation is
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.

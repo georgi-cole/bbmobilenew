@@ -243,7 +243,7 @@ describe('applyF3MinigameWinner final LOH stat tracking', () => {
   it('sets wonFinalHoh on the player who wins final3_comp3_minigame', () => {
     const players = makePlayers(3).map((p, i) => ({
       ...p,
-      status: i === 0 ? ('hoh' as const) : ('active' as const),
+      status: i === 0 ? ('loh' as const) : ('active' as const),
     }));
     const store = makeStore({
       phase: 'final3_comp3_minigame',

@@ -24,7 +24,7 @@ export type Houseguest = {
   onHoldPreviewEnd?: () => void
   /**
    * Game status string(s) to display as badge overlays.
-   * Accepts a single PlayerStatus value (e.g. 'hoh', 'nominated+pos')
+   * Accepts a single PlayerStatus value (e.g. 'loh', 'nominated+pos')
    * or an array of status codes.
    */
   statuses?: string | string[]

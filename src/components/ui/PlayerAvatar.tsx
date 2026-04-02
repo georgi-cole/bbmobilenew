@@ -19,7 +19,7 @@ interface PlayerAvatarProps {
  * When onSelect is absent: tap toggles the mini popover with name + stats.
  *
  * Badge rendering delegates to getBadgesForPlayer() from statusBadges utility:
- *   'hoh' → 👑  'pov' → 🛡️  'nominated' → ❓  'jury' → ⚖️
+ *   'loh' → 👑  'pos' → 🛡️  'nominated' → ❓  'jury' → ⚖️
  *   finalRank 1/2/3 → 🥇/🥈/🥉
  *
  * Image loading uses a two-step fallback chain:
