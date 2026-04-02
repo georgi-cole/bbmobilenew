@@ -32,6 +32,155 @@
   color: var(--color-text);
 }
 
+.diary-room__entry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+  --diary-room-entry-overlay-ms: 1320ms;
+  background:
+    radial-gradient(circle at center, rgba(120, 53, 200, 0.18) 0%, rgba(6, 10, 26, 0.08) 42%, rgba(3, 5, 14, 0.94) 100%);
+  animation: diary-room-entry-fade var(--diary-room-entry-overlay-ms) ease forwards;
+}
+
+.diary-room__entry-light {
+  position: absolute;
+  inset: 12% 24%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(196, 181, 253, 0.38) 0%, rgba(147, 197, 253, 0.18) 38%, rgba(255, 255, 255, 0) 72%);
+  filter: blur(10px);
+  animation: diary-room-entry-light 1.12s ease-out forwards;
+}
+
+.diary-room__entry-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background:
+    linear-gradient(180deg, rgba(58, 27, 93, 0.98) 0%, rgba(24, 16, 52, 0.98) 48%, rgba(11, 11, 33, 0.98) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.diary-room__entry-door::after {
+  content: '';
+  position: absolute;
+  inset: 8% 10%;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+}
+
+.diary-room__entry-door--left {
+  left: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  animation: diary-room-entry-door-left 1.04s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.diary-room__entry-door--right {
+  right: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  animation: diary-room-entry-door-right 1.04s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.diary-room__entry-copy {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  color: #f5f3ff;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  animation: diary-room-entry-copy 0.8s ease-out forwards;
+}
+
+.diary-room__entry-eyebrow {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(216, 180, 254, 0.92);
+}
+
+.diary-room__entry-copy strong {
+  font-size: clamp(1.15rem, 3vw, 1.7rem);
+  font-weight: 900;
+}
+
+@keyframes diary-room-entry-fade {
+  0%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes diary-room-entry-light {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  24% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes diary-room-entry-door-left {
+  0%,
+  22% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-102%);
+  }
+}
+
+@keyframes diary-room-entry-door-right {
+  0%,
+  22% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(102%);
+  }
+}
+
+@keyframes diary-room-entry-copy {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -42%);
+  }
+  20%,
+  52% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -58%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diary-room__entry-overlay {
+    display: none;
+  }
+}
+
 /* ── Tabs ────────────────────────────────────────────────────────────────── */
 .diary-room__tabs {
   display: flex;

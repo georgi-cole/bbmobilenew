@@ -23,8 +23,12 @@ export interface GameControlDockProps {
   publicMeterBadgeCount?: number;
   /** Whether the center button should pulse */
   primaryPulse?: boolean;
-  /** Whether to show the Turkish blue secret-mission badge on the Confessional button */
-  confessionalBadge?: boolean;
+  /** Count of actionable Confessional alerts shown in the Turkish blue badge */
+  confessionalBadgeCount?: number;
+  /** Whether the Confessional icon/badge should play its alert animation */
+  confessionalFlash?: boolean;
+  /** Alternates to force the Confessional flash animation to restart */
+  confessionalFlashTick?: number;
 }
 
 export default function GameControlDock({
@@ -40,7 +44,9 @@ export default function GameControlDock({
   incomingRequestsBadgeCount,
   publicMeterBadgeCount,
   primaryPulse = false,
-  confessionalBadge = false,
+  confessionalBadgeCount,
+  confessionalFlash = false,
+  confessionalFlashTick = 0,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
@@ -87,7 +93,7 @@ export default function GameControlDock({
         draggable={false}
       />
       <img
-        className="game-control-dock__icon fab-icon confessional"
+        className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
         src={assetUrl('fab_icon_confessional_clean.svg')}
         alt=""
         aria-hidden="true"
@@ -141,14 +147,16 @@ export default function GameControlDock({
         )}
       </button>
       <button
-        className="dock-hit-area hit-confessional dock-hit-area--confessional"
+        className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
         type="button"
-        aria-label="Confessional"
+        aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
         disabled={disabled}
         onClick={disabled ? undefined : onToolClick}
       >
-        {confessionalBadge && (
-          <span className="dock-hit-area__badge dock-hit-area__badge--mission" aria-hidden="true" />
+        {confessionalBadgeCount != null && confessionalBadgeCount > 0 && (
+          <span className="dock-hit-area__badge dock-hit-area__badge--mission" aria-hidden="true">
+            {confessionalBadgeCount > 99 ? '99+' : confessionalBadgeCount}
+          </span>
         )}
       </button>
     </div>

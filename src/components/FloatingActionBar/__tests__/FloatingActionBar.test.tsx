@@ -17,7 +17,7 @@ import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import gameReducer from '../../../store/gameSlice';
+import gameReducer, { hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
   applyEnergyDelta,
@@ -29,10 +29,14 @@ import publicOpinionReducer, { addDirection } from '../../../publicOpinion/publi
 import FloatingActionBar from '../FloatingActionBar';
 import type { RootState } from '../../../store/store';
 import type { PublicDirection } from '../../../publicOpinion/types';
+import { createSecretMissionState } from '../../../bb/secretMission';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function makeStore(hasHuman = true) {
+function makeStore(
+  hasHuman = true,
+  gameOverrides: Partial<RootState['game']> = {},
+) {
   const base = configureStore({
     reducer: {
       game: gameReducer,
@@ -56,7 +60,7 @@ function makeStore(hasHuman = true) {
       publicOpinion: publicOpinionReducer,
     },
     preloadedState: {
-      game: { ...defaultState.game, players },
+      game: { ...defaultState.game, players, ...gameOverrides },
       social: defaultState.social,
       profiles: defaultState.profiles,
       challenge: defaultState.challenge,
@@ -265,5 +269,72 @@ describe('FloatingActionBar – navigation buttons', () => {
       screen.getByRole('button', { name: 'Confessional' }).click();
     });
     expect(screen.getByTestId('location').textContent).toBe('/diary-room');
+  });
+
+  it('shows a numbered confessional badge when alerts are waiting', () => {
+    const store = makeStore(true, {
+      secretMission: createSecretMissionState(1),
+      awaitingDoubleVoteOffer: true,
+    });
+    renderFAB(store, '/game');
+
+    expect(screen.getByText('2')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Confessional (2)' })).toBeDefined();
+  });
+});
+
+describe('FloatingActionBar – confessional alert animation', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('animates the confessional button when a new alert arrives', () => {
+    const store = makeStore();
+    renderFAB(store);
+
+    act(() => {
+      store.dispatch(triggerSecretMission(1));
+    });
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const button = screen.getByRole('button', { name: 'Confessional (1)' });
+    expect(button.className).toContain('dock-hit-area--confessional-flash');
+
+    act(() => { vi.advanceTimersByTime(1800); });
+    expect(button.className).not.toContain('dock-hit-area--confessional-flash');
+  });
+
+  it('restarts the confessional animation when the alert count increases again mid-flash', () => {
+    const store = makeStore();
+    renderFAB(store);
+
+    act(() => {
+      store.dispatch(triggerSecretMission(1));
+    });
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const button = screen.getByRole('button', { name: 'Confessional (1)' });
+    expect(button.className).toContain('dock-hit-area--confessional-flash');
+    const firstFlashClassName = button.className;
+
+    act(() => { vi.advanceTimersByTime(900); });
+    act(() => {
+      store.dispatch(hydrateGame({
+        ...store.getState().game,
+        awaitingDoubleVoteOffer: true,
+      }));
+    });
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const retriggeredButton = screen.getByRole('button', { name: 'Confessional (2)' });
+    expect(retriggeredButton.className).toContain('dock-hit-area--confessional-flash');
+    expect(retriggeredButton.className).not.toBe(firstFlashClassName);
+
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
+      .toContain('dock-hit-area--confessional-flash');
+
+    act(() => { vi.advanceTimersByTime(800); });
+    expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
+      .not.toContain('dock-hit-area--confessional-flash');
   });
 });

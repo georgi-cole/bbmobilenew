@@ -13,9 +13,11 @@ import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
   selectHumanIsActive,
-  selectConfessionalMissionBadge,
+  selectConfessionalAlertCount,
 } from '../../store/selectors';
 import GameControlDock from '../GameControlDock/GameControlDock';
+
+const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
@@ -35,7 +37,7 @@ export default function FloatingActionBar() {
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
   const humanIsActive = useAppSelector(selectHumanIsActive);
-  const confessionalMissionBadge = useAppSelector(selectConfessionalMissionBadge);
+  const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
@@ -70,6 +72,30 @@ export default function FloatingActionBar() {
     };
   }, [humanEnergy]);
 
+  const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
+  const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
+  const prevConfessionalCountRef = useRef(confessionalAlertCount);
+  useEffect(() => {
+    if (confessionalAlertCount <= prevConfessionalCountRef.current) {
+      prevConfessionalCountRef.current = confessionalAlertCount;
+      return;
+    }
+
+    prevConfessionalCountRef.current = confessionalAlertCount;
+    const flashOn = setTimeout(() => {
+      setConfessionalFlashTick((tick) => tick + 1);
+      setIsConfessionalFlashing(true);
+    }, 0);
+    const flashOff = setTimeout(
+      () => setIsConfessionalFlashing(false),
+      CONFESSIONAL_FLASH_DURATION_MS,
+    );
+    return () => {
+      clearTimeout(flashOn);
+      clearTimeout(flashOff);
+    };
+  }, [confessionalAlertCount]);
+
   return (
     <GameControlDock
       onChatClick={humanIsActive ? () => dispatch(openSocialPanel()) : undefined}
@@ -88,7 +114,9 @@ export default function FloatingActionBar() {
       incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
       publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
       primaryPulse={canAdvance && !isWaiting}
-      confessionalBadge={confessionalMissionBadge}
+      confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
+      confessionalFlash={isConfessionalFlashing}
+      confessionalFlashTick={confessionalFlashTick}
     />
   );
 }
