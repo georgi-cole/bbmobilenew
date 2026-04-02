@@ -82,31 +82,38 @@ export const selectHumanIsActive = (state: RootState): boolean => {
 
 
 /**
- * Returns true when the Confessional FAB should show the Turkish blue
- * secret-mission badge (PR 1 + PR 2 + PR 3 conditions):
+ * Count of actionable Confessional alerts that should be surfaced on the FAB:
  *  - A mission offer is available / currently being offered
- *  - A mission is accepted (Big Eye has an active prompt)
+ *  - A mission is accepted (Big Eye has an active checklist)
  *  - A mission checklist is complete and reward reveal is pending
- *  - A reward has been claimed and is still eligible for future use (PR 2)
- *  - A doubleVote offer is pending (PR 3)
- *  - A doubleVote is currently active for the live vote (PR 3)
- *  - A voteDeduction prompt is pending (PR 3)
+ *  - A reward has been claimed and is still eligible for future use
+ *  - A doubleVote offer is pending
+ *  - A doubleVote is currently active for the live vote
+ *  - A voteDeduction prompt is pending
  */
-export const selectConfessionalMissionBadge = (state: RootState): boolean => {
+export const selectConfessionalAlertCount = (state: RootState): number => {
   const sm = state.game?.secretMission;
-  if (!sm) return false;
+  let count = 0;
+
   if (
-    sm.status === 'available' ||
-    sm.status === 'offered' ||
-    sm.status === 'accepted' ||
-    sm.status === 'rewardPending'
-  ) return true;
-  // Show badge for a claimed (non-empty, non-expired, non-consumed) reward so
-  // the player is reminded they have a power waiting.
-  if (sm.status === 'rewardClaimed' && sm.reward?.eligible) return true;
-  // PR 3: show badge when an activation offer is pending or active.
-  if (state.game?.awaitingDoubleVoteOffer) return true;
-  if (state.game?.humanDoubleVoteActive) return true;
-  if (state.game?.awaitingVoteDeductionPrompt) return true;
-  return false;
+    sm &&
+    (
+      sm.status === 'available' ||
+      sm.status === 'offered' ||
+      sm.status === 'accepted' ||
+      sm.status === 'rewardPending' ||
+      (sm.status === 'rewardClaimed' && sm.reward?.eligible)
+    )
+  ) {
+    count += 1;
+  }
+
+  if (state.game?.awaitingDoubleVoteOffer) count += 1;
+  if (state.game?.humanDoubleVoteActive) count += 1;
+  if (state.game?.awaitingVoteDeductionPrompt) count += 1;
+
+  return count;
 };
+
+export const selectConfessionalMissionBadge = (state: RootState): boolean =>
+  selectConfessionalAlertCount(state) > 0;

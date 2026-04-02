@@ -23,14 +23,8 @@ import {
   type BigEyeConversationState,
 } from '../../services/bigBrother';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
-import DiaryWeekView from '../../components/DiaryWeekView';
-import DiaryWeekEditor from '../../components/DiaryWeekEditor';
-import { FEATURE_DIARY_WEEK, exportDiaryWeekJson } from '../../services/diaryWeek';
-import type { DiaryWeek } from '../../types/diaryWeek';
 import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger';
 import './DiaryRoom.css';
-
-type DiaryTab = 'confess' | 'log' | 'weekly';
 
 /** Delivery status of a user-sent message. */
 type MessageStatus = 'sending' | 'delivered' | 'seen';
@@ -46,23 +40,6 @@ interface ChatMessage {
   /** Only present on user messages. */
   status?: MessageStatus;
 }
-
-/**
- * DiaryRoom — private player confessional / game log screen.
- *
- * Tabs:
- *   Confess  → private chat (user ↔ Big Brother); stored in sessionStorage only
- *   Log      → read-only transcript of the private chat
- *   Daily    → Daily Diary Room Log (read-only view + admin editor)
- *              Only shown when FEATURE_DIARY_WEEK is enabled.
- *
- * To extend: add new tabs to TABS and a case in the tab body below.
- */
-const TABS: { id: DiaryTab; label: string; icon: string }[] = [
-  { id: 'confess', label: 'Confess',   icon: '🎙️' },
-  { id: 'log',     label: 'Log',       icon: '📖' },
-  ...(FEATURE_DIARY_WEEK ? [{ id: 'weekly' as DiaryTab, label: 'Daily', icon: '📅' }] : []),
-];
 
 // ─── Summary message pool (10 generic messages, no private content) ───────────
 const SUMMARY_POOL = [
@@ -308,30 +285,11 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
   );
 }
 
-// ─── Weekly tab helpers ───────────────────────────────────────────────────────
-
-/** Read admin key from sessionStorage (set by admin on first use). */
-function getAdminKey(): string {
-  return sessionStorage.getItem('bb_admin_key') ?? '';
-}
-
-/** Persist admin key to sessionStorage. */
-function setAdminKey(key: string): void {
-  sessionStorage.setItem('bb_admin_key', key);
-}
-
-/** Derive a simple isAdmin flag: any non-empty stored key is optimistically
- *  treated as admin; the server will return 403 if it is wrong. */
-function useIsAdmin(): boolean {
-  return Boolean(getAdminKey());
-}
-
 export default function DiaryRoom() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const phase = useAppSelector((s) => s.game.phase);
   const seed = useAppSelector((s) => s.game.seed);
-  const season = useAppSelector((s) => s.game.season);
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
   const playerName = userPlayer?.name ?? 'Housemate';
   const playerId = userPlayer?.id ?? 'user';
@@ -342,11 +300,11 @@ export default function DiaryRoom() {
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
   const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
 
-  const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
   const [bbTyping, setBbTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
+  const [showEntryAnimation, setShowEntryAnimation] = useState(false);
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
   const [conversationState, setConversationState] = useState<BigEyeConversationState>(
     () => loadConversationState(playerId),
@@ -377,18 +335,29 @@ export default function DiaryRoom() {
   const seedRef = useRef(seed);
   useEffect(() => { seedRef.current = seed; }, [seed]);
 
-  // Scroll refs for the chat panels
+  // Scroll ref for the chat panel
   const confessEndRef = useRef<HTMLDivElement>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change (only scroll the visible tab)
+  // Scroll to bottom when messages change
   useEffect(() => {
-    if (activeTab === 'confess') {
-      confessEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    } else if (activeTab === 'log') {
-      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, activeTab]);
+    confessEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) return;
+
+    setShowEntryAnimation(true);
+    const timeoutId = window.setTimeout(() => setShowEntryAnimation(false), 1320);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const ticTacToeWinner = getTicTacToeWinner(ticTacToeBoard);
   const ticTacToeDraw = !ticTacToeWinner && ticTacToeBoard.every((cell) => cell !== null);
@@ -531,17 +500,6 @@ export default function DiaryRoom() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWeekForMission]);
 
-  // ── Weekly tab state ──────────────────────────────────────────────────────
-  const isAdmin = useIsAdmin();
-  const seasonId = String(season);
-  const currentWeek = useAppSelector((s) => s.game.week);
-  const [weeklyMode, setWeeklyMode] = useState<'view' | 'edit'>('view');
-  const [savedWeek, setSavedWeek] = useState<DiaryWeek | null>(null);
-  const [adminKeyInput, setAdminKeyInput] = useState('');
-  const [adminKeySet, setAdminKeySet] = useState(Boolean(getAdminKey()));
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const text = entry.trim();
@@ -658,6 +616,22 @@ export default function DiaryRoom() {
 
   return (
     <div className="diary-room">
+      {showEntryAnimation && (
+        <div
+          className="diary-room__entry-overlay"
+          data-testid="confessional-entry-overlay"
+          aria-hidden="true"
+        >
+          <div className="diary-room__entry-light" />
+          <div className="diary-room__entry-door diary-room__entry-door--left" />
+          <div className="diary-room__entry-door diary-room__entry-door--right" />
+          <div className="diary-room__entry-copy">
+            <span className="diary-room__entry-eyebrow">Confessional</span>
+            <strong>The Big Eye is ready for you.</strong>
+          </div>
+        </div>
+      )}
+
       {/* Self-evict confirmation modal */}
       <ConfirmExitModal
         open={showSelfEvictConfirm}
@@ -686,98 +660,80 @@ export default function DiaryRoom() {
         <h1 className="diary-room__title">🚪 Confessional</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="diary-room__tabs" role="tablist">
-        {TABS.map(({ id, label, icon }) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={activeTab === id}
-            className={`diary-room__tab${activeTab === id ? ' diary-room__tab--active' : ''}`}
-            onClick={() => setActiveTab(id)}
-            type="button"
-          >
-            {icon} {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab body */}
       <div className="diary-room__body">
-        {activeTab === 'confess' && (
-          <div className="diary-room__confess">
-            <p className="diary-room__prompt">
-              "You are now in the Confessional. No one can hear you. Speak freely."
-            </p>
-            {ticTacToeActive && (
-              <div className="diary-room__mini-game-card" role="status" aria-live="polite">
-                <div className="diary-room__mini-game-copy">
-                  <div className="diary-room__mini-game-header">
-                    <div>
-                      <strong>The Big Eye opened a game.</strong>
-                      <div className="diary-room__mini-game-subtitle">Tic Tac Toe is awake. Keep your nerve.</div>
-                    </div>
-                    <div className="diary-room__mini-game-status" aria-label="Tic tac toe status">
-                      {ticTacToeWinner === 'X'
-                        ? 'You win.'
-                        : ticTacToeWinner === 'O'
-                          ? 'The Big Eye wins.'
-                          : ticTacToeDraw
-                            ? "It's a draw."
-                            : ticTacToeThinking
-                              ? 'The Big Eye is thinking…'
-                              : 'Your turn.'}
-                    </div>
+        <div className="diary-room__confess">
+          <p className="diary-room__prompt">
+            "You are now in the Confessional. No one can hear you. Speak freely."
+          </p>
+          {ticTacToeActive && (
+            <div className="diary-room__mini-game-card" role="status" aria-live="polite">
+              <div className="diary-room__mini-game-copy">
+                <div className="diary-room__mini-game-header">
+                  <div>
+                    <strong>The Big Eye opened a game.</strong>
+                    <div className="diary-room__mini-game-subtitle">Tic Tac Toe is awake. Keep your nerve.</div>
                   </div>
-                  <div className="diary-room__tic-tac-toe-board" role="group" aria-label="Tic Tac Toe board">
-                    {ticTacToeBoard.map((cell, index) => (
-                      <button
-                        key={index}
-                        className={`diary-room__tic-tac-toe-cell${cell ? ' diary-room__tic-tac-toe-cell--filled' : ''}`}
-                        type="button"
-                        aria-label={`Tic tac toe square ${index + 1}${cell ? `, ${cell}` : ''}`}
-                        disabled={
-                          cell !== null ||
-                          ticTacToeNextTurn !== 'X' ||
-                          ticTacToeThinking ||
-                          ticTacToeWinner !== null ||
-                          ticTacToeDraw
-                        }
-                        onClick={() => {
-                          const nextBoard = [...ticTacToeBoard];
-                          nextBoard[index] = 'X';
-                          setTicTacToeBoard(nextBoard);
-                          setTicTacToeNextTurn('O');
-                        }}
-                      >
-                        {cell ?? ''}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="diary-room__mini-game-actions">
-                    <button
-                      className="diary-room__mini-game-btn"
-                      type="button"
-                      onClick={() => {
-                        setTicTacToeBoard(createEmptyTicTacToeBoard());
-                        setTicTacToeNextTurn('X');
-                        setTicTacToeThinking(false);
-                      }}
-                    >
-                      Reset
-                    </button>
+                  <div className="diary-room__mini-game-status" aria-label="Tic tac toe status">
+                    {ticTacToeWinner === 'X'
+                      ? 'You win.'
+                      : ticTacToeWinner === 'O'
+                        ? 'The Big Eye wins.'
+                        : ticTacToeDraw
+                          ? "It's a draw."
+                          : ticTacToeThinking
+                            ? 'The Big Eye is thinking…'
+                            : 'Your turn.'}
                   </div>
                 </div>
-                <button
-                  className="diary-room__mini-game-btn"
-                  type="button"
-                  onClick={() => {
-                    setTicTacToeBoard(createEmptyTicTacToeBoard());
-                    setTicTacToeNextTurn('X');
-                    setTicTacToeThinking(false);
-                    dismissTicTacToe();
-                  }}
-                >
+                <div className="diary-room__tic-tac-toe-board" role="group" aria-label="Tic Tac Toe board">
+                  {ticTacToeBoard.map((cell, index) => (
+                    <button
+                      key={index}
+                      className={`diary-room__tic-tac-toe-cell${cell ? ' diary-room__tic-tac-toe-cell--filled' : ''}`}
+                      type="button"
+                      aria-label={`Tic tac toe square ${index + 1}${cell ? `, ${cell}` : ''}`}
+                      disabled={
+                        cell !== null ||
+                        ticTacToeNextTurn !== 'X' ||
+                        ticTacToeThinking ||
+                        ticTacToeWinner !== null ||
+                        ticTacToeDraw
+                      }
+                      onClick={() => {
+                        const nextBoard = [...ticTacToeBoard];
+                        nextBoard[index] = 'X';
+                        setTicTacToeBoard(nextBoard);
+                        setTicTacToeNextTurn('O');
+                      }}
+                    >
+                      {cell ?? ''}
+                    </button>
+                  ))}
+                </div>
+                <div className="diary-room__mini-game-actions">
+                  <button
+                    className="diary-room__mini-game-btn"
+                    type="button"
+                    onClick={() => {
+                      setTicTacToeBoard(createEmptyTicTacToeBoard());
+                      setTicTacToeNextTurn('X');
+                      setTicTacToeThinking(false);
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <button
+                className="diary-room__mini-game-btn"
+                type="button"
+                onClick={() => {
+                  setTicTacToeBoard(createEmptyTicTacToeBoard());
+                  setTicTacToeNextTurn('X');
+                  setTicTacToeThinking(false);
+                  dismissTicTacToe();
+                }}
+              >
                   Close
                 </button>
               </div>
@@ -970,113 +926,6 @@ export default function DiaryRoom() {
               </div>
             </form>
           </div>
-        )}
-
-        {activeTab === 'log' && (
-          <div className="diary-room__log-tab">
-            <ChatBubbles msgs={messages} playerName={playerName} endRef={logEndRef} />
-          </div>
-        )}
-
-        {FEATURE_DIARY_WEEK && activeTab === 'weekly' && (
-          <div className="diary-room__weekly">
-            {/* Admin key prompt (shown once; stored in sessionStorage) */}
-            {!adminKeySet && (
-              <div className="diary-room__admin-key-form">
-                <p className="diary-room__admin-key-hint">
-                  Enter admin key to enable editing (leave blank for read-only view):
-                </p>
-                <div className="diary-room__admin-key-row">
-                  <input
-                    className="diary-room__admin-key-input"
-                    type="password"
-                    value={adminKeyInput}
-                    onChange={(e) => setAdminKeyInput(e.target.value)}
-                    placeholder="Admin key (optional)"
-                    aria-label="Admin key"
-                  />
-                  <button
-                    className="diary-room__admin-key-btn"
-                    type="button"
-                    onClick={() => {
-                      setAdminKey(adminKeyInput.trim());
-                      setAdminKeySet(true);
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {adminKeySet && (
-              <>
-                {/* Week controls */}
-                <div className="diary-room__weekly-controls">
-                  <span className="diary-room__weekly-label">
-                    Season {seasonId} · Day {currentWeek}
-                  </span>
-                  <div className="diary-room__weekly-actions">
-                    {isAdmin && (
-                      <button
-                        className="diary-room__weekly-btn"
-                        type="button"
-                        onClick={() =>
-                          setWeeklyMode((m) => (m === 'view' ? 'edit' : 'view'))
-                        }
-                      >
-                        {weeklyMode === 'view' ? '✏️ Edit' : '👁️ View'}
-                      </button>
-                    )}
-                    {savedWeek && (
-                      <>
-                        <button
-                          className="diary-room__weekly-btn"
-                          type="button"
-                          disabled={exporting}
-                          onClick={async () => {
-                            setExportError(null);
-                            setExporting(true);
-                            try {
-                              await exportDiaryWeekJson(
-                                savedWeek.id,
-                                savedWeek.weekNumber,
-                                getAdminKey() || undefined,
-                              );
-                            } catch (err: unknown) {
-                              setExportError(err instanceof Error ? err.message : String(err));
-                            } finally {
-                              setExporting(false);
-                            }
-                          }}
-                        >
-                          {exporting ? '⏳' : '⬇️ Export JSON'}
-                        </button>
-                        {exportError && (
-                          <span className="diary-room__export-error">{exportError}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {weeklyMode === 'view' || !isAdmin ? (
-                  <DiaryWeekView seasonId={seasonId} weekNumber={currentWeek} />
-                ) : (
-                  <DiaryWeekEditor
-                    seasonId={seasonId}
-                    adminKey={getAdminKey()}
-                    existingWeek={savedWeek ?? undefined}
-                    onSaved={(week) => {
-                      setSavedWeek(week);
-                      setWeeklyMode('view');
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -155,4 +155,25 @@ describe('DiaryRoom', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByText(/then sit with it|no game, then|boredom will keep you company/i)).toBeTruthy();
   });
+
+  it('shows only the confessional view without log or daily tabs', () => {
+    renderDiaryRoom();
+
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('tab', { name: /log/i })).toBeNull();
+    expect(screen.queryByRole('tab', { name: /daily/i })).toBeNull();
+    expect(screen.getByLabelText(/confessional chat/i)).toBeTruthy();
+  });
+
+  it('plays the confessional door animation on entry', async () => {
+    renderDiaryRoom();
+
+    expect(screen.getByTestId('confessional-entry-overlay')).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1320);
+    });
+
+    expect(screen.queryByTestId('confessional-entry-overlay')).toBeNull();
+  });
 });
