@@ -292,7 +292,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
   it('AI LOH nominates 3 when weekActive is true', () => {
     // p0 is AI LOH (isUser: false)
     const players: Player[] = [
-      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -314,7 +314,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
 
   it('AI LOH nominates 2 when weekActive is false', () => {
     const players: Player[] = [
-      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -337,7 +337,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
   it('human LOH sets awaitingNominations with 3-nominee prompt when weekActive', () => {
     // p0 is human LOH
     const players: Player[] = [
-      { id: 'p0', name: 'Human LOH', avatar: '🧑', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Human LOH', avatar: '🧑', status: 'loh', isUser: true },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -421,7 +421,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
   function makeEvictionStore(votes: Record<string, string>) {
     // 14 players, AI LOH, 3 nominees (p1/p2/p3)
     const players: Player[] = [
-      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nominee 1', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Nominee 2', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Nominee 3', avatar: '🧑', status: 'nominated', isUser: false },
@@ -484,7 +484,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
 describe('finalizePendingEviction with Double Eviction', () => {
   function makeFinalizationStore() {
     const players: Player[] = [
-      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'First Evictee', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Second Evictee', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Nominee 3', avatar: '🧑', status: 'nominated', isUser: false },
@@ -565,7 +565,7 @@ describe('regular eviction weeks are unaffected', () => {
   it('advance() from live_vote queues 1 eviction and no second eviction when weekActive is false', () => {
     // Votes that result in p1 getting more votes than p2
     const players: Player[] = [
-      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nominee 1', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Nominee 2', avatar: '🧑', status: 'nominated', isUser: false },
       ...Array.from({ length: 6 }, (_, i) => ({

@@ -11,10 +11,10 @@ import type { SeasonArchive } from '../store/seasonArchive';
 export type PlayerStatus =
   | 'active'
   | 'nominated'
-  | 'hoh'
-  | 'pov'
-  | 'hoh+pov'
-  | 'nominated+pov'
+  | 'loh'
+  | 'pos'
+  | 'loh+pos'
+  | 'nominated+pos'
   | 'evicted'
   | 'jury';
 

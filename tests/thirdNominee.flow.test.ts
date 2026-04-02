@@ -177,7 +177,7 @@ describe('third nominee — AI LOH normal week', () => {
 
   it('still auto-appends a third nominee at final 4 when public mode is on', () => {
     const players = makePlayers(4);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nominations',
@@ -219,7 +219,7 @@ describe('third nominee — AI LOH normal week', () => {
 describe('third nominee — human LOH normal week (commitNominees)', () => {
   it('auto-appends lastHohCompFinisherId after human submits 2 nominees', () => {
     const players = makePlayers(12, 0); // p0 is human+LOH
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -243,7 +243,7 @@ describe('third nominee — human LOH normal week (commitNominees)', () => {
 
   it('logs the auto-third nominee as game-nominated instead of attributing all three to the LOH', () => {
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -268,7 +268,7 @@ describe('third nominee — human LOH normal week (commitNominees)', () => {
     // commitNominees strips it first. Remaining count is 1, which is < 2, so the action
     // is rejected (no-op). This prevents a 2-nominee result in normal public-mode weeks.
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -288,7 +288,7 @@ describe('third nominee — human LOH normal week (commitNominees)', () => {
 
   it('still auto-appends a third nominee at final 4 for a human LOH', () => {
     const players = makePlayers(4, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -313,7 +313,7 @@ describe('third nominee — human LOH normal week (commitNominees)', () => {
 
   it('commits 3 nominees for double eviction (human picks 3)', () => {
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -673,7 +673,7 @@ describe('LOH comp last-place tracking', () => {
 describe('public mode endgame boundaries', () => {
   it('keeps the final 4 flow intact under public mode by reducing back to 2 nominees before veto', () => {
     const players = makePlayers(4);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nominations',
@@ -706,7 +706,7 @@ describe('public mode endgame boundaries', () => {
 
   it('clears public-save nomination state when entering final 3', () => {
     const players = makePlayers(3);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
     players[1].status = 'nominated';
     players[2].status = 'active';
 
@@ -863,7 +863,7 @@ describe('backward compatibility', () => {
 describe('forced auto-nominee: lastHohCompFinisherType', () => {
   it('applyMinigameWinner stores lastPlaceType as lastHohCompFinisherType', () => {
     const players = makePlayers(6);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'loh_comp',
@@ -885,7 +885,7 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
 
   it('applyMinigameWinner stores scored type correctly', () => {
     const players = makePlayers(6);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'loh_comp',
@@ -906,7 +906,7 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
 
   it('applyMinigameWinner derives scored type from scores when lastPlaceType is omitted', () => {
     const players = makePlayers(4);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'loh_comp',
@@ -928,7 +928,7 @@ describe('forced auto-nominee: lastHohCompFinisherType', () => {
 
   it('applyMinigameWinner sets null type when neither lastPlaceType nor scores provided', () => {
     const players = makePlayers(4);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'loh_comp',
@@ -1009,7 +1009,7 @@ describe('forced auto-nominee: AI nomination pool exclusion', () => {
 describe('forced auto-nominee: commitNominees defensive strip', () => {
   it('strips forced auto-nominee from submitted IDs before validating count (public mode)', () => {
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -1036,7 +1036,7 @@ describe('forced auto-nominee: commitNominees defensive strip', () => {
 
   it('does not strip forced nominee in double eviction (DE picks must all be valid)', () => {
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',
@@ -1077,7 +1077,7 @@ describe('forced auto-nominee: 3 unique nominees guaranteed in normal public-mod
 
   it('final nominees are always 3 unique players (human path)', () => {
     const players = makePlayers(12, 0);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
 
     const store = makeStore({
       phase: 'nomination_results',

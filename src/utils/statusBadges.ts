@@ -68,11 +68,11 @@ export interface BadgeInfo {
  * Derive the ordered list of badges to show for a player given their status
  * string and optional final rank.
  *
- * Handles compound statuses like 'hoh+pov' and 'nominated+pov' by splitting
+ * Handles compound statuses like 'loh+pos' and 'nominated+pos' by splitting
  * on '+'. Final-rank medals take precedence and replace any existing status
  * badges so that only the medal is shown for finalists.
  *
- * @param status    - PlayerStatus string (e.g. 'hoh', 'nominated+pov', 'active')
+ * @param status    - PlayerStatus string (e.g. 'hoh', 'nominated+pos', 'active')
  * @param finalRank - Optional numeric final placement (1, 2, or 3)
  */
 export function getBadgesForPlayer(
@@ -81,7 +81,7 @@ export function getBadgesForPlayer(
 ): BadgeInfo[] {
   const badges: BadgeInfo[] = [];
 
-  // Split compound statuses (e.g. 'hoh+pov' → ['hoh','pov'])
+  // Split compound statuses (e.g. 'loh+pos' → ['hoh','pov'])
   const parts = status ? status.split('+') : [];
   for (const part of parts) {
     const emoji = STATUS_BADGE_EMOJI[part];

@@ -276,7 +276,7 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     // - DE uses 3 nominees (by twist rule), auto-third-nominee rule is SKIPPED
     // - nomination_results → advances to next phase (NOT pre_veto_public_save)
     const players = makePlayers(8);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
     const store = makeGameStore({
       phase: 'nominations',
       lohId: 'p0',

@@ -94,11 +94,11 @@ function getPlacementValue(player: Player): number | null {
 function isFinalistStatus(status: Player['status']): boolean {
   return (
     status === 'active' ||
-    status === 'hoh' ||
-    status === 'pov' ||
+    status === 'loh' ||
+    status === 'pos' ||
     status === 'nominated' ||
-    status === 'hoh+pov' ||
-    status === 'nominated+pov'
+    status === 'loh+pos' ||
+    status === 'nominated+pos'
   );
 }
 

@@ -104,7 +104,7 @@ describe('Human POS decision', () => {
   it('sets awaitingPovDecision when human is POS holder and not nominee', () => {
     const players = makePlayers(6);
     // p0 is user+pov, p1 and p2 are nominees
-    players[0].status = 'pov';
+    players[0].status = 'pos';
     players[1].status = 'nominated';
     players[2].status = 'nominated';
     const store = makeStore({
@@ -311,7 +311,7 @@ describe('Replacement nominee — saved player exclusion', () => {
   function makeReplacementStore() {
     // p0 is user (LOH + POS holder), p1 and p2 are nominated
     const players = makePlayers(6);
-    players[0].status = 'hoh+pov';
+    players[0].status = 'loh+pos';
     players[1].status = 'nominated';
     players[2].status = 'nominated';
     return makeStore({
@@ -359,7 +359,7 @@ describe('AI LOH POS replacement flow', () => {
   function makeAiHohReplacementStore() {
     // p0 is user, p1 is AI LOH + POS holder, p2 and p3 are initially nominated
     const players = makePlayers(6);
-    players[1].status = 'hoh+pov';
+    players[1].status = 'loh+pos';
     players[2].status = 'nominated';
     players[3].status = 'nominated';
     return makeStore({

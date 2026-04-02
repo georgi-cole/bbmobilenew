@@ -46,7 +46,7 @@ function makeStore() {
 
 function makePlayers(overrides: Partial<Player>[] = []): Player[] {
   const base: Player[] = [
-    { id: 'p0', name: 'Player0', avatar: '🧑', status: 'hoh', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
+    { id: 'p0', name: 'Player0', avatar: '🧑', status: 'loh', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'user', name: 'User', avatar: '🧑', status: 'nominated', isUser: true, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'p1', name: 'Player1', avatar: '🧑', status: 'nominated', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'v1', name: 'Voter1', avatar: '🧑', status: 'active', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },

@@ -214,9 +214,9 @@ describe('spotlight flow — AI LOH replacement keeps povSavedId for animation d
     // povSavedId should remain set so the UI can detect "veto was used" and
     // trigger the AI replacement animation.
     const players = makePlayers(6);
-    players[1].status = 'hoh';    // p1 is AI LOH
+    players[1].status = 'loh';    // p1 is AI LOH
     players[2].status = 'nominated';
-    players[3].status = 'nominated+pov'; // p3 is nominee + POS holder
+    players[3].status = 'nominated+pos'; // p3 is nominee + POS holder
     const store = makeStore({
       phase: 'pos_ceremony_results',
       lohId: 'p1',
@@ -244,9 +244,9 @@ describe('spotlight flow — AI LOH replacement keeps povSavedId for animation d
     // Scenario: Nominee wins POS → auto-save → AI LOH picks replacement.
     // All happens in a single advance() call.
     const players = makePlayers(6);
-    players[1].status = 'hoh';           // p1 is AI LOH
+    players[1].status = 'loh';           // p1 is AI LOH
     players[2].status = 'nominated';
-    players[3].status = 'nominated+pov';  // p3 is nominee + POS holder
+    players[3].status = 'nominated+pos';  // p3 is nominee + POS holder
     const store = makeStore({
       phase: 'pos_ceremony',                    // will advance to pos_ceremony_results
       lohId: 'p1',

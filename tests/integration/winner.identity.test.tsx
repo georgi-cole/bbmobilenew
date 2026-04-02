@@ -426,7 +426,7 @@ describe('SpectatorView — winner precedence after the fix', () => {
 
     const competitorIds = ['p1', 'p2'];
     (window as unknown as Record<string, unknown>).game = {
-      __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'hoh', timestamp: 0 },
+      __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'loh', timestamp: 0 },
     };
 
     const store = configureStore({

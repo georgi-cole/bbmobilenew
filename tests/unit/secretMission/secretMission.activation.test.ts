@@ -89,7 +89,7 @@ function makeCheckState(overrides: Partial<ActivationCheckState> = {}): Activati
     nomineeIds: ['p1', 'p2'],
     lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'p2', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'active' },
@@ -104,7 +104,7 @@ function makeCheckState(overrides: Partial<ActivationCheckState> = {}): Activati
 /** Full player list: LOH p0, nominees p1/p2, voters v1–v5, human voter user. */
 function makePlayers(overrides: Partial<Player>[] = []): Player[] {
   const defaults: Player[] = [
-    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'hoh',       isUser: false },
+    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'loh',       isUser: false },
     { id: 'p1',   name: 'Nominee1', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'p2',   name: 'Nominee2', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'v1',   name: 'Voter1',   avatar: '🧑', status: 'active',    isUser: false },
@@ -118,7 +118,7 @@ function makePlayers(overrides: Partial<Player>[] = []): Player[] {
 /** Player list for voteDeduction tests where the HUMAN is a nominee (on the block). */
 function makePlayersHumanNominated(): Player[] {
   return [
-    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'hoh',       isUser: false },
+    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'loh',       isUser: false },
     { id: 'p1',   name: 'Nominee1', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'v1',   name: 'Voter1',   avatar: '🧑', status: 'active',    isUser: false },
     { id: 'v2',   name: 'Voter2',   avatar: '🧑', status: 'active',    isUser: false },
@@ -261,7 +261,7 @@ describe('canUseDoubleVote — conflicting contexts', () => {
         { id: 'p0', isUser: false, status: 'active' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'p2', isUser: false, status: 'nominated' },
-        { id: 'user', isUser: true, status: 'hoh' },
+        { id: 'user', isUser: true, status: 'loh' },
       ],
     });
     expect(canUseDoubleVote(state)).toBe(false);
@@ -271,7 +271,7 @@ describe('canUseDoubleVote — conflicting contexts', () => {
     const state = makeCheckState({
       nomineeIds: ['p1', 'user'],
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'nominated' },
       ],
@@ -533,7 +533,7 @@ describe('canUseVoteDeduction — availability conditions', () => {
     nomineeIds: ['user', 'p1'],
     lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'nominated' },
     ],
@@ -551,7 +551,7 @@ describe('canUseVoteDeduction — availability conditions', () => {
       ...baseVoteDeductionState,
       nomineeIds: ['p1', 'p2'],
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'p2', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'active' },
@@ -629,7 +629,7 @@ describe('canUseVoteDeduction — conflicting contexts', () => {
     nomineeIds: ['user', 'p1'],
     lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'nominated' },
     ],
@@ -968,7 +968,7 @@ describe('Final 4 restriction', () => {
       nomineeIds: ['user', 'p1'],
       lohId: 'p0',
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'nominated' },
       ],

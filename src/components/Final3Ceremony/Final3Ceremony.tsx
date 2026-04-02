@@ -84,14 +84,14 @@ export default function Final3Ceremony() {
       },
       {
         id: 'f3c-plea-prompt',
-        role: 'hoh',
+        role: 'loh',
         player: lohPlayer,
         text: `Before I make my decision, I'd like to hear from both of you. Nominees, it's time to make your pleas.`,
       },
       ...nominees.flatMap((nominee, idx): ChatLine[] => [
         {
           id: `f3c-prompt-${nominee.id}`,
-          role: 'hoh',
+          role: 'loh',
           player: lohPlayer,
           text: `${nominee.name}, please share why I should take you to the Final 2.`,
         },
@@ -158,7 +158,7 @@ export default function Final3Ceremony() {
     const lines: ChatLine[] = [
       {
         id: 'f3c-evict-decision',
-        role: 'hoh',
+        role: 'loh',
         player: lohPlayer ?? undefined,
         text: `I've made my decision. ${evictee.name}, I'm eliminating you from The Big Eye house. 🗳️`,
       },

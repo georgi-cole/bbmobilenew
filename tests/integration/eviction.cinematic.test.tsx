@@ -355,7 +355,7 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
   it('renders overlay while pendingEviction is set and commits eviction after DONE_AT ms', async () => {
     const players: Player[] = [
       { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active', isUser: true },
-      { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p2', name: 'Alice', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Player 3', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p4', name: 'Player 4', avatar: '🧑', status: 'active', isUser: false },

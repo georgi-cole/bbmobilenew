@@ -585,11 +585,11 @@ describe('computeNominationReactions', () => {
   it('produces LOH backlash when a beloved player is nominated', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.nominationReactions.hohBelovedNomineePenalty);
   });
@@ -597,11 +597,11 @@ describe('computeNominationReactions', () => {
   it('produces smaller LOH backlash when a liked (not beloved) player is nominated', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['liked'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.nominationReactions.hohLikedNomineePenalty);
   });
@@ -609,29 +609,29 @@ describe('computeNominationReactions', () => {
   it('gives no LOH penalty for nominating a mixed-approval player', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['mixed'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeUndefined();
   });
 
   it('gives no LOH penalty for nominating a disliked player', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['disliked'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeUndefined();
   });
 
   it('gives a sympathy boost to a beloved nominee', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
@@ -643,7 +643,7 @@ describe('computeNominationReactions', () => {
   it('gives a smaller sympathy boost to a liked nominee', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['liked'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
@@ -655,7 +655,7 @@ describe('computeNominationReactions', () => {
   it('handles multiple nominees, each generating independent reactions', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved', 'disliked'],
-      lohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
@@ -673,12 +673,12 @@ describe('computeEvictionReactions', () => {
   it('LOH receives a strong boost when a hated player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'hated',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.hatedEvictedResponsibleBoost);
   });
@@ -686,12 +686,12 @@ describe('computeEvictionReactions', () => {
   it('LOH receives a boost when a disliked player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.dislikedEvictedResponsibleBoost);
   });
@@ -699,12 +699,12 @@ describe('computeEvictionReactions', () => {
   it('LOH receives a penalty when a beloved player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'beloved',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.belovedEvictedResponsiblePenalty);
   });
@@ -712,12 +712,12 @@ describe('computeEvictionReactions', () => {
   it('LOH receives a penalty when a liked player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'liked',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.likedEvictedResponsiblePenalty);
   });
@@ -725,7 +725,7 @@ describe('computeEvictionReactions', () => {
   it('evicted beloved player receives the evictedBelovedFinalPenalty', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'beloved',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
@@ -738,7 +738,7 @@ describe('computeEvictionReactions', () => {
   it('evicted disliked player receives the evictedDislikedFinalBoost', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
@@ -751,12 +751,12 @@ describe('computeEvictionReactions', () => {
   it('both LOH and POS holder are credited when both contributed to a disliked player eviction', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      lohId: 'hoh',
+      lohId: 'loh',
       povHolderId: 'povHolder',
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     const povReaction = reactions.find((r) => r.playerId === 'povHolder');
     expect(hohReaction).toBeDefined();
     expect(povReaction).toBeDefined();
@@ -767,12 +767,12 @@ describe('computeEvictionReactions', () => {
   it('deduplicates when LOH and POS holder are the same player', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      lohId: 'hoh',
-      povHolderId: 'hoh',  // same player
+      lohId: 'loh',
+      povHolderId: 'loh',  // same player
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReactions = reactions.filter((r) => r.playerId === 'hoh');
+    const hohReactions = reactions.filter((r) => r.playerId === 'loh');
     // Should only appear once, not twice
     expect(hohReactions.length).toBe(1);
   });

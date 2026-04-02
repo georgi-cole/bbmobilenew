@@ -107,7 +107,7 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
           </div>
           <div className="dw-view__comp-block">
             <span className="dw-view__comp-label">POS</span>
-            <span className="dw-view__comp-value">{week.povWinner ?? '—'}</span>
+            <span className="dw-view__comp-value">{week.posWinner ?? '—'}</span>
           </div>
         </div>
       </section>

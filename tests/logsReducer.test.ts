@@ -102,7 +102,7 @@ describe('tvFeed — event ID uniqueness', () => {
     // Force a scenario with multiple events in the same phase/week by
     // dispatching an action that triggers multiple internal pushEvent calls.
     const players: Player[] = [
-      { id: 'p0', name: 'LOH', avatar: '👑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '👑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nom1', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Nom2', avatar: '🧑', status: 'nominated' },
     ];
@@ -191,9 +191,9 @@ describe('replacement nominee — log entry uniqueness', () => {
     // The pos_ceremony_results logic runs when advancing FROM pos_ceremony.
     // POS winner is 'nom1' (a nominee) → auto-saves themselves → AI LOH picks replacement.
     const players: Player[] = [
-      { id: 'hoh', name: 'Big LOH', avatar: '👑', status: 'hoh', isUser: false },
-      { id: 'pov', name: 'POS Holder', avatar: '🎭', status: 'pov' },
-      { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated+pov' },
+      { id: 'loh', name: 'Big LOH', avatar: '👑', status: 'loh', isUser: false },
+      { id: 'pos', name: 'POS Holder', avatar: '🎭', status: 'pos' },
+      { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated+pos' },
       { id: 'nom2', name: 'Nominee 2', avatar: '🧑', status: 'nominated' },
       { id: 'other', name: 'Other', avatar: '🧑', status: 'active' },
     ];
@@ -201,7 +201,7 @@ describe('replacement nominee — log entry uniqueness', () => {
     const store = makeStore({
       // Start at pos_ceremony so advance() transitions to pos_ceremony_results
       phase: 'pos_ceremony',
-      lohId: 'hoh',
+      lohId: 'loh',
       nomineeIds: ['nom1', 'nom2'],
       posWinnerId: 'nom1', // nominated+pov → auto-saves
       players,
@@ -228,8 +228,8 @@ describe('replacement nominee — log entry uniqueness', () => {
 
   it('human LOH replacement nominee event has unique ID', () => {
     const players: Player[] = [
-      { id: 'hoh', name: 'Human LOH', avatar: '👑', status: 'hoh', isUser: true },
-      { id: 'pov', name: 'POS Holder', avatar: '🎭', status: 'pov' },
+      { id: 'loh', name: 'Human LOH', avatar: '👑', status: 'loh', isUser: true },
+      { id: 'pos', name: 'POS Holder', avatar: '🎭', status: 'pos' },
       { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated' },
       { id: 'nom2', name: 'Nominee 2', avatar: '🧑', status: 'nominated' },
       { id: 'other', name: 'Other', avatar: '🧑', status: 'active' },
@@ -237,9 +237,9 @@ describe('replacement nominee — log entry uniqueness', () => {
 
     const store = makeStore({
       phase: 'pos_ceremony_results',
-      lohId: 'hoh',
+      lohId: 'loh',
       nomineeIds: ['nom1', 'nom2'],
-      posWinnerId: 'pov', // non-nominee POS holder → human LOH decides
+      posWinnerId: 'pos', // non-nominee POS holder → human LOH decides
       awaitingPovSaveTarget: true,
       players,
       tvFeed: [],

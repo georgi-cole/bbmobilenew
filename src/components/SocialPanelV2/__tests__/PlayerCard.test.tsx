@@ -209,7 +209,7 @@ describe('PlayerList', () => {
   const players: Player[] = [
     makePlayer({ id: 'a', name: 'Alice', status: 'active' }),
     makePlayer({ id: 'b', name: 'Bob', status: 'nominated' }),
-    makePlayer({ id: 'c', name: 'Carol', status: 'hoh' }),
+    makePlayer({ id: 'c', name: 'Carol', status: 'loh' }),
   ];
 
   it('renders a card for each player', () => {

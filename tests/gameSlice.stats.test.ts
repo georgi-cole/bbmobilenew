@@ -118,7 +118,7 @@ describe('applyPosWinner stat tracking', () => {
       nomineeIds: ['p2', 'p3'],
       players: players.map((p) =>
         p.id === 'p1'
-          ? { ...p, status: 'hoh' }
+          ? { ...p, status: 'loh' }
           : p.id === 'p2' || p.id === 'p3'
           ? { ...p, status: 'nominated' }
           : p,
@@ -127,8 +127,8 @@ describe('applyPosWinner stat tracking', () => {
     });
     store.dispatch(advance());
     const { posWinnerId } = store.getState().game;
-    const povWinner = store.getState().game.players.find((p) => p.id === posWinnerId);
-    expect(povWinner?.stats?.posWins).toBe(1);
+    const posWinner = store.getState().game.players.find((p) => p.id === posWinnerId);
+    expect(posWinner?.stats?.posWins).toBe(1);
   });
 });
 
@@ -141,7 +141,7 @@ describe('finalizeNominations stat tracking', () => {
       lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(selectNominee1('p1'));
@@ -157,7 +157,7 @@ describe('finalizeNominations stat tracking', () => {
       lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(selectNominee1('p1'));
@@ -178,7 +178,7 @@ describe('commitNominees stat tracking', () => {
       lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(commitNominees(['p3', 'p4']));
@@ -194,7 +194,7 @@ describe('AI nomination path stat tracking', () => {
   it('increments timesNominated for AI-chosen nominees during nominations advance', () => {
     // advance() from 'nominations' phase uses nextPhase='nomination_results' for AI LOH
     const players = makePlayers(6).map((p) =>
-      p.id === 'p1' ? { ...p, status: 'hoh' as const, isUser: false } : { ...p, isUser: false },
+      p.id === 'p1' ? { ...p, status: 'loh' as const, isUser: false } : { ...p, isUser: false },
     );
     const store = makeStore({
       phase: 'nominations',

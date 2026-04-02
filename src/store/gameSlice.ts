@@ -405,8 +405,8 @@ function applyLohWinner(state: GameState, winnerId: string, source?: string) {
   }
   state.lohId = winnerId;
   state.players.forEach((p) => {
-    if (p.id === winnerId) p.status = 'hoh';
-    else if (p.status === 'hoh') p.status = 'active';
+    if (p.id === winnerId) p.status = 'loh';
+    else if (p.status === 'loh') p.status = 'active';
   });
   const winner = state.players.find((p) => p.id === winnerId);
   if (winner) {
@@ -424,9 +424,9 @@ function applyPosWinner(state: GameState, winnerId: string, alive: Player[]): Ph
   state.posWinnerId = winnerId;
   const p = state.players.find((pl) => pl.id === winnerId);
   if (p) {
-    if (p.status === 'hoh') p.status = 'hoh+pov';
-    else if (p.status === 'nominated') p.status = 'nominated+pov';
-    else p.status = 'pov';
+    if (p.status === 'loh') p.status = 'loh+pos';
+    else if (p.status === 'nominated') p.status = 'nominated+pos';
+    else p.status = 'pos';
     if (!p.stats) p.stats = { lohWins: 0, posWins: 0, timesNominated: 0 };
     p.stats.posWins += 1;
   }
@@ -449,9 +449,9 @@ function applyPosWinner(state: GameState, winnerId: string, alive: Player[]): Ph
       f4Nominees.forEach((pl) => {
         const fp = state.players.find((x) => x.id === pl.id);
         if (fp) {
-          if (fp.status === 'pov' || fp.status === 'hoh+pov') {
-            fp.status = 'nominated+pov';
-          } else if (fp.status !== 'nominated' && fp.status !== 'nominated+pov') {
+          if (fp.status === 'pos' || fp.status === 'loh+pos') {
+            fp.status = 'nominated+pos';
+          } else if (fp.status !== 'nominated' && fp.status !== 'nominated+pos') {
             fp.status = 'nominated';
           }
         }
@@ -950,10 +950,10 @@ const gameSlice = createSlice({
         state.lohId = winnerId;
         markFinalHohWinner(state, winnerId);
         state.players.forEach((p) => {
-          if (p.status === 'hoh') p.status = 'active';
+          if (p.status === 'loh') p.status = 'active';
         });
         const lohPlayer = state.players.find((p) => p.id === winnerId);
-        if (lohPlayer) lohPlayer.status = 'hoh';
+        if (lohPlayer) lohPlayer.status = 'loh';
 
         const nominees = alive.filter((p) => p.id !== winnerId);
         state.nomineeIds = nominees.map((p) => p.id);
@@ -1254,7 +1254,7 @@ const gameSlice = createSlice({
     submitPovDecision(state, action: PayloadAction<boolean>) {
       if (!state.awaitingPovDecision) return;
       state.awaitingPovDecision = false;
-      const povWinner = state.players.find((p) => p.id === state.posWinnerId);
+      const posWinner = state.players.find((p) => p.id === state.posWinnerId);
       if (action.payload) {
         const svType = state.specialVeto?.activeType;
         if (svType === 'coup') {
@@ -1266,10 +1266,10 @@ const gameSlice = createSlice({
           state.povSavedId = null;
           pushEvent(
             state,
-            `${povWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
+            `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
             'game',
           );
-          pushEvent(state, `${povWinner?.name ?? 'The Detox holder'}, name your two backup nominees. ⚡`, 'game');
+          pushEvent(state, `${posWinner?.name ?? 'The Detox holder'}, name your two backup nominees. ⚡`, 'game');
           state.specialVeto!.awaitingCoupReplacement1 = true;
         } else {
           // Standard / VIP / Diamond / Spotlight: set awaitingPovSaveTarget
@@ -1282,7 +1282,7 @@ const gameSlice = createSlice({
         }
         pushEvent(
           state,
-          `${povWinner?.name ?? 'The holder'} has decided NOT to use the power. The nominations remain the same. ⚡`,
+          `${posWinner?.name ?? 'The holder'} has decided NOT to use the power. The nominations remain the same. ⚡`,
           'game',
         );
       }
@@ -1299,9 +1299,9 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(saveId)) return;
 
       const savedPlayer = state.players.find((p) => p.id === saveId);
-      const povWinner = state.players.find((p) => p.id === state.posWinnerId);
+      const posWinner = state.players.find((p) => p.id === state.posWinnerId);
       const lohPlayer = state.players.find((p) => p.id === state.lohId);
-      if (!savedPlayer || !povWinner) return;
+      if (!savedPlayer || !posWinner) return;
 
       // Save the selected nominee
       state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId);
@@ -1311,17 +1311,17 @@ const gameSlice = createSlice({
       state.povSavedId = saveId;
       pushEvent(
         state,
-        `${povWinner.name} used the power on ${savedPlayer.name}! 🛡️`,
+        `${posWinner.name} used the power on ${savedPlayer.name}! 🛡️`,
         'game',
       );
 
       // Diamond: holder names replacement (not LOH)
       if (state.specialVeto?.activeType === 'diamond') {
-        if (povWinner.isUser) {
+        if (posWinner.isUser) {
           state.specialVeto.awaitingHolderReplacement = true;
             pushEvent(
               state,
-              `${povWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`,
+              `${posWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`,
               'game',
             );
         } else {
@@ -1343,7 +1343,7 @@ const gameSlice = createSlice({
             incrementTimesNominated(state, replacement.id);
             pushEvent(
               state,
-              `${povWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`,
+              `${posWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`,
               'game',
             );
           }
@@ -2133,9 +2133,9 @@ const gameSlice = createSlice({
         }
         state.lohId = hohWinnerId;
         state.players.forEach((p) => {
-          if (p.status === 'hoh') p.status = 'active';
+          if (p.status === 'loh') p.status = 'active';
         });
-        hoh.status = 'hoh';
+        hoh.status = 'loh';
       }
 
       // Evict the chosen player.
@@ -2163,13 +2163,13 @@ const gameSlice = createSlice({
     forceHoH(state, action: PayloadAction<string>) {
       const id = action.payload;
       state.players.forEach((p) => {
-        if (p.status === 'hoh') p.status = 'active';
-        if (p.status === 'hoh+pov') p.status = 'pov';
+        if (p.status === 'loh') p.status = 'active';
+        if (p.status === 'loh+pos') p.status = 'pos';
       });
       state.lohId = id;
       const player = state.players.find((p) => p.id === id);
       if (player) {
-        player.status = player.status === 'pov' ? 'hoh+pov' : 'hoh';
+        player.status = player.status === 'pos' ? 'loh+pos' : 'loh';
         pushEvent(state, `[DEBUG] ${player.name} forced as Leader of the House. 👑`, 'game');
       }
     },
@@ -2178,14 +2178,14 @@ const gameSlice = createSlice({
       const ids = action.payload;
       state.players.forEach((p) => {
         if (p.status === 'nominated') p.status = 'active';
-        if (p.status === 'nominated+pov') p.status = 'pov';
+        if (p.status === 'nominated+pos') p.status = 'pos';
       });
       state.nomineeIds = ids;
       const names: string[] = [];
       ids.forEach((id) => {
         const p = state.players.find((pl) => pl.id === id);
         if (p) {
-          p.status = p.status === 'pov' ? 'nominated+pov' : 'nominated';
+          p.status = p.status === 'pos' ? 'nominated+pos' : 'nominated';
           names.push(p.name);
         }
       });
@@ -2195,16 +2195,16 @@ const gameSlice = createSlice({
     forcePovWinner(state, action: PayloadAction<string>) {
       const id = action.payload;
       state.players.forEach((p) => {
-        if (p.status === 'pov') p.status = 'active';
-        if (p.status === 'hoh+pov') p.status = 'hoh';
-        if (p.status === 'nominated+pov') p.status = 'nominated';
+        if (p.status === 'pos') p.status = 'active';
+        if (p.status === 'loh+pos') p.status = 'loh';
+        if (p.status === 'nominated+pos') p.status = 'nominated';
       });
       state.posWinnerId = id;
       const player = state.players.find((p) => p.id === id);
       if (player) {
-        if (player.status === 'hoh') player.status = 'hoh+pov';
-        else if (player.status === 'nominated') player.status = 'nominated+pov';
-        else player.status = 'pov';
+        if (player.status === 'loh') player.status = 'loh+pos';
+        else if (player.status === 'nominated') player.status = 'nominated+pos';
+        else player.status = 'pos';
         pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game');
       }
     },
@@ -2523,7 +2523,7 @@ const gameSlice = createSlice({
         state.f3Part1WinnerId = null;
         state.f3Part2WinnerId = null;
         state.players.forEach((p) => {
-          if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
+          if (['hoh', 'nominated', 'pov', 'loh+pos', 'nominated+pos'].includes(p.status)) {
             p.status = 'active';
           }
         });
@@ -2666,10 +2666,10 @@ const gameSlice = createSlice({
         state.lohId = finalHoh.id;
         markFinalHohWinner(state, finalHoh.id);
         state.players.forEach((p) => {
-          if (p.status === 'hoh') p.status = 'active';
+          if (p.status === 'loh') p.status = 'active';
         });
         const lohPlayer = state.players.find((p) => p.id === finalHoh.id);
-        if (lohPlayer) lohPlayer.status = 'hoh';
+        if (lohPlayer) lohPlayer.status = 'loh';
 
         // The 2 non-Final-LOH players are now nominees (eligible to be evicted)
         const nominees = alive.filter((p) => p.id !== finalHoh.id);
@@ -2931,7 +2931,7 @@ const gameSlice = createSlice({
           }
           state.twistActivatedThisWeek = false;
           state.players.forEach((p) => {
-            if (['hoh', 'nominated', 'pov', 'hoh+pov', 'nominated+pov'].includes(p.status)) {
+            if (['hoh', 'nominated', 'pov', 'loh+pos', 'nominated+pos'].includes(p.status)) {
               p.status = 'active';
             }
           });
@@ -3102,19 +3102,19 @@ const gameSlice = createSlice({
             break;
           }
 
-          const povWinner = state.posWinnerId
+          const posWinner = state.posWinnerId
             ? state.players.find((p) => p.id === state.posWinnerId) ?? null
             : null;
-          const isNominee = povWinner !== null && state.nomineeIds.includes(povWinner.id);
+          const isNominee = posWinner !== null && state.nomineeIds.includes(posWinner.id);
 
           // ── Force Majeure: mandatory use (no choice) ──────────────────────────
           if (svType === 'spotlight') {
-            if (isNominee && povWinner !== null) {
+            if (isNominee && posWinner !== null) {
               // Nominee auto-saves self
-              const savedName = povWinner.name;
-              const autoSavedId = povWinner.id;
-              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
-              povWinner.status = 'pov';
+              const savedName = posWinner.name;
+              const autoSavedId = posWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
+              posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
               pushEvent(state, `${savedName} used Force Majeure and saved themselves! ✨`, 'game');
               const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
@@ -3135,10 +3135,10 @@ const gameSlice = createSlice({
                   pushEvent(state, `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`, 'game');
                 }
               }
-            } else if (povWinner?.isUser) {
+            } else if (posWinner?.isUser) {
               // Human must use — directly to save target
               state.awaitingPovSaveTarget = true;
-              pushEvent(state, `${povWinner.name}, Force Majeure MUST be used! Choose a nominee to save. ✨`, 'game');
+              pushEvent(state, `${posWinner.name}, Force Majeure MUST be used! Choose a nominee to save. ✨`, 'game');
             } else {
               // AI: pick one nominee to save
               const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id));
@@ -3149,7 +3149,7 @@ const gameSlice = createSlice({
                 const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                 if (savedP) savedP.status = 'active';
                 state.povSavedId = nomineeToSave.id;
-                pushEvent(state, `${povWinner?.name ?? 'The Force Majeure holder'} used Force Majeure on ${savedName}! ✨`, 'game');
+                pushEvent(state, `${posWinner?.name ?? 'The Force Majeure holder'} used Force Majeure on ${savedName}! ✨`, 'game');
                 const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
                 if (lohPlayer?.isUser) {
                   state.replacementNeeded = true;
@@ -3164,16 +3164,16 @@ const gameSlice = createSlice({
 
           // ── Halo Exchange: holder names the replacement ────────────────────────
           if (svType === 'diamond') {
-            if (isNominee && povWinner !== null) {
-              const savedName = povWinner.name;
-              const autoSavedId = povWinner.id;
-              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
-              povWinner.status = 'pov';
+            if (isNominee && posWinner !== null) {
+              const savedName = posWinner.name;
+              const autoSavedId = posWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
+              posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
               pushEvent(state, `${savedName} used Halo Exchange and saved themselves! 😇`, 'game');
-              if (povWinner.isUser) {
+              if (posWinner.isUser) {
                 state.specialVeto!.awaitingHolderReplacement = true;
-                pushEvent(state, `${povWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`, 'game');
+                pushEvent(state, `${posWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`, 'game');
               } else {
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
@@ -3185,12 +3185,12 @@ const gameSlice = createSlice({
                   const rp = state.players.find((pl) => pl.id === replacement.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, replacement.id);
-                  pushEvent(state, `${povWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`, 'game');
+                  pushEvent(state, `${posWinner.name} named ${replacement.name} as the Halo Exchange backup nominee. 😇`, 'game');
                 }
               }
-            } else if (povWinner?.isUser) {
+            } else if (posWinner?.isUser) {
               state.awaitingPovDecision = true;
-              pushEvent(state, `${povWinner.name}, will you use Halo Exchange? 😇`, 'game');
+              pushEvent(state, `${posWinner.name}, will you use Halo Exchange? 😇`, 'game');
             } else {
               const useIt = rng() < 0.70;
               if (useIt) {
@@ -3201,7 +3201,7 @@ const gameSlice = createSlice({
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
-                  pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} used Halo Exchange on ${nomineeToSave.name}! 😇`, 'game');
+                  pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} used Halo Exchange on ${nomineeToSave.name}! 😇`, 'game');
                   const eligible = alive.filter(
                     (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
                       !state.nomineeIds.includes(pl.id) && pl.id !== nomineeToSave.id,
@@ -3212,11 +3212,11 @@ const gameSlice = createSlice({
                     const rp = state.players.find((pl) => pl.id === replacement.id);
                     if (rp) rp.status = 'nominated';
                     incrementTimesNominated(state, replacement.id);
-                    pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the backup nominee. 😇`, 'game');
+                    pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} named ${replacement.name} as the backup nominee. 😇`, 'game');
                   }
                 }
               } else {
-                pushEvent(state, `${povWinner?.name ?? 'The Halo Exchange holder'} chose not to use Halo Exchange. 😇`, 'game');
+                pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} chose not to use Halo Exchange. 😇`, 'game');
               }
             }
             break;
@@ -3224,11 +3224,11 @@ const gameSlice = createSlice({
 
           // ── Detox: removes both nominees, holder names both replacements ────────
           if (svType === 'coup') {
-            if (povWinner?.isUser) {
+            if (posWinner?.isUser) {
               state.awaitingPovDecision = true;
               pushEvent(
                 state,
-                `${povWinner.name}, will you use Detox? ⚡ Both nominees would be removed and you would name two replacements!`,
+                `${posWinner.name}, will you use Detox? ⚡ Both nominees would be removed and you would name two replacements!`,
                 'game',
               );
             } else {
@@ -3239,7 +3239,7 @@ const gameSlice = createSlice({
                 state.nomineeIds = [];
                 state.povSavedId = null;
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
-                pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
+                pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
                 const eligible = alive.filter(
                   (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId,
                 );
@@ -3252,17 +3252,17 @@ const gameSlice = createSlice({
                     incrementTimesNominated(state, r.id);
                   });
                   const repNames = replacements.map((r) => r.name).join(' and ');
-                  pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`, 'game');
+                  pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${repNames} as the new nominees. ⚡`, 'game');
                 } else if (eligible.length === 1) {
                   const r = eligible[0];
                   state.nomineeIds.push(r.id);
                   const rp = state.players.find((pl) => pl.id === r.id);
                   if (rp) rp.status = 'nominated';
                   incrementTimesNominated(state, r.id);
-                  pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
+                  pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} named ${r.name} as the only available replacement. ⚡`, 'game');
                 }
               } else {
-                pushEvent(state, `${povWinner?.name ?? 'The Detox holder'} chose not to use Detox. ⚡`, 'game');
+                pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} chose not to use Detox. ⚡`, 'game');
               }
             }
             break;
@@ -3270,11 +3270,11 @@ const gameSlice = createSlice({
 
           // ── Double Trouble: like standard but holder may use it twice ───────────
           if (svType === 'vip') {
-            if (isNominee && povWinner !== null) {
-              const savedName = povWinner.name;
-              const autoSavedId = povWinner.id;
-              state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
-              povWinner.status = 'pov';
+            if (isNominee && posWinner !== null) {
+              const savedName = posWinner.name;
+              const autoSavedId = posWinner.id;
+              state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
+              posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
               state.specialVeto!.vipUseStage = 1;
               pushEvent(state, `${savedName} used Double Trouble and saved themselves! 👑`, 'game');
@@ -3285,11 +3285,11 @@ const gameSlice = createSlice({
               } else {
                 state.aiReplacementStep = 1;
               }
-            } else if (povWinner?.isUser) {
+            } else if (posWinner?.isUser) {
               state.awaitingPovDecision = true;
               pushEvent(
                 state,
-                `${povWinner.name}, will you use Double Trouble? 👑 You may use it TWICE this ceremony!`,
+                `${posWinner.name}, will you use Double Trouble? 👑 You may use it TWICE this ceremony!`,
                 'game',
               );
             } else {
@@ -3303,7 +3303,7 @@ const gameSlice = createSlice({
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
                   state.specialVeto!.vipUseStage = 1;
-                  pushEvent(state, `${povWinner?.name ?? 'The Double Trouble holder'} used Double Trouble on ${nomineeToSave.name}! 👑`, 'game');
+                  pushEvent(state, `${posWinner?.name ?? 'The Double Trouble holder'} used Double Trouble on ${nomineeToSave.name}! 👑`, 'game');
                   const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
                   if (lohPlayer?.isUser) {
                     state.replacementNeeded = true;
@@ -3316,20 +3316,20 @@ const gameSlice = createSlice({
                 }
               } else {
                 state.specialVeto!.vipUseStage = -1;
-                pushEvent(state, `${povWinner?.name ?? 'The Double Trouble holder'} chose not to use Double Trouble. 👑`, 'game');
+                pushEvent(state, `${posWinner?.name ?? 'The Double Trouble holder'} chose not to use Double Trouble. 👑`, 'game');
               }
             }
             break;
           }
 
           // ── Standard (no special veto) ────────────────────────────────────────
-          if (isNominee && povWinner !== null) {
+          if (isNominee && posWinner !== null) {
             // ── POS auto-use rule: nominee who wins POS MUST use it on themselves ──
-            const savedName = povWinner.name;
-            const autoSavedId = povWinner.id;
-            state.nomineeIds = state.nomineeIds.filter((id) => id !== povWinner.id);
-            // Update status: was 'nominated+pov', now just 'pov' (saved themselves)
-            povWinner.status = 'pov';
+            const savedName = posWinner.name;
+            const autoSavedId = posWinner.id;
+            state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
+            // Update status: was 'nominated+pos', now just 'pov' (saved themselves)
+            posWinner.status = 'pos';
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId;
             pushEvent(state, `${savedName} used the Safety and saved themselves! 🛡️`, 'game');
@@ -3367,17 +3367,17 @@ const gameSlice = createSlice({
                 );
               }
             }
-          } else if (povWinner?.isUser) {
+          } else if (posWinner?.isUser) {
             // Human POS holder who is not a nominee: they must decide whether to use it
             state.awaitingPovDecision = true;
             pushEvent(
               state,
-              `${povWinner.name}, will you use the Power of Safety? ⚡`,
+              `${posWinner.name}, will you use the Power of Safety? ⚡`,
               'game',
             );
           } else {
             // AI POS holder who is not a nominee: does not use the veto
-            const povName = povWinner?.name ?? 'The safety holder';
+            const povName = posWinner?.name ?? 'The safety holder';
             pushEvent(
               state,
               `${povName} has decided NOT to use the Power of Safety. The nominations remain the same. ⚡`,

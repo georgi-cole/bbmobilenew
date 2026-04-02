@@ -172,7 +172,7 @@ describe('advance() — week_end → jury_announcement → jury_cinematic → ju
 describe('finalizeFinal3Eviction() + advance() — no infinite loop', () => {
   it('reaches "jury" after human Final LOH evicts 3rd-place houseguest', () => {
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       ...Array.from({ length: 9 }, (_, i) => ({
@@ -217,7 +217,7 @@ describe('nomination_results guard', () => {
   it('skips nomination when pool has fewer than 2 eligible players', () => {
     // Only 2 players alive: LOH + 1 other → can't nominate 2
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
       ...Array.from({ length: 10 }, (_, i) => ({
         id: `j${i}`,
@@ -417,7 +417,7 @@ describe('Final 4 flow — pos_comp → final4_eviction → final3', () => {
    */
   function makeFinal4Store(options: { withHumanPovWinner?: boolean } = {}) {
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh' },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },
@@ -450,7 +450,7 @@ describe('Final 4 flow — pos_comp → final4_eviction → final3', () => {
       // Pre-set the POS winner to the human player (p3 as human, already won POS)
       // Use final4_eviction phase directly to test the blocking behavior
       const humanPlayers = players.map((p) =>
-        p.id === 'p3' ? { ...p, isUser: true, status: 'pov' as const } : p,
+        p.id === 'p3' ? { ...p, isUser: true, status: 'pos' as const } : p,
       );
       return configureStore({
         reducer: { game: gameReducer },
@@ -574,7 +574,7 @@ describe('Final 4 flow — pos_comp → final4_eviction → final3', () => {
   it('Final 4 is not bypassed even when cfg.multiEviction is true', () => {
     // Ensure that setting multiEviction:true does not disable Final 4 special handling
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh' },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },

@@ -972,7 +972,7 @@ export default function GameScreen() {
       ...nominees.flatMap((nominee, idx): ChatLine[] => [
         {
           id: `f4-prompt-${nominee.id}`,
-          role: 'pov',
+          role: 'pos',
           player: povHolder,
           text: `${nominee.name}, the floor is yours. Make your case.`,
         },
@@ -984,7 +984,7 @@ export default function GameScreen() {
         },
         {
           id: `f4-thanks-${nominee.id}`,
-          role: 'pov',
+          role: 'pos',
           player: povHolder,
           text:
             idx < nominees.length - 1
@@ -1046,7 +1046,7 @@ export default function GameScreen() {
     setFinal4AnnounceLines([
       {
         id: 'f4-evict-decision',
-        role: 'pov',
+        role: 'pos',
         player: povHolder,
         text: `I vote to evict… ${evicted.name}. 🗳️`,
       },

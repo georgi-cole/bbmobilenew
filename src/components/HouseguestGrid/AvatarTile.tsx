@@ -29,9 +29,9 @@ type Props = {
   onHoldPreviewEnd?: () => void
   /**
    * Game statuses to display as badge overlays on the avatar.
-   * Accepts a single PlayerStatus string (e.g. 'hoh', 'nominated+pov')
+   * Accepts a single PlayerStatus string (e.g. 'hoh', 'nominated+pos')
    * or an array of individual status codes.
-   * Supported codes: 'hoh' 👑, 'pov' 🛡️, 'nominated' ❓, 'jury' ⚖️
+   * Supported codes: 'loh' 👑, 'pov' 🛡️, 'nominated' ❓, 'jury' ⚖️
    * Medal codes (derived from finalRank): 'first' 🥇, 'second' 🥈, 'third' 🥉
    */
   statuses?: string | string[]

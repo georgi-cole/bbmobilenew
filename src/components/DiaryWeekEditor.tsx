@@ -59,7 +59,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
   const [startAt, setStartAt] = useState(existingWeek?.startAt?.slice(0, 10) ?? '');
   const [endAt, setEndAt] = useState(existingWeek?.endAt?.slice(0, 10) ?? '');
   const [hohWinner, setHohWinner] = useState(existingWeek?.hohWinner ?? '');
-  const [povWinner, setPovWinner] = useState(existingWeek?.povWinner ?? '');
+  const [posWinner, setPovWinner] = useState(existingWeek?.posWinner ?? '');
   const [nominees, setNominees] = useState(listToLines(existingWeek?.nominees ?? []));
   const [replacementNominee, setReplacementNominee] = useState(
     existingWeek?.replacementNominee ?? '',
@@ -103,7 +103,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
       startAt: startAt || null,
       endAt: endAt || null,
       hohWinner: hohWinner.trim() || null,
-      povWinner: povWinner.trim() || null,
+      posWinner: posWinner.trim() || null,
       nominees: linesToList(nominees),
       replacementNominee: replacementNominee.trim() || null,
       evictionVotes: textToVotes(votesText),
@@ -211,7 +211,7 @@ export default function DiaryWeekEditor({ seasonId, adminKey, existingWeek, onSa
         <input
           className="dw-editor__input"
           type="text"
-          value={povWinner}
+          value={posWinner}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPovWinner(e.target.value)}
           placeholder="Housemate name"
         />,

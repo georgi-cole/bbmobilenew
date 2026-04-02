@@ -334,9 +334,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       let eventType: MissionGameEvent['type'];
       const competitionType = (payload?.competitionType || '').toLowerCase();
 
-      if (competitionType === 'pov') {
+      if (competitionType === 'pos') {
         eventType = 'pov_win';
-      } else if (competitionType === 'hoh') {
+      } else if (competitionType === 'loh') {
         eventType = 'hoh_win';
       } else if (prevPhase === 'pos_comp') {
         eventType = 'pov_win';
