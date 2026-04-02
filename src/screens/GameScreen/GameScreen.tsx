@@ -40,6 +40,11 @@ import {
   resumeAfterPublicFavorite,
   commitPublicSave,
   expireMissionReward,
+  activateDoubleVoteReward,
+  declineDoubleVoteReward,
+  submitHumanDoubleVote,
+  activateVoteDeductionReward,
+  declineVoteDeduction,
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
@@ -1116,8 +1121,32 @@ export default function GameScreen() {
   // ── Human live eviction vote ──────────────────────────────────────────────
   // Shown when the human player is an eligible voter during live_vote.
   const showLiveVoteModal =
-    game.phase === 'live_vote' && Boolean(game.awaitingHumanVote) && humanPlayer !== undefined
+    game.phase === 'live_vote' &&
+    Boolean(game.awaitingHumanVote) &&
+    !game.humanDoubleVoteActive &&
+    !game.awaitingDoubleVoteOffer &&
+    humanPlayer !== undefined
   const liveVoteOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+
+  // ── PR 3: doubleVote Big Eye offer ────────────────────────────────────────
+  // Shown BEFORE the vote modal when the player has an eligible doubleVote
+  // reward. The player accepts (gets 2 vote slots) or declines (normal vote).
+  const showDoubleVoteOffer =
+    game.phase === 'live_vote' &&
+    Boolean(game.awaitingDoubleVoteOffer) &&
+    humanPlayer !== undefined
+
+  // ── PR 3: double vote 2-slot selection ───────────────────────────────────
+  // Shown when humanDoubleVoteActive — player must pick 2 nominees.
+  const showDoubleVoteModal =
+    game.phase === 'live_vote' &&
+    Boolean(game.awaitingHumanVote) &&
+    Boolean(game.humanDoubleVoteActive) &&
+    humanPlayer !== undefined &&
+    !game.awaitingDoubleVoteOffer // offer resolved first
+
+  // Local state to track the first double-vote selection
+  const [doubleVoteFirst, setDoubleVoteFirst] = useState<string | null>(null)
 
   // ── Human HOH tie-break ───────────────────────────────────────────────────
   // Shown when the live vote ended in a tie and the human is HOH.
@@ -1150,15 +1179,38 @@ export default function GameScreen() {
   // otherwise advance the game phase directly.
   // When a tie-break is still pending (awaitingTieBreak), do not advance — the
   // tie-break modal will appear once voteResults has been cleared.
-  const handleVoteResultsDone = useCallback(() => {
+  // PR 3: when a voteDeduction prompt is pending, show the offer first and
+  // only dismiss results after the player decides.
+  const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
+
+  const proceedAfterVoteResults = useCallback(() => {
     dispatch(dismissVoteResults())
-    // If no eviction is pending AND no tie-break is pending, advance the phase now.
-    // (If pendingEviction is set, the overlay's onDone will commit and advance instead.)
-    // (If awaitingTieBreak is true, the tie-break modal will take over after this.)
     if (!game.pendingEviction && !game.awaitingTieBreak) {
       dispatch(advance())
     }
   }, [dispatch, game.pendingEviction, game.awaitingTieBreak])
+
+  const handleVoteResultsDone = useCallback(() => {
+    if (game.awaitingVoteDeductionPrompt) {
+      // Show voteDeduction offer before dismissing results (results popup stays
+      // visible beneath the offer overlay so the player can see their situation).
+      setShowVoteDeductionOffer(true)
+      return
+    }
+    proceedAfterVoteResults()
+  }, [game.awaitingVoteDeductionPrompt, proceedAfterVoteResults])
+
+  const handleVoteDeductionAccept = useCallback(() => {
+    setShowVoteDeductionOffer(false)
+    dispatch(activateVoteDeductionReward())
+    proceedAfterVoteResults()
+  }, [dispatch, proceedAfterVoteResults])
+
+  const handleVoteDeductionDecline = useCallback(() => {
+    setShowVoteDeductionOffer(false)
+    dispatch(declineVoteDeduction())
+    proceedAfterVoteResults()
+  }, [dispatch, proceedAfterVoteResults])
 
   // ── AI HOH tiebreak choreography ─────────────────────────────────────────
   // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
@@ -1441,12 +1493,15 @@ export default function GameScreen() {
     showFinal4Chat ||
     showFinal4Modal ||
     showFinal4AnnounceChat ||
+    showDoubleVoteOffer ||
+    showDoubleVoteModal ||
     showLiveVoteModal ||
     showTieBreakModal ||
     showFinal3Modal ||
     showFinal3Ceremony ||
     (game.phase === 'jury_announcement' || game.phase === 'jury_cinematic') ||
     showVoteResults ||
+    showVoteDeductionOffer ||
     showEvictionSplash ||
     showBattleBackReturn ||
     showBattleBack ||
@@ -1670,6 +1725,45 @@ export default function GameScreen() {
           options={coupReplacementOptions}
           onSelect={(id) => dispatch(submitCoupReplacement(id))}
           stingerMessage="DETOX"
+        />
+      )}
+
+      {/* ── PR 3: doubleVote Big Eye offer (before vote modal) ──────────── */}
+      {showDoubleVoteOffer && (
+        <TvBinaryDecisionModal
+          title="📺 The Big Eye — Secret Power"
+          subtitle={`${humanPlayer?.name}, you have a stored Double Vote power. Activate it now to cast two votes in this live elimination?`}
+          yesLabel="🗳️🗳️ Yes — use Double Vote"
+          noLabel="❌ No — cast a single vote"
+          onYes={() => dispatch(activateDoubleVoteReward())}
+          onNo={() => dispatch(declineDoubleVoteReward())}
+        />
+      )}
+
+      {/* ── PR 3: double vote first selection ───────────────────────────── */}
+      {showDoubleVoteModal && doubleVoteFirst === null && (
+        <TvDecisionModal
+          title="Double Vote — First Vote"
+          subtitle={`${humanPlayer?.name}, cast your FIRST vote to eliminate.`}
+          options={liveVoteOptions}
+          onSelect={(id) => setDoubleVoteFirst(id)}
+          danger
+          stingerMessage="FIRST VOTE CAST"
+        />
+      )}
+
+      {/* ── PR 3: double vote second selection ──────────────────────────── */}
+      {showDoubleVoteModal && doubleVoteFirst !== null && (
+        <TvDecisionModal
+          title="Double Vote — Second Vote"
+          subtitle={`${humanPlayer?.name}, cast your SECOND vote to eliminate. You may vote for the same person again.`}
+          options={liveVoteOptions}
+          onSelect={(id) => {
+            dispatch(submitHumanDoubleVote([doubleVoteFirst, id]))
+            setDoubleVoteFirst(null)
+          }}
+          danger
+          stingerMessage="DOUBLE VOTE RECORDED"
         />
       )}
 
@@ -2078,6 +2172,18 @@ export default function GameScreen() {
           evictee={voteResultsEvictee}
           onTiebreakerRequired={handleTiebreakerRequired}
           onDone={handleVoteResultsDone}
+        />
+      )}
+
+      {/* ── PR 3: voteDeduction Big Eye offer (overlays results popup) ───── */}
+      {showVoteDeductionOffer && (
+        <TvBinaryDecisionModal
+          title="📺 The Big Eye — Secret Power"
+          subtitle={`${humanPlayer?.name}, you have a stored Vote Deduction power. Use it to remove 1 vote cast against you?`}
+          yesLabel="🪄 Yes — remove 1 vote"
+          noLabel="❌ No — keep results as they are"
+          onYes={handleVoteDeductionAccept}
+          onNo={handleVoteDeductionDecline}
         />
       )}
 

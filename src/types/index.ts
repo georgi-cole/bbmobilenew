@@ -705,6 +705,26 @@ export interface GameState {
    * Managed by secretMission reducers in gameSlice.
    */
   secretMission?: import('../bb/secretMission').SecretMissionState;
+  /**
+   * PR 3 — doubleVote activation: set by advance() when the human player
+   * enters live_vote with an eligible doubleVote reward and no conflicting
+   * twist. A Big Eye offer modal is shown; the player can accept or decline.
+   * Cleared by activateDoubleVoteReward or declineDoubleVoteReward.
+   */
+  awaitingDoubleVoteOffer?: boolean;
+  /**
+   * PR 3 — doubleVote in progress: set when the player accepts the Big Eye
+   * doubleVote offer. The live-vote UI shows two nominee selectors instead of
+   * one. Cleared (reward consumed) by submitHumanDoubleVote.
+   */
+  humanDoubleVoteActive?: boolean;
+  /**
+   * PR 3 — voteDeduction activation: set by advance() during eviction_results
+   * when the human player is a nominee with votes against them, has an eligible
+   * voteDeduction reward, and no conflicting twist is active.
+   * Cleared by activateVoteDeductionReward or declineVoteDeduction.
+   */
+  awaitingVoteDeductionPrompt?: boolean;
 }
 
 // ─── Status pill ─────────────────────────────────────────────────────────────

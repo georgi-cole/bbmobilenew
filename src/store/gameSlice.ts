@@ -43,6 +43,8 @@ import {
   checkSecretMissionTrigger,
   createMissionReward,
   MISSION_TEMPLATES,
+  canUseDoubleVote,
+  canUseVoteDeduction,
   type MissionRewardType,
 } from '../bb/secretMission';
 
@@ -3391,6 +3393,26 @@ const gameSlice = createSlice({
           const humanVoter = eligibleVoters.find((p) => p.isUser);
           if (humanVoter) {
             state.awaitingHumanVote = true;
+
+            // PR 3 — doubleVote offer: if the player has an eligible doubleVote
+            // reward and no conflicting twist is active, prompt them before the
+            // vote modal so they can choose whether to cast two votes.
+            // Note: the switch runs for the phase being ENTERED (nextPhase), so
+            // state.phase still holds the previous phase. Build a check state
+            // that reflects the phase we are entering ('live_vote').
+            const dvCheck = {
+              phase: nextPhase as string,
+              secretMission: state.secretMission,
+              nomineeIds: state.nomineeIds,
+              hohId: state.hohId,
+              players: state.players,
+              doubleEviction: state.doubleEviction,
+              voteResults: state.voteResults,
+              awaitingTieBreak: state.awaitingTieBreak,
+            };
+            if (canUseDoubleVote(dvCheck) && !state.humanDoubleVoteActive) {
+              state.awaitingDoubleVoteOffer = true;
+            }
           }
           break;
         }
@@ -3467,6 +3489,25 @@ const gameSlice = createSlice({
                 evicteeId: evicted.id,
                 evictionMessage: `${evicted.name}, you have been eliminated from The Big Eye house. 🚪`,
               };
+
+              // PR 3 — voteDeduction offer: if the human player is on the block
+              // with votes against them and has an eligible voteDeduction reward,
+              // pause the flow so they can decide whether to use the power.
+              // Note: state.phase still holds the previous phase here — pass nextPhase
+              // explicitly so canUseVoteDeduction sees the correct phase ('eviction_results').
+              const vdCheck = {
+                phase: nextPhase as string,
+                secretMission: state.secretMission,
+                nomineeIds: state.nomineeIds,
+                hohId: state.hohId,
+                players: state.players,
+                doubleEviction: state.doubleEviction,
+                voteResults: state.voteResults,
+                awaitingTieBreak: state.awaitingTieBreak,
+              };
+              if (canUseVoteDeduction(vdCheck)) {
+                state.awaitingVoteDeductionPrompt = true;
+              }
             }
           } else {
             // Tie — HOH breaks the tie
@@ -3632,6 +3673,132 @@ const gameSlice = createSlice({
       sm.reward.expired = true;
       sm.reward.eligible = false;
     },
+
+    // ── PR 3: doubleVote activation reducers ──────────────────────────────
+
+    /**
+     * Accept the Big Eye doubleVote offer — activates the double-vote mode
+     * for the current live_vote phase.
+     *
+     * Sets `humanDoubleVoteActive = true` and clears `awaitingDoubleVoteOffer`.
+     * The live-vote modal in GameScreen detects `humanDoubleVoteActive` and shows
+     * two nominee selectors instead of one.
+     *
+     * Guard: only applies when `awaitingDoubleVoteOffer` is true and an eligible
+     * doubleVote reward exists.
+     */
+    activateDoubleVoteReward(state) {
+      if (!state.awaitingDoubleVoteOffer) return;
+      // Always clear the offer flag (ensures UI won't be stuck if state is inconsistent)
+      state.awaitingDoubleVoteOffer = false;
+      const sm = state.secretMission;
+      if (!sm?.reward || sm.reward.type !== 'doubleVote' || !sm.reward.eligible) return;
+      state.humanDoubleVoteActive = true;
+    },
+
+    /**
+     * Decline the Big Eye doubleVote offer — clears `awaitingDoubleVoteOffer`
+     * without consuming the reward. The reward remains stored for a future vote.
+     */
+    declineDoubleVoteReward(state) {
+      state.awaitingDoubleVoteOffer = false;
+      // humanDoubleVoteActive stays false (or undefined); normal vote modal follows.
+    },
+
+    /**
+     * Submit two vote targets when the human player has the doubleVote power active.
+     * Records both votes in `state.votes` using `<humanId>` and `<humanId>__dv2`
+     * as the voter keys, then consumes the reward and clears the activation flag.
+     *
+     * @param action.payload  Tuple [primaryTarget, secondaryTarget] — both must be
+     *                        valid nominee IDs.  The same nominee may be chosen twice.
+     */
+    submitHumanDoubleVote(state, action: PayloadAction<[string, string]>) {
+      if (!state.humanDoubleVoteActive) return;
+      const [target1, target2] = action.payload;
+      if (!state.nomineeIds.includes(target1)) return;
+      if (!state.nomineeIds.includes(target2)) return;
+
+      const humanPlayer = state.players.find((p) => p.isUser);
+      if (!humanPlayer) return;
+      if (!state.votes) state.votes = {};
+
+      // Primary vote (same key as a normal vote)
+      state.votes[humanPlayer.id] = target1;
+      // Secondary vote stored under a suffix key — tallied by the same loop
+      // in advance() that iterates Object.values(state.votes).
+      state.votes[`${humanPlayer.id}__dv2`] = target2;
+
+      state.awaitingHumanVote = false;
+      state.humanDoubleVoteActive = false;
+
+      // Consume the reward
+      const sm = state.secretMission;
+      if (sm?.reward && sm.reward.type === 'doubleVote') {
+        sm.reward.consumed = true;
+        sm.reward.eligible = false;
+      }
+    },
+
+    // ── PR 3: voteDeduction activation reducers ───────────────────────────
+
+    /**
+     * Accept the Big Eye voteDeduction offer — subtracts 1 vote from the human
+     * player's tally in `voteResults`, recomputes `pendingEviction` based on the
+     * updated counts, consumes the reward, and clears `awaitingVoteDeductionPrompt`.
+     *
+     * Guard: only applies when `awaitingVoteDeductionPrompt` is true and an
+     * eligible voteDeduction reward exists.
+     */
+    activateVoteDeductionReward(state) {
+      if (!state.awaitingVoteDeductionPrompt) return;
+      // Always clear the prompt flag (ensures UI won't be stuck if state is inconsistent)
+      state.awaitingVoteDeductionPrompt = false;
+      const sm = state.secretMission;
+      if (!sm?.reward || sm.reward.type !== 'voteDeduction' || !sm.reward.eligible) return;
+      if (!state.voteResults) return;
+
+      const humanPlayer = state.players.find((p) => p.isUser);
+      if (!humanPlayer) return;
+      if (!(humanPlayer.id in state.voteResults)) return;
+
+      // Apply the deduction (floor at 0 to be safe)
+      state.voteResults[humanPlayer.id] = Math.max(0, (state.voteResults[humanPlayer.id] ?? 0) - 1);
+
+      // Recompute the evictee based on the updated tallies
+      let maxVotes = -1;
+      for (const id of state.nomineeIds) {
+        const count = state.voteResults[id] ?? 0;
+        if (count > maxVotes) maxVotes = count;
+      }
+      const topNominees = state.nomineeIds.filter(
+        (id) => (state.voteResults![id] ?? 0) === maxVotes,
+      );
+
+      if (topNominees.length === 1) {
+        const newEvictee = state.players.find((p) => p.id === topNominees[0]);
+        if (newEvictee) {
+          state.pendingEviction = {
+            evicteeId: newEvictee.id,
+            evictionMessage: `${newEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
+          };
+        }
+      }
+      // Note: canUseVoteDeduction guards against tie-creation so topNominees.length
+      // should always be 1 here.
+
+      // Consume the reward
+      sm.reward.consumed = true;
+      sm.reward.eligible = false;
+    },
+
+    /**
+     * Decline the Big Eye voteDeduction offer — clears `awaitingVoteDeductionPrompt`
+     * without consuming the reward. The power remains stored for a future vote week.
+     */
+    declineVoteDeduction(state) {
+      state.awaitingVoteDeductionPrompt = false;
+    },
   },
 });
 
@@ -3715,6 +3882,11 @@ export const {
   completeMission,
   claimMissionReward,
   expireMissionReward,
+  activateDoubleVoteReward,
+  declineDoubleVoteReward,
+  submitHumanDoubleVote,
+  activateVoteDeductionReward,
+  declineVoteDeduction,
 } = gameSlice.actions;
 export default gameSlice.reducer;
 

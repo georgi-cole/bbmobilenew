@@ -337,6 +337,10 @@ export default function DiaryRoom() {
   const playerId = userPlayer?.id ?? 'user';
   const secretMission = useAppSelector((s) => s.game.secretMission);
   const currentWeekForMission = useAppSelector((s) => s.game.week);
+  // PR 3 — read active power states so the Confessional can display status.
+  const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
+  const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
+  const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
 
   const [activeTab, setActiveTab] = useState<DiaryTab>('confess');
   const [entry, setEntry] = useState('');
@@ -916,10 +920,28 @@ export default function DiaryRoom() {
                         ✔️ Power used.
                       </p>
                     ) : (
-                      <p className="diary-room__reward-claimed-active">
-                        🔮 Secret power stored:{' '}
-                        <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
-                      </p>
+                      <>
+                        <p className="diary-room__reward-claimed-active">
+                          🔮 Secret power stored:{' '}
+                          <strong>{REWARD_LABELS[secretMission.reward.type] ?? secretMission.reward.type}</strong>
+                        </p>
+                        {/* PR 3 — contextual hints when a power is currently actionable */}
+                        {secretMission.reward.type === 'doubleVote' && awaitingDoubleVoteOffer && (
+                          <p className="diary-room__reward-active-hint">
+                            📺 The Big Eye is watching. Your Double Vote is ready — return to the game to decide.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'doubleVote' && humanDoubleVoteActive && (
+                          <p className="diary-room__reward-active-hint">
+                            🗳️🗳️ Double Vote activated! Return to the game to cast your two votes.
+                          </p>
+                        )}
+                        {secretMission.reward.type === 'voteDeduction' && awaitingVoteDeductionPrompt && (
+                          <p className="diary-room__reward-active-hint">
+                            📺 The Big Eye has a message for you. Return to the game — your Vote Deduction is waiting.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
