@@ -2946,11 +2946,11 @@ const gameSlice = createSlice({
           break;
         }
         case 'loh_comp_announcement': {
-          pushEvent(state, `The Leader of the House competition is about to begin! 🏆 Power is up for grabs among the eligible housemates — who will reign supreme this week?`, 'game');
+          pushEvent(state, `The Leader of the House comp is about to begin! All eligible housemates wil now battle for reign supreme.`, 'game');
           break;
         }
         case 'loh_comp': {
-          pushEvent(state, `The Leader of the House competition has begun! 🏆 Who will win power this week?`, 'game');
+          pushEvent(state, `The Leader of the House competition has begun! 🏆 Who will win power today?`, 'game');
           break;
         }
         case 'loh_results': {
