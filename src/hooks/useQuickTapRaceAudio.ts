@@ -42,7 +42,7 @@ export function useQuickTapRaceAudio(isPlaying: boolean): UseQuickTapRaceAudioRe
     void SoundManager.playMusic(QTR_MUSIC_KEY);
     return () => {
       SoundManager.stopMusic();
-      // Restore the track that was playing before QTR started (e.g. HOH comp
+      // Restore the track that was playing before QTR started (e.g. LOH comp
       // general) so phase music continues seamlessly after the minigame.
       if (prevKey && prevKey !== QTR_MUSIC_KEY) {
         void SoundManager.playMusic(prevKey);

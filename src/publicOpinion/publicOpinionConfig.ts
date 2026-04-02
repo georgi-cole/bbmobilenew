@@ -116,9 +116,9 @@ export const publicOpinionConfig = {
    * Positive values are boosts (sympathy), negative values are penalties.
    */
   nominationReactions: {
-    /** HOH penalty for nominating a beloved player. */
+    /** LOH penalty for nominating a beloved player. */
     hohBelovedNomineePenalty: -4,
-    /** HOH penalty for nominating a liked player. */
+    /** LOH penalty for nominating a liked player. */
     hohLikedNomineePenalty: -2,
     /** Sympathy boost for a beloved player being nominated. */
     nomineeSympathyBeloved: 3,
@@ -132,17 +132,17 @@ export const publicOpinionConfig = {
    * Approval deltas applied immediately after an eviction is committed,
    * based on the approval band of the evicted player.
    *
-   * "Responsible actors" are the HOH and the POV holder (if used) — they are
+   * "Responsible actors" are the LOH and the POS holder (if used) — they are
    * credited or blamed depending on who was evicted.
    */
   evictionReactions: {
-    /** HOH / responsible actor penalty when a beloved player is evicted. */
+    /** LOH / responsible actor penalty when a beloved player is evicted. */
     belovedEvictedResponsiblePenalty: -5,
-    /** HOH / responsible actor penalty when a liked player is evicted. */
+    /** LOH / responsible actor penalty when a liked player is evicted. */
     likedEvictedResponsiblePenalty: -3,
-    /** HOH / responsible actor boost when a disliked player is evicted. */
+    /** LOH / responsible actor boost when a disliked player is evicted. */
     dislikedEvictedResponsibleBoost: 4,
-    /** HOH / responsible actor boost when a hated player is evicted. */
+    /** LOH / responsible actor boost when a hated player is evicted. */
     hatedEvictedResponsibleBoost: 6,
     /** Extra penalty applied to the evicted player when they are beloved (fan outrage). */
     evictedBelovedFinalPenalty: -3,
@@ -151,14 +151,14 @@ export const publicOpinionConfig = {
   },
 
   /**
-   * Approval deltas for POV and public-save twist reactions.
+   * Approval deltas for POS and public-save twist reactions.
    */
   povSaveReactions: {
-    /** Boost for the POV holder when they use it to save a liked/beloved player. */
+    /** Boost for the POS holder when they use it to save a liked/beloved player. */
     saveLikedPlayerBoost: 3,
-    /** Penalty for the POV holder when they save a disliked/hated player. */
+    /** Penalty for the POS holder when they save a disliked/hated player. */
     saveDislikedPlayerPenalty: -2,
-    /** Boost for the saved player when POV or public-save is used. */
+    /** Boost for the saved player when POS or public-save is used. */
     savedPlayerBoost: 2,
   },
 } as const;

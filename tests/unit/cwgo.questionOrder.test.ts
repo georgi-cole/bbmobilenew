@@ -26,7 +26,7 @@ function makeStore() {
 describe('cwgoCompetitionSlice — questionOrder', () => {
   it('questionOrder contains all valid question indices exactly once', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 42 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 42 }));
     const { questionOrder } = store.getState().cwgo;
 
     expect(questionOrder).toHaveLength(CWGO_QUESTIONS.length);
@@ -37,8 +37,8 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
   it('same seed always produces the same questionOrder (deterministic)', () => {
     const store1 = makeStore();
     const store2 = makeStore();
-    store1.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 99 }));
-    store2.dispatch(startCwgoCompetition({ participantIds: ['c', 'd'], prizeType: 'POV', seed: 99 }));
+    store1.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 99 }));
+    store2.dispatch(startCwgoCompetition({ participantIds: ['c', 'd'], prizeType: 'POS', seed: 99 }));
     expect(store1.getState().cwgo.questionOrder).toEqual(store2.getState().cwgo.questionOrder);
   });
 
@@ -46,7 +46,7 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     const orders = new Set<string>();
     for (let s = 1; s <= 20; s++) {
       const store = makeStore();
-      store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: s }));
+      store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: s }));
       orders.add(JSON.stringify(store.getState().cwgo.questionOrder));
     }
     // With 20 different seeds we expect at least 15 unique orders
@@ -55,7 +55,7 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
 
   it('questionIdx at round 0 equals questionOrder[0]', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 7 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 7 }));
     const { questionIdx, questionOrder } = store.getState().cwgo;
     expect(questionIdx).toBe(questionOrder[0]);
   });
@@ -67,7 +67,7 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     const store = makeStore();
     store.dispatch(startCwgoCompetition({
       participantIds: ['alice', 'bob', 'carol', 'dave', 'eve'],
-      prizeType: 'HOH',
+      prizeType: 'LOH',
       seed: 555,
     }));
 

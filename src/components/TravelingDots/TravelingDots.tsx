@@ -8,7 +8,7 @@
  *  - Score is driven by route efficiency, bonus collection, hazard avoidance, and speed.
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(score)`.
  */
@@ -705,7 +705,7 @@ export default function TravelingDots({ session, players = [], onFinish, seed = 
               </div>
             </div>
 
-            {/* Leaderboard (HOH/LOH mode only) */}
+            {/* Leaderboard (LOH/POS mode only) */}
             {leaderboard.length > 0 && (
               <ol className="td__leaderboard">
                 {leaderboard.map((entry, i) => (

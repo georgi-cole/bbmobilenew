@@ -1,8 +1,11 @@
 # Social Engine
 
 The Social Engine is a lightweight port of the BBMobile social engine that manages
-budget computation and phase orchestration for the social phases (`social_1` and
-`social_2`) of each game week.
+budget computation and phase orchestration for the social interaction windows of
+each game week. The engine is active during all non-vote phases when the human
+player is alive — including `loh_results`, `pos_results`, `nominations`,
+`nomination_results`, `pre_veto_public_save`, `pos_ceremony`, `pos_ceremony_results`,
+`social_1`, and `social_2`. It is blocked during `live_vote` and eviction phases.
 
 ## Architecture
 
@@ -22,7 +25,8 @@ src/social/
 1. **App bootstrap** (`src/main.tsx`): `SocialEngine.init(store)` — passes the
    Redux store so the engine can dispatch actions and read state.
 
-2. **Phase start** (`social_1` or `social_2`): `socialMiddleware` intercepts
+2. **Phase start** (entering a social interaction window such as `social_1`, `social_2`,
+   `loh_results`, `pos_results`, `nominations`, etc.): `socialMiddleware` intercepts
    `game/setPhase`, `game/forcePhase`, or `game/advance` and calls
    `SocialEngine.startPhase(phaseName)`.
    - Computes a deterministic energy budget for each active AI player using a
@@ -30,7 +34,7 @@ src/social/
    - Dispatches `social/engineReady` with the computed budgets, which are stored
      in `state.social.energyBank`.
 
-3. **Phase end** (when leaving a social phase): `socialMiddleware` calls
+3. **Phase end** (when leaving a social interaction window): `socialMiddleware` calls
    `SocialEngine.endPhase(phaseName)`.
    - Generates a `SocialPhaseReport` summarizing the phase.
    - Dispatches `social/engineComplete` (signal) and `social/setLastReport`

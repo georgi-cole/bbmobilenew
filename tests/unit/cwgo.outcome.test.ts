@@ -28,20 +28,20 @@ describe('cwgoCompetitionSlice — outcomeResolved idempotency', () => {
 
   it('outcomeResolved is false after startCwgoCompetition', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 1 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 1 }));
     expect(store.getState().cwgo.outcomeResolved).toBe(false);
   });
 
   it('markCwgoOutcomeResolved sets outcomeResolved to true', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 1 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 1 }));
     store.dispatch(markCwgoOutcomeResolved());
     expect(store.getState().cwgo.outcomeResolved).toBe(true);
   });
 
   it('resetCwgo resets outcomeResolved back to false', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 1 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 1 }));
     store.dispatch(markCwgoOutcomeResolved());
     expect(store.getState().cwgo.outcomeResolved).toBe(true);
     store.dispatch(resetCwgo());
@@ -50,10 +50,10 @@ describe('cwgoCompetitionSlice — outcomeResolved idempotency', () => {
 
   it('startCwgoCompetition after a resolved competition resets outcomeResolved', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 1 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 1 }));
     store.dispatch(markCwgoOutcomeResolved());
     // Start a new competition
-    store.dispatch(startCwgoCompetition({ participantIds: ['c', 'd'], prizeType: 'POV', seed: 2 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['c', 'd'], prizeType: 'POS', seed: 2 }));
     expect(store.getState().cwgo.outcomeResolved).toBe(false);
   });
 });

@@ -64,10 +64,10 @@ function makeStore(overrides: Partial<GameState> = {}) {
     week: 1,
     phase: 'eviction_results',
     seed: 42,
-    hohId: 'p1',
+    lohId: 'p1',
     prevHohId: null,
     nomineeIds: ['p2', 'p3'],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -355,7 +355,7 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
   it('renders overlay while pendingEviction is set and commits eviction after DONE_AT ms', async () => {
     const players: Player[] = [
       { id: 'p0', name: 'Player 0', avatar: '🧑', status: 'active', isUser: true },
-      { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p1', name: 'Player 1', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p2', name: 'Alice', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Player 3', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p4', name: 'Player 4', avatar: '🧑', status: 'active', isUser: false },
@@ -365,7 +365,7 @@ describe('GameScreen – SpotlightEvictionOverlay blocks tvFeed advancement', ()
       // Simulate the state after advance() ran from eviction_results:
       // pendingEviction is set, phase is week_end (since eviction_results → week_end).
       phase: 'week_end',
-      hohId: 'p1',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       pendingEviction: { evicteeId: 'p2', evictionMessage: 'Alice, you have been evicted. 🚪' },
       players,

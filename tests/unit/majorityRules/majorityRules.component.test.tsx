@@ -26,7 +26,7 @@ function makeStore(
   const gameReducer = (
     state = {
       players,
-      phase: 'hoh_comp',
+      phase: 'loh_comp',
     },
   ) => state;
 
@@ -60,7 +60,7 @@ describe('MajorityRulesComp', () => {
             { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
             { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -92,7 +92,7 @@ describe('MajorityRulesComp', () => {
             precomputedScore: 0,
             previousPR: null,
           }))}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -119,7 +119,7 @@ describe('MajorityRulesComp', () => {
             { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
             { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -161,7 +161,7 @@ describe('MajorityRulesComp', () => {
         <MajorityRulesComp
           participantIds={participantIds}
           participants={participants}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -187,7 +187,7 @@ describe('MajorityRulesComp', () => {
         <MajorityRulesComp
           participantIds={[...participantIds]}
           participants={participants.map((participant) => ({ ...participant }))}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -204,7 +204,7 @@ describe('MajorityRulesComp', () => {
     const question = MAJORITY_RULES_QUESTIONS[0];
     const store = makeStore(undefined, {
       phase: 'reveal',
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed: 42,
       participantIds: ['user', 'finn', 'mimi', 'rae', 'zoe'],
       activeIds: ['finn', 'mimi', 'rae', 'zoe'],
@@ -251,7 +251,7 @@ describe('MajorityRulesComp', () => {
             { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
             { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,
@@ -276,7 +276,7 @@ describe('MajorityRulesComp', () => {
     vi.useFakeTimers();
     const store = makeStore(undefined, {
       phase: 'winner',
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed: 42,
       participantIds: ['user', 'finn', 'mimi', 'rae'],
       activeIds: ['finn'],
@@ -312,7 +312,7 @@ describe('MajorityRulesComp', () => {
             { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
             { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
           ]}
-          prizeType="HOH"
+          prizeType="LOH"
           seed={42}
         />
       </Provider>,

@@ -87,9 +87,9 @@ function makeCheckState(overrides: Partial<ActivationCheckState> = {}): Activati
       },
     },
     nomineeIds: ['p1', 'p2'],
-    hohId: 'p0',
+    lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'p2', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'active' },
@@ -101,10 +101,10 @@ function makeCheckState(overrides: Partial<ActivationCheckState> = {}): Activati
   };
 }
 
-/** Full player list: HOH p0, nominees p1/p2, voters v1–v5, human voter user. */
+/** Full player list: LOH p0, nominees p1/p2, voters v1–v5, human voter user. */
 function makePlayers(overrides: Partial<Player>[] = []): Player[] {
   const defaults: Player[] = [
-    { id: 'p0',   name: 'HOH',      avatar: '🧑', status: 'hoh',       isUser: false },
+    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'loh',       isUser: false },
     { id: 'p1',   name: 'Nominee1', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'p2',   name: 'Nominee2', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'v1',   name: 'Voter1',   avatar: '🧑', status: 'active',    isUser: false },
@@ -118,7 +118,7 @@ function makePlayers(overrides: Partial<Player>[] = []): Player[] {
 /** Player list for voteDeduction tests where the HUMAN is a nominee (on the block). */
 function makePlayersHumanNominated(): Player[] {
   return [
-    { id: 'p0',   name: 'HOH',      avatar: '🧑', status: 'hoh',       isUser: false },
+    { id: 'p0',   name: 'LOH',      avatar: '🧑', status: 'loh',       isUser: false },
     { id: 'p1',   name: 'Nominee1', avatar: '🧑', status: 'nominated', isUser: false },
     { id: 'v1',   name: 'Voter1',   avatar: '🧑', status: 'active',    isUser: false },
     { id: 'v2',   name: 'Voter2',   avatar: '🧑', status: 'active',    isUser: false },
@@ -129,7 +129,7 @@ function makePlayersHumanNominated(): Player[] {
 
 /**
  * Build a minimal game state for voting tests where the human is an eligible
- * voter (not HOH, not nominated). Used for doubleVote tests.
+ * voter (not LOH, not nominated). Used for doubleVote tests.
  */
 function makeVoteStore(
   phase: GameState['phase'],
@@ -142,10 +142,10 @@ function makeVoteStore(
     week: 3,
     season: 1,
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     nomineeIds: ['p1', 'p2'],
     players,
-    povWinnerId: null,
+    posWinnerId: null,
     votes: {},
     awaitingHumanVote: false,
     tvFeed: [],
@@ -177,10 +177,10 @@ function makeVoteDeductionStore(
     week: 3,
     season: 1,
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     nomineeIds: ['user', 'p1'],
     players,
-    povWinnerId: null,
+    posWinnerId: null,
     votes: {},
     awaitingHumanVote: false,
     tvFeed: [],
@@ -251,17 +251,17 @@ describe('canUseDoubleVote — conflicting contexts', () => {
   it('returns false when phase is not live_vote', () => {
     expect(canUseDoubleVote(makeCheckState({ phase: 'social_2' }))).toBe(false);
     expect(canUseDoubleVote(makeCheckState({ phase: 'eviction_results' }))).toBe(false);
-    expect(canUseDoubleVote(makeCheckState({ phase: 'pov_comp' }))).toBe(false);
+    expect(canUseDoubleVote(makeCheckState({ phase: 'pos_comp' }))).toBe(false);
   });
 
-  it('returns false when human player is the HOH', () => {
+  it('returns false when human player is the LOH', () => {
     const state = makeCheckState({
-      hohId: 'user',
+      lohId: 'user',
       players: [
         { id: 'p0', isUser: false, status: 'active' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'p2', isUser: false, status: 'nominated' },
-        { id: 'user', isUser: true, status: 'hoh' },
+        { id: 'user', isUser: true, status: 'loh' },
       ],
     });
     expect(canUseDoubleVote(state)).toBe(false);
@@ -271,7 +271,7 @@ describe('canUseDoubleVote — conflicting contexts', () => {
     const state = makeCheckState({
       nomineeIds: ['p1', 'user'],
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'nominated' },
       ],
@@ -480,10 +480,10 @@ describe('doubleVote — activation and vote submission', () => {
       week: 3,
       season: 1,
       seed: 42,
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'user'],
       players,
-      povWinnerId: null,
+      posWinnerId: null,
       votes: {},
       awaitingHumanVote: false,
       tvFeed: [],
@@ -531,9 +531,9 @@ describe('canUseVoteDeduction — availability conditions', () => {
       reward: { type: 'voteDeduction', consumed: false, expired: false, eligible: true },
     },
     nomineeIds: ['user', 'p1'],
-    hohId: 'p0',
+    lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'nominated' },
     ],
@@ -551,7 +551,7 @@ describe('canUseVoteDeduction — availability conditions', () => {
       ...baseVoteDeductionState,
       nomineeIds: ['p1', 'p2'],
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'p2', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'active' },
@@ -627,9 +627,9 @@ describe('canUseVoteDeduction — conflicting contexts', () => {
       reward: { type: 'voteDeduction', consumed: false, expired: false, eligible: true },
     },
     nomineeIds: ['user', 'p1'],
-    hohId: 'p0',
+    lohId: 'p0',
     players: [
-      { id: 'p0', isUser: false, status: 'hoh' },
+      { id: 'p0', isUser: false, status: 'loh' },
       { id: 'p1', isUser: false, status: 'nominated' },
       { id: 'user', isUser: true, status: 'nominated' },
     ],
@@ -966,9 +966,9 @@ describe('Final 4 restriction', () => {
         reward: { type: 'voteDeduction', consumed: false, expired: false, eligible: true },
       },
       nomineeIds: ['user', 'p1'],
-      hohId: 'p0',
+      lohId: 'p0',
       players: [
-        { id: 'p0', isUser: false, status: 'hoh' },
+        { id: 'p0', isUser: false, status: 'loh' },
         { id: 'p1', isUser: false, status: 'nominated' },
         { id: 'user', isUser: true, status: 'nominated' },
       ],
@@ -1020,7 +1020,7 @@ describe('no regression when no stored reward exists', () => {
       phase: 'eviction_results',
       secretMission: undefined,
       nomineeIds: ['user', 'p1'],
-      hohId: 'p0',
+      lohId: 'p0',
       players: [{ id: 'user', isUser: true, status: 'nominated' }],
       doubleEviction: { weekActive: false },
       voteResults: { user: 3, p1: 1 },

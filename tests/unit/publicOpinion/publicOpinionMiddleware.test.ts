@@ -11,8 +11,8 @@ import type { PublicDirection } from '../../../src/publicOpinion/types';
 interface TestGameState {
   phase: string;
   week: number;
-  hohId: string | null;
-  povWinnerId: string | null;
+  lohId: string | null;
+  posWinnerId: string | null;
   nomineeIds: string[];
   players: Player[];
   seed: number;
@@ -35,8 +35,8 @@ function makeGameState(overrides: Partial<TestGameState> = {}): TestGameState {
   return {
     phase: 'eviction_results',
     week: 2,
-    hohId: null,
-    povWinnerId: null,
+    lohId: null,
+    posWinnerId: null,
     nomineeIds: [],
     players: [makePlayer('p1', 'Aria'), makePlayer('p2', 'Kian')],
     seed: 42,
@@ -134,7 +134,7 @@ describe('publicOpinionMiddleware', () => {
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(publicOpinionMiddleware),
       preloadedState: {
-        game: makeGameState({ phase: 'nomination_ceremony', week: 1, hohId: 'p1' }),
+        game: makeGameState({ phase: 'nomination_ceremony', week: 1, lohId: 'p1' }),
       },
     });
 
@@ -148,13 +148,13 @@ describe('publicOpinionMiddleware', () => {
       progressPercent: 0,
     })));
 
-    // Simulate advance() result: nomination_results phase, AI HOH (awaitingNominations=false),
+    // Simulate advance() result: nomination_results phase, AI LOH (awaitingNominations=false),
     // nomineeIds already populated.
     store.dispatch({
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2'],
         awaitingNominations: false,
         week: 1,

@@ -48,8 +48,8 @@ export function computeAllTimeLeaderboard(
         existing.seasonsPlayed += 1;
         if (summary.finalPlacement === 1) existing.wins += 1;
         // Sum each breakdown field
-        existing.breakdown.hohWins += bd.hohWins;
-        existing.breakdown.povWins += bd.povWins;
+        existing.breakdown.lohWins += bd.lohWins;
+        existing.breakdown.posWins += bd.posWins;
         existing.breakdown.madeJury += bd.madeJury;
         existing.breakdown.battleBackWins += bd.battleBackWins;
         existing.breakdown.survivedDoubleEviction += bd.survivedDoubleEviction;

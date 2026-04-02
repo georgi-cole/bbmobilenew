@@ -35,17 +35,17 @@ import './DebugPanel.css';
 
 const PHASES: Phase[] = [
   'week_start',
-  'hoh_comp_announcement',
-  'hoh_comp',
-  'hoh_results',
+  'loh_comp_announcement',
+  'loh_comp',
+  'loh_results',
   'social_1',
   'nominations',
   'nomination_results',
-  'pov_comp_announcement',
-  'pov_comp',
-  'pov_results',
-  'pov_ceremony',
-  'pov_ceremony_results',
+  'pos_comp_announcement',
+  'pos_comp',
+  'pos_results',
+  'pos_ceremony',
+  'pos_ceremony_results',
   'social_2',
   'live_vote',
   'eviction_results',
@@ -165,11 +165,11 @@ export default function DebugPanel() {
   const humanPlayer = game.players.find((p) => p.isUser);
   const aiPlayers = alive.filter((p) => !p.isUser);
 
-  const hohName = game.hohId
-    ? game.players.find((p) => p.id === game.hohId)?.name ?? game.hohId
+  const hohName = game.lohId
+    ? game.players.find((p) => p.id === game.lohId)?.name ?? game.lohId
     : '—';
-  const povName = game.povWinnerId
-    ? game.players.find((p) => p.id === game.povWinnerId)?.name ?? game.povWinnerId
+  const povName = game.posWinnerId
+    ? game.players.find((p) => p.id === game.posWinnerId)?.name ?? game.posWinnerId
     : '—';
   const nomineeNames = game.nomineeIds.length
     ? game.nomineeIds

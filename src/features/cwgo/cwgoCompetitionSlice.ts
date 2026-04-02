@@ -47,7 +47,7 @@ export type CwgoStatus =
   | 'duel_reveal'
   | 'complete';
 
-export type CwgoPrizeType = 'HOH' | 'POV';
+export type CwgoPrizeType = 'LOH' | 'POS';
 
 export interface CwgoState {
   status: CwgoStatus;
@@ -94,7 +94,7 @@ export interface CwgoState {
 
 const initialState: CwgoState = {
   status: 'idle',
-  prizeType: 'HOH',
+  prizeType: 'LOH',
   seed: 0,
   aliveIds: [],
   questionIdx: 0,

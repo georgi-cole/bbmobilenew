@@ -10,7 +10,7 @@
  *     an infinite loop.
  *  4. nomination_results and eviction_results guards prevent processing when
  *     the alive count is too small.
- *  5. Final 4: pov_comp with 4 alive → final4_eviction → correct nominees →
+ *  5. Final 4: pos_comp with 4 alive → final4_eviction → correct nominees →
  *     final3 after eviction.
  *  6. Final 3: full flow from final3 through comp1/comp2/comp3 to jury.
  *  7. Regression: eviction_results never evicts when 2 or fewer players alive.
@@ -54,9 +54,9 @@ function makeStore(overrides: Partial<GameState> = {}) {
     week: 8,
     phase: 'week_end',
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -170,9 +170,9 @@ describe('advance() — week_end → jury_announcement → jury_cinematic → ju
 });
 
 describe('finalizeFinal3Eviction() + advance() — no infinite loop', () => {
-  it('reaches "jury" after human Final HOH evicts 3rd-place houseguest', () => {
+  it('reaches "jury" after human Final LOH evicts 3rd-place houseguest', () => {
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       ...Array.from({ length: 9 }, (_, i) => ({
@@ -185,13 +185,13 @@ describe('finalizeFinal3Eviction() + advance() — no infinite loop', () => {
 
     const store = makeStore({
       phase: 'final3_decision',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       awaitingFinal3Eviction: true,
       players,
     });
 
-    // Human Final HOH evicts p1
+    // Human Final LOH evicts p1
     store.dispatch(finalizeFinal3Eviction('p1'));
     expect(store.getState().game.phase).toBe('week_end');
 
@@ -215,9 +215,9 @@ describe('finalizeFinal3Eviction() + advance() — no infinite loop', () => {
 
 describe('nomination_results guard', () => {
   it('skips nomination when pool has fewer than 2 eligible players', () => {
-    // Only 2 players alive: HOH + 1 other → can't nominate 2
+    // Only 2 players alive: LOH + 1 other → can't nominate 2
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh', isUser: true },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'active' },
       ...Array.from({ length: 10 }, (_, i) => ({
         id: `j${i}`,
@@ -229,7 +229,7 @@ describe('nomination_results guard', () => {
 
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: [],
       players,
     });
@@ -275,7 +275,7 @@ describe('endgame simulation — Final 5 through to jury', () => {
    * Deterministic fast-forward from a 5-player, week_end state.
    * We advance() at most 120 steps; the test fails if it loops.
    * (Increased from 100 to accommodate the two extra pre-comp announcement
-   * phases per week: hoh_comp_announcement and pov_comp_announcement.)
+   * phases per week: loh_comp_announcement and pos_comp_announcement.)
    */
   it('reaches "jury" from a 5-player game within 120 advance() calls', () => {
     const players: Player[] = [
@@ -313,24 +313,24 @@ describe('endgame simulation — Final 5 through to jury', () => {
       } else if (
         state.awaitingFinal3Plea &&
         state.phase === 'final3_decision' &&
-        state.hohId &&
+        state.lohId &&
         state.nomineeIds.length > 0
       ) {
         // Simulate Final-3 ceremony completing — dispatch finalizeFinal3Decision.
-        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.hohId, evicteeId: state.nomineeIds[0] }));
+        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.lohId, evicteeId: state.nomineeIds[0] }));
       } else if (state.awaitingNominations && !state.pendingNominee1Id) {
-        // Step 1: pick a valid nominee 1 (first non-HOH alive player)
+        // Step 1: pick a valid nominee 1 (first non-LOH alive player)
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-        const pool = alive.filter((p) => p.id !== state.hohId);
+        const pool = alive.filter((p) => p.id !== state.lohId);
         if (pool.length >= 2) {
           store.dispatch(selectNominee1(pool[0].id));
         } else {
           store.dispatch(advance());
         }
       } else if (state.awaitingNominations && state.pendingNominee1Id) {
-        // Step 2: pick a valid nominee 2 (second non-HOH alive player)
+        // Step 2: pick a valid nominee 2 (second non-LOH alive player)
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-        const pool = alive.filter((p) => p.id !== state.hohId && p.id !== state.pendingNominee1Id);
+        const pool = alive.filter((p) => p.id !== state.lohId && p.id !== state.pendingNominee1Id);
         if (pool.length >= 1) {
           store.dispatch(finalizeNominations(pool[0].id));
         } else {
@@ -340,24 +340,24 @@ describe('endgame simulation — Final 5 through to jury', () => {
         // Pre-veto public save: save the first nominee deterministically
         store.dispatch(commitPublicSave(state.nomineeIds[0]));
       } else if (state.awaitingPovDecision && state.phase === 'final4_eviction') {
-        // Human is POV holder at Final 4; must choose who to evict via finalizeFinal4Eviction
+        // Human is POS holder at Final 4; must choose who to evict via finalizeFinal4Eviction
         if (state.nomineeIds.length > 0) {
           store.dispatch(finalizeFinal4Eviction(state.nomineeIds[0]));
         } else {
           store.dispatch(advance());
         }
       } else if (state.awaitingPovDecision) {
-        // Human POV holder decides not to use the veto
+        // Human POS holder decides not to use the veto
         store.dispatch(submitPovDecision(false));
       } else if (state.awaitingPovSaveTarget && state.nomineeIds.length > 0) {
         store.dispatch(submitPovSaveTarget(state.nomineeIds[0]));
       } else if (state.replacementNeeded) {
-        // Human HOH picks a replacement nominee
+        // Human LOH picks a replacement nominee
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         const pool = alive.filter(
           (p) =>
-            p.id !== state.hohId &&
-            p.id !== state.povWinnerId &&
+            p.id !== state.lohId &&
+            p.id !== state.posWinnerId &&
             !state.nomineeIds.includes(p.id),
         );
         if (pool.length > 0) {
@@ -409,15 +409,15 @@ describe('endgame simulation — Final 5 through to jury', () => {
 
 // ── Final 4 flow tests ────────────────────────────────────────────────────────
 
-describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
+describe('Final 4 flow — pos_comp → final4_eviction → final3', () => {
   /**
-   * Build a 4-player state ready for the POV competition.
+   * Build a 4-player state ready for the POS competition.
    * All players are AI (no isUser) so no minigame is launched and
    * advance() can proceed without TapRace interaction.
    */
   function makeFinal4Store(options: { withHumanPovWinner?: boolean } = {}) {
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh' },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },
@@ -432,11 +432,11 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     const base: GameState = {
       season: 1,
       week: 9,
-      phase: 'pov_comp',
+      phase: 'pos_comp',
       seed: 42,
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
-      povWinnerId: null,
+      posWinnerId: null,
       replacementNeeded: false,
       awaitingFinal3Eviction: false,
       f3Part1WinnerId: null,
@@ -447,10 +447,10 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     };
 
     if (options.withHumanPovWinner) {
-      // Pre-set the POV winner to the human player (p3 as human, already won POV)
+      // Pre-set the POS winner to the human player (p3 as human, already won POS)
       // Use final4_eviction phase directly to test the blocking behavior
       const humanPlayers = players.map((p) =>
-        p.id === 'p3' ? { ...p, isUser: true, status: 'pov' as const } : p,
+        p.id === 'p3' ? { ...p, isUser: true, status: 'pos' as const } : p,
       );
       return configureStore({
         reducer: { game: gameReducer },
@@ -458,7 +458,7 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
           game: {
             ...base,
             phase: 'final4_eviction' as const,
-            povWinnerId: 'p3',
+            posWinnerId: 'p3',
             nomineeIds: ['p1', 'p2'],
             players: humanPlayers,
           },
@@ -472,19 +472,19 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     });
   }
 
-  it('transitions from pov_comp to final4_eviction when 4 players are alive', () => {
+  it('transitions from pos_comp to final4_eviction when 4 players are alive', () => {
     const store = makeFinal4Store();
 
-    // advance() from pov_comp: arrives at pov_results → picks POV winner → Final 4 detected
+    // advance() from pos_comp: arrives at pos_results → picks POS winner → Final 4 detected
     store.dispatch(advance());
 
     const state = store.getState().game;
     expect(state.phase).toBe('final4_eviction');
   });
 
-  it('sets exactly 2 nominees (non-HOH, non-POV) at final4_eviction', () => {
+  it('sets exactly 2 nominees (non-LOH, non-POS) at final4_eviction', () => {
     const store = makeFinal4Store();
-    store.dispatch(advance()); // pov_comp → final4_eviction
+    store.dispatch(advance()); // pos_comp → final4_eviction
 
     const state = store.getState().game;
     expect(state.phase).toBe('final4_eviction');
@@ -492,23 +492,23 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     // There must be exactly 2 nominees
     expect(state.nomineeIds).toHaveLength(2);
 
-    // Neither nominee is the HOH
-    expect(state.nomineeIds).not.toContain(state.hohId);
-    // Neither nominee is the POV winner
-    expect(state.nomineeIds).not.toContain(state.povWinnerId);
+    // Neither nominee is the LOH
+    expect(state.nomineeIds).not.toContain(state.lohId);
+    // Neither nominee is the POS winner
+    expect(state.nomineeIds).not.toContain(state.posWinnerId);
   });
 
-  it('AI POV holder evicts a nominee and transitions to final3', () => {
+  it('AI POS holder evicts a nominee and transitions to final3', () => {
     const store = makeFinal4Store();
-    store.dispatch(advance()); // pov_comp → final4_eviction
+    store.dispatch(advance()); // pos_comp → final4_eviction
 
-    // Confirm we are at final4_eviction with an AI POV holder
+    // Confirm we are at final4_eviction with an AI POS holder
     const midState = store.getState().game;
     expect(midState.phase).toBe('final4_eviction');
-    const povHolder = midState.players.find((p) => p.id === midState.povWinnerId);
+    const povHolder = midState.players.find((p) => p.id === midState.posWinnerId);
     expect(povHolder?.isUser).toBeFalsy();
 
-    // advance() again: AI POV holder casts sole vote — sets pendingEviction
+    // advance() again: AI POS holder casts sole vote — sets pendingEviction
     store.dispatch(advance());
 
     // pendingEviction must be set (deferred commit) — phase still final4_eviction
@@ -529,11 +529,11 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     expect(alive).toHaveLength(3);
   });
 
-  it('human POV holder blocks advance() at final4_eviction', () => {
-    // State: phase=final4_eviction, POV winner is human (p3)
+  it('human POS holder blocks advance() at final4_eviction', () => {
+    // State: phase=final4_eviction, POS winner is human (p3)
     const store = makeFinal4Store({ withHumanPovWinner: true });
 
-    // advance() must be a no-op when human is POV holder
+    // advance() must be a no-op when human is POS holder
     store.dispatch(advance());
     expect(store.getState().game.phase).toBe('final4_eviction');
 
@@ -542,14 +542,14 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
     expect(store.getState().game.phase).toBe('final4_eviction');
   });
 
-  it('finalizeFinal4Eviction() by human POV holder evicts nominee and transitions to final3', () => {
+  it('finalizeFinal4Eviction() by human POS holder evicts nominee and transitions to final3', () => {
     const store = makeFinal4Store({ withHumanPovWinner: true });
 
     expect(store.getState().game.phase).toBe('final4_eviction');
     const { nomineeIds } = store.getState().game;
     expect(nomineeIds).toHaveLength(2);
 
-    // Human POV holder chooses to evict the first nominee — sets pendingEviction
+    // Human POS holder chooses to evict the first nominee — sets pendingEviction
     store.dispatch(finalizeFinal4Eviction(nomineeIds[0]));
 
     const pendingState = store.getState().game;
@@ -574,7 +574,7 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
   it('Final 4 is not bypassed even when cfg.multiEviction is true', () => {
     // Ensure that setting multiEviction:true does not disable Final 4 special handling
     const players: Player[] = [
-      { id: 'p0', name: 'Alice', avatar: '👩', status: 'hoh' },
+      { id: 'p0', name: 'Alice', avatar: '👩', status: 'loh' },
       { id: 'p1', name: 'Bob', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Carol', avatar: '👩', status: 'nominated' },
       { id: 'p3', name: 'Dave', avatar: '🧑', status: 'active' },
@@ -591,11 +591,11 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
         game: {
           season: 1,
           week: 9,
-          phase: 'pov_comp' as const,
+          phase: 'pos_comp' as const,
           seed: 42,
-          hohId: 'p0',
+          lohId: 'p0',
           nomineeIds: ['p1', 'p2'],
-          povWinnerId: null,
+          posWinnerId: null,
           replacementNeeded: false,
           awaitingFinal3Eviction: false,
           f3Part1WinnerId: null,
@@ -608,7 +608,7 @@ describe('Final 4 flow — pov_comp → final4_eviction → final3', () => {
       },
     });
 
-    store.dispatch(advance()); // pov_comp → should still reach final4_eviction
+    store.dispatch(advance()); // pos_comp → should still reach final4_eviction
 
     expect(store.getState().game.phase).toBe('final4_eviction');
   });
@@ -634,9 +634,9 @@ describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
       week: 10,
       phase: 'final3',
       seed: 99,
-      hohId: null,
+      lohId: null,
       nomineeIds: [],
-      povWinnerId: null,
+      posWinnerId: null,
       replacementNeeded: false,
       awaitingFinal3Eviction: false,
       f3Part1WinnerId: null,
@@ -680,7 +680,7 @@ describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
     const store = makeFinal3Store({ phase: 'final3_comp1', seed: 7 });
     store.dispatch(advance()); // → comp2
     store.dispatch(advance()); // → comp3
-    store.dispatch(advance()); // → week_end (AI Final HOH) or final3_decision (human)
+    store.dispatch(advance()); // → week_end (AI Final LOH) or final3_decision (human)
     const state = store.getState().game;
     expect(['week_end', 'final3_decision']).toContain(state.phase);
   });
@@ -713,11 +713,11 @@ describe('Final 3 flow — final3 through comp1/comp2/comp3 to jury', () => {
       } else if (
         state.phase === 'final3_decision' &&
         state.awaitingFinal3Plea &&
-        state.hohId &&
+        state.lohId &&
         state.nomineeIds.length > 0
       ) {
         // Simulate Final-3 ceremony completing.
-        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.hohId, evicteeId: state.nomineeIds[0] }));
+        store.dispatch(finalizeFinal3Decision({ hohWinnerId: state.lohId, evicteeId: state.nomineeIds[0] }));
       } else {
         store.dispatch(advance());
       }
@@ -755,9 +755,9 @@ describe('Final 3 flow — human player participating in minigame', () => {
       week: 10,
       phase: 'final3_comp1',
       seed: 99,
-      hohId: null,
+      lohId: null,
       nomineeIds: [],
-      povWinnerId: null,
+      posWinnerId: null,
       replacementNeeded: false,
       awaitingFinal3Eviction: false,
       f3Part1WinnerId: null,
@@ -832,7 +832,7 @@ describe('Final 3 flow — human player participating in minigame', () => {
     expect(state.minigameContext?.participants).toContain('user');
   });
 
-  it('applyF3MinigameWinner with human winning Part 3 → sets HOH, awaitingFinal3Eviction, phase final3_decision', () => {
+  it('applyF3MinigameWinner with human winning Part 3 → sets LOH, awaitingFinal3Eviction, phase final3_decision', () => {
     const store = makeFinal3HumanStore({
       phase: 'final3_comp3_minigame',
       f3Part1WinnerId: 'user',
@@ -841,7 +841,7 @@ describe('Final 3 flow — human player participating in minigame', () => {
     });
     store.dispatch(applyF3MinigameWinner('user'));
     const state = store.getState().game;
-    expect(state.hohId).toBe('user');
+    expect(state.lohId).toBe('user');
     expect(state.awaitingFinal3Eviction).toBe(true);
     expect(state.phase).toBe('final3_decision');
     expect(state.minigameContext).toBeNull();
@@ -859,7 +859,7 @@ describe('Final 3 flow — human player participating in minigame', () => {
     });
     store.dispatch(applyF3MinigameWinner('p1')); // AI wins Part 3
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.phase).toBe('week_end');
     expect(state.minigameContext).toBeNull();
     // AI already evicted someone; exactly 2 alive players should remain
@@ -893,9 +893,9 @@ describe('Regression — eviction never drops alive count below 2', () => {
           week: 10,
           phase: 'live_vote' as const,
           seed: 42,
-          hohId: null,
+          lohId: null,
           nomineeIds: ['p0', 'p1'],
-          povWinnerId: null,
+          posWinnerId: null,
           replacementNeeded: false,
           awaitingFinal3Eviction: false,
           f3Part1WinnerId: null,
@@ -939,9 +939,9 @@ describe('Regression — eviction never drops alive count below 2', () => {
           week: 10,
           phase: 'week_end' as const,
           seed: 42,
-          hohId: null,
+          lohId: null,
           nomineeIds: [],
-          povWinnerId: null,
+          posWinnerId: null,
           replacementNeeded: false,
           awaitingFinal3Eviction: false,
           f3Part1WinnerId: null,

@@ -23,7 +23,7 @@ interface ScoreEntry {
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
- * TapRace — playable tap minigame for HOH and POV competitions.
+ * TapRace — playable tap minigame for LOH and POS competitions.
  *
  * Flow:
  *  1. "Ready" countdown (3 s) before tapping starts.

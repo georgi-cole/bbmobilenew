@@ -2,7 +2,7 @@
  * Thunk: resolveTiltLabyrinthOutcome
  *
  * Reads the completed Tilt Labyrinth competition state, validates the current game phase
- * matches the competition type, and awards HOH or POV via `applyMinigameWinner`.
+ * matches the competition type, and awards LOH or POS via `applyMinigameWinner`.
  *
  * Idempotent — returns immediately if outcomeResolved is already true.
  * Phase-guarded — logs an error and returns if the game phase doesn't match.
@@ -42,16 +42,16 @@ export const resolveTiltLabyrinthOutcome =
       phase,
     });
 
-    if (tiltLabyrinth.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (tiltLabyrinth.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[tiltLabyrinth] resolveTiltLabyrinthOutcome: expected phase "hoh_comp" for HOH, got',
+        '[tiltLabyrinth] resolveTiltLabyrinthOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (tiltLabyrinth.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (tiltLabyrinth.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[tiltLabyrinth] resolveTiltLabyrinthOutcome: expected phase "pov_comp" for POV, got',
+        '[tiltLabyrinth] resolveTiltLabyrinthOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

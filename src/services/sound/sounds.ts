@@ -433,7 +433,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   // ── Phase / TV event music ────────────────────────────────────────────────
 
   /**
-   * HOH competition and general competition music.
+   * LOH competition and general competition music.
    * Asset: public/assets/sounds/music_hoh_comp_general.mp3
    */
   'music:hoh_comp_general': {
@@ -486,7 +486,7 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Veto ceremony stinger — one-shot sound played at the start of pov_ceremony.
+   * Veto ceremony stinger — one-shot sound played at the start of pos_ceremony.
    * Asset: public/assets/sounds/veto_ceremony.mp3
    */
   'tv:veto_ceremony': {
@@ -498,8 +498,8 @@ export const SOUND_REGISTRY: Readonly<Record<string, SoundEntry>> = {
   },
 
   /**
-   * Veto phase looping background music — plays during pov_ceremony and
-   * pov_ceremony_results phases.
+   * Veto phase looping background music — plays during pos_ceremony and
+   * pos_ceremony_results phases.
    * Asset: public/assets/sounds/veto_phase.mp3
    */
   'music:veto_phase': {

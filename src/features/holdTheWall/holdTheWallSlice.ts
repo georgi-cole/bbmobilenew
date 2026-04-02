@@ -23,7 +23,7 @@ export const AI_DROP_MAX_MS = 120_000;
 
 export type HoldTheWallStatus = 'idle' | 'active' | 'complete';
 
-export type HoldTheWallPrizeType = 'HOH' | 'POV';
+export type HoldTheWallPrizeType = 'LOH' | 'POS';
 
 export interface HoldTheWallState {
   status: HoldTheWallStatus;
@@ -51,7 +51,7 @@ export interface HoldTheWallState {
 
 const initialState: HoldTheWallState = {
   status: 'idle',
-  prizeType: 'HOH',
+  prizeType: 'LOH',
   seed: 0,
   participantIds: [],
   aiDropSchedule: {},

@@ -47,7 +47,7 @@ import './CodeBreakerComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CodeBreakerPrizeType = 'HOH' | 'POV';
+export type CodeBreakerPrizeType = 'LOH' | 'POS';
 
 type GamePhase = 'playing' | 'solved' | 'expired' | 'results';
 
@@ -60,7 +60,7 @@ interface Props {
   participantIds?: string[];
   /** Competition path: participant metadata (name, isHuman, etc.). */
   participants?: MinigameParticipant[];
-  /** Competition path: HOH or POV. */
+  /** Competition path: LOH or POS. */
   prizeType?: CodeBreakerPrizeType;
   /** Seeded-RNG master seed forwarded from gameOptions. */
   seed?: number;
@@ -77,7 +77,7 @@ interface Props {
 export default function CodeBreakerComp({
   participantIds = [],
   participants = [],
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed = 0,
   onComplete,
   onFinish,
@@ -196,7 +196,7 @@ export default function CodeBreakerComp({
         const validLastPlace =
           lastPlaceId !== null && lastPlaceId !== winnerId ? lastPlaceId : null;
 
-        const phase = prizeType === 'HOH' ? 'hoh_comp' : 'pov_comp';
+        const phase = prizeType === 'LOH' ? 'loh_comp' : 'pos_comp';
         if (import.meta.env.DEV) {
           console.log(`[CodeBreaker] Resolving ${phase}:`, {
             winnerId,

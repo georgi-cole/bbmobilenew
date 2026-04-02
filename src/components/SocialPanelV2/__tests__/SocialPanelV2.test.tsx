@@ -86,7 +86,7 @@ function renderPanel(store: ReturnType<typeof makeStore>) {
 
 describe('SocialPanelV2 – visibility', () => {
   it('does not render when phase is not social', () => {
-    const store = makeStore({ phase: 'hoh_comp' });
+    const store = makeStore({ phase: 'loh_comp' });
     renderPanel(store);
     expect(screen.queryByRole('dialog')).toBeNull();
   });

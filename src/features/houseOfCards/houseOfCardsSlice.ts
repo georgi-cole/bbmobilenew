@@ -39,7 +39,7 @@ export const SCORE_SPEED_BONUS_MAX = 200;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type HouseOfCardsStatus = 'idle' | 'active' | 'complete';
-export type HouseOfCardsPrizeType = 'HOH' | 'POV';
+export type HouseOfCardsPrizeType = 'LOH' | 'POS';
 
 /**
  * Per-player outcome data for canonical ranking.
@@ -92,7 +92,7 @@ export interface HouseOfCardsState {
 
 const initialState: HouseOfCardsState = {
   status: 'idle',
-  prizeType: 'HOH',
+  prizeType: 'LOH',
   seed: 0,
   participantIds: [],
   aiOutcomes: {},

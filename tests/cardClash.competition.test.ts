@@ -51,13 +51,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -110,7 +110,7 @@ function runGame(
     humanMistakes: number;
     humanCompletionMs: number | null;
     humanStreak?: number;
-    prizeType?: 'HOH' | 'POV';
+    prizeType?: 'LOH' | 'POS';
     seed?: number;
   },
 ) {
@@ -121,7 +121,7 @@ function runGame(
     humanMistakes,
     humanCompletionMs,
     humanStreak = 0,
-    prizeType = 'HOH',
+    prizeType = 'LOH',
     seed = 42,
   } = options;
 
@@ -149,10 +149,10 @@ function runGame(
 }
 
 /**
- * advance() × 3 from hoh_results → social_1 → nominations → nomination_results
+ * advance() × 3 from loh_results → social_1 → nominations → nomination_results
  */
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -175,7 +175,7 @@ describe('House of Cards — winner correctness', () => {
       seed: 1,
     });
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is an AI player if they have a higher Clash Score than human', () => {
@@ -194,10 +194,10 @@ describe('House of Cards — winner correctness', () => {
 
     const state = store.getState();
     // The winner is the player with the highest Clash Score — must not be human.
-    expect(state.game.hohId).not.toBe('p0');
+    expect(state.game.lohId).not.toBe('p0');
   });
 
-  it('phase advances to hoh_results after the game resolves', () => {
+  it('phase advances to loh_results after the game resolves', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
 
@@ -210,7 +210,7 @@ describe('House of Cards — winner correctness', () => {
       seed: 2,
     });
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
@@ -255,7 +255,7 @@ describe('House of Cards — last-place finisher correctness', () => {
     // With 1 pair and 15 mistakes vs AI with normal performance, human should be last.
     // The exact winner depends on AI seed 77, but lastPlace should not be the winner.
     const state = store.getState();
-    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.hohId);
+    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.lohId);
   });
 
   it('winner is never set as last-place finisher', () => {
@@ -273,7 +273,7 @@ describe('House of Cards — last-place finisher correctness', () => {
     });
 
     const state = store.getState();
-    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.hohId);
+    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.lohId);
   });
 
   it('lastHohCompFinisherType is set to "scored"', () => {
@@ -348,10 +348,10 @@ describe('House of Cards — authoritative data, no participant-order fallback',
       seed: 10,
     });
 
-    const hohBefore = store.getState().game.hohId;
+    const hohBefore = store.getState().game.lohId;
     // Dispatch outcome thunk again — should be a no-op.
     store.dispatch(resolveHouseOfCardsOutcome());
-    expect(store.getState().game.hohId).toBe(hohBefore);
+    expect(store.getState().game.lohId).toBe(hohBefore);
   });
 });
 
@@ -381,7 +381,7 @@ describe('House of Cards — Public mode auto-nominee', () => {
 
     expect(store.getState().game.awaitingNominations).toBe(true);
 
-    // Human HOH nominates two players (neither is the auto-nominee).
+    // Human LOH nominates two players (neither is the auto-nominee).
     const nominatableOthers = ['p1', 'p2', 'p3', 'p4', 'p5'].filter((id) => id !== lastPlace);
     store.dispatch(commitNominees([nominatableOthers[0], nominatableOthers[1]]));
 
@@ -414,7 +414,7 @@ describe('House of Cards — Public mode auto-nominee', () => {
 // ── 5. Human nomination flow ───────────────────────────────────────────────────
 
 describe('House of Cards — human nomination flow', () => {
-  it('phase is hoh_results immediately after game resolves', () => {
+  it('phase is loh_results immediately after game resolves', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
 
@@ -427,10 +427,10 @@ describe('House of Cards — human nomination flow', () => {
       seed: 2,
     });
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('awaitingNominations is set for human HOH', () => {
+  it('awaitingNominations is set for human LOH', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -479,7 +479,7 @@ describe('House of Cards — human nomination flow', () => {
 // ── 6. AI-only nomination flow ─────────────────────────────────────────────────
 
 describe('House of Cards — AI-only nomination flow', () => {
-  it('AI HOH sets hohId and lastHohCompFinisherId correctly', () => {
+  it('AI LOH sets lohId and lastHohCompFinisherId correctly', () => {
     const players = makePlayers(4).map((p) => ({ ...p, isUser: false }));
     const store = makeStore({ players });
 
@@ -488,7 +488,7 @@ describe('House of Cards — AI-only nomination flow', () => {
       startHouseOfCards({
         participantIds: ['p1', 'p2', 'p3'],
         humanId: null,
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -505,12 +505,12 @@ describe('House of Cards — AI-only nomination flow', () => {
     store.dispatch(resolveHouseOfCardsOutcome());
 
     const state = store.getState();
-    expect(state.game.hohId).toBeTruthy();
+    expect(state.game.lohId).toBeTruthy();
     expect(state.game.lastHohCompFinisherId).toBeTruthy();
-    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.hohId);
+    expect(state.game.lastHohCompFinisherId).not.toBe(state.game.lohId);
   });
 
-  it('AI HOH in public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6).map((p) => ({ ...p, isUser: false }));
     const store = makeStore({ players, publicModeEnabled: true });
 
@@ -694,15 +694,15 @@ describe('House of Cards — authoritative data must be present', () => {
       startHouseOfCards({
         participantIds: ['p0', 'p1', 'p2'],
         humanId: 'p0',
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
     // Attempt to resolve — should be a no-op since status is not 'complete'.
     store.dispatch(resolveHouseOfCardsOutcome());
 
-    expect(store.getState().game.phase).toBe('hoh_comp'); // unchanged
-    expect(store.getState().game.hohId).toBeNull();
+    expect(store.getState().game.phase).toBe('loh_comp'); // unchanged
+    expect(store.getState().game.lohId).toBeNull();
   });
 });
 

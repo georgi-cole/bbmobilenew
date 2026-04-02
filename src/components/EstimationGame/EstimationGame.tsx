@@ -2,7 +2,7 @@
  * EstimationGame — native React minigame component.
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + winnerId + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(avgAccuracy, tiebreakerMs)`.
  *

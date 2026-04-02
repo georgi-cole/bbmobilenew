@@ -2,8 +2,8 @@
  * statusBadges — Unified badge emoji/label mapping for houseguest statuses.
  *
  * Badge code ↔ emoji mapping:
- *   'hoh'       → 👑  (Head of Household)
- *   'pov'       → 🛡️  (Power of Veto holder)
+ *   'loh'       → 👑  (Leader of the House)
+ *   'pos'       → 🛡️  (Power of Safety holder)
  *   'nominated' → ❓  (Nominated for eviction)
  *   'jury'      → ⚖️  (Jury member)
  *   'evicted'   → (no badge — evictee X overlay used instead)
@@ -17,8 +17,8 @@
 
 /** Map of single-status codes to their badge emoji. */
 export const STATUS_BADGE_EMOJI: Record<string, string> = {
-  hoh: '👑',
-  pov: '🛡️',
+  loh: '👑',
+  pos: '🛡️',
   nominated: '❓',
   jury: '⚖️',
   first: '🥇',
@@ -28,8 +28,8 @@ export const STATUS_BADGE_EMOJI: Record<string, string> = {
 
 /** Human-readable label for each badge code (used in aria-label). */
 export const STATUS_BADGE_LABEL: Record<string, string> = {
-  hoh: 'Leader of the House',
-  pov: 'Power of Safety',
+  loh: 'Leader of the House',
+  pos: 'Power of Safety',
   nominated: 'Nominated',
   jury: 'Tribunal Member',
   first: '1st place',
@@ -56,7 +56,7 @@ export function finalRankBadge(rank: 1 | 2 | 3): string | undefined {
 }
 
 export interface BadgeInfo {
-  /** Short code used as a CSS modifier key, e.g. 'hoh', 'pov'. */
+  /** Short code used as a CSS modifier key, e.g. 'loh', 'pos'. */
   code: string;
   /** Emoji to display. */
   emoji: string;
@@ -68,11 +68,11 @@ export interface BadgeInfo {
  * Derive the ordered list of badges to show for a player given their status
  * string and optional final rank.
  *
- * Handles compound statuses like 'hoh+pov' and 'nominated+pov' by splitting
+ * Handles compound statuses like 'loh+pos' and 'nominated+pos' by splitting
  * on '+'. Final-rank medals take precedence and replace any existing status
  * badges so that only the medal is shown for finalists.
  *
- * @param status    - PlayerStatus string (e.g. 'hoh', 'nominated+pov', 'active')
+ * @param status    - PlayerStatus string (e.g. 'loh', 'nominated+pos', 'active')
  * @param finalRank - Optional numeric final placement (1, 2, or 3)
  */
 export function getBadgesForPlayer(
@@ -81,7 +81,7 @@ export function getBadgesForPlayer(
 ): BadgeInfo[] {
   const badges: BadgeInfo[] = [];
 
-  // Split compound statuses (e.g. 'hoh+pov' → ['hoh','pov'])
+  // Split compound statuses (e.g. 'loh+pos' → ['loh','pos'])
   const parts = status ? status.split('+') : [];
   for (const part of parts) {
     const emoji = STATUS_BADGE_EMOJI[part];

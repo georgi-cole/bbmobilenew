@@ -81,7 +81,7 @@ export interface PendingChallenge {
    * Lower value = faster = better rank when canonical scores are equal.
    */
   aiTiebreakers?: Record<string, number>;
-  /** Prize type captured at challenge creation (HOH or POV). */
+  /** Prize type captured at challenge creation (LOH or POS). */
   prizeType?: CwgoPrizeType | string;
 }
 
@@ -159,7 +159,7 @@ export const selectChallengeDebug = (s: RootState) => s.challenge?.debug ?? {};
  * @param participants - Player IDs that will compete.
  * @param opts.category - Optional category filter.
  * @param opts.excludeKeys - Games to exclude from the pool.
- * @param opts.prizeType - Prize type for CWGO competitions (HOH or POV).
+ * @param opts.prizeType - Prize type for CWGO competitions (LOH or POS).
  */
 export const startChallenge =
   (

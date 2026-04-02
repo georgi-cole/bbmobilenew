@@ -6,14 +6,14 @@ describe('computeCycleDeltas', () => {
     expect(computeCycleDeltas([])).toEqual([]);
   });
 
-  it('HOH win gives +6 delta', () => {
+  it('LOH win gives +6 delta', () => {
     const deltas = computeCycleDeltas([{ type: 'hoh_win', playerId: 'p1', week: 1 }]);
     expect(deltas).toHaveLength(1);
     expect(deltas[0].delta).toBe(6);
     expect(deltas[0].playerId).toBe('p1');
   });
 
-  it('POV win gives +4 delta', () => {
+  it('POS win gives +4 delta', () => {
     const deltas = computeCycleDeltas([{ type: 'pov_win', playerId: 'p1', week: 1 }]);
     expect(deltas[0].delta).toBe(4);
   });

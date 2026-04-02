@@ -2,7 +2,7 @@
  * Thunk: resolveTetrisOutcome
  *
  * Reads the completed Tetris competition state, validates the current game phase
- * matches the competition type, and awards HOH or POV via `applyMinigameWinner`.
+ * matches the competition type, and awards LOH or POS via `applyMinigameWinner`.
  *
  * Idempotent — returns immediately if outcomeResolved is already true.
  * Phase-guarded — logs an error and returns if the game phase doesn't match.
@@ -40,16 +40,16 @@ export const resolveTetrisOutcome =
       phase,
     });
 
-    if (tetris.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (tetris.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[tetris] resolveTetrisOutcome: expected phase "hoh_comp" for HOH, got',
+        '[tetris] resolveTetrisOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (tetris.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (tetris.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[tetris] resolveTetrisOutcome: expected phase "pov_comp" for POV, got',
+        '[tetris] resolveTetrisOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

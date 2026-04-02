@@ -8,8 +8,8 @@ This document describes the scoring formula used by the bbmobilenew leaderboard,
 
 | Event | Points (default) | Where recorded |
 |---|---|---|
-| HOH competition win | +10 per win | `applyHohWinner()` in `gameSlice.ts` |
-| POV competition win | +8 per win | `applyPovWinner()` in `gameSlice.ts` |
+| LOH competition win | +10 per win | `applyLohWinner()` in `gameSlice.ts` |
+| POS competition win | +8 per win | `applyPosWinner()` in `gameSlice.ts` |
 | Made jury | +5 | `buildArchive()` in `GameOver.tsx` — `status === 'jury'` (winner/runner-up excluded) |
 | Battle Back win (returned to house) | +8 per win | `completeBattleBack()` in `gameSlice.ts` |
 | Survived double eviction week | +7 | `survivedDoubleEviction` flag on `PlayerSeasonSummary` — **not yet auto-detected**; requires game logic to tag double-eviction weeks (see note below) |
@@ -17,7 +17,7 @@ This document describes the scoring formula used by the bbmobilenew leaderboard,
 | Won Public's Favorite Player | +25 | `buildArchive()` — reads `favoritePlayer.winnerId` |
 | Won the game (Season Winner) | +100 | `buildArchive()` — `finalPlacement === 1` |
 | Runner-up | +50 | `buildArchive()` — `finalPlacement === 2` |
-| Won Final HOH (Part 3 of Final 3) | +15 | `applyF3MinigameWinner()` / `advance()` final3_comp3 path |
+| Won Final LOH (Part 3 of Final 3) | +15 | `applyF3MinigameWinner()` / `advance()` final3_comp3 path |
 
 > **Note — double/triple eviction detection**: The `survivedDoubleEviction` and
 > `survivedTripleEviction` fields are defined on `PlayerSeasonSummary` and the scoring
@@ -55,15 +55,15 @@ All compute functions are **pure** (no side effects, no Redux dependency) and ac
 
 | Field | Type | Description |
 |---|---|---|
-| `hohWins` | `number` | HOH competition wins this season |
-| `povWins` | `number` | POV competition wins this season |
+| `lohWins` | `number` | LOH competition wins this season |
+| `posWins` | `number` | POS competition wins this season |
 | `timesNominated` | `number` | Times nominated for eviction |
 | `madeJury` | `boolean` | Reached jury house (status `'jury'`; excludes winner and runner-up) |
 | `battleBackWins` | `number` | Battle Back competition wins |
 | `survivedDoubleEviction` | `boolean` | Survived a double-eviction week — must be set manually until auto-detection is implemented |
 | `survivedTripleEviction` | `boolean` | Survived a triple-eviction week — must be set manually until auto-detection is implemented |
 | `wonPublicFavorite` | `boolean` | Won America's Favorite Player vote |
-| `wonFinalHoh` | `boolean` | Won the Final HOH (Part 3 of Final 3) |
+| `wonFinalHoh` | `boolean` | Won the Final LOH (Part 3 of Final 3) |
 | `weeksAlive` | `number` | Weeks survived in the house |
 | `leaderboardScore` | `number` | Pre-computed total (for display without recompute) |
 
@@ -73,9 +73,9 @@ Fields missing from older archives are treated as `0` / `false` in all compute f
 
 Stats are incremented **exactly once**, at the authoritative mutation site:
 
-- **`hohWins`** — `applyHohWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` hoh_results).
-- **`povWins`** — `applyPovWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` pov_results).
-- **`timesNominated`** — `finalizeNominations`, `commitNominees` (human paths) and the `nomination_results` case of `advance()` (AI path).  Replacement nominee paths also call `incrementTimesNominated()`: `setReplacementNominee` (human HOH), `submitPovSaveTarget` AI branch, and `aiReplacementStep === 2` in `advance()`.  All paths use the shared `incrementTimesNominated()` helper.
+- **`lohWins`** — `applyLohWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` loh_results).
+- **`posWins`** — `applyPosWinner()` helper (called by `completeMinigame`, `applyMinigameWinner`, and `advance()` pos_results).
+- **`timesNominated`** — `finalizeNominations`, `commitNominees` (human paths) and the `nomination_results` case of `advance()` (AI path).  Replacement nominee paths also call `incrementTimesNominated()`: `setReplacementNominee` (human LOH), `submitPovSaveTarget` AI branch, and `aiReplacementStep === 2` in `advance()`.  All paths use the shared `incrementTimesNominated()` helper.
 - **`battleBackWins`** — `completeBattleBack()` reducer.
 - **`wonFinalHoh`** — `markFinalHohWinner()` helper, called from `advance()` `final3_comp3` and `applyF3MinigameWinner()` `final3_comp3_minigame`.
 
@@ -90,7 +90,7 @@ import { mergeWeights, DEFAULT_WEIGHTS } from './src/scoring/weights';
 import { computeSeasonLeaderboard } from './src/scoring/computeLeaderboard';
 
 const customWeights = mergeWeights({
-  perHohWin: 15,   // increase HOH value
+  perLohWin: 15,   // increase LOH value
   madeJury: 10,    // increase jury value
 });
 
@@ -119,4 +119,4 @@ When `enabled = false`, `saveSeasonArchives` is a no-op and `loadSeasonArchives`
 
 ## Migration Notes
 
-Archives created before the scoring system was introduced may be missing the new fields (`hohWins`, `povWins`, `madeJury`, etc.).  All compute functions treat missing fields as `0` / `false`, so older archives will simply show a score of `0` until they are replayed or manually backfilled.
+Archives created before the scoring system was introduced may be missing the new fields (`lohWins`, `posWins`, `madeJury`, etc.).  All compute functions treat missing fields as `0` / `false`, so older archives will simply show a score of `0` until they are replayed or manually backfilled.

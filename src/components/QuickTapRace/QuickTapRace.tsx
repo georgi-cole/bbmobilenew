@@ -2,7 +2,7 @@
  * QuickTapRace — native React minigame component.
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(effectiveScore)`.
  *
@@ -79,9 +79,9 @@ interface ScoreEntry {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** HOH/LOH minigame path: full session data. */
+  /** LOH/POS minigame path: full session data. */
   session?: MinigameSession;
-  /** HOH/LOH minigame path: all game players (for name lookup). */
+  /** LOH/POS minigame path: all game players (for name lookup). */
   players?: Player[];
   /** MinigameHost path: called with the human's final effective score. */
   onFinish?: (value: number) => void;
@@ -364,7 +364,7 @@ export default function QuickTapRace({
     const modifiers = appliedModifiersRef.current;
 
     if (session) {
-      // HOH/LOH path — build full leaderboard and dispatch to Redux.
+      // LOH/POS path — build full leaderboard and dispatch to Redux.
       // For hybrid sessions, resolve AI scores NOW (after human score is known)
       // using the same pure resolver that completeMinigame will call, so the
       // displayed results are identical to the authoritative Redux outcome.

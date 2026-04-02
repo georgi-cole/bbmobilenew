@@ -26,8 +26,8 @@ import { resolveRiskWheelOutcome } from '../../../src/features/riskWheel/thunks'
 /** Simulated game slice state — only the fields read by the thunk. */
 interface MockGameState {
   phase: string;
-  hohId: string | null;
-  povWinnerId: string | null;
+  lohId: string | null;
+  posWinnerId: string | null;
 }
 
 function makeGameReducer(initial: MockGameState) {
@@ -35,14 +35,14 @@ function makeGameReducer(initial: MockGameState) {
     if (action.type === 'game/applyMinigameWinner') {
       // Record the winner so assertions can read it.
       const payload = action.payload as { winnerId?: string };
-      return { ...state, hohId: payload?.winnerId ?? state.hohId };
+      return { ...state, lohId: payload?.winnerId ?? state.lohId };
     }
     return state;
   };
 }
 
-function makeStore(gamePhase: string = 'hoh_comp') {
-  const gameInitial: MockGameState = { phase: gamePhase, hohId: null, povWinnerId: null };
+function makeStore(gamePhase: string = 'loh_comp') {
+  const gameInitial: MockGameState = { phase: gamePhase, lohId: null, posWinnerId: null };
   return configureStore({
     reducer: {
       riskWheel: reducer,
@@ -62,7 +62,7 @@ function driveToComplete(store: TestStore): void {
   store.dispatch(
     initRiskWheel({
       participantIds: ['bot1', 'bot2'],
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed: 7,
       humanPlayerId: null,
     }),
@@ -91,7 +91,7 @@ describe('resolveRiskWheelOutcome idempotency', () => {
     store.dispatch(
       initRiskWheel({
         participantIds: ['bot1', 'bot2'],
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 5,
         humanPlayerId: null,
       }),
@@ -112,7 +112,7 @@ describe('resolveRiskWheelOutcome idempotency', () => {
   });
 
   it('sets outcomeResolved and dispatches applyMinigameWinner on first call', () => {
-    const store = makeStore('hoh_comp');
+    const store = makeStore('loh_comp');
     driveToComplete(store);
 
     expect(getState(store).phase).toBe('complete');
@@ -122,18 +122,18 @@ describe('resolveRiskWheelOutcome idempotency', () => {
     store.dispatch(resolveRiskWheelOutcome());
 
     expect(getState(store).outcomeResolved).toBe(true);
-    // The mock game reducer records hohId when applyMinigameWinner fires.
+    // The mock game reducer records lohId when applyMinigameWinner fires.
     const gameState = store.getState().game as MockGameState;
-    expect(gameState.hohId).toBe(getState(store).winnerId);
+    expect(gameState.lohId).toBe(getState(store).winnerId);
   });
 
   it('calling the thunk a second time is a no-op (winner applied exactly once)', () => {
-    const store = makeStore('hoh_comp');
+    const store = makeStore('loh_comp');
     driveToComplete(store);
 
     // First call — applies winner
     store.dispatch(resolveRiskWheelOutcome());
-    const firstHohId = (store.getState().game as MockGameState).hohId;
+    const firstHohId = (store.getState().game as MockGameState).lohId;
     expect(firstHohId).not.toBeNull();
 
     // Spy on dispatch AFTER the first call so we can detect any inner
@@ -149,12 +149,12 @@ describe('resolveRiskWheelOutcome idempotency', () => {
     );
     expect(innerCalls).toHaveLength(0);
 
-    // hohId unchanged from first call.
-    expect((store.getState().game as MockGameState).hohId).toBe(firstHohId);
+    // lohId unchanged from first call.
+    expect((store.getState().game as MockGameState).lohId).toBe(firstHohId);
   });
 
   it('outcomeResolved stays true after multiple thunk calls', () => {
-    const store = makeStore('hoh_comp');
+    const store = makeStore('loh_comp');
     driveToComplete(store);
 
     store.dispatch(resolveRiskWheelOutcome());

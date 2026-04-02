@@ -1,5 +1,5 @@
 /**
- * HOH competition last-place mismatch regression tests.
+ * LOH competition last-place mismatch regression tests.
  *
  * Validates that lastHohCompFinisherId is set from the authoritative
  * competition outcome — either:
@@ -7,8 +7,8 @@
  *   - For last-player-standing comps: the first-eliminated player.
  *
  * These tests document and guard the fix for:
- *   "HOH competition results scoreboard shows Player A as last, but
- *    nominations auto-add Player B as 'last in HOH comp'."
+ *   "LOH competition results scoreboard shows Player A as last, but
+ *    nominations auto-add Player B as 'last in LOH comp'."
  */
 
 import { describe, it, expect } from 'vitest';
@@ -46,13 +46,13 @@ function makeGameStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -96,7 +96,7 @@ function makeGameStore(overrides: Partial<GameState> = {}) {
 
 // ── Scored / ranked comps ─────────────────────────────────────────────────────
 
-describe('HOH comp last-place mismatch — scored comps', () => {
+describe('LOH comp last-place mismatch — scored comps', () => {
   it('explicit lastPlaceId takes priority over scores (first-pass scoreboard match)', () => {
     // Simulate: famousFigures/biographyBlitz thunk passes lastPlaceId derived
     // from playerScores. The player passed as lastPlaceId must become the auto-nominee.
@@ -114,7 +114,7 @@ describe('HOH comp last-place mismatch — scored comps', () => {
     }));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 
@@ -152,7 +152,7 @@ describe('HOH comp last-place mismatch — scored comps', () => {
 
 // ── Last-player-standing comps: HoldTheWall ───────────────────────────────────
 
-describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', () => {
+describe('LOH comp last-place mismatch — HoldTheWall (last-player-standing)', () => {
   it('first player to drop becomes lastHohCompFinisherId via resolveHoldTheWallOutcome', () => {
     const players = makePlayers(4);
     const store = makeGameStore({ players });
@@ -161,7 +161,7 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
     store.dispatch(startHoldTheWall({
       participantIds: ['p0', 'p1', 'p2', 'p3'],
       humanId: 'p0',
-      prizeType: 'HOH',
+      prizeType: 'LOH',
       seed: 1,
     }));
 
@@ -174,7 +174,7 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
     store.dispatch(resolveHoldTheWallOutcome() as never);
     const state = store.getState().game;
 
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     // First to drop (p2) must be the auto-nominee, matching the UI
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
@@ -186,7 +186,7 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
     store.dispatch(startHoldTheWall({
       participantIds: ['p0', 'p1', 'p2', 'p3'],
       humanId: null,
-      prizeType: 'HOH',
+      prizeType: 'LOH',
       seed: 2,
     }));
 
@@ -199,7 +199,7 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
     store.dispatch(resolveHoldTheWallOutcome() as never);
     const state = store.getState().game;
 
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p3'); // first dropped, NOT p2
     expect(state.lastHohCompFinisherId).not.toBe('p2');
   });
@@ -207,7 +207,7 @@ describe('HOH comp last-place mismatch — HoldTheWall (last-player-standing)', 
 
 // ── Last-player-standing comps: CWGO (elimination order) ─────────────────────
 
-describe('HOH comp last-place mismatch — CWGO (elimination tracking)', () => {
+describe('LOH comp last-place mismatch — CWGO (elimination tracking)', () => {
   it('first player eliminated in CWGO becomes lastHohCompFinisherId', () => {
     // Deterministic test: 2 players, p0 guesses 999999 (way over any CWGO answer),
     // p1 guesses 0 (always under). After mass round: p0 eliminated, p1 wins.
@@ -217,7 +217,7 @@ describe('HOH comp last-place mismatch — CWGO (elimination tracking)', () => {
 
     store.dispatch(startCwgoCompetition({
       participantIds: ['p0', 'p1'],
-      prizeType: 'HOH',
+      prizeType: 'LOH',
       seed: 42,
     }));
 
@@ -240,7 +240,7 @@ describe('HOH comp last-place mismatch — CWGO (elimination tracking)', () => {
     store.dispatch(resolveCompetitionOutcome() as never);
 
     const gameState = store.getState().game;
-    expect(gameState.hohId).toBe('p1');
+    expect(gameState.lohId).toBe('p1');
     // The first-eliminated player must become the auto-third-nominee source
     expect(gameState.lastHohCompFinisherId).toBe('p0');
   });
@@ -253,7 +253,7 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     const players = makePlayers(8);
     const store = makeGameStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p3'],  // 3 nominees
       publicModeEnabled: true,
       nominationContext: {
@@ -276,10 +276,10 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     // - DE uses 3 nominees (by twist rule), auto-third-nominee rule is SKIPPED
     // - nomination_results → advances to next phase (NOT pre_veto_public_save)
     const players = makePlayers(8);
-    players[0].status = 'hoh';
+    players[0].status = 'loh';
     const store = makeGameStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       publicModeEnabled: true,
       lastHohCompFinisherId: 'p5',
       players,
@@ -290,7 +290,7 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     store.dispatch(activateDoubleEviction());
     expect(store.getState().game.doubleEviction?.weekActive).toBe(true);
 
-    // Advance through nominations (AI HOH picks 3 by DE rule)
+    // Advance through nominations (AI LOH picks 3 by DE rule)
     store.dispatch(advance()); // nominations → nomination_results (AI picks 3)
     const afterNominations = store.getState().game;
     expect(afterNominations.phase).toBe('nomination_results');
@@ -298,11 +298,11 @@ describe('pre_veto_public_save phase gating (unchanged by last-place fix)', () =
     expect(afterNominations.nomineeIds).toHaveLength(3);
 
     // Advance to next phase — must NOT be pre_veto_public_save in DE weeks
-    store.dispatch(advance()); // nomination_results → pov_comp_announcement (skips public save)
+    store.dispatch(advance()); // nomination_results → pos_comp_announcement (skips public save)
     const afterNomResults = store.getState().game;
     expect(afterNomResults.phase).not.toBe('pre_veto_public_save');
     expect(afterNomResults.awaitingPublicSave).toBeFalsy();
     // After nomination_results in DE, should proceed toward pov
-    expect(afterNomResults.phase).toBe('pov_comp_announcement');
+    expect(afterNomResults.phase).toBe('pos_comp_announcement');
   });
 });

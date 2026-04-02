@@ -13,8 +13,8 @@
  *  9. Auto-dismiss onDismiss fires at completion; no visible progress bar.
  * 10. Countdown pauses on hover/focus and resumes on leave/blur.
  * 11. Phase-based triggers: overlay shown on phase transition to popup phases.
- * 12. Phase-based non-triggers: week_start, hoh_comp, pov_comp show no overlay.
- * 13. New pre-comp announcement phases: hoh_comp_announcement and pov_comp_announcement show overlays.
+ * 12. Phase-based non-triggers: week_start, loh_comp, pos_comp show no overlay.
+ * 13. New pre-comp announcement phases: loh_comp_announcement and pos_comp_announcement show overlays.
  */
 
 import type { ComponentProps } from 'react';
@@ -651,17 +651,17 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('shows Safety Ceremony overlay when phase transitions to pov_ceremony (non-final-4)', () => {
+  it('shows Safety Ceremony overlay when phase transitions to pos_ceremony (non-final-4)', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    // Default state has 12 alive players (GAME_ROSTER_SIZE); pov_ceremony → veto_ceremony
-    act(() => { store.dispatch(setPhase('pov_ceremony')); });
+    // Default state has 12 alive players (GAME_ROSTER_SIZE); pos_ceremony → veto_ceremony
+    act(() => { store.dispatch(setPhase('pos_ceremony')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: Safety Ceremony/i })).toBeDefined();
   });
 
-  it('shows Final 4 — Safety Ceremony overlay when phase transitions to pov_ceremony with exactly 4 alive players', () => {
+  it('shows Final 4 — Safety Ceremony overlay when phase transitions to pos_ceremony with exactly 4 alive players', () => {
     const store = makeStore();
 
     // Evict players until only 4 remain
@@ -673,7 +673,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('pov_ceremony')); });
+    act(() => { store.dispatch(setPhase('pos_ceremony')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: Final 4/i })).toBeDefined();
   });
@@ -737,38 +737,38 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
-  it('does NOT show any overlay when phase transitions to hoh_comp', () => {
+  it('does NOT show any overlay when phase transitions to loh_comp', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('hoh_comp')); });
+    act(() => { store.dispatch(setPhase('loh_comp')); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
-  it('does NOT show any overlay when phase transitions to pov_comp', () => {
+  it('does NOT show any overlay when phase transitions to pos_comp', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('pov_comp')); });
+    act(() => { store.dispatch(setPhase('pos_comp')); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
-  it('shows LOH Competition overlay when phase transitions to hoh_comp_announcement', () => {
+  it('shows LOH Competition overlay when phase transitions to loh_comp_announcement', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
+    act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeDefined();
   });
 
-  it('shows Power of Safety overlay when phase transitions to pov_comp_announcement', () => {
+  it('shows Power of Safety overlay when phase transitions to pos_comp_announcement', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
+    act(() => { store.dispatch(setPhase('pos_comp_announcement')); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeDefined();
   });
@@ -777,9 +777,9 @@ describe('TvZone — phase-based announcement triggers', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('hoh_comp_announcement')); });
+    act(() => { store.dispatch(setPhase('loh_comp_announcement')); });
 
-    // The overlay for hoh_comp_announcement has autoDismissMs: null — no auto-dismiss
+    // The overlay for loh_comp_announcement has autoDismissMs: null — no auto-dismiss
     const overlay = screen.getByRole('dialog', { name: /Announcement: LOH Competition/i });
     expect(overlay).toBeDefined();
     // Dismiss via central FAB event
@@ -791,7 +791,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     const store = makeStore();
     renderTvZone(store);
 
-    act(() => { store.dispatch(setPhase('pov_comp_announcement')); });
+    act(() => { store.dispatch(setPhase('pos_comp_announcement')); });
 
     const overlay = screen.getByRole('dialog', { name: /Announcement: Power of Safety/i });
     expect(overlay).toBeDefined();

@@ -46,7 +46,7 @@ function makeStore() {
 
 function makePlayers(overrides: Partial<Player>[] = []): Player[] {
   const base: Player[] = [
-    { id: 'p0', name: 'Player0', avatar: '🧑', status: 'hoh', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
+    { id: 'p0', name: 'Player0', avatar: '🧑', status: 'loh', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'user', name: 'User', avatar: '🧑', status: 'nominated', isUser: true, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'p1', name: 'Player1', avatar: '🧑', status: 'nominated', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
     { id: 'v1', name: 'Voter1', avatar: '🧑', status: 'active', isUser: false, competitionWins: { hoh: 0, pov: 0 }, competitionHistory: [], seasonPlacement: null },
@@ -71,10 +71,10 @@ function makeVoteDeductionStore(
     week: 3,
     season: 1,
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     nomineeIds: ['user', 'p1'],
     players,
-    povWinnerId: null,
+    posWinnerId: null,
     votes: {},
     awaitingHumanVote: false,
     tvFeed: [],
@@ -479,7 +479,7 @@ describe('doubleVoteTimingMessage', () => {
   it('returns a "next vote" message when phase is NOT live_vote', () => {
     const phases = [
       'week_start', 'social_1', 'social_2', 'eviction_results',
-      'week_end', 'nominations', 'pov_comp', 'pov_ceremony',
+      'week_end', 'nominations', 'pos_comp', 'pos_ceremony',
     ];
     for (const phase of phases) {
       const msg = doubleVoteTimingMessage(phase);

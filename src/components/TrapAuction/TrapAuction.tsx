@@ -127,7 +127,7 @@ function buildInitialState(
 
 export default function TrapAuction({
   participants,
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed = 42,
   onComplete,
   onFinish,
@@ -583,7 +583,7 @@ export default function TrapAuction({
             <AvatarImg player={winner} className="ta-complete-winner__avatar" />
             <h2 className="ta-complete-winner__name">{winner.name}</h2>
             <p className="ta-complete-winner__sub">
-              wins the {state.prizeType === 'HOH' ? '👑 Head of Household' : '🛡️ Power of Veto'}
+              wins the {state.prizeType === 'LOH' ? '👑 Leader of the House' : '🛡️ Power of Safety'}
             </p>
             <p className="ta-complete-winner__bank">
               Ended with {winner.bank} 👁 Eyeolens

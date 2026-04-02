@@ -38,12 +38,12 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -71,7 +71,7 @@ function makeStore(overrides: Partial<GameState> = {}) {
 describe('completeMinigame — zero-score guard', () => {
   it('AI with score 80 wins when human taps 0', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     // Human is p0; AI participants are p1 and p2
     const session: MinigameSession = {
@@ -86,14 +86,14 @@ describe('completeMinigame — zero-score guard', () => {
     store.dispatch(completeMinigame(0));
 
     const state = store.getState().game;
-    expect(state.phase).toBe('hoh_results');
+    expect(state.phase).toBe('loh_results');
     // Winner must NOT be the human (p0, score=0); should be p1 (score=80)
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
   });
 
   it('human wins when they tap the most', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     const session: MinigameSession = {
       key: 'tap-race',
@@ -106,13 +106,13 @@ describe('completeMinigame — zero-score guard', () => {
     store.dispatch(completeMinigame(95)); // human taps 95
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
   });
 
   it('falls back to any participant when all score 0', () => {
     // Edge case: all participants score 0 — still picks a winner.
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     const session: MinigameSession = {
       key: 'tap-race',
@@ -125,15 +125,15 @@ describe('completeMinigame — zero-score guard', () => {
     store.dispatch(completeMinigame(0)); // human also scores 0
 
     const state = store.getState().game;
-    expect(state.phase).toBe('hoh_results');
+    expect(state.phase).toBe('loh_results');
     // A winner must have been selected
-    expect(state.hohId).not.toBeNull();
-    expect(['p0', 'p1', 'p2']).toContain(state.hohId);
+    expect(state.lohId).not.toBeNull();
+    expect(['p0', 'p1', 'p2']).toContain(state.lohId);
   });
 
   it('among positive scorers, highest wins', () => {
     const players = makePlayers(4);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     const session: MinigameSession = {
       key: 'tap-race',
@@ -147,7 +147,7 @@ describe('completeMinigame — zero-score guard', () => {
 
     const state = store.getState().game;
     // p3 has highest positive score (70)
-    expect(state.hohId).toBe('p3');
+    expect(state.lohId).toBe('p3');
   });
 });
 
@@ -156,7 +156,7 @@ describe('completeMinigame — zero-score guard', () => {
 describe('completeChallenge — positive-score winner preference', () => {
   it('selects a positive-score winner over zero-score participants', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     // Manually start a challenge so pending state is set.
     // Use 'quickTap' — a valid game key in the registry.
@@ -178,7 +178,7 @@ describe('completeChallenge — positive-score winner preference', () => {
 
   it('returns the highest positive scorer when multiple compete', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       startChallenge(10, ['p0', 'p1', 'p2'], { forceGameKey: 'quickTap' }),
@@ -197,7 +197,7 @@ describe('completeChallenge — positive-score winner preference', () => {
 
   it('returns a winner even when all scores are zero', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       startChallenge(99, ['p0', 'p1', 'p2'], { forceGameKey: 'quickTap' }),
@@ -218,7 +218,7 @@ describe('completeChallenge — positive-score winner preference', () => {
 
   it('uses an authoritative winner override when a React minigame reports one', () => {
     const players = makePlayers(3);
-    const store = makeStore({ players, phase: 'hoh_comp' });
+    const store = makeStore({ players, phase: 'loh_comp' });
 
     store.dispatch(
       startChallenge(77, ['p0', 'p1', 'p2'], { forceGameKey: 'quickTap' }),
@@ -248,7 +248,7 @@ describe('eviction tie-break copy', () => {
 
     const store = makeStore({
       phase: 'live_vote',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       votes: {
         p3: 'p1',
@@ -266,19 +266,19 @@ describe('eviction tie-break copy', () => {
   });
 });
 
-// ── Advance guard (hoh_results random pick) ───────────────────────────────────
+// ── Advance guard (loh_results random pick) ───────────────────────────────────
 
-describe('advance() — HOH results picks an alive player', () => {
-  it('picks an HOH when advancing from hoh_comp without a minigame', () => {
-    const store = makeStore({ phase: 'hoh_comp', players: makePlayers(6) });
-    store.dispatch(advance()); // hoh_comp → hoh_results
+describe('advance() — LOH results picks an alive player', () => {
+  it('picks an LOH when advancing from loh_comp without a minigame', () => {
+    const store = makeStore({ phase: 'loh_comp', players: makePlayers(6) });
+    store.dispatch(advance()); // loh_comp → loh_results
     const state = store.getState().game;
-    expect(state.phase).toBe('hoh_results');
-    expect(state.hohId).not.toBeNull();
-    // HOH must be one of the alive players
+    expect(state.phase).toBe('loh_results');
+    expect(state.lohId).not.toBeNull();
+    // LOH must be one of the alive players
     const alive = state.players.filter(
       (p) => p.status !== 'evicted' && p.status !== 'jury',
     );
-    expect(alive.some((p) => p.id === state.hohId)).toBe(true);
+    expect(alive.some((p) => p.id === state.lohId)).toBe(true);
   });
 });

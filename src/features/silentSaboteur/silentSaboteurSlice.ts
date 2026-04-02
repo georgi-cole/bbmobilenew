@@ -38,7 +38,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SilentSaboteurPrizeType = 'HOH' | 'POV';
+export type SilentSaboteurPrizeType = 'LOH' | 'POS';
 
 export type SilentSaboteurPhase =
   | 'idle'
@@ -107,7 +107,7 @@ export interface SilentSaboteurState {
 
 const initialState: SilentSaboteurState = {
   phase: 'idle',
-  prizeType: 'HOH',
+  prizeType: 'LOH',
   seed: 0,
   round: 0,
 

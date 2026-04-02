@@ -6,19 +6,19 @@
  *   - game/setPhase              (explicit phase override, e.g. from DebugPanel)
  *   - game/forcePhase            (dev-only forced transition)
  *   - game/advance               (normal gameplay phase progression)
- *   - game/completeMinigame      (HOH/POV winner from tap-race; zero-score penalty)
- *   - game/applyMinigameWinner   (HOH/POV winner from challenge flow)
+ *   - game/completeMinigame      (LOH/POS winner from tap-race; zero-score penalty)
+ *   - game/applyMinigameWinner   (LOH/POS winner from challenge flow)
  *   - game/skipMinigame          (competition skipped: -3 energy to all alive)
- *   - game/submitPovSaveTarget   (POV holder saves a nominee: +2 energy to saved player)
+ *   - game/submitPovSaveTarget   (POS holder saves a nominee: +2 energy to saved player)
  *   - social/updateRelationship  (alliance formed: +2 energy +200 influence;
  *                                 betrayal: -3 energy to actor)
  *
  * Event delta rules:
- *   HOH win               → +5  energy to winner
- *   POV win               → +3  energy to winner
+ *   LOH win               → +5  energy to winner
+ *   POS win               → +3  energy to winner
  *   Survived nomination   → +4  energy to remaining nominees (entering live_vote)
  *   New alliance formed   → +2  energy + influence +200 to both parties
- *   Saved by POV          → +2  energy to saved player
+ *   Saved by POS          → +2  energy to saved player
  *   Competition skipped   → -3  energy to all alive players
  *   Zero score (minigame) → -2  energy to the scoring player
  *   Broke alliance        → -3  energy to the actor (betrayal tag)
@@ -48,8 +48,8 @@ const PHASE_SET_ACTIONS = new Set(['game/setPhase', 'game/forcePhase']);
 interface GameState {
   phase: string;
   week: number;
-  hohId: string | null;
-  povWinnerId: string | null;
+  lohId: string | null;
+  posWinnerId: string | null;
   nomineeIds: string[];
   players: Array<{ id: string; status: string; isUser?: boolean }>;
 }
@@ -107,14 +107,14 @@ function grantInfluence(api: MiddlewareAPI, playerId: string, delta: number): vo
   api.dispatch(applyInfluenceDelta({ playerId, delta }));
 }
 
-/** Apply HOH-win energy bonus if the HOH changed. */
+/** Apply LOH-win energy bonus if the LOH changed. */
 function applyHohBonus(api: MiddlewareAPI, prevHohId: string | null, newHohId: string | null): void {
   if (newHohId && newHohId !== prevHohId) {
     grantEnergy(api, newHohId, 5);
   }
 }
 
-/** Apply POV-win energy bonus if the POV winner changed. */
+/** Apply POS-win energy bonus if the POS winner changed. */
 function applyPovBonus(api: MiddlewareAPI, prevPovId: string | null, newPovId: string | null): void {
   if (newPovId && newPovId !== prevPovId) {
     grantEnergy(api, newPovId, 3);
@@ -177,11 +177,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     return result;
   }
 
-  // ── completeMinigame: HOH/POV bonus + zero-score penalty ─────────────────
+  // ── completeMinigame: LOH/POS bonus + zero-score penalty ─────────────────
   if (type === 'game/completeMinigame') {
     const prevState = api.getState() as StateWithGame;
-    const prevHohId = prevState.game?.hohId ?? null;
-    const prevPovId = prevState.game?.povWinnerId ?? null;
+    const prevHohId = prevState.game?.lohId ?? null;
+    const prevPovId = prevState.game?.posWinnerId ?? null;
     const prevPhase = prevState.game?.phase;
     // Identify the human player to apply zero-score penalty if relevant.
     const humanPlayer = (prevState.game?.players ?? []).find((p) => p.isUser);
@@ -190,51 +190,51 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const result = next(action);
 
     const afterState = api.getState() as StateWithGame;
-    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.hohId ?? null);
-    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.povWinnerId ?? null);
+    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.lohId ?? null);
+    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.posWinnerId ?? null);
 
     // Zero-score penalty: human player scored 0 in a competition phase.
-    if (humanScore === 0 && humanPlayer && (prevPhase === 'hoh_comp' || prevPhase === 'pov_comp')) {
+    if (humanScore === 0 && humanPlayer && (prevPhase === 'loh_comp' || prevPhase === 'pos_comp')) {
       grantEnergy(api as unknown as MiddlewareAPI, humanPlayer.id, -2);
     }
 
     return result;
   }
 
-  // ── applyMinigameWinner: HOH/POV bonus from challenge flow ────────────────
+  // ── applyMinigameWinner: LOH/POS bonus from challenge flow ────────────────
   if (type === 'game/applyMinigameWinner') {
     const prevState = api.getState() as StateWithGame;
-    const prevHohId = prevState.game?.hohId ?? null;
-    const prevPovId = prevState.game?.povWinnerId ?? null;
+    const prevHohId = prevState.game?.lohId ?? null;
+    const prevPovId = prevState.game?.posWinnerId ?? null;
 
     const result = next(action);
 
     const afterState = api.getState() as StateWithGame;
-    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.hohId ?? null);
-    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.povWinnerId ?? null);
+    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.lohId ?? null);
+    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.posWinnerId ?? null);
 
     return result;
   }
 
-  // ── applyF3MinigameWinner: Final HOH energy bonus when Part 3 winner is crowned ─
-  // Mirrors the applyMinigameWinner handler for HOH/POV comps.
-  // Only the Final HOH (Part 3 winner) receives the HOH energy bonus;
-  // Parts 1 and 2 are intermediate comps that don't change the hohId.
+  // ── applyF3MinigameWinner: Final LOH energy bonus when Part 3 winner is crowned ─
+  // Mirrors the applyMinigameWinner handler for LOH/POS comps.
+  // Only the Final LOH (Part 3 winner) receives the LOH energy bonus;
+  // Parts 1 and 2 are intermediate comps that don't change the lohId.
   if (type === 'game/applyF3MinigameWinner') {
     const prevState = api.getState() as StateWithGame;
-    const prevHohId = prevState.game?.hohId ?? null;
+    const prevHohId = prevState.game?.lohId ?? null;
 
     const result = next(action);
 
     const afterState = api.getState() as StateWithGame;
-    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.hohId ?? null);
+    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.lohId ?? null);
 
     return result;
   }
 
-  // ── submitPovSaveTarget: saved-by-POV bonus (+2 energy to the saved player) ─
-  // Handles the explicit human-POV-holder saves a nominee case.
-  // The auto-save case (nominee wins POV themselves, pov_ceremony_results advance)
+  // ── submitPovSaveTarget: saved-by-POS bonus (+2 energy to the saved player) ─
+  // Handles the explicit human-POS-holder saves a nominee case.
+  // The auto-save case (nominee wins POS themselves, pos_ceremony_results advance)
   // is handled by comparing nomineeIds before/after in the game/advance handler.
   if (type === 'game/submitPovSaveTarget') {
     const prevState = api.getState() as StateWithGame;
@@ -256,9 +256,9 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
   if (type === 'game/advance') {
     const prevState = api.getState() as StateWithGame;
     const prevPhase = prevState.game?.phase;
-    const prevHohId = prevState.game?.hohId ?? null;
-    const prevPovId = prevState.game?.povWinnerId ?? null;
-    // Track POV-auto-save: nominee who wins POV saves themselves in pov_ceremony_results.
+    const prevHohId = prevState.game?.lohId ?? null;
+    const prevPovId = prevState.game?.posWinnerId ?? null;
+    // Track POS-auto-save: nominee who wins POS saves themselves in pos_ceremony_results.
     const prevNominees = prevState.game?.nomineeIds ?? [];
 
     const result = next(action);
@@ -286,17 +286,17 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       }
     }
 
-    // HOH / POV win bonuses (advance() sets these during hoh_results / pov_results)
-    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.hohId ?? null);
-    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.povWinnerId ?? null);
+    // LOH / POS win bonuses (advance() sets these during loh_results / pos_results)
+    applyHohBonus(api as unknown as MiddlewareAPI, prevHohId, afterState.game?.lohId ?? null);
+    applyPovBonus(api as unknown as MiddlewareAPI, prevPovId, afterState.game?.posWinnerId ?? null);
 
     // Survived nomination: nominees entering live_vote get +4 energy.
     applySurvivedNomBonus(api as unknown as MiddlewareAPI, newPhase, afterState);
 
-    // POV auto-save: during pov_ceremony_results a nominee who won POV saves themselves.
+    // POS auto-save: during pos_ceremony_results a nominee who won POS saves themselves.
     // We detect this by checking if a nominee was removed from the block during that
     // specific phase transition only, to avoid false positives during evictions.
-    if (prevPhase === 'pov_ceremony_results') {
+    if (prevPhase === 'pos_ceremony_results') {
       const afterNominees = afterState.game?.nomineeIds ?? [];
       const autoSaved = prevNominees.filter((id) => !afterNominees.includes(id));
       for (const id of autoSaved) {

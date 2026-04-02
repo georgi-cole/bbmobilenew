@@ -534,7 +534,7 @@ export default function HoldTheWallComp({
             Last player standing after {formatElapsed(elapsedMs)}
           </p>
           <p className="htw-complete-prize">
-            {prizeType === 'HOH' ? '👑 Leader of the House' : '🔑 Power of Safety'} awarded!
+            {prizeType === 'LOH' ? '👑 Leader of the House' : '🔑 Power of Safety'} awarded!
           </p>
         </div>
       )}

@@ -28,8 +28,8 @@ import {
 interface TestGameState {
   phase: string;
   week: number;
-  hohId: string | null;
-  povWinnerId: string | null;
+  lohId: string | null;
+  posWinnerId: string | null;
   nomineeIds: string[];
   players: Player[];
   seed: number;
@@ -51,8 +51,8 @@ function makeGameState(overrides: Partial<TestGameState> = {}): TestGameState {
   return {
     phase: 'week_start',
     week: 1,
-    hohId: null,
-    povWinnerId: null,
+    lohId: null,
+    posWinnerId: null,
     nomineeIds: [],
     players: [
       makePlayer('p1', 'Aria'),
@@ -76,12 +76,12 @@ function gameReducer(
   ) {
     return { ...state, ...(action.payload as Partial<TestGameState>) };
   }
-  if (action.type === 'game/applyMinigameWinner' && state.phase === 'hoh_comp') {
+  if (action.type === 'game/applyMinigameWinner' && state.phase === 'loh_comp') {
     const payload = action.payload as { winnerId?: string } | undefined;
     return {
       ...state,
-      phase: 'hoh_results',
-      hohId: payload?.winnerId ?? state.hohId,
+      phase: 'loh_results',
+      lohId: payload?.winnerId ?? state.lohId,
     };
   }
   return state;
@@ -103,20 +103,20 @@ function makeStore(initialGame?: Partial<TestGameState>) {
 
 // ── 1. Event-driven approval updates ─────────────────────────────────────────
 
-describe('event-driven approval: hoh_results', () => {
+describe('event-driven approval: loh_results', () => {
   it('randomizes opening approvals after the first LOH result before applying the winner bonus', () => {
     const store = makeStore({
-      phase: 'hoh_comp',
+      phase: 'loh_comp',
       week: 1,
-      hohId: null,
+      lohId: null,
       seed: 42,
     });
 
     store.dispatch({
       type: 'game/advance',
       payload: {
-        phase: 'hoh_results',
-        hohId: 'p1',
+        phase: 'loh_results',
+        lohId: 'p1',
         week: 1,
       },
     });
@@ -140,9 +140,9 @@ describe('event-driven approval: hoh_results', () => {
 
   it('randomizes opening approvals on the live applyMinigameWinner path', () => {
     const store = makeStore({
-      phase: 'hoh_comp',
+      phase: 'loh_comp',
       week: 1,
-      hohId: null,
+      lohId: null,
       seed: 42,
     });
 
@@ -161,8 +161,8 @@ describe('event-driven approval: hoh_results', () => {
 });
 
 describe('event-driven approval: nomination_results', () => {
-  it('applies HOH backlash immediately when a liked player (≥60%) is nominated', () => {
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+  it('applies LOH backlash immediately when a liked player (≥60%) is nominated', () => {
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Manually set p2 to 75% (liked band)
@@ -175,7 +175,7 @@ describe('event-driven approval: nomination_results', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2'],
         awaitingNominations: false,
         week: 1,
@@ -183,12 +183,12 @@ describe('event-driven approval: nomination_results', () => {
     });
 
     const afterHohApproval = store.getState().publicOpinion.profiles.p1.approval;
-    // HOH should have taken a backlash penalty for nominating a liked player
+    // LOH should have taken a backlash penalty for nominating a liked player
     expect(afterHohApproval).toBeLessThan(beforeHohApproval);
   });
 
   it('gives a sympathy boost to a beloved nominee (≥80%) when nominated', () => {
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p3 to 85% (beloved band)
@@ -200,7 +200,7 @@ describe('event-driven approval: nomination_results', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p3'],
         awaitingNominations: false,
         week: 1,
@@ -212,8 +212,8 @@ describe('event-driven approval: nomination_results', () => {
     expect(afterNomineeApproval).toBeGreaterThan(beforeNomineeApproval);
   });
 
-  it('does not apply HOH backlash for nominating a mixed/disliked player', () => {
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+  it('does not apply LOH backlash for nominating a mixed/disliked player', () => {
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // p4 starts at 50 (default = mixed) — no backlash expected
@@ -223,7 +223,7 @@ describe('event-driven approval: nomination_results', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p4'],
         awaitingNominations: false,
         week: 1,
@@ -235,7 +235,7 @@ describe('event-driven approval: nomination_results', () => {
   });
 
   it('approval changes happen at nomination time, not only at week_end', () => {
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Give p2 a liked approval rating
@@ -250,7 +250,7 @@ describe('event-driven approval: nomination_results', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2'],
         awaitingNominations: false,
         week: 1,
@@ -265,14 +265,14 @@ describe('event-driven approval: nomination_results', () => {
   });
 });
 
-describe('event-driven approval: game/commitNominees (human HOH)', () => {
-  it('applies HOH backlash when human HOH nominates a liked player via commitNominees', () => {
-    // Human HOH flow: phase stays nomination_results, awaitingNominations=true.
+describe('event-driven approval: game/commitNominees (human LOH)', () => {
+  it('applies LOH backlash when human LOH nominates a liked player via commitNominees', () => {
+    // Human LOH flow: phase stays nomination_results, awaitingNominations=true.
     // Reactions should fire at commitNominees time, not at nomination_results phase entry.
     const store = makeStore({
       phase: 'nomination_results',
       week: 1,
-      hohId: 'p1',
+      lohId: 'p1',
       awaitingNominations: true,
     });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
@@ -282,7 +282,7 @@ describe('event-driven approval: game/commitNominees (human HOH)', () => {
 
     const beforeHohApproval = store.getState().publicOpinion.profiles.p1.approval;
 
-    // Human HOH commits nominees — no phase change occurs
+    // Human LOH commits nominees — no phase change occurs
     store.dispatch({
       type: 'game/commitNominees',
       payload: ['p2'],
@@ -292,11 +292,11 @@ describe('event-driven approval: game/commitNominees (human HOH)', () => {
     expect(afterHohApproval).toBeLessThan(beforeHohApproval);
   });
 
-  it('gives a sympathy boost to a beloved player nominated by human HOH', () => {
+  it('gives a sympathy boost to a beloved player nominated by human LOH', () => {
     const store = makeStore({
       phase: 'nomination_results',
       week: 1,
-      hohId: 'p1',
+      lohId: 'p1',
       awaitingNominations: true,
     });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
@@ -315,11 +315,11 @@ describe('event-driven approval: game/commitNominees (human HOH)', () => {
     expect(afterNomineeApproval).toBeGreaterThan(beforeNomineeApproval);
   });
 
-  it('does not double-apply reactions when awaitingNominations is true (human HOH path)', () => {
+  it('does not double-apply reactions when awaitingNominations is true (human LOH path)', () => {
     // When awaitingNominations=true, nomination_results entry should NOT fire reactions
     // (since they will be fired by commitNominees). The guard on nomination_results
     // checks !awaitingNominations, so phase entry with awaitingNominations=true is a no-op.
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p2 to 75% (liked band)
@@ -327,12 +327,12 @@ describe('event-driven approval: game/commitNominees (human HOH)', () => {
 
     const beforeHohApproval = store.getState().publicOpinion.profiles.p1.approval;
 
-    // Phase transitions to nomination_results with awaitingNominations=true (human HOH)
+    // Phase transitions to nomination_results with awaitingNominations=true (human LOH)
     store.dispatch({
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: [],  // not yet set — human hasn't committed
         awaitingNominations: true,
         week: 1,
@@ -350,14 +350,14 @@ describe('event-driven approval: game/commitNominees (human HOH)', () => {
     });
 
     const afterCommit = store.getState().publicOpinion.profiles.p1.approval;
-    // HOH backlash fires once at commitNominees
+    // LOH backlash fires once at commitNominees
     expect(afterCommit).toBeLessThan(afterPhaseEntry);
   });
 });
 
 describe('event-driven approval: finalizePendingEviction', () => {
   it('responsible actors receive a boost when a disliked player is evicted', () => {
-    const store = makeStore({ phase: 'eviction_results', week: 2, hohId: 'p1' });
+    const store = makeStore({ phase: 'eviction_results', week: 2, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p2 to 30% (disliked band)
@@ -376,7 +376,7 @@ describe('event-driven approval: finalizePendingEviction', () => {
   });
 
   it('responsible actors receive a penalty when a beloved player is evicted', () => {
-    const store = makeStore({ phase: 'eviction_results', week: 2, hohId: 'p1' });
+    const store = makeStore({ phase: 'eviction_results', week: 2, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p3 to 85% (beloved band)
@@ -394,7 +394,7 @@ describe('event-driven approval: finalizePendingEviction', () => {
   });
 
   it('evicted beloved player receives an additional penalty (fan outrage)', () => {
-    const store = makeStore({ phase: 'eviction_results', week: 2, hohId: 'p1' });
+    const store = makeStore({ phase: 'eviction_results', week: 2, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p2 to 85% (beloved)
@@ -411,13 +411,13 @@ describe('event-driven approval: finalizePendingEviction', () => {
   });
 });
 
-describe('event-driven approval: pov_ceremony_results', () => {
-  it('applies save reactions when POV is used on a liked player', () => {
+describe('event-driven approval: pos_ceremony_results', () => {
+  it('applies save reactions when POS is used on a liked player', () => {
     const store = makeStore({
-      phase: 'pov_ceremony',
+      phase: 'pos_ceremony',
       week: 2,
-      hohId: 'p1',
-      povWinnerId: 'p2',
+      lohId: 'p1',
+      posWinnerId: 'p2',
       povSavedId: 'p3',
     });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
@@ -431,9 +431,9 @@ describe('event-driven approval: pov_ceremony_results', () => {
     store.dispatch({
       type: 'game/advance',
       payload: {
-        phase: 'pov_ceremony_results',
-        hohId: 'p1',
-        povWinnerId: 'p2',
+        phase: 'pos_ceremony_results',
+        lohId: 'p1',
+        posWinnerId: 'p2',
         povSavedId: 'p3',
         week: 2,
       },
@@ -582,56 +582,56 @@ describe('feed budget', () => {
 describe('computeNominationReactions', () => {
   const baseApprovals = { hoh: 55, beloved: 85, liked: 70, mixed: 50, disliked: 30, hated: 15 };
 
-  it('produces HOH backlash when a beloved player is nominated', () => {
+  it('produces LOH backlash when a beloved player is nominated', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.nominationReactions.hohBelovedNomineePenalty);
   });
 
-  it('produces smaller HOH backlash when a liked (not beloved) player is nominated', () => {
+  it('produces smaller LOH backlash when a liked (not beloved) player is nominated', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['liked'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.nominationReactions.hohLikedNomineePenalty);
   });
 
-  it('gives no HOH penalty for nominating a mixed-approval player', () => {
+  it('gives no LOH penalty for nominating a mixed-approval player', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['mixed'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeUndefined();
   });
 
-  it('gives no HOH penalty for nominating a disliked player', () => {
+  it('gives no LOH penalty for nominating a disliked player', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['disliked'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeUndefined();
   });
 
   it('gives a sympathy boost to a beloved nominee', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
@@ -643,7 +643,7 @@ describe('computeNominationReactions', () => {
   it('gives a smaller sympathy boost to a liked nominee', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['liked'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
@@ -655,11 +655,11 @@ describe('computeNominationReactions', () => {
   it('handles multiple nominees, each generating independent reactions', () => {
     const reactions = computeNominationReactions({
       nomineeIds: ['beloved', 'disliked'],
-      hohId: 'hoh',
+      lohId: 'loh',
       approvals: baseApprovals,
       week: 1,
     });
-    // Should include beloved sympathy + HOH penalty (for beloved), but no HOH penalty for disliked
+    // Should include beloved sympathy + LOH penalty (for beloved), but no LOH penalty for disliked
     const belovedNomineeReaction = reactions.find((r) => r.playerId === 'beloved');
     const dislikedNomineeReaction = reactions.find((r) => r.playerId === 'disliked');
     expect(belovedNomineeReaction?.delta).toBeGreaterThan(0); // sympathy
@@ -670,54 +670,54 @@ describe('computeNominationReactions', () => {
 describe('computeEvictionReactions', () => {
   const baseApprovals = { hoh: 55, povHolder: 60, beloved: 85, liked: 72, mixed: 50, disliked: 28, hated: 12 };
 
-  it('HOH receives a strong boost when a hated player is evicted', () => {
+  it('LOH receives a strong boost when a hated player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'hated',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.hatedEvictedResponsibleBoost);
   });
 
-  it('HOH receives a boost when a disliked player is evicted', () => {
+  it('LOH receives a boost when a disliked player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.dislikedEvictedResponsibleBoost);
   });
 
-  it('HOH receives a penalty when a beloved player is evicted', () => {
+  it('LOH receives a penalty when a beloved player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'beloved',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.belovedEvictedResponsiblePenalty);
   });
 
-  it('HOH receives a penalty when a liked player is evicted', () => {
+  it('LOH receives a penalty when a liked player is evicted', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'liked',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     expect(hohReaction).toBeDefined();
     expect(hohReaction!.delta).toBe(publicOpinionConfig.evictionReactions.likedEvictedResponsiblePenalty);
   });
@@ -725,7 +725,7 @@ describe('computeEvictionReactions', () => {
   it('evicted beloved player receives the evictedBelovedFinalPenalty', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'beloved',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
@@ -738,7 +738,7 @@ describe('computeEvictionReactions', () => {
   it('evicted disliked player receives the evictedDislikedFinalBoost', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
@@ -748,15 +748,15 @@ describe('computeEvictionReactions', () => {
     expect(evicteeReaction!.delta).toBe(publicOpinionConfig.evictionReactions.evictedDislikedFinalBoost);
   });
 
-  it('both HOH and POV holder are credited when both contributed to a disliked player eviction', () => {
+  it('both LOH and POS holder are credited when both contributed to a disliked player eviction', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      hohId: 'hoh',
+      lohId: 'loh',
       povHolderId: 'povHolder',
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReaction = reactions.find((r) => r.playerId === 'hoh');
+    const hohReaction = reactions.find((r) => r.playerId === 'loh');
     const povReaction = reactions.find((r) => r.playerId === 'povHolder');
     expect(hohReaction).toBeDefined();
     expect(povReaction).toBeDefined();
@@ -764,15 +764,15 @@ describe('computeEvictionReactions', () => {
     expect(povReaction!.delta).toBe(publicOpinionConfig.evictionReactions.dislikedEvictedResponsibleBoost);
   });
 
-  it('deduplicates when HOH and POV holder are the same player', () => {
+  it('deduplicates when LOH and POS holder are the same player', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'disliked',
-      hohId: 'hoh',
-      povHolderId: 'hoh',  // same player
+      lohId: 'loh',
+      povHolderId: 'loh',  // same player
       approvals: baseApprovals,
       week: 2,
     });
-    const hohReactions = reactions.filter((r) => r.playerId === 'hoh');
+    const hohReactions = reactions.filter((r) => r.playerId === 'loh');
     // Should only appear once, not twice
     expect(hohReactions.length).toBe(1);
   });
@@ -780,12 +780,12 @@ describe('computeEvictionReactions', () => {
   it('evicted player is not counted as a responsible actor', () => {
     const reactions = computeEvictionReactions({
       evicteeId: 'beloved',
-      hohId: 'beloved', // edge case: evictee is somehow the HOH (should not happen normally)
+      lohId: 'beloved', // edge case: evictee is somehow the LOH (should not happen normally)
       povHolderId: null,
       approvals: baseApprovals,
       week: 2,
     });
-    // The evictee-as-HOH entry should not appear as a responsible actor reaction
+    // The evictee-as-LOH entry should not appear as a responsible actor reaction
     const responsibleReactions = reactions.filter(
       (r) => r.playerId === 'beloved' && r.reason === 'eviction_reaction',
     );
@@ -850,18 +850,18 @@ describe('computePovSaveReactions', () => {
 
 describe('multiple events in same day', () => {
   it('approval can update multiple times in the same week', () => {
-    const store = makeStore({ phase: 'hoh_comp', week: 2 });
+    const store = makeStore({ phase: 'loh_comp', week: 2 });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p2 as liked before nominations
     store.dispatch(updateApproval({ playerId: 'p2', delta: 25, reason: 'test', week: 2, addToFeed: false }));
 
-    // HOH win → p1 gets +6
+    // LOH win → p1 gets +6
     store.dispatch({
       type: 'game/advance',
       payload: {
-        phase: 'hoh_results',
-        hohId: 'p1',
+        phase: 'loh_results',
+        lohId: 'p1',
         week: 2,
       },
     });
@@ -872,7 +872,7 @@ describe('multiple events in same day', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2'],
         awaitingNominations: false,
         week: 2,
@@ -880,8 +880,8 @@ describe('multiple events in same day', () => {
     });
     const afterNomination = store.getState().publicOpinion.profiles.p1.approval;
 
-    // p1's approval changed twice in the same week — once up for HOH win, once down for nomination
-    expect(afterHohWin).toBeGreaterThan(50); // HOH win boost
+    // p1's approval changed twice in the same week — once up for LOH win, once down for nomination
+    expect(afterHohWin).toBeGreaterThan(50); // LOH win boost
     expect(afterNomination).toBeLessThan(afterHohWin); // nomination backlash
   });
 });
@@ -890,7 +890,7 @@ describe('multiple events in same day', () => {
 
 describe('feed entry attribution', () => {
   it('feed entries produced by event-driven reactions include eventType', () => {
-    const store = makeStore({ phase: 'hoh_results', week: 1, hohId: 'p1' });
+    const store = makeStore({ phase: 'loh_results', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     // Set p2 as liked
@@ -900,7 +900,7 @@ describe('feed entry attribution', () => {
       type: 'game/advance',
       payload: {
         phase: 'nomination_results',
-        hohId: 'p1',
+        lohId: 'p1',
         nomineeIds: ['p2'],
         awaitingNominations: false,
         week: 1,
@@ -913,14 +913,14 @@ describe('feed entry attribution', () => {
   });
 
   it('hoh_win feed entries include the correct eventType', () => {
-    const store = makeStore({ phase: 'hoh_comp', week: 1, hohId: 'p1' });
+    const store = makeStore({ phase: 'loh_comp', week: 1, lohId: 'p1' });
     store.dispatch(initializeProfiles(['p1', 'p2', 'p3', 'p4']));
 
     store.dispatch({
       type: 'game/advance',
       payload: {
-        phase: 'hoh_results',
-        hohId: 'p1',
+        phase: 'loh_results',
+        lohId: 'p1',
         week: 1,
       },
     });

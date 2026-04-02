@@ -52,7 +52,7 @@ function startGame(
   store.dispatch(
     initBiographyBlitz({
       participantIds: ids,
-      competitionType: 'HOH',
+      competitionType: 'LOH',
       seed: opts.seed ?? 42,
       humanContestantId: opts.humanId ?? ids[0] ?? null,
       testMode: opts.testMode ?? false,

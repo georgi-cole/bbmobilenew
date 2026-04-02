@@ -30,16 +30,16 @@ const T0 = 1_700_000_000_000;
 
 // ── Minimal store for integration testing ─────────────────────────────────────
 
-function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
+function makeIntegrationStore(initialGamePhase = 'loh_comp') {
   const gameReducer = (
-    state = { phase: initialGamePhase, hohId: null as string | null, povWinnerId: null as string | null },
+    state = { phase: initialGamePhase, lohId: null as string | null, posWinnerId: null as string | null },
     action: { type: string; payload?: unknown },
   ) => {
     if (action.type === 'game/applyMinigameWinner') {
-      if (initialGamePhase === 'hoh_comp') {
-        return { ...state, hohId: action.payload as string, phase: 'hoh_results' };
+      if (initialGamePhase === 'loh_comp') {
+        return { ...state, lohId: action.payload as string, phase: 'loh_results' };
       }
-      return { ...state, povWinnerId: action.payload as string, phase: 'pov_results' };
+      return { ...state, posWinnerId: action.payload as string, phase: 'pos_results' };
     }
     return state;
   };
@@ -48,7 +48,7 @@ function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
   });
 }
 
-function initStore(store: ReturnType<typeof makeIntegrationStore>, ids: string[], type: 'HOH' | 'POV' = 'HOH') {
+function initStore(store: ReturnType<typeof makeIntegrationStore>, ids: string[], type: 'LOH' | 'POS' = 'LOH') {
   store.dispatch(
     initBiographyBlitz({
       participantIds: ids,
@@ -134,9 +134,9 @@ describe('Integration — full 2-player elimination', () => {
 
 describe('resolveBiographyBlitzOutcome — idempotency', () => {
   // Use real houseguest IDs so bio question generation succeeds.
-  function reachComplete(type: 'HOH' | 'POV') {
+  function reachComplete(type: 'LOH' | 'POS') {
     const ids = ['finn', 'mimi']; // valid houseguest IDs
-    const store = makeIntegrationStore(type === 'HOH' ? 'hoh_comp' : 'pov_comp');
+    const store = makeIntegrationStore(type === 'LOH' ? 'loh_comp' : 'pos_comp');
     store.dispatch(
       initBiographyBlitz({
         participantIds: ids,
@@ -155,32 +155,32 @@ describe('resolveBiographyBlitzOutcome — idempotency', () => {
     return store;
   }
 
-  it('dispatches applyMinigameWinner for HOH competition', () => {
-    const store = reachComplete('HOH');
+  it('dispatches applyMinigameWinner for LOH competition', () => {
+    const store = reachComplete('LOH');
     // Stub minimal: just verify thunk runs without error
     store.dispatch(resolveBiographyBlitzOutcome());
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);
   });
 
-  it('dispatches applyMinigameWinner for POV competition', () => {
-    const store = reachComplete('POV');
+  it('dispatches applyMinigameWinner for POS competition', () => {
+    const store = reachComplete('POS');
     store.dispatch(resolveBiographyBlitzOutcome());
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);
   });
 
   it('is idempotent — second dispatch is a no-op', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(resolveBiographyBlitzOutcome());
     store.dispatch(resolveBiographyBlitzOutcome()); // second call
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);
   });
 
   it('is a no-op when game phase does not match competition type', () => {
-    const store = makeIntegrationStore('pov_comp'); // wrong phase for HOH
+    const store = makeIntegrationStore('pos_comp'); // wrong phase for LOH
     store.dispatch(
       initBiographyBlitz({
         participantIds: ['finn', 'mimi'], // valid houseguest IDs
-        competitionType: 'HOH',
+        competitionType: 'LOH',
         seed: 42,
         humanContestantId: 'finn',
         now: T0,
@@ -193,13 +193,13 @@ describe('resolveBiographyBlitzOutcome — idempotency', () => {
     store.dispatch(resolveRound());
     store.dispatch(advanceFromReveal());
     store.dispatch(pickEliminationTarget({ targetId: loser }));
-    // Dispatch — the thunk should bail out due to phase mismatch (pov_comp vs HOH)
+    // Dispatch — the thunk should bail out due to phase mismatch (pos_comp vs LOH)
     store.dispatch(resolveBiographyBlitzOutcome());
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(false);
   });
 
   it('outcomeResolved guard prevents re-dispatch after markBiographyBlitzOutcomeResolved', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(markBiographyBlitzOutcomeResolved());
     store.dispatch(resolveBiographyBlitzOutcome()); // already resolved
     expect(store.getState().biographyBlitz.outcomeResolved).toBe(true);

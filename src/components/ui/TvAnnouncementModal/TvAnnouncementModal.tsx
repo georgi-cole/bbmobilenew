@@ -84,13 +84,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Shock',
     body: 'The Big Eye never plays by the same rules twice. A shock has been introduced that could change the course of the game. Pay close attention — nothing is certain, and the housemates may need to adapt quickly to survive.',
   },
-  hoh_comp_announcement: {
+  loh_comp_announcement: {
     icon: '🏆',
     label: 'LOH COMPETITION',
     category: 'Competition',
     body: 'The Leader of the House competition is about to begin. Every eligible housemate is fighting for the most powerful position in the game. The winner becomes the new Leader of the House and gains the authority to nominate two of their fellow housemates for elimination. Power is up for grabs — who will reign supreme today?',
   },
-  pov_comp_announcement: {
+  pos_comp_announcement: {
     icon: '🎭',
     label: 'POWER OF SAFETY',
     category: 'Competition',

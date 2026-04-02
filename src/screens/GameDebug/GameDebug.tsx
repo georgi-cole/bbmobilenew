@@ -595,7 +595,7 @@ export default function GameDebug() {
                     {selectedGame.implementation === 'react' ? (
                       <MinigameHost
                         game={selectedGame}
-                        gameOptions={{ seed, prizeType: 'HOH' }}
+                        gameOptions={{ seed, prizeType: 'LOH' }}
                         participants={minigameParticipants}
                         onDone={() => {
                           setIsRunning(false);

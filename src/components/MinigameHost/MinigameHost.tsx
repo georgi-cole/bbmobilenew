@@ -338,7 +338,7 @@ export default function MinigameHost({
                 <MajorityRulesComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as MajorityRulesCompetitionType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as MajorityRulesCompetitionType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -349,7 +349,7 @@ export default function MinigameHost({
                 <GlassBridgeComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' | undefined}
+                  prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -360,7 +360,7 @@ export default function MinigameHost({
                 <BlackjackTournamentComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as BlackjackTournamentCompetitionType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as BlackjackTournamentCompetitionType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -378,14 +378,14 @@ export default function MinigameHost({
                   source: 'MinigameHost',
                   challengeSeedIgnored: seed,
                   participantIds,
-                  prizeType: gameOptions?.prizeType ?? 'HOH',
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
                 });
               }
               return (
                 <RiskWheelComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as RiskWheelCompetitionType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as RiskWheelCompetitionType ?? 'LOH'}
                   onComplete={handleReactComplete}
                 />
               );
@@ -395,7 +395,7 @@ export default function MinigameHost({
                 <WildcardWesternComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as 'LOH' | 'POS' ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -406,7 +406,7 @@ export default function MinigameHost({
                 <TetrisComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as TetrisPrizeType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -417,7 +417,7 @@ export default function MinigameHost({
                 <HouseOfCardsComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as HouseOfCardsPrizeType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as HouseOfCardsPrizeType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -426,10 +426,10 @@ export default function MinigameHost({
             if (game.implementation === 'react' && game.reactComponentKey === 'TiltLabyrinth') {
               return (
                 <TiltLabyrinthComp
-                  key={`tilt-labyrinth:${seed}:${gameOptions?.prizeType as string ?? 'HOH'}:${participantIds.join(',')}`}
+                  key={`tilt-labyrinth:${seed}:${gameOptions?.prizeType as string ?? 'LOH'}:${participantIds.join(',')}`}
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as TiltLabyrinthPrizeType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as TiltLabyrinthPrizeType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -440,7 +440,7 @@ export default function MinigameHost({
                 <MemoryColorsComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as MemoryColorsCompetitionType ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as MemoryColorsCompetitionType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
@@ -451,7 +451,7 @@ export default function MinigameHost({
                 <TrapAuctionComp
                   participantIds={participantIds}
                   participants={participants}
-                  prizeType={gameOptions?.prizeType as 'HOH' | 'POV' ?? 'HOH'}
+                  prizeType={gameOptions?.prizeType as 'LOH' | 'POS' ?? 'LOH'}
                   seed={seed}
                   autoStart={true}
                   onComplete={handleReactComplete}

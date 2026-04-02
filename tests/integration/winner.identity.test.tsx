@@ -6,10 +6,10 @@
  * pre-simulated AI scores).  For feature-managed games (holdWall, glass_bridge,
  * silentSaboteur, dontGoOver, etc.) the feature thunk calls
  * `applyMinigameWinner` synchronously before `onDone` fires, transitioning
- * `game.phase` to `hoh_results` / `pov_results`.  This caused two problems:
+ * `game.phase` to `loh_results` / `pos_results`.  This caused two problems:
  *
- *   1. `isHohComp = game.phase === 'hoh_comp'` evaluated to `false` even for
- *      an HOH competition.
+ *   1. `isHohComp = game.phase === 'loh_comp'` evaluated to `false` even for
+ *      an LOH competition.
  *   2. `completeChallenge` returned a score-based winner (not the
  *      last-player-standing winner) — potentially the wrong player.
  *
@@ -19,11 +19,11 @@
  * a feature thunk.
  *
  * Tests below verify:
- *  1. When the feature thunk applies `hohId` before `onDone`, the defensive
+ *  1. When the feature thunk applies `lohId` before `onDone`, the defensive
  *     fallback in GameScreen (no DOMRect) commits the *feature-thunk winner*,
  *     not a score-based alternative.
  *  2. The feature-thunk winner is preferred even when `game.phase` has already
- *     advanced to `hoh_results` at the time `onDone` fires.
+ *     advanced to `loh_results` at the time `onDone` fires.
  *  3. SpectatorView resolves initialWinner with `resolvedExpectedWinner`
  *     taking highest priority, followed by `windowAuthWinner`, then `reduxWinner`.
  *  4. SpectatorView correctly reads `playerId` from an object-shaped
@@ -94,12 +94,12 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 1,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -189,15 +189,15 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     vi.restoreAllMocks();
   });
 
-  it('uses the feature-thunk winner (hohId) even when game.phase has already advanced to hoh_results', async () => {
+  it('uses the feature-thunk winner (lohId) even when game.phase has already advanced to loh_results', async () => {
     // jsdom returns zero-sized DOMRects by default → defensive fallback path
     // (applyMinigameWinner dispatched immediately, no ceremony animation).
     const store = makeStore();
     renderWithStore(store);
 
-    // Phase → hoh_comp → GameScreen starts the challenge and renders MinigameHost.
+    // Phase → loh_comp → GameScreen starts the challenge and renders MinigameHost.
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     expect(capturedOnDone).not.toBeNull();
@@ -210,7 +210,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
         startHoldTheWall({
           participantIds: ['p0', 'p1', 'p2', 'p3'],
           humanId: 'p0',
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: 1,
         }),
       );
@@ -221,14 +221,14 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     });
 
     // resolveHoldTheWallOutcome: applies p2 as winner, transitions phase
-    // to hoh_results.
+    // to loh_results.
     await act(async () => {
       store.dispatch(resolveHoldTheWallOutcome());
     });
 
-    // At this point game.phase === 'hoh_results' and game.hohId === 'p2'.
-    expect(store.getState().game.hohId).toBe('p2');
-    expect(store.getState().game.phase).toBe('hoh_results');
+    // At this point game.phase === 'loh_results' and game.lohId === 'p2'.
+    expect(store.getState().game.lohId).toBe('p2');
+    expect(store.getState().game.phase).toBe('loh_results');
 
     // Now onDone fires (e.g. after the 5 s winner-screen timer).
     // rawValue=1 is the sentinel passed by all React minigames.
@@ -238,27 +238,27 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
       capturedOnDone!(1);
     });
 
-    // The game.hohId MUST remain p2 — the feature-thunk winner must not
+    // The game.lohId MUST remain p2 — the feature-thunk winner must not
     // be overwritten by a stale score-based winner from completeChallenge.
-    expect(store.getState().game.hohId).toBe('p2');
-    // Phase should still be hoh_results (applyMinigameWinner is a no-op when
-    // hohId is already set).
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.lohId).toBe('p2');
+    // Phase should still be loh_results (applyMinigameWinner is a no-op when
+    // lohId is already set).
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('prizeType from pendingChallenge correctly identifies HOH comp even when game.phase has already advanced', async () => {
+  it('prizeType from pendingChallenge correctly identifies LOH comp even when game.phase has already advanced', async () => {
     const store = makeStore();
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     expect(capturedOnDone).not.toBeNull();
 
-    // Verify pendingChallenge has prizeType='HOH' captured at challenge-start
+    // Verify pendingChallenge has prizeType='LOH' captured at challenge-start
     const pending = store.getState().challenge.pending;
-    expect(pending?.prizeType).toBe('HOH');
+    expect(pending?.prizeType).toBe('LOH');
 
     // Simulate feature thunk winner applied + phase advanced
     await act(async () => {
@@ -266,7 +266,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
         startHoldTheWall({
           participantIds: ['p0', 'p1', 'p2', 'p3'],
           humanId: 'p0',
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: 2,
         }),
       );
@@ -279,19 +279,19 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
       store.dispatch(resolveHoldTheWallOutcome());
     });
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
 
     // onDone fires — the isHohComp determination must use prizeType, not
-    // game.phase (which is already 'hoh_results').  If isHohComp were
+    // game.phase (which is already 'loh_results').  If isHohComp were
     // derived from game.phase, it would be false and the logic would
-    // incorrectly look for a POV winner.
+    // incorrectly look for a POS winner.
     await act(async () => {
       capturedOnDone!(1);
     });
 
-    // prize applied to HOH (not POV)
-    expect(store.getState().game.hohId).toBe('p2');
-    expect(store.getState().game.povWinnerId).toBeNull();
+    // prize applied to LOH (not POS)
+    expect(store.getState().game.lohId).toBe('p2');
+    expect(store.getState().game.posWinnerId).toBeNull();
   });
 
   it('falls back to score-based winner when no feature thunk has pre-applied a winner', async () => {
@@ -302,13 +302,13 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     expect(capturedOnDone).not.toBeNull();
 
-    // No feature thunk runs; game.hohId is still null.
-    expect(store.getState().game.hohId).toBeNull();
+    // No feature thunk runs; game.lohId is still null.
+    expect(store.getState().game.lohId).toBeNull();
 
     // onDone fires with a high rawValue for the human player (p0 wins).
     await act(async () => {
@@ -316,8 +316,8 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     });
 
     // Some winner must be applied (the score-based path picks p0 or highest scorer).
-    expect(store.getState().game.hohId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.lohId).not.toBeNull();
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
   it('prefers an authoritative winner returned by the React minigame over score-based challenge results', async () => {
@@ -325,7 +325,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     renderWithStore(store);
 
     await act(async () => {
-      store.dispatch(setPhase('hoh_comp'));
+      store.dispatch(setPhase('loh_comp'));
     });
 
     expect(capturedOnDone).not.toBeNull();
@@ -334,8 +334,8 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
       capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' });
     });
 
-    expect(store.getState().game.hohId).toBe('p2');
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.lohId).toBe('p2');
+    expect(store.getState().game.phase).toBe('loh_results');
     expect(store.getState().challenge.history[0]?.winnerId).toBe('p2');
     expect(store.getState().challenge.history[0]?.authoritative).toBe(true);
   });
@@ -387,9 +387,9 @@ describe('SpectatorView — winner precedence after the fix', () => {
           },
           preloadedState: {
             game: {
-              season: 1, week: 1, phase: 'hoh_comp', seed: 1,
-              hohId: 'p2', // reduxWinner candidate
-              prevHohId: null, nomineeIds: [], povWinnerId: null,
+              season: 1, week: 1, phase: 'loh_comp', seed: 1,
+              lohId: 'p2', // reduxWinner candidate
+              prevHohId: null, nomineeIds: [], posWinnerId: null,
               replacementNeeded: false, awaitingNominations: false,
               pendingNominee1Id: null, pendingMinigame: null, minigameResult: null,
               twistActive: false, awaitingPovDecision: false, awaitingPovSaveTarget: false,
@@ -426,7 +426,7 @@ describe('SpectatorView — winner precedence after the fix', () => {
 
     const competitorIds = ['p1', 'p2'];
     (window as unknown as Record<string, unknown>).game = {
-      __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'hoh', timestamp: 0 },
+      __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'loh', timestamp: 0 },
     };
 
     const store = configureStore({
@@ -439,8 +439,8 @@ describe('SpectatorView — winner precedence after the fix', () => {
       },
       preloadedState: {
         game: {
-          season: 1, week: 1, phase: 'hoh_comp', seed: 1,
-          hohId: null, prevHohId: null, nomineeIds: [], povWinnerId: null,
+          season: 1, week: 1, phase: 'loh_comp', seed: 1,
+          lohId: null, prevHohId: null, nomineeIds: [], posWinnerId: null,
           replacementNeeded: false, awaitingNominations: false,
           pendingNominee1Id: null, pendingMinigame: null, minigameResult: null,
           twistActive: false, awaitingPovDecision: false, awaitingPovSaveTarget: false,

@@ -1,7 +1,7 @@
 /**
  * DiaryWeekView — read-only display of a single diary week record.
  *
- * Shows: header (week number, date range, published badge), HOH / POV blocks,
+ * Shows: header (week number, date range, published badge), LOH / POS blocks,
  * nominees list, replacement nominee marker, eviction votes table with tally,
  * social events timeline, misc notes, and audit metadata.
  *
@@ -97,7 +97,7 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
         </span>
       </header>
 
-      {/* ── HOH / POV ── */}
+      {/* ── LOH / POS ── */}
       <section className="dw-view__section">
         <h3 className="dw-view__section-title">🏠 Competitions</h3>
         <div className="dw-view__comps">
@@ -107,7 +107,7 @@ export default function DiaryWeekView({ seasonId, weekNumber }: Props) {
           </div>
           <div className="dw-view__comp-block">
             <span className="dw-view__comp-label">POS</span>
-            <span className="dw-view__comp-value">{week.povWinner ?? '—'}</span>
+            <span className="dw-view__comp-value">{week.posWinner ?? '—'}</span>
           </div>
         </div>
       </section>

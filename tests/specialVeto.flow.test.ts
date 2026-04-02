@@ -5,7 +5,7 @@
  *  1. activateSpecialVeto sets correct state and pushes TV event with correct major key.
  *  2. tryActivateSpecialVeto thunk respects all eligibility rules.
  *  3. Spotlight veto forces use behavior (AI and human paths).
- *  4. Diamond POV: holder names replacement nominee.
+ *  4. Diamond POS: holder names replacement nominee.
  *  5. Detox: removes both nominees, names two replacements.
  *  6. Double Trouble: first use, second use decision flow.
  *  7. Season-one-per-season rule (seasonUsed prevents second activation).
@@ -81,12 +81,12 @@ function makeStore(
   const base: GameState = {
     season: 1,
     week: 3,
-    phase: 'pov_results',
+    phase: 'pos_results',
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     prevHohId: null,
     nomineeIds: ['p2', 'p3'],
-    povWinnerId: 'p1',
+    posWinnerId: 'p1',
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -194,7 +194,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
     expect(store.getState().game.specialVeto?.seasonUsed).toBe(false);
   });
 
-  it('returns false when phase is not pov_results', () => {
+  it('returns false when phase is not pos_results', () => {
     const store = makeStore(
       { phase: 'nominations' },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
@@ -206,7 +206,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when fewer than 5 evictions have happened (early game)', () => {
     // Only 4 evictions — too early for special veto
     const store = makeStore(
-      { phase: 'pov_results', players: makePlayersWithEvictions(8, 4) },
+      { phase: 'pos_results', players: makePlayersWithEvictions(8, 4) },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
@@ -216,7 +216,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when at final 5 or fewer alive players (endgame)', () => {
     // 5 evictions, but only 5 alive — too close to the end
     const store = makeStore(
-      { phase: 'pov_results', players: makePlayersWithEvictions(5, 5) },
+      { phase: 'pos_results', players: makePlayersWithEvictions(5, 5) },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
@@ -226,7 +226,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when double eviction is active', () => {
     const store = makeStore(
       {
-        phase: 'pov_results',
+        phase: 'pos_results',
         week: 3,
         doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
       },
@@ -239,7 +239,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when twistActivatedThisWeek is true (same-week guard)', () => {
     const store = makeStore(
       {
-        phase: 'pov_results',
+        phase: 'pos_results',
         twistActivatedThisWeek: true,
       },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
@@ -251,7 +251,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when season already used a special veto', () => {
     const store = makeStore(
       {
-        phase: 'pov_results',
+        phase: 'pos_results',
         week: 3,
         specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true },
       },
@@ -264,7 +264,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
   it('returns false when chance roll does not pass', () => {
     // specialSafetyChance=0 means roll is always >= chance
     const store = makeStore(
-      { phase: 'pov_results', week: 3 },
+      { phase: 'pos_results', week: 3 },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 0 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
@@ -273,7 +273,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
 
   it('activates when all conditions are met (chance=100)', () => {
     const store = makeStore(
-      { phase: 'pov_results', week: 3 },
+      { phase: 'pos_results', week: 3 },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     const result = store.dispatch(tryActivateSpecialVeto());
@@ -284,7 +284,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
 
   it('sets twistActivatedThisWeek=true when activated', () => {
     const store = makeStore(
-      { phase: 'pov_results', week: 3 },
+      { phase: 'pos_results', week: 3 },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     store.dispatch(tryActivateSpecialVeto());
@@ -297,7 +297,7 @@ describe('tryActivateSpecialVeto eligibility', () => {
 describe('season one-per-season rule', () => {
   it('second activateSpecialVeto call in same season still sets state but tryActivate prevents it via seasonUsed', () => {
     const store = makeStore(
-      { phase: 'pov_results', week: 3 },
+      { phase: 'pos_results', week: 3 },
       { sim: { ...DEFAULT_SETTINGS.sim, enableTwists: true, specialSafetyChance: 100 } },
     );
     store.dispatch(tryActivateSpecialVeto());
@@ -314,7 +314,7 @@ describe('season one-per-season rule', () => {
 
 // ── Force Majeure ─────────────────────────────────────────────────────────────
 
-describe('Force Majeure — AI POV holder (not nominee)', () => {
+describe('Force Majeure — AI POS holder (not nominee)', () => {
   it('AI forces use on a nominee and triggers AI replacement', () => {
     const players = makePlayers(8);
     // p1 is pov holder (not nominee), p2 and p3 are nominees
@@ -322,9 +322,9 @@ describe('Force Majeure — AI POV holder (not nominee)', () => {
     players[2].status = 'nominated';
     players[3].status = 'nominated';
     const store = makeStore({
-      phase: 'pov_ceremony', // advance() will process pov_ceremony_results
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      phase: 'pos_ceremony', // advance() will process pos_ceremony_results
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: ['p2', 'p3'],
       players,
       specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true, activeType: 'spotlight', activatedWeek: 3 },
@@ -338,15 +338,15 @@ describe('Force Majeure — AI POV holder (not nominee)', () => {
   });
 });
 
-describe('Force Majeure — Human POV holder (not nominee)', () => {
+describe('Force Majeure — Human POS holder (not nominee)', () => {
   it('sets awaitingPovSaveTarget (forced use)', () => {
     const players = makePlayers(8, 1); // p1 is human
     players[2].status = 'nominated';
     players[3].status = 'nominated';
     const store = makeStore({
-      phase: 'pov_ceremony', // advance() will process pov_ceremony_results
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      phase: 'pos_ceremony', // advance() will process pos_ceremony_results
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: ['p2', 'p3'],
       players,
       specialVeto: { ...INITIAL_SPECIAL_VETO, seasonUsed: true, activeType: 'spotlight', activatedWeek: 3 },
@@ -356,17 +356,17 @@ describe('Force Majeure — Human POV holder (not nominee)', () => {
   });
 });
 
-// ── Diamond POV ───────────────────────────────────────────────────────────────
+// ── Diamond POS ───────────────────────────────────────────────────────────────
 
-describe('Diamond POV — Human POV holder names replacement', () => {
+describe('Diamond POS — Human POS holder names replacement', () => {
   it('submitDiamondReplacement adds player as nominee and clears awaitingHolderReplacement', () => {
     const players = makePlayers(8, 1); // p1 is human and pov holder
     players[2].status = 'nominated';
     players[3].status = 'nominated';
     const store = makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      phase: 'pos_ceremony_results',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: ['p2'],
       povSavedId: 'p3',
       players,
@@ -391,11 +391,11 @@ describe('Diamond POV — Human POV holder names replacement', () => {
     expect(store.getState().game.nomineeIds).not.toContain('p4');
   });
 
-  it('submitDiamondReplacement rejects HOH as replacement', () => {
+  it('submitDiamondReplacement rejects LOH as replacement', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: ['p2'],
       povSavedId: 'p3',
       players,
@@ -406,7 +406,7 @@ describe('Diamond POV — Human POV holder names replacement', () => {
         awaitingHolderReplacement: true,
       },
     });
-    store.dispatch(submitDiamondReplacement('p0')); // p0 is HOH
+    store.dispatch(submitDiamondReplacement('p0')); // p0 is LOH
     expect(store.getState().game.nomineeIds).not.toContain('p0');
     expect(store.getState().game.specialVeto?.awaitingHolderReplacement).toBe(true);
   });
@@ -414,12 +414,12 @@ describe('Diamond POV — Human POV holder names replacement', () => {
 
 // ── Detox ─────────────────────────────────────────────────────────────────────
 
-describe('Detox — Human POV holder names two replacements', () => {
+describe('Detox — Human POS holder names two replacements', () => {
   it('submitCoupReplacement first pick sets coupReplacement1Id and advances to pick 2', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: [],
       players,
       specialVeto: {
@@ -439,8 +439,8 @@ describe('Detox — Human POV holder names two replacements', () => {
   it('submitCoupReplacement second pick adds both nominees and clears flags', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: [],
       players,
       specialVeto: {
@@ -462,8 +462,8 @@ describe('Detox — Human POV holder names two replacements', () => {
   it('submitCoupReplacement rejects duplicate pick on second turn', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: [],
       players,
       specialVeto: {
@@ -482,12 +482,12 @@ describe('Detox — Human POV holder names two replacements', () => {
 
 // ── Double Trouble ────────────────────────────────────────────────────────────
 
-describe('Double Trouble — second use decision (human POV holder)', () => {
+describe('Double Trouble — second use decision (human POS holder)', () => {
   it('submitVipSecondUseDecision(true) sets awaitingVipSecondSaveTarget', () => {
-    const players = makePlayers(8, 1); // p1 is human POV holder
+    const players = makePlayers(8, 1); // p1 is human POS holder
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p1',
+      lohId: 'p0',
+      posWinnerId: 'p1',
       nomineeIds: ['p3', 'p4'],
       players,
       specialVeto: {
@@ -507,7 +507,7 @@ describe('Double Trouble — second use decision (human POV holder)', () => {
   it('submitVipSecondUseDecision(false) sets vipUseStage=-1', () => {
     const players = makePlayers(8, 1);
     const store = makeStore({
-      povWinnerId: 'p1',
+      posWinnerId: 'p1',
       nomineeIds: ['p3', 'p4'],
       players,
       specialVeto: {
@@ -524,14 +524,14 @@ describe('Double Trouble — second use decision (human POV holder)', () => {
     expect(sv.vipUseStage).toBe(-1);
   });
 
-  it('submitVipSecondSaveTarget saves nominee and sets vipUseStage=3 (human HOH)', () => {
-    const players = makePlayers(8, 5); // p5 is the human user (POV holder)
-    players[0].status = 'active'; // p0 = HOH
+  it('submitVipSecondSaveTarget saves nominee and sets vipUseStage=3 (human LOH)', () => {
+    const players = makePlayers(8, 5); // p5 is the human user (POS holder)
+    players[0].status = 'active'; // p0 = LOH
     players[3].status = 'nominated';
     players[4].status = 'nominated';
     const store = makeStore({
-      hohId: 'p0',
-      povWinnerId: 'p5',
+      lohId: 'p0',
+      posWinnerId: 'p5',
       nomineeIds: ['p3', 'p4'],
       players,
       specialVeto: {
@@ -546,7 +546,7 @@ describe('Double Trouble — second use decision (human POV holder)', () => {
     const state = store.getState().game;
     expect(state.nomineeIds).not.toContain('p3');
     expect(state.povSavedId).toBe('p3');
-    // HOH is not human (p5 is human pov holder, but p0 is non-human HOH), so AI names
+    // LOH is not human (p5 is human pov holder, but p0 is non-human LOH), so AI names
     // a replacement and vipUseStage ends at -1
     expect(state.specialVeto?.vipUseStage).toBe(-1);
   });
@@ -629,7 +629,7 @@ describe('week_start clears specialVeto per-week flags', () => {
 describe('advance() guard — specialVeto blocking flags', () => {
   it('does not advance when awaitingCoupReplacement1 is set', () => {
     const store = makeStore({
-      phase: 'pov_ceremony_results',
+      phase: 'pos_ceremony_results',
       specialVeto: { ...INITIAL_SPECIAL_VETO, awaitingCoupReplacement1: true },
     });
     const phaseBefore = store.getState().game.phase;
@@ -639,7 +639,7 @@ describe('advance() guard — specialVeto blocking flags', () => {
 
   it('does not advance when awaitingVipSecondUseDecision is set', () => {
     const store = makeStore({
-      phase: 'pov_ceremony_results',
+      phase: 'pos_ceremony_results',
       specialVeto: { ...INITIAL_SPECIAL_VETO, awaitingVipSecondUseDecision: true },
     });
     const phaseBefore = store.getState().game.phase;

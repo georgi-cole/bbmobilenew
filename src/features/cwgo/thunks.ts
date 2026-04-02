@@ -2,7 +2,7 @@
  * Thunk: resolveCompetitionOutcome
  *
  * Reads the completed CWGO competition state, validates the current game phase
- * matches the prize type, and awards HOH or POV via `applyMinigameWinner`.
+ * matches the prize type, and awards LOH or POS via `applyMinigameWinner`.
  *
  * This thunk is idempotent — if it has already been resolved (outcomeResolved
  * is true) it returns immediately without dispatching again.
@@ -36,16 +36,16 @@ export const resolveCompetitionOutcome =
     });
 
     // Validate game phase matches prize type before dispatching.
-    if (cwgo.prizeType === 'HOH' && phase !== 'hoh_comp') {
+    if (cwgo.prizeType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[cwgo] resolveCompetitionOutcome: expected phase "hoh_comp" for HOH prize, got',
+        '[cwgo] resolveCompetitionOutcome: expected phase "loh_comp" for LOH prize, got',
         phase,
       );
       return;
     }
-    if (cwgo.prizeType === 'POV' && phase !== 'pov_comp') {
+    if (cwgo.prizeType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[cwgo] resolveCompetitionOutcome: expected phase "pov_comp" for POV prize, got',
+        '[cwgo] resolveCompetitionOutcome: expected phase "pos_comp" for POS prize, got',
         phase,
       );
       return;
@@ -55,8 +55,8 @@ export const resolveCompetitionOutcome =
     // by applyMinigameWinner sees outcomeResolved = true and cannot re-enter.
     dispatch(markCwgoOutcomeResolved());
 
-    // applyMinigameWinner uses the current game phase (hoh_comp → applyHohWinner,
-    // pov_comp → applyPovWinner) to apply the appropriate winner effect.
+    // applyMinigameWinner uses the current game phase (loh_comp → applyLohWinner,
+    // pos_comp → applyPosWinner) to apply the appropriate winner effect.
     // Pass the first-eliminated player as lastPlaceId so the third-nominee
     // auto-add matches the elimination order shown in the competition UI.
     const lastPlaceId = cwgo.eliminationOrder[0] ?? null;

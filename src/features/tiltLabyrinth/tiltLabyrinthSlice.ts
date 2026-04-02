@@ -23,7 +23,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type TiltLabyrinthPrizeType = 'HOH' | 'POV';
+export type TiltLabyrinthPrizeType = 'LOH' | 'POS';
 export type TiltLabyrinthPhase = 'idle' | 'playing' | 'complete';
 
 export interface TiltLabyrinthParticipant {
@@ -58,7 +58,7 @@ export interface TiltLabyrinthState {
 
 const initialState: TiltLabyrinthState = {
   phase: 'idle',
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   seed: 0,
   participants: [],
   humanPlayerId: null,

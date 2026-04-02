@@ -12,7 +12,7 @@ export default function Houseguests() {
   const game = useAppSelector((s) => s.game)
   const players = game.players
   const alivePlayers = useAppSelector(selectAlivePlayers)
-  const { hohId, nomineeIds, povWinnerId } = game
+  const { lohId, nomineeIds, posWinnerId } = game
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
   const settings = useAppSelector(selectSettings)
@@ -26,8 +26,8 @@ export default function Houseguests() {
   const houseguests = players.slice(0, effectiveCastSize).map((p) => {
     // Derive statuses from authoritative game-level fields
     const parts: string[] = []
-    if (hohId === p.id) parts.push('hoh')
-    if (povWinnerId === p.id) parts.push('pov')
+    if (lohId === p.id) parts.push('loh')
+    if (posWinnerId === p.id) parts.push('pos')
     if (Array.isArray(nomineeIds) && nomineeIds.includes(p.id)) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')
 

@@ -38,19 +38,19 @@ export const resolveWildcardWesternOutcome =
       });
     }
 
-    if (ww.prizeType === 'HOH' && phase !== 'hoh_comp') {
+    if (ww.prizeType === 'LOH' && phase !== 'loh_comp') {
       if (import.meta.env.DEV) {
         console.error(
-          '[wildcardWestern] resolveWildcardWesternOutcome: expected "hoh_comp" for HOH, got',
+          '[wildcardWestern] resolveWildcardWesternOutcome: expected "loh_comp" for LOH, got',
           phase,
         );
       }
       return;
     }
-    if (ww.prizeType === 'POV' && phase !== 'pov_comp') {
+    if (ww.prizeType === 'POS' && phase !== 'pos_comp') {
       if (import.meta.env.DEV) {
         console.error(
-          '[wildcardWestern] resolveWildcardWesternOutcome: expected "pov_comp" for POV, got',
+          '[wildcardWestern] resolveWildcardWesternOutcome: expected "pos_comp" for POS, got',
           phase,
         );
       }

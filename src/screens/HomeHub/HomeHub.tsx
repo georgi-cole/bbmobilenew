@@ -146,7 +146,7 @@ export default function HomeHub() {
     // Starting it here would cause the track to be queued or briefly played and
     // then stopped by useIntroHubMusic's cleanup on unmount, which can race with
     // game-phase music and cause overlap (e.g. intro hub loop restarting during
-    // pov_ceremony).  The hub music is managed exclusively by useIntroHubMusic
+    // pos_ceremony).  The hub music is managed exclusively by useIntroHubMusic
     // and handleSoundConsentEnable.
 
     // Check for a saved in-progress season for the active profile.

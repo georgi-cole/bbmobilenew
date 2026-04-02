@@ -445,8 +445,8 @@ export interface ActivationCheckState {
   secretMission?: SecretMissionState;
   /** IDs of players currently nominated (on the block). */
   nomineeIds: readonly string[];
-  /** ID of the current HOH. */
-  hohId?: string | null;
+  /** ID of the current LOH. */
+  lohId?: string | null;
   /** Full player list (only id, isUser, and status are inspected). */
   players: ReadonlyArray<{ id: string; isUser?: boolean; status: string }>;
   /** Double-eviction twist state — weekActive means double eviction is running. */
@@ -519,7 +519,7 @@ export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
  *  1. A secret-mission reward of type `doubleVote` exists and is eligible
  *     (not consumed, not expired).
  *  2. The current phase is `live_vote` — the only moment when a vote can be cast.
- *  3. The human player is an eligible voter (alive, not HOH, not nominated).
+ *  3. The human player is an eligible voter (alive, not LOH, not nominated).
  *  4. No conflicting twist is active (e.g. Double Eviction).
  *  5. The game is not at or beyond Final 4.
  */
@@ -533,8 +533,8 @@ export function canUseDoubleVote(state: ActivationCheckState): boolean {
   const humanPlayer = state.players.find((p) => p.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury') return false;
 
-  // Human must be an eligible voter: not the HOH and not currently nominated.
-  if (humanPlayer.id === state.hohId) return false;
+  // Human must be an eligible voter: not the LOH and not currently nominated.
+  if (humanPlayer.id === state.lohId) return false;
   if (state.nomineeIds.includes(humanPlayer.id)) return false;
 
   return true;

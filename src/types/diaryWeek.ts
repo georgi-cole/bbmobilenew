@@ -24,7 +24,7 @@ export interface DiaryWeek {
   startAt: string | null;
   endAt: string | null;
   hohWinner: string | null;
-  povWinner: string | null;
+  posWinner: string | null;
   nominees: string[];
   replacementNominee: string | null;
   evictionVotes: EvictionVote[];
@@ -46,7 +46,7 @@ export interface CreateDiaryWeekPayload {
   startAt?: string | null;
   endAt?: string | null;
   hohWinner?: string | null;
-  povWinner?: string | null;
+  posWinner?: string | null;
   nominees?: string[];
   replacementNominee?: string | null;
   evictionVotes?: EvictionVote[];

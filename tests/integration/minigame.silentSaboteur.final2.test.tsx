@@ -36,12 +36,12 @@ import SilentSaboteurComp from '../../src/components/SilentSaboteurComp/SilentSa
 
 function makeStore() {
   const gameReducer = (
-    state = { phase: 'hoh_comp', hohId: null as string | null, applyCount: 0 },
+    state = { phase: 'loh_comp', lohId: null as string | null, applyCount: 0 },
     action: { type: string; payload?: unknown },
   ) => {
     if (action.type === 'game/applyMinigameWinner') {
       const p = action.payload as { winnerId: string };
-      return { ...state, hohId: p.winnerId, phase: 'hoh_results', applyCount: state.applyCount + 1 };
+      return { ...state, lohId: p.winnerId, phase: 'loh_results', applyCount: state.applyCount + 1 };
     }
     return state;
   };
@@ -108,7 +108,7 @@ function renderComp(store: TestStore, onComplete?: () => void, standalone = true
       <SilentSaboteurComp
         participantIds={IDS}
         participants={PARTICIPANTS}
-        prizeType="HOH"
+        prizeType="LOH"
         seed={42}
         onComplete={onComplete}
         standalone={standalone}

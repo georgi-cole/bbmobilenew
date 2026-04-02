@@ -11,10 +11,10 @@ import type { SeasonArchive } from '../store/seasonArchive';
 export type PlayerStatus =
   | 'active'
   | 'nominated'
-  | 'hoh'
-  | 'pov'
-  | 'hoh+pov'
-  | 'nominated+pov'
+  | 'loh'
+  | 'pos'
+  | 'loh+pos'
+  | 'nominated+pos'
   | 'evicted'
   | 'jury';
 
@@ -28,12 +28,12 @@ export interface Player {
   /** Optional competition skill profile for AI simulations. */
   competitionProfile?: CompetitionSkillProfile;
   stats?: {
-    hohWins: number;
-    povWins: number;
+    lohWins: number;
+    posWins: number;
     timesNominated: number;
     /** Number of times this player won a Battle Back competition and returned to the house. */
     battleBackWins?: number;
-    /** True when this player won the Final HOH (Part 3 of the Final 3 competition). */
+    /** True when this player won the Final LOH (Part 3 of the Final 3 competition). */
     wonFinalHoh?: boolean;
     /** Personal-record tap count for TapRace competitions. */
     tapRacePR?: number;
@@ -133,10 +133,10 @@ export interface MinigameContext {
 // Canonical weekly-game phase list (in execution order)
 export type Phase =
   | 'week_start'
-  /** Pre-competition TV announcement before the HOH competition begins. */
-  | 'hoh_comp_announcement'
-  | 'hoh_comp'
-  | 'hoh_results'
+  /** Pre-competition TV announcement before the LOH competition begins. */
+  | 'loh_comp_announcement'
+  | 'loh_comp'
+  | 'loh_results'
   | 'social_1'
   | 'nominations'
   | 'nomination_results'
@@ -147,17 +147,17 @@ export type Phase =
    * Skipped transparently during Double Eviction weeks.
    */
   | 'pre_veto_public_save'
-  /** Pre-competition TV announcement before the POV competition begins. */
-  | 'pov_comp_announcement'
-  | 'pov_comp'
-  | 'pov_results'
-  | 'pov_ceremony'
-  | 'pov_ceremony_results'
+  /** Pre-competition TV announcement before the POS competition begins. */
+  | 'pos_comp_announcement'
+  | 'pos_comp'
+  | 'pos_results'
+  | 'pos_ceremony'
+  | 'pos_ceremony_results'
   | 'social_2'
   | 'live_vote'
   | 'eviction_results'
   | 'week_end'
-  /** Special: entered from pov_results when aliveCount === 4 (skips ceremony). */
+  /** Special: entered from pos_results when aliveCount === 4 (skips ceremony). */
   | 'final4_eviction'
   /** Special: entered after Final 4 eviction; announces the Final 3. */
   | 'final3'
@@ -169,11 +169,11 @@ export type Phase =
   | 'final3_comp2'
   /** Minigame sub-phase: human is competing in Final 3 Part 2. */
   | 'final3_comp2_minigame'
-  /** Final 3 Part 3: Part-1 winner vs Part-2 winner → Final HOH crowned. */
+  /** Final 3 Part 3: Part-1 winner vs Part-2 winner → Final LOH crowned. */
   | 'final3_comp3'
   /** Minigame sub-phase: human is competing in Final 3 Part 3. */
   | 'final3_comp3_minigame'
-  /** Final HOH evicts one of the 2 remaining houseguests directly (no vote). */
+  /** Final LOH evicts one of the 2 remaining houseguests directly (no vote). */
   | 'final3_decision'
   /** Intermediate: announcement modal shown before the jury cinematic intro. */
   | 'jury_announcement'
@@ -309,17 +309,17 @@ export interface SpecialVetoState {
    */
   vipUseStage: number;
 
-  /** Diamond: human POV holder picks their own replacement. */
+  /** Diamond: human POS holder picks their own replacement. */
   awaitingHolderReplacement: boolean;
-  /** Coup: human POV holder picks first replacement. */
+  /** Coup: human POS holder picks first replacement. */
   awaitingCoupReplacement1: boolean;
-  /** Coup: human POV holder picks second replacement. */
+  /** Coup: human POS holder picks second replacement. */
   awaitingCoupReplacement2: boolean;
   /** Coup: stores the first replacement ID between the two picks. */
   coupReplacement1Id: string | null;
-  /** VIP: human POV holder decides whether to use the veto a second time. */
+  /** VIP: human POS holder decides whether to use the veto a second time. */
   awaitingVipSecondUseDecision: boolean;
-  /** VIP: human POV holder picks which nominee to save on second use. */
+  /** VIP: human POS holder picks which nominee to save on second use. */
   awaitingVipSecondSaveTarget: boolean;
 }
 
@@ -402,12 +402,12 @@ export interface GameState {
   isLive: boolean;
   /** Mulberry32 seed – advances on each outcome computation for reproducibility. */
   seed: number;
-  /** Player ID of the current Head of Household, or null between weeks. */
-  hohId: string | null;
+  /** Player ID of the current Leader of the House, or null between weeks. */
+  lohId: string | null;
   /**
-   * Player ID of the outgoing (previous week's) Head of Household.
-   * Set at the start of each new week so the outgoing HOH can be excluded
-   * from the HOH competition. Null in Week 1 and during the Final 3.
+   * Player ID of the outgoing (previous week's) Leader of the House.
+   * Set at the start of each new week so the outgoing LOH can be excluded
+   * from the LOH competition. Null in Week 1 and during the Final 3.
    */
   prevHohId: string | null;
   /** Player IDs currently nominated for eviction. */
@@ -418,29 +418,29 @@ export interface GameState {
    * read from settings at season creation/reset time.
    */
   publicModeEnabled?: boolean;
-  /** Player ID of the current Power of Veto holder, or null. */
-  povWinnerId: string | null;
+  /** Player ID of the current Power of Safety holder, or null. */
+  posWinnerId: string | null;
   /**
-   * When true, the human HOH must pick a replacement nominee (after a POV auto-save).
+   * When true, the human LOH must pick a replacement nominee (after a POS auto-save).
    * The Continue button is hidden and a replacement picker is shown instead.
    */
   replacementNeeded?: boolean;
   /**
-   * The ID of the player who was saved by the Power of Veto this week.
+   * The ID of the player who was saved by the Power of Safety this week.
    * Excluded from the replacement nominee pool so the saved player cannot be
    * immediately re-nominated as the replacement.
    * Cleared after the replacement nominee is confirmed.
    */
   povSavedId?: string | null;
   /**
-   * Player ID of the houseguest who finished last in the HOH competition.
+   * Player ID of the houseguest who finished last in the LOH competition.
    * Used by the third-nominee rule: in normal weeks, this player is automatically
-   * added as the third nominee after the HOH selects two.
+   * added as the third nominee after the LOH selects two.
    * Cleared at the start of each new week.
    */
   lastHohCompFinisherId?: string | null;
   /**
-   * Competition type for the HOH comp that produced lastHohCompFinisherId.
+   * Competition type for the LOH comp that produced lastHohCompFinisherId.
    * 'scored'   → ranked/scored game (label: "Lowest Score")
    * 'survival' → last-player-standing game (label: "First out")
    * null       → unknown / not set (UI falls back to "Lowest Score")
@@ -454,14 +454,14 @@ export interface GameState {
    */
   publicSavedNomineeId?: string | null;
   /**
-   * Metadata distinguishing HOH-selected nominees from the auto-added third
+   * Metadata distinguishing LOH-selected nominees from the auto-added third
    * nominee. Used by the nomination reveal UI and nomination context.
    * Null when not applicable (double eviction weeks or before nominations).
    */
   nominationContext?: {
-    /** IDs selected directly by the HOH. */
+    /** IDs selected directly by the LOH. */
     hohNomineeIds: string[];
-    /** ID of the player auto-added as 3rd nominee (last HOH comp finisher). */
+    /** ID of the player auto-added as 3rd nominee (last LOH comp finisher). */
     autoNomineeId: string | null;
     /** True once the pre-veto public save has resolved for this week. */
     publicSaveApplied: boolean;
@@ -473,24 +473,24 @@ export interface GameState {
    */
   awaitingPublicSave?: boolean;
   /**
-   * When true, the human HOH must pick two nominees in the `nomination_results` phase.
+   * When true, the human LOH must pick two nominees in the `nomination_results` phase.
    * The Continue button is hidden and a two-step nominee picker is shown instead.
    */
   awaitingNominations?: boolean;
   /**
-   * The first nominee chosen by the human HOH during the two-step nomination flow.
+   * The first nominee chosen by the human LOH during the two-step nomination flow.
    * Set by `selectNominee1`; cleared after `finalizeNominations`.
    */
   pendingNominee1Id?: string | null;
   /**
-   * When true, the human POV holder must decide whether to use the veto
-   * in the `pov_ceremony_results` phase (not applicable when they are a nominee,
+   * When true, the human POS holder must decide whether to use the veto
+   * in the `pos_ceremony_results` phase (not applicable when they are a nominee,
    * since nominees always self-save).
    * The Continue button is hidden and a Yes/No binary modal is shown.
    */
   awaitingPovDecision?: boolean;
   /**
-   * When true, the human POV holder chose to use the veto and must now pick
+   * When true, the human POS holder chose to use the veto and must now pick
    * which nominee to save. The Continue button is hidden and a player picker
    * showing current nominees is rendered.
    */
@@ -507,7 +507,7 @@ export interface GameState {
    */
   awaitingHumanVote?: boolean;
   /**
-   * When true, the live vote ended in a tie and the human HOH must break it.
+   * When true, the live vote ended in a tie and the human LOH must break it.
    * The Continue button is hidden and a tie-break modal is shown.
    */
   awaitingTieBreak?: boolean;
@@ -517,40 +517,40 @@ export interface GameState {
    */
   tiedNomineeIds?: string[] | null;
   /**
-   * When true, the human Final HOH must directly evict one of the 2 remaining
+   * When true, the human Final LOH must directly evict one of the 2 remaining
    * houseguests in the `final3_decision` phase.
    * The Continue button is hidden and a TvDecisionModal is shown instead.
    */
   awaitingFinal3Eviction?: boolean;
   /**
    * When true, the Final 3 ceremony is in progress (coronation animation, plea
-   * overlay, HOH decision, and eviction animation). Set after Part 3 spectator
+   * overlay, LOH decision, and eviction animation). Set after Part 3 spectator
    * completes. Blocks advance() until finalizeFinal3Decision clears it.
    */
   awaitingFinal3Plea?: boolean;
   /**
    * Tracks intermediate AI replacement steps after a veto is used on a nominated player.
    * 0 (or undefined) = not in progress.
-   * 1 = waiting to show "HOH must name a replacement nominee" message.
-   * 2 = waiting for AI HOH to pick the replacement.
-   * The phase stays at `pov_ceremony_results` until this reaches 0.
+   * 1 = waiting to show "LOH must name a replacement nominee" message.
+   * 2 = waiting for AI LOH to pick the replacement.
+   * The phase stays at `pos_ceremony_results` until this reaches 0.
    */
   aiReplacementStep?: number;
   /**
-   * When true, the UI has not yet acknowledged the step-1 "HOH must name a
+   * When true, the UI has not yet acknowledged the step-1 "LOH must name a
    * replacement nominee" announcement. advance() will not process step 2
    * until the UI dispatches `aiReplacementRendered` to clear this flag.
    */
   aiReplacementWaiting?: boolean;
   /**
    * Active minigame session. Set when the human player needs to play a
-   * minigame (e.g. TapRace for HOH/POV). The Continue button is hidden and
+   * minigame (e.g. TapRace for LOH/POS). The Continue button is hidden and
    * the TapRace overlay is shown instead. Null when no minigame is active.
    */
   pendingMinigame?: MinigameSession | null;
   /**
    * Result of the most-recently completed minigame. Used by `advance()` to
-   * determine the HOH/POV winner instead of a random pick. Cleared after use.
+   * determine the LOH/POS winner instead of a random pick. Cleared after use.
    */
   minigameResult?: MinigameResult | null;
   /**
@@ -645,8 +645,8 @@ export interface GameState {
   cfg?: {
     /**
      * Future feature flag for multi-eviction weeks.
-     * When true, special POV twists may be suspended.
-     * NOTE: Final 4 special handling (POV holder sole vote) is always enforced
+     * When true, special POS twists may be suspended.
+     * NOTE: Final 4 special handling (POS holder sole vote) is always enforced
      * regardless of this flag. There is currently no automatic logic to set
      * this flag; it is a placeholder for future multi-eviction week support.
      */

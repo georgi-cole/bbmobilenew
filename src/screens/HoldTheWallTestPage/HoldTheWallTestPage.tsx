@@ -43,7 +43,7 @@ export default function HoldTheWallTestPage() {
 
   const game = getGame('holdWall')!;
 
-  const [prizeType, setPrizeType] = useState<HoldTheWallPrizeType>('HOH');
+  const [prizeType, setPrizeType] = useState<HoldTheWallPrizeType>('LOH');
   const [seed, setSeed] = useState(42);
   const [running, setRunning] = useState(false);
   const [skipRules, setSkipRules] = useState(false);
@@ -71,8 +71,8 @@ export default function HoldTheWallTestPage() {
               onChange={(e) => setPrizeType(e.target.value as HoldTheWallPrizeType)}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

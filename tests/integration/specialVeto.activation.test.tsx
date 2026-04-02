@@ -46,12 +46,12 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 3,
-    phase: 'pov_results',
+    phase: 'pos_results',
     seed: 42,
-    hohId: 'p1',
+    lohId: 'p1',
     prevHohId: null,
     nomineeIds: ['p2', 'p3'],
-    povWinnerId: 'p4',
+    posWinnerId: 'p4',
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -114,7 +114,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
 }
 
 describe('GameScreen special veto activation wiring', () => {
-  it('dispatches tryActivateSpecialVeto when entering pov_results', async () => {
+  it('dispatches tryActivateSpecialVeto when entering pos_results', async () => {
     const store = makeStore()
 
     render(

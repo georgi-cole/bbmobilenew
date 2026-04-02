@@ -17,7 +17,7 @@ interface Props {
   /** Message shown in the stinger overlay after confirming */
   stingerMessage?: string;
   /**
-   * ID of the player who is already the forced auto-nominee (last in HOH comp).
+   * ID of the player who is already the forced auto-nominee (last in LOH comp).
    * That option is shown but disabled and cannot be selected manually.
    */
   autoNomineeId?: string;
@@ -30,7 +30,7 @@ interface Props {
 
 /**
  * TvMultiSelectModal — prompts the human player to select `maxSelect` players
- * in a single step. Designed for the nomination ceremony where the HOH picks
+ * in a single step. Designed for the nomination ceremony where the LOH picks
  * two nominees simultaneously.
  *
  * Two-step flow:

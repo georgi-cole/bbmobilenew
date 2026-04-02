@@ -31,9 +31,9 @@ function OptionAvatar({ player, selected }: { player: Player; selected: boolean 
 /**
  * TvDecisionModal — a TV-contained modal prompting the human player to select
  * a houseguest. Used for:
- *   - HOH replacement nominee selection (after POV auto-save)
- *   - Final 4 eviction vote (human POV holder)
- *   - Final 3 Final HOH eviction
+ *   - LOH replacement nominee selection (after POS auto-save)
+ *   - Final 4 eviction vote (human POS holder)
+ *   - Final 3 Final LOH eviction
  *
  * Two-step confirm flow: first tap selects (highlights) an option; the player
  * must then press Confirm to commit. A brief stinger overlay is shown before

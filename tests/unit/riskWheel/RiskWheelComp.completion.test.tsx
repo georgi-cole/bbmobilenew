@@ -46,7 +46,7 @@ const PARTICIPANTS = [
 
 function makeRiskWheelState(overrides: Partial<RiskWheelState> = {}): RiskWheelState {
   return {
-    competitionType: 'HOH',
+    competitionType: 'LOH',
     phase: 'complete',
     allPlayerIds: ['p0', 'p1'],
     activePlayerIds: ['p0', 'p1'],
@@ -121,9 +121,9 @@ describe('RiskWheelComp completion flow', () => {
     expect(resolveRiskWheelOutcomeMock).not.toHaveBeenCalled();
   });
 
-  it('still resolves normal hosted HOH runs through the outcome thunk first', async () => {
+  it('still resolves normal hosted LOH runs through the outcome thunk first', async () => {
     const { onComplete } = renderComponent({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       riskWheelState: makeRiskWheelState({ outcomeResolved: false }),
     });
 
@@ -135,7 +135,7 @@ describe('RiskWheelComp completion flow', () => {
 
   it('still completes normal hosted runs after outcomeResolved is true', async () => {
     const { onComplete } = renderComponent({
-      gamePhase: 'hoh_comp',
+      gamePhase: 'loh_comp',
       riskWheelState: makeRiskWheelState({ outcomeResolved: true }),
     });
 

@@ -2,8 +2,8 @@
  * gameSlice stat tracking — unit tests.
  *
  * Validates:
- *  1. applyHohWinner increments stats.hohWins on the winning player.
- *  2. applyPovWinner increments stats.povWins on the winning player.
+ *  1. applyLohWinner increments stats.lohWins on the winning player.
+ *  2. applyPosWinner increments stats.posWins on the winning player.
  *  3. finalizeNominations increments stats.timesNominated for both nominees.
  *  4. commitNominees increments stats.timesNominated for both nominees.
  *  5. AI nomination path in advance() increments stats.timesNominated.
@@ -43,10 +43,10 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     week: 1,
     phase: 'week_start',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -78,47 +78,47 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
   });
 }
 
-// ── HOH stat ──────────────────────────────────────────────────────────────────
+// ── LOH stat ──────────────────────────────────────────────────────────────────
 
-describe('applyHohWinner stat tracking', () => {
-  it('increments hohWins on the winner after advance from hoh_comp', () => {
+describe('applyLohWinner stat tracking', () => {
+  it('increments lohWins on the winner after advance from loh_comp', () => {
     const store = makeStore({
-      phase: 'hoh_comp',
+      phase: 'loh_comp',
       // Seed chosen so the seeded pick reliably picks a deterministic player.
       seed: 42,
     });
     store.dispatch(advance());
     const { players } = store.getState().game;
-    const hoh = players.find((p) => p.id === store.getState().game.hohId);
-    expect(hoh?.stats?.hohWins).toBe(1);
+    const hoh = players.find((p) => p.id === store.getState().game.lohId);
+    expect(hoh?.stats?.lohWins).toBe(1);
   });
 
-  it('initializes stats when undefined before incrementing hohWins', () => {
+  it('initializes stats when undefined before incrementing lohWins', () => {
     const players = makePlayers(6);
     // Ensure no stats on any player
     players.forEach((p) => { delete p.stats; });
-    const store = makeStore({ phase: 'hoh_comp', players, seed: 42 });
+    const store = makeStore({ phase: 'loh_comp', players, seed: 42 });
     store.dispatch(advance());
-    const { hohId } = store.getState().game;
-    const hoh = store.getState().game.players.find((p) => p.id === hohId);
+    const { lohId } = store.getState().game;
+    const hoh = store.getState().game.players.find((p) => p.id === lohId);
     expect(hoh?.stats).toBeDefined();
-    expect(hoh?.stats?.hohWins).toBe(1);
+    expect(hoh?.stats?.lohWins).toBe(1);
   });
 });
 
-// ── POV stat ──────────────────────────────────────────────────────────────────
+// ── POS stat ──────────────────────────────────────────────────────────────────
 
-describe('applyPovWinner stat tracking', () => {
-  it('increments povWins on the winner after advance from pov_comp', () => {
+describe('applyPosWinner stat tracking', () => {
+  it('increments posWins on the winner after advance from pos_comp', () => {
     const players = makePlayers(6);
-    // advance() from pov_comp computes the POV winner via nextPhase='pov_results'
+    // advance() from pos_comp computes the POS winner via nextPhase='pos_results'
     const store = makeStore({
-      phase: 'pov_comp',
-      hohId: 'p1',
+      phase: 'pos_comp',
+      lohId: 'p1',
       nomineeIds: ['p2', 'p3'],
       players: players.map((p) =>
         p.id === 'p1'
-          ? { ...p, status: 'hoh' }
+          ? { ...p, status: 'loh' }
           : p.id === 'p2' || p.id === 'p3'
           ? { ...p, status: 'nominated' }
           : p,
@@ -126,9 +126,9 @@ describe('applyPovWinner stat tracking', () => {
       seed: 42,
     });
     store.dispatch(advance());
-    const { povWinnerId } = store.getState().game;
-    const povWinner = store.getState().game.players.find((p) => p.id === povWinnerId);
-    expect(povWinner?.stats?.povWins).toBe(1);
+    const { posWinnerId } = store.getState().game;
+    const posWinner = store.getState().game.players.find((p) => p.id === posWinnerId);
+    expect(posWinner?.stats?.posWins).toBe(1);
   });
 });
 
@@ -138,10 +138,10 @@ describe('finalizeNominations stat tracking', () => {
   it('increments timesNominated for both nominees', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(selectNominee1('p1'));
@@ -154,10 +154,10 @@ describe('finalizeNominations stat tracking', () => {
   it('accumulates timesNominated across multiple nominations', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(selectNominee1('p1'));
@@ -175,30 +175,30 @@ describe('commitNominees stat tracking', () => {
   it('increments timesNominated for both nominees', () => {
     const store = makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
+      lohId: 'p0',
       awaitingNominations: true,
       players: makePlayers(6).map((p) =>
-        p.id === 'p0' ? { ...p, status: 'hoh' } : p,
+        p.id === 'p0' ? { ...p, status: 'loh' } : p,
       ),
     });
     store.dispatch(commitNominees(['p3', 'p4']));
     const { players } = store.getState().game;
     expect(players.find((p) => p.id === 'p3')?.stats?.timesNominated).toBe(1);
     expect(players.find((p) => p.id === 'p4')?.stats?.timesNominated).toBe(1);
-    // HOH should not be incremented
+    // LOH should not be incremented
     expect(players.find((p) => p.id === 'p0')?.stats?.timesNominated ?? 0).toBe(0);
   });
 });
 
 describe('AI nomination path stat tracking', () => {
   it('increments timesNominated for AI-chosen nominees during nominations advance', () => {
-    // advance() from 'nominations' phase uses nextPhase='nomination_results' for AI HOH
+    // advance() from 'nominations' phase uses nextPhase='nomination_results' for AI LOH
     const players = makePlayers(6).map((p) =>
-      p.id === 'p1' ? { ...p, status: 'hoh' as const, isUser: false } : { ...p, isUser: false },
+      p.id === 'p1' ? { ...p, status: 'loh' as const, isUser: false } : { ...p, isUser: false },
     );
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p1',
+      lohId: 'p1',
       players,
       seed: 42,
     });
@@ -237,20 +237,20 @@ describe('completeBattleBack stat tracking', () => {
   });
 });
 
-// ── Final HOH stat ────────────────────────────────────────────────────────────
+// ── Final LOH stat ────────────────────────────────────────────────────────────
 
-describe('applyF3MinigameWinner final HOH stat tracking', () => {
+describe('applyF3MinigameWinner final LOH stat tracking', () => {
   it('sets wonFinalHoh on the player who wins final3_comp3_minigame', () => {
     const players = makePlayers(3).map((p, i) => ({
       ...p,
-      status: i === 0 ? ('hoh' as const) : ('active' as const),
+      status: i === 0 ? ('loh' as const) : ('active' as const),
     }));
     const store = makeStore({
       phase: 'final3_comp3_minigame',
       f3Part1WinnerId: 'p0',
       f3Part2WinnerId: 'p1',
       players,
-      hohId: 'p0',
+      lohId: 'p0',
     });
     store.dispatch(applyF3MinigameWinner('p1'));
     const p1 = store.getState().game.players.find((p) => p.id === 'p1');
@@ -259,7 +259,7 @@ describe('applyF3MinigameWinner final HOH stat tracking', () => {
 });
 
 describe('advance() final3_comp3 AI path wonFinalHoh stat', () => {
-  it('sets wonFinalHoh on the AI Final HOH after final3_comp3 advances', () => {
+  it('sets wonFinalHoh on the AI Final LOH after final3_comp3 advances', () => {
     const players = makePlayers(3).map((p) => ({
       ...p,
       // All active, none is user (AI-only path)
@@ -274,8 +274,8 @@ describe('advance() final3_comp3 AI path wonFinalHoh stat', () => {
       seed: 42,
     });
     store.dispatch(advance());
-    const { hohId, players: updatedPlayers } = store.getState().game;
-    const finalHoh = updatedPlayers.find((p) => p.id === hohId);
+    const { lohId, players: updatedPlayers } = store.getState().game;
+    const finalHoh = updatedPlayers.find((p) => p.id === lohId);
     expect(finalHoh?.stats?.wonFinalHoh).toBe(true);
   });
 });

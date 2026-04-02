@@ -39,10 +39,10 @@ function makeStore(overrides: Partial<GameState> = {}) {
     week: 1,
     phase: 'week_start',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -72,10 +72,10 @@ describe('tvFeed — event ID uniqueness', () => {
     const store = makeStore({ phase: 'week_start' });
 
     // Advance through several phases to trigger multiple pushEvent calls.
-    store.dispatch(advance()); // week_start → hoh_comp_announcement
-    store.dispatch(advance()); // hoh_comp_announcement → hoh_comp
-    store.dispatch(advance()); // hoh_comp → hoh_results (pushes HOH event)
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // week_start → loh_comp_announcement
+    store.dispatch(advance()); // loh_comp_announcement → loh_comp
+    store.dispatch(advance()); // loh_comp → loh_results (pushes LOH event)
+    store.dispatch(advance()); // loh_results → social_1
 
     const feed = store.getState().game.tvFeed;
     const ids = feed.map((e) => e.id);
@@ -102,19 +102,19 @@ describe('tvFeed — event ID uniqueness', () => {
     // Force a scenario with multiple events in the same phase/week by
     // dispatching an action that triggers multiple internal pushEvent calls.
     const players: Player[] = [
-      { id: 'p0', name: 'HOH', avatar: '👑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '👑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nom1', avatar: '🧑', status: 'nominated' },
       { id: 'p2', name: 'Nom2', avatar: '🧑', status: 'nominated' },
     ];
     const store = makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'p0',
+      phase: 'pos_ceremony_results',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
-      povWinnerId: 'p1', // nominee wins POV → auto-saves → replacement needed
+      posWinnerId: 'p1', // nominee wins POS → auto-saves → replacement needed
       players,
     });
 
-    store.dispatch(advance()); // triggers multiple pushEvent calls in pov_ceremony_results
+    store.dispatch(advance()); // triggers multiple pushEvent calls in pos_ceremony_results
 
     const feed = store.getState().game.tvFeed;
     const ids = feed.map((e) => e.id);
@@ -187,29 +187,29 @@ describe('tvFeed — 50-entry cap', () => {
 
 describe('replacement nominee — log entry uniqueness', () => {
   it('replacement nominee event has a unique ID distinct from previous events', () => {
-    // Set up a state where AI HOH triggers a replacement after POV save.
-    // The pov_ceremony_results logic runs when advancing FROM pov_ceremony.
-    // POV winner is 'nom1' (a nominee) → auto-saves themselves → AI HOH picks replacement.
+    // Set up a state where AI LOH triggers a replacement after POS save.
+    // The pos_ceremony_results logic runs when advancing FROM pos_ceremony.
+    // POS winner is 'nom1' (a nominee) → auto-saves themselves → AI LOH picks replacement.
     const players: Player[] = [
-      { id: 'hoh', name: 'Big HOH', avatar: '👑', status: 'hoh', isUser: false },
-      { id: 'pov', name: 'POV Holder', avatar: '🎭', status: 'pov' },
-      { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated+pov' },
+      { id: 'loh', name: 'Big LOH', avatar: '👑', status: 'loh', isUser: false },
+      { id: 'pos', name: 'POS Holder', avatar: '🎭', status: 'pos' },
+      { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated+pos' },
       { id: 'nom2', name: 'Nominee 2', avatar: '🧑', status: 'nominated' },
       { id: 'other', name: 'Other', avatar: '🧑', status: 'active' },
     ];
 
     const store = makeStore({
-      // Start at pov_ceremony so advance() transitions to pov_ceremony_results
-      phase: 'pov_ceremony',
-      hohId: 'hoh',
+      // Start at pos_ceremony so advance() transitions to pos_ceremony_results
+      phase: 'pos_ceremony',
+      lohId: 'loh',
       nomineeIds: ['nom1', 'nom2'],
-      povWinnerId: 'nom1', // nominated+pov → auto-saves
+      posWinnerId: 'nom1', // nominated+pov → auto-saves
       players,
       tvFeed: [],
     });
 
-    store.dispatch(advance()); // pov_ceremony → pov_ceremony_results (pushes "used veto", sets aiReplacementStep=1, aiReplacementWaiting=true)
-    store.dispatch(advance()); // aiReplacementStep=1 → pushes "HOH must name replacement", sets step=2
+    store.dispatch(advance()); // pos_ceremony → pos_ceremony_results (pushes "used veto", sets aiReplacementStep=1, aiReplacementWaiting=true)
+    store.dispatch(advance()); // aiReplacementStep=1 → pushes "LOH must name replacement", sets step=2
     store.dispatch(aiReplacementRendered()); // UI acknowledges step-1 message; clears aiReplacementWaiting
     store.dispatch(advance()); // aiReplacementStep=2 → AI picks replacement, pushes replacement event
 
@@ -226,28 +226,28 @@ describe('replacement nominee — log entry uniqueness', () => {
     expect(replacementEvent?.id).toBeTruthy();
   });
 
-  it('human HOH replacement nominee event has unique ID', () => {
+  it('human LOH replacement nominee event has unique ID', () => {
     const players: Player[] = [
-      { id: 'hoh', name: 'Human HOH', avatar: '👑', status: 'hoh', isUser: true },
-      { id: 'pov', name: 'POV Holder', avatar: '🎭', status: 'pov' },
+      { id: 'loh', name: 'Human LOH', avatar: '👑', status: 'loh', isUser: true },
+      { id: 'pos', name: 'POS Holder', avatar: '🎭', status: 'pos' },
       { id: 'nom1', name: 'Nominee 1', avatar: '🧑', status: 'nominated' },
       { id: 'nom2', name: 'Nominee 2', avatar: '🧑', status: 'nominated' },
       { id: 'other', name: 'Other', avatar: '🧑', status: 'active' },
     ];
 
     const store = makeStore({
-      phase: 'pov_ceremony_results',
-      hohId: 'hoh',
+      phase: 'pos_ceremony_results',
+      lohId: 'loh',
       nomineeIds: ['nom1', 'nom2'],
-      povWinnerId: 'pov', // non-nominee POV holder → human HOH decides
+      posWinnerId: 'pos', // non-nominee POS holder → human LOH decides
       awaitingPovSaveTarget: true,
       players,
       tvFeed: [],
     });
 
-    // Human POV holder saves nom1
+    // Human POS holder saves nom1
     store.dispatch(submitPovSaveTarget('nom1'));
-    // Human HOH names replacement
+    // Human LOH names replacement
     store.dispatch(setReplacementNominee('other'));
 
     const feed = store.getState().game.tvFeed;

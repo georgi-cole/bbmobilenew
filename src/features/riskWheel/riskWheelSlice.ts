@@ -97,7 +97,7 @@ const AI_SPIN_FACTOR_WEIGHT = 0.10;
 const AI_PRESSURE_FACTOR_WEIGHT = 0.10;
 const AI_LAST_SPIN_BANK_BIAS_WEIGHT = 0.25;
 
-export type RiskWheelCompetitionType = 'HOH' | 'POV';
+export type RiskWheelCompetitionType = 'LOH' | 'POS';
 export type RiskWheelAiPersonality = 'cautious' | 'balanced' | 'risky';
 
 export type RiskWheelPhase =
@@ -503,7 +503,7 @@ export function aiShouldStop(context: RiskWheelAiDecisionContext): boolean {
 // ─── Initial state ────────────────────────────────────────────────────────────
 
 const initialState: RiskWheelState = {
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   phase: 'idle',
   allPlayerIds: [],
   activePlayerIds: [],

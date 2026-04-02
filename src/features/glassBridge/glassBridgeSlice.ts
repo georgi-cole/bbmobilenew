@@ -72,7 +72,7 @@ export interface GlassBridgeParticipant {
 export interface GlassBridgeState {
   phase: GlassBridgePhase;
   seed: number;
-  competitionType: 'HOH' | 'POV';
+  competitionType: 'LOH' | 'POS';
 
   /** Ordered list of participants. */
   participants: GlassBridgeParticipant[];
@@ -283,7 +283,7 @@ export function buildPlacements(
 const initialState: GlassBridgeState = {
   phase: 'idle',
   seed: 0,
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   participants: [],
   rowsCount: DEFAULT_ROWS_COUNT,
   rows: [],
@@ -315,7 +315,7 @@ const glassBridgeSlice = createSlice({
       action: PayloadAction<{
         participantIds: string[];
         participants?: Array<{ id: string; name: string; isHuman: boolean; competitionProfile?: CompetitionSkillProfile }>;
-        competitionType: 'HOH' | 'POV';
+        competitionType: 'LOH' | 'POS';
         seed: number;
         rowsCount?: number;
         globalTimeLimitMs?: number;

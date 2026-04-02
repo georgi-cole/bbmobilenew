@@ -18,7 +18,7 @@ import {
   type MajorityRulesQuestion,
 } from './helpers';
 
-export type MajorityRulesCompetitionType = 'HOH' | 'POV';
+export type MajorityRulesCompetitionType = 'LOH' | 'POS';
 
 export type MajorityRulesPhase =
   | 'idle'
@@ -65,7 +65,7 @@ export interface MajorityRulesState {
 
 const initialState: MajorityRulesState = {
   phase: 'idle',
-  competitionType: 'HOH',
+  competitionType: 'LOH',
   seed: 0,
   participantIds: [],
   activeIds: [],

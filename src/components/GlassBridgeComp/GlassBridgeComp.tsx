@@ -175,7 +175,7 @@ function getTimeoutCollapseDuration(rowsCount: number, noAnimations: boolean): n
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface GlassBridgeCompetitionType {
-  prizeType?: 'HOH' | 'POV';
+  prizeType?: 'LOH' | 'POS';
 }
 
 interface ParticipantProp {
@@ -187,7 +187,7 @@ interface ParticipantProp {
 interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
-  prizeType?: 'HOH' | 'POV';
+  prizeType?: 'LOH' | 'POS';
   seed: number;
   onComplete?: () => void;
 }
@@ -197,7 +197,7 @@ interface Props {
 export default function GlassBridgeComp({
   participantIds,
   participants,
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed,
   onComplete,
 }: Props) {
@@ -351,7 +351,7 @@ export default function GlassBridgeComp({
       initGlassBridge({
         participantIds: pIds,
         participants: parts?.map(p => ({ ...p, isHuman: p.isHuman })),
-        competitionType: pt ?? 'HOH',
+        competitionType: pt ?? 'LOH',
         seed: s,
         humanPlayerId: hId,
       }),

@@ -38,33 +38,33 @@ async function forceNominees(page: Page, idx1 = 1, idx2 = 2) {
 }
 
 /**
- * Force a POV winner via the "Force POV" row in the DebugPanel.
- * `playerIndex` selects which alive player becomes POV holder (1 = first in list, 2 = second, etc.).
+ * Force a POS winner via the "Force POS" row in the DebugPanel.
+ * `playerIndex` selects which alive player becomes POS holder (1 = first in list, 2 = second, etc.).
  * Default is 2 (typically an AI player) to avoid picking the human player at index 1.
  */
 async function forcePov(page: Page, playerIndex = 2) {
-  const povRow = page.locator('.dbg-row', { has: page.locator('.dbg-label', { hasText: 'Force POV' }) });
+  const povRow = page.locator('.dbg-row', { has: page.locator('.dbg-label', { hasText: 'Force POS' }) });
   const sel = povRow.locator('select');
   const opts = await sel.locator('option').all();
   if (opts.length > playerIndex) await sel.selectOption({ index: playerIndex });
   await povRow.getByRole('button', { name: 'Set' }).click();
 }
 
-test.describe.serial('Final 4 POV messaging & sequencing', () => {
+test.describe.serial('Final 4 POS messaging & sequencing', () => {
   /**
-   * AI POV holder path:
-   * 1. Set up nominees and an AI POV winner via DebugPanel.
+   * AI POS holder path:
+   * 1. Set up nominees and an AI POS winner via DebugPanel.
    * 2. Force phase to final4_eviction.
    * 3. Click Continue — advance() emits plea messages then AI picks the evictee.
    * 4. Assert TV feed contains plea request, nominee pleas, and the eviction message.
    * 5. Assert game has advanced to Final 3.
    */
-  test('AI POV holder — plea messages appear and game advances to final3', async ({ page }) => {
+  test('AI POS holder — plea messages appear and game advances to final3', async ({ page }) => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
     // Set up nominees (indices 2 & 3 — both AI players; human is always at index 1)
-    // POV holder (index 4) must NOT overlap with nominees (indices 2 and 3)
+    // POS holder (index 4) must NOT overlap with nominees (indices 2 and 3)
     await forceNominees(page, 2, 3);
     await forcePov(page, 4); // index 4 = fourth alive player (AI)
 
@@ -76,7 +76,7 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     await page.waitForSelector('[data-testid="tv-feed"]', { state: 'visible', timeout: 10000 });
     const tvFeed = page.getByTestId('tv-feed');
 
-    // Advance — Continue is visible because the AI is the POV holder (no blocking flag)
+    // Advance — Continue is visible because the AI is the POS holder (no blocking flag)
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
@@ -92,21 +92,21 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
   });
 
   /**
-   * Human POV holder path:
-   * 1. Set up nominees and force the human player as POV winner.
+   * Human POS holder path:
+   * 1. Set up nominees and force the human player as POS winner.
    * 2. Force phase to final4_eviction.
    * 3. Click Continue — advance() emits plea messages then sets awaitingPovDecision.
    * 4. Assert plea messages appear in the TV feed.
    * 5. Assert the TvDecisionModal is visible.
    * 6. Select a nominee and confirm — assert eviction message and Final 3 transition.
    */
-  test('Human POV holder — plea messages appear, decision modal shown, eviction performed', async ({ page }) => {
+  test('Human POS holder — plea messages appear, decision modal shown, eviction performed', async ({ page }) => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
     // Set up nominees first — use indices 2 & 3 (non-human players; human is at index 1)
     await forceNominees(page, 2, 3);
-    // Force the human player as POV winner (index 1 = first alive player = human "You")
+    // Force the human player as POS winner (index 1 = first alive player = human "You")
     await forcePov(page, 1);
 
     // Force the phase to final4_eviction
@@ -154,7 +154,7 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
 
   /**
    * Final 3 competition flow:
-   * 1. Force the game to final3 phase (3-part HOH begins).
+   * 1. Force the game to final3 phase (3-part LOH begins).
    * 2. Advance through all three competition parts.
    * 3. Assert TV feed announcement messages appear before each part's result.
    *
@@ -167,7 +167,7 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     await gotoDebug(page);
     await openDebugPanel(page);
 
-    // Force phase to final3 (the entry point for the three-part HOH sequence)
+    // Force phase to final3 (the entry point for the three-part LOH sequence)
     const forceF3Btn = page.getByRole('button', { name: 'Force Final 3' });
     await expect(forceF3Btn).toBeVisible({ timeout: 3000 });
     await forceF3Btn.click();
@@ -178,10 +178,10 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     const continueBtn = page.getByRole('button', { name: 'Advance to next phase' });
     const dismissBtn = page.getByRole('button', { name: 'Dismiss challenge (score 0)' });
 
-    // final3 → final3_comp1: "three-part HOH" announcement
+    // final3 → final3_comp1: "three-part LOH" announcement
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
-    await expect(tvFeed).toContainText(/three-part HOH/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/three-part LOH/i, { timeout: 10000 });
 
     // final3_comp1 → final3_comp1_minigame (human present): Part 1 underway message appears.
     // Dismiss the minigame (scores 0 for human; AI wins Part 1).
@@ -206,7 +206,7 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     }
     await expect(tvFeed).toContainText(/Part 2 result/i, { timeout: 10000 });
 
-    // final3_comp3 → final3_comp3_minigame: Part 3 underway + Final HOH winner announcement.
+    // final3_comp3 → final3_comp3_minigame: Part 3 underway + Final LOH winner announcement.
     await expect(continueBtn).toBeVisible({ timeout: 3000 });
     await continueBtn.click();
     await expect(tvFeed).toContainText(/Part 3 is underway/i, { timeout: 10000 });
@@ -215,6 +215,6 @@ test.describe.serial('Final 4 POV messaging & sequencing', () => {
     if (isDismissVisible3) {
       await dismissBtn.click();
     }
-    await expect(tvFeed).toContainText(/Final Head of Household/i, { timeout: 10000 });
+    await expect(tvFeed).toContainText(/Final Leader of the House/i, { timeout: 10000 });
   });
 });

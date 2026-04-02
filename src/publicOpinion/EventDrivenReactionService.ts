@@ -2,7 +2,7 @@
  * EventDrivenReactionService
  *
  * Computes immediate approval deltas triggered by major game events:
- * - Nominations: HOH backlash when a liked/beloved player is nominated;
+ * - Nominations: LOH backlash when a liked/beloved player is nominated;
  *   sympathy boost for the nominee.
  * - Evictions: responsible-actor boosts/penalties based on the evicted
  *   player's approval standing; final eviction delta for the evicted player.
@@ -47,8 +47,8 @@ function clampDelta(delta: number, cap: number): number {
 export interface NominationReactionInput {
   /** IDs of the players just nominated. */
   nomineeIds: string[];
-  /** ID of the HOH who made the nominations (null for automated/unknown). */
-  hohId: string | null;
+  /** ID of the LOH who made the nominations (null for automated/unknown). */
+  lohId: string | null;
   /** Current approval map: playerId → approval (0–100). */
   approvals: Record<string, number>;
   week: number;
@@ -58,13 +58,13 @@ export interface NominationReactionInput {
  * Compute immediate approval reactions triggered when nominations are made.
  *
  * Rules:
- * - If a beloved/liked nominee is nominated, the HOH takes a public backlash
+ * - If a beloved/liked nominee is nominated, the LOH takes a public backlash
  *   penalty (proportional to the nominee's standing).
  * - The nominee receives a small sympathy boost if they are beloved/liked,
  *   representing audience outrage at their nomination.
  */
 export function computeNominationReactions(input: NominationReactionInput): ReactionDelta[] {
-  const { nomineeIds, hohId, approvals, week } = input;
+  const { nomineeIds, lohId, approvals, week } = input;
   const { nominationReactions, maxDeltaPerEvent } = publicOpinionConfig;
   const cap = maxDeltaPerEvent.nomination_reaction;
   const results: ReactionDelta[] = [];
@@ -73,8 +73,8 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
     const approval = approvals[nomineeId] ?? publicOpinionConfig.DEFAULT_APPROVAL;
     const band = getApprovalBand(approval);
 
-    // ── HOH backlash ──────────────────────────────────────────────────────
-    if (hohId && hohId !== nomineeId) {
+    // ── LOH backlash ──────────────────────────────────────────────────────
+    if (lohId && lohId !== nomineeId) {
       let hohDelta = 0;
       if (band === 'beloved') {
         hohDelta = nominationReactions.hohBelovedNomineePenalty;
@@ -83,7 +83,7 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
       }
       if (hohDelta !== 0) {
         results.push({
-          playerId: hohId,
+          playerId: lohId,
           delta: clampDelta(hohDelta, cap),
           reason: 'hoh_nomination_backlash',
           eventType: 'nomination',
@@ -107,7 +107,7 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
         delta: clampDelta(sympathy, cap),
         reason: 'nomination_sympathy',
         eventType: 'nomination',
-        attributedToId: hohId ?? undefined,
+        attributedToId: lohId ?? undefined,
       });
     }
   }
@@ -124,11 +124,11 @@ export function computeNominationReactions(input: NominationReactionInput): Reac
 export interface EvictionReactionInput {
   /** ID of the player who was evicted. */
   evicteeId: string;
-  /** ID of the HOH who made the nominations that led to this eviction. */
-  hohId: string | null;
+  /** ID of the LOH who made the nominations that led to this eviction. */
+  lohId: string | null;
   /**
-   * ID of the POV holder if they used the veto (and thus affected the block).
-   * Null if the POV was not used or the holder is unknown.
+   * ID of the POS holder if they used the veto (and thus affected the block).
+   * Null if the POS was not used or the holder is unknown.
    */
   povHolderId: string | null;
   /** Current approval map: playerId → approval (0–100). */
@@ -140,14 +140,14 @@ export interface EvictionReactionInput {
  * Compute immediate approval reactions triggered when a player is evicted.
  *
  * Rules:
- * - Responsible actors (HOH, POV holder) are boosted when a disliked/hated
+ * - Responsible actors (LOH, POS holder) are boosted when a disliked/hated
  *   player is evicted, and penalised when a beloved/liked player is evicted.
  * - The evicted player themselves receives a final delta: extra penalty if
  *   they were beloved (fan outrage at their exit), or a small sympathy boost
  *   if they were disliked/hated (underdog narrative on departure).
  */
 export function computeEvictionReactions(input: EvictionReactionInput): ReactionDelta[] {
-  const { evicteeId, hohId, povHolderId, approvals, week } = input;
+  const { evicteeId, lohId, povHolderId, approvals, week } = input;
   const { evictionReactions, maxDeltaPerEvent } = publicOpinionConfig;
   const cap = maxDeltaPerEvent.eviction_reaction;
   const results: ReactionDelta[] = [];
@@ -156,10 +156,10 @@ export function computeEvictionReactions(input: EvictionReactionInput): Reaction
   const band = getApprovalBand(evicteeApproval);
 
   // ── Responsible-actor reactions ──────────────────────────────────────────
-  const responsibleIds = [hohId, povHolderId].filter(
+  const responsibleIds = [lohId, povHolderId].filter(
     (id): id is string => id !== null && id !== evicteeId,
   );
-  // De-duplicate (e.g. HOH won POV and used it on the same player)
+  // De-duplicate (e.g. LOH won POS and used it on the same player)
   const uniqueResponsible = [...new Set(responsibleIds)];
 
   for (const actorId of uniqueResponsible) {
@@ -209,22 +209,22 @@ export function computeEvictionReactions(input: EvictionReactionInput): Reaction
   return results;
 }
 
-// ── POV / Public-save reactions ───────────────────────────────────────────────
+// ── POS / Public-save reactions ───────────────────────────────────────────────
 
 export interface PovSaveReactionInput {
-  /** ID of the player who was saved (by POV or public vote). */
+  /** ID of the player who was saved (by POS or public vote). */
   savedPlayerId: string;
-  /** ID of the player who saved them (POV holder). Null for public-save twists. */
+  /** ID of the player who saved them (POS holder). Null for public-save twists. */
   saviorId: string | null;
   /** Current approval map: playerId → approval (0–100). */
   approvals: Record<string, number>;
   week: number;
-  /** Whether this is a public-save twist (vs a normal POV save). */
+  /** Whether this is a public-save twist (vs a normal POS save). */
   isPublicSave?: boolean;
 }
 
 /**
- * Compute approval reactions triggered when the POV is used to save a player,
+ * Compute approval reactions triggered when the POS is used to save a player,
  * or when a public-save twist fires.
  *
  * Rules:
@@ -253,7 +253,7 @@ export function computePovSaveReactions(input: PovSaveReactionInput): ReactionDe
     attributedToId: saviorId ?? undefined,
   });
 
-  // Savior reactions (only for POV, not public save)
+  // Savior reactions (only for POS, not public save)
   if (saviorId && !isPublicSave) {
     let saviorDelta = 0;
     if (band === 'beloved' || band === 'liked') {

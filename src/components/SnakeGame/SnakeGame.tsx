@@ -2,7 +2,7 @@
  * SnakeGame — native React minigame component.
  *
  * Supports two rendering modes:
- *  1. HOH/LOH path: receives `session` + `players`; dispatches `completeMinigame`
+ *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
  *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(score)`.
  *
@@ -61,9 +61,9 @@ interface ScoreEntry {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** HOH/LOH minigame path: full session data. */
+  /** LOH/POS minigame path: full session data. */
   session?: MinigameSession;
-  /** HOH/LOH minigame path: all game players (for name lookup). */
+  /** LOH/POS minigame path: all game players (for name lookup). */
   players?: Player[];
   /** MinigameHost path: called with the human's final score. */
   onFinish?: (value: number) => void;
@@ -226,7 +226,7 @@ export default function SnakeGame({
       const humanScore = normaliseScore(humanFood);
 
       if (session) {
-        // HOH/LOH path — build ranked leaderboard.
+        // LOH/POS path — build ranked leaderboard.
         // AI scores come from real headless simulation runs using the same
         // board rules as the human game.  Each AI plays its own board and
         // produces a genuine food-eaten count rather than a precomputed value.

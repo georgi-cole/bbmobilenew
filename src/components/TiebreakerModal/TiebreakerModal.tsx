@@ -2,15 +2,15 @@
  * TiebreakerModal — shown when the live eviction vote is tied.
  *
  * Two modes:
- *   1. `isHoh = true`  → lets the current user (HOH) pick between the tied nominees.
- *   2. `isHoh = false` → shows a "HOH is thinking…" message with a 3-2-1 countdown,
+ *   1. `isHoh = true`  → lets the current user (LOH) pick between the tied nominees.
+ *   2. `isHoh = false` → shows a "LOH is thinking…" message with a 3-2-1 countdown,
  *      then fires `onSelect` with the AI-chosen nominee after the countdown.
  *
  * Props:
  *   tiedNominees – the players currently tied in the vote
- *   isHoh        – whether the current user is the HOH (decision-maker)
+ *   isHoh        – whether the current user is the LOH (decision-maker)
  *   onSelect     – called with the evicted nominee's ID once decided
- *   countdownSec – countdown length for AI HOH path (default 3)
+ *   countdownSec – countdown length for AI LOH path (default 3)
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -22,9 +22,9 @@ export interface TiebreakerModalProps {
   tiedNominees: Player[];
   isHoh: boolean;
   onSelect: (evicteeId: string) => void;
-  /** Seed for deterministic AI HOH pick (optional; defaults to a time-based pick). */
+  /** Seed for deterministic AI LOH pick (optional; defaults to a time-based pick). */
   aiSeed?: number;
-  /** Countdown seconds for the AI HOH path (default 3). */
+  /** Countdown seconds for the AI LOH path (default 3). */
   countdownSec?: number;
 }
 
@@ -46,7 +46,7 @@ export default function TiebreakerModal({
     return tiedNominees[idx].id;
   }
 
-  // AI HOH countdown path.
+  // AI LOH countdown path.
   useEffect(() => {
     if (isHoh) return;
     if (countdown <= 0) {

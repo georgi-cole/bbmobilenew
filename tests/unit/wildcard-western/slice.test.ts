@@ -70,7 +70,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -84,7 +84,7 @@ describe('wildcardWesternSlice', () => {
       expect(state.eliminatedIds).toEqual([]);
       expect(state.humanPlayerId).toBe('alice');
       expect(state.seed).toBe(SEED);
-      expect(state.prizeType).toBe('HOH');
+      expect(state.prizeType).toBe('LOH');
     });
   });
 
@@ -93,7 +93,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -134,7 +134,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -182,7 +182,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -230,7 +230,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -279,7 +279,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -349,7 +349,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -403,7 +403,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),
@@ -434,7 +434,7 @@ describe('wildcardWesternSlice', () => {
       store.dispatch(
         initWildcardWestern({
           participantIds: PLAYERS,
-          prizeType: 'HOH',
+          prizeType: 'LOH',
           seed: SEED,
           humanPlayerId: 'alice',
         }),

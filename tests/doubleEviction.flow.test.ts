@@ -4,7 +4,7 @@
  * Validates:
  *  1. activateDoubleEviction sets the correct state and pushes a TV event.
  *  2. tryActivateDoubleEviction thunk respects eligibility rules and eviction-count pacing.
- *  3. advance() nominates 3 players during a Double Eviction week (AI HOH).
+ *  3. advance() nominates 3 players during a Double Eviction week (AI LOH).
  *  4. commitNominees accepts 3 nominees during a Double Eviction week.
  *  5. advance() queues two evictions during a Double Eviction week.
  *  6. finalizePendingEviction promotes the second eviction after the first.
@@ -74,10 +74,10 @@ function makeStore(
     week: 3,
     phase: 'nominations',
     seed: 42,
-    hohId: 'p0',
+    lohId: 'p0',
     prevHohId: null,
     nomineeIds: [],
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -285,14 +285,14 @@ describe('tryActivateDoubleEviction', () => {
   });
 });
 
-// ── nomination_results: AI HOH nominates 3 during Double Eviction ────────────
+// ── nomination_results: AI LOH nominates 3 during Double Eviction ────────────
 
 describe('advance() — nomination_results with Double Eviction', () => {
   // advance() from 'nominations' → 'nomination_results' runs the nomination logic
-  it('AI HOH nominates 3 when weekActive is true', () => {
-    // p0 is AI HOH (isUser: false)
+  it('AI LOH nominates 3 when weekActive is true', () => {
+    // p0 is AI LOH (isUser: false)
     const players: Player[] = [
-      { id: 'p0', name: 'AI HOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -303,7 +303,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
     ];
     const store = makeStore({
       phase: 'nominations', // advance() from nominations → nomination_results runs nomination logic
-      hohId: 'p0',
+      lohId: 'p0',
       players,
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
     });
@@ -312,9 +312,9 @@ describe('advance() — nomination_results with Double Eviction', () => {
     expect(nomineeIds).toHaveLength(3);
   });
 
-  it('AI HOH nominates 2 when weekActive is false', () => {
+  it('AI LOH nominates 2 when weekActive is false', () => {
     const players: Player[] = [
-      { id: 'p0', name: 'AI HOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -325,7 +325,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
     ];
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       players,
       doubleEviction: { usedCount: 0, weekActive: false, pendingSecondEviction: null },
     });
@@ -334,10 +334,10 @@ describe('advance() — nomination_results with Double Eviction', () => {
     expect(nomineeIds).toHaveLength(2);
   });
 
-  it('human HOH sets awaitingNominations with 3-nominee prompt when weekActive', () => {
-    // p0 is human HOH
+  it('human LOH sets awaitingNominations with 3-nominee prompt when weekActive', () => {
+    // p0 is human LOH
     const players: Player[] = [
-      { id: 'p0', name: 'Human HOH', avatar: '🧑', status: 'hoh', isUser: true },
+      { id: 'p0', name: 'Human LOH', avatar: '🧑', status: 'loh', isUser: true },
       ...Array.from({ length: 13 }, (_, i) => ({
         id: `p${i + 1}`,
         name: `Player ${i + 1}`,
@@ -348,7 +348,7 @@ describe('advance() — nomination_results with Double Eviction', () => {
     ];
     const store = makeStore({
       phase: 'nominations',
-      hohId: 'p0',
+      lohId: 'p0',
       players,
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
     });
@@ -361,14 +361,14 @@ describe('advance() — nomination_results with Double Eviction', () => {
   });
 });
 
-// ── commitNominees: human HOH submits 3 nominees ─────────────────────────────
+// ── commitNominees: human LOH submits 3 nominees ─────────────────────────────
 
 describe('commitNominees with Double Eviction', () => {
   function makeNominationStore(weekActive: boolean) {
     return makeStore({
       phase: 'nomination_results',
-      hohId: 'p0',
-      players: makePlayers(14, 0), // p0 is human HOH
+      lohId: 'p0',
+      players: makePlayers(14, 0), // p0 is human LOH
       awaitingNominations: true,
       pendingNominee1Id: null,
       doubleEviction: { usedCount: 1, weekActive, pendingSecondEviction: null },
@@ -419,9 +419,9 @@ describe('advance() — eviction_results with Double Eviction', () => {
   // advance() from 'live_vote' → 'eviction_results' runs the eviction logic.
   // Votes are already set before advance() is called.
   function makeEvictionStore(votes: Record<string, string>) {
-    // 14 players, AI HOH, 3 nominees (p1/p2/p3)
+    // 14 players, AI LOH, 3 nominees (p1/p2/p3)
     const players: Player[] = [
-      { id: 'p0', name: 'AI HOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nominee 1', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Nominee 2', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Nominee 3', avatar: '🧑', status: 'nominated', isUser: false },
@@ -435,7 +435,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
     ];
     return makeStore({
       phase: 'live_vote', // advance() from live_vote → eviction_results triggers eviction logic
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p3'],
       players,
       votes,
@@ -484,7 +484,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
 describe('finalizePendingEviction with Double Eviction', () => {
   function makeFinalizationStore() {
     const players: Player[] = [
-      { id: 'p0', name: 'HOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'First Evictee', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Second Evictee', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Nominee 3', avatar: '🧑', status: 'nominated', isUser: false },
@@ -498,7 +498,7 @@ describe('finalizePendingEviction with Double Eviction', () => {
     ];
     return makeStore({
       phase: 'eviction_results',
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p3'],
       players,
       pendingEviction: {
@@ -565,7 +565,7 @@ describe('regular eviction weeks are unaffected', () => {
   it('advance() from live_vote queues 1 eviction and no second eviction when weekActive is false', () => {
     // Votes that result in p1 getting more votes than p2
     const players: Player[] = [
-      { id: 'p0', name: 'HOH', avatar: '🧑', status: 'hoh', isUser: false },
+      { id: 'p0', name: 'LOH', avatar: '🧑', status: 'loh', isUser: false },
       { id: 'p1', name: 'Nominee 1', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Nominee 2', avatar: '🧑', status: 'nominated', isUser: false },
       ...Array.from({ length: 6 }, (_, i) => ({
@@ -578,7 +578,7 @@ describe('regular eviction weeks are unaffected', () => {
     ];
     const store = makeStore({
       phase: 'live_vote', // advance from live_vote → eviction_results
-      hohId: 'p0',
+      lohId: 'p0',
       nomineeIds: ['p1', 'p2'],
       players,
       votes: { v0: 'p1', v1: 'p1', v2: 'p1', v3: 'p2', v4: 'p2', v5: 'p2' },

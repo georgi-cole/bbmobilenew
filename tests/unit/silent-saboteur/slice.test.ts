@@ -50,7 +50,7 @@ function init(
   human: string | null = null,
 ) {
   store.dispatch(
-    initSilentSaboteur({ participantIds: ids, prizeType: 'HOH', seed: SEED, humanPlayerId: human }),
+    initSilentSaboteur({ participantIds: ids, prizeType: 'LOH', seed: SEED, humanPlayerId: human }),
   );
 }
 

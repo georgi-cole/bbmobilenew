@@ -1,15 +1,15 @@
 /**
- * CrownAnimation — celebratory overlay for HOH / POV winner announcements.
+ * CrownAnimation — celebratory overlay for LOH / POS winner announcements.
  *
  * Shows a centred crown emoji that scales in, subtly rotates, and shines,
  * then calls onDone() after `durationMs`.
  *
  * Usage:
- *   <CrownAnimation winner={hohPlayer} label="Head of Household" onDone={advance} />
+ *   <CrownAnimation winner={lohPlayer} label="Leader of the House" onDone={advance} />
  *
  * Props:
  *   winner     – the winning player
- *   label      – competition name (e.g. "Head of Household", "Power of Veto")
+ *   label      – competition name (e.g. "Leader of the House", "Power of Safety")
  *   onDone     – called when the animation completes
  *   durationMs – total duration before onDone fires (default 3000)
  */

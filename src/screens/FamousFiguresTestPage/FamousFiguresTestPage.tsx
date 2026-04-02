@@ -18,7 +18,7 @@ const ALL_PARTICIPANTS = [
 ];
 
 export default function FamousFiguresTestPage() {
-  const [prizeType, setPrizeType] = useState<FamousFiguresPrizeType>('HOH');
+  const [prizeType, setPrizeType] = useState<FamousFiguresPrizeType>('LOH');
   const [seed, setSeed] = useState(42);
   const [running, setRunning] = useState(false);
   const [skipWinnerAnimation, setSkipWinnerAnimation] = useState(true);
@@ -51,8 +51,8 @@ export default function FamousFiguresTestPage() {
               onChange={(e) => setPrizeType(e.target.value as FamousFiguresPrizeType)}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
 

@@ -35,7 +35,7 @@ export default function CwgoTestPage() {
 
   const participantIds = activePlayers.slice(0, 6).map((p) => p.id);
 
-  const [prizeType, setPrizeType] = useState<CwgoPrizeType>('HOH');
+  const [prizeType, setPrizeType] = useState<CwgoPrizeType>('LOH');
   const [seed, setSeed] = useState(12345);
   const [running, setRunning] = useState(false);
   const [key, setKey] = useState(0);
@@ -62,8 +62,8 @@ export default function CwgoTestPage() {
               onChange={(e) => setPrizeType(e.target.value as CwgoPrizeType)}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6 }}
             >
-              <option value="HOH">HOH</option>
-              <option value="POV">POV</option>
+              <option value="LOH">LOH</option>
+              <option value="POS">POS</option>
             </select>
           </label>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -2,7 +2,7 @@
  * Thunk: resolveBiographyBlitzOutcome
  *
  * Reads the completed Biography Blitz competition state, validates the current
- * game phase matches the competition type, and awards HOH or POV via
+ * game phase matches the competition type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * This thunk is idempotent — if outcomeResolved is already true it returns
@@ -37,16 +37,16 @@ export const resolveBiographyBlitzOutcome =
     });
 
     // Validate game phase matches competition type before dispatching.
-    if (bb.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (bb.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[biographyBlitz] resolveBiographyBlitzOutcome: expected phase "hoh_comp" for HOH, got',
+        '[biographyBlitz] resolveBiographyBlitzOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (bb.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (bb.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[biographyBlitz] resolveBiographyBlitzOutcome: expected phase "pov_comp" for POV, got',
+        '[biographyBlitz] resolveBiographyBlitzOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

@@ -1,8 +1,8 @@
 // Integration tests for social resource event deltas wired via socialMiddleware.
 //
 // Validates:
-//  1. HOH win → +5 energy to winner
-//  2. POV win → +3 energy to winner
+//  1. LOH win → +5 energy to winner
+//  2. POS win → +3 energy to winner
 //  3. Survived nomination → +4 energy when entering live_vote
 //  4. New alliance formed → +2 energy + influence +200 to both parties
 //  5. Broke alliance (betrayal) → -3 energy to actor
@@ -38,10 +38,10 @@ function makeStore() {
   });
 }
 
-// ── HOH win energy bonus ──────────────────────────────────────────────────
+// ── LOH win energy bonus ──────────────────────────────────────────────────
 
-describe('event delta – HOH win (+5 energy)', () => {
-  it('grants +5 energy to the HOH winner via game/advance', () => {
+describe('event delta – LOH win (+5 energy)', () => {
+  it('grants +5 energy to the LOH winner via game/advance', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
@@ -52,24 +52,24 @@ describe('event delta – HOH win (+5 energy)', () => {
     store.dispatch(engineReady({ budgets }));
 
     // Game starts at week_start.
-    // First advance: week_start → hoh_comp_announcement (no HOH set yet)
+    // First advance: week_start → loh_comp_announcement (no LOH set yet)
     store.dispatch({ type: 'game/advance' });
-    expect(store.getState().game.phase).toBe('hoh_comp_announcement');
+    expect(store.getState().game.phase).toBe('loh_comp_announcement');
 
-    // Second advance: hoh_comp_announcement → hoh_comp
+    // Second advance: loh_comp_announcement → loh_comp
     store.dispatch({ type: 'game/advance' });
-    expect(store.getState().game.phase).toBe('hoh_comp');
+    expect(store.getState().game.phase).toBe('loh_comp');
 
-    // Third advance: hoh_comp → hoh_results (applyHohWinner runs, sets hohId)
+    // Third advance: loh_comp → loh_results (applyLohWinner runs, sets lohId)
     store.dispatch({ type: 'game/advance' });
     const stateAfterHoh = store.getState();
-    expect(stateAfterHoh.game.phase).toBe('hoh_results');
+    expect(stateAfterHoh.game.phase).toBe('loh_results');
 
-    const hohId = stateAfterHoh.game.hohId;
-    expect(hohId).not.toBeNull();
+    const lohId = stateAfterHoh.game.lohId;
+    expect(lohId).not.toBeNull();
 
-    // HOH winner should have gained +5 energy (started at 3, now 8)
-    expect(selectEnergyBank(stateAfterHoh)[hohId!]).toBe(8);
+    // LOH winner should have gained +5 energy (started at 3, now 8)
+    expect(selectEnergyBank(stateAfterHoh)[lohId!]).toBe(8);
   });
 });
 
@@ -89,18 +89,18 @@ describe('event delta – survived nomination (+4 energy)', () => {
 
     // Advance through phases until we reach live_vote so that the
     // game/advance-based survived-nomination middleware bonus fires.
-    // Handle human-blocking states (HOH nominations, POV decisions) that may
+    // Handle human-blocking states (LOH nominations, POS decisions) that may
     // arise depending on RNG seed/phase ordering.
     let phase = store.getState().game.phase;
     for (let i = 0; i < 80 && phase !== 'live_vote'; i += 1) {
       const gs = store.getState().game;
       if (gs.awaitingNominations && !gs.pendingNominee1Id) {
         const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
-        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId);
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.lohId);
         store.dispatch(selectNominee1(pool[0].id));
       } else if (gs.awaitingNominations && gs.pendingNominee1Id) {
         const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
-        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId && p.id !== gs.pendingNominee1Id);
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.lohId && p.id !== gs.pendingNominee1Id);
         store.dispatch(finalizeNominations(pool[0].id));
       } else if (gs.awaitingPublicSave && gs.nomineeIds.length > 0) {
         store.dispatch(commitPublicSave(gs.nomineeIds[0]));
@@ -110,7 +110,7 @@ describe('event delta – survived nomination (+4 energy)', () => {
         store.dispatch(submitPovSaveTarget(gs.nomineeIds[0]));
       } else if (gs.replacementNeeded) {
         const alive = gs.players.filter((p: { status: string }) => p.status !== 'evicted' && p.status !== 'jury');
-        const pool = alive.filter((p: { id: string }) => p.id !== gs.hohId && p.id !== gs.povWinnerId && !gs.nomineeIds.includes(p.id));
+        const pool = alive.filter((p: { id: string }) => p.id !== gs.lohId && p.id !== gs.posWinnerId && !gs.nomineeIds.includes(p.id));
         if (pool.length > 0) store.dispatch(setReplacementNominee(pool[0].id));
         else store.dispatch({ type: 'game/advance' });
       } else if (gs.awaitingHumanVote && gs.nomineeIds.length > 0) {
@@ -128,7 +128,7 @@ describe('event delta – survived nomination (+4 energy)', () => {
     expect(nominees.length).toBeGreaterThan(0);
 
     // Each nominee still on the block should have received +4 energy.
-    // Their energy started at 5; HOH and POV bonuses may also have applied
+    // Their energy started at 5; LOH and POS bonuses may also have applied
     // to some players. The nominees themselves should have at least 5 + 4 = 9.
     nominees.forEach((id: string) => {
       expect(selectEnergyBank(state)[id]).toBeGreaterThanOrEqual(9);

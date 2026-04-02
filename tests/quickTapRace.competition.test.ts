@@ -40,13 +40,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -104,17 +104,17 @@ function setupMinigameSession(
 
 /**
  * `advanceToNominationResults` — dispatches three `advance()` calls so the store
- * transitions from hoh_results all the way to nomination_results, where:
- *   - human HOH: `awaitingNominations` is set to true (waits for commitNominees)
- *   - AI HOH: nominees are picked immediately
+ * transitions from loh_results all the way to nomination_results, where:
+ *   - human LOH: `awaitingNominations` is set to true (waits for commitNominees)
+ *   - AI LOH: nominees are picked immediately
  *
- * Phase sequence after completeMinigame sets phase = hoh_results:
+ * Phase sequence after completeMinigame sets phase = loh_results:
  *   advance() → social_1
  *   advance() → nominations
  *   advance() → nomination_results
  */
 function advanceToNominationResults(store: ReturnType<typeof makeStore>) {
-  store.dispatch(advance()); // hoh_results → social_1
+  store.dispatch(advance()); // loh_results → social_1
   store.dispatch(advance()); // social_1 → nominations
   store.dispatch(advance()); // nominations → nomination_results
 }
@@ -129,7 +129,7 @@ describe('Quick Tap Race — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 110 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('winner is the player with the highest effective score (AI wins)', () => {
@@ -139,7 +139,7 @@ describe('Quick Tap Race — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 85 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
   });
 
   it('winner matches when scores are close', () => {
@@ -149,17 +149,17 @@ describe('Quick Tap Race — winner correctness', () => {
 
     store.dispatch(completeMinigame({ humanScore: 100 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
-  it('phase is hoh_results after completeMinigame in hoh_comp', () => {
+  it('phase is loh_results after completeMinigame in loh_comp', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 90, p2: 80 });
 
     store.dispatch(completeMinigame({ humanScore: 95 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 });
 
@@ -216,7 +216,7 @@ describe('Quick Tap Race — last-place finisher correctness', () => {
     store.dispatch(completeMinigame({ humanScore: 100 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.lastHohCompFinisherId).not.toBe(state.hohId);
+    expect(state.lastHohCompFinisherId).not.toBe(state.lohId);
   });
 });
 
@@ -236,10 +236,10 @@ describe('Quick Tap Race — Public mode auto-nominee', () => {
 
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
-    // hoh_results → social_1 → nominations → nomination_results
+    // loh_results → social_1 → nominations → nomination_results
     advanceToNominationResults(store);
 
-    // Human HOH (p0) must nominate two players
+    // Human LOH (p0) must nominate two players
     expect(store.getState().game.awaitingNominations).toBe(true);
 
     store.dispatch(commitNominees(['p1', 'p2']));
@@ -275,18 +275,18 @@ describe('Quick Tap Race — Public mode auto-nominee', () => {
 // ── 4. Human nomination flow after resolution ─────────────────────────────────
 
 describe('Quick Tap Race — human nomination flow after resolution', () => {
-  it('phase advances to hoh_results immediately after completeMinigame', () => {
+  it('phase advances to loh_results immediately after completeMinigame', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3'], { p1: 80, p2: 70, p3: 60 });
 
     store.dispatch(completeMinigame({ humanScore: 95 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
-  it('awaitingNominations is set for the human HOH (they must nominate manually)', () => {
+  it('awaitingNominations is set for the human LOH (they must nominate manually)', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
     setupMinigameSession(store, ['p0', 'p1', 'p2', 'p3', 'p4'], { p1: 80, p2: 70, p3: 60, p4: 50 });
@@ -319,7 +319,7 @@ describe('Quick Tap Race — human nomination flow after resolution', () => {
 // ── 5. AI-only flow ───────────────────────────────────────────────────────────
 
 describe('Quick Tap Race — AI-only nomination flow', () => {
-  it('AI HOH correctly sets hohId and lastHohCompFinisherId', () => {
+  it('AI LOH correctly sets lohId and lastHohCompFinisherId', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -330,11 +330,11 @@ describe('Quick Tap Race — AI-only nomination flow', () => {
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p3');
   });
 
-  it('AI HOH phase transitions to hoh_results', () => {
+  it('AI LOH phase transitions to loh_results', () => {
     const players = makePlayers(4);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players });
@@ -342,10 +342,10 @@ describe('Quick Tap Race — AI-only nomination flow', () => {
     setupMinigameSession(store, ['p1', 'p2', 'p3'], { p1: 100, p2: 85, p3: 70 });
     store.dispatch(completeMinigame({ humanScore: 0 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.phase).toBe('hoh_results');
+    expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('AI HOH in public mode auto-nominates last-place finisher', () => {
+  it('AI LOH in public mode auto-nominates last-place finisher', () => {
     const players = makePlayers(6);
     players.forEach((p) => { p.isUser = false; });
     const store = makeStore({ players, publicModeEnabled: true });
@@ -361,12 +361,12 @@ describe('Quick Tap Race — AI-only nomination flow', () => {
 
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
-    // AI HOH picks nominees at nomination_results
+    // AI LOH picks nominees at nomination_results
     advanceToNominationResults(store);
 
     const afterNoms = store.getState().game;
     // p5 (last-place) must end up nominated — either as an explicit auto-nominee
-    // (autoNomineeId = 'p5') OR because the AI HOH already included them in their
+    // (autoNomineeId = 'p5') OR because the AI LOH already included them in their
     // two picks (in which case autoNomineeId is null to avoid double-counting).
     expect(afterNoms.nomineeIds).toContain('p5');
     const autoNomineeOrAlreadyPicked =
@@ -388,7 +388,7 @@ describe('Quick Tap Race — multiplier scoring edge cases', () => {
     store.dispatch(completeMinigame({ humanScore: 75 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 
@@ -400,7 +400,7 @@ describe('Quick Tap Race — multiplier scoring edge cases', () => {
     // Human effective score = 130 (turbo-boosted)
     store.dispatch(completeMinigame({ humanScore: 130 } as CompleteMinigamePayload));
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('fumble (0.5×) drops human to last place', () => {
@@ -412,7 +412,7 @@ describe('Quick Tap Race — multiplier scoring edge cases', () => {
     store.dispatch(completeMinigame({ humanScore: 50 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p1');
+    expect(state.lohId).toBe('p1');
     expect(state.lastHohCompFinisherId).toBe('p0');
   });
 });
@@ -429,7 +429,7 @@ describe('Quick Tap Race — backward-compat: legacy numeric payload', () => {
     store.dispatch(completeMinigame(95));
 
     const state = store.getState().game;
-    expect(state.hohId).toBe('p0');
+    expect(state.lohId).toBe('p0');
     expect(state.lastHohCompFinisherId).toBe('p2');
   });
 });

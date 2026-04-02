@@ -45,12 +45,12 @@ function makePlayers(count: number): Player[] {
 }
 
 /** Minimal store wiring for integration tests (game + tetris). */
-function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
+function makeIntegrationStore(initialGamePhase = 'loh_comp') {
   const minimalGameReducer = (
     state = {
       phase: initialGamePhase,
-      hohId: null as string | null,
-      povWinnerId: null as string | null,
+      lohId: null as string | null,
+      posWinnerId: null as string | null,
       lastHohCompFinisherId: null as string | null,
     },
     action: { type: string; payload?: unknown },
@@ -62,18 +62,18 @@ function makeIntegrationStore(initialGamePhase = 'hoh_comp') {
         lastPlaceType?: string;
         scores?: Record<string, number>;
       };
-      if (initialGamePhase === 'hoh_comp') {
+      if (initialGamePhase === 'loh_comp') {
         return {
           ...state,
-          hohId: payload.winnerId,
+          lohId: payload.winnerId,
           lastHohCompFinisherId: payload.lastPlaceId ?? null,
-          phase: 'hoh_results',
+          phase: 'loh_results',
         };
       }
       return {
         ...state,
-        povWinnerId: payload.winnerId,
-        phase: 'pov_results',
+        posWinnerId: payload.winnerId,
+        phase: 'pos_results',
       };
     }
     return state;
@@ -89,13 +89,13 @@ function makeFullGameStore(overrides: Partial<GameState> = {}) {
   const base: GameState = {
     season: 1,
     week: 2,
-    phase: 'hoh_comp',
+    phase: 'loh_comp',
     seed: 42,
-    hohId: null,
+    lohId: null,
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled: true,
-    povWinnerId: null,
+    posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
     awaitingNominations: false,
@@ -135,7 +135,7 @@ function makeFullGameStore(overrides: Partial<GameState> = {}) {
 
 function initStore(
   store: ReturnType<typeof makeIntegrationStore>,
-  type: 'HOH' | 'POV' = 'HOH',
+  type: 'LOH' | 'POS' = 'LOH',
   seed = 42,
 ) {
   store.dispatch(
@@ -272,8 +272,8 @@ describe('Tetris winner and last-place', () => {
 // ─── resolveTetrisOutcome — idempotency ────────────────────────────────────────
 
 describe('resolveTetrisOutcome — idempotency', () => {
-  function reachComplete(type: 'HOH' | 'POV' = 'HOH', humanScore = 1200) {
-    const phase = type === 'HOH' ? 'hoh_comp' : 'pov_comp';
+  function reachComplete(type: 'LOH' | 'POS' = 'LOH', humanScore = 1200) {
+    const phase = type === 'LOH' ? 'loh_comp' : 'pos_comp';
     const store = makeIntegrationStore(phase);
     initStore(store, type);
     store.dispatch(setHumanScore(humanScore));
@@ -281,38 +281,38 @@ describe('resolveTetrisOutcome — idempotency', () => {
     return store;
   }
 
-  it('dispatches applyMinigameWinner for HOH', () => {
-    const store = reachComplete('HOH');
+  it('dispatches applyMinigameWinner for LOH', () => {
+    const store = reachComplete('LOH');
     store.dispatch(resolveTetrisOutcome());
     expect(store.getState().tetris.outcomeResolved).toBe(true);
-    expect(store.getState().game.hohId).toBe('alice'); // alice=1200 wins
+    expect(store.getState().game.lohId).toBe('alice'); // alice=1200 wins
   });
 
-  it('dispatches applyMinigameWinner for POV', () => {
-    const store = reachComplete('POV');
+  it('dispatches applyMinigameWinner for POS', () => {
+    const store = reachComplete('POS');
     store.dispatch(resolveTetrisOutcome());
     expect(store.getState().tetris.outcomeResolved).toBe(true);
-    expect(store.getState().game.povWinnerId).toBe('alice');
+    expect(store.getState().game.posWinnerId).toBe('alice');
   });
 
   it('is idempotent — second dispatch is a no-op', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(resolveTetrisOutcome());
     store.dispatch(resolveTetrisOutcome()); // second call — must not throw or double-apply
     expect(store.getState().tetris.outcomeResolved).toBe(true);
   });
 
-  it('is a no-op when game phase does not match competition type (HOH in pov_comp)', () => {
-    const store = makeIntegrationStore('pov_comp');
-    initStore(store, 'HOH');
+  it('is a no-op when game phase does not match competition type (LOH in pos_comp)', () => {
+    const store = makeIntegrationStore('pos_comp');
+    initStore(store, 'LOH');
     store.dispatch(setHumanScore(1200));
     store.dispatch(resolveTetrisOutcome()); // phase mismatch — should be a no-op
     expect(store.getState().tetris.outcomeResolved).toBe(false);
-    expect(store.getState().game.hohId).toBeNull();
+    expect(store.getState().game.lohId).toBeNull();
   });
 
   it('markTetrisOutcomeResolved guard prevents re-dispatch', () => {
-    const store = reachComplete('HOH');
+    const store = reachComplete('LOH');
     store.dispatch(markTetrisOutcomeResolved());
     store.dispatch(resolveTetrisOutcome()); // already resolved
     expect(store.getState().tetris.outcomeResolved).toBe(true);
@@ -337,7 +337,7 @@ describe('auto-nominee (lastHohCompFinisherId) matches scoreboard last-place', (
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
   });
 
@@ -355,20 +355,20 @@ describe('auto-nominee (lastHohCompFinisherId) matches scoreboard last-place', (
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
     expect(store.getState().game.lastHohCompFinisherId).not.toBe(
-      store.getState().game.hohId,
+      store.getState().game.lohId,
     );
   });
 });
 
 // ─── Human nomination flow ────────────────────────────────────────────────────
 
-describe('Human nomination flow after Tetris HOH', () => {
-  it('human HOH can nominate two players after comp resolves', () => {
+describe('Human nomination flow after Tetris LOH', () => {
+  it('human LOH can nominate two players after comp resolves', () => {
     const players = makePlayers(6);
-    // Mark p0 as human HOH
+    // Mark p0 as human LOH
     players[0] = { ...players[0], status: 'active' };
     const store = makeFullGameStore({ players });
 
@@ -382,12 +382,12 @@ describe('Human nomination flow after Tetris HOH', () => {
       }),
     );
 
-    expect(store.getState().game.phase).toBe('hoh_results');
-    expect(store.getState().game.hohId).toBe('p0');
+    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p0');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
     // Advance to nominations via normal flow
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     expect(store.getState().game.phase).toBe('nominations');
   });
@@ -395,8 +395,8 @@ describe('Human nomination flow after Tetris HOH', () => {
 
 // ─── AI nomination flow ───────────────────────────────────────────────────────
 
-describe('AI nomination flow after Tetris HOH', () => {
-  it('AI HOH nominates correctly after comp resolves', () => {
+describe('AI nomination flow after Tetris LOH', () => {
+  it('AI LOH nominates correctly after comp resolves', () => {
     const players = makePlayers(6);
     const store = makeFullGameStore({ players, publicModeEnabled: false });
 
@@ -411,17 +411,17 @@ describe('AI nomination flow after Tetris HOH', () => {
       }),
     );
 
-    expect(store.getState().game.hohId).toBe('p1');
+    expect(store.getState().game.lohId).toBe('p1');
     expect(store.getState().game.lastHohCompFinisherId).toBe('p5');
 
     // Advance through AI nomination phases
-    store.dispatch(advance()); // hoh_results → social_1
+    store.dispatch(advance()); // loh_results → social_1
     store.dispatch(advance()); // social_1 → nominations
     store.dispatch(advance()); // nominations → nomination_results (AI picks)
     const state = store.getState().game;
     expect(state.phase).toBe('nomination_results');
     expect(state.nomineeIds).toHaveLength(2);
-    // HOH cannot nominate themselves
+    // LOH cannot nominate themselves
     expect(state.nomineeIds).not.toContain('p1');
   });
 });

@@ -42,7 +42,7 @@ export type DuelOutcome = 'correct' | 'wrong' | 'timeout' | 'nobuzz' | null;
 
 export interface WildcardWesternState {
   phase: WildcardWesternPhase;
-  prizeType: 'HOH' | 'POV';
+  prizeType: 'LOH' | 'POS';
   seed: number;
   duelNumber: number;
 
@@ -78,7 +78,7 @@ export interface WildcardWesternState {
 
 const initialState: WildcardWesternState = {
   phase: 'idle',
-  prizeType: 'HOH',
+  prizeType: 'LOH',
   seed: 0,
   duelNumber: 0,
 
@@ -120,7 +120,7 @@ const wildcardWesternSlice = createSlice({
       state,
       action: PayloadAction<{
         participantIds: string[];
-        prizeType: 'HOH' | 'POV';
+        prizeType: 'LOH' | 'POS';
         seed: number;
         humanPlayerId: string | null;
       }>,

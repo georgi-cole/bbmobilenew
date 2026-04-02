@@ -72,7 +72,7 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['alice', 'bob', 'carol'],
-        prizeType: 'HOH',
+        prizeType: 'LOH',
         seed: 42,
       }),
     );
@@ -84,25 +84,25 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
     store.dispatch(
       startCwgoCompetition({
         participantIds: ['p1', 'p2'],
-        prizeType: 'POV',
+        prizeType: 'POS',
         seed: 999,
       }),
     );
     const { cwgo } = store.getState();
-    expect(cwgo.prizeType).toBe('POV');
+    expect(cwgo.prizeType).toBe('POS');
     expect(cwgo.seed).toBe(999);
   });
 
   it('initialises aliveIds from participantIds', () => {
     const store = makeStore();
     const ids = ['alice', 'bob', 'carol', 'dave'];
-    store.dispatch(startCwgoCompetition({ participantIds: ids, prizeType: 'HOH', seed: 1 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ids, prizeType: 'LOH', seed: 1 }));
     expect(store.getState().cwgo.aliveIds).toEqual(ids);
   });
 
   it('resets guesses, revealResults, and duelPair', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'HOH', seed: 7 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 7 }));
     const { cwgo } = store.getState();
     expect(cwgo.guesses).toEqual({});
     expect(cwgo.revealResults).toHaveLength(0);
@@ -111,7 +111,7 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
 
   it('sets a valid questionIdx within CWGO_QUESTIONS bounds', () => {
     const store = makeStore();
-    store.dispatch(startCwgoCompetition({ participantIds: ['x'], prizeType: 'HOH', seed: 123 }));
+    store.dispatch(startCwgoCompetition({ participantIds: ['x'], prizeType: 'LOH', seed: 123 }));
     const { questionIdx } = store.getState().cwgo;
     expect(questionIdx).toBeGreaterThanOrEqual(0);
     expect(questionIdx).toBeLessThan(CWGO_QUESTIONS.length);

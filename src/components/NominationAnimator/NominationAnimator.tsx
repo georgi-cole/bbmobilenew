@@ -11,7 +11,7 @@
  *   nominees  – array of players being nominated (1–3)
  *   onDone    – called when the animation completes
  *   holdMs    – how long (ms) to hold the centred state (default 2000)
- *   labels    – optional per-nominee label keyed by player ID (e.g. "HOH Nominee")
+ *   labels    – optional per-nominee label keyed by player ID (e.g. "LOH Nominee")
  */
 
 import { useState, useEffect } from 'react';
@@ -23,7 +23,7 @@ export interface NominationAnimatorProps {
   nominees: Player[];
   onDone: () => void;
   holdMs?: number;
-  /** Optional label text per nominee ID (e.g. `{ p3: 'Last in HOH Comp' }`). */
+  /** Optional label text per nominee ID (e.g. `{ p3: 'Last in LOH Comp' }`). */
   labels?: Record<string, string>;
 }
 

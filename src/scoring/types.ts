@@ -6,10 +6,10 @@
  * Pass a partial override to `mergeWeights` to customise without replacing defaults.
  */
 export interface ScoringWeights {
-  /** Points per HOH competition won. */
-  perHohWin: number;
-  /** Points per POV competition won. */
-  perPovWin: number;
+  /** Points per LOH competition won. */
+  perLohWin: number;
+  /** Points per POS competition won. */
+  perPosWin: number;
   /** Points awarded for reaching jury status. */
   madeJury: number;
   /** Points per Battle Back competition won (returned after eviction). */
@@ -28,7 +28,7 @@ export interface ScoringWeights {
    * when both conditions are true.
    */
   wonBothGameAndFavorite: number;
-  /** Points for winning the Final HOH (Part 3 of the Final 3 competition). */
+  /** Points for winning the Final LOH (Part 3 of the Final 3 competition). */
   wonFinalHoh: number;
   /** Points for reaching runner-up (final placement = 2). */
   runnerUp: number;
@@ -40,8 +40,8 @@ export interface ScoringWeights {
  * Useful for rendering a "how did you score?" breakdown in the UI.
  */
 export interface ScoreBreakdown {
-  hohWins: number;
-  povWins: number;
+  lohWins: number;
+  posWins: number;
   madeJury: number;
   battleBackWins: number;
   survivedDoubleEviction: number;

@@ -2,7 +2,7 @@
  * Thunk: resolveFamousFiguresOutcome
  *
  * Reads the completed Famous Figures competition state, validates the current
- * game phase matches the competition type, and awards HOH or POV via
+ * game phase matches the competition type, and awards LOH or POS via
  * `applyMinigameWinner`.
  *
  * Idempotent — if outcomeResolved is already true it returns immediately
@@ -36,16 +36,16 @@ export const resolveFamousFiguresOutcome =
       phase,
     });
 
-    if (ff.competitionType === 'HOH' && phase !== 'hoh_comp') {
+    if (ff.competitionType === 'LOH' && phase !== 'loh_comp') {
       console.error(
-        '[famousFigures] resolveFamousFiguresOutcome: expected phase "hoh_comp" for HOH, got',
+        '[famousFigures] resolveFamousFiguresOutcome: expected phase "loh_comp" for LOH, got',
         phase,
       );
       return;
     }
-    if (ff.competitionType === 'POV' && phase !== 'pov_comp') {
+    if (ff.competitionType === 'POS' && phase !== 'pos_comp') {
       console.error(
-        '[famousFigures] resolveFamousFiguresOutcome: expected phase "pov_comp" for POV, got',
+        '[famousFigures] resolveFamousFiguresOutcome: expected phase "pos_comp" for POS, got',
         phase,
       );
       return;

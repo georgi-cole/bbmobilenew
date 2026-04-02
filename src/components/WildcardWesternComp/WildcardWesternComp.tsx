@@ -214,7 +214,7 @@ function WwAvatarDuelist({ name, avatarUrl, isYou, isBuzzed }: WwAvatarDuelistPr
 interface WildcardWesternCompProps {
   participantIds: string[];
   participants?: MinigameParticipant[];
-  prizeType?: 'HOH' | 'POV';
+  prizeType?: 'LOH' | 'POS';
   seed: number;
   onComplete?: (completion?: ReactMinigameCompletion) => void;
   standalone?: boolean;
@@ -223,7 +223,7 @@ interface WildcardWesternCompProps {
 export default function WildcardWesternComp({
   participantIds,
   participants = [],
-  prizeType = 'HOH',
+  prizeType = 'LOH',
   seed,
   onComplete,
   standalone = false,
@@ -1123,7 +1123,7 @@ export default function WildcardWesternComp({
             <h2>Sheriff Champion!</h2>
             <div className="ww-winner-name">{getParticipantName(state.winnerId ?? '')}</div>
             <p style={{ fontSize: '1.2rem', opacity: 0.9 }}>
-              The last outlaw standing claims the {prizeType === 'HOH' ? 'Leader of the House' : 'Power of Safety'}!
+              The last outlaw standing claims the {prizeType === 'LOH' ? 'Leader of the House' : 'Power of Safety'}!
             </p>
             {standalone && !isSpectating && (
               <button
