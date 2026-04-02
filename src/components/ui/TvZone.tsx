@@ -127,6 +127,18 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
   return { key, ...meta };
 }
 
+function getViewportMessageKey(ev: TvEvent | undefined): string {
+  if (!ev) return 'tv-zone-default';
+  if (ev.id) return ev.id;
+
+  const textHash = Array.from(ev.text).reduce(
+    (hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0,
+    7,
+  );
+
+  return `tv-zone-${ev.type}-${ev.timestamp ?? 'na'}-${textHash}`;
+}
+
 /**
  * Derive an announcement key from the current game phase and alive player count.
  * Only the phases explicitly listed here will trigger an overlay — all others
@@ -298,10 +310,7 @@ export default function TvZone(props: TvZoneProps) {
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
-  const viewportMessageKey = latestEvent?.id
-    ?? (latestEvent?.timestamp != null
-      ? `tv-zone-${latestEvent.type}-${latestEvent.timestamp}-${latestEvent.text.length}`
-      : 'tv-zone-default');
+  const viewportMessageKey = getViewportMessageKey(latestEvent);
 
   const handleDismiss = useCallback(() => {
     if (phaseAnnouncement) {

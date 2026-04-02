@@ -129,6 +129,7 @@
 
 /* ── Viewport (the "screen") ───────────────────────────────────────────────── */
 .tv-zone__viewport {
+  --tv-screen-texture-opacity: 0.04;
   position: relative;
   flex: 1 1 0;
   min-height: 192px; /* ~20% larger than original 160px — constant, not dynamic */
@@ -185,7 +186,7 @@
       rgba(0, 0, 0, 0.16) 100%
     );
   /* Intentionally faint so the screen texture reads as material detail, not a text overlay. */
-  opacity: 0.04;
+  opacity: var(--tv-screen-texture-opacity);
   pointer-events: none;
   z-index: 1;
 }
