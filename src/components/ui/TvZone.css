@@ -184,6 +184,7 @@
       rgba(255, 255, 255, 0) 58%,
       rgba(0, 0, 0, 0.16) 100%
     );
+  /* Intentionally faint so the screen texture reads as material detail, not a text overlay. */
   opacity: 0.04;
   pointer-events: none;
   z-index: 1;
