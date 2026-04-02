@@ -497,6 +497,7 @@ export default function TvZone(props: TvZoneProps) {
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
             <p
               key={viewportMessageKey}
+              aria-hidden={hideViewportMessage}
               className={['tv-zone__now', hideViewportMessage ? 'tv-zone__now--hidden' : ''].filter(Boolean).join(' ')}
               style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
