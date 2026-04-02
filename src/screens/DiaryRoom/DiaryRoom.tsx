@@ -10,7 +10,7 @@
  * tab navigations within the same session.
  */
 
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, declineSecretMission, updateMissionTaskProgress, claimMissionReward } from '../../store/gameSlice';
@@ -30,6 +30,8 @@ import './DiaryRoom.css';
 type MessageStatus = 'sending' | 'delivered' | 'seen';
 type TicTacToeMark = 'X' | 'O';
 type TicTacToeCell = TicTacToeMark | null;
+
+export const DIARY_ROOM_ENTRY_OVERLAY_MS = 1320;
 
 /** A single message in the private chat. */
 interface ChatMessage {
@@ -352,7 +354,10 @@ export default function DiaryRoom() {
     if (prefersReducedMotion) return;
 
     setShowEntryAnimation(true);
-    const timeoutId = window.setTimeout(() => setShowEntryAnimation(false), 1320);
+    const timeoutId = window.setTimeout(
+      () => setShowEntryAnimation(false),
+      DIARY_ROOM_ENTRY_OVERLAY_MS,
+    );
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -621,6 +626,11 @@ export default function DiaryRoom() {
           className="diary-room__entry-overlay"
           data-testid="confessional-entry-overlay"
           aria-hidden="true"
+          style={
+            {
+              '--diary-room-entry-overlay-ms': `${DIARY_ROOM_ENTRY_OVERLAY_MS}ms`,
+            } as CSSProperties
+          }
         >
           <div className="diary-room__entry-light" />
           <div className="diary-room__entry-door diary-room__entry-door--left" />

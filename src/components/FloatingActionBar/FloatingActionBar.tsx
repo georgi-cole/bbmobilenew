@@ -17,6 +17,8 @@ import {
 } from '../../store/selectors';
 import GameControlDock from '../GameControlDock/GameControlDock';
 
+const CONFESSIONAL_FLASH_DURATION_MS = 1800;
+
 /**
  * FloatingActionBar — BitLife-style mobile FAB for the Game screen.
  *
@@ -71,6 +73,7 @@ export default function FloatingActionBar() {
   }, [humanEnergy]);
 
   const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
+  const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
   const prevConfessionalCountRef = useRef(confessionalAlertCount);
   useEffect(() => {
     if (confessionalAlertCount <= prevConfessionalCountRef.current) {
@@ -79,8 +82,14 @@ export default function FloatingActionBar() {
     }
 
     prevConfessionalCountRef.current = confessionalAlertCount;
-    const flashOn = setTimeout(() => setIsConfessionalFlashing(true), 0);
-    const flashOff = setTimeout(() => setIsConfessionalFlashing(false), 1800);
+    const flashOn = setTimeout(() => {
+      setConfessionalFlashTick((tick) => tick + 1);
+      setIsConfessionalFlashing(true);
+    }, 0);
+    const flashOff = setTimeout(
+      () => setIsConfessionalFlashing(false),
+      CONFESSIONAL_FLASH_DURATION_MS,
+    );
     return () => {
       clearTimeout(flashOn);
       clearTimeout(flashOff);
@@ -107,6 +116,7 @@ export default function FloatingActionBar() {
       primaryPulse={canAdvance && !isWaiting}
       confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
       confessionalFlash={isConfessionalFlashing}
+      confessionalFlashTick={confessionalFlashTick}
     />
   );
 }

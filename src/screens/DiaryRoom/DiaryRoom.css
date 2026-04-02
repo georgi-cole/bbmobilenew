@@ -38,9 +38,10 @@
   z-index: 40;
   overflow: hidden;
   pointer-events: none;
+  --diary-room-entry-overlay-ms: 1320ms;
   background:
     radial-gradient(circle at center, rgba(120, 53, 200, 0.18) 0%, rgba(6, 10, 26, 0.08) 42%, rgba(3, 5, 14, 0.94) 100%);
-  animation: diary-room-entry-fade 1.32s ease forwards;
+  animation: diary-room-entry-fade var(--diary-room-entry-overlay-ms) ease forwards;
 }
 
 .diary-room__entry-light {

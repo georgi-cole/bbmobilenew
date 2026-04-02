@@ -27,6 +27,8 @@ export interface GameControlDockProps {
   confessionalBadgeCount?: number;
   /** Whether the Confessional icon/badge should play its alert animation */
   confessionalFlash?: boolean;
+  /** Alternates to force the Confessional flash animation to restart */
+  confessionalFlashTick?: number;
 }
 
 export default function GameControlDock({
@@ -44,6 +46,7 @@ export default function GameControlDock({
   primaryPulse = false,
   confessionalBadgeCount,
   confessionalFlash = false,
+  confessionalFlashTick = 0,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
@@ -90,7 +93,7 @@ export default function GameControlDock({
         draggable={false}
       />
       <img
-        className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ' game-control-dock__icon--confessional-flash' : ''}`}
+        className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
         src={assetUrl('fab_icon_confessional_clean.svg')}
         alt=""
         aria-hidden="true"
@@ -144,7 +147,7 @@ export default function GameControlDock({
         )}
       </button>
       <button
-        className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ' dock-hit-area--confessional-flash' : ''}`}
+        className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
         type="button"
         aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
         disabled={disabled}

@@ -17,7 +17,7 @@ import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import gameReducer, { triggerSecretMission } from '../../../store/gameSlice';
+import gameReducer, { hydrateGame, triggerSecretMission } from '../../../store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
   applyEnergyDelta,
@@ -301,5 +301,40 @@ describe('FloatingActionBar – confessional alert animation', () => {
 
     act(() => { vi.advanceTimersByTime(1800); });
     expect(button.className).not.toContain('dock-hit-area--confessional-flash');
+  });
+
+  it('restarts the confessional animation when the alert count increases again mid-flash', () => {
+    const store = makeStore();
+    renderFAB(store);
+
+    act(() => {
+      store.dispatch(triggerSecretMission(1));
+    });
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const button = screen.getByRole('button', { name: 'Confessional (1)' });
+    expect(button.className).toContain('dock-hit-area--confessional-flash');
+    const firstFlashClassName = button.className;
+
+    act(() => { vi.advanceTimersByTime(900); });
+    act(() => {
+      store.dispatch(hydrateGame({
+        ...store.getState().game,
+        awaitingDoubleVoteOffer: true,
+      }));
+    });
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const retriggeredButton = screen.getByRole('button', { name: 'Confessional (2)' });
+    expect(retriggeredButton.className).toContain('dock-hit-area--confessional-flash');
+    expect(retriggeredButton.className).not.toBe(firstFlashClassName);
+
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
+      .toContain('dock-hit-area--confessional-flash');
+
+    act(() => { vi.advanceTimersByTime(800); });
+    expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
+      .not.toContain('dock-hit-area--confessional-flash');
   });
 });

@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import DiaryRoom from '../DiaryRoom';
+import DiaryRoom, { DIARY_ROOM_ENTRY_OVERLAY_MS } from '../DiaryRoom';
 import gameReducer from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
 
@@ -171,7 +171,7 @@ describe('DiaryRoom', () => {
     expect(screen.getByTestId('confessional-entry-overlay')).toBeTruthy();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1320);
+      await vi.advanceTimersByTimeAsync(DIARY_ROOM_ENTRY_OVERLAY_MS);
     });
 
     expect(screen.queryByTestId('confessional-entry-overlay')).toBeNull();
