@@ -330,6 +330,8 @@ export default function DiaryRoom() {
 
   const dispatchRef = useRef(dispatch);
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
+  const confessionalLockedRef = useRef(confessionalLocked);
+  useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   // Stable refs for summary calculation (avoid stale closure on unmount)
   const playerNameRef = useRef(playerName);
@@ -490,7 +492,7 @@ export default function DiaryRoom() {
   // Rapidly entering/exiting the Confessional on the same day only credits 1 visit.
   useEffect(() => {
     return () => {
-      if (confessionalLocked) return;
+      if (confessionalLockedRef.current) return;
       const sm = secretMissionRef.current;
       if (!sm || sm.status !== 'accepted') return;
       const visitTask = sm.tasks.find((t) => t.type === 'confessional_visits');
@@ -503,7 +505,7 @@ export default function DiaryRoom() {
         }),
       );
     };
-  }, [confessionalLocked]); // intentionally runs once on unmount
+  }, []); // intentionally runs once on unmount
 
   // ── Secret mission: passive survive_days task update ──────────────────────
   // Runs whenever week advances while the mission is accepted.

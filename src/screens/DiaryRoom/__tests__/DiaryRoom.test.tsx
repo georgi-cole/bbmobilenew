@@ -26,21 +26,19 @@ function renderDiaryRoom(
 
   options?.setupStore?.(store);
 
-  const renderResult = render(
-    <Provider store={store}>
-      <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
-        <Routes>
-          <Route path="/game" element={<div>Game route</div>} />
-          <Route path="/diary-room" element={<DiaryRoom />} />
-          <Route path="/self-evicted" element={<div>Self-evicted route</div>} />
-        </Routes>
-      </MemoryRouter>
-    </Provider>,
-  );
-
   return {
     store,
-    ...renderResult,
+    ...render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+          <Routes>
+            <Route path="/game" element={<div>Game route</div>} />
+            <Route path="/diary-room" element={<DiaryRoom />} />
+            <Route path="/self-evicted" element={<div>Self-evicted route</div>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    ),
   };
 }
 
