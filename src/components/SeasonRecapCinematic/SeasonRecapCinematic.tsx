@@ -44,6 +44,7 @@ interface RecapPressArticle {
 }
 
 interface RecapTwistMoment {
+  id: string;
   title: string;
   line: string;
   accent: string;
@@ -186,8 +187,9 @@ function buildRecapData(
     .sort((a, b) => b.profile.approval - a.profile.approval);
   const mostLiked = publicProfiles[0] ?? null;
   const mostHated = publicProfiles[publicProfiles.length - 1] ?? null;
+  const hasPublicProfiles = publicProfiles.length > 0;
   const averageApproval =
-    publicProfiles.length > 0
+    hasPublicProfiles
       ? Math.round(
           publicProfiles.reduce((sum, entry) => sum + entry.profile.approval, 0) / publicProfiles.length,
         )
@@ -204,27 +206,39 @@ function buildRecapData(
       value: String(topComp ? totalCompWins(topComp) : week),
       accent: `${firstName(topComp)} took command`,
     },
-    {
-      label: 'Public Meter',
-      value: approvalPercent(averageApproval, 50),
-      accent:
-        mostLiked != null
-          ? `${firstName(mostLiked.player)} had the crowd making noise`
-          : `${firstName(topVeto)} kept the power shifting`,
-    },
+    hasPublicProfiles
+      ? {
+          label: 'Public Meter',
+          value: approvalPercent(averageApproval, 50),
+          accent:
+            mostLiked != null
+              ? `${firstName(mostLiked.player)} had the crowd making noise`
+              : `${firstName(topVeto)} kept the power shifting`,
+        }
+      : {
+          label: 'Safeties Won',
+          value: String(topVeto?.stats?.povWins ?? Math.max(1, Math.floor(week / 2))),
+          accent: `${firstName(topVeto)} kept the power shifting`,
+        },
     {
       label: 'Nominations Survived',
       value: String(mostNom?.stats?.timesNominated ?? Math.max(2, jurySize)),
       accent: `${firstName(mostNom)} kept surviving the block`,
     },
-    {
-      label: 'Top Rating',
-      value: approvalPercent(mostLiked?.profile.approval, totalPlayers > 0 ? 50 : 0),
-      accent:
-        mostLiked != null
-          ? `${firstName(mostLiked.player)} owned the biggest cheers`
-          : `${evictionLadder.length} exits led us here`,
-    },
+    hasPublicProfiles
+      ? {
+          label: 'Top Rating',
+          value: approvalPercent(mostLiked?.profile.approval, totalPlayers > 0 ? 50 : 0),
+          accent:
+            mostLiked != null
+              ? `${firstName(mostLiked.player)} owned the biggest cheers`
+              : `${evictionLadder.length} exits led us here`,
+        }
+      : {
+          label: 'Houseguests',
+          value: String(totalPlayers),
+          accent: `${evictionLadder.length} exits led us here`,
+        },
   ];
 
   const dramaBeats: RecapBeat[] = [
@@ -282,7 +296,8 @@ function buildRecapData(
     },
   ];
 
-  const twistMoments: RecapTwistMoment[] = shockFeed.slice(0, 3).map((entry) => ({
+  const twistMoments: RecapTwistMoment[] = shockFeed.slice(0, 3).map((entry, index) => ({
+    id: entry.id || `public-shock-${entry.week}-${index}`,
     title:
       Math.abs(entry.delta) >= SHOCKWAVE_DELTA
         ? 'Shockwave'
@@ -297,16 +312,19 @@ function buildRecapData(
   if (twistMoments.length === 0) {
     twistMoments.push(
       {
+        id: 'blindside',
         title: 'Blindside',
         line: 'One vote flipped the temperature of the entire house.',
         accent: 'rgba(255, 116, 143, 0.95)',
       },
       {
+        id: 'backdoor',
         title: 'Backdoor',
         line: 'Plans changed in secret. By the ceremony, someone never saw the block coming.',
         accent: 'rgba(255, 196, 87, 0.95)',
       },
       {
+        id: 'block-survivor',
         title: 'Block Survivor',
         line:
           mostNom && (mostNom.stats?.timesNominated ?? 0) > 1
@@ -460,7 +478,7 @@ function TwistsScene({ moments }: { moments: RecapTwistMoment[] }) {
       <div className="src-twist-strip">
         {moments.map((moment, index) => (
           <motion.div
-            key={moment.title}
+            key={moment.id}
             className={`src-twist-card src-twist-card--${index + 1}`}
             initial={{ opacity: 0, rotate: index % 2 === 0 ? -6 : 6, scale: 0.92 }}
             animate={{ opacity: 1, rotate: index % 2 === 0 ? -3 : 3, scale: 1 }}

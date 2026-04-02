@@ -247,6 +247,30 @@ describe('SeasonRecapCinematic', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it('falls back to gameplay stats when public data is unavailable', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={undefined}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(4500);
+    });
+
+    expect(screen.getByText('Safeties Won')).toBeTruthy();
+    expect(screen.getByText('Houseguests')).toBeTruthy();
+    expect(screen.queryByText('Public Meter')).toBeNull();
+    expect(screen.queryByText('Top Rating')).toBeNull();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   it('uses tribunal wording in the finale scene', async () => {
     const onComplete = vi.fn();
 
