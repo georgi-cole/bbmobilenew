@@ -3,9 +3,30 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic';
 import type { Player } from '../src/types';
+import type { PublicOpinionState } from '../src/publicOpinion/types';
 
 const playMusic = vi.fn();
 const stopMusic = vi.fn();
+
+vi.mock('framer-motion', async () => {
+  const React = await import('react');
+
+  const motion = new Proxy(
+    {},
+    {
+      get: (_target, tag: string) =>
+        ({ children, ...props }: React.HTMLAttributes<HTMLElement>) =>
+          React.createElement(tag, props, children),
+    },
+  );
+
+  return {
+    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    motion,
+    useReducedMotion: () => false,
+  };
+});
 
 vi.mock('../src/hooks/useSound', () => ({
   default: () => ({
@@ -46,6 +67,67 @@ const PLAYERS: Player[] = [
     stats: { hohWins: 0, povWins: 1, timesNominated: 2 },
   },
 ];
+
+const PUBLIC_OPINION: PublicOpinionState = {
+  profiles: {
+    f1: {
+      playerId: 'f1',
+      approval: 82,
+      previousApproval: 74,
+      seasonApprovals: [50, 61, 74, 82],
+      completedDirectionCount: 1,
+      cumulativePositiveDelta: 32,
+    },
+    f2: {
+      playerId: 'f2',
+      approval: 47,
+      previousApproval: 55,
+      seasonApprovals: [50, 59, 55, 47],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 9,
+    },
+    j1: {
+      playerId: 'j1',
+      approval: 63,
+      previousApproval: 58,
+      seasonApprovals: [50, 55, 58, 63],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 13,
+    },
+    e1: {
+      playerId: 'e1',
+      approval: 21,
+      previousApproval: 39,
+      seasonApprovals: [50, 45, 39, 21],
+      completedDirectionCount: 0,
+      cumulativePositiveDelta: 0,
+    },
+  },
+  directions: [],
+  feed: [
+    {
+      id: 'headline-1',
+      playerId: 'e1',
+      text: 'Drew shocked the audience with a feud that swallowed the whole week.',
+      delta: -21,
+      week: 10,
+      timestamp: 1001,
+      isHeadline: true,
+    },
+    {
+      id: 'headline-2',
+      playerId: 'f1',
+      text: 'Avery sent the ratings soaring with a power play nobody stopped talking about.',
+      delta: 14,
+      week: 11,
+      timestamp: 1002,
+      isHeadline: true,
+    },
+  ],
+  lastUpdatedWeek: 11,
+  feedPostsThisDay: 2,
+  currentFeedDay: 11,
+};
 
 describe('SeasonRecapCinematic', () => {
   const PREVIOUS_TOTAL_RECAP_DURATION_MS = 2200 + 3000 + 3400 + 3400 + 4200 + 2200 + 420;
@@ -131,5 +213,53 @@ describe('SeasonRecapCinematic', () => {
 
     expect(onComplete).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
+  });
+
+  it('shows public meter, press coverage, and tribunal wording when public data exists', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(4500);
+    });
+
+    expect(screen.getByText('Public Meter')).toBeTruthy();
+    expect(screen.getByText('Top Rating')).toBeTruthy();
+    expect(screen.getByText('82%')).toBeTruthy();
+
+    await act(async () => {
+      vi.advanceTimersByTime(6100);
+    });
+
+    expect(screen.getByText('The Big Eye Bulletin')).toBeTruthy();
+    expect(screen.getByText('House Watch Daily')).toBeTruthy();
+    expect(screen.getByText(/Avery becomes the people’s headline/i)).toBeTruthy();
+    expect(screen.getByText(/Drew could not outrun the backlash/i)).toBeTruthy();
+
+    await act(async () => {
+      vi.advanceTimersByTime(6900);
+    });
+
+    expect(screen.getByText('Shockwave')).toBeTruthy();
+
+    await act(async () => {
+      vi.advanceTimersByTime(6900);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(8500);
+    });
+
+    expect(screen.getByText('The tribunal decides.')).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

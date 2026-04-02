@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { Player } from '../../types';
+import type { PublicOpinionState } from '../../publicOpinion/types';
 import useSound from '../../hooks/useSound';
 import { resolveAvatar } from '../../utils/avatar';
 import './SeasonRecapCinematic.css';
@@ -10,6 +11,7 @@ export interface SeasonRecapProps {
   season: number;
   week: number;
   players: Player[];
+  publicOpinion?: PublicOpinionState | null;
   onComplete: () => void;
 }
 
@@ -32,6 +34,15 @@ interface RecapBeat {
   subject?: Player | null;
 }
 
+interface RecapPressArticle {
+  masthead: string;
+  title: string;
+  line: string;
+  badge: string;
+  tone: 'positive' | 'negative';
+  subject?: Player | null;
+}
+
 interface RecapTwistMoment {
   title: string;
   line: string;
@@ -42,6 +53,7 @@ interface RecapData {
   headline: string;
   stats: RecapStat[];
   dramaBeats: RecapBeat[];
+  pressArticles: RecapPressArticle[];
   twistMoments: RecapTwistMoment[];
   evictionLadder: Player[];
   finalists: Player[];
@@ -139,7 +151,15 @@ function placementLabel(placement: number): string {
   return `${placement}th`;
 }
 
-function buildRecapData(players: Player[], week: number): RecapData {
+function approvalPercent(value: number | null | undefined, fallback = 50): string {
+  return `${Math.round(value ?? fallback)}%`;
+}
+
+function buildRecapData(
+  players: Player[],
+  week: number,
+  publicOpinion?: PublicOpinionState | null,
+): RecapData {
   const evictionLadder = buildEvictionList(players);
   const finalists = buildFinalists(players);
   const topComp = getTopCompetitor(players);
@@ -147,6 +167,32 @@ function buildRecapData(players: Player[], week: number): RecapData {
   const topVeto = getTopVetoPlayer(players);
   const totalPlayers = players.length;
   const jurySize = players.filter((player) => player.status === 'jury').length;
+  const publicProfiles = players
+    .map((player) => ({
+      player,
+      profile: publicOpinion?.profiles[player.id],
+    }))
+    .filter(
+      (
+        entry,
+      ): entry is {
+        player: Player;
+        profile: NonNullable<PublicOpinionState['profiles'][string]>;
+      } => Boolean(entry.profile),
+    )
+    .sort((a, b) => b.profile.approval - a.profile.approval);
+  const mostLiked = publicProfiles[0] ?? null;
+  const mostHated = publicProfiles[publicProfiles.length - 1] ?? null;
+  const averageApproval =
+    publicProfiles.length > 0
+      ? Math.round(
+          publicProfiles.reduce((sum, entry) => sum + entry.profile.approval, 0) / publicProfiles.length,
+        )
+      : null;
+  const fallbackPowerWins = topComp ? totalCompWins(topComp) : Math.max(1, Math.floor(week / 2));
+  const shockFeed = [...(publicOpinion?.feed ?? [])]
+    .filter((entry) => entry.isHeadline || Math.abs(entry.delta) >= 9)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.timestamp - a.timestamp);
 
   const stats: RecapStat[] = [
     {
@@ -155,9 +201,12 @@ function buildRecapData(players: Player[], week: number): RecapData {
       accent: `${firstName(topComp)} took command`,
     },
     {
-      label: 'Safeties Won',
-      value: String(topVeto?.stats?.povWins ?? Math.max(1, Math.floor(week / 2))),
-      accent: `${firstName(topVeto)} kept the power shifting`,
+      label: 'Public Meter',
+      value: approvalPercent(averageApproval, 50),
+      accent:
+        mostLiked != null
+          ? `${firstName(mostLiked.player)} had the crowd making noise`
+          : `${firstName(topVeto)} kept the power shifting`,
     },
     {
       label: 'Nominations Survived',
@@ -165,9 +214,12 @@ function buildRecapData(players: Player[], week: number): RecapData {
       accent: `${firstName(mostNom)} kept surviving the block`,
     },
     {
-      label: 'Houseguests',
-      value: String(totalPlayers),
-      accent: `${evictionLadder.length} exits led us here`,
+      label: 'Top Rating',
+      value: approvalPercent(mostLiked?.profile.approval, totalPlayers > 0 ? 50 : 0),
+      accent:
+        mostLiked != null
+          ? `${firstName(mostLiked.player)} owned the biggest cheers`
+          : `${evictionLadder.length} exits led us here`,
     },
   ];
 
@@ -189,31 +241,84 @@ function buildRecapData(players: Player[], week: number): RecapData {
     },
   ];
 
-  const twistMoments: RecapTwistMoment[] = [
+  const pressArticles: RecapPressArticle[] = [
     {
-      title: 'Blindside',
-      line: 'One vote flipped the temperature of the entire house.',
-      accent: 'rgba(255, 116, 143, 0.95)',
-    },
-    {
-      title: 'Backdoor',
-      line: 'Plans changed in secret. By the ceremony, someone never saw the block coming.',
-      accent: 'rgba(255, 196, 87, 0.95)',
-    },
-    {
-      title: 'Block Survivor',
+      masthead: 'The Big Eye Bulletin',
+      title:
+        mostLiked != null
+          ? `${firstName(mostLiked.player)} becomes the people’s headline`
+          : `${firstName(topComp)} set the pace for the whole season`,
       line:
-        mostNom && (mostNom.stats?.timesNominated ?? 0) > 1
-          ? `${firstName(mostNom)} survived the chopping block so many times it became the season's signature story.`
-          : 'A nomination never stayed simple for long.',
-      accent: 'rgba(127, 198, 255, 0.95)',
+        mostLiked != null
+          ? `With ${approvalPercent(mostLiked.profile.approval)} on the public meter, every move felt front-page worthy.`
+          : `${firstName(topComp)} kept landing in the middle of every conversation the house could not ignore.`,
+      badge:
+        mostLiked != null
+          ? `Most liked • ${approvalPercent(mostLiked.profile.approval)}`
+          : `Power player • ${fallbackPowerWins} wins`,
+      tone: 'positive',
+      subject: mostLiked?.player ?? topComp,
+    },
+    {
+      masthead: 'House Watch Daily',
+      title:
+        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+          ? `${firstName(mostHated.player)} could not outrun the backlash`
+          : `${firstName(mostNom)} lived on the front page of the block`,
+      line:
+        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+          ? `The ratings slipped to ${approvalPercent(mostHated.profile.approval)} as every feud and fallout kept the spotlight burning.`
+          : `${firstName(mostNom)} heard their name again and again, then turned every nomination into another headline.`,
+      badge:
+        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+          ? `Most hated • ${approvalPercent(mostHated.profile.approval)}`
+          : `Block survivor • ${mostNom?.stats?.timesNominated ?? Math.max(2, jurySize)} noms`,
+      tone: 'negative',
+      subject:
+        mostHated != null && mostHated.player.id !== mostLiked?.player.id ? mostHated.player : mostNom,
     },
   ];
+
+  const twistMoments: RecapTwistMoment[] = shockFeed.slice(0, 3).map((entry) => ({
+    title:
+      Math.abs(entry.delta) >= 19
+        ? 'Shockwave'
+        : Math.abs(entry.delta) >= 12
+          ? 'Ratings Swing'
+          : 'Public Buzz',
+    line: entry.text,
+    accent:
+      entry.delta < 0 ? 'rgba(255, 116, 143, 0.95)' : 'rgba(127, 198, 255, 0.95)',
+  }));
+
+  if (twistMoments.length === 0) {
+    twistMoments.push(
+      {
+        title: 'Blindside',
+        line: 'One vote flipped the temperature of the entire house.',
+        accent: 'rgba(255, 116, 143, 0.95)',
+      },
+      {
+        title: 'Backdoor',
+        line: 'Plans changed in secret. By the ceremony, someone never saw the block coming.',
+        accent: 'rgba(255, 196, 87, 0.95)',
+      },
+      {
+        title: 'Block Survivor',
+        line:
+          mostNom && (mostNom.stats?.timesNominated ?? 0) > 1
+            ? `${firstName(mostNom)} survived the chopping block so many times it became the season's signature story.`
+            : 'A nomination never stayed simple for long.',
+        accent: 'rgba(127, 198, 255, 0.95)',
+      },
+    );
+  }
 
   return {
     headline: 'The Road to the Finale',
     stats,
     dramaBeats,
+    pressArticles,
     twistMoments,
     evictionLadder,
     finalists,
@@ -280,28 +385,64 @@ function StatsScene({ stats }: { stats: RecapStat[] }) {
   );
 }
 
-function DramaScene({ beats }: { beats: RecapBeat[] }) {
+function DramaScene({
+  beats,
+  articles,
+}: {
+  beats: RecapBeat[];
+  articles: RecapPressArticle[];
+}) {
   return (
     <SceneFrame className="src-scene--drama">
-      <div className="src-drama-stack">
-        {beats.map((beat, index) => (
-          <motion.article
-            key={beat.kicker}
-            className={`src-drama-beat src-drama-beat--${index + 1}`}
-            initial={{ opacity: 0, x: index % 2 === 0 ? -24 : 24, y: 18 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ delay: 0.18 * index, duration: 0.45 }}
-          >
-            <span className="src-drama-beat__kicker">{beat.kicker}</span>
-            <p className="src-drama-beat__line">{beat.line}</p>
-            {beat.subject && (
-              <div className="src-avatar-chip">
-                <img src={resolveAvatar(beat.subject)} alt={beat.subject.name} className="src-avatar-chip__img" />
-                <span>{beat.subject.name}</span>
+      <div className="src-drama-layout">
+        <div className="src-drama-stack">
+          {beats.map((beat, index) => (
+            <motion.article
+              key={beat.kicker}
+              className={`src-drama-beat src-drama-beat--${index + 1}`}
+              initial={{ opacity: 0, x: index % 2 === 0 ? -24 : 24, y: 18 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{ delay: 0.18 * index, duration: 0.45 }}
+            >
+              <span className="src-drama-beat__kicker">{beat.kicker}</span>
+              <p className="src-drama-beat__line">{beat.line}</p>
+              {beat.subject && (
+                <div className="src-avatar-chip">
+                  <img src={resolveAvatar(beat.subject)} alt={beat.subject.name} className="src-avatar-chip__img" />
+                  <span>{beat.subject.name}</span>
+                </div>
+              )}
+            </motion.article>
+          ))}
+        </div>
+
+        <div className="src-press-wall">
+          {articles.map((article, index) => (
+            <motion.article
+              key={article.title}
+              className={`src-press-card src-press-card--${article.tone}`}
+              initial={{ opacity: 0, y: 26, rotate: index % 2 === 0 ? -3 : 3 }}
+              animate={{ opacity: 1, y: 0, rotate: index % 2 === 0 ? -1.5 : 1.5 }}
+              transition={{ delay: 0.2 * index, duration: 0.45 }}
+            >
+              <span className="src-press-card__masthead">{article.masthead}</span>
+              <div className="src-press-card__body">
+                {article.subject && (
+                  <img
+                    src={resolveAvatar(article.subject)}
+                    alt={article.subject.name}
+                    className="src-press-card__img"
+                  />
+                )}
+                <div className="src-press-card__copy">
+                  <span className="src-press-card__badge">{article.badge}</span>
+                  <h3 className="src-press-card__title">{article.title}</h3>
+                  <p className="src-press-card__line">{article.line}</p>
+                </div>
               </div>
-            )}
-          </motion.article>
-        ))}
+            </motion.article>
+          ))}
+        </div>
       </div>
       <div className="src-scene-wordmark" aria-hidden="true">
         TRUST • POWER • CHAOS
@@ -393,7 +534,7 @@ function FinaleScene({ finalists }: { finalists: Player[] }) {
       <div className="src-finale-copy">
         <span className="src-scene-heading__eyebrow">Final Sting</span>
         <h2 className="src-finale-copy__lead">And now…</h2>
-        <h3 className="src-finale-copy__title">The jury decides.</h3>
+        <h3 className="src-finale-copy__title">The tribunal decides.</h3>
       </div>
       <div className="src-finalists-band">
         {finalists.map((finalist) => (
@@ -407,13 +548,19 @@ function FinaleScene({ finalists }: { finalists: Player[] }) {
   );
 }
 
-export default function SeasonRecapCinematic({ season, week, players, onComplete }: SeasonRecapProps) {
+export default function SeasonRecapCinematic({
+  season,
+  week,
+  players,
+  publicOpinion,
+  onComplete,
+}: SeasonRecapProps) {
   const { playMusic, stopMusic } = useSound();
   const prefersReducedMotion = useReducedMotion();
   const noAnimations =
     typeof document !== 'undefined' && document.body.classList.contains('no-animations');
   const reducedMotion = prefersReducedMotion || noAnimations;
-  const recapData = useMemo(() => buildRecapData(players, week), [players, week]);
+  const recapData = useMemo(() => buildRecapData(players, week, publicOpinion), [players, publicOpinion, week]);
   const timings = useMemo(
     () =>
       reducedMotion
@@ -486,7 +633,9 @@ export default function SeasonRecapCinematic({ season, week, players, onComplete
           <OpeningScene key="opening" season={season} week={week} headline={recapData.headline} />
         )}
         {currentScene?.id === 'stats' && <StatsScene key="stats" stats={recapData.stats} />}
-        {currentScene?.id === 'drama' && <DramaScene key="drama" beats={recapData.dramaBeats} />}
+        {currentScene?.id === 'drama' && (
+          <DramaScene key="drama" beats={recapData.dramaBeats} articles={recapData.pressArticles} />
+        )}
         {currentScene?.id === 'twists' && <TwistsScene key="twists" moments={recapData.twistMoments} />}
         {currentScene?.id === 'ladder' && (
           <EvictionLadderScene
