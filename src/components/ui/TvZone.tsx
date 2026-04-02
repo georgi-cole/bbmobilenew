@@ -267,10 +267,11 @@ export default function TvZone(props: TvZoneProps) {
     // Skip on initial mount (no previous phase) and when phase/key haven't changed.
     if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return;
     const ev = latestEventRef.current;
+    const suppressPhaseAnnouncement = ev?.meta?.suppressPhaseAnnouncementKey === key;
     // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
     // by deferring setState calls into a callback rather than calling them synchronously).
     startTransition(() => {
-      if (key && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
+      if (key && !suppressPhaseAnnouncement && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
         const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
         setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
         // Suppress any concurrent event-based popup with the same key to prevent duplication.
@@ -494,7 +495,12 @@ export default function TvZone(props: TvZoneProps) {
           </div>
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
-            <p key={viewportMessageKey} className="tv-zone__now" style={hideViewportMessage ? { opacity: 0 } : undefined}>
+            <p
+              key={viewportMessageKey}
+              aria-hidden={hideViewportMessage}
+              className={['tv-zone__now', hideViewportMessage ? 'tv-zone__now--hidden' : ''].filter(Boolean).join(' ')}
+              style={hideViewportMessage ? { opacity: 0 } : undefined}
+            >
               {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
             </p>
 

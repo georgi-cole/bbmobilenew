@@ -282,6 +282,13 @@
   pointer-events: none;
 }
 
+.tv-zone__now--hidden {
+  animation: none;
+  filter: none;
+  opacity: 0 !important;
+  transform: none;
+}
+
 /* ── Event feed ────────────────────────────────────────────────────────────── */
 .tv-zone__feed {
   list-style: none;

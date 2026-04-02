@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('FinalLightsOutSequence', () => {
-  it('projects the farewell message into the existing main TV viewport', async () => {
+  it('projects the farewell message into the existing main TV viewport as soon as the lights-out starts', async () => {
     vi.useFakeTimers();
     stubAnimationFrame();
 
@@ -73,19 +73,13 @@ describe('FinalLightsOutSequence', () => {
 
     const tv = screen.getByTestId('final-lights-off-tv');
     expect(tv).toHaveClass('flo-tv-frame--anchored');
+    expect(tv).toHaveClass('flo-tv-frame--active');
     expect(tv).toHaveStyle({
       top: '96px',
       left: '64px',
       width: '320px',
       height: '180px',
     });
-
-    // Stage 0→1, 1→2, 2→3, then 3→4 where the farewell message appears.
-    for (const ms of [800, 1400, 1400, 1400]) {
-      await act(async () => {
-        vi.advanceTimersByTime(ms);
-      });
-    }
 
     expect(screen.getByText(/This is not a Goodbye/i)).toBeInTheDocument();
     expect(screen.getByText(/Public's Favorite:/i)).toBeInTheDocument();

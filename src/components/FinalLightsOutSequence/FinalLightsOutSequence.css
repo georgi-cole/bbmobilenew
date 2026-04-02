@@ -117,11 +117,27 @@
 
 .flo-tv-frame--active {
   background:
-    linear-gradient(180deg, rgba(16, 34, 77, 0.96), rgba(4, 10, 26, 0.98)),
-    #03070d;
+    radial-gradient(circle at 16% 14%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 26%),
+    linear-gradient(180deg, rgba(16, 16, 18, 0.96), rgba(4, 4, 6, 0.99)),
+    #010101;
   box-shadow:
-    0 0 28px rgba(80, 120, 255, 0.22),
-    inset 0 0 22px rgba(20, 50, 120, 0.25);
+    0 0 20px rgba(0, 0, 0, 0.38),
+    inset 0 0 24px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.flo-tv-frame--active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(134deg, rgba(255, 255, 255, 0.1) 0%, rgba(180, 205, 255, 0.06) 16%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(ellipse at 18% 10%, rgba(255, 255, 255, 0.08) 0%, rgba(180, 205, 255, 0.04) 28%, rgba(255, 255, 255, 0) 65%);
+  clip-path: ellipse(44% 30% at 18% 12%);
+  filter: blur(2px);
+  opacity: 0.95;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .flo-tv-frame--off {
@@ -152,13 +168,13 @@
   );
   pointer-events: none;
   opacity: 0.5;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* ── TV content ── */
 .flo-tv-content {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   padding: 1.75rem 1.5rem;
   text-align: center;
   display: flex;
@@ -178,12 +194,12 @@
 
 .flo-tv-logo {
   font-size: 2.4rem;
-  filter: drop-shadow(0 0 18px rgba(100, 160, 255, 0.8));
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.18));
   animation: flo-logo-pulse 2.2s ease-in-out infinite;
 }
 @keyframes flo-logo-pulse {
-  0%, 100% { filter: drop-shadow(0 0 18px rgba(100, 160, 255, 0.8)); }
-  50%       { filter: drop-shadow(0 0 36px rgba(140, 200, 255, 1.0)); }
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.18)); }
+  50%       { filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.28)); }
 }
 
 .flo-tv-message {
@@ -191,22 +207,24 @@
   font-size: clamp(0.92rem, 3.5vw, 1.2rem);
   font-weight: 700;
   line-height: 1.6;
-  color: rgba(215, 230, 255, 0.95);
-  text-shadow: 0 0 16px rgba(100, 160, 255, 0.5);
+  color: rgba(245, 247, 250, 0.95);
+  text-shadow:
+    0 0 16px rgba(0, 0, 0, 0.85),
+    0 1px 4px rgba(0, 0, 0, 0.95);
 }
 .flo-tv-message em {
   display: block;
   margin-top: 0.25rem;
   font-style: italic;
-  color: rgba(160, 200, 255, 0.85);
+  color: rgba(216, 222, 232, 0.82);
   font-size: 0.9em;
 }
 
 .flo-tv-footnote {
   margin: 0;
   font-size: 0.7rem;
-  color: rgba(165, 180, 252, 0.6);
-  border-top: 1px solid rgba(100, 130, 200, 0.2);
+  color: rgba(226, 232, 240, 0.66);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   padding-top: 0.7rem;
   width: 100%;
 }

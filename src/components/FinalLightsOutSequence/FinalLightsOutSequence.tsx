@@ -8,8 +8,8 @@
  *   1  → top pair of side lights go dark
  *   2  → middle pairs go dark (left & right simultaneously)
  *   3  → bottom pairs go dark — only the central TV frame remains lit
- *   4  → TV displays farewell message: "This is not a Goodbye, it's see you soon from the Big Eye."
- *   5  → TV also dims to black
+ *   4  → TV begins dimming toward black
+ *   5  → TV fully powers down
  *   6  → full blackout → calls onComplete
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -205,31 +205,27 @@ export default function FinalLightsOutSequence({
         className={[
           'flo-tv-frame',
           tvViewportRect ? 'flo-tv-frame--anchored' : 'flo-tv-frame--fallback',
-          stage >= 4 ? 'flo-tv-frame--active' : null,
+          'flo-tv-frame--active',
           stage >= 5 ? 'flo-tv-frame--off' : null,
         ].filter(Boolean).join(' ')}
         style={tvViewportRect ?? undefined}
-        aria-hidden={stage < 4 ? 'true' : undefined}
         data-testid="final-lights-off-tv"
       >
         <div className="flo-tv-screen-inner">
           <div className="flo-tv-scanlines" />
-          {/* Farewell message appears at stage 4 */}
-          {stage >= 4 && (
-            <div className="flo-tv-content">
-              <span className="flo-tv-logo" aria-hidden="true">👁</span>
-              <p className="flo-tv-message">
-                This is not a Goodbye,<br />
-                it's see you soon<br />
-                <em>from the Big Eye.</em>
+          <div className="flo-tv-content">
+            <span className="flo-tv-logo" aria-hidden="true">👁</span>
+            <p className="flo-tv-message">
+              This is not a Goodbye,<br />
+              it's see you soon<br />
+              <em>from the Big Eye.</em>
+            </p>
+            {publicFavoriteWinnerName && (
+              <p className="flo-tv-footnote">
+                Public's Favorite: <strong>{publicFavoriteWinnerName}</strong>
               </p>
-              {publicFavoriteWinnerName && (
-                <p className="flo-tv-footnote">
-                  Public's Favorite: <strong>{publicFavoriteWinnerName}</strong>
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

@@ -434,6 +434,7 @@ describe('pre_veto_public_save phase', () => {
     expect(state.tvFeed[0]?.text).toBe(
       'Player 1 was saved with 52% of the public support. Player 2 and Player 5 will face the live eviction.',
     );
+    expect(state.tvFeed[0]?.meta?.suppressPhaseAnnouncementKey).toBe('pov_comp_announcement');
     expect(
       state.tvFeed.some((event) =>
         event.text.includes('It is time for the Power of Safety competition'),

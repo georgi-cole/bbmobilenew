@@ -238,13 +238,19 @@ const initialState: GameState = createInitialGameState();
 /** Monotonic counter to guarantee unique event IDs within the same millisecond. */
 let _pushEventCounter = 0;
 
-function pushEvent(state: GameState, text: string, type: TvEvent['type']) {
+function pushEvent(
+  state: GameState,
+  text: string,
+  type: TvEvent['type'],
+  meta?: TvEvent['meta'],
+) {
   const ts = Date.now();
   const event: TvEvent = {
     id: `${state.phase}-w${state.week}-${ts}-${++_pushEventCounter}`,
     text,
     type,
     timestamp: ts,
+    ...(meta ? { meta } : {}),
   };
   state.tvFeed = [event, ...state.tvFeed].slice(0, 50);
 }
@@ -1243,6 +1249,7 @@ const gameSlice = createSlice({
             ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
             : `${savedPlayer.name} was saved by the public.`,
         'game',
+        { suppressPhaseAnnouncementKey: 'pov_comp_announcement' },
       );
     },
 
