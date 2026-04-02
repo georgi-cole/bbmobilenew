@@ -24,6 +24,21 @@
   cursor: not-allowed;
 }
 
+.top-utility-btn--inactive::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 14px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 145, 145, 0.95), rgba(255, 77, 77, 0.95));
+  box-shadow: 0 0 6px rgba(255, 77, 77, 0.6);
+  transform: rotate(-45deg);
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* Shell image fills the button */
 .top-utility-btn__shell {
   position: absolute;
@@ -51,6 +66,16 @@
 /* Active/pressed state: slightly brighter glyph */
 .top-utility-btn--active .top-utility-btn__glyph {
   filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.7)) brightness(1.2);
+}
+
+.top-utility-btn--inactive .top-utility-btn__shell {
+  opacity: 0.72;
+  filter: grayscale(0.3) brightness(0.88);
+}
+
+.top-utility-btn--inactive .top-utility-btn__glyph {
+  opacity: 0.5;
+  filter: grayscale(1) brightness(0.72);
 }
 
 /* Keyboard focus ring */
