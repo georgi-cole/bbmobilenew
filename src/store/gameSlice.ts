@@ -1963,7 +1963,7 @@ const gameSlice = createSlice({
       const ts = Date.now();
       const event = {
         id: `${state.phase}-w${state.week}-${ts}-fp`,
-        text: `⭐ AMERICA DECIDES: Vote for your Public's Favorite Player! 🏆`,
+        text: `⭐ THE PUBLIC DECIDES: Vote for your Public's Favorite Player! 🏆`,
         type: 'twist' as const,
         timestamp: ts,
         major: 'twist',

@@ -106,6 +106,11 @@ describe('Settings screen', () => {
       expect(screen.getByText(/special safety chance/i)).toBeTruthy();
     });
 
+    expect(screen.getByText("Public's Favorite (Public Vote)")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/toggle public's favorite player vote/i));
+    expect(screen.getByText(/award amount — 25000 eyeoleans/i)).toBeTruthy();
+    expect(screen.getByText(/eyeolean prize awarded to the public's favorite player/i)).toBeTruthy();
+
     fireEvent.click(screen.getByRole('tab', { name: /about/i }));
 
     await waitFor(() => {
