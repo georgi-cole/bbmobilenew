@@ -25,7 +25,7 @@ export default function FinaleNewspaperMontage({
   reducedMotion = false,
 }: FinaleNewspaperMontageProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const stepMs = Math.max(1000, Math.floor(durationMs / Math.min(Math.max(pages.length, 1), 5)));
+  const stepMs = Math.max(1600, Math.floor(durationMs / Math.min(Math.max(pages.length, 1), 4)));
 
   useEffect(() => {
     if (reducedMotion || pages.length <= 1 || activeIndex >= pages.length - 1) return;
