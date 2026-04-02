@@ -3633,7 +3633,8 @@ const gameSlice = createSlice({
      *
      * Rules:
      *  - The day string must NOT already be in `task.uniqueDays`.
-     *  - `task.current` is set to `uniqueDays.length` after the insert.
+     *  - `task.current` never decreases when `uniqueDays` is introduced for an
+     *    upgraded save; new credits only move progress forward.
      *  - If `current >= target` the task is marked completed and, if all
      *    tasks finish, the mission transitions to 'rewardPending'.
      *
@@ -3647,10 +3648,11 @@ const gameSlice = createSlice({
       if (!sm || sm.status !== 'accepted') return;
       const task = sm.tasks.find((t) => t.id === action.payload.taskId);
       if (!task || task.completed) return;
+      const previousCurrent = typeof task.current === 'number' ? task.current : 0;
       if (!task.uniqueDays) task.uniqueDays = [];
       if (task.uniqueDays.includes(action.payload.day)) return; // already counted
       task.uniqueDays.push(action.payload.day);
-      task.current = task.uniqueDays.length;
+      task.current = Math.max(previousCurrent, task.uniqueDays.length);
       task.completed = task.current >= task.target;
       const allDone = sm.tasks.length > 0 && sm.tasks.every((t) => t.completed);
       if (allDone) {

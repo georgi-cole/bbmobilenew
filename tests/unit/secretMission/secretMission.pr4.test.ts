@@ -157,11 +157,14 @@ describe('Mission template pool — variety', () => {
 // ── 2–3. Anti-cheese: addUniqueDayToTask ────────────────────────────────────
 
 describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
+  const VISIT_TASK_TRIGGER_DAY = 5;
+
   function setupMissionWithVisitTask() {
     const store = makeStore();
-    store.dispatch(triggerSecretMission(5));
-    store.dispatch(offerSecretMission(5));
+    store.dispatch(triggerSecretMission(VISIT_TASK_TRIGGER_DAY));
+    store.dispatch(offerSecretMission(VISIT_TASK_TRIGGER_DAY));
     store.dispatch(acceptSecretMission());
+    expect(store.getState().game.secretMission?.templateId).toBe('silent_witness');
     return store;
   }
 
@@ -173,9 +176,9 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
   it('credits day 5 as the first unique visit', () => {
     const store = setupMissionWithVisitTask();
     const task = getVisitTask(store);
-    if (!task) return; // skip if current template has no visit task
+    expect(task).toBeDefined();
 
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
     const updated = getVisitTask(store);
     expect(updated?.current).toBe(1);
     expect(updated?.uniqueDays).toEqual(['5']);
@@ -184,11 +187,11 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
   it('re-crediting the same day is a no-op (idempotent)', () => {
     const store = setupMissionWithVisitTask();
     const task = getVisitTask(store);
-    if (!task) return;
+    expect(task).toBeDefined();
 
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
     const updated = getVisitTask(store);
     // All three dispatches for the same day should result in current = 1
     expect(updated?.current).toBe(1);
@@ -198,11 +201,11 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
   it('three rapid entries on the same day only count as 1 visit', () => {
     const store = setupMissionWithVisitTask();
     const task = getVisitTask(store);
-    if (!task) return;
+    expect(task).toBeDefined();
 
     // Simulate player rapidly entering/exiting Confessional 10 times on day 5
     for (let i = 0; i < 10; i++) {
-      store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
+      store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
     }
     const updated = getVisitTask(store);
     expect(updated?.current).toBe(1);
@@ -211,11 +214,11 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
   it('visits on different days each count once', () => {
     const store = setupMissionWithVisitTask();
     const task = getVisitTask(store);
-    if (!task) return;
+    expect(task).toBeDefined();
 
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '6' }));
-    store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '7' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '6' }));
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '7' }));
     const updated = getVisitTask(store);
     expect(updated?.current).toBe(3);
     expect(updated?.uniqueDays).toEqual(['5', '6', '7']);
@@ -224,15 +227,15 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
   it('mixed: same-day repeats plus new days accumulate correctly', () => {
     const store = setupMissionWithVisitTask();
     const task = getVisitTask(store);
-    if (!task) return;
+    expect(task).toBeDefined();
 
     // Day 5: 4 rapid attempts → only 1 credited
     for (let i = 0; i < 4; i++) {
-      store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '5' }));
+      store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '5' }));
     }
     // Day 6: 3 rapid attempts → only 1 credited
     for (let i = 0; i < 3; i++) {
-      store.dispatch(addUniqueDayToTask({ taskId: task.id, day: '6' }));
+      store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '6' }));
     }
     const updated = getVisitTask(store);
     expect(updated?.current).toBe(2);
@@ -249,26 +252,46 @@ describe('addUniqueDayToTask — anti-cheese confessional visits', () => {
     expect(after?.status).toBe('available'); // unchanged
   });
 
-  it('completes mission when unique-day target is reached (if visit task exists in template)', () => {
-    const store = makeStore();
-    store.dispatch(triggerSecretMission(5));
-    store.dispatch(offerSecretMission(5));
-    store.dispatch(acceptSecretMission());
+  it('completes the visit task when the unique-day target is reached', () => {
+    const store = setupMissionWithVisitTask();
 
-    const task = store.getState().game.secretMission?.tasks.find(
-      (t) => t.type === 'confessional_visits',
-    );
-    if (!task) return; // skip if no visit task in this template
+    const task = getVisitTask(store);
+    expect(task).toBeDefined();
 
     // Add unique days up to the target — mission should complete
-    for (let day = 5; day < 5 + task.target; day++) {
-      store.dispatch(addUniqueDayToTask({ taskId: task.id, day: String(day) }));
+    for (let day = 5; day < 5 + task!.target; day++) {
+      store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: String(day) }));
     }
     const finalTask = store.getState().game.secretMission?.tasks.find(
       (t) => t.type === 'confessional_visits',
     );
     expect(finalTask?.completed).toBe(true);
-    expect(finalTask?.current).toBe(task.target);
+    expect(finalTask?.current).toBe(task!.target);
+  });
+
+  it('does not reduce legacy progress when uniqueDays is introduced', () => {
+    const store = setupMissionWithVisitTask();
+    const task = getVisitTask(store);
+    expect(task).toBeDefined();
+
+    store.dispatch(
+      hydrateGame({
+        ...store.getState().game,
+        secretMission: {
+          ...store.getState().game.secretMission!,
+          tasks: store.getState().game.secretMission!.tasks.map((existingTask) =>
+            existingTask.id === task!.id
+              ? { ...existingTask, current: 2, uniqueDays: undefined }
+              : existingTask,
+          ),
+        },
+      }),
+    );
+
+    store.dispatch(addUniqueDayToTask({ taskId: task!.id, day: '9' }));
+    const updated = getVisitTask(store);
+    expect(updated?.current).toBe(2);
+    expect(updated?.uniqueDays).toEqual(['9']);
   });
 });
 
