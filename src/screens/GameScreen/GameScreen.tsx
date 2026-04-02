@@ -1941,7 +1941,7 @@ export default function GameScreen() {
                 : null;
 
             if (import.meta.env.DEV) {
-              console.log('[HOH_CROWN] MinigameHost onDone — challenge completion', {
+              console.log('[LOH_CROWN] MinigameHost onDone — challenge completion', {
                 capturedGameKey,
                 capturedParticipants,
                 rawValue: rawResults.find((r) => r.playerId === humanPlayer?.id)?.rawValue,
@@ -1958,7 +1958,7 @@ export default function GameScreen() {
             })) as string | null;
 
             if (import.meta.env.DEV) {
-              console.log('[HOH_CROWN] completeChallenge returned scoreWinnerId', {
+              console.log('[LOH_CROWN] completeChallenge returned scoreWinnerId', {
                 scoreWinnerId,
                 capturedGameKey,
               });
@@ -2007,7 +2007,7 @@ export default function GameScreen() {
                 : (scoreWinnerId ?? capturedParticipants[0]));
 
             if (import.meta.env.DEV) {
-              console.log('[HOH_CROWN] winner resolution in GameScreen', {
+              console.log('[LOH_CROWN] winner resolution in GameScreen', {
                 capturedGameKey,
                 capturedPrizeType,
                 capturedParticipants,
@@ -2057,7 +2057,7 @@ export default function GameScreen() {
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
             if (import.meta.env.DEV) {
-              console.log('[HOH_CROWN] HOH_CROWN_ANIM_STARTED', {
+              console.log('[LOH_CROWN] LOH_CROWN_ANIM_STARTED', {
                 winnerId: finalWinnerId,
                 label: winLabel,
                 screen: 'GameScreen',
@@ -2066,7 +2066,7 @@ export default function GameScreen() {
                 capturedGameKey,
               });
             } else {
-              console.log('HOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
+              console.log('LOH_CROWN_ANIM_STARTED', { winnerId: finalWinnerId, label: winLabel, screen: 'GameScreen' })
             }
             const tiles: CeremonyTile[] = [{
               rect: sourceDomRect,
