@@ -215,7 +215,7 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByRole('button', { name: 'Skip recap' })).toBeTruthy();
   });
 
-  it('shows public meter, press coverage, and tribunal wording when public data exists', async () => {
+  it('shows public meter and press coverage when public data exists', async () => {
     const onComplete = vi.fn();
 
     render(
@@ -244,6 +244,29 @@ describe('SeasonRecapCinematic', () => {
     expect(screen.getByText('House Watch Daily')).toBeTruthy();
     expect(screen.getByText(/Avery becomes the people’s headline/i)).toBeTruthy();
     expect(screen.getByText(/Drew could not outrun the backlash/i)).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('uses tribunal wording in the finale scene', async () => {
+    const onComplete = vi.fn();
+
+    render(
+      <SeasonRecapCinematic
+        season={9}
+        week={12}
+        players={PLAYERS}
+        publicOpinion={PUBLIC_OPINION}
+        onComplete={onComplete}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(4500);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(6100);
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(6900);

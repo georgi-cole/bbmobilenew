@@ -73,6 +73,9 @@ const DEFAULT_SCENE_TIMINGS: SceneTiming[] = [
 ];
 
 const MAX_LADDER_DISPLAY = 8;
+const MIN_PUBLIC_SHOCK_DELTA = 9;
+const RATINGS_SWING_DELTA = 12;
+const SHOCKWAVE_DELTA = 19;
 
 function firstName(player: Player | null | undefined): string {
   return player?.name.split(' ')[0] ?? 'A finalist';
@@ -190,8 +193,9 @@ function buildRecapData(
         )
       : null;
   const fallbackPowerWins = topComp ? totalCompWins(topComp) : Math.max(1, Math.floor(week / 2));
+  const showMostHatedArticle = mostHated != null && mostHated.player.id !== mostLiked?.player.id;
   const shockFeed = [...(publicOpinion?.feed ?? [])]
-    .filter((entry) => entry.isHeadline || Math.abs(entry.delta) >= 9)
+    .filter((entry) => entry.isHeadline || Math.abs(entry.delta) >= MIN_PUBLIC_SHOCK_DELTA)
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.timestamp - a.timestamp);
 
   const stats: RecapStat[] = [
@@ -262,28 +266,27 @@ function buildRecapData(
     {
       masthead: 'House Watch Daily',
       title:
-        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+        showMostHatedArticle
           ? `${firstName(mostHated.player)} could not outrun the backlash`
           : `${firstName(mostNom)} lived on the front page of the block`,
       line:
-        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+        showMostHatedArticle
           ? `The ratings slipped to ${approvalPercent(mostHated.profile.approval)} as every feud and fallout kept the spotlight burning.`
           : `${firstName(mostNom)} heard their name again and again, then turned every nomination into another headline.`,
       badge:
-        mostHated != null && mostHated.player.id !== mostLiked?.player.id
+        showMostHatedArticle
           ? `Most hated • ${approvalPercent(mostHated.profile.approval)}`
           : `Block survivor • ${mostNom?.stats?.timesNominated ?? Math.max(2, jurySize)} noms`,
       tone: 'negative',
-      subject:
-        mostHated != null && mostHated.player.id !== mostLiked?.player.id ? mostHated.player : mostNom,
+      subject: showMostHatedArticle ? mostHated.player : mostNom,
     },
   ];
 
   const twistMoments: RecapTwistMoment[] = shockFeed.slice(0, 3).map((entry) => ({
     title:
-      Math.abs(entry.delta) >= 19
+      Math.abs(entry.delta) >= SHOCKWAVE_DELTA
         ? 'Shockwave'
-        : Math.abs(entry.delta) >= 12
+        : Math.abs(entry.delta) >= RATINGS_SWING_DELTA
           ? 'Ratings Swing'
           : 'Public Buzz',
     line: entry.text,
