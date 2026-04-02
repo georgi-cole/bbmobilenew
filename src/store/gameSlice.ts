@@ -4141,7 +4141,7 @@ export const tryActivateSecretMission =
     if (game.secretMission) return false;
 
     const forcedWeek = settings.sim.secretMissionTriggerWeekOverride;
-    if (forcedWeek !== null && forcedWeek !== undefined) {
+    if (forcedWeek !== null) {
       if (game.week !== forcedWeek) return false;
       dispatch(triggerSecretMission(game.week));
       return true;
