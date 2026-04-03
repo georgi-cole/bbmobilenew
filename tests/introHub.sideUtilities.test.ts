@@ -132,7 +132,7 @@ describe('IntroHub side utility buttons', () => {
   it('shows a career achievements dialog with aggregated stats', () => {
     loadIntroHub({
       season: 4,
-      week: 4,
+      week: 6,
       phase: 'nominations',
       players: [
         {
@@ -206,7 +206,7 @@ describe('IntroHub side utility buttons', () => {
     expect(dialog?.textContent).toContain('3');
     expect(dialog?.textContent).toContain('Public favorite wins');
     expect(dialog?.textContent).toContain('Avg days survived');
-    expect(dialog?.textContent).toContain('6.3 days');
+    expect(dialog?.textContent).toContain('7 days');
     expect(dialog?.textContent).toContain('Rewards found');
     expect(dialog?.textContent).toContain('Comp beast ×9');
     expect(dialog?.textContent).toContain('Reward hunter ×3');

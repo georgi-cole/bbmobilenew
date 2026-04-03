@@ -889,11 +889,11 @@
 
   // Expose runtime API
   g.hub = {
-    closeDialog: closeHubDialog,
-    init: init,
-    refreshNotifications: refreshNotifications,
     setNotification: setNotification,
+    refreshNotifications: refreshNotifications,
+    init: init,
     toggleChipVisual: toggleChipVisual,
+    closeDialog: closeHubDialog,
   };
 
   // Expose houseguests panel hook (can be overridden before this module loads)
