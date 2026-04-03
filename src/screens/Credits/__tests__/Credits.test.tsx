@@ -31,7 +31,7 @@ describe('Credits', () => {
     expect(video!.hasAttribute('controls')).toBe(true);
     expect(video!.hasAttribute('playsinline')).toBe(true);
     expect(video!.getAttribute('preload')).toBe('metadata');
-    expect((video as HTMLVideoElement).muted).toBe(true);
+    expect(video!.muted).toBe(true);
 
     fireEvent.loadedMetadata(video!);
 

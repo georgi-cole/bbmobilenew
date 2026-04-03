@@ -13,7 +13,7 @@ export default function Credits() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const currentSource = videoSources[sourceIndex] ?? videoSources[videoSources.length - 1];
+  const currentSource = videoSources[sourceIndex] ?? videoSources[videoSources.length - 1] ?? '';
 
   function onDone() {
     navigate('/');
@@ -62,6 +62,16 @@ export default function Credits() {
     return () => window.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (currentSource) {
+      return;
+    }
+
+    console.error('[Credits] No video source candidates available.');
+    setStatus('error');
+    setErrorMessage('Credits video source is unavailable. You can retry or skip.');
+  }, [currentSource]);
 
   return (
     <div className="credits-container">
