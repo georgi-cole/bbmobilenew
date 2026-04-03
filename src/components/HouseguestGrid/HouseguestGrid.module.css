@@ -164,14 +164,14 @@
 /* ── Interactive hover / active states ───────────────────────────────────── */
 .tile[role="button"]:hover:not(.evicted) .avatarWrap,
 .tile[role="button"]:focus-visible:not(.evicted) .avatarWrap {
-  border-color: rgba(99, 102, 241, 0.36);
+  border-color: rgb(from var(--color-accent) r g b / 0.36);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.6),
     inset 0 1px 6px rgba(0, 0, 0, 0.32);
 }
 
 .tile[role="button"]:active:not(.evicted) .avatarWrap {
-  border-color: rgba(99, 102, 241, 0.28);
+  border-color: rgb(from var(--color-accent) r g b / 0.28);
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.45),
     inset 0 2px 8px rgba(0, 0, 0, 0.48);
