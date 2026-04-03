@@ -13,7 +13,7 @@ export default function Credits() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const currentSource = videoSources[Math.min(sourceIndex, videoSources.length - 1)];
+  const currentSource = videoSources[sourceIndex] ?? videoSources[videoSources.length - 1];
 
   function onDone() {
     navigate('/');
@@ -77,7 +77,6 @@ export default function Credits() {
           controls
           playsInline
           preload="metadata"
-          onLoadStart={() => setStatus('loading')}
           onLoadedMetadata={onVideoReady}
           onEnded={onDone}
           onError={onVideoError}

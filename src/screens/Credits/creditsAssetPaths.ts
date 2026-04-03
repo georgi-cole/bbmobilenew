@@ -16,10 +16,11 @@ function normalizeCreditsAssetUrl(candidate: string): string {
 export function buildCreditsAssetCandidates(assetPath: string): string[] {
   const candidates = new Set<string>();
   const viteBase = import.meta.env.BASE_URL ?? '';
+  const normalizedViteBase = viteBase ? `${viteBase.replace(/\/$/, '')}/` : '';
 
   candidates.add(normalizeCreditsAssetUrl(assetPath));
-  if (viteBase) {
-    candidates.add(normalizeCreditsAssetUrl(`${viteBase.replace(/\/?$/, '/')}${assetPath}`));
+  if (normalizedViteBase) {
+    candidates.add(normalizeCreditsAssetUrl(`${normalizedViteBase}${assetPath}`));
   }
 
   return [...candidates];
