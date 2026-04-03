@@ -200,9 +200,12 @@
 
 /* ─── Close button (top-right of playing phase) ─────────────────────────────── */
 .minigame-host-close-btn {
+  --floating-corner-top-base: 12px;
+  --floating-corner-right-base: 14px;
+  --floating-corner-right-safe-padding: 14px;
   position: absolute;
-  top: 12px;
-  right: 14px;
+  top: var(--floating-corner-top-offset);
+  right: var(--floating-corner-right-offset);
   z-index: 200;
   width: 36px;
   height: 36px;

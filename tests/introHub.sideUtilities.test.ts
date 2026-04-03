@@ -64,6 +64,11 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('../assets/side_utilities_button/badge_alert_red.svg');
     expect(introHubCss).toContain('.hub-chip__icon--housemates');
     expect(introHubCss).toContain('.hub-chip__icon--shop');
+    expect(introHubCss).toContain('--floating-corner-top-base: 16px;');
+    expect(introHubCss).toContain('--hub-chip-top-offset');
+    expect(introHubCss).toContain('top: var(--hub-chip-top-offset);');
+    expect(introHubCss).toContain('left: var(--hub-chip-left-offset);');
+    expect(introHubCss).toContain('right: var(--hub-chip-right-offset);');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_normal.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_hover.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_pressed.svg');
@@ -71,6 +76,11 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/badge_alert_red.svg');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--housemates');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--shop');
+    expect(mirroredIntroHubCss).toContain('--floating-corner-top-base: 16px;');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-offset');
+    expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-offset);');
+    expect(mirroredIntroHubCss).toContain('left: var(--hub-chip-left-offset);');
+    expect(mirroredIntroHubCss).toContain('right: var(--hub-chip-right-offset);');
   });
 
   it('uses the native share sheet when the share chip is tapped', async () => {
