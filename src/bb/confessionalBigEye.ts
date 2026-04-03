@@ -388,7 +388,7 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
     responses: [
       'Careful. Attachment is a weakness here.',
       'We must keep our relationship a secret',
-      'What is love, baby dont hurt me, dont hurt me, no more',
+      'What is love, baby don\'t hurt me, don\'t hurt me, no more',
       'And I love dogs.',
       'Then put on a ring on it. A diamond ring. A big diamond ring.',
     ],
