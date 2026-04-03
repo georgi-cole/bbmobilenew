@@ -57,6 +57,7 @@ describe('Credits', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Tap for sound' })).toBeInTheDocument();
     });
+    expect(video.muted).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Tap for sound' }));
 

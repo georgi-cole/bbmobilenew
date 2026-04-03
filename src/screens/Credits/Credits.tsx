@@ -24,14 +24,14 @@ export default function Credits() {
    * Starts credits playback in the most permissive mode for mobile browsers/WebViews:
    * muted autoplay first, then optional user-initiated unmute to restore sound.
    */
-  async function tryStartPlayback(options?: { unmute?: boolean; userInitiated?: boolean }) {
+  async function tryStartPlayback(options?: { unmute?: boolean }) {
     const video = videoRef.current;
 
     if (!video) {
       return;
     }
 
-    const { unmute = false, userInitiated = false } = options ?? {};
+    const { unmute = false } = options ?? {};
 
     if (unmute) {
       video.muted = false;
@@ -52,7 +52,6 @@ export default function Credits() {
     } catch (error) {
       console.warn('[Credits] Playback requires user interaction.', {
         attemptedSource: currentSource,
-        userInitiated,
         error: error instanceof Error ? error.message : String(error),
       });
       setShowSoundPrompt(true);
@@ -96,7 +95,7 @@ export default function Credits() {
   }
 
   function onEnableSound() {
-    void tryStartPlayback({ unmute: true, userInitiated: true });
+    void tryStartPlayback({ unmute: true });
   }
 
   useEffect(() => {
@@ -119,6 +118,9 @@ export default function Credits() {
   }, [currentSource]);
 
   useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+    }
     setShowSoundPrompt(false);
     setSoundEnabled(false);
   }, [currentSource, reloadKey]);
