@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Credits from '../Credits';
-import { buildCreditsAssetCandidates } from '../creditsAssetPaths';
+import { buildCreditsAssetCandidates, CREDITS_POSTER_SOURCES, CREDITS_VIDEO_SOURCES } from '../creditsAssetPaths';
 
 function renderCredits() {
   return render(
@@ -26,8 +26,8 @@ describe('Credits', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading credits…');
     expect(video).not.toBeNull();
-    expect(video!.getAttribute('src')).toBe(buildCreditsAssetCandidates('assets/endcreditskq.mp4')[0]);
-    expect(video!.getAttribute('poster')).toBe(buildCreditsAssetCandidates('assets/kolequant.png')[0]);
+    expect(video!.getAttribute('src')).toBe(CREDITS_VIDEO_SOURCES[0] ?? buildCreditsAssetCandidates('assets/endcreditskq.mp4')[0]);
+    expect(video!.getAttribute('poster')).toBe(CREDITS_POSTER_SOURCES[0] ?? buildCreditsAssetCandidates('assets/kolequant.png')[0]);
     expect(video!.hasAttribute('controls')).toBe(true);
     expect(video!.hasAttribute('playsinline')).toBe(true);
     expect(video!.getAttribute('preload')).toBe('metadata');
@@ -39,14 +39,16 @@ describe('Credits', () => {
   });
 
   it('retries a fallback source and then shows an error state if loading still fails', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { container } = renderCredits();
     const candidates = buildCreditsAssetCandidates('assets/endcreditskq.mp4');
+    const posterCandidates = buildCreditsAssetCandidates('assets/kolequant.png');
 
     fireEvent.error(container.querySelector('video')!);
 
     if (candidates.length > 1) {
-      expect(consoleError).toHaveBeenCalledWith(
+      expect(consoleWarn).toHaveBeenCalledWith(
         '[Credits] Failed to load video source, retrying fallback source.',
         expect.objectContaining({
           attemptedSource: candidates[0],
@@ -54,6 +56,7 @@ describe('Credits', () => {
         }),
       );
       expect(screen.getByRole('status')).toHaveTextContent('Retrying video load…');
+      expect(container.querySelector('video')!.getAttribute('poster')).toBe(posterCandidates[1]);
 
       fireEvent.error(container.querySelector('video')!);
     }
@@ -74,7 +77,7 @@ describe('Credits', () => {
     const { container } = renderCredits();
 
     fireEvent.ended(container.querySelector('video')!);
-    expect(screen.getByText('Home screen')).toBeTruthy();
+    expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 
   it('returns home when the user skips the credits', () => {

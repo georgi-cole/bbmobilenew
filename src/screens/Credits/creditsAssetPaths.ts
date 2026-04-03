@@ -27,4 +27,4 @@ export function buildCreditsAssetCandidates(assetPath: string): string[] {
 }
 
 export const CREDITS_VIDEO_SOURCES = buildCreditsAssetCandidates(CREDITS_VIDEO_PATH);
-export const CREDITS_POSTER_SOURCE = buildCreditsAssetCandidates(CREDITS_POSTER_PATH)[0];
+export const CREDITS_POSTER_SOURCES = buildCreditsAssetCandidates(CREDITS_POSTER_PATH);
