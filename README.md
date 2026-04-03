@@ -115,7 +115,7 @@ triggers an overlay:
 | `double_eviction` | manual |
 | `twist` | manual |
 | `hoh_comp_announcement` | manual |
-| `pov_comp_announcement` | manual |
+| `pos_comp_announcement` | manual |
 
 > **Note:** The correct key for the Final 3 announcement is `final3_announcement`.
 > Earlier documentation erroneously listed this as `final3`.
@@ -300,7 +300,7 @@ The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, 
 | Phase                    | Trigger condition                       | Announcement shown            |
 |--------------------------|-----------------------------------------|-------------------------------|
 | `hoh_comp_announcement`  | any alive count                         | HOH Competition               |
-| `pov_comp_announcement`  | any alive count                         | Power of Veto                 |
+| `pos_comp_announcement`  | any alive count                         | Power of Safety               |
 | `nominations`            | any alive count                         | Nomination Ceremony           |
 | `pov_ceremony`           | alive count !== 4                       | Veto Ceremony                 |
 | `pov_ceremony`           | alive count === 4                       | Final 4 — Veto Ceremony       |
@@ -317,7 +317,7 @@ All overlay announcements require manual dismissal.  The central Play/Continue F
 window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
 ```
 
-An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `battle_back`, `double_eviction`, `twist`, `hoh_comp_announcement`, `pov_comp_announcement`).
+An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `battle_back`, `double_eviction`, `twist`, `hoh_comp_announcement`, `pos_comp_announcement`).
 
 > **After merging**, please attach a screenshot of the updated TV area (full-bleed announcement visible) to this PR for visual verification.
 
