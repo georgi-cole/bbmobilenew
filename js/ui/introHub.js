@@ -104,7 +104,11 @@
     panel.setAttribute('aria-modal', 'true');
 
     const titleId = `${HUB_DIALOG_PANEL_ID}-title`;
+    const descriptionId = options.description ? `${HUB_DIALOG_PANEL_ID}-description` : '';
     panel.setAttribute('aria-labelledby', titleId);
+    if (descriptionId) {
+      panel.setAttribute('aria-describedby', descriptionId);
+    }
 
     const header = applyStyles(document.createElement('div'), {
       display: 'flex',
