@@ -361,7 +361,7 @@
     };
 
     if (global.navigator && typeof global.navigator.share === 'function') {
-      Promise.resolve(global.navigator.share(shareData)).catch(function (error) {
+      global.navigator.share(shareData).catch(function (error) {
         if (error && error.name === 'AbortError') return;
         openShareFallback(shareData);
       });
@@ -585,7 +585,7 @@
     openHubDialog({
       title: 'Achievements',
       icon: '🏆',
-      description: `${summary.playerName}'s house legacy without repeating leaderboard score totals.`,
+      description: `${summary.playerName}'s career stats and achievements across every season.`,
       renderBody: function (body) {
         if (!summary.hasHistory) {
           body.appendChild(

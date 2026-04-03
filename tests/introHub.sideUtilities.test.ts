@@ -24,6 +24,7 @@ function setNavigatorShare(shareImpl?: ((data: unknown) => Promise<void>) | unde
 
 function loadIntroHub(gameOverrides: Record<string, unknown> = {}) {
   document.body.innerHTML = '<div id="intro-hub"></div>';
+  delete (window as Window & { game?: unknown }).game;
   (window as Window & { game?: unknown }).game = { ...gameOverrides };
   new Function(introHubScript)();
 }
@@ -99,6 +100,33 @@ describe('IntroHub side utility buttons', () => {
     expect(url).toContain('Season%203');
     expect(url).toContain('Day%207');
     expect(target).toBe('_self');
+  });
+
+  it('shows placeholder achievement values when no season history exists yet', () => {
+    loadIntroHub({
+      players: [
+        {
+          id: 'user',
+          name: 'You',
+          isUser: true,
+          status: 'active',
+          stats: {
+            lohWins: 0,
+            posWins: 0,
+            timesNominated: 0,
+          },
+        },
+      ],
+      week: 1,
+      phase: 'week_start',
+    });
+
+    document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
+
+    const dialog = document.getElementById('hub-dialog-panel');
+    expect(dialog?.textContent).toContain('Avg days survived');
+    expect(dialog?.textContent).toContain('—');
+    expect(dialog?.textContent).toContain('Your next badge unlocks once you finish a full season.');
   });
 
   it('shows a career achievements dialog with aggregated stats', () => {
