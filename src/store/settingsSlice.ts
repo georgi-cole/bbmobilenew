@@ -84,7 +84,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     confirmMajorActions: true,
     showTooltips: true,
     compactRoster: false,
-    compactRosterLayout: 'slider',
+    compactRosterLayout: 'small',
     useHaptics: true,
     animations: true,
     spectatorMode: false,
