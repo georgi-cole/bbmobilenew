@@ -8,6 +8,7 @@
   --hub-chip-left-offset: var(--floating-corner-left-offset, max(16px, calc(env(safe-area-inset-left, 0px) + 16px)));
   --hub-chip-right-offset: var(--floating-corner-right-offset, max(16px, calc(env(safe-area-inset-right, 0px) + 16px)));
   --hub-chip-stack-step: 44px;
+  --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
 }
 
 /* ===== Hub Container ===== */
@@ -156,12 +157,12 @@
 
 /* Third row if needed */
 .hub-chip--top-left-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
   right: var(--hub-chip-right-offset);
 }
 
