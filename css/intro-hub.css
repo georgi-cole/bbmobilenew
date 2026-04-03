@@ -12,10 +12,7 @@
   --chip-gap: 8px;          /* gap between stacked chips in the same corner */
   --chip-stack-step: calc(var(--chip-size) + var(--chip-gap));
   --chip-stack-step-double: calc(var(--chip-stack-step) + var(--chip-stack-step));
-  --floating-corner-top-base: var(--chip-edge);
-  --floating-corner-top-safe-padding: var(--chip-edge);
-  --floating-corner-top-touch-base: 24px;
-  --floating-corner-top-touch-safe-padding: 20px;
+  --hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);
   --floating-corner-left-base: var(--chip-edge);
   --floating-corner-left-safe-padding: var(--chip-edge);
   --floating-corner-left-touch-base: var(--chip-edge);
@@ -24,10 +21,6 @@
   --floating-corner-right-safe-padding: var(--chip-edge);
   --floating-corner-right-touch-base: var(--chip-edge);
   --floating-corner-right-touch-safe-padding: var(--chip-edge);
-  --hub-chip-top-offset: var(
-    --floating-corner-top-offset,
-    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
-  );
   --hub-chip-left-offset: var(
     --floating-corner-left-offset,
     max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
@@ -50,7 +43,7 @@
 
 /* ===== Hub Base: side utility buttons ===== */
 .hub-chip {
-  position: absolute;
+  position: relative;
   display: inline-block;
   width: var(--chip-size);
   height: var(--chip-size);
@@ -67,6 +60,34 @@
   padding: 0;
   box-sizing: border-box;
   touch-action: manipulation;
+}
+
+.hub-chip-stack {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chip-gap);
+  pointer-events: none;
+}
+
+.hub-chip-stack.leftTopStack,
+.hub-chip-stack.rightTopStack {
+  top: var(--hub-chip-top-stack-offset);
+}
+
+.hub-chip-stack.leftTopStack,
+.hub-chip-stack.leftBottomStack {
+  left: var(--hub-chip-left-offset);
+}
+
+.hub-chip-stack.rightTopStack,
+.hub-chip-stack.rightBottomStack {
+  right: var(--hub-chip-right-offset);
+}
+
+.hub-chip-stack.leftBottomStack,
+.hub-chip-stack.rightBottomStack {
+  bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom, 0px));
 }
 
 .hub-chip:hover {
@@ -142,74 +163,82 @@
 
 /* ===== Position Helpers ===== */
 .hub-chip--top-left {
-  top: var(--hub-chip-top-offset);
+  position: absolute;
+  top: var(--hub-chip-top-stack-offset);
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right {
-  top: var(--hub-chip-top-offset);
+  position: absolute;
+  top: var(--hub-chip-top-stack-offset);
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left {
-  bottom: var(--chip-bottom-edge);
-  left: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right {
-  bottom: var(--chip-bottom-edge);
-  right: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* Secondary chips stacked below/above primary in each corner */
 .hub-chip--top-left-2 {
-  top: calc(var(--hub-chip-top-offset) + var(--chip-stack-step));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step));
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-2 {
-  top: calc(var(--hub-chip-top-offset) + var(--chip-stack-step));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step));
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-2 {
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap));
-  left: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right-2 {
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap));
-  right: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* Third row if needed */
 .hub-chip--top-left-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--chip-stack-step-double));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step-double));
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--chip-stack-step-double));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step-double));
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-3 {
-  bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
-  left: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right-3 {
-  bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)));
-  right: var(--chip-edge);
+  position: absolute;
+  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* ===== Responsive ===== */
 @media (hover: none) and (pointer: coarse) {
   :root {
-    --floating-corner-top-offset: max(
-      var(--floating-corner-top-touch-base),
-      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
-    );
     --floating-corner-left-offset: max(
       var(--floating-corner-left-touch-base),
       calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
@@ -225,22 +254,5 @@
   .hub-chip {
     width: var(--chip-size-sm);
     height: var(--chip-size-sm);
-  }
-}
-
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .hub-chip--bottom-left,
-  .hub-chip--bottom-right {
-    bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom));
-  }
-
-  .hub-chip--bottom-left-2,
-  .hub-chip--bottom-right-2 {
-    bottom: calc(var(--chip-bottom-edge) + var(--chip-size) + var(--chip-gap) + env(safe-area-inset-bottom));
-  }
-
-  .hub-chip--bottom-left-3,
-  .hub-chip--bottom-right-3 {
-    bottom: calc(var(--chip-bottom-edge) + 2 * (var(--chip-size) + var(--chip-gap)) + env(safe-area-inset-bottom));
   }
 }

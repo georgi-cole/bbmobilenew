@@ -4,10 +4,6 @@
  */
 
 :root {
-  --floating-corner-top-base: 16px;
-  --floating-corner-top-safe-padding: 8px;
-  --floating-corner-top-touch-base: 24px;
-  --floating-corner-top-touch-safe-padding: 20px;
   --floating-corner-left-base: 16px;
   --floating-corner-left-safe-padding: 16px;
   --floating-corner-left-touch-base: 20px;
@@ -16,10 +12,9 @@
   --floating-corner-right-safe-padding: 16px;
   --floating-corner-right-touch-base: 20px;
   --floating-corner-right-touch-safe-padding: 20px;
-  --hub-chip-top-offset: var(
-    --floating-corner-top-offset,
-    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
-  );
+  --hub-chip-gap: 8px;
+  --hub-chip-bottom-offset: 32px;
+  --hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);
   --hub-chip-left-offset: var(
     --floating-corner-left-offset,
     max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
@@ -28,7 +23,7 @@
     --floating-corner-right-offset,
     max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
   );
-  --hub-chip-stack-step: 44px;
+  --hub-chip-stack-step: calc(44px + var(--hub-chip-gap));
   --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
 }
 
@@ -45,7 +40,7 @@
 
 /* ===== Hub Base: side utility buttons ===== */
 .hub-chip {
-  position: absolute;
+  position: relative;
   display: inline-block;
   width: 44px;
   height: 44px;
@@ -62,6 +57,34 @@
   padding: 0;
   box-sizing: border-box;
   touch-action: manipulation;
+}
+
+.hub-chip-stack {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-chip-gap);
+  pointer-events: none;
+}
+
+.hub-chip-stack.leftTopStack,
+.hub-chip-stack.rightTopStack {
+  top: var(--hub-chip-top-stack-offset);
+}
+
+.hub-chip-stack.leftTopStack,
+.hub-chip-stack.leftBottomStack {
+  left: var(--hub-chip-left-offset);
+}
+
+.hub-chip-stack.rightTopStack,
+.hub-chip-stack.rightBottomStack {
+  right: var(--hub-chip-right-offset);
+}
+
+.hub-chip-stack.leftBottomStack,
+.hub-chip-stack.rightBottomStack {
+  bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));
 }
 
 .hub-chip:hover {
@@ -137,74 +160,82 @@
 
 /* ===== Position Helpers ===== */
 .hub-chip--top-left {
-  top: var(--hub-chip-top-offset);
+  position: absolute;
+  top: var(--hub-chip-top-stack-offset);
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right {
-  top: var(--hub-chip-top-offset);
+  position: absolute;
+  top: var(--hub-chip-top-stack-offset);
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left {
-  bottom: 32px;
-  left: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right {
-  bottom: 32px;
-  right: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
 .hub-chip--top-left-2 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step));
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-2 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step));
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-2 {
-  bottom: 84px;
-  left: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right-2 {
-  bottom: 84px;
-  right: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* Third row if needed */
 .hub-chip--top-left-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step-double));
   left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-3 {
-  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
+  position: absolute;
+  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step-double));
   right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-3 {
-  bottom: 128px;
-  left: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--bottom-right-3 {
-  bottom: 128px;
-  right: 16px;
+  position: absolute;
+  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
+  right: var(--hub-chip-right-offset);
 }
 
 /* ===== Responsive ===== */
 @media (hover: none) and (pointer: coarse) {
   :root {
-    --floating-corner-top-offset: max(
-      var(--floating-corner-top-touch-base),
-      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
-    );
     --floating-corner-left-offset: max(
       var(--floating-corner-left-touch-base),
       calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
@@ -220,22 +251,5 @@
   .hub-chip {
     width: 38px;
     height: 38px;
-  }
-}
-
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .hub-chip--bottom-left,
-  .hub-chip--bottom-right {
-    bottom: calc(32px + env(safe-area-inset-bottom));
-  }
-
-  .hub-chip--bottom-left-2,
-  .hub-chip--bottom-right-2 {
-    bottom: calc(80px + env(safe-area-inset-bottom));
-  }
-
-  .hub-chip--bottom-left-3,
-  .hub-chip--bottom-right-3 {
-    bottom: calc(128px + env(safe-area-inset-bottom));
   }
 }
