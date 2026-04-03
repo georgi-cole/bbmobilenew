@@ -541,7 +541,7 @@ export default function TvZone(props: TvZoneProps) {
         entries={mainLogFeed}
         mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
         maxVisible={mainLogMaxVisible}
-        mobileTwoLineMode
+        mobileTwoLineMode={mainLogMaxVisible <= 2}
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}
