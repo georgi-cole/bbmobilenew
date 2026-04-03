@@ -80,7 +80,7 @@ describe('HouseguestGrid', () => {
     const section = container.querySelector('section')
     const list = screen.getByRole('list')
 
-    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('266px')
+    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('282px')
     expect(within(list).getAllByRole('listitem')).toHaveLength(16)
   })
 })
