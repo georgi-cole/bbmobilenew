@@ -68,6 +68,29 @@ describe('Credits', () => {
     expect(screen.queryByRole('button', { name: 'Tap for sound' })).toBeNull();
   });
 
+  it('re-mutes and keeps the sound prompt visible if unmute playback fails', async () => {
+    const playMock = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('gesture required'));
+    const { container } = renderCredits();
+    const video = container.querySelector('video')!;
+
+    fireEvent.loadedMetadata(video);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Tap for sound' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tap for sound' }));
+
+    await waitFor(() => {
+      expect(video.muted).toBe(true);
+    });
+    expect(playMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'Tap for sound' })).toBeInTheDocument();
+  });
+
   it('retries a fallback source and then shows an error state if loading still fails', () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});

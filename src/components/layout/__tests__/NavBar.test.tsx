@@ -33,4 +33,10 @@ describe('NavBar', () => {
     expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull();
   });
+
+  it('hides the bottom navigation on the credits route', () => {
+    renderNavBar('/credits');
+
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
+  });
 });

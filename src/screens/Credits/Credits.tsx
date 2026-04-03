@@ -32,12 +32,7 @@ export default function Credits() {
     }
 
     const { unmute = false } = options ?? {};
-
-    if (unmute) {
-      video.muted = false;
-    } else {
-      video.muted = true;
-    }
+    video.muted = !unmute;
 
     try {
       await video.play();
@@ -50,6 +45,8 @@ export default function Credits() {
 
       setShowSoundPrompt(true);
     } catch (error) {
+      video.muted = true;
+      setSoundEnabled(false);
       console.warn('[Credits] Playback requires user interaction.', {
         attemptedSource: currentSource,
         error: error instanceof Error ? error.message : String(error),
@@ -135,7 +132,7 @@ export default function Credits() {
           src={currentSource}
           poster={posterSource}
           autoPlay
-          muted
+          muted={!soundEnabled}
           controls
           playsInline
           preload="metadata"

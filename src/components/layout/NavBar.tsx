@@ -26,7 +26,7 @@ export default function NavBar() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  if (pathname === '/') return null;
+  if (pathname === '/' || pathname.startsWith('/credits')) return null;
 
   function handleHomeClick() {
     if (!isGameActive) {

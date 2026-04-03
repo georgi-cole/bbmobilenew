@@ -55,7 +55,7 @@
 .credits-sound-toggle {
   position: absolute;
   left: 50%;
-  bottom: max(20px, env(safe-area-inset-bottom) + 20px);
+  bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px));
   z-index: 1050;
   transform: translateX(-50%);
   backdrop-filter: blur(6px);
