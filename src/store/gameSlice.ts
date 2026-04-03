@@ -1249,7 +1249,7 @@ const gameSlice = createSlice({
             ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
             : `${savedPlayer.name} was saved by the public.`,
         'game',
-        { suppressPhaseAnnouncementKey: 'pov_comp_announcement' },
+        { suppressPhaseAnnouncementKey: 'pos_comp_announcement' },
       );
     },
 

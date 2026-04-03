@@ -179,7 +179,7 @@ describe('TvZone — announcement overlay', () => {
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
   });
 
-  it('keeps the public save result on the main tv instead of replacing it with the POV announcement overlay', () => {
+  it('keeps the public save result on the main tv instead of replacing it with the POS announcement overlay', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -189,11 +189,11 @@ describe('TvZone — announcement overlay', () => {
           makeEvent({
             id: 'ev-public-save-result',
             text: 'Blue was saved with 50% of the public support. Kian and Georgi will face the live eviction.',
-            meta: { suppressPhaseAnnouncementKey: 'pov_comp_announcement' },
+            meta: { suppressPhaseAnnouncementKey: 'pos_comp_announcement' },
           }),
         ),
       );
-      store.dispatch(setPhase('pov_comp_announcement'));
+      store.dispatch(setPhase('pos_comp_announcement'));
     });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeNull();
