@@ -1542,6 +1542,7 @@ export default function GameScreen() {
 
   const expandsTvForCompactSmall =
     settings.gameUX.compactRoster && settings.gameUX.compactRosterLayout === 'small'
+  const compactSmallLogRows = expandsTvForCompactSmall ? 6 : 2
 
   return (
     <LayoutGroup id="game-layout">
@@ -1556,9 +1557,10 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          mainLogMaxVisible={compactSmallLogRows}
         />
       ) : (
-        <TvZone />
+        <TvZone mainLogMaxVisible={compactSmallLogRows} />
       )}
 
       {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}

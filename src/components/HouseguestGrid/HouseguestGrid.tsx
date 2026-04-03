@@ -93,7 +93,7 @@ export default function HouseguestGrid({
   useEffect(() => {
     function setAvailableHeight() {
       const viewportHeight = window.innerHeight
-      let containerTop = 0
+      let listTop = 0
       let footerH = DEFAULT_FOOTER_HEIGHT
       let bottomBoundary = viewportHeight - footerH
 
@@ -101,11 +101,14 @@ export default function HouseguestGrid({
       const overlayEl = overlaySelector ? document.querySelector(overlaySelector) : null
 
       if (containerRef.current instanceof HTMLElement) {
-        containerTop = containerRef.current.getBoundingClientRect().top
+        const listEl = containerRef.current.querySelector('ul[role="list"]')
+        listTop = listEl instanceof HTMLElement
+          ? listEl.getBoundingClientRect().top
+          : containerRef.current.getBoundingClientRect().top
       } else {
         const headerEl = document.querySelector(headerSelector)
         if (headerEl instanceof HTMLElement) {
-          containerTop = headerEl.getBoundingClientRect().bottom
+          listTop = headerEl.getBoundingClientRect().bottom
         }
       }
 
@@ -121,7 +124,7 @@ export default function HouseguestGrid({
 
       const available = Math.max(
         MIN_GRID_HEIGHT,
-        bottomBoundary - containerTop - GRID_VERTICAL_MARGIN,
+        bottomBoundary - listTop - GRID_VERTICAL_MARGIN,
       )
       if (containerRef.current) {
         containerRef.current.style.setProperty('--grid-available-height', `${available}px`)

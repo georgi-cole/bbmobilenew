@@ -9,7 +9,7 @@
 @media (min-width: 640px) and (min-height: 760px) {
   .game-screen--compact-small-balance {
     box-sizing: border-box;
-    min-height: 100dvh;
+    min-height: calc(100dvh - 84px);
   }
 
   .game-screen--compact-small-balance > .tv-zone {

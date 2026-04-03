@@ -56,6 +56,9 @@ describe('HouseguestGrid', () => {
       if (this.getAttribute('aria-labelledby') === 'houseguests-heading') {
         return rect({ top: 338, height: 260 })
       }
+      if (this.getAttribute('role') === 'list') {
+        return rect({ top: 372, height: 226 })
+      }
       return rect({})
     })
 
@@ -80,7 +83,7 @@ describe('HouseguestGrid', () => {
     const section = container.querySelector('section')
     const list = screen.getByRole('list')
 
-    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('282px')
+    expect(section?.style.getPropertyValue('--grid-available-height')).toBe('248px')
     expect(within(list).getAllByRole('listitem')).toHaveLength(16)
   })
 

@@ -501,6 +501,14 @@ describe('TvZone — TVLog usage', () => {
     expect(log).toBeDefined();
     expect(log.getAttribute('data-mobile-two-line')).toBe('true');
   });
+
+  it('forwards a custom visible row count to TVLog', () => {
+    const store = makeStore();
+    renderTvZone(store, { mainLogMaxVisible: 6 });
+
+    const log = screen.getByRole('list', { name: /Game event log/i });
+    expect(log.style.getPropertyValue('--tv-log-max-vis')).toBe('6');
+  });
 });
 
 // ── TvAnnouncementOverlay countdown unit tests ─────────────────────────────────
