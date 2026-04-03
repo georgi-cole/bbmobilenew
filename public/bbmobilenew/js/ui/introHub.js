@@ -555,28 +555,275 @@
       highlightBadges.push(`⚡ Eviction escape artist ×${doubleEvictionSurvivals + tripleEvictionSurvivals}`);
     }
 
+    const rewardsFound = rewardIds.size;
+    const seasonsPlayedLabel = `${seasonsPlayed} season${seasonsPlayed === 1 ? '' : 's'} entered`;
+    const competitiveBreakdown = [`${lohWins} LOH`, `${posWins} POS`];
+    if (battleBackWins > 0) competitiveBreakdown.push(`${battleBackWins} BB`);
+
     return {
       playerName: userPlayer && userPlayer.name ? userPlayer.name : 'You',
-      stats: [
-        { label: 'Seasons played', value: String(seasonsPlayed) },
-        { label: 'Seasons won', value: String(seasonsWon) },
-        { label: 'Public favorite wins', value: String(publicFavoriteWins) },
-        { label: 'Avg days survived', value: averageDaysSurvived },
-        { label: 'Competitions won', value: String(totalCompWins) },
-        { label: 'Times nominated', value: String(timesNominated) },
-        { label: 'Nomination survives', value: String(survivedNominations) },
-        { label: 'LOH wins', value: String(lohWins) },
-        { label: 'POS wins', value: String(posWins) },
-        { label: 'Battle backs', value: String(battleBackWins) },
-        { label: 'Final LOHs', value: String(finalHohWins) },
-        { label: 'Jury appearances', value: String(juryAppearances) },
-        { label: 'Double eviction survives', value: String(doubleEvictionSurvivals) },
-        { label: 'Triple eviction survives', value: String(tripleEvictionSurvivals) },
-        { label: 'Rewards found', value: String(rewardIds.size) },
+      totals: {
+        seasonsPlayed: seasonsPlayed,
+        seasonsWon: seasonsWon,
+        publicFavoriteWins: publicFavoriteWins,
+        averageDaysSurvived: averageDaysSurvived,
+        totalCompWins: totalCompWins,
+        timesNominated: timesNominated,
+        survivedNominations: survivedNominations,
+        lohWins: lohWins,
+        posWins: posWins,
+        battleBackWins: battleBackWins,
+        finalHohWins: finalHohWins,
+        juryAppearances: juryAppearances,
+        doubleEvictionSurvivals: doubleEvictionSurvivals,
+        tripleEvictionSurvivals: tripleEvictionSurvivals,
+        rewardsFound: rewardsFound,
+      },
+      quickStats: [
+        { label: 'Seasons', value: String(seasonsPlayed), icon: '📚' },
+        { label: 'Wins', value: String(seasonsWon), icon: '🏆' },
+        { label: 'Rewards', value: String(rewardsFound), icon: '🥚' },
+      ],
+      featuredStats: [
+        {
+          label: 'Season wins',
+          value: String(seasonsWon),
+          helper: seasonsPlayed > 0 ? seasonsPlayedLabel : 'Start your first season',
+          icon: '🏆',
+          tone: 'gold',
+          wide: true,
+        },
+        {
+          label: 'Comp wins',
+          value: String(totalCompWins),
+          helper: competitiveBreakdown.join(' · '),
+          icon: '⚔️',
+          tone: 'violet',
+        },
+        {
+          label: 'Avg survive',
+          value: averageDaysSurvived,
+          helper: survivedNominations > 0
+            ? `${survivedNominations} block escape${survivedNominations === 1 ? '' : 's'}`
+            : 'Build your survival streak',
+          icon: '🛡️',
+          tone: 'emerald',
+        },
+      ],
+      sections: [
+        {
+          title: 'Competitive / Wins',
+          icon: '⚔️',
+          tone: 'violet',
+          stats: [
+            { label: 'LOH wins', value: String(lohWins), icon: '👑', tone: 'violet' },
+            { label: 'POS wins', value: String(posWins), icon: '🔑', tone: 'violet' },
+            { label: 'Battle backs', value: String(battleBackWins), icon: '🔄', tone: 'violet' },
+            { label: 'Final LOHs', value: String(finalHohWins), icon: '🎯', tone: 'violet' },
+          ],
+        },
+        {
+          title: 'Recognition / Social',
+          icon: '🌟',
+          tone: 'rose',
+          stats: [
+            { label: 'Fan favorite', value: String(publicFavoriteWins), icon: '🌟', tone: 'rose' },
+            { label: 'Jury runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
+            { label: 'Rewards found', value: String(rewardsFound), icon: '🥚', tone: 'rose' },
+          ],
+        },
+        {
+          title: 'Survival / Endurance',
+          icon: '🛡️',
+          tone: 'emerald',
+          stats: [
+            { label: 'Seasons played', value: String(seasonsPlayed), icon: '📅', tone: 'emerald' },
+            { label: 'Nominations', value: String(timesNominated), icon: '🎯', tone: 'emerald' },
+            { label: 'Block escapes', value: String(survivedNominations), icon: '🚪', tone: 'emerald' },
+            { label: 'Double survives', value: String(doubleEvictionSurvivals), icon: '⚡', tone: 'emerald' },
+            { label: 'Triple survives', value: String(tripleEvictionSurvivals), icon: '🔥', tone: 'emerald' },
+          ],
+        },
       ],
       highlightBadges: highlightBadges,
-      hasHistory: seasonsPlayed > 0 || totalCompWins > 0 || rewardIds.size > 0,
+      hasHistory: seasonsPlayed > 0 || totalCompWins > 0 || rewardsFound > 0,
     };
+  }
+
+  function getAchievementToneStyles(tone) {
+    switch (tone) {
+      case 'gold':
+        return {
+          accent: 'var(--color-gold-primary, #fbbf24)',
+          accentSoft: 'rgba(251, 191, 36, 0.18)',
+          border: 'rgba(251, 191, 36, 0.28)',
+          glow: 'rgba(245, 158, 11, 0.25)',
+        };
+      case 'rose':
+        return {
+          accent: '#f472b6',
+          accentSoft: 'rgba(244, 114, 182, 0.16)',
+          border: 'rgba(244, 114, 182, 0.24)',
+          glow: 'rgba(244, 114, 182, 0.2)',
+        };
+      case 'emerald':
+        return {
+          accent: '#34d399',
+          accentSoft: 'rgba(52, 211, 153, 0.16)',
+          border: 'rgba(52, 211, 153, 0.24)',
+          glow: 'rgba(52, 211, 153, 0.18)',
+        };
+      case 'violet':
+      default:
+        return {
+          accent: 'var(--color-accent, #6366f1)',
+          accentSoft: 'rgba(124, 146, 255, 0.18)',
+          border: 'rgba(176, 198, 255, 0.18)',
+          glow: 'rgba(124, 146, 255, 0.22)',
+        };
+    }
+  }
+
+  function buildAchievementCard(stat, variant) {
+    const tone = getAchievementToneStyles(stat.tone);
+    const isFeatured = variant === 'featured';
+    const card = applyStyles(document.createElement('div'), {
+      position: 'relative',
+      overflow: 'hidden',
+      padding: isFeatured ? '18px' : '14px',
+      borderRadius: isFeatured ? '22px' : '18px',
+      minHeight: isFeatured ? '118px' : '92px',
+      background: `linear-gradient(160deg, ${tone.accentSoft} 0%, rgba(255,255,255,0.05) 45%, rgba(9,13,24,0.9) 100%)`,
+      border: `1px solid ${tone.border}`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 28px ${tone.glow}`,
+      display: 'grid',
+      gap: isFeatured ? '14px' : '10px',
+    });
+
+    if (isFeatured && stat.wide) {
+      card.style.gridColumn = '1 / -1';
+    }
+
+    const topRow = applyStyles(document.createElement('div'), {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '10px',
+    });
+
+    const labelWrap = applyStyles(document.createElement('div'), {
+      display: 'grid',
+      gap: '6px',
+    });
+    labelWrap.appendChild(
+      createTextNode('div', stat.label, {
+        color: 'rgba(245, 247, 255, 0.7)',
+        fontSize: isFeatured ? '12px' : '11px',
+        fontWeight: '700',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+      }),
+    );
+    labelWrap.appendChild(
+      createTextNode('div', stat.value, {
+        color: '#fff',
+        fontSize: isFeatured ? '32px' : '24px',
+        fontWeight: '800',
+        lineHeight: '1',
+      }),
+    );
+
+    const iconBadge = createTextNode('div', stat.icon, {
+      display: 'grid',
+      placeItems: 'center',
+      width: isFeatured ? '44px' : '36px',
+      height: isFeatured ? '44px' : '36px',
+      borderRadius: isFeatured ? '14px' : '12px',
+      background: tone.accentSoft,
+      border: `1px solid ${tone.border}`,
+      boxShadow: `0 10px 24px ${tone.glow}`,
+      fontSize: isFeatured ? '22px' : '18px',
+      flexShrink: '0',
+    });
+
+    topRow.appendChild(labelWrap);
+    topRow.appendChild(iconBadge);
+    card.appendChild(topRow);
+
+    if (stat.helper) {
+      card.appendChild(
+        createTextNode('p', stat.helper, {
+          margin: '0',
+          color: 'rgba(236, 241, 255, 0.78)',
+          fontSize: isFeatured ? '13px' : '12px',
+          lineHeight: '1.45',
+        }),
+      );
+    }
+
+    return card;
+  }
+
+  function buildAchievementSection(section) {
+    const tone = getAchievementToneStyles(section.tone);
+    const wrapper = applyStyles(document.createElement('section'), {
+      display: 'grid',
+      gap: '12px',
+      padding: '16px',
+      borderRadius: '22px',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+    });
+
+    const heading = applyStyles(document.createElement('div'), {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+    });
+    const titleWrap = applyStyles(document.createElement('div'), {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      minWidth: '0',
+    });
+    titleWrap.appendChild(
+      createTextNode('span', section.icon, {
+        display: 'grid',
+        placeItems: 'center',
+        width: '32px',
+        height: '32px',
+        borderRadius: '10px',
+        background: tone.accentSoft,
+        border: `1px solid ${tone.border}`,
+        fontSize: '16px',
+        flexShrink: '0',
+      }),
+    );
+    titleWrap.appendChild(
+      createTextNode('h4', section.title, {
+        margin: '0',
+        color: '#fff',
+        fontSize: '15px',
+        fontWeight: '700',
+        lineHeight: '1.2',
+      }),
+    );
+    heading.appendChild(titleWrap);
+    wrapper.appendChild(heading);
+
+    const grid = applyStyles(document.createElement('div'), {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))',
+      gap: '10px',
+    });
+    section.stats.forEach(function (stat) {
+      grid.appendChild(buildAchievementCard(stat, 'supporting'));
+    });
+    wrapper.appendChild(grid);
+
+    return wrapper;
   }
 
   function openAchievementsPanel() {
@@ -585,8 +832,87 @@
     openHubDialog({
       title: 'Achievements',
       icon: '🏆',
-      description: `${summary.playerName}'s career stats and achievements across every season.`,
+      description: `${summary.playerName}'s trophy case.`,
       renderBody: function (body) {
+        const hero = applyStyles(document.createElement('section'), {
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'grid',
+          gap: '16px',
+          padding: '20px',
+          borderRadius: '24px',
+          background: 'linear-gradient(160deg, rgba(251,191,36,0.18) 0%, rgba(124,146,255,0.16) 42%, rgba(8,12,22,0.96) 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 40px rgba(0,0,0,0.28)',
+        });
+
+        const heroTop = applyStyles(document.createElement('div'), {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+        });
+        heroTop.appendChild(
+          createTextNode('div', '🏆', {
+            display: 'grid',
+            placeItems: 'center',
+            width: '68px',
+            height: '68px',
+            borderRadius: '22px',
+            background: 'linear-gradient(180deg, rgba(251,191,36,0.3) 0%, rgba(245,158,11,0.14) 100%)',
+            border: '1px solid rgba(251,191,36,0.28)',
+            boxShadow: '0 16px 34px rgba(245,158,11,0.24)',
+            fontSize: '32px',
+            flexShrink: '0',
+          }),
+        );
+
+        const heroCopy = applyStyles(document.createElement('div'), {
+          display: 'grid',
+          gap: '6px',
+          minWidth: '0',
+        });
+        heroCopy.appendChild(
+          createTextNode('h4', 'Trophy case', {
+            margin: '0',
+            color: '#fff',
+            fontSize: '22px',
+            fontWeight: '800',
+            lineHeight: '1.1',
+          }),
+        );
+        heroCopy.appendChild(
+          createTextNode('p', 'Big wins first, the full legacy right below.', {
+            margin: '0',
+            color: 'rgba(236, 241, 255, 0.78)',
+            fontSize: '13px',
+            lineHeight: '1.45',
+          }),
+        );
+        heroTop.appendChild(heroCopy);
+        hero.appendChild(heroTop);
+
+        const quickStats = applyStyles(document.createElement('div'), {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+        });
+        summary.quickStats.forEach(function (stat) {
+          quickStats.appendChild(
+            createTextNode('span', `${stat.icon} ${stat.label} ${stat.value}`, {
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: '700',
+              lineHeight: '1',
+            }),
+          );
+        });
+        hero.appendChild(quickStats);
+        body.appendChild(hero);
+
         if (!summary.hasHistory) {
           body.appendChild(
             createTextNode('p', 'Complete a season to unlock your career timeline, stat cards, and achievement streaks.', {
@@ -598,50 +924,36 @@
           );
         }
 
-        const grid = applyStyles(document.createElement('div'), {
+        const featuredGrid = applyStyles(document.createElement('div'), {
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: '12px',
+        });
+        summary.featuredStats.forEach(function (stat) {
+          featuredGrid.appendChild(buildAchievementCard(stat, 'featured'));
+        });
+        body.appendChild(featuredGrid);
+
+        summary.sections.forEach(function (section) {
+          body.appendChild(buildAchievementSection(section));
+        });
+
+        const badgeSection = applyStyles(document.createElement('section'), {
+          display: 'grid',
           gap: '10px',
-        });
-
-        summary.stats.forEach(function (stat) {
-          const card = applyStyles(document.createElement('div'), {
-            padding: '12px',
-            borderRadius: '18px',
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            minHeight: '84px',
-          });
-          card.appendChild(
-            createTextNode('div', stat.value, {
-              margin: '0 0 8px',
-              fontSize: '24px',
-              fontWeight: '700',
-              lineHeight: '1',
-            }),
-          );
-          card.appendChild(
-            createTextNode('div', stat.label, {
-              color: 'rgba(236, 241, 255, 0.7)',
-              fontSize: '12px',
-              lineHeight: '1.4',
-            }),
-          );
-          grid.appendChild(card);
-        });
-        body.appendChild(grid);
-
-        const badgeSection = applyStyles(document.createElement('div'), {
-          display: 'grid',
-          gap: '8px',
+          padding: '16px',
+          borderRadius: '22px',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
         });
         badgeSection.appendChild(
           createTextNode('p', 'Highlights', {
-            margin: '2px 0 0',
+            margin: '0',
             fontSize: '12px',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
             color: 'rgba(236, 241, 255, 0.6)',
+            fontWeight: '700',
           }),
         );
 
@@ -651,16 +963,18 @@
             flexWrap: 'wrap',
             gap: '8px',
           });
-          summary.highlightBadges.forEach(function (label) {
+          summary.highlightBadges.forEach(function (label, index) {
+            const tone = index % 3 === 0 ? 'gold' : index % 3 === 1 ? 'violet' : 'rose';
+            const palette = getAchievementToneStyles(tone);
             badgeWrap.appendChild(
               createTextNode('span', label, {
                 padding: '8px 12px',
                 borderRadius: '999px',
-                background: 'rgba(124, 146, 255, 0.16)',
-                border: '1px solid rgba(176, 198, 255, 0.14)',
+                background: palette.accentSoft,
+                border: `1px solid ${palette.border}`,
                 color: '#fff',
                 fontSize: '13px',
-                fontWeight: '600',
+                fontWeight: '700',
               }),
             );
           });

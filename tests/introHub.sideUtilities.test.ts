@@ -52,6 +52,8 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubScript).toContain('navigator.share');
     expect(mirroredIntroHubScript).toContain('collectAchievementStats');
     expect(mirroredIntroHubScript).toContain('kolequant@gmail.com');
+    expect(mirroredIntroHubScript).toContain('Competitive / Wins');
+    expect(mirroredIntroHubScript).toContain('Trophy case');
   });
 
   it('styles the IntroHub chips with side utility shell and badge assets', () => {
@@ -124,8 +126,10 @@ describe('IntroHub side utility buttons', () => {
     document.querySelector<HTMLButtonElement>('[data-hub-id="achievements"]')?.click();
 
     const dialog = document.getElementById('hub-dialog-panel');
-    expect(dialog?.textContent).toContain('Avg days survived');
+    expect(dialog?.textContent).toContain('Trophy case');
+    expect(dialog?.textContent).toContain('Avg survive');
     expect(dialog?.textContent).toContain('—');
+    expect(dialog?.textContent).toContain('Competitive / Wins');
     expect(dialog?.textContent).toContain('Your next badge unlocks once you finish a full season.');
   });
 
@@ -202,12 +206,17 @@ describe('IntroHub side utility buttons', () => {
     const dialog = document.getElementById('hub-dialog-panel');
     expect(dialog?.getAttribute('role')).toBe('dialog');
     expect(dialog?.textContent).toContain('Achievements');
-    expect(dialog?.textContent).toContain('Seasons played');
-    expect(dialog?.textContent).toContain('3');
-    expect(dialog?.textContent).toContain('Public favorite wins');
-    expect(dialog?.textContent).toContain('Avg days survived');
+    expect(dialog?.textContent).toContain('Trophy case');
+    expect(dialog?.textContent).toContain('Season wins');
+    expect(dialog?.textContent).toContain('Comp wins');
+    expect(dialog?.textContent).toContain('Avg survive');
     expect(dialog?.textContent).toContain('7 days');
+    expect(dialog?.textContent).toContain('Competitive / Wins');
+    expect(dialog?.textContent).toContain('Recognition / Social');
+    expect(dialog?.textContent).toContain('Survival / Endurance');
+    expect(dialog?.textContent).toContain('Fan favorite');
     expect(dialog?.textContent).toContain('Rewards found');
+    expect(dialog?.textContent).toContain('Block escapes');
     expect(dialog?.textContent).toContain('Comp beast ×9');
     expect(dialog?.textContent).toContain('Reward hunter ×3');
   });
