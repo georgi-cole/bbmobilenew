@@ -14,13 +14,28 @@
   --chip-stack-step-double: calc(var(--chip-stack-step) + var(--chip-stack-step));
   --floating-corner-top-base: var(--chip-edge);
   --floating-corner-top-safe-padding: var(--chip-edge);
+  --floating-corner-top-touch-base: 24px;
+  --floating-corner-top-touch-safe-padding: 20px;
   --floating-corner-left-base: var(--chip-edge);
   --floating-corner-left-safe-padding: var(--chip-edge);
+  --floating-corner-left-touch-base: var(--chip-edge);
+  --floating-corner-left-touch-safe-padding: var(--chip-edge);
   --floating-corner-right-base: var(--chip-edge);
   --floating-corner-right-safe-padding: var(--chip-edge);
-  --hub-chip-top-offset: var(--floating-corner-top-offset, max(var(--chip-edge), calc(env(safe-area-inset-top, 0px) + var(--chip-edge))));
-  --hub-chip-left-offset: var(--floating-corner-left-offset, max(var(--chip-edge), calc(env(safe-area-inset-left, 0px) + var(--chip-edge))));
-  --hub-chip-right-offset: var(--floating-corner-right-offset, max(var(--chip-edge), calc(env(safe-area-inset-right, 0px) + var(--chip-edge))));
+  --floating-corner-right-touch-base: var(--chip-edge);
+  --floating-corner-right-touch-safe-padding: var(--chip-edge);
+  --hub-chip-top-offset: var(
+    --floating-corner-top-offset,
+    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
+  );
+  --hub-chip-left-offset: var(
+    --floating-corner-left-offset,
+    max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
+  );
+  --hub-chip-right-offset: var(
+    --floating-corner-right-offset,
+    max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
+  );
 }
 
 /* ===== Hub Container ===== */
@@ -51,6 +66,7 @@
   transition: transform 150ms ease;
   padding: 0;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .hub-chip:hover {
@@ -188,6 +204,23 @@
 }
 
 /* ===== Responsive ===== */
+@media (hover: none) and (pointer: coarse) {
+  :root {
+    --floating-corner-top-offset: max(
+      var(--floating-corner-top-touch-base),
+      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
+    );
+    --floating-corner-left-offset: max(
+      var(--floating-corner-left-touch-base),
+      calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
+    );
+    --floating-corner-right-offset: max(
+      var(--floating-corner-right-touch-base),
+      calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-touch-safe-padding))
+    );
+  }
+}
+
 @media (max-width: 360px) {
   .hub-chip {
     width: var(--chip-size-sm);
