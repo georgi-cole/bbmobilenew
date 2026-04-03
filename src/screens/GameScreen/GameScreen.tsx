@@ -1540,14 +1540,13 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
-  const expandsTvForCompactSmall =
-    settings.gameUX.compactRoster && settings.gameUX.compactRosterLayout === 'small'
-  const compactSmallLogRows = expandsTvForCompactSmall ? 6 : 2
+  const expandsTvForCompactRoster = settings.gameUX.compactRoster
+  const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
 
   return (
     <LayoutGroup id="game-layout">
     <div
-      className={`game-screen game-screen-shell${expandsTvForCompactSmall ? ' game-screen--compact-small-balance' : ''}`}
+      className={`game-screen game-screen-shell${expandsTvForCompactRoster ? ' game-screen--compact-roster-balance' : ''}`}
     >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
@@ -1557,10 +1556,10 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
-          mainLogMaxVisible={compactSmallLogRows}
+          mainLogMaxVisible={compactRosterLogRows}
         />
       ) : (
-        <TvZone mainLogMaxVisible={compactSmallLogRows} />
+        <TvZone mainLogMaxVisible={compactRosterLogRows} />
       )}
 
       {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}

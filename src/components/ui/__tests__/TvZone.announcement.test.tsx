@@ -513,6 +513,14 @@ describe('TvZone — TVLog usage', () => {
     const log = screen.getByRole('list', { name: /Game event log/i });
     expect(log.style.getPropertyValue('--tv-log-max-vis')).toBe('6');
   });
+
+  it('disables the mobile two-line clamp when the log is expanded', () => {
+    const store = makeStore();
+    renderTvZone(store, { mainLogMaxVisible: 6 });
+
+    const log = screen.getByRole('list', { name: /Game event log/i });
+    expect(log.getAttribute('data-mobile-two-line')).toBeNull();
+  });
 });
 
 // ── TvAnnouncementOverlay countdown unit tests ─────────────────────────────────
