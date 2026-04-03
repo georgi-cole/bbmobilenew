@@ -1001,82 +1001,84 @@ export default function SilentSaboteurComp({
       )}
 
       {phase === 'voting' && victimId && !bombRevealVisible && (
-        <div className="ss-phase-card ss-phase-card--vote">
-          <VictimNotice
-            playerId={victimId}
-            name={getName(victimId)}
-            subtitle="Who planted the bomb?"
-          />
-          <CountdownTimer
-            remainingMs={remainingCountdownMs}
-            totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
-          />
-          <h2 className="ss-phase-label">🗳️ Round {round + 1} — Investigation</h2>
-          <p className="ss-hint">
-            {isHumanActive && votes[humanPlayerId!] === undefined
-              ? 'Study the room and accuse the saboteur. You may also abstain.'
-              : isHumanActive
-              ? '✅ Vote locked. Waiting for others or timer to expire…'
-              : 'You are watching the investigation unfold.'}
-          </p>
-          {isHumanActive && votes[humanPlayerId!] === undefined ? (
-            <>
-              <AvatarTileGrid
-                playerIds={humanVoteCandidates}
-                getName={getName}
-                ariaLabel="Accuse a saboteur"
-                onSelect={handleVote}
-                selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
-                dense={true}
-                variant="vote"
-              />
-              {/* Victim displayed separately — not accusable */}
-              <div className="ss-victim-row">
-                <span className="ss-victim-row__label">💣 In danger:</span>
-                <span className="ss-victim-row__name">{getName(victimId)}</span>
-                <span className="ss-victim-row__tag">Cannot be accused</span>
-              </div>
-            </>
-          ) : (
-            <AvatarTileGrid
-              playerIds={activeIds.filter((id) => id !== victimId)}
-              getName={getName}
-              ariaLabel="Active suspects"
-              compact={true}
-              dense={true}
-              showVoteState={true}
-              votedIds={Object.keys(votes)}
-              selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-phase-card--vote">
+            <VictimNotice
+              playerId={victimId}
+              name={getName(victimId)}
+              subtitle="Who planted the bomb?"
             />
-          )}
-          {/* Social Map toggle */}
-          <button
-            className="ss-btn ss-btn--social-map"
-            onClick={() => setSocialMapOpen(true)}
-            aria-label="Open Social Map"
-          >
-            🗺️ Social Map
-          </button>
-          <ProgressMeter
-            label="Vote Progress"
-            participantIds={activeIds}
-            submissions={votes}
-            getName={getName}
-            noun="votes"
-          />
-          {/* Social Map overlay */}
-          {socialMapOpen && victimId && (
-            <SocialMapOverlay
-              victimId={victimId}
-              suspects={humanVoteCandidates}
-              seed={seed}
+            <CountdownTimer
               remainingMs={remainingCountdownMs}
               totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
-              getName={getName}
-              onClose={() => setSocialMapOpen(false)}
-              onVote={isHumanActive && votes[humanPlayerId!] === undefined ? handleVote : null}
             />
-          )}
+            <h2 className="ss-phase-label">🗳️ Round {round + 1} — Investigation</h2>
+            <p className="ss-hint">
+              {isHumanActive && votes[humanPlayerId!] === undefined
+                ? 'Study the room and accuse the saboteur. You may also abstain.'
+                : isHumanActive
+                ? '✅ Vote locked. Waiting for others or timer to expire…'
+                : 'You are watching the investigation unfold.'}
+            </p>
+            {isHumanActive && votes[humanPlayerId!] === undefined ? (
+              <>
+                <AvatarTileGrid
+                  playerIds={humanVoteCandidates}
+                  getName={getName}
+                  ariaLabel="Accuse a saboteur"
+                  onSelect={handleVote}
+                  selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+                  dense={true}
+                  variant="vote"
+                />
+                {/* Victim displayed separately — not accusable */}
+                <div className="ss-victim-row">
+                  <span className="ss-victim-row__label">💣 In danger:</span>
+                  <span className="ss-victim-row__name">{getName(victimId)}</span>
+                  <span className="ss-victim-row__tag">Cannot be accused</span>
+                </div>
+              </>
+            ) : (
+              <AvatarTileGrid
+                playerIds={activeIds.filter((id) => id !== victimId)}
+                getName={getName}
+                ariaLabel="Active suspects"
+                compact={true}
+                dense={true}
+                showVoteState={true}
+                votedIds={Object.keys(votes)}
+                selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+              />
+            )}
+            {/* Social Map toggle */}
+            <button
+              className="ss-btn ss-btn--social-map"
+              onClick={() => setSocialMapOpen(true)}
+              aria-label="Open Social Map"
+            >
+              🗺️ Social Map
+            </button>
+            <ProgressMeter
+              label="Vote Progress"
+              participantIds={activeIds}
+              submissions={votes}
+              getName={getName}
+              noun="votes"
+            />
+            {/* Social Map overlay */}
+            {socialMapOpen && victimId && (
+              <SocialMapOverlay
+                victimId={victimId}
+                suspects={humanVoteCandidates}
+                seed={seed}
+                remainingMs={remainingCountdownMs}
+                totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
+                getName={getName}
+                onClose={() => setSocialMapOpen(false)}
+                onVote={isHumanActive && votes[humanPlayerId!] === undefined ? handleVote : null}
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -1226,28 +1228,30 @@ export default function SilentSaboteurComp({
 
       {/* Original winner screen — only for non-Final-2 games. */}
       {phase === 'winner' && winnerId && final2Stage === null && (
-        <div className="ss-winner-card ss-cinematic">
-          <div className="ss-confetti" aria-hidden="true">
-            {Array.from({ length: 12 }, (_, idx) => (
-              <span key={idx} className="ss-confetti-piece" />
-            ))}
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-winner-card ss-cinematic">
+            <div className="ss-confetti" aria-hidden="true">
+              {Array.from({ length: 12 }, (_, idx) => (
+                <span key={idx} className="ss-confetti-piece" />
+              ))}
+            </div>
+            <div className="ss-trophy" aria-hidden="true">🏆</div>
+            <p className="ss-phase-eyebrow">Winner reveal</p>
+            <h2 className="ss-winner-name">{getName(winnerId)}</h2>
+            <p className="ss-winner-label">wins Silent Saboteur!</p>
+            {humanPlayerId === winnerId && <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>}
+            <ActionFooter>
+              <button
+                className="ss-btn ss-action-btn"
+                onClick={handleWinnerContinue}
+                aria-label="Continue"
+                data-testid="ss-winner-continue-btn"
+                disabled={majorBeatActionLocked}
+              >
+                Continue
+              </button>
+            </ActionFooter>
           </div>
-          <div className="ss-trophy" aria-hidden="true">🏆</div>
-          <p className="ss-phase-eyebrow">Winner reveal</p>
-          <h2 className="ss-winner-name">{getName(winnerId)}</h2>
-          <p className="ss-winner-label">wins Silent Saboteur!</p>
-          {humanPlayerId === winnerId && <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>}
-          <ActionFooter>
-            <button
-              className="ss-btn ss-action-btn"
-              onClick={handleWinnerContinue}
-              aria-label="Continue"
-              data-testid="ss-winner-continue-btn"
-              disabled={majorBeatActionLocked}
-            >
-              Continue
-            </button>
-          </ActionFooter>
         </div>
       )}
 
@@ -1286,43 +1290,45 @@ export default function SilentSaboteurComp({
 
       {/* FINAL2_VOTING: Jury votes. No victim/saboteur labels visible. */}
       {final2Stage === 'FINAL2_VOTING' && final2SaboteurId && final2VictimId && (
-        <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
-          <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Phase</p>
-          <h2 className="ss-phase-label">Who planted the bomb?</h2>
-          <CountdownTimer
-            remainingMs={remainingCountdownMs}
-            totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
-          />
-          <p className="ss-hint">
-            {isHumanJuror && juryVotes[humanPlayerId!] === undefined
-              ? 'Cast your vote. Which finalist planted the bomb?'
-              : isHumanJuror
-              ? '✅ Vote cast. Waiting for the final Tribunal verdict…'
-              : 'Awaiting the Tribunal verdict…'}
-          </p>
-          <Final2FinalistsMuted
-            finalistIds={final2FinalistIdsRef.current}
-            getName={getName}
-            compact={true}
-          />
-          {/* Human jury vote buttons — no role labels */}
-          {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
-            <AvatarTileGrid
-              playerIds={final2FinalistIdsRef.current}
-              getName={getName}
-              ariaLabel="Vote for a finalist"
-              onSelect={handleJuryVote}
-              selectedId={humanPlayerId ? juryVotes[humanPlayerId] : undefined}
-              variant="vote"
+        <div className="ss-stage ss-stage--centered">
+          <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
+            <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Phase</p>
+            <h2 className="ss-phase-label">Who planted the bomb?</h2>
+            <CountdownTimer
+              remainingMs={remainingCountdownMs}
+              totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
             />
-          )}
-          <ProgressMeter
-            label="Jury Votes"
-            participantIds={eliminatedIds}
-            submissions={juryVotes}
-            getName={getName}
-            noun="jury votes"
-          />
+            <p className="ss-hint">
+              {isHumanJuror && juryVotes[humanPlayerId!] === undefined
+                ? 'Cast your vote. Which finalist planted the bomb?'
+                : isHumanJuror
+                ? '✅ Vote cast. Waiting for the final Tribunal verdict…'
+                : 'Awaiting the Tribunal verdict…'}
+            </p>
+            <Final2FinalistsMuted
+              finalistIds={final2FinalistIdsRef.current}
+              getName={getName}
+              compact={true}
+            />
+            {/* Human jury vote buttons — no role labels */}
+            {isHumanJuror && juryVotes[humanPlayerId!] === undefined && (
+              <AvatarTileGrid
+                playerIds={final2FinalistIdsRef.current}
+                getName={getName}
+                ariaLabel="Vote for a finalist"
+                onSelect={handleJuryVote}
+                selectedId={humanPlayerId ? juryVotes[humanPlayerId] : undefined}
+                variant="vote"
+              />
+            )}
+            <ProgressMeter
+              label="Jury Votes"
+              participantIds={eliminatedIds}
+              submissions={juryVotes}
+              getName={getName}
+              noun="jury votes"
+            />
+          </div>
         </div>
       )}
 

@@ -163,6 +163,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
     expect(screen.getByTestId('ss-final2-voting')).toBeInTheDocument();
     expect(screen.queryByTestId('ss-final2-intro')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ss-final2-voting').closest('.ss-stage')).toHaveClass('ss-stage--centered');
   });
 
   it('FINAL2_VOTING does not show victim, saboteur, or suspect role labels', async () => {

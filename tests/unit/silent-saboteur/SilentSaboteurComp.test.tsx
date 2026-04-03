@@ -92,6 +92,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
 
     expect(screen.queryByTestId('ss-bomb-reveal')).not.toBeInTheDocument();
     expect(screen.queryByText(/investigation/i)).toBeInTheDocument();
+    expect(screen.getByText(/round 1 — investigation/i).closest('.ss-stage')).toHaveClass('ss-stage--centered');
   });
 
   it('waits for manual Continue from bomb reveal through accusation result, elimination result, and round summary phases', async () => {
@@ -241,6 +242,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
 
     expect(ss(store).phase).toBe('winner');
     expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ss-winner-continue-btn').closest('.ss-stage')).toHaveClass('ss-stage--centered');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('ss-winner-continue-btn'));
