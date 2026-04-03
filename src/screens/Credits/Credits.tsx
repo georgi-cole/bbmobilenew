@@ -51,7 +51,7 @@ export default function Credits() {
     const nextSource = videoSources[sourceIndex + 1];
 
     if (nextSource) {
-      console.error('[Credits] Failed to load video source, retrying fallback source.', {
+      console.warn('[Credits] Failed to load video source, retrying fallback source.', {
         attemptedSource,
         nextSource,
       });
