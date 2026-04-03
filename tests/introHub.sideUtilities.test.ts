@@ -73,8 +73,8 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('top: var(--hub-chip-top-offset);');
     expect(introHubCss).toContain('left: var(--hub-chip-left-offset);');
     expect(introHubCss).toContain('right: var(--hub-chip-right-offset);');
-    expect(introHubCss).toContain('pointer-events: none;');
-    expect(introHubCss).toContain('pointer-events: auto;');
+    expect(introHubCss).toMatch(/#intro-hub\s*\{[^}]*pointer-events:\s*none;/s);
+    expect(introHubCss).toMatch(/\.hub-chip\s*\{[^}]*pointer-events:\s*auto;/s);
     expect(introHubCss).toContain('touch-action: manipulation;');
     expect(introHubCss).toContain('@media (hover: none) and (pointer: coarse)');
     expect(introHubCss).toContain('calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))');
