@@ -67,7 +67,7 @@ describe('Credits', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Credits video could not be loaded on this device. You can retry or skip.',
     );
-    expect(screen.getByRole('button', { name: 'Retry video' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry video' })).toBeInTheDocument();
   });
 
   it('returns home when the credits finish', () => {
