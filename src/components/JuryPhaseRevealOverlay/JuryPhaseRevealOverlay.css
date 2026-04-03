@@ -100,6 +100,7 @@
 /* ── Skip affordance ─────────────────────────────────────────────────────── */
 
 .jpro__skip {
+  --floating-corner-top-base: 12px;
   position: absolute;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);

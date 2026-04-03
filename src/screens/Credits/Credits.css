@@ -20,6 +20,7 @@
 
 /* Skip button top-right */
 .credits-skip {
+  --floating-corner-top-base: 14px;
   position: absolute;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);
@@ -37,6 +38,8 @@
 /* Make sure the Skip button is usable on small screens */
 @media (max-width: 480px) {
   .credits-skip {
+    --floating-corner-top-base: 10px;
+    --floating-corner-right-base: 10px;
     padding: 6px 10px;
     font-size: 13px;
   }

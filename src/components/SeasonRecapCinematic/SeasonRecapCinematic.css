@@ -77,6 +77,10 @@
 }
 
 .src-skip-btn {
+  --floating-corner-top-base: 0.9rem;
+  --floating-corner-top-safe-padding: 0.4rem;
+  --floating-corner-right-base: 0.85rem;
+  --floating-corner-right-safe-padding: 0.35rem;
   position: absolute;
   top: var(--floating-corner-top-offset);
   right: var(--floating-corner-right-offset);

@@ -42,9 +42,24 @@
   --app-safe-area-top-fallback: 0px;
   --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-area-inset-top));
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
-  --floating-corner-top-offset: max(12px, calc(var(--app-safe-area-top) + 8px));
-  --floating-corner-left-offset: max(16px, calc(var(--safe-area-inset-left) + 16px));
-  --floating-corner-right-offset: max(16px, calc(var(--safe-area-inset-right) + 16px));
+  --floating-corner-top-base: 12px;
+  --floating-corner-top-safe-padding: 8px;
+  --floating-corner-left-base: 16px;
+  --floating-corner-left-safe-padding: 16px;
+  --floating-corner-right-base: 16px;
+  --floating-corner-right-safe-padding: 16px;
+  --floating-corner-top-offset: max(
+    var(--floating-corner-top-base),
+    calc(var(--app-safe-area-top) + var(--floating-corner-top-safe-padding))
+  );
+  --floating-corner-left-offset: max(
+    var(--floating-corner-left-base),
+    calc(var(--safe-area-inset-left) + var(--floating-corner-left-safe-padding))
+  );
+  --floating-corner-right-offset: max(
+    var(--floating-corner-right-base),
+    calc(var(--safe-area-inset-right) + var(--floating-corner-right-safe-padding))
+  );
 
   /* Typography */
   font-family: 'Montserrat', system-ui, -apple-system, sans-serif;

@@ -12,7 +12,13 @@
   --chip-gap: 8px;          /* gap between stacked chips in the same corner */
   --chip-stack-step: calc(var(--chip-size) + var(--chip-gap));
   --chip-stack-step-double: calc(var(--chip-stack-step) + var(--chip-stack-step));
-  --hub-chip-top-offset: var(--floating-corner-top-offset, max(12px, calc(env(safe-area-inset-top, 0px) + 8px)));
+  --floating-corner-top-base: var(--chip-edge);
+  --floating-corner-top-safe-padding: var(--chip-edge);
+  --floating-corner-left-base: var(--chip-edge);
+  --floating-corner-left-safe-padding: var(--chip-edge);
+  --floating-corner-right-base: var(--chip-edge);
+  --floating-corner-right-safe-padding: var(--chip-edge);
+  --hub-chip-top-offset: var(--floating-corner-top-offset, max(var(--chip-edge), calc(env(safe-area-inset-top, 0px) + var(--chip-edge))));
   --hub-chip-left-offset: var(--floating-corner-left-offset, max(var(--chip-edge), calc(env(safe-area-inset-left, 0px) + var(--chip-edge))));
   --hub-chip-right-offset: var(--floating-corner-right-offset, max(var(--chip-edge), calc(env(safe-area-inset-right, 0px) + var(--chip-edge))));
 }

@@ -4,7 +4,13 @@
  */
 
 :root {
-  --hub-chip-top-offset: var(--floating-corner-top-offset, max(12px, calc(env(safe-area-inset-top, 0px) + 8px)));
+  --floating-corner-top-base: 16px;
+  --floating-corner-top-safe-padding: 8px;
+  --floating-corner-left-base: 16px;
+  --floating-corner-left-safe-padding: 16px;
+  --floating-corner-right-base: 16px;
+  --floating-corner-right-safe-padding: 16px;
+  --hub-chip-top-offset: var(--floating-corner-top-offset, max(16px, calc(env(safe-area-inset-top, 0px) + 8px)));
   --hub-chip-left-offset: var(--floating-corner-left-offset, max(16px, calc(env(safe-area-inset-left, 0px) + 16px)));
   --hub-chip-right-offset: var(--floating-corner-right-offset, max(16px, calc(env(safe-area-inset-right, 0px) + 16px)));
   --hub-chip-stack-step: 44px;

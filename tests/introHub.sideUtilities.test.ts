@@ -64,6 +64,7 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('../assets/side_utilities_button/badge_alert_red.svg');
     expect(introHubCss).toContain('.hub-chip__icon--housemates');
     expect(introHubCss).toContain('.hub-chip__icon--shop');
+    expect(introHubCss).toContain('--floating-corner-top-base: 16px;');
     expect(introHubCss).toContain('--hub-chip-top-offset');
     expect(introHubCss).toContain('top: var(--hub-chip-top-offset);');
     expect(introHubCss).toContain('left: var(--hub-chip-left-offset);');
@@ -75,6 +76,7 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/badge_alert_red.svg');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--housemates');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--shop');
+    expect(mirroredIntroHubCss).toContain('--floating-corner-top-base: 16px;');
     expect(mirroredIntroHubCss).toContain('--hub-chip-top-offset');
     expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-offset);');
     expect(mirroredIntroHubCss).toContain('left: var(--hub-chip-left-offset);');

@@ -40,6 +40,9 @@
 
 /* ── LIVE bug (top-left) ─────────────────────────────────────────────────── */
 .seo__live-bug {
+  --floating-corner-top-base: 1rem;
+  --floating-corner-left-base: 1rem;
+  --floating-corner-left-safe-padding: 1rem;
   position: fixed;
   top: var(--floating-corner-top-offset);
   left: var(--floating-corner-left-offset);
