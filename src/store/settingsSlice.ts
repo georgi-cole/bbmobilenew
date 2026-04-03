@@ -5,6 +5,7 @@ import type { CompSelectionPayload } from '../components/compSelectionUtils';
 export const STORAGE_KEY = 'bbmobilenew_settings_v1';
 
 export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean';
+export type CompactRosterLayout = 'slider' | 'small' | 'two-rows';
 
 export interface SettingsState {
   audio: {
@@ -22,6 +23,7 @@ export interface SettingsState {
     confirmMajorActions: boolean;
     showTooltips: boolean;
     compactRoster: boolean;
+    compactRosterLayout: CompactRosterLayout;
     useHaptics: boolean;
     animations: boolean;
     spectatorMode: boolean;
@@ -82,6 +84,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     confirmMajorActions: true,
     showTooltips: true,
     compactRoster: false,
+    compactRosterLayout: 'slider',
     useHaptics: true,
     animations: true,
     spectatorMode: false,

@@ -2357,6 +2357,8 @@ export default function GameScreen() {
         headerSelector=".tv-zone"
         footerSelector=".nav-bar"
         overlaySelector=".game-control-dock"
+        compact={settings.gameUX.compactRoster}
+        compactLayout={settings.gameUX.compactRosterLayout}
         occupancyLabel={`${alivePlayers.length}/${game.players.length}`}
       />
       {previewPlayer && <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />}

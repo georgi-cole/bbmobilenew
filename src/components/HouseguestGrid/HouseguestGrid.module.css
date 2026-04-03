@@ -37,10 +37,27 @@
   padding-bottom: 4px;
 }
 
+.slider {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+}
+
 
 .gridItem {
   width: 100%;
   min-width: 0;
+}
+
+.sliderItem {
+  flex: 0 0 min(84px, calc(25vw - 10px));
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
 .tile {
@@ -249,4 +266,20 @@
 .compact .statusBadge {
   font-size: 9px;
   padding: 1px 2px;
+}
+
+.compactSmall .tile,
+.compactSmall .hgTileInactive {
+  width: 50%;
+  margin-inline: auto;
+}
+
+.compactSmall .hgPlaceholderImg {
+  width: 28px;
+  height: 28px;
+}
+
+.compactTwoRows .grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  max-height: none;
 }
