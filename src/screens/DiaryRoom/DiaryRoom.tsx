@@ -32,6 +32,7 @@ type TicTacToeMark = 'X' | 'O';
 type TicTacToeCell = TicTacToeMark | null;
 
 export const DIARY_ROOM_ENTRY_OVERLAY_MS = 1320;
+const CONFESSIONAL_LOCKED_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/confessional-locked-door.png`;
 
 /** A single message in the private chat. */
 interface ChatMessage {
@@ -691,9 +692,12 @@ export default function DiaryRoom() {
         {confessionalLocked ? (
           <section className="diary-room__locked" aria-label="Confessional locked">
             <div className="diary-room__locked-door" data-testid="confessional-locked-door" aria-hidden="true">
-              <div className="diary-room__locked-door-light" />
-              <div className="diary-room__locked-door-panel diary-room__locked-door-panel--left" />
-              <div className="diary-room__locked-door-panel diary-room__locked-door-panel--right" />
+              <img
+                className="diary-room__locked-door-image"
+                data-testid="confessional-locked-door-image"
+                src={CONFESSIONAL_LOCKED_DOOR_SRC}
+                alt=""
+              />
             </div>
             <span className="diary-room__locked-eyebrow">Confessional</span>
             <h2 className="diary-room__locked-title">The door is locked.</h2>
