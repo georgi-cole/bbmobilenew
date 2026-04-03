@@ -163,10 +163,12 @@ type TvZoneProps =
   | {
       publicSaveReveal: TvZonePublicSaveReveal;
       onPublicSaveDone: () => void;
+      mainLogMaxVisible?: number;
     }
   | {
       publicSaveReveal?: null | undefined;
       onPublicSaveDone?: undefined;
+      mainLogMaxVisible?: number;
     };
 
 /**
@@ -204,6 +206,7 @@ export default function TvZone(props: TvZoneProps) {
     () => gameState.tvFeed.filter(isVisibleInMainLog),
     [gameState.tvFeed],
   );
+  const mainLogMaxVisible = props.mainLogMaxVisible ?? 2;
 
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
@@ -538,7 +541,7 @@ export default function TvZone(props: TvZoneProps) {
       <TVLog
         entries={mainLogFeed}
         mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
-        maxVisible={2}
+        maxVisible={mainLogMaxVisible}
         mobileTwoLineMode
       />
 

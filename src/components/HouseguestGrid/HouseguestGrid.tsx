@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import styles from './HouseguestGrid.module.css'
+import type { CompactRosterLayout } from '../../store/settingsSlice'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
 
@@ -62,6 +63,8 @@ type Props = {
   placeholderCount?: number
   /** When true, reduces avatar/tile size and spacing for a denser layout. */
   compact?: boolean
+  /** Optional compact roster presentation chosen in Settings. */
+  compactLayout?: CompactRosterLayout
   /** Optional alive/total chip shown beside the section heading. */
   occupancyLabel?: string
 }
@@ -82,6 +85,7 @@ export default function HouseguestGrid({
   gridSize,
   placeholderCount = 0,
   compact = false,
+  compactLayout = 'slider',
   occupancyLabel,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
@@ -89,7 +93,7 @@ export default function HouseguestGrid({
   useEffect(() => {
     function setAvailableHeight() {
       const viewportHeight = window.innerHeight
-      let containerTop = 0
+      let listTop = 0
       let footerH = DEFAULT_FOOTER_HEIGHT
       let bottomBoundary = viewportHeight - footerH
 
@@ -97,11 +101,14 @@ export default function HouseguestGrid({
       const overlayEl = overlaySelector ? document.querySelector(overlaySelector) : null
 
       if (containerRef.current instanceof HTMLElement) {
-        containerTop = containerRef.current.getBoundingClientRect().top
+        const listEl = containerRef.current.querySelector('ul[role="list"]')
+        listTop = listEl instanceof HTMLElement
+          ? listEl.getBoundingClientRect().top
+          : containerRef.current.getBoundingClientRect().top
       } else {
         const headerEl = document.querySelector(headerSelector)
         if (headerEl instanceof HTMLElement) {
-          containerTop = headerEl.getBoundingClientRect().bottom
+          listTop = headerEl.getBoundingClientRect().bottom
         }
       }
 
@@ -117,7 +124,7 @@ export default function HouseguestGrid({
 
       const available = Math.max(
         MIN_GRID_HEIGHT,
-        bottomBoundary - containerTop - GRID_VERTICAL_MARGIN,
+        bottomBoundary - listTop - GRID_VERTICAL_MARGIN,
       )
       if (containerRef.current) {
         containerRef.current.style.setProperty('--grid-available-height', `${available}px`)
@@ -130,9 +137,27 @@ export default function HouseguestGrid({
   }, [headerSelector, footerSelector, overlaySelector])
 
   const gridSizeClass = gridSize === 16 ? styles.hgGrid16 : gridSize === 12 ? styles.hgGrid12 : ''
+  const effectiveCompactLayout = compact ? compactLayout : 'default'
+  const listClassName = effectiveCompactLayout === 'slider'
+    ? styles.slider
+    : `${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`
+  const itemClassName = effectiveCompactLayout === 'slider' ? styles.sliderItem : styles.gridItem
+  const sectionClassName = [
+    styles.container,
+    compact ? styles.compact : '',
+    effectiveCompactLayout === 'small' ? styles.compactSmall : '',
+    effectiveCompactLayout === 'two-rows' ? styles.compactTwoRows : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <section ref={containerRef} className={`${styles.container}${compact ? ` ${styles.compact}` : ''}`} aria-labelledby="houseguests-heading">
+    <section
+      ref={containerRef}
+      className={sectionClassName}
+      aria-labelledby="houseguests-heading"
+      data-compact-layout={effectiveCompactLayout}
+    >
       <div className={styles.headerRow}>
         <h3 id="houseguests-heading" className={styles.header}>
           {HOUSEMATES_SECTION_TITLE}
@@ -144,9 +169,9 @@ export default function HouseguestGrid({
         )}
       </div>
 
-      <ul className={`${styles.grid}${gridSizeClass ? ` ${gridSizeClass}` : ''}`} role="list">
+      <ul className={listClassName} role="list">
         {houseguests.map((hg) => (
-          <li key={hg.id} className={styles.gridItem} data-player-id={String(hg.id)}>
+          <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
             <AvatarTile
               name={hg.name}
               avatarUrl={hg.avatarUrl}
@@ -164,7 +189,7 @@ export default function HouseguestGrid({
           </li>
         ))}
         {Array.from({ length: placeholderCount }).map((_, i) => (
-          <li key={`placeholder-${i}`} className={`${styles.gridItem} ${styles.hgTileInactive}`}>
+          <li key={`placeholder-${i}`} className={`${itemClassName} ${styles.hgTileInactive}`}>
             <img
               src={`${import.meta.env.BASE_URL}avatars/placeholder.png`}
               alt=""

@@ -122,12 +122,13 @@ describe('getRestartRelevantSnapshotFromSettings', () => {
     expect(snapshot).not.toHaveProperty('display');
   });
 
-  it('does NOT include pure-UI gameUX fields (animations, useHaptics, compactRoster)', () => {
+  it('does NOT include pure-UI gameUX fields (animations, useHaptics, compactRoster, compactRosterLayout)', () => {
     const liveSettings = { ...DEFAULT_SETTINGS };
     const snapshot = getRestartRelevantSnapshotFromSettings(liveSettings);
     expect(snapshot.gameUX).not.toHaveProperty('animations');
     expect(snapshot.gameUX).not.toHaveProperty('useHaptics');
     expect(snapshot.gameUX).not.toHaveProperty('compactRoster');
+    expect(snapshot.gameUX).not.toHaveProperty('compactRosterLayout');
   });
 });
 

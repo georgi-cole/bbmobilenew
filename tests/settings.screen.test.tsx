@@ -96,6 +96,30 @@ describe('Settings screen', () => {
     expect(vi.mocked(restartApp)).toHaveBeenCalledWith('#/game');
   });
 
+  it('shows compact roster layout choices when the toggle is enabled', async () => {
+    const { store } = renderSettings();
+
+    fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/toggle compact roster/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText(/toggle compact roster/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole('radiogroup', { name: /compact roster layout/i })).toBeTruthy();
+    });
+
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole('radio', { name: /2 rows of 8 avatars/i }));
+
+    await waitFor(() => {
+      expect(store.getState().settings.gameUX.compactRosterLayout).toBe('two-rows');
+    });
+  });
+
   it('shows the renamed brand and twist copy in the UI', async () => {
     renderSettings();
 
