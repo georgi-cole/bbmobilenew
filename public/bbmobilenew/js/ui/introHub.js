@@ -361,10 +361,15 @@
     };
 
     if (global.navigator && typeof global.navigator.share === 'function') {
-      global.navigator.share(shareData).catch(function (error) {
+      try {
+        Promise.resolve(global.navigator.share(shareData)).catch(function (error) {
+          if (error && error.name === 'AbortError') return;
+          openShareFallback(shareData);
+        });
+      } catch (error) {
         if (error && error.name === 'AbortError') return;
         openShareFallback(shareData);
-      });
+      }
       return;
     }
 
