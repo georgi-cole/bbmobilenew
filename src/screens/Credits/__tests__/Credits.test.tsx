@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Credits from '../Credits';
@@ -20,7 +20,10 @@ afterEach(() => {
 });
 
 describe('Credits', () => {
-  it('renders a mobile-friendly video player with a loading state', () => {
+  it('renders a mobile-friendly video player with a loading state', async () => {
+    const playMock = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValue(undefined);
     const { container } = renderCredits();
     const video = container.querySelector('video');
 
@@ -36,6 +39,32 @@ describe('Credits', () => {
     fireEvent.loadedMetadata(video!);
 
     expect(screen.queryByRole('status')).toBeNull();
+    expect(playMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Tap for sound' })).toBeInTheDocument();
+    });
+  });
+
+  it('starts muted and lets the user enable sound with a tap', async () => {
+    const playMock = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValue(undefined);
+    const { container } = renderCredits();
+    const video = container.querySelector('video')!;
+
+    fireEvent.loadedMetadata(video);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Tap for sound' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tap for sound' }));
+
+    await waitFor(() => {
+      expect(video.muted).toBe(false);
+    });
+    expect(playMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: 'Tap for sound' })).toBeNull();
   });
 
   it('retries a fallback source and then shows an error state if loading still fails', () => {

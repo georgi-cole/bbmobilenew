@@ -10,6 +10,8 @@ export default function Credits() {
   const [reloadKey, setReloadKey] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSoundPrompt, setShowSoundPrompt] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
   const currentSource = CREDITS_VIDEO_SOURCES[sourceIndex] ?? CREDITS_VIDEO_SOURCES[CREDITS_VIDEO_SOURCES.length - 1] ?? '';
   const posterSource = CREDITS_POSTER_SOURCES[sourceIndex] ?? CREDITS_POSTER_SOURCES[CREDITS_POSTER_SOURCES.length - 1] ?? '';
@@ -18,9 +20,45 @@ export default function Credits() {
     navigate('/');
   }
 
+  async function tryStartPlayback(options?: { unmute?: boolean; userInitiated?: boolean }) {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    const { unmute = false, userInitiated = false } = options ?? {};
+
+    if (unmute) {
+      video.muted = false;
+    } else {
+      video.muted = true;
+    }
+
+    try {
+      await video.play();
+
+      if (unmute) {
+        setSoundEnabled(true);
+        setShowSoundPrompt(false);
+        return;
+      }
+
+      setShowSoundPrompt(true);
+    } catch (error) {
+      console.warn('[Credits] Playback requires user interaction.', {
+        attemptedSource: currentSource,
+        userInitiated,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      setShowSoundPrompt(true);
+    }
+  }
+
   function onVideoReady() {
     setStatus('ready');
     setErrorMessage(null);
+    void tryStartPlayback();
   }
 
   function onVideoError() {
@@ -53,6 +91,10 @@ export default function Credits() {
     setReloadKey((key) => key + 1);
   }
 
+  function onEnableSound() {
+    void tryStartPlayback({ unmute: true, userInitiated: true });
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onDone();
@@ -71,6 +113,11 @@ export default function Credits() {
     setStatus('error');
     setErrorMessage('Credits video source is unavailable. You can retry or skip.');
   }, [currentSource]);
+
+  useEffect(() => {
+    setShowSoundPrompt(false);
+    setSoundEnabled(false);
+  }, [currentSource, reloadKey]);
 
   return (
     <div className="credits-container">
@@ -99,6 +146,11 @@ export default function Credits() {
               </button>
             ) : null}
           </div>
+        ) : null}
+        {status === 'ready' && showSoundPrompt && !soundEnabled ? (
+          <button className="credits-sound-toggle" onClick={onEnableSound} type="button">
+            Tap for sound
+          </button>
         ) : null}
       </div>
       <button
