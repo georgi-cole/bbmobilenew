@@ -34,9 +34,15 @@ export default function TopUtilityButton({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const isInactive = pressed === false;
+  const hasInactiveStateAsset = isInactive && (icon === 'music' || icon === 'sound');
 
-  const shellSrc = `${BASE}/assets/control_dock/top_utility_shell.svg`;
-  const glyphSrc = `${BASE}/assets/control_dock/${icon}.svg`;
+  const shellSrc = hasInactiveStateAsset
+    ? `${BASE}/assets/icons/${icon}_disabled.svg`
+    : `${BASE}/assets/control_dock/top_utility_shell.svg`;
+  const glyphSrc = hasInactiveStateAsset ? null : `${BASE}/assets/control_dock/${icon}.svg`;
+  const audioInactiveScratchSrc = hasInactiveStateAsset
+    ? `${BASE}/assets/icons/audio_deactivated_scratch.svg`
+    : null;
 
   const scale = disabled
     ? 1
@@ -83,13 +89,24 @@ export default function TopUtilityButton({
         aria-hidden="true"
         draggable={false}
       />
-      <img
-        className="top-utility-btn__glyph"
-        src={glyphSrc}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-      />
+      {glyphSrc && (
+        <img
+          className="top-utility-btn__glyph"
+          src={glyphSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      )}
+      {audioInactiveScratchSrc && (
+        <img
+          className="top-utility-btn__scratch"
+          src={audioInactiveScratchSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      )}
     </button>
   );
 }
