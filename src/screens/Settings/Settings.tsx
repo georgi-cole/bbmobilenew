@@ -342,21 +342,23 @@ export default function Settings() {
                 />
               </div>
               {settings.gameUX.compactRoster && (
-                <div className="settings-choice-group" role="radiogroup" aria-label="Compact roster layout">
+                <div className="settings-choice-group" aria-label="Compact roster layout">
                   {COMPACT_ROSTER_LAYOUT_OPTIONS.map((option) => {
                     const selected = settings.gameUX.compactRosterLayout === option.id;
                     return (
-                      <button
+                      <label
                         key={option.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
                         className={`settings-choice ${selected ? 'settings-choice--active' : ''}`}
-                        onClick={() => dispatch(setGameUX({ compactRosterLayout: option.id }))}
                       >
+                        <input
+                          type="radio"
+                          name="compact-roster-layout"
+                          checked={selected}
+                          onChange={() => dispatch(setGameUX({ compactRosterLayout: option.id }))}
+                        />
                         <span className="settings-choice__title">{option.label}</span>
                         <span className="settings-choice__description">{option.description}</span>
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
