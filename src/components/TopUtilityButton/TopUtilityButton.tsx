@@ -40,6 +40,7 @@ export default function TopUtilityButton({
     ? `${BASE}/assets/icons/${icon}_disabled.svg`
     : `${BASE}/assets/control_dock/top_utility_shell.svg`;
   const glyphSrc = hasInactiveStateAsset ? null : `${BASE}/assets/control_dock/${icon}.svg`;
+  const scratchSrc = hasInactiveStateAsset ? `${BASE}/assets/icons/audio_deactivated_scratch.svg` : null;
 
   const scale = disabled
     ? 1
@@ -90,6 +91,15 @@ export default function TopUtilityButton({
         <img
           className="top-utility-btn__glyph"
           src={glyphSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      )}
+      {scratchSrc && (
+        <img
+          className="top-utility-btn__scratch"
+          src={scratchSrc}
           alt=""
           aria-hidden="true"
           draggable={false}

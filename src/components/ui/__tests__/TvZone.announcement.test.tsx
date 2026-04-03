@@ -220,6 +220,8 @@ describe('TvZone — announcement overlay', () => {
       button.querySelector<HTMLImageElement>('.top-utility-btn__shell')?.getAttribute('src');
     const getGlyph = (button: HTMLElement) =>
       button.querySelector<HTMLImageElement>('.top-utility-btn__glyph');
+    const getScratchSrc = (button: HTMLElement) =>
+      button.querySelector<HTMLImageElement>('.top-utility-btn__scratch')?.getAttribute('src');
 
     expect(musicButton).toHaveAttribute('aria-pressed', 'true');
     expect(sfxButton).toHaveAttribute('aria-pressed', 'true');
@@ -227,6 +229,8 @@ describe('TvZone — announcement overlay', () => {
     expect(getShellSrc(sfxButton)).toContain('/assets/control_dock/top_utility_shell.svg');
     expect(getGlyph(musicButton)).not.toBeNull();
     expect(getGlyph(sfxButton)).not.toBeNull();
+    expect(getScratchSrc(musicButton)).toBeUndefined();
+    expect(getScratchSrc(sfxButton)).toBeUndefined();
 
     await user.click(musicButton);
     await user.click(sfxButton);
@@ -235,10 +239,12 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.getByRole('button', { name: /^Music$/i })).toHaveClass('top-utility-btn--inactive');
     expect(getShellSrc(screen.getByRole('button', { name: /^Music$/i }))).toContain('/assets/icons/music_disabled.svg');
     expect(getGlyph(screen.getByRole('button', { name: /^Music$/i }))).toBeNull();
+    expect(getScratchSrc(screen.getByRole('button', { name: /^Music$/i }))).toContain('/assets/icons/audio_deactivated_scratch.svg');
     expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveClass('top-utility-btn--inactive');
     expect(getShellSrc(screen.getByRole('button', { name: /^Sound effects$/i }))).toContain('/assets/icons/sound_disabled.svg');
     expect(getGlyph(screen.getByRole('button', { name: /^Sound effects$/i }))).toBeNull();
+    expect(getScratchSrc(screen.getByRole('button', { name: /^Sound effects$/i }))).toContain('/assets/icons/audio_deactivated_scratch.svg');
   });
 
   it('shows the overlay when the latest event has a top-level major field', () => {
