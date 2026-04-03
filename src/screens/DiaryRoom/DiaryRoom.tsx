@@ -681,56 +681,60 @@ export default function DiaryRoom() {
         </div>
       )}
 
-      {/* Self-evict confirmation modal */}
-      <ConfirmExitModal
-        open={showSelfEvictConfirm}
-        title="Self-Evict?"
-        description="Do you want to self-evict from The Big Eye house? This cannot be undone."
-        confirmLabel="Yes, Leave"
-        cancelLabel="No, Stay"
-        onConfirm={() => {
-          setShowSelfEvictConfirm(false);
-          dispatch(selfEvict(playerId));
-          navigate('/self-evicted');
-        }}
-        onCancel={() => setShowSelfEvictConfirm(false)}
-      />
+      <div
+        className={`diary-room__shell${showEntryAnimation ? ' diary-room__shell--masked' : ''}`}
+        data-testid="diary-room-shell"
+      >
+        {/* Self-evict confirmation modal */}
+        <ConfirmExitModal
+          open={showSelfEvictConfirm}
+          title="Self-Evict?"
+          description="Do you want to self-evict from The Big Eye house? This cannot be undone."
+          confirmLabel="Yes, Leave"
+          cancelLabel="No, Stay"
+          onConfirm={() => {
+            setShowSelfEvictConfirm(false);
+            dispatch(selfEvict(playerId));
+            navigate('/self-evicted');
+          }}
+          onCancel={() => setShowSelfEvictConfirm(false)}
+        />
 
-      {/* Header */}
-      <div className="diary-room__header">
-        <button
-          className="diary-room__back"
-          onClick={() => navigate(-1)}
-          type="button"
-          aria-label="Go back"
-        >
-          ‹ Back
-        </button>
-        <h1 className="diary-room__title">🚪 Confessional</h1>
-      </div>
+        {/* Header */}
+        <div className="diary-room__header">
+          <button
+            className="diary-room__back"
+            onClick={() => navigate(-1)}
+            type="button"
+            aria-label="Go back"
+          >
+            ‹ Back
+          </button>
+          <h1 className="diary-room__title">🚪 Confessional</h1>
+        </div>
 
-      <div className="diary-room__body">
-        {confessionalLocked ? (
-          <section className="diary-room__locked" aria-label="Confessional locked">
-            <div className="diary-room__locked-door" data-testid="confessional-locked-door">
-              <img
-                className="diary-room__locked-door-image"
-                data-testid="confessional-locked-door-image"
-                src={CONFESSIONAL_LOCKED_DOOR_SRC}
-                alt=""
-              />
-            </div>
-            <span className="diary-room__locked-eyebrow">Confessional</span>
-            <h2 className="diary-room__locked-title">The door is locked.</h2>
-            <p className="diary-room__locked-copy">
-              Once you are out of the game, the Big Eye will not open the Confessional again.
-            </p>
-          </section>
-        ) : (
-          <div className="diary-room__confess">
-            <p className="diary-room__prompt">
-              "You are now in the Confessional. No one can hear you. Speak freely."
-            </p>
+        <div className="diary-room__body">
+          {confessionalLocked ? (
+            <section className="diary-room__locked" aria-label="Confessional locked">
+              <div className="diary-room__locked-door" data-testid="confessional-locked-door">
+                <img
+                  className="diary-room__locked-door-image"
+                  data-testid="confessional-locked-door-image"
+                  src={CONFESSIONAL_LOCKED_DOOR_SRC}
+                  alt=""
+                />
+              </div>
+              <span className="diary-room__locked-eyebrow">Confessional</span>
+              <h2 className="diary-room__locked-title">The door is locked.</h2>
+              <p className="diary-room__locked-copy">
+                Once you are out of the game, the Big Eye will not open the Confessional again.
+              </p>
+            </section>
+          ) : (
+            <div className="diary-room__confess">
+              <p className="diary-room__prompt">
+                "You are now in the Confessional. No one can hear you. Speak freely."
+              </p>
             {ticTacToeActive && (
               <div className="diary-room__mini-game-card" role="status" aria-live="polite">
                 <div className="diary-room__mini-game-copy">
@@ -1010,8 +1014,9 @@ export default function DiaryRoom() {
                 </div>
               </div>
             </form>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

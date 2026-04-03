@@ -6,6 +6,17 @@
   padding-bottom: 24px;
 }
 
+.diary-room__shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.diary-room__shell--masked {
+  visibility: hidden;
+}
+
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .diary-room__header {
   display: flex;
@@ -46,56 +57,52 @@
 
 .diary-room__entry-stage {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(78vw, 420px);
-  aspect-ratio: 1280 / 1792;
-  transform: translate(-50%, -54%);
-  perspective: 1800px;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  perspective: 2200px;
 }
 
 .diary-room__entry-light {
   position: absolute;
-  inset: 10% 22% 6%;
-  border-radius: 48% 48% 24% 24%;
+  inset: 12% 28% 12%;
+  border-radius: 48% 48% 28% 28%;
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.82) 0%, rgba(236, 72, 153, 0.5) 15%, rgba(168, 85, 247, 0.32) 36%, rgba(255, 255, 255, 0) 68%);
-  filter: blur(16px);
+  filter: blur(22px);
   animation: diary-room-entry-light 1.12s ease-out forwards;
 }
 
 .diary-room__entry-threshold {
   position: absolute;
   left: 50%;
-  bottom: 3%;
-  width: 34%;
-  height: 8%;
+  bottom: 5%;
+  width: min(38vw, 420px);
+  height: min(10vh, 84px);
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(250, 245, 255, 0.86) 0%, rgba(236, 72, 153, 0.5) 28%, rgba(168, 85, 247, 0.14) 58%, rgba(255, 255, 255, 0) 80%);
   transform: translateX(-50%);
-  filter: blur(12px);
+  filter: blur(18px);
   animation: diary-room-entry-threshold 1.04s ease-out forwards;
 }
 
 .diary-room__entry-doorway {
   position: absolute;
   inset: 0;
-  border-radius: 32px;
   overflow: hidden;
-  box-shadow:
-    0 26px 48px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(244, 114, 182, 0.18);
+  background:
+    radial-gradient(circle at center, rgba(28, 10, 46, 0.34) 0%, rgba(8, 9, 19, 0.82) 56%, rgba(3, 5, 14, 1) 100%);
 }
 
 .diary-room__entry-doorway::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 32px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 16%),
-    linear-gradient(180deg, rgba(88, 28, 135, 0.28) 0%, rgba(10, 10, 22, 0.08) 18%, rgba(10, 10, 22, 0) 34%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 12%),
+    radial-gradient(circle at center, rgba(236, 72, 153, 0.08) 0%, rgba(255, 255, 255, 0) 46%),
+    linear-gradient(180deg, rgba(88, 28, 135, 0.34) 0%, rgba(10, 10, 22, 0.16) 24%, rgba(10, 10, 22, 0) 42%);
   z-index: 1;
 }
 
@@ -133,19 +140,19 @@
 
 .diary-room__entry-door-image {
   display: block;
-  width: 200%;
-  max-width: none;
+  width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(1.08) brightness(0.9);
+  max-width: none;
+  filter: saturate(1.08) brightness(0.84);
 }
 
 .diary-room__entry-door-image--left {
-  transform: translateX(0);
+  object-position: left center;
 }
 
 .diary-room__entry-door-image--right {
-  transform: translateX(-50%);
+  object-position: right center;
 }
 
 .diary-room__entry-header-ornament {
