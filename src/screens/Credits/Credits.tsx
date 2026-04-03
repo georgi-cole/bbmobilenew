@@ -20,6 +20,10 @@ export default function Credits() {
     navigate('/');
   }
 
+  /**
+   * Starts credits playback in the most permissive mode for mobile browsers/WebViews:
+   * muted autoplay first, then optional user-initiated unmute to restore sound.
+   */
   async function tryStartPlayback(options?: { unmute?: boolean; userInitiated?: boolean }) {
     const video = videoRef.current;
 
