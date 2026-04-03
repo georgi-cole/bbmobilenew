@@ -10,9 +10,12 @@
   --chip-edge: 20px;        /* distance from the screen edge to the first chip */
   --chip-bottom-edge: 40px; /* bottom-edge offset (larger to clear home buttons) */
   --chip-gap: 8px;          /* gap between stacked chips in the same corner */
-  --chip-stack-step: calc(var(--chip-size) + var(--chip-gap));
-  --chip-stack-step-double: calc(var(--chip-stack-step) + var(--chip-stack-step));
-  --hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);
+  --hub-chip-top-safe-area-base: 0px;
+  --hub-chip-top-safe-area: max(
+    var(--hub-chip-top-safe-area-base),
+    var(--app-safe-area-top, env(safe-area-inset-top, 0px))
+  );
+  --hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);
   --floating-corner-left-base: var(--chip-edge);
   --floating-corner-left-safe-padding: var(--chip-edge);
   --floating-corner-left-touch-base: var(--chip-edge);
@@ -29,6 +32,11 @@
     --floating-corner-right-offset,
     max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
   );
+}
+
+html.is-capacitor,
+html.is-chrome-android {
+  --hub-chip-top-safe-area-base: 16px;
 }
 
 /* ===== Hub Container ===== */
@@ -159,81 +167,6 @@
 
 .hub-chip--has-notification .hub-chip__badge {
   display: block;
-}
-
-/* ===== Position Helpers ===== */
-.hub-chip--top-left {
-  position: absolute;
-  top: var(--hub-chip-top-stack-offset);
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right {
-  position: absolute;
-  top: var(--hub-chip-top-stack-offset);
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
-}
-
-/* Secondary chips stacked below/above primary in each corner */
-.hub-chip--top-left-2 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right-2 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step));
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left-2 {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right-2 {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
-}
-
-/* Third row if needed */
-.hub-chip--top-left-3 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step-double));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right-3 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--chip-stack-step-double));
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left-3 {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right-3 {
-  position: absolute;
-  bottom: calc(var(--chip-bottom-edge) + var(--chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
 }
 
 /* ===== Responsive ===== */

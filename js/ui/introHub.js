@@ -1012,7 +1012,7 @@
     const btn = document.createElement('button');
     btn.className = 'hub-chip';
     btn.setAttribute('data-hub-id', def.id);
-    btn.setAttribute('data-hub-stack', def.stack);
+    btn.setAttribute('data-hub-chip-stack', def.stack);
     btn.setAttribute('aria-label', def.label);
     btn.setAttribute('type', 'button');
 

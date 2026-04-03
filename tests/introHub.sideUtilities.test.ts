@@ -45,9 +45,14 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="sounds"] .hub-chip__icon--sound')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="store"] .hub-chip__icon--shop')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="social"] .hub-chip__icon--social')).not.toBeNull();
+    expect(document.querySelector('button[data-hub-stack]')).toBeNull();
+    expect(document.querySelector('[data-hub-id="achievements"]')?.getAttribute('data-hub-chip-stack')).toBe(
+      'leftTopStack',
+    );
     expect(mirroredIntroHubScript).toContain("icon: 'housemates'");
     expect(mirroredIntroHubScript).toContain("stack: 'leftTopStack'");
     expect(mirroredIntroHubScript).toContain("stack: 'rightBottomStack'");
+    expect(mirroredIntroHubScript).toContain("btn.setAttribute('data-hub-chip-stack', def.stack);");
     expect(mirroredIntroHubScript).toContain(
       "icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`;",
     );
@@ -66,7 +71,12 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('../assets/side_utilities_button/badge_alert_red.svg');
     expect(introHubCss).toContain('.hub-chip__icon--housemates');
     expect(introHubCss).toContain('.hub-chip__icon--shop');
-    expect(introHubCss).toContain('--hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area: max(');
+    expect(introHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
+    expect(introHubCss).toContain('--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);');
+    expect(introHubCss).toContain('html.is-chrome-android {');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
     expect(introHubCss).toContain('.hub-chip-stack');
     expect(introHubCss).toContain('.leftTopStack');
     expect(introHubCss).toContain('.rightBottomStack');
@@ -76,6 +86,8 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('touch-action: manipulation;');
     expect(introHubCss).toContain('top: var(--hub-chip-top-stack-offset);');
     expect(introHubCss).toContain('bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));');
+    expect(introHubCss).not.toContain('.hub-chip--top-left');
+    expect(introHubCss).not.toContain('--hub-chip-stack-step');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_normal.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_hover.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_pressed.svg');
@@ -83,9 +95,14 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/badge_alert_red.svg');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--housemates');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--shop');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area: max(');
+    expect(mirroredIntroHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
     expect(mirroredIntroHubCss).toContain(
-      '--hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);',
+      '--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);',
     );
+    expect(mirroredIntroHubCss).toContain('html.is-chrome-android {');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
     expect(mirroredIntroHubCss).toContain('.hub-chip-stack');
     expect(mirroredIntroHubCss).toContain('.leftTopStack');
     expect(mirroredIntroHubCss).toContain('.rightBottomStack');
@@ -97,6 +114,8 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain(
       'bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));',
     );
+    expect(mirroredIntroHubCss).not.toContain('.hub-chip--top-left');
+    expect(mirroredIntroHubCss).not.toContain('--hub-chip-stack-step');
   });
 
   it('renders the reordered utility chips into four mirrored stacks', () => {

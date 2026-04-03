@@ -4,6 +4,7 @@
  */
 
 :root {
+  --hub-chip-top-safe-area-base: 0px;
   --floating-corner-left-base: 16px;
   --floating-corner-left-safe-padding: 16px;
   --floating-corner-left-touch-base: 20px;
@@ -14,7 +15,11 @@
   --floating-corner-right-touch-safe-padding: 20px;
   --hub-chip-gap: 8px;
   --hub-chip-bottom-offset: 32px;
-  --hub-chip-top-stack-offset: calc(env(safe-area-inset-top, 0px) + 18px);
+  --hub-chip-top-safe-area: max(
+    var(--hub-chip-top-safe-area-base),
+    var(--app-safe-area-top, env(safe-area-inset-top, 0px))
+  );
+  --hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);
   --hub-chip-left-offset: var(
     --floating-corner-left-offset,
     max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
@@ -23,8 +28,11 @@
     --floating-corner-right-offset,
     max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
   );
-  --hub-chip-stack-step: calc(44px + var(--hub-chip-gap));
-  --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+}
+
+html.is-capacitor,
+html.is-chrome-android {
+  --hub-chip-top-safe-area-base: 16px;
 }
 
 /* ===== Hub Container ===== */
@@ -156,81 +164,6 @@
 
 .hub-chip--has-notification .hub-chip__badge {
   display: block;
-}
-
-/* ===== Position Helpers ===== */
-.hub-chip--top-left {
-  position: absolute;
-  top: var(--hub-chip-top-stack-offset);
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right {
-  position: absolute;
-  top: var(--hub-chip-top-stack-offset);
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
-}
-
-/* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
-.hub-chip--top-left-2 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right-2 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step));
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left-2 {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right-2 {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
-}
-
-/* Third row if needed */
-.hub-chip--top-left-3 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step-double));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--top-right-3 {
-  position: absolute;
-  top: calc(var(--hub-chip-top-stack-offset) + var(--hub-chip-stack-step-double));
-  right: var(--hub-chip-right-offset);
-}
-
-.hub-chip--bottom-left-3 {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
-  left: var(--hub-chip-left-offset);
-}
-
-.hub-chip--bottom-right-3 {
-  position: absolute;
-  bottom: calc(var(--hub-chip-bottom-offset) + var(--hub-chip-stack-step-double) + env(safe-area-inset-bottom, 0px));
-  right: var(--hub-chip-right-offset);
 }
 
 /* ===== Responsive ===== */
