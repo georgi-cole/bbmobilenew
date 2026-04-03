@@ -270,7 +270,7 @@
 
 .compactSmall .tile,
 .compactSmall .hgTileInactive {
-  width: 50%;
+  width: var(--compact-small-tile-width, 50%);
   margin-inline: auto;
 }
 
