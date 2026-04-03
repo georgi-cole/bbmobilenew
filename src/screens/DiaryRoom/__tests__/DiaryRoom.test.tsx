@@ -183,6 +183,7 @@ describe('DiaryRoom', () => {
     renderDiaryRoom();
 
     expect(screen.getByTestId('confessional-entry-overlay')).toBeTruthy();
+    expect(screen.getByTestId('diary-room-shell')).toHaveClass('diary-room__shell--masked');
     const doorImages = screen.getAllByTestId('confessional-entry-door-image');
     expect(doorImages).toHaveLength(2);
     doorImages.forEach((doorImage) => {
@@ -196,6 +197,7 @@ describe('DiaryRoom', () => {
     });
 
     expect(screen.queryByTestId('confessional-entry-overlay')).toBeNull();
+    expect(screen.getByTestId('diary-room-shell')).not.toHaveClass('diary-room__shell--masked');
   });
 
   it('shows the shuffle mission button for accepted secret missions', () => {
