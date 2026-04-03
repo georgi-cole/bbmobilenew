@@ -15,7 +15,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
-  padding-top: var(--app-safe-area-top-extra);
+  padding-top: var(--app-safe-area-top);
   /* Push content above bottom safe area */
   padding-bottom: var(--safe-area-inset-bottom);
 }
