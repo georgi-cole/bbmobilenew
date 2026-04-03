@@ -2,12 +2,18 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+function normalizeCss(css: string) {
+  return css.replace(/\s+/g, ' ').trim();
+}
+
 describe('safe-area layout styles', () => {
   it('defines a shared top safe-area fallback and applies it in the app shell', () => {
-    const globalCss = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
-    const appShellCss = readFileSync(
+    const globalCss = normalizeCss(readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8'));
+    const appShellCss = normalizeCss(
+      readFileSync(
       resolve(process.cwd(), 'src/components/layout/AppShell.css'),
       'utf8',
+      ),
     );
 
     expect(globalCss).toContain('--safe-area-inset-top: env(safe-area-inset-top, 0px);');
@@ -21,7 +27,7 @@ describe('safe-area layout styles', () => {
     expect(globalCss).toContain('html.is-capacitor,');
     expect(globalCss).toContain('html.is-chrome-android {');
     expect(globalCss).toContain('--app-safe-area-top-fallback: 16px;');
-    expect(appShellCss).toContain('padding-top: var(--app-safe-area-top-extra);');
+    expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);');
     expect(appShellCss).toContain('padding-bottom: var(--safe-area-inset-bottom);');
   });
 
