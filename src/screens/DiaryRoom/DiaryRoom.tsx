@@ -650,9 +650,30 @@ export default function DiaryRoom() {
             } as CSSProperties
           }
         >
-          <div className="diary-room__entry-light" />
-          <div className="diary-room__entry-door diary-room__entry-door--left" />
-          <div className="diary-room__entry-door diary-room__entry-door--right" />
+          <div className="diary-room__entry-stage">
+            <div className="diary-room__entry-light" />
+            <div className="diary-room__entry-threshold" />
+            <div className="diary-room__entry-doorway">
+              <div className="diary-room__entry-header-ornament" />
+              <div className="diary-room__entry-seam" />
+              <div className="diary-room__entry-door diary-room__entry-door--left">
+                <img
+                  className="diary-room__entry-door-image diary-room__entry-door-image--left"
+                  data-testid="confessional-entry-door-image"
+                  src={CONFESSIONAL_LOCKED_DOOR_SRC}
+                  alt=""
+                />
+              </div>
+              <div className="diary-room__entry-door diary-room__entry-door--right">
+                <img
+                  className="diary-room__entry-door-image diary-room__entry-door-image--right"
+                  data-testid="confessional-entry-door-image"
+                  src={CONFESSIONAL_LOCKED_DOOR_SRC}
+                  alt=""
+                />
+              </div>
+            </div>
+          </div>
           <div className="diary-room__entry-copy">
             <span className="diary-room__entry-eyebrow">Confessional</span>
             <strong>The Big Eye is ready for you.</strong>

@@ -183,6 +183,10 @@ describe('DiaryRoom', () => {
     renderDiaryRoom();
 
     expect(screen.getByTestId('confessional-entry-overlay')).toBeTruthy();
+    expect(screen.getAllByTestId('confessional-entry-door-image')).toHaveLength(2);
+    expect(screen.getAllByTestId('confessional-entry-door-image')[0].getAttribute('src')).toContain(
+      '/assets/diary-room/confessional-locked-door.png',
+    );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(DIARY_ROOM_ENTRY_OVERLAY_MS);

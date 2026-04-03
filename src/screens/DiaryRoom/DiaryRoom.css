@@ -40,56 +40,149 @@
   pointer-events: none;
   --diary-room-entry-overlay-ms: 1320ms;
   background:
-    radial-gradient(circle at center, rgba(120, 53, 200, 0.18) 0%, rgba(6, 10, 26, 0.08) 42%, rgba(3, 5, 14, 0.94) 100%);
+    radial-gradient(circle at center, rgba(244, 114, 182, 0.16) 0%, rgba(120, 53, 200, 0.12) 28%, rgba(6, 10, 26, 0.1) 48%, rgba(3, 5, 14, 0.96) 100%);
   animation: diary-room-entry-fade var(--diary-room-entry-overlay-ms) ease forwards;
+}
+
+.diary-room__entry-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(78vw, 420px);
+  aspect-ratio: 1280 / 1792;
+  transform: translate(-50%, -54%);
+  perspective: 1800px;
 }
 
 .diary-room__entry-light {
   position: absolute;
-  inset: 12% 24%;
-  border-radius: 999px;
+  inset: 10% 22% 6%;
+  border-radius: 48% 48% 24% 24%;
   background:
-    radial-gradient(circle, rgba(196, 181, 253, 0.38) 0%, rgba(147, 197, 253, 0.18) 38%, rgba(255, 255, 255, 0) 72%);
-  filter: blur(10px);
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.82) 0%, rgba(236, 72, 153, 0.5) 15%, rgba(168, 85, 247, 0.32) 36%, rgba(255, 255, 255, 0) 68%);
+  filter: blur(16px);
   animation: diary-room-entry-light 1.12s ease-out forwards;
+}
+
+.diary-room__entry-threshold {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  width: 34%;
+  height: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(250, 245, 255, 0.86) 0%, rgba(236, 72, 153, 0.5) 28%, rgba(168, 85, 247, 0.14) 58%, rgba(255, 255, 255, 0) 80%);
+  transform: translateX(-50%);
+  filter: blur(12px);
+  animation: diary-room-entry-threshold 1.04s ease-out forwards;
+}
+
+.diary-room__entry-doorway {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow:
+    0 26px 48px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(244, 114, 182, 0.18);
+}
+
+.diary-room__entry-doorway::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 16%),
+    linear-gradient(180deg, rgba(88, 28, 135, 0.28) 0%, rgba(10, 10, 22, 0.08) 18%, rgba(10, 10, 22, 0) 34%);
+  z-index: 1;
 }
 
 .diary-room__entry-door {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  inset: 0 auto 0 0;
   width: 50%;
-  background:
-    linear-gradient(180deg, rgba(58, 27, 93, 0.98) 0%, rgba(24, 16, 52, 0.98) 48%, rgba(11, 11, 33, 0.98) 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  backface-visibility: hidden;
+  will-change: transform, filter, opacity;
+  z-index: 2;
 }
 
 .diary-room__entry-door::after {
   content: '';
   position: absolute;
-  inset: 8% 10%;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  inset: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 16%, rgba(10, 10, 22, 0.12) 66%, rgba(10, 10, 22, 0.24) 100%);
+  mix-blend-mode: screen;
 }
 
 .diary-room__entry-door--left {
   left: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  transform-origin: left center;
   animation: diary-room-entry-door-left 1.04s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .diary-room__entry-door--right {
   right: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  left: auto;
+  transform-origin: right center;
   animation: diary-room-entry-door-right 1.04s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.diary-room__entry-door-image {
+  display: block;
+  width: 200%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.08) brightness(0.9);
+}
+
+.diary-room__entry-door-image--left {
+  transform: translateX(0);
+}
+
+.diary-room__entry-door-image--right {
+  transform: translateX(-50%);
+}
+
+.diary-room__entry-header-ornament {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  width: 38%;
+  height: 12%;
+  border-radius: 50% 50% 42% 42%;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(251, 207, 232, 0.8) 0%, rgba(236, 72, 153, 0.58) 26%, rgba(126, 34, 206, 0.64) 58%, rgba(45, 7, 79, 0.14) 92%);
+  transform: translateX(-50%);
+  filter: blur(4px);
+  opacity: 0.8;
+  z-index: 3;
+}
+
+.diary-room__entry-seam {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  bottom: 7%;
+  width: 4.6%;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(253, 164, 175, 0.78) 18%, rgba(236, 72, 153, 0.46) 42%, rgba(255, 255, 255, 0.84) 100%);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  filter: blur(10px);
+  opacity: 0;
+  animation: diary-room-entry-seam 1.04s ease-out forwards;
+  z-index: 1;
 }
 
 .diary-room__entry-copy {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: calc(50% + min(40vw, 248px));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -127,7 +220,7 @@
 @keyframes diary-room-entry-light {
   0% {
     opacity: 0;
-    transform: scale(0.86);
+    transform: scale(0.82);
   }
   24% {
     opacity: 1;
@@ -135,27 +228,59 @@
   }
   100% {
     opacity: 0;
-    transform: scale(1.06);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes diary-room-entry-threshold {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.76);
+  }
+  30% {
+    opacity: 0.92;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.12);
   }
 }
 
 @keyframes diary-room-entry-door-left {
   0%,
   22% {
-    transform: translateX(0);
+    transform: rotateY(0deg) translateX(0) scaleX(1);
+    filter: brightness(0.92);
   }
   100% {
-    transform: translateX(-102%);
+    transform: rotateY(72deg) translateX(-10%) scaleX(0.95);
+    filter: brightness(0.5);
   }
 }
 
 @keyframes diary-room-entry-door-right {
   0%,
   22% {
-    transform: translateX(0);
+    transform: rotateY(0deg) translateX(0) scaleX(1);
+    filter: brightness(0.92);
   }
   100% {
-    transform: translateX(102%);
+    transform: rotateY(-72deg) translateX(10%) scaleX(0.95);
+    filter: brightness(0.5);
+  }
+}
+
+@keyframes diary-room-entry-seam {
+  0%,
+  18% {
+    opacity: 0;
+  }
+  34% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.18;
   }
 }
 
