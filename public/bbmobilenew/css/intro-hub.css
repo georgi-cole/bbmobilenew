@@ -6,13 +6,28 @@
 :root {
   --floating-corner-top-base: 16px;
   --floating-corner-top-safe-padding: 8px;
+  --floating-corner-top-touch-base: 24px;
+  --floating-corner-top-touch-safe-padding: 20px;
   --floating-corner-left-base: 16px;
   --floating-corner-left-safe-padding: 16px;
+  --floating-corner-left-touch-base: 20px;
+  --floating-corner-left-touch-safe-padding: 20px;
   --floating-corner-right-base: 16px;
   --floating-corner-right-safe-padding: 16px;
-  --hub-chip-top-offset: var(--floating-corner-top-offset, max(16px, calc(env(safe-area-inset-top, 0px) + 8px)));
-  --hub-chip-left-offset: var(--floating-corner-left-offset, max(16px, calc(env(safe-area-inset-left, 0px) + 16px)));
-  --hub-chip-right-offset: var(--floating-corner-right-offset, max(16px, calc(env(safe-area-inset-right, 0px) + 16px)));
+  --floating-corner-right-touch-base: 20px;
+  --floating-corner-right-touch-safe-padding: 20px;
+  --hub-chip-top-offset: var(
+    --floating-corner-top-offset,
+    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
+  );
+  --hub-chip-left-offset: var(
+    --floating-corner-left-offset,
+    max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
+  );
+  --hub-chip-right-offset: var(
+    --floating-corner-right-offset,
+    max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
+  );
   --hub-chip-stack-step: 44px;
   --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
 }
@@ -46,6 +61,7 @@
   transition: transform 150ms ease;
   padding: 0;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .hub-chip:hover {
@@ -183,6 +199,23 @@
 }
 
 /* ===== Responsive ===== */
+@media (hover: none) and (pointer: coarse) {
+  :root {
+    --floating-corner-top-offset: max(
+      var(--floating-corner-top-touch-base),
+      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
+    );
+    --floating-corner-left-offset: max(
+      var(--floating-corner-left-touch-base),
+      calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
+    );
+    --floating-corner-right-offset: max(
+      var(--floating-corner-right-touch-base),
+      calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-touch-safe-padding))
+    );
+  }
+}
+
 @media (max-width: 360px) {
   .hub-chip {
     width: 38px;
