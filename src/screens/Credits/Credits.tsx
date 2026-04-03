@@ -3,17 +3,39 @@ import { useNavigate } from 'react-router-dom';
 import { CREDITS_POSTER_SOURCE, CREDITS_VIDEO_SOURCES } from './creditsAssetPaths';
 import './Credits.css';
 
+function getPosterSourceForVideo(videoSource: string) {
+  if (!videoSource) {
+    return CREDITS_POSTER_SOURCE;
+  }
+
+  const normalizedPosterSource = CREDITS_POSTER_SOURCE.split(/[?#]/, 1)[0];
+  const posterFileName = normalizedPosterSource.slice(normalizedPosterSource.lastIndexOf('/') + 1);
+
+  if (!posterFileName) {
+    return CREDITS_POSTER_SOURCE;
+  }
+
+  const sourcePath = videoSource.split(/[?#]/, 1)[0];
+  const lastSlashIndex = sourcePath.lastIndexOf('/');
+
+  if (lastSlashIndex < 0) {
+    return CREDITS_POSTER_SOURCE;
+  }
+
+  return `${sourcePath.slice(0, lastSlashIndex + 1)}${posterFileName}`;
+}
+
 export default function Credits() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const navigate = useNavigate();
   const videoSources = useMemo(() => CREDITS_VIDEO_SOURCES, []);
-  const posterSource = useMemo(() => CREDITS_POSTER_SOURCE, []);
   const [sourceIndex, setSourceIndex] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const currentSource = videoSources[sourceIndex] ?? videoSources[videoSources.length - 1] ?? '';
+  const posterSource = useMemo(() => getPosterSourceForVideo(currentSource), [currentSource]);
 
   function onDone() {
     navigate('/');
