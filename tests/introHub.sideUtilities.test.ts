@@ -56,6 +56,28 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubScript).toContain('Trophy case');
   });
 
+  it('renders the requested mobile side-utility positions', () => {
+    loadIntroHub();
+
+    expect(document.querySelector('[data-hub-id="news"]')).toHaveClass('hub-chip--top-left');
+    expect(document.querySelector('[data-hub-id="music"]')).toHaveClass('hub-chip--top-left-2');
+    expect(document.querySelector('[data-hub-id="sounds"]')).toHaveClass('hub-chip--top-left-3');
+    expect(document.querySelector('[data-hub-id="social"]')).toHaveClass('hub-chip--top-right');
+    expect(document.querySelector('[data-hub-id="feedback"]')).toHaveClass('hub-chip--top-right-2');
+    expect(document.querySelector('[data-hub-id="houseguests"]')).toHaveClass('hub-chip--bottom-left');
+    expect(document.querySelector('[data-hub-id="achievements"]')).toHaveClass('hub-chip--bottom-left-2');
+    expect(document.querySelector('[data-hub-id="store"]')).toHaveClass('hub-chip--bottom-right');
+    expect(document.querySelector('[data-hub-id="settings"]')).toHaveClass('hub-chip--bottom-right-2');
+    expect(document.querySelector('[data-hub-id="share"]')).toHaveClass('hub-chip--bottom-right-3');
+    expect(mirroredIntroHubScript).toContain("{ id: 'news', label: 'News', icon: 'news', position: 'top-left' }");
+    expect(mirroredIntroHubScript).toContain(
+      "{ id: 'settings', label: 'Settings', icon: 'settings', position: 'bottom-right-2' }",
+    );
+    expect(mirroredIntroHubScript).toContain(
+      "{ id: 'share', label: 'Share', icon: 'share', position: 'bottom-right-3' }",
+    );
+  });
+
   it('styles the IntroHub chips with side utility shell and badge assets', () => {
     expect(introHubCss).toContain('../assets/side_utilities_button/side_utility_shell_normal.svg');
     expect(introHubCss).toContain('../assets/side_utilities_button/side_utility_shell_hover.svg');

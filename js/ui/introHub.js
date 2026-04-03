@@ -1,8 +1,8 @@
 // MODULE: introHub.js
 // Intro Hub UI — side utility button overlay
 //
-// Chips: Houseguests, Music, Sounds (top-left), Settings, Share, Feedback (top-right),
-//        News, Achievements (bottom-left), Store (bottom-right)
+// Chips: News, Music, Sounds (top-left), Social, Feedback (top-right),
+//        Houseguests, Achievements (bottom-left), Store, Settings, Share (bottom-right)
 //
 // Notification dots are driven by window.game.hubNotifications (object keyed by chip id).
 // Runtime API: window.game.hub.setNotification(id, bool) / window.game.hub.refreshNotifications()
@@ -28,19 +28,19 @@
   //   Array order does not affect visual stacking — only the position class does.
   const CHIPS = [
     // Top-left corner (stacked top → bottom)
-    { id: 'houseguests', label: 'Houseguests', icon: 'housemates', position: 'top-left' },
+    { id: 'news', label: 'News', icon: 'news', position: 'top-left' },
     { id: 'music', label: 'Music', icon: 'music', position: 'top-left-2' },
     { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-3' },
-    // Top-right corner (stacked top → bottom: settings, share, feedback)
-    { id: 'settings', label: 'Settings', icon: 'settings', position: 'top-right' },
-    { id: 'share', label: 'Share', icon: 'share', position: 'top-right-2' },
-    { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'top-right-3' },
+    // Top-right corner (stacked top → bottom: social, feedback)
+    { id: 'social', label: 'Social', icon: 'social', position: 'top-right' },
+    { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'top-right-2' },
     // Bottom-left corner (stacked bottom → top)
-    { id: 'news', label: 'News', icon: 'news', position: 'bottom-left' },
+    { id: 'houseguests', label: 'Houseguests', icon: 'housemates', position: 'bottom-left' },
     { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
-    // Bottom-right corner (stacked bottom → top: store, social)
+    // Bottom-right corner (stacked bottom → top: store, settings, share)
     { id: 'store', label: 'Store', icon: 'shop', position: 'bottom-right' },
-    { id: 'social', label: 'Social', icon: 'social', position: 'bottom-right-2' },
+    { id: 'settings', label: 'Settings', icon: 'settings', position: 'bottom-right-2' },
+    { id: 'share', label: 'Share', icon: 'share', position: 'bottom-right-3' },
   ];
 
   let chipElements = {}; // { id: Element }
