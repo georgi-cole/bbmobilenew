@@ -179,7 +179,7 @@ describe('TvZone — announcement overlay', () => {
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
   });
 
-  it('keeps the public save result on the main tv instead of replacing it with the POS announcement overlay', () => {
+  it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -188,7 +188,7 @@ describe('TvZone — announcement overlay', () => {
         addTvEvent(
           makeEvent({
             id: 'ev-public-save-result',
-            text: 'Blue was saved with 50% of the public support. Kian and Georgi will face the live eviction.',
+            text: 'Blue was saved with 50% of the public support. Kian and Georgi are still in danger.',
             meta: { suppressPhaseAnnouncementKey: 'pos_comp_announcement' },
           }),
         ),
@@ -196,9 +196,13 @@ describe('TvZone — announcement overlay', () => {
       store.dispatch(setPhase('pos_comp_announcement'));
     });
 
+    expect(screen.getByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeDefined();
+    expect(document.querySelector('.tv-zone__now')).toHaveClass('tv-zone__now--hidden');
+
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+
     expect(screen.queryByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeNull();
     expect(screen.getByText(/Blue was saved with 50% of the public support/i)).toBeTruthy();
-    expect(document.querySelector('.tv-zone__now')).not.toHaveClass('tv-zone__now--hidden');
   });
 
   it('renders without a settings reducer by falling back to default audio settings', () => {

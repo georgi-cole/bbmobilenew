@@ -1244,9 +1244,9 @@ const gameSlice = createSlice({
       pushEvent(
         state,
         supportPercent !== null && remainingNomineeNames.length === 2
-          ? `${savedPlayer.name} was saved with ${Math.round(supportPercent)}% of the public support. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
+          ? `${savedPlayer.name} was saved with ${Math.round(supportPercent)}% of the public support. ${formatNameList(remainingNomineeNames)} are still in danger.`
           : remainingNomineeNames.length === 2
-            ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} will face the live eviction.`
+            ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} are still in danger.`
             : `${savedPlayer.name} was saved by the public.`,
         'game',
         { suppressPhaseAnnouncementKey: 'pos_comp_announcement' },

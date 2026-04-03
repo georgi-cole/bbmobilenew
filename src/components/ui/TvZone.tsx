@@ -267,11 +267,10 @@ export default function TvZone(props: TvZoneProps) {
     // Skip on initial mount (no previous phase) and when phase/key haven't changed.
     if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return;
     const ev = latestEventRef.current;
-    const suppressPhaseAnnouncement = ev?.meta?.suppressPhaseAnnouncementKey === key;
     // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
     // by deferring setState calls into a callback rather than calling them synchronously).
     startTransition(() => {
-      if (key && !suppressPhaseAnnouncement && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
+      if (key && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
         const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
         setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
         // Suppress any concurrent event-based popup with the same key to prevent duplication.

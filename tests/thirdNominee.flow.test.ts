@@ -432,7 +432,7 @@ describe('pre_veto_public_save phase', () => {
     // Saved player reverts to active
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('active');
     expect(state.tvFeed[0]?.text).toBe(
-      'Player 1 was saved with 52% of the public support. Player 2 and Player 5 will face the live eviction.',
+      'Player 1 was saved with 52% of the public support. Player 2 and Player 5 are still in danger.',
     );
     expect(state.tvFeed[0]?.meta?.suppressPhaseAnnouncementKey).toBe('pos_comp_announcement');
     expect(
