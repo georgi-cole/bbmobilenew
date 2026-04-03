@@ -691,7 +691,7 @@ export default function DiaryRoom() {
       <div className="diary-room__body">
         {confessionalLocked ? (
           <section className="diary-room__locked" aria-label="Confessional locked">
-            <div className="diary-room__locked-door" data-testid="confessional-locked-door" aria-hidden="true">
+            <div className="diary-room__locked-door" data-testid="confessional-locked-door">
               <img
                 className="diary-room__locked-door-image"
                 data-testid="confessional-locked-door-image"
