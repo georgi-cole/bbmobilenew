@@ -45,7 +45,14 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="sounds"] .hub-chip__icon--sound')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="store"] .hub-chip__icon--shop')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="social"] .hub-chip__icon--social')).not.toBeNull();
+    expect(document.querySelector('button[data-hub-stack]')).toBeNull();
+    expect(document.querySelector('[data-hub-id="achievements"]')?.getAttribute('data-hub-chip-stack')).toBe(
+      'leftTopStack',
+    );
     expect(mirroredIntroHubScript).toContain("icon: 'housemates'");
+    expect(mirroredIntroHubScript).toContain("stack: 'leftTopStack'");
+    expect(mirroredIntroHubScript).toContain("stack: 'rightBottomStack'");
+    expect(mirroredIntroHubScript).toContain("btn.setAttribute('data-hub-chip-stack', def.stack);");
     expect(mirroredIntroHubScript).toContain(
       "icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`;",
     );
@@ -64,20 +71,27 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('../assets/side_utilities_button/badge_alert_red.svg');
     expect(introHubCss).toContain('.hub-chip__icon--housemates');
     expect(introHubCss).toContain('.hub-chip__icon--shop');
-    expect(introHubCss).toContain('--floating-corner-top-base: 16px;');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
     expect(introHubCss).toContain('--floating-corner-top-touch-base: 24px;');
     expect(introHubCss).toContain('--floating-corner-top-touch-safe-padding: 20px;');
-    expect(introHubCss).toContain('--floating-corner-left-touch-base: 20px;');
-    expect(introHubCss).toContain('--floating-corner-right-touch-base: 20px;');
-    expect(introHubCss).toContain('--hub-chip-top-offset');
-    expect(introHubCss).toContain('top: var(--hub-chip-top-offset);');
-    expect(introHubCss).toContain('left: var(--hub-chip-left-offset);');
-    expect(introHubCss).toContain('right: var(--hub-chip-right-offset);');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area: max(');
+    expect(introHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
+    expect(introHubCss).toContain('--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);');
+    expect(introHubCss).toContain('--hub-chip-top-touch-stack-offset: max(');
+    expect(introHubCss).toContain('html.is-chrome-android {');
+    expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
+    expect(introHubCss).toContain('.hub-chip-stack');
+    expect(introHubCss).toContain('.leftTopStack');
+    expect(introHubCss).toContain('.rightBottomStack');
+    expect(introHubCss).toContain('gap: var(--hub-chip-gap);');
     expect(introHubCss).toMatch(/#intro-hub\s*\{[^}]*pointer-events:\s*none;/s);
     expect(introHubCss).toMatch(/\.hub-chip\s*\{[^}]*pointer-events:\s*auto;/s);
     expect(introHubCss).toContain('touch-action: manipulation;');
-    expect(introHubCss).toContain('@media (hover: none) and (pointer: coarse)');
-    expect(introHubCss).toContain('calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))');
+    expect(introHubCss).toContain('top: var(--hub-chip-top-stack-offset);');
+    expect(introHubCss).toContain('--hub-chip-top-stack-offset: var(--hub-chip-top-touch-stack-offset);');
+    expect(introHubCss).toContain('bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));');
+    expect(introHubCss).not.toContain('.hub-chip--top-left');
+    expect(introHubCss).not.toContain('--hub-chip-stack-step');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_normal.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_hover.svg');
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/side_utility_shell_pressed.svg');
@@ -85,22 +99,56 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('../../assets/side_utilities_button/badge_alert_red.svg');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--housemates');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--shop');
-    expect(mirroredIntroHubCss).toContain('--floating-corner-top-base: 16px;');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
     expect(mirroredIntroHubCss).toContain('--floating-corner-top-touch-base: 24px;');
     expect(mirroredIntroHubCss).toContain('--floating-corner-top-touch-safe-padding: 20px;');
-    expect(mirroredIntroHubCss).toContain('--floating-corner-left-touch-base: 20px;');
-    expect(mirroredIntroHubCss).toContain('--floating-corner-right-touch-base: 20px;');
-    expect(mirroredIntroHubCss).toContain('--hub-chip-top-offset');
-    expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-offset);');
-    expect(mirroredIntroHubCss).toContain('left: var(--hub-chip-left-offset);');
-    expect(mirroredIntroHubCss).toContain('right: var(--hub-chip-right-offset);');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area: max(');
+    expect(mirroredIntroHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
+    expect(mirroredIntroHubCss).toContain(
+      '--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);',
+    );
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-touch-stack-offset: max(');
+    expect(mirroredIntroHubCss).toContain('html.is-chrome-android {');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
+    expect(mirroredIntroHubCss).toContain('.hub-chip-stack');
+    expect(mirroredIntroHubCss).toContain('.leftTopStack');
+    expect(mirroredIntroHubCss).toContain('.rightBottomStack');
+    expect(mirroredIntroHubCss).toContain('gap: var(--hub-chip-gap);');
     expect(mirroredIntroHubCss).toContain('pointer-events: none;');
     expect(mirroredIntroHubCss).toContain('pointer-events: auto;');
     expect(mirroredIntroHubCss).toContain('touch-action: manipulation;');
-    expect(mirroredIntroHubCss).toContain('@media (hover: none) and (pointer: coarse)');
+    expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-stack-offset);');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-stack-offset: var(--hub-chip-top-touch-stack-offset);');
     expect(mirroredIntroHubCss).toContain(
-      'calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))',
+      'bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));',
     );
+    expect(mirroredIntroHubCss).not.toContain('.hub-chip--top-left');
+    expect(mirroredIntroHubCss).not.toContain('--hub-chip-stack-step');
+  });
+
+  it('renders the reordered utility chips into four mirrored stacks', () => {
+    loadIntroHub();
+
+    expect(
+      Array.from(document.querySelectorAll('[data-hub-stack="leftTopStack"] [data-hub-id]')).map(el =>
+        el.getAttribute('data-hub-id'),
+      ),
+    ).toEqual(['achievements', 'music', 'sounds']);
+    expect(
+      Array.from(document.querySelectorAll('[data-hub-stack="leftBottomStack"] [data-hub-id]')).map(el =>
+        el.getAttribute('data-hub-id'),
+      ),
+    ).toEqual(['houseguests', 'news']);
+    expect(
+      Array.from(document.querySelectorAll('[data-hub-stack="rightTopStack"] [data-hub-id]')).map(el =>
+        el.getAttribute('data-hub-id'),
+      ),
+    ).toEqual(['social', 'share', 'feedback']);
+    expect(
+      Array.from(document.querySelectorAll('[data-hub-stack="rightBottomStack"] [data-hub-id]')).map(el =>
+        el.getAttribute('data-hub-id'),
+      ),
+    ).toEqual(['settings', 'store']);
   });
 
   it('uses the native share sheet when the share chip is tapped', async () => {

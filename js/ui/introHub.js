@@ -21,26 +21,24 @@
   const SHARE_TEXT = 'Share BBMobile New with your friends and compare your house legacy.';
   let dialogKeyHandler = null;
 
-  // Chip definitions: { id, label, icon, position }
-  // Positions: top-left, top-right, bottom-left, bottom-right
-  //   Suffixes -2 and -3 stack chips vertically within the same corner
-  //   (e.g. top-right renders above top-right-2, which renders above top-right-3).
-  //   Array order does not affect visual stacking — only the position class does.
+  // Chip definitions: { id, label, icon, stack }
+  // Stacks: leftTopStack, rightTopStack, leftBottomStack, rightBottomStack
+  // Array order controls the vertical order within each stack.
   const CHIPS = [
-    // Top-left corner (stacked top → bottom)
-    { id: 'houseguests', label: 'Houseguests', icon: 'housemates', position: 'top-left' },
-    { id: 'music', label: 'Music', icon: 'music', position: 'top-left-2' },
-    { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-3' },
-    // Top-right corner (stacked top → bottom: settings, share, feedback)
-    { id: 'settings', label: 'Settings', icon: 'settings', position: 'top-right' },
-    { id: 'share', label: 'Share', icon: 'share', position: 'top-right-2' },
-    { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'top-right-3' },
-    // Bottom-left corner (stacked bottom → top)
-    { id: 'news', label: 'News', icon: 'news', position: 'bottom-left' },
-    { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
-    // Bottom-right corner (stacked bottom → top: store, social)
-    { id: 'store', label: 'Store', icon: 'shop', position: 'bottom-right' },
-    { id: 'social', label: 'Social', icon: 'social', position: 'bottom-right-2' },
+    // Top-left stack (top → bottom)
+    { id: 'achievements', label: 'Achievements', icon: 'achievements', stack: 'leftTopStack' },
+    { id: 'music', label: 'Music', icon: 'music', stack: 'leftTopStack' },
+    { id: 'sounds', label: 'Sounds', icon: 'sound', stack: 'leftTopStack' },
+    // Top-right stack (top → bottom)
+    { id: 'social', label: 'Social', icon: 'social', stack: 'rightTopStack' },
+    { id: 'share', label: 'Share', icon: 'share', stack: 'rightTopStack' },
+    { id: 'feedback', label: 'Feedback', icon: 'feedback', stack: 'rightTopStack' },
+    // Bottom-left stack (top → bottom)
+    { id: 'houseguests', label: 'Houseguests', icon: 'housemates', stack: 'leftBottomStack' },
+    { id: 'news', label: 'News', icon: 'news', stack: 'leftBottomStack' },
+    // Bottom-right stack (top → bottom)
+    { id: 'settings', label: 'Settings', icon: 'settings', stack: 'rightBottomStack' },
+    { id: 'store', label: 'Store', icon: 'shop', stack: 'rightBottomStack' },
   ];
 
   let chipElements = {}; // { id: Element }
@@ -1012,8 +1010,9 @@
    */
   function buildChip(def) {
     const btn = document.createElement('button');
-    btn.className = `hub-chip hub-chip--${def.position}`;
+    btn.className = 'hub-chip';
     btn.setAttribute('data-hub-id', def.id);
+    btn.setAttribute('data-hub-chip-stack', def.stack);
     btn.setAttribute('aria-label', def.label);
     btn.setAttribute('type', 'button');
 
@@ -1033,6 +1032,13 @@
     });
 
     return btn;
+  }
+
+  function buildStack(name) {
+    const stack = document.createElement('div');
+    stack.className = `hub-chip-stack ${name}`;
+    stack.setAttribute('data-hub-stack', name);
+    return stack;
   }
 
   /**
@@ -1184,11 +1190,21 @@
     // Clear existing chips to make init idempotent
     container.innerHTML = '';
     chipElements = {};
+    const stacks = {
+      leftTopStack: buildStack('leftTopStack'),
+      leftBottomStack: buildStack('leftBottomStack'),
+      rightTopStack: buildStack('rightTopStack'),
+      rightBottomStack: buildStack('rightBottomStack'),
+    };
+
+    Object.keys(stacks).forEach(function (name) {
+      container.appendChild(stacks[name]);
+    });
 
     CHIPS.forEach(function (def) {
       const chip = buildChip(def);
       chipElements[def.id] = chip;
-      container.appendChild(chip);
+      stacks[def.stack].appendChild(chip);
     });
 
     // Apply any pre-configured notifications
