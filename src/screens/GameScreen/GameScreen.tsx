@@ -1546,11 +1546,7 @@ export default function GameScreen() {
   return (
     <LayoutGroup id="game-layout">
     <div
-      className={[
-        'game-screen',
-        'game-screen-shell',
-        expandsTvForCompactSmall ? 'game-screen--compact-small-balance' : '',
-      ].filter(Boolean).join(' ')}
+      className={`game-screen game-screen-shell${expandsTvForCompactSmall ? ' game-screen--compact-small-balance' : ''}`}
     >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
