@@ -81,6 +81,6 @@ describe('Credits', () => {
     renderCredits();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip credits (Esc)' }));
-    expect(screen.getByText('Home screen')).toBeTruthy();
+    expect(screen.getByText('Home screen')).toBeInTheDocument();
   });
 });
