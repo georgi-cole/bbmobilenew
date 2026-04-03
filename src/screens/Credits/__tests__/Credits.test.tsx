@@ -1,0 +1,86 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import Credits from '../Credits';
+import { buildCreditsAssetCandidates } from '../creditsAssetPaths';
+
+function renderCredits() {
+  return render(
+    <MemoryRouter initialEntries={['/credits']}>
+      <Routes>
+        <Route path="/credits" element={<Credits />} />
+        <Route path="/" element={<div>Home screen</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('Credits', () => {
+  it('renders a mobile-friendly video player with a loading state', () => {
+    const { container } = renderCredits();
+    const video = container.querySelector('video');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading credits…');
+    expect(video).not.toBeNull();
+    expect(video!.getAttribute('src')).toBe(buildCreditsAssetCandidates('assets/endcreditskq.mp4')[0]);
+    expect(video!.getAttribute('poster')).toBe(buildCreditsAssetCandidates('assets/kolequant.png')[0]);
+    expect(video!.hasAttribute('controls')).toBe(true);
+    expect(video!.hasAttribute('playsinline')).toBe(true);
+    expect(video!.getAttribute('preload')).toBe('metadata');
+    expect((video as HTMLVideoElement).muted).toBe(true);
+
+    fireEvent.loadedMetadata(video!);
+
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('retries a fallback source and then shows an error state if loading still fails', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { container } = renderCredits();
+    const candidates = buildCreditsAssetCandidates('assets/endcreditskq.mp4');
+
+    fireEvent.error(container.querySelector('video')!);
+
+    if (candidates.length > 1) {
+      expect(consoleError).toHaveBeenCalledWith(
+        '[Credits] Failed to load video source, retrying fallback source.',
+        expect.objectContaining({
+          attemptedSource: candidates[0],
+          nextSource: candidates[1],
+        }),
+      );
+      expect(screen.getByRole('status')).toHaveTextContent('Retrying video load…');
+
+      fireEvent.error(container.querySelector('video')!);
+    }
+
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Credits] Failed to load credits video.',
+      expect.objectContaining({
+        attemptedSource: candidates[candidates.length - 1],
+      }),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Credits video could not be loaded on this device. You can retry or skip.',
+    );
+    expect(screen.getByRole('button', { name: 'Retry video' })).toBeTruthy();
+  });
+
+  it('returns home when the credits finish', () => {
+    const { container } = renderCredits();
+
+    fireEvent.ended(container.querySelector('video')!);
+    expect(screen.getByText('Home screen')).toBeTruthy();
+  });
+
+  it('returns home when the user skips the credits', () => {
+    renderCredits();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip credits (Esc)' }));
+    expect(screen.getByText('Home screen')).toBeTruthy();
+  });
+});
