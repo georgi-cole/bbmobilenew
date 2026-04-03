@@ -72,9 +72,12 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toContain('.hub-chip__icon--housemates');
     expect(introHubCss).toContain('.hub-chip__icon--shop');
     expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
+    expect(introHubCss).toContain('--floating-corner-top-touch-base: 24px;');
+    expect(introHubCss).toContain('--floating-corner-top-touch-safe-padding: 20px;');
     expect(introHubCss).toContain('--hub-chip-top-safe-area: max(');
     expect(introHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
     expect(introHubCss).toContain('--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);');
+    expect(introHubCss).toContain('--hub-chip-top-touch-stack-offset: max(');
     expect(introHubCss).toContain('html.is-chrome-android {');
     expect(introHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
     expect(introHubCss).toContain('.hub-chip-stack');
@@ -85,6 +88,7 @@ describe('IntroHub side utility buttons', () => {
     expect(introHubCss).toMatch(/\.hub-chip\s*\{[^}]*pointer-events:\s*auto;/s);
     expect(introHubCss).toContain('touch-action: manipulation;');
     expect(introHubCss).toContain('top: var(--hub-chip-top-stack-offset);');
+    expect(introHubCss).toContain('--hub-chip-top-stack-offset: var(--hub-chip-top-touch-stack-offset);');
     expect(introHubCss).toContain('bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));');
     expect(introHubCss).not.toContain('.hub-chip--top-left');
     expect(introHubCss).not.toContain('--hub-chip-stack-step');
@@ -96,11 +100,14 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--housemates');
     expect(mirroredIntroHubCss).toContain('.hub-chip__icon--shop');
     expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 0px;');
+    expect(mirroredIntroHubCss).toContain('--floating-corner-top-touch-base: 24px;');
+    expect(mirroredIntroHubCss).toContain('--floating-corner-top-touch-safe-padding: 20px;');
     expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area: max(');
     expect(mirroredIntroHubCss).toContain('var(--app-safe-area-top, env(safe-area-inset-top, 0px))');
     expect(mirroredIntroHubCss).toContain(
       '--hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);',
     );
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-touch-stack-offset: max(');
     expect(mirroredIntroHubCss).toContain('html.is-chrome-android {');
     expect(mirroredIntroHubCss).toContain('--hub-chip-top-safe-area-base: 16px;');
     expect(mirroredIntroHubCss).toContain('.hub-chip-stack');
@@ -111,6 +118,7 @@ describe('IntroHub side utility buttons', () => {
     expect(mirroredIntroHubCss).toContain('pointer-events: auto;');
     expect(mirroredIntroHubCss).toContain('touch-action: manipulation;');
     expect(mirroredIntroHubCss).toContain('top: var(--hub-chip-top-stack-offset);');
+    expect(mirroredIntroHubCss).toContain('--hub-chip-top-stack-offset: var(--hub-chip-top-touch-stack-offset);');
     expect(mirroredIntroHubCss).toContain(
       'bottom: calc(var(--hub-chip-bottom-offset) + env(safe-area-inset-bottom, 0px));',
     );

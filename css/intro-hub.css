@@ -11,11 +11,20 @@
   --chip-bottom-edge: 40px; /* bottom-edge offset (larger to clear home buttons) */
   --chip-gap: 8px;          /* gap between stacked chips in the same corner */
   --hub-chip-top-safe-area-base: 0px;
+  --floating-corner-top-touch-base: 24px;
+  --floating-corner-top-touch-safe-padding: 20px;
   --hub-chip-top-safe-area: max(
     var(--hub-chip-top-safe-area-base),
     var(--app-safe-area-top, env(safe-area-inset-top, 0px))
   );
   --hub-chip-top-stack-offset: calc(var(--hub-chip-top-safe-area) + 18px);
+  --hub-chip-top-touch-stack-offset: max(
+    var(--hub-chip-top-stack-offset),
+    max(
+      var(--floating-corner-top-touch-base),
+      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
+    )
+  );
   --floating-corner-left-base: var(--chip-edge);
   --floating-corner-left-safe-padding: var(--chip-edge);
   --floating-corner-left-touch-base: var(--chip-edge);
@@ -172,6 +181,7 @@ html.is-chrome-android {
 /* ===== Responsive ===== */
 @media (hover: none) and (pointer: coarse) {
   :root {
+    --hub-chip-top-stack-offset: var(--hub-chip-top-touch-stack-offset);
     --floating-corner-left-offset: max(
       var(--floating-corner-left-touch-base),
       calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
