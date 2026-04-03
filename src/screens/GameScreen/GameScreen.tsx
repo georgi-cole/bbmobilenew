@@ -1540,9 +1540,18 @@ export default function GameScreen() {
     spectatorF3Active ||
     spectatorLegacyActive
 
+  const expandsTvForCompactSmall =
+    settings.gameUX.compactRoster && settings.gameUX.compactRosterLayout === 'small'
+
   return (
     <LayoutGroup id="game-layout">
-    <div className="game-screen game-screen-shell">
+    <div
+      className={[
+        'game-screen',
+        'game-screen-shell',
+        expandsTvForCompactSmall ? 'game-screen--compact-small-balance' : '',
+      ].filter(Boolean).join(' ')}
+    >
       {showPublicSaveReveal && publicSaveWinnerId ? (
         <TvZone
           publicSaveReveal={{
