@@ -239,6 +239,9 @@ describe('DiaryRoom', () => {
     await flushConversationTimers();
 
     expect(screen.getByTestId('confessional-locked-door')).toBeTruthy();
+    expect(screen.getByTestId('confessional-locked-door-image').getAttribute('src')).toContain(
+      '/assets/diary-room/confessional-locked-door.png',
+    );
     expect(screen.getByText('The door is locked.')).toBeTruthy();
     expect(screen.queryByLabelText(/confessional chat/i)).toBeNull();
     expect(screen.queryByLabelText(/secret mission checklist/i)).toBeNull();
