@@ -97,7 +97,7 @@ export const NO_SYNONYMS = [
   'not now',
 ];
 
-export const GREETING_SYNONYMS = ['hi', 'hello', 'hey', 'sup', 'bonjour', 'good day', 'yo'];
+export const GREETING_SYNONYMS = ['hi', 'hello', 'hey', 'sup', 'bonjour', 'good day', 'yo', "what's up", "good morning", "good evening"];
 export const FAREWELL_SYNONYMS = ['bye', 'goodbye', 'see you', 'later', 'im leaving', 'i am leaving'];
 export const BOREDOM_SYNONYMS = [
   'i am bored',
@@ -115,6 +115,8 @@ export const SELF_EVICT_SYNONYMS = [
   'quit',
   'i want out',
   'i need to get out',
+  'i cant stand it',
+  'i want out',
 ];
 export const FRUSTRATION_SYNONYMS = [
   'im annoyed',
@@ -242,6 +244,11 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
       'Welcome back. I was already watching.',
       'You return. Interesting timing.',
       'Hello... {{name}}.',
+      'Honestly I was expecting you',
+      'The Big eye is listening', 
+      'What can I do for you today?', 
+      'It looks like an interesting day, whats on your mind?',
+    
     ],
   },
   farewell: {
@@ -249,6 +256,12 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
       'Go then. I will keep score.',
       'Leave if you must. The walls still remember.',
       'Farewell. Brief exits change very little.',
+      'Bu-Bye now.',
+      'I will be awaiting your return',
+      'Please do not forget your water glass on the way out.',
+      'Go get some rest now.',
+      'See you soon. Very very soon.',
+      'Hasta la vista baby.',
     ],
   },
   boredom: {
@@ -356,13 +369,29 @@ const INTENT_RESPONSES: Record<ResponseKey, ResponseEntry> = {
     responses: ['More real than you think.'],
   },
   winner_prediction: {
-    responses: ['Not who you expect.'],
+    responses: [
+      'Not who you expect.',
+      'So be it. The door will open.',
+      'If I tell ya, I will have to kill ya.',
+      'I hope not Trump.',
+      'They say love always wins.',
+      'Me.',
+      'Not who you expect.',
+      'I am the Big eye, not Nostradamus.',       
+               
+               ],
   },
   help_request: {
     responses: ['No one helped the last one.'],
   },
   love_confession: {
-    responses: ['Careful. Attachment is a weakness here.'],
+    responses: [
+      'Careful. Attachment is a weakness here.'
+      'We must keep our relationship a secret'
+      'What is love, baby dont hurt me, dont hurt me, no more'
+      'And I love dogs.'
+      'Then put on a ring on it. A diamond ring. A big diamond ring.'
+    ],
   },
   greeting_repeat: {
     responses: ['I heard you the first time.'],
