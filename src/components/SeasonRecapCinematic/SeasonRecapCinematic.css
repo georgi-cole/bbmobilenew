@@ -78,8 +78,8 @@
 
 .src-skip-btn {
   position: absolute;
-  top: max(0.9rem, env(safe-area-inset-top, 0px) + 0.4rem);
-  right: max(0.85rem, env(safe-area-inset-right, 0px) + 0.35rem);
+  top: var(--floating-corner-top-offset);
+  right: var(--floating-corner-right-offset);
   z-index: 8;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;

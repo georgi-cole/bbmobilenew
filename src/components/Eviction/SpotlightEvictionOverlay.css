@@ -41,8 +41,8 @@
 /* ── LIVE bug (top-left) ─────────────────────────────────────────────────── */
 .seo__live-bug {
   position: fixed;
-  top: max(1rem, env(safe-area-inset-top, 1rem));
-  left: 1rem;
+  top: var(--floating-corner-top-offset);
+  left: var(--floating-corner-left-offset);
   z-index: 9020;
   font-size: 0.7rem;
   font-weight: 800;

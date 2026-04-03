@@ -3,6 +3,13 @@
  * Chips are positioned in four corners: top-left, top-right, bottom-left, bottom-right
  */
 
+:root {
+  --hub-chip-top-offset: var(--floating-corner-top-offset, max(12px, calc(env(safe-area-inset-top, 0px) + 8px)));
+  --hub-chip-left-offset: var(--floating-corner-left-offset, max(16px, calc(env(safe-area-inset-left, 0px) + 16px)));
+  --hub-chip-right-offset: var(--floating-corner-right-offset, max(16px, calc(env(safe-area-inset-right, 0px) + 16px)));
+  --hub-chip-stack-step: 44px;
+}
+
 /* ===== Hub Container ===== */
 #intro-hub {
   position: fixed;
@@ -107,13 +114,13 @@
 
 /* ===== Position Helpers ===== */
 .hub-chip--top-left {
-  top: 16px;
-  left: 16px;
+  top: var(--hub-chip-top-offset);
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right {
-  top: 16px;
-  right: 16px;
+  top: var(--hub-chip-top-offset);
+  right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left {
@@ -128,13 +135,13 @@
 
 /* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
 .hub-chip--top-left-2 {
-  top: 60px;
-  left: 16px;
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-2 {
-  top: 60px;
-  right: 16px;
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-2 {
@@ -149,13 +156,13 @@
 
 /* Third row if needed */
 .hub-chip--top-left-3 {
-  top: 104px;
-  left: 16px;
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+  left: var(--hub-chip-left-offset);
 }
 
 .hub-chip--top-right-3 {
-  top: 104px;
-  right: 16px;
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+  right: var(--hub-chip-right-offset);
 }
 
 .hub-chip--bottom-left-3 {
@@ -173,24 +180,6 @@
   .hub-chip {
     width: 38px;
     height: 38px;
-  }
-}
-
-/* Safe area insets for notched devices */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .hub-chip--top-left,
-  .hub-chip--top-right {
-    top: calc(16px + env(safe-area-inset-top));
-  }
-
-  .hub-chip--top-left-2,
-  .hub-chip--top-right-2 {
-    top: calc(60px + env(safe-area-inset-top));
-  }
-
-  .hub-chip--top-left-3,
-  .hub-chip--top-right-3 {
-    top: calc(104px + env(safe-area-inset-top));
   }
 }
 

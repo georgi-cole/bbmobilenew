@@ -36,10 +36,15 @@
 
   /* Safe-area layout */
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --app-safe-area-top-fallback: 0px;
   --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-area-inset-top));
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
+  --floating-corner-top-offset: max(12px, calc(var(--app-safe-area-top) + 8px));
+  --floating-corner-left-offset: max(16px, calc(var(--safe-area-inset-left) + 16px));
+  --floating-corner-right-offset: max(16px, calc(var(--safe-area-inset-right) + 16px));
 
   /* Typography */
   font-family: 'Montserrat', system-ui, -apple-system, sans-serif;

@@ -21,8 +21,8 @@
 /* Skip button top-right */
 .credits-skip {
   position: absolute;
-  top: 14px;
-  right: 16px;
+  top: var(--floating-corner-top-offset);
+  right: var(--floating-corner-right-offset);
   z-index: 1100;
   background: rgba(0,0,0,0.5);
   color: #fff;
@@ -39,7 +39,5 @@
   .credits-skip {
     padding: 6px 10px;
     font-size: 13px;
-    top: 10px;
-    right: 10px;
   }
 }
