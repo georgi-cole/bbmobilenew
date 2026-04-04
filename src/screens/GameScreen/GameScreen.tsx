@@ -1510,7 +1510,7 @@ export default function GameScreen() {
     ) {
       queuePreAdAnnouncement(
         'eviction_auto',
-        "Don't change the channel a new Day is about to begin right after a short break.",
+        "Don't change the channel, a new Day is about to begin right after a short break.",
       )
       return
     }

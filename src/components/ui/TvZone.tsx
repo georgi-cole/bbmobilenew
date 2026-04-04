@@ -311,6 +311,10 @@ export default function TvZone(props: TvZoneProps) {
 
   const handleDismiss = useCallback(() => {
     if (externalAnnouncement) {
+      // External announcements are used as one-off pre-roll overlays (e.g. ad
+      // break copy) for the *current* phase. If an internal phase/event
+      // announcement was queued behind the same render, clear it too so the TV
+      // does not immediately show a second overlay after the break message.
       if (phaseAnnouncement) {
         setDismissedPhase(gameState.phase);
         setPhaseAnnouncement(null);

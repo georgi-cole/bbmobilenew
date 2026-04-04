@@ -64,7 +64,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '📺',
     label: 'SHORT BREAK',
     category: 'Broadcast',
-    body: "Don't change the channel a new Day is about to begin right after a short break.",
+    body: "Don't change the channel, a new Day is about to begin right after a short break.",
   },
   ad_break_pos_decision_auto: {
     icon: '📺',
