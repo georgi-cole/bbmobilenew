@@ -30,6 +30,10 @@ import {
 import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import { selectPublicOpinion } from '../../publicOpinion';
+import { showInterstitial } from '../../services/ads/adsService';
+import { selectAdsState } from '../../store/adsSlice';
+import type { RootState } from '../../store/store';
+import { useStore } from 'react-redux';
 import JurorBubble from './JurorBubble';
 import FinalTallyPanel from './FinalTallyPanel';
 import FinaleControls from './FinaleControls';
@@ -44,11 +48,13 @@ const PUBLIC_VOTE_RECAP_HOLD_MS = 3000;
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const game = useAppSelector((s) => s.game);
   const finale = useAppSelector(selectFinale);
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
   const publicOpinion = useAppSelector(selectPublicOpinion);
+  useAppSelector(selectAdsState); // subscribe so the store ref stays current
   const { play, playMusic, stopMusic } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);
@@ -61,8 +67,11 @@ export default function FinalFaceoff() {
   const [phase, setPhase] = useState<Phase>('clues');
   const winnerPersistedRef = useRef(false);
   const handleRecapComplete = useCallback(() => {
+    // finale_recap_auto interstitial — shown after the season recap completes.
+    const state = store.getState();
+    showInterstitial('finale_recap_auto', state, dispatch);
     setPhase('revealVotes');
-  }, []);
+  }, [store, dispatch]);
 
   const persistWinnerToSeasonFinale = useCallback(() => {
     if (winnerPersistedRef.current) return;

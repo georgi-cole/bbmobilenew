@@ -1,0 +1,202 @@
+/**
+ * adsService — centralized ad hook architecture for the game layer.
+ *
+ * Bridge contract:
+ *   Game → native:  window.GameAds?.showInterstitial(placement)
+ *                   window.GameAds?.showRewarded(placement)
+ *   Native → game:  window.onAdRewardGranted(placement, payload?)
+ *
+ * Guard rules enforced here:
+ *   - Automatic interstitials are suppressed when the user owns No Ads Pack.
+ *   - Rewarded (optional) ads are always available, even with No Ads Pack.
+ *   - Per-placement daily limits are respected via the Redux adsSlice.
+ *   - competition_retry is blocked during the final-3 week.
+ *
+ * In web / dev environments where window.GameAds is not defined every call
+ * is a safe no-op — the game proceeds normally without any ad.
+ */
+
+import type { AppDispatch, RootState } from '../../store/store';
+import { recordAdShown } from '../../store/adsSlice';
+
+// ── Placement definitions ─────────────────────────────────────────────────
+
+export type AdPlacement =
+  /** Rewarded: retry button/prompt after the user finishes last in LOH or POS comp. */
+  | 'competition_retry'
+  /** Automatic interstitial: shown after each eviction. */
+  | 'eviction_auto'
+  /** Automatic interstitial: shown every other week just before the POS holder announces. */
+  | 'pos_decision_auto'
+  /** Automatic interstitial: shown before the final safety holder announces their decision. */
+  | 'final_safety_decision_auto'
+  /** Automatic interstitial: shown before the final LOH announces their decision. */
+  | 'final_loh_decision_auto'
+  /** Automatic interstitial: shown after the finale season recap. */
+  | 'finale_recap_auto'
+  /** Rewarded: prompt when the user's social energy hits 0; reward = +3 energy (once/day). */
+  | 'social_energy_recharge'
+  /** Rewarded: prompt when the user's public meter drops to Disliked; reward = +4–10% approval (once/day). */
+  | 'public_meter_disliked_boost';
+
+/** Placements that are automatic/interstitial (suppressed by No Ads Pack). */
+export const INTERSTITIAL_PLACEMENTS = new Set<AdPlacement>([
+  'eviction_auto',
+  'pos_decision_auto',
+  'final_safety_decision_auto',
+  'final_loh_decision_auto',
+  'finale_recap_auto',
+]);
+
+/** Placements that have a once-per-day limit. */
+export const DAILY_LIMITED_PLACEMENTS = new Set<AdPlacement>([
+  'social_energy_recharge',
+  'public_meter_disliked_boost',
+]);
+
+// ── Type augmentation for window.GameAds bridge ───────────────────────────
+
+declare global {
+  interface Window {
+    /** Native ad bridge injected by the Android/iOS wrapper. */
+    GameAds?: {
+      showInterstitial(placement: string): void;
+      showRewarded(placement: string): void;
+    };
+    /**
+     * Callback invoked by the native wrapper after a rewarded ad completes.
+     * The game registers this handler at startup.
+     */
+    onAdRewardGranted?: (placement: string, payload?: Record<string, unknown>) => void;
+  }
+}
+
+// ── Reward callback registry ──────────────────────────────────────────────
+
+type RewardHandler = (payload?: Record<string, unknown>) => void;
+const rewardHandlers = new Map<AdPlacement, RewardHandler>();
+
+/**
+ * Register the `window.onAdRewardGranted` global once.
+ * Called by the game at bootstrap (e.g. in main.tsx).
+ */
+export function initAdBridge(): void {
+  window.onAdRewardGranted = (placement: string, payload?: Record<string, unknown>) => {
+    const handler = rewardHandlers.get(placement as AdPlacement);
+    if (handler) {
+      handler(payload);
+      rewardHandlers.delete(placement as AdPlacement);
+    }
+  };
+}
+
+// ── Guard helpers ─────────────────────────────────────────────────────────
+
+/** Today's date as an ISO date-only string (YYYY-MM-DD). */
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Return true when the placement has already been shown today (for daily-limited placements).
+ */
+export function isAdDailyLimitReached(
+  placement: AdPlacement,
+  state: RootState,
+): boolean {
+  if (!DAILY_LIMITED_PLACEMENTS.has(placement)) return false;
+  const lastUsed = state.ads?.dailyUsage[placement];
+  return lastUsed === todayDateString();
+}
+
+/**
+ * Return true when the ad is eligible to show given the current Redux state.
+ *
+ * @param placement - The ad placement to check.
+ * @param state     - Current Redux root state.
+ * @param options   - Optional context flags:
+ *   - isFinal3Week: suppress competition_retry during the final-3 week.
+ */
+export function canShowAd(
+  placement: AdPlacement,
+  state: RootState,
+  options?: { isFinal3Week?: boolean },
+): boolean {
+  const hasNoAdsPack = state.ads?.hasNoAdsPack ?? false;
+
+  // Automatic ads are blocked when No Ads Pack is owned.
+  if (INTERSTITIAL_PLACEMENTS.has(placement) && hasNoAdsPack) return false;
+
+  // competition_retry is blocked during the final-3 week.
+  if (placement === 'competition_retry' && options?.isFinal3Week) return false;
+
+  // Daily-limited placements respect once-per-day constraint.
+  if (isAdDailyLimitReached(placement, state)) return false;
+
+  return true;
+}
+
+// ── Public ad methods ─────────────────────────────────────────────────────
+
+/**
+ * Attempt to show an automatic interstitial ad for the given placement.
+ * Checks all guards before calling the native bridge.
+ * No reward callback — gameplay resumes after the ad closes (native side handles it).
+ *
+ * @param placement - Must be an interstitial placement.
+ * @param state     - Current Redux root state for guard checks.
+ * @param dispatch  - Redux dispatch to record daily usage.
+ * @param options   - Optional guard overrides.
+ */
+export function showInterstitial(
+  placement: AdPlacement,
+  state: RootState,
+  dispatch: AppDispatch,
+  options?: { isFinal3Week?: boolean },
+): void {
+  if (!canShowAd(placement, state, options)) return;
+
+  dispatch(recordAdShown(placement));
+
+  if (window.GameAds?.showInterstitial) {
+    window.GameAds.showInterstitial(placement);
+  }
+  // In web/dev environments: no-op — game continues normally.
+}
+
+/**
+ * Attempt to show an optional rewarded ad for the given placement.
+ * Checks all guards, then calls the native bridge.
+ * The `onReward` callback is invoked only when `window.onAdRewardGranted` fires
+ * for this placement (i.e. the native side confirms the user completed the ad).
+ *
+ * @param placement - The rewarded ad placement.
+ * @param state     - Current Redux root state for guard checks.
+ * @param dispatch  - Redux dispatch to record daily usage.
+ * @param onReward  - Called with optional native payload when the reward is granted.
+ * @param options   - Optional guard overrides.
+ * @returns true when the ad was requested, false when it was suppressed.
+ */
+export function showRewarded(
+  placement: AdPlacement,
+  state: RootState,
+  dispatch: AppDispatch,
+  onReward: (payload?: Record<string, unknown>) => void,
+  options?: { isFinal3Week?: boolean },
+): boolean {
+  if (!canShowAd(placement, state, options)) return false;
+
+  dispatch(recordAdShown(placement));
+
+  if (window.GameAds?.showRewarded) {
+    rewardHandlers.set(placement, onReward);
+    window.GameAds.showRewarded(placement);
+    return true;
+  }
+
+  // Web/dev fallback: no native bridge — do not grant the reward automatically;
+  // the UI prompt should not close without a callback.  Return true so the
+  // caller knows the request was sent (even though no native ad will appear).
+  rewardHandlers.set(placement, onReward);
+  return true;
+}
