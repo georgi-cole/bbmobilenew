@@ -44,7 +44,7 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="houseguests"] .hub-chip__icon--housemates')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="sounds"] .hub-chip__icon--sound')).not.toBeNull();
     expect(document.querySelector('[data-hub-id="store"] .hub-chip__icon--shop')).not.toBeNull();
-    expect(document.querySelector('[data-hub-id="social"] .hub-chip__icon--social')).not.toBeNull();
+    expect(document.querySelector('[data-hub-id="feedback"] .hub-chip__icon--feedback')).not.toBeNull();
     expect(mirroredIntroHubScript).toContain("icon: 'housemates'");
     expect(mirroredIntroHubScript).toContain(
       "icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`;",
@@ -59,17 +59,21 @@ describe('IntroHub side utility buttons', () => {
   it('renders the requested mobile side-utility positions', () => {
     loadIntroHub();
 
-    expect(document.querySelector('[data-hub-id="news"]')).toHaveClass('hub-chip--top-left');
+    expect(document.querySelector('[data-hub-id="news"]')).toBeNull();
     expect(document.querySelector('[data-hub-id="music"]')).toHaveClass('hub-chip--top-left-2');
     expect(document.querySelector('[data-hub-id="sounds"]')).toHaveClass('hub-chip--top-left-3');
-    expect(document.querySelector('[data-hub-id="social"]')).toHaveClass('hub-chip--top-right');
-    expect(document.querySelector('[data-hub-id="feedback"]')).toHaveClass('hub-chip--top-right-2');
+    expect(document.querySelector('[data-hub-id="social"]')).toBeNull();
     expect(document.querySelector('[data-hub-id="houseguests"]')).toHaveClass('hub-chip--bottom-left');
     expect(document.querySelector('[data-hub-id="achievements"]')).toHaveClass('hub-chip--bottom-left-2');
+    expect(document.querySelector('[data-hub-id="feedback"]')).toHaveClass('hub-chip--bottom-left-3');
     expect(document.querySelector('[data-hub-id="store"]')).toHaveClass('hub-chip--bottom-right');
     expect(document.querySelector('[data-hub-id="settings"]')).toHaveClass('hub-chip--bottom-right-2');
     expect(document.querySelector('[data-hub-id="share"]')).toHaveClass('hub-chip--bottom-right-3');
-    expect(mirroredIntroHubScript).toContain("{ id: 'news', label: 'News', icon: 'news', position: 'top-left' }");
+    expect(mirroredIntroHubScript).not.toContain("{ id: 'news', label: 'News', icon: 'news', position: 'top-left' }");
+    expect(mirroredIntroHubScript).not.toContain("{ id: 'social', label: 'Social', icon: 'social', position: 'top-right' }");
+    expect(mirroredIntroHubScript).toContain(
+      "{ id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' }",
+    );
     expect(mirroredIntroHubScript).toContain(
       "{ id: 'settings', label: 'Settings', icon: 'settings', position: 'bottom-right-2' }",
     );
