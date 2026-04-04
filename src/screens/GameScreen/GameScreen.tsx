@@ -95,7 +95,7 @@ import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace } from '../../store/adsSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
-import { showInterstitial, showRewarded } from '../../services/ads/adsService'
+import { showInterstitial, showRewarded, canShowAd } from '../../services/ads/adsService'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -1503,21 +1503,20 @@ export default function GameScreen() {
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
   // Show a rewarded prompt when the user's social energy hits 0 (once per day).
-  const userEnergySelector = useAppSelector(
+  const userEnergy = useAppSelector(
     (s: RootState) => (humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0),
   )
   useEffect(() => {
     if (!humanPlayer) return
-    if (userEnergySelector === 0) {
+    if (userEnergy === 0) {
       const state = storeRef.current.getState()
-      if (!state.ads?.dailyUsage?.['social_energy_recharge'] ||
-          state.ads.dailyUsage['social_energy_recharge'] !== new Date().toISOString().slice(0, 10)) {
+      if (canShowAd('social_energy_recharge', state)) {
         setShowEnergyRechargePrompt(true)
       }
     } else {
       setShowEnergyRechargePrompt(false)
     }
-  }, [userEnergySelector, humanPlayer])
+  }, [userEnergy, humanPlayer])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
   // Show a rewarded prompt when the user's approval drops into the Disliked
@@ -1538,8 +1537,7 @@ export default function GameScreen() {
     // Only trigger when crossing into Disliked band (not already there last render)
     if (userApproval <= DISLIKED_MAX && prev > DISLIKED_MAX) {
       const state = storeRef.current.getState()
-      if (!state.ads?.dailyUsage?.['public_meter_disliked_boost'] ||
-          state.ads.dailyUsage['public_meter_disliked_boost'] !== new Date().toISOString().slice(0, 10)) {
+      if (canShowAd('public_meter_disliked_boost', state)) {
         setShowDislikedBoostPrompt(true)
       }
     }

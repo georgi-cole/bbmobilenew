@@ -194,9 +194,8 @@ export function showRewarded(
     return true;
   }
 
-  // Web/dev fallback: no native bridge — do not grant the reward automatically;
-  // the UI prompt should not close without a callback.  Return true so the
-  // caller knows the request was sent (even though no native ad will appear).
-  rewardHandlers.set(placement, onReward);
-  return true;
+  // Web/dev fallback: no native bridge present — do not register the handler
+  // (it would never be called and would accumulate as a memory leak).
+  // Return false so the caller knows no ad was shown.
+  return false;
 }
