@@ -164,11 +164,15 @@ type TvZoneProps =
       publicSaveReveal: TvZonePublicSaveReveal;
       onPublicSaveDone: () => void;
       mainLogMaxVisible?: number;
+      externalAnnouncement?: Announcement | null;
+      onExternalAnnouncementDismiss?: () => void;
     }
   | {
       publicSaveReveal?: null | undefined;
       onPublicSaveDone?: undefined;
       mainLogMaxVisible?: number;
+      externalAnnouncement?: Announcement | null;
+      onExternalAnnouncementDismiss?: () => void;
     };
 
 /**
@@ -210,6 +214,7 @@ export default function TvZone(props: TvZoneProps) {
 
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
+  const externalAnnouncement = props.externalAnnouncement ?? null;
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -300,12 +305,20 @@ export default function TvZone(props: TvZoneProps) {
   }, [latestEvent, dismissedEventId]);
 
   // Active announcement: phase-based takes priority over event-based.
-  const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
+  const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
   const viewportMessageKey = getViewportMessageKey(latestEvent);
 
   const handleDismiss = useCallback(() => {
-    if (phaseAnnouncement) {
+    if (externalAnnouncement) {
+      if (phaseAnnouncement) {
+        setDismissedPhase(gameState.phase);
+        setPhaseAnnouncement(null);
+      } else if (latestEvent) {
+        setDismissedEventId(latestEvent.id);
+      }
+      props.onExternalAnnouncementDismiss?.();
+    } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase);
       setPhaseAnnouncement(null);
     } else if (latestEvent) {
@@ -314,7 +327,7 @@ export default function TvZone(props: TvZoneProps) {
     setPostDismissBlocked(true);
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
-  }, [latestEvent, phaseAnnouncement, gameState.phase]);
+  }, [externalAnnouncement, latestEvent, phaseAnnouncement, gameState.phase, props.onExternalAnnouncementDismiss]);
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {

@@ -95,7 +95,13 @@ import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace } from '../../store/adsSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
-import { showInterstitial, showRewarded, canShowAd } from '../../services/ads/adsService'
+import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
+import {
+  showInterstitial,
+  showRewarded,
+  canShowAd,
+  type AdPlacement,
+} from '../../services/ads/adsService'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -146,6 +152,8 @@ export default function GameScreen() {
   const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
+  const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
+  const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -1467,6 +1475,25 @@ export default function GameScreen() {
   // ── Ad hook: automatic interstitials (phase-based) ────────────────────────
   // Each useEffect fires once per phase transition to the relevant phase.
   const prevPhaseRef = useRef<string>('')
+  const queuePreAdAnnouncement = useCallback((placement: AdPlacement, subtitle: string) => {
+    pendingPreAdPlacementRef.current = placement
+    setPreAdAnnouncement({
+      key: `ad_break_${placement}`,
+      title: 'SHORT BREAK',
+      subtitle,
+      isLive: true,
+      autoDismissMs: 3200,
+    })
+  }, [])
+  const handlePreAdAnnouncementDismiss = useCallback(() => {
+    const placement = pendingPreAdPlacementRef.current
+    pendingPreAdPlacementRef.current = null
+    setPreAdAnnouncement(null)
+    if (!placement) return
+    const state = storeRef.current.getState()
+    showInterstitial(placement, state, dispatch)
+  }, [dispatch])
+
   useEffect(() => {
     const prevPhase = prevPhaseRef.current
     const currentPhase = game.phase
@@ -1476,30 +1503,61 @@ export default function GameScreen() {
     const state = storeRef.current.getState()
 
     // eviction_auto — after each eviction
-    if (currentPhase === 'eviction_results') {
-      showInterstitial('eviction_auto', state, dispatch)
+    if (
+      currentPhase === 'eviction_results' &&
+      canShowAd('eviction_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'eviction_auto',
+        "Don't change the channel a new Day is about to begin right after a short break.",
+      )
       return
     }
 
     // pos_decision_auto — every other week just before POS holder announces
     // week is 1-indexed; even weeks = weeks 2, 4, 6, ...
-    if (currentPhase === 'pos_ceremony_results' && game.week % 2 === 0) {
-      showInterstitial('pos_decision_auto', state, dispatch)
+    if (
+      currentPhase === 'pos_ceremony_results' &&
+      game.week % 2 === 0 &&
+      canShowAd('pos_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      const posHolderName =
+        game.players.find((player) => player.id === game.posWinnerId)?.name ?? 'the Power of Safety holder'
+      queuePreAdAnnouncement(
+        'pos_decision_auto',
+        `Is ${posHolderName} going to use the Power of safety to change the course of the game? Find out right after this short break!`,
+      )
       return
     }
 
     // final_safety_decision_auto — before the final safety (F4 POS) holder announces
-    if (currentPhase === 'final4_eviction') {
-      showInterstitial('final_safety_decision_auto', state, dispatch)
+    if (
+      currentPhase === 'final4_eviction' &&
+      canShowAd('final_safety_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'final_safety_decision_auto',
+        'The final safety winner now has the deciding vote to evict. Find out who is going to be eliminated just a step before the finale. Stay with us.',
+      )
       return
     }
 
     // final_loh_decision_auto — before the final LOH (F3 Part 3 winner) announces
-    if (currentPhase === 'final3_decision') {
-      showInterstitial('final_loh_decision_auto', state, dispatch)
+    if (
+      currentPhase === 'final3_decision' &&
+      canShowAd('final_loh_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'final_loh_decision_auto',
+        'The final leader of the house has to make a very important decision that might cost them the victory. Who will they choose? Find out right after the break.',
+      )
       return
     }
-  }, [game.phase, game.week, dispatch])
+  }, [game.phase, game.week, dispatch, queuePreAdAnnouncement])
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
   // Show a rewarded prompt when the user's social energy hits 0 (once per day).
@@ -1669,10 +1727,16 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
       ) : (
-        <TvZone mainLogMaxVisible={compactRosterLogRows} />
+        <TvZone
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          mainLogMaxVisible={compactRosterLogRows}
+        />
       )}
 
       {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}
