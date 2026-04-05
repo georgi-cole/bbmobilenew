@@ -1600,9 +1600,6 @@ export default function GameScreen() {
   useEffect(() => {
     if (!humanPlayer) return
     const todayIsoDate = new Date().toISOString().slice(0, 10)
-    if (lastDislikedPromptDateRef.current !== todayIsoDate) {
-      lastDislikedPromptDateRef.current = null
-    }
     if (userApproval <= DISLIKED_MAX && lastDislikedPromptDateRef.current !== todayIsoDate) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
