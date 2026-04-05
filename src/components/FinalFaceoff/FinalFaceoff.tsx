@@ -31,7 +31,6 @@ import { selectSettings } from '../../store/settingsSlice';
 import { tallyVotes, aiJurorVote } from '../../utils/juryUtils';
 import { selectPublicOpinion } from '../../publicOpinion';
 import { showInterstitial } from '../../services/ads/adsService';
-import { selectAdsState } from '../../store/adsSlice';
 import type { RootState } from '../../store/store';
 import { useStore } from 'react-redux';
 import JurorBubble from './JurorBubble';
@@ -54,7 +53,6 @@ export default function FinalFaceoff() {
   const revealed = useAppSelector(selectRevealedJurors);
   const settings = useAppSelector(selectSettings);
   const publicOpinion = useAppSelector(selectPublicOpinion);
-  useAppSelector(selectAdsState); // subscribe so the store ref stays current
   const { play, playMusic, stopMusic } = useSound();
 
   const jurorListRef = useRef<HTMLDivElement>(null);

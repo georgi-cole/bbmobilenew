@@ -1459,6 +1459,7 @@ export default function GameScreen() {
   // Show a rewarded-ad prompt when the user finishes last in a LOH or POS
   // competition, except during the final-3 week (≤3 players alive).
   const isFinal3Week = alivePlayers.length <= 3
+  const dislikedPromptHandledDateRef = useRef<string | null>(null)
   useEffect(() => {
     if (!adsState?.lastCompLastPlaceType) return
     if (isFinal3Week) {
@@ -1467,8 +1468,17 @@ export default function GameScreen() {
     }
     const resultPhase =
       adsState.lastCompLastPlaceType === 'loh' ? 'loh_results' : 'pos_results'
+    const pendingPhases =
+      adsState.lastCompLastPlaceType === 'loh'
+        ? new Set(['loh_comp_announcement', 'loh_comp', 'loh_results'])
+        : new Set(['pos_comp', 'pos_results'])
     if (game.phase === resultPhase) {
       setShowCompRetryPrompt(true)
+      dispatch(clearLastCompLastPlace())
+      return
+    }
+    if (!pendingPhases.has(game.phase)) {
+      dispatch(clearLastCompLastPlace())
     }
   }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch])
 
@@ -1557,7 +1567,7 @@ export default function GameScreen() {
       )
       return
     }
-  }, [game.phase, game.week, dispatch, queuePreAdAnnouncement])
+  }, [game.phase, game.week, game.players, game.posWinnerId, dispatch, queuePreAdAnnouncement])
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
   // Show a rewarded prompt when the user's social energy hits 0 (once per day).
@@ -1587,23 +1597,25 @@ export default function GameScreen() {
         ? (s.publicOpinion?.profiles?.[humanPlayer.id]?.approval ?? 100)
         : 100,
   )
-  const prevApprovalRef = useRef<number>(userApproval)
   useEffect(() => {
-    const prev = prevApprovalRef.current
-    prevApprovalRef.current = userApproval
     if (!humanPlayer) return
-    // Only trigger when crossing into Disliked band (not already there last render)
-    if (userApproval <= DISLIKED_MAX && prev > DISLIKED_MAX) {
+    const todayIsoDate = new Date().toISOString().slice(0, 10)
+    if (dislikedPromptHandledDateRef.current && dislikedPromptHandledDateRef.current !== todayIsoDate) {
+      dislikedPromptHandledDateRef.current = null
+    }
+    if (userApproval <= DISLIKED_MAX && dislikedPromptHandledDateRef.current !== todayIsoDate) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
+        dislikedPromptHandledDateRef.current = todayIsoDate
         setShowDislikedBoostPrompt(true)
       }
     }
     // Auto-dismiss if approval recovered above disliked threshold
     if (userApproval > DISLIKED_MAX) {
+      dislikedPromptHandledDateRef.current = null
       setShowDislikedBoostPrompt(false)
     }
-  }, [userApproval, humanPlayer])
+  }, [userApproval, humanPlayer, adsState?.dailyUsage?.public_meter_disliked_boost])
 
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel whenever the human player is alive and the game is in
@@ -2491,7 +2503,7 @@ export default function GameScreen() {
             if (adPending) return
             setAdPending(true)
             const state = storeRef.current.getState()
-            showRewarded(
+            const requested = showRewarded(
               'competition_retry',
               state,
               dispatch,
@@ -2505,6 +2517,9 @@ export default function GameScreen() {
               },
               { isFinal3Week },
             )
+            if (!requested) {
+              setAdPending(false)
+            }
           }}
           onSkip={() => {
             setShowCompRetryPrompt(false)
@@ -2525,7 +2540,7 @@ export default function GameScreen() {
             if (adPending) return
             setAdPending(true)
             const state = storeRef.current.getState()
-            showRewarded(
+            const requested = showRewarded(
               'social_energy_recharge',
               state,
               dispatch,
@@ -2536,6 +2551,9 @@ export default function GameScreen() {
                 setAdPending(false)
               },
             )
+            if (!requested) {
+              setAdPending(false)
+            }
           }}
           onSkip={() => setShowEnergyRechargePrompt(false)}
           pending={adPending}
@@ -2553,7 +2571,7 @@ export default function GameScreen() {
             if (adPending) return
             setAdPending(true)
             const state = storeRef.current.getState()
-            showRewarded(
+            const requested = showRewarded(
               'public_meter_disliked_boost',
               state,
               dispatch,
@@ -2576,6 +2594,9 @@ export default function GameScreen() {
                 setAdPending(false)
               },
             )
+            if (!requested) {
+              setAdPending(false)
+            }
           }}
           onSkip={() => setShowDislikedBoostPrompt(false)}
           pending={adPending}

@@ -191,6 +191,7 @@ type TvZoneProps =
  */
 export default function TvZone(props: TvZoneProps) {
   const dispatch = useAppDispatch();
+  const { onExternalAnnouncementDismiss } = props;
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
@@ -321,7 +322,7 @@ export default function TvZone(props: TvZoneProps) {
       } else if (latestEvent) {
         setDismissedEventId(latestEvent.id);
       }
-      props.onExternalAnnouncementDismiss?.();
+      onExternalAnnouncementDismiss?.();
     } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase);
       setPhaseAnnouncement(null);
@@ -331,7 +332,7 @@ export default function TvZone(props: TvZoneProps) {
     setPostDismissBlocked(true);
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
-  }, [externalAnnouncement, latestEvent, phaseAnnouncement, gameState.phase, props.onExternalAnnouncementDismiss]);
+  }, [externalAnnouncement, latestEvent, phaseAnnouncement, gameState.phase, onExternalAnnouncementDismiss]);
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {

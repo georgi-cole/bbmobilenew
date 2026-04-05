@@ -53,7 +53,11 @@ export function loadAdsState(): AdsState {
 
 export function saveAdsState(state: AdsState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const persistedState: Pick<AdsState, 'hasNoAdsPack' | 'dailyUsage'> = {
+      hasNoAdsPack: state.hasNoAdsPack,
+      dailyUsage: state.dailyUsage,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
   } catch {
     // ignore (e.g. private browsing quota)
   }

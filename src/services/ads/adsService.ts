@@ -147,21 +147,20 @@ export function canShowAd(
  * @param state     - Current Redux root state for guard checks.
  * @param dispatch  - Redux dispatch to record daily usage.
  * @param options   - Optional guard overrides.
+ * @returns true when the ad was requested, false when it was suppressed.
  */
 export function showInterstitial(
   placement: AdPlacement,
   state: RootState,
   dispatch: AppDispatch,
   options?: { isFinal3Week?: boolean },
-): void {
-  if (!canShowAd(placement, state, options)) return;
+): boolean {
+  if (!canShowAd(placement, state, options)) return false;
+  if (!window.GameAds?.showInterstitial) return false;
 
   dispatch(recordAdShown(placement));
-
-  if (window.GameAds?.showInterstitial) {
-    window.GameAds.showInterstitial(placement);
-  }
-  // In web/dev environments: no-op — game continues normally.
+  window.GameAds.showInterstitial(placement);
+  return true;
 }
 
 /**
@@ -185,17 +184,11 @@ export function showRewarded(
   options?: { isFinal3Week?: boolean },
 ): boolean {
   if (!canShowAd(placement, state, options)) return false;
+  if (!window.GameAds?.showRewarded) return false;
 
   dispatch(recordAdShown(placement));
+  rewardHandlers.set(placement, onReward);
+  window.GameAds.showRewarded(placement);
+  return true;
 
-  if (window.GameAds?.showRewarded) {
-    rewardHandlers.set(placement, onReward);
-    window.GameAds.showRewarded(placement);
-    return true;
-  }
-
-  // Web/dev fallback: no native bridge present — do not register the handler
-  // (it would never be called and would accumulate as a memory leak).
-  // Return false so the caller knows no ad was shown.
-  return false;
 }

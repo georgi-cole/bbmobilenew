@@ -45,7 +45,6 @@ interface ApplyMinigameWinnerPayload {
   [key: string]: unknown;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const adsMiddleware: Middleware =
   (api) => (next) => (action) => {
     const state = api.getState() as StoreStateSlice;
