@@ -1459,7 +1459,7 @@ export default function GameScreen() {
   // Show a rewarded-ad prompt when the user finishes last in a LOH or POS
   // competition, except during the final-3 week (≤3 players alive).
   const isFinal3Week = alivePlayers.length <= 3
-  const dislikedPromptHandledDateRef = useRef<string | null>(null)
+  const lastDislikedPromptDateRef = useRef<string | null>(null)
   useEffect(() => {
     if (!adsState?.lastCompLastPlaceType) return
     if (isFinal3Week) {
@@ -1600,19 +1600,19 @@ export default function GameScreen() {
   useEffect(() => {
     if (!humanPlayer) return
     const todayIsoDate = new Date().toISOString().slice(0, 10)
-    if (dislikedPromptHandledDateRef.current && dislikedPromptHandledDateRef.current !== todayIsoDate) {
-      dislikedPromptHandledDateRef.current = null
+    if (lastDislikedPromptDateRef.current !== todayIsoDate) {
+      lastDislikedPromptDateRef.current = null
     }
-    if (userApproval <= DISLIKED_MAX && dislikedPromptHandledDateRef.current !== todayIsoDate) {
+    if (userApproval <= DISLIKED_MAX && lastDislikedPromptDateRef.current !== todayIsoDate) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
-        dislikedPromptHandledDateRef.current = todayIsoDate
+        lastDislikedPromptDateRef.current = todayIsoDate
         setShowDislikedBoostPrompt(true)
       }
     }
     // Auto-dismiss if approval recovered above disliked threshold
     if (userApproval > DISLIKED_MAX) {
-      dislikedPromptHandledDateRef.current = null
+      lastDislikedPromptDateRef.current = null
       setShowDislikedBoostPrompt(false)
     }
   }, [userApproval, humanPlayer, adsState?.dailyUsage?.public_meter_disliked_boost])

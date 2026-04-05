@@ -190,5 +190,4 @@ export function showRewarded(
   rewardHandlers.set(placement, onReward);
   window.GameAds.showRewarded(placement);
   return true;
-
 }
