@@ -10,6 +10,7 @@ import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { SoundManager } from './services/sound/SoundManager'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
+import { initAdBridge } from './services/ads/adsService'
 import App from './App.tsx'
 
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
@@ -30,6 +31,10 @@ if (viewportMeta) {
 // Initialize the Social Engine with the Redux store so it can dispatch actions
 // and read state throughout the session.
 SocialEngine.init(store)
+
+// Register the window.onAdRewardGranted callback so native Android/iOS wrappers
+// can complete rewarded ad flows.
+initAdBridge()
 
 // Expose the Redux store globally for debugging and e2e tooling.
 declare global {

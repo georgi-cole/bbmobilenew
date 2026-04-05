@@ -60,6 +60,30 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Endgame',
     body: 'The Final Leader of the House holds the most consequential power in the game. They alone decide who sits beside them in the Final 2 — and who is sent to the Tribunal just one step from the prize. This single choice often defines legacies.',
   },
+  ad_break_eviction_auto: {
+    icon: '📺',
+    label: 'SHORT BREAK',
+    category: 'Broadcast',
+    body: "Don't change the channel, a new Day is about to begin right after a short break.",
+  },
+  ad_break_pos_decision_auto: {
+    icon: '📺',
+    label: 'SHORT BREAK',
+    category: 'Broadcast',
+    body: 'Is the Power of Safety holder going to use the power to change the course of the game? Find out right after this short break!',
+  },
+  ad_break_final_safety_decision_auto: {
+    icon: '📺',
+    label: 'SHORT BREAK',
+    category: 'Broadcast',
+    body: 'The final safety winner now has the deciding vote to evict. Find out who is going to be eliminated just a step before the finale. Stay with us.',
+  },
+  ad_break_final_loh_decision_auto: {
+    icon: '📺',
+    label: 'SHORT BREAK',
+    category: 'Broadcast',
+    body: 'The final leader of the house has to make a very important decision that might cost them the victory. Who will they choose? Find out right after the break.',
+  },
   jury: {
     icon: '⚖️',
     label: 'TRIBUNAL VOTES',

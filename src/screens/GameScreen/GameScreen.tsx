@@ -48,6 +48,7 @@ import {
 } from '../../store/gameSlice'
 import { startChallenge, selectPendingChallenge, completeChallenge } from '../../store/challengeSlice'
 import { selectLastSocialReport } from '../../social/socialSlice'
+import { setEnergyBankEntry } from '../../social/socialSlice'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
@@ -88,9 +89,19 @@ import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
+import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
+import { selectAdsState, clearLastCompLastPlace } from '../../store/adsSlice'
+import AdPrompt from '../../components/AdPrompt/AdPrompt'
+import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
+import {
+  showInterstitial,
+  showRewarded,
+  canShowAd,
+  type AdPlacement,
+} from '../../services/ads/adsService'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -132,7 +143,17 @@ export default function GameScreen() {
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
+  const adsState = useAppSelector(selectAdsState)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
+
+  // ── Ad prompt visibility state ─────────────────────────────────────────
+  const [showCompRetryPrompt, setShowCompRetryPrompt] = useState(false)
+  const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
+  const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
+  // Tracks whether a rewarded ad request has been sent (prevents double-tap).
+  const [adPending, setAdPending] = useState(false)
+  const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
+  const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -1434,6 +1455,165 @@ export default function GameScreen() {
   // unrecognised pendingMinigame key so the human is never left with no UI.
   const showQuickTapRace = showLohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
+  // ── Ad hook: competition_retry ─────────────────────────────────────────────
+  // Show a rewarded-ad prompt when the user finishes last in a LOH or POS
+  // competition, except during the final-3 week (≤3 players alive).
+  const isFinal3Week = alivePlayers.length <= 3
+  const lastDislikedPromptDateRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!adsState?.lastCompLastPlaceType) return
+    if (isFinal3Week) {
+      dispatch(clearLastCompLastPlace())
+      return
+    }
+    const resultPhase =
+      adsState.lastCompLastPlaceType === 'loh' ? 'loh_results' : 'pos_results'
+    const pendingPhases =
+      adsState.lastCompLastPlaceType === 'loh'
+        ? new Set(['loh_comp_announcement', 'loh_comp', 'loh_results'])
+        : new Set(['pos_comp', 'pos_results'])
+    if (game.phase === resultPhase) {
+      setShowCompRetryPrompt(true)
+      dispatch(clearLastCompLastPlace())
+      return
+    }
+    if (!pendingPhases.has(game.phase)) {
+      dispatch(clearLastCompLastPlace())
+    }
+  }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch])
+
+  // ── Ad hook: automatic interstitials (phase-based) ────────────────────────
+  // Each useEffect fires once per phase transition to the relevant phase.
+  const prevPhaseRef = useRef<string>('')
+  const queuePreAdAnnouncement = useCallback((placement: AdPlacement, subtitle: string) => {
+    pendingPreAdPlacementRef.current = placement
+    setPreAdAnnouncement({
+      key: `ad_break_${placement}`,
+      title: 'SHORT BREAK',
+      subtitle,
+      isLive: true,
+      autoDismissMs: 3200,
+    })
+  }, [])
+  const handlePreAdAnnouncementDismiss = useCallback(() => {
+    const placement = pendingPreAdPlacementRef.current
+    pendingPreAdPlacementRef.current = null
+    setPreAdAnnouncement(null)
+    if (!placement) return
+    const state = storeRef.current.getState()
+    showInterstitial(placement, state, dispatch)
+  }, [dispatch])
+
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current
+    const currentPhase = game.phase
+    if (currentPhase === prevPhase) return
+    prevPhaseRef.current = currentPhase
+
+    const state = storeRef.current.getState()
+
+    // eviction_auto — after each eviction
+    if (
+      currentPhase === 'eviction_results' &&
+      canShowAd('eviction_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'eviction_auto',
+        "Don't change the channel, a new Day is about to begin right after a short break.",
+      )
+      return
+    }
+
+    // pos_decision_auto — every other week just before POS holder announces
+    // week is 1-indexed; even weeks = weeks 2, 4, 6, ...
+    if (
+      currentPhase === 'pos_ceremony_results' &&
+      game.week % 2 === 0 &&
+      canShowAd('pos_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      const posHolderName =
+        game.players.find((player) => player.id === game.posWinnerId)?.name ?? 'the Power of Safety holder'
+      queuePreAdAnnouncement(
+        'pos_decision_auto',
+        `Is ${posHolderName} going to use the Power of safety to change the course of the game? Find out right after this short break!`,
+      )
+      return
+    }
+
+    // final_safety_decision_auto — before the final safety (F4 POS) holder announces
+    if (
+      currentPhase === 'final4_eviction' &&
+      canShowAd('final_safety_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'final_safety_decision_auto',
+        'The final safety winner now has the deciding vote to evict. Find out who is going to be eliminated just a step before the finale. Stay with us.',
+      )
+      return
+    }
+
+    // final_loh_decision_auto — before the final LOH (F3 Part 3 winner) announces
+    if (
+      currentPhase === 'final3_decision' &&
+      canShowAd('final_loh_decision_auto', state) &&
+      window.GameAds?.showInterstitial
+    ) {
+      queuePreAdAnnouncement(
+        'final_loh_decision_auto',
+        'The final leader of the house has to make a very important decision that might cost them the victory. Who will they choose? Find out right after the break.',
+      )
+      return
+    }
+  }, [game.phase, game.week, game.players, game.posWinnerId, dispatch, queuePreAdAnnouncement])
+
+  // ── Ad hook: social_energy_recharge ──────────────────────────────────────
+  // Show a rewarded prompt when the user's social energy hits 0 (once per day).
+  const userEnergy = useAppSelector(
+    (s: RootState) => (humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0),
+  )
+  useEffect(() => {
+    if (!humanPlayer) return
+    if (userEnergy === 0) {
+      const state = storeRef.current.getState()
+      if (canShowAd('social_energy_recharge', state)) {
+        setShowEnergyRechargePrompt(true)
+      }
+    } else {
+      setShowEnergyRechargePrompt(false)
+    }
+  }, [userEnergy, humanPlayer])
+
+  // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
+  // Show a rewarded prompt when the user's approval drops into the Disliked
+  // band (20–39%), once per day if still disliked.
+  // Disliked band: approval < 40 (from publicOpinionConfig).
+  const DISLIKED_MAX = 39
+  const userApproval = useAppSelector(
+    (s: RootState) =>
+      humanPlayer
+        ? (s.publicOpinion?.profiles?.[humanPlayer.id]?.approval ?? 100)
+        : 100,
+  )
+  useEffect(() => {
+    if (!humanPlayer) return
+    const todayIsoDate = new Date().toISOString().slice(0, 10)
+    if (userApproval <= DISLIKED_MAX && lastDislikedPromptDateRef.current !== todayIsoDate) {
+      const state = storeRef.current.getState()
+      if (canShowAd('public_meter_disliked_boost', state)) {
+        lastDislikedPromptDateRef.current = todayIsoDate
+        setShowDislikedBoostPrompt(true)
+      }
+    }
+    // Auto-dismiss if approval recovered above disliked threshold
+    if (userApproval > DISLIKED_MAX) {
+      lastDislikedPromptDateRef.current = null
+      setShowDislikedBoostPrompt(false)
+    }
+  }, [userApproval, humanPlayer, adsState?.dailyUsage?.public_meter_disliked_boost])
+
   // ── Social phase panel ────────────────────────────────────────────────────
   // Show the SocialPanel whenever the human player is alive and the game is in
   // a non-vote interaction window. Blocked during live_vote and eviction phases
@@ -1556,10 +1736,16 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
       ) : (
-        <TvZone mainLogMaxVisible={compactRosterLogRows} />
+        <TvZone
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          mainLogMaxVisible={compactRosterLogRows}
+        />
       )}
 
       {/* ── Outgoing LOH ineligibility warning ──────────────────────────── */}
@@ -2301,6 +2487,118 @@ export default function GameScreen() {
 
       {/* ── Social Summary Popup (shown after social phase ends) ─────────── */}
       {socialSummaryOpen && <SocialSummaryPopup />}
+
+      {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
+      {/* competition_retry: rewarded prompt after the user finishes last */}
+      {showCompRetryPrompt && humanPlayer && (
+        <AdPrompt
+          icon="🎮"
+          title="Want to Retry?"
+          description="Watch a short ad to re-enter the competition and try again."
+          watchLabel="Watch Ad to Retry"
+          onWatch={() => {
+            if (adPending) return
+            setAdPending(true)
+            const state = storeRef.current.getState()
+            const requested = showRewarded(
+              'competition_retry',
+              state,
+              dispatch,
+              () => {
+                // Reward: re-enter the competition (handled by the native wrapper
+                // signalling the game to re-open the minigame for this phase).
+                // For now we just dismiss; the native side controls re-entry.
+                setShowCompRetryPrompt(false)
+                dispatch(clearLastCompLastPlace())
+                setAdPending(false)
+              },
+              { isFinal3Week },
+            )
+            if (!requested) {
+              setAdPending(false)
+            }
+          }}
+          onSkip={() => {
+            setShowCompRetryPrompt(false)
+            dispatch(clearLastCompLastPlace())
+          }}
+          pending={adPending}
+        />
+      )}
+
+      {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
+      {showEnergyRechargePrompt && humanPlayer && (
+        <AdPrompt
+          icon="⚡"
+          title="Out of Energy!"
+          description="Watch a short ad to recharge +3 social energy and keep playing."
+          watchLabel="Watch Ad for +3 Energy"
+          onWatch={() => {
+            if (adPending) return
+            setAdPending(true)
+            const state = storeRef.current.getState()
+            const requested = showRewarded(
+              'social_energy_recharge',
+              state,
+              dispatch,
+              () => {
+                // Reward: +3 social energy
+                dispatch(setEnergyBankEntry({ playerId: humanPlayer.id, value: 3 }))
+                setShowEnergyRechargePrompt(false)
+                setAdPending(false)
+              },
+            )
+            if (!requested) {
+              setAdPending(false)
+            }
+          }}
+          onSkip={() => setShowEnergyRechargePrompt(false)}
+          pending={adPending}
+        />
+      )}
+
+      {/* public_meter_disliked_boost: rewarded prompt when approval drops to Disliked */}
+      {showDislikedBoostPrompt && humanPlayer && (
+        <AdPrompt
+          icon="📊"
+          title="Your Approval Is Slipping"
+          description="Watch a short ad to boost your public approval by a random 4–10%."
+          watchLabel="Watch Ad for Approval Boost"
+          onWatch={() => {
+            if (adPending) return
+            setAdPending(true)
+            const state = storeRef.current.getState()
+            const requested = showRewarded(
+              'public_meter_disliked_boost',
+              state,
+              dispatch,
+              (payload) => {
+                // Reward: +4 to +10% approval (random, or native-provided)
+                const boostPct =
+                  typeof payload?.percent === 'number'
+                    ? Math.round(payload.percent)
+                    : 4 + Math.floor(Math.random() * 7) // 4–10
+                dispatch(
+                  updateApproval({
+                    playerId: humanPlayer.id,
+                    delta: boostPct,
+                    reason: 'Ad boost — disliked recovery',
+                    week: game.week,
+                    eventType: 'ad_boost',
+                  }),
+                )
+                setShowDislikedBoostPrompt(false)
+                setAdPending(false)
+              },
+            )
+            if (!requested) {
+              setAdPending(false)
+            }
+          }}
+          onSkip={() => setShowDislikedBoostPrompt(false)}
+          pending={adPending}
+        />
+      )}
 
       {/* ── SpectatorView — Final 3 Part 2 (human won Part 1, sits out Part 2) ── */}
       {/* expectedWinnerId pre-computes the AI pick so the reveal matches advance(). */}

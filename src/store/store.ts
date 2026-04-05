@@ -35,6 +35,8 @@ import memoryColorsReducer from '../features/memoryColors/memoryColorsSlice';
 import { syncRuntimeAudioSettings } from '../services/sound/audioSettingsSync';
 import publicOpinionReducer from '../publicOpinion/publicOpinionSlice';
 import { publicOpinionMiddleware } from '../publicOpinion/publicOpinionMiddleware';
+import adsReducer, { loadAdsState, saveAdsState } from './adsSlice';
+import { adsMiddleware } from './adsMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -61,14 +63,16 @@ export const store = configureStore({
     houseOfCards: houseOfCardsReducer,
     memoryColors: memoryColorsReducer,
     publicOpinion: publicOpinionReducer,
+    ads: adsReducer,
   },
   preloadedState: {
     settings: loadSettings(),
     userProfile: loadUserProfile(),
     profiles: loadProfilesState(),
+    ads: loadAdsState(),
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware, publicOpinionMiddleware),
+    getDefaultMiddleware().concat(socialMiddleware, soundMiddleware, publicOpinionMiddleware, adsMiddleware),
 });
 
 // Persist settings to localStorage whenever they change
@@ -77,6 +81,8 @@ let prevSettings = store.getState().settings;
 let prevUserProfile = store.getState().userProfile;
 // Persist profiles state to localStorage whenever it changes
 let prevProfiles = store.getState().profiles;
+// Persist ads state to localStorage whenever it changes
+let prevAds = store.getState().ads;
 // Persist season archives to localStorage whenever they change
 let prevSeasonArchives = store.getState().game.seasonArchives;
 // Track archive length together with the profile that owns those archives.
@@ -102,6 +108,10 @@ store.subscribe(() => {
   if (current.profiles !== prevProfiles) {
     prevProfiles = current.profiles;
     saveProfilesState(current.profiles);
+  }
+  if (current.ads !== prevAds) {
+    prevAds = current.ads;
+    saveAdsState(current.ads);
   }
   if (current.game.seasonArchives !== prevSeasonArchives) {
     prevSeasonArchives = current.game.seasonArchives;

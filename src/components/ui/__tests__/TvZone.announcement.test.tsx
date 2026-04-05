@@ -891,6 +891,29 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByLabelText('TRIBUNAL')).toBeDefined();
     expect(screen.queryByText('jury_cinematic')).toBeNull();
   });
+
+  it('renders an external announcement in the main TV and calls its dismiss callback', () => {
+    const store = makeStore();
+    const onExternalAnnouncementDismiss = vi.fn();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'ad_break_eviction_auto',
+        title: 'SHORT BREAK',
+        subtitle: "Don't change the channel a new Day is about to begin right after a short break.",
+        isLive: true,
+        autoDismissMs: null,
+      },
+      onExternalAnnouncementDismiss,
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: SHORT BREAK/i })).toBeDefined();
+    expect(screen.getByText(/new Day is about to begin right after a short break/i)).toBeTruthy();
+
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+
+    expect(onExternalAnnouncementDismiss).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ── TvAnnouncementModal — no-animations fast-path ─────────────────────────────

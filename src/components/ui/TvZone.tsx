@@ -164,11 +164,15 @@ type TvZoneProps =
       publicSaveReveal: TvZonePublicSaveReveal;
       onPublicSaveDone: () => void;
       mainLogMaxVisible?: number;
+      externalAnnouncement?: Announcement | null;
+      onExternalAnnouncementDismiss?: () => void;
     }
   | {
       publicSaveReveal?: null | undefined;
       onPublicSaveDone?: undefined;
       mainLogMaxVisible?: number;
+      externalAnnouncement?: Announcement | null;
+      onExternalAnnouncementDismiss?: () => void;
     };
 
 /**
@@ -187,6 +191,7 @@ type TvZoneProps =
  */
 export default function TvZone(props: TvZoneProps) {
   const dispatch = useAppDispatch();
+  const { onExternalAnnouncementDismiss } = props;
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
@@ -210,6 +215,7 @@ export default function TvZone(props: TvZoneProps) {
 
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
+  const externalAnnouncement = props.externalAnnouncement ?? null;
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -300,12 +306,24 @@ export default function TvZone(props: TvZoneProps) {
   }, [latestEvent, dismissedEventId]);
 
   // Active announcement: phase-based takes priority over event-based.
-  const activeAnnouncement = phaseAnnouncement ?? eventAnnouncement;
+  const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
   const viewportMessageKey = getViewportMessageKey(latestEvent);
 
   const handleDismiss = useCallback(() => {
-    if (phaseAnnouncement) {
+    if (externalAnnouncement) {
+      // External announcements are used as one-off pre-roll overlays (e.g. ad
+      // break copy) for the *current* phase. If an internal phase/event
+      // announcement was queued behind the same render, clear it too so the TV
+      // does not immediately show a second overlay after the break message.
+      if (phaseAnnouncement) {
+        setDismissedPhase(gameState.phase);
+        setPhaseAnnouncement(null);
+      } else if (latestEvent) {
+        setDismissedEventId(latestEvent.id);
+      }
+      onExternalAnnouncementDismiss?.();
+    } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase);
       setPhaseAnnouncement(null);
     } else if (latestEvent) {
@@ -314,7 +332,7 @@ export default function TvZone(props: TvZoneProps) {
     setPostDismissBlocked(true);
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
-  }, [latestEvent, phaseAnnouncement, gameState.phase]);
+  }, [externalAnnouncement, latestEvent, phaseAnnouncement, gameState.phase, onExternalAnnouncementDismiss]);
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {
