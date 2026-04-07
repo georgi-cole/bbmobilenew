@@ -140,8 +140,12 @@ function computeProfileSkill(
 /**
  * Returns true when the game should use the central hybrid score resolver.
  * Endurance / survival / last-player-standing games are excluded.
+ * Quick Tap Race is also excluded: it uses `simulateQuickTapAiScore()` directly
+ * for a more competitive, band-based score distribution that is independent of
+ * the human score anchor.
  */
 export function isHybridScoredGame(gameKey: string): boolean {
+  if (gameKey === 'quickTap') return false;
   const model = getMinigameAiModel(gameKey);
   // Only exclude endurance-category games; all other score-based games are included.
   return model.category !== 'endurance';
