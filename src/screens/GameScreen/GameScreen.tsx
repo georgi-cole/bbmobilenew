@@ -1589,9 +1589,10 @@ export default function GameScreen() {
   )
   useEffect(() => {
     if (!humanPlayer) return
+    const energyIsZero = userEnergy === 0
     const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
     if (
-      userEnergy === 0 &&
+      energyIsZero &&
       game.week !== 1 &&
       !isFinal3Week &&
       inSocialPhase
@@ -1604,7 +1605,7 @@ export default function GameScreen() {
         setShowEnergyRechargePrompt(true)
       }
     } else {
-      if (import.meta.env.DEV && userEnergy === 0) {
+      if (import.meta.env.DEV && energyIsZero) {
         console.log(
           '[ads] social_energy_recharge suppressed — week:', game.week,
           '| phase:', game.phase,
@@ -2245,7 +2246,8 @@ export default function GameScreen() {
             }
 
             // Compute the last-place finisher for this competition.
-            // For LOH: also used by applyMinigameWinner for the third-nominee rule.
+            // For LOH: also used by applyMinigameWinner for the third-nominee rule
+            // (the worst LOH finisher becomes an eligible third nominee).
             // For POS: needed by adsMiddleware to detect competition_retry eligibility.
             // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
             // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,

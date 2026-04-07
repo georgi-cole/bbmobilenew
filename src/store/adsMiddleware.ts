@@ -118,7 +118,7 @@ export const adsMiddleware: Middleware =
       let derivedLastPlace: string | null = null;
 
       if (lastPlaceId) {
-        // Trust the explicitly provided lastPlaceId.  When participants is
+        // Trust the explicitly provided lastPlaceId. When participants is
         // available, use it to validate; when absent (e.g. MinigameHost path
         // which does not forward the full leaderboard), accept it directly.
         if (participants.length === 0 || participants.includes(lastPlaceId)) {
