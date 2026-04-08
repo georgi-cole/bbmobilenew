@@ -149,22 +149,19 @@ function buildChallengePlayers(
     const storePlayersById = new Map(sourcePlayers.map((player) => [player.id, player] as const));
     const fallbackPlayersById = new Map(fallbackHouseguests.map((player) => [player.id, player] as const));
     const seenIds = new Set<string>();
-    const preferredPlayers = participantIds
-      .filter((id) => {
-        if (seenIds.has(id)) return false;
-        seenIds.add(id);
-        return true;
-      })
-      .map((id) => {
-        if (id === humanPlayer.id) {
-          return { ...humanPlayer, status: 'active' as const, isUser: true };
-        }
-        const resolved = storePlayersById.get(id) ?? fallbackPlayersById.get(id);
-        return resolved
-          ? { ...resolved, status: 'active' as const, isUser: false }
-          : null;
-      })
-      .filter((player): player is Player => player !== null);
+    const preferredPlayers = participantIds.reduce<Player[]>((resolvedPlayers, id) => {
+      if (seenIds.has(id)) return resolvedPlayers;
+      seenIds.add(id);
+      if (id === humanPlayer.id) {
+        resolvedPlayers.push({ ...humanPlayer, status: 'active' as const, isUser: true });
+        return resolvedPlayers;
+      }
+      const resolved = storePlayersById.get(id) ?? fallbackPlayersById.get(id);
+      if (resolved) {
+        resolvedPlayers.push({ ...resolved, status: 'active' as const, isUser: false });
+      }
+      return resolvedPlayers;
+    }, []);
 
     if (preferredPlayers.length >= 2) {
       return preferredPlayers;

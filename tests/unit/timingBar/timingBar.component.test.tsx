@@ -173,16 +173,15 @@ describe('TimingBar', () => {
 
     renderTimingBar(
       {
-        autoStart: true,
         onFinish,
         participantIds: ['human', 'opponent'],
       },
       players,
     );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Round 1 • 2 players/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Round 1 • 2 players/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Begin Round 1 ▶' }));
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
