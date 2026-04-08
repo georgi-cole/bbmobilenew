@@ -14,9 +14,14 @@
  *      players must explicitly tap the prompt to gain the effect,
  *      creating a meaningful risk/reward tradeoff against tapping rhythm.
  *  - Booster types: 2x, 3x, 0.5x, -1x, +3s, -3s
- *  - Direct AI scoring: AI scores are precomputed via `simulateQuickTapAiScore()`
- *    before the game starts, giving a competitive band-based distribution
- *    independent of the human score.
+ *  - Direct AI scoring for Quick Tap: AI scores are precomputed via
+ *    `simulateQuickTapAiScore()` before the game starts, giving a competitive
+ *    band-based distribution independent of the human score.
+ *  - Hybrid AI scoring for fallback sessions: when QuickTapRace renders as a
+ *    fallback for an unrecognised game key, the session may have
+ *    `hybridResolveOnComplete: true`; in that case AI scores are resolved after
+ *    the human finishes (same as completeMinigame will do) so the UI leaderboard
+ *    matches the authoritative Redux outcome.
  *  - Canonical last-place derivation from effective scores
  */
 
@@ -34,6 +39,7 @@ import {
   selectBoosterPrompts,
 } from '../../ai/competition/quickTapSimulation';
 import type { ScheduledBoosterPrompt } from '../../ai/competition/quickTapSimulation';
+import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import './QuickTapRace.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -365,9 +371,29 @@ export default function QuickTapRace({
 
     if (session) {
       // LOH/POS path — build full leaderboard and dispatch to Redux.
-      // AI scores are precomputed via simulateQuickTapAiScore() and stored in
-      // session.aiScores; just use them directly here.
-      const resolvedAiScores = session.aiScores;
+      // For Quick Tap (session.hybridResolveOnComplete is false/absent), AI scores
+      // are precomputed via simulateQuickTapAiScore() and stored in session.aiScores.
+      // For hybrid fallback sessions (session.hybridResolveOnComplete === true, i.e.
+      // when QuickTapRace renders for an unrecognised game key), resolve AI scores
+      // now using the same resolver that completeMinigame will call, so the displayed
+      // results match the authoritative Redux outcome.
+      let resolvedAiScores: Record<string, number>;
+      if (session.hybridResolveOnComplete) {
+        const aiParticipants = session.participants
+          .filter((id) => id !== humanId)
+          .map((id) => {
+            const p = players.find((pl) => pl.id === id);
+            return { id, profile: p?.competitionProfile };
+          });
+        resolvedAiScores = resolveHybridAiScores({
+          gameKey: session.key,
+          humanScore: humanEffective,
+          aiParticipants,
+          seed: session.seed,
+        });
+      } else {
+        resolvedAiScores = session.aiScores;
+      }
 
       const allScores: Record<string, number> = {
         ...resolvedAiScores,
