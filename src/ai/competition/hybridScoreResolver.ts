@@ -147,7 +147,8 @@ function computeProfileSkill(
 export function isHybridScoredGame(gameKey: string): boolean {
   if (gameKey === 'quickTap') return false;
   const model = getMinigameAiModel(gameKey);
-  // Only exclude endurance-category games; all other score-based games are included.
+  // Exclude Quick Tap Race above and endurance-category games here; all other
+  // score-based games are included.
   return model.category !== 'endurance';
 }
 
