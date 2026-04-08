@@ -53,6 +53,8 @@ export interface GenericMinigameProps {
   seed?: number;
   /** When true the game starts immediately on mount (no Start button needed). */
   autoStart?: boolean;
+  /** Authoritative participant ids forwarded from MinigameHost for hosted competitions. */
+  participantIds?: string[];
 }
 
 const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {

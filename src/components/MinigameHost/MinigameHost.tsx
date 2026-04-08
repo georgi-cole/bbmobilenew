@@ -501,6 +501,7 @@ export default function MinigameHost({
                 <GenericComp
                   seed={seed}
                   autoStart={true}
+                  participantIds={participantIds}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
                     if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
                       onDone(value, false, completion);

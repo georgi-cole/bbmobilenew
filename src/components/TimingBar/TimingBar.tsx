@@ -98,6 +98,7 @@ type AiSkillProfile = {
 interface Props {
   session?: MinigameSession;
   players?: Player[];
+  participantIds?: string[];
   onFinish?: (
     value: number,
     tiebreakerMs?: number,
@@ -119,7 +120,11 @@ function isRecognizedHouseguestPlayer(player: Player): boolean {
   return !!(getById(player.id) ?? findByName(player.name));
 }
 
-function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Player[] {
+function buildChallengePlayers(
+  humanId: string,
+  availablePlayers: Player[],
+  participantIds?: string[],
+): Player[] {
   const sourcePlayers = availablePlayers.filter((p) => p.status !== 'evicted');
   const resolvedSource = sourcePlayers.filter(isRecognizedHouseguestPlayer);
   const fallbackHouseguests = getAllHouseguests().map((hg) => ({
@@ -139,6 +144,29 @@ function buildChallengePlayers(humanId: string, availablePlayers: Player[]): Pla
       status: 'active' as const,
       isUser: true,
     };
+
+  if (participantIds && participantIds.length > 0) {
+    const storePlayersById = new Map(sourcePlayers.map((player) => [player.id, player] as const));
+    const fallbackPlayersById = new Map(fallbackHouseguests.map((player) => [player.id, player] as const));
+    const seenIds = new Set<string>();
+    const preferredPlayers = participantIds.reduce<Player[]>((resolvedPlayers, id) => {
+      if (seenIds.has(id)) return resolvedPlayers;
+      seenIds.add(id);
+      if (id === humanPlayer.id) {
+        resolvedPlayers.push({ ...humanPlayer, status: 'active' as const, isUser: true });
+        return resolvedPlayers;
+      }
+      const resolved = storePlayersById.get(id) ?? fallbackPlayersById.get(id);
+      if (resolved) {
+        resolvedPlayers.push({ ...resolved, status: 'active' as const, isUser: false });
+      }
+      return resolvedPlayers;
+    }, []);
+
+    if (preferredPlayers.length >= 2) {
+      return preferredPlayers;
+    }
+  }
 
   const takenIds = new Set([humanPlayer.id]);
   const seenIds = new Set(takenIds);
@@ -192,6 +220,7 @@ function getRankDisplay(rank: number): string {
 export default function TimingBar({
   session,
   players = [],
+  participantIds,
   onFinish,
   seed,
   autoStart = false,
@@ -203,14 +232,14 @@ export default function TimingBar({
   const challengeParticipantId = humanId ?? 'human';
 
   const challengePlayers = useMemo(
-    () => buildChallengePlayers(challengeParticipantId, storePlayers),
-    [challengeParticipantId, storePlayers],
+    () => buildChallengePlayers(challengeParticipantId, storePlayers, participantIds),
+    [challengeParticipantId, participantIds, storePlayers],
   );
 
   const effectivePlayers = session ? players : challengePlayers;
   const effectiveSeed = session?.seed ?? seed ?? 1;
   const effectiveHumanId = session ? humanId : challengeParticipantId;
-  const effectiveParticipantIds = session?.participants ?? challengePlayers.map((p) => p.id);
+  const effectiveParticipantIds = session?.participants ?? participantIds ?? challengePlayers.map((p) => p.id);
 
   /** Build TimingParticipant objects once. */
   const allParticipants = useMemo(

@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import TimingBar from '../../../src/components/TimingBar/TimingBar';
@@ -132,5 +132,78 @@ describe('TimingBar', () => {
     expect(screen.queryByRole('button', { name: '⏩ Skip to final results' })).not.toBeInTheDocument();
     expect(screen.getByText('⚡ Survivor — Winner')).toBeInTheDocument();
     expect(screen.getAllByText('Nico').length).toBeGreaterThan(0);
+  });
+
+  it('uses hosted participantIds for the authoritative winner flow', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const onFinish = vi.fn();
+    const players: Player[] = [
+      { id: 'human', name: 'You', avatar: '🙂', status: 'active', isUser: true },
+      {
+        id: 'outsider',
+        name: 'Outsider',
+        avatar: '😎',
+        status: 'active',
+        isUser: false,
+      },
+      {
+        id: 'opponent',
+        name: 'Nico',
+        avatar: '😀',
+        status: 'active',
+        isUser: false,
+        competitionProfile: {
+          overall: 90,
+          physical: 90,
+          mental: 90,
+          endurance: 90,
+          stamina: 90,
+          puzzle: 90,
+          luck: 90,
+          social: 50,
+          loyalty: 50,
+          strategic: 50,
+          memory: 90,
+        },
+      },
+    ];
+
+    renderTimingBar(
+      {
+        onFinish,
+        participantIds: ['human', 'opponent'],
+      },
+      players,
+    );
+
+    expect(screen.getByText(/Round 1 • 2 players/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Begin Round 1 ▶' }));
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000);
+    });
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1400);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue ▶' }));
+
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish.mock.calls[0]?.[2]).toEqual({
+      authoritativeWinnerId: 'opponent',
+    });
   });
 });
