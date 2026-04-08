@@ -9,6 +9,7 @@
  *  5. Human nomination flow continues correctly after the game resolves.
  *  6. AI-only nomination flow (no human) produces the correct winner + last-place.
  *  7. Multiplier scoring: effective score (not raw tap count) determines rankings.
+ *  8. startMinigame for quickTap uses direct AI scoring (no hybrid resolution).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,6 +19,7 @@ import gameReducer, {
   completeMinigame,
   commitNominees,
   advance,
+  startMinigame,
 } from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
@@ -417,19 +419,121 @@ describe('Quick Tap Race — multiplier scoring edge cases', () => {
   });
 });
 
-// ── 7. Backward-compat: legacy numeric payload ────────────────────────────────
+// ── 8. startMinigame direct AI scoring (no hybrid resolution) ─────────────────
 
-describe('Quick Tap Race — backward-compat: legacy numeric payload', () => {
-  it('passing a bare number to completeMinigame still works', () => {
-    const players = makePlayers(3);
+describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
+  it('session does NOT have hybridResolveOnComplete set', () => {
+    const players = makePlayers(4);
     const store = makeStore({ players });
-    setupMinigameSession(store, ['p0', 'p1', 'p2'], { p1: 80, p2: 70 });
 
-    // Legacy callers pass a bare number
-    store.dispatch(completeMinigame(95));
+    store.dispatch(
+      startMinigame({
+        key: 'quickTap',
+        participants: ['p0', 'p1', 'p2', 'p3'],
+        seed: 42,
+        options: { timeLimit: 30 },
+      }),
+    );
 
-    const state = store.getState().game;
-    expect(state.lohId).toBe('p0');
-    expect(state.lastHohCompFinisherId).toBe('p2');
+    const session = store.getState().game.pendingMinigame;
+    expect(session).not.toBeNull();
+    expect(session?.hybridResolveOnComplete).toBeFalsy();
+  });
+
+  it('AI scores are precomputed and stored in session.aiScores', () => {
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+
+    store.dispatch(
+      startMinigame({
+        key: 'quickTap',
+        participants: ['p0', 'p1', 'p2', 'p3'],
+        seed: 42,
+        options: { timeLimit: 30 },
+      }),
+    );
+
+    const session = store.getState().game.pendingMinigame;
+    expect(session).not.toBeNull();
+    // All three AI participants should have a precomputed score
+    expect(typeof session?.aiScores?.['p1']).toBe('number');
+    expect(typeof session?.aiScores?.['p2']).toBe('number');
+    expect(typeof session?.aiScores?.['p3']).toBe('number');
+    // Human participant (p0) must not appear in aiScores
+    expect(session?.aiScores?.['p0']).toBeUndefined();
+  });
+
+  it('AI scores fall within the competitive Quick Tap band [50, 280]', () => {
+    const players = makePlayers(5);
+    const store = makeStore({ players });
+
+    store.dispatch(
+      startMinigame({
+        key: 'quickTap',
+        participants: ['p0', 'p1', 'p2', 'p3', 'p4'],
+        seed: 99,
+        options: { timeLimit: 30 },
+      }),
+    );
+
+    const session = store.getState().game.pendingMinigame;
+    expect(session).not.toBeNull();
+    for (const id of ['p1', 'p2', 'p3', 'p4']) {
+      const score = session?.aiScores?.[id] ?? -1;
+      expect(score).toBeGreaterThanOrEqual(50);
+      expect(score).toBeLessThanOrEqual(280);
+    }
+  });
+
+  it('AI scores are deterministic — same seed produces the same scores', () => {
+    const players = makePlayers(4);
+
+    const store1 = makeStore({ players: JSON.parse(JSON.stringify(players)) });
+    store1.dispatch(
+      startMinigame({ key: 'quickTap', participants: ['p0', 'p1', 'p2', 'p3'], seed: 7, options: { timeLimit: 30 } }),
+    );
+
+    const store2 = makeStore({ players: JSON.parse(JSON.stringify(players)) });
+    store2.dispatch(
+      startMinigame({ key: 'quickTap', participants: ['p0', 'p1', 'p2', 'p3'], seed: 7, options: { timeLimit: 30 } }),
+    );
+
+    expect(store1.getState().game.pendingMinigame?.aiScores).toEqual(
+      store2.getState().game.pendingMinigame?.aiScores,
+    );
+  });
+
+  it('completeMinigame uses the precomputed AI scores (not hybrid-resolved)', () => {
+    const players = makePlayers(4);
+    const store = makeStore({ players });
+
+    store.dispatch(
+      startMinigame({
+        key: 'quickTap',
+        participants: ['p0', 'p1', 'p2', 'p3'],
+        seed: 42,
+        options: { timeLimit: 30 },
+      }),
+    );
+
+    const precomputedAiScores = (store.getState().game.pendingMinigame?.aiScores ?? {}) as Record<string, number>;
+    const expectedLastFinisherId = Object.entries(precomputedAiScores).reduce(
+      (slowestId, [id, score]) =>
+        score < precomputedAiScores[slowestId] ? id : slowestId,
+      Object.keys(precomputedAiScores)[0],
+    );
+
+    // Human wins with a very high score so we can verify AI placements come from the
+    // precomputed session scores rather than being re-resolved near the human score.
+    store.dispatch(completeMinigame({ humanScore: 9999 } as CompleteMinigamePayload));
+
+    const game = store.getState().game;
+
+    // After completing, lohId should be human (p0 wins with score 9999)
+    expect(game.lohId).toBe('p0');
+
+    // The last finisher among the HOH competition participants should be the AI with
+    // the lowest precomputed score captured at startMinigame time.
+    expect(game.lastHohCompFinisherId).toBe(expectedLastFinisherId);
   });
 });

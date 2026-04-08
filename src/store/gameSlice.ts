@@ -4072,11 +4072,17 @@ export const fastForwardToEviction =
 /**
  * Public minigame API — startMinigame thunk.
  *
- * Score-based (non-endurance) games with a human participant:
+ * Score-based (non-endurance) games with a human participant (except Quick Tap):
  *   AI scores are NOT precomputed here. Instead the session is flagged with
  *   `hybridResolveOnComplete: true` and the central hybrid resolver in
  *   `completeMinigame` generates AI scores after the human score is known.
  *   This prevents a predictable outcome before the human has finished playing.
+ *
+ * Quick Tap Race with a human participant:
+ *   AI scores ARE precomputed via `simulateQuickTapAiScore()`, giving a
+ *   competitive band-based distribution independent of the human score anchor.
+ *   `isHybridScoredGame('quickTap')` returns false, so it follows the same
+ *   precomputed path as endurance games.
  *
  * Endurance / non-hybrid games with a human participant:
  *   AI scores ARE precomputed and stored in `session.aiScores` as before.
@@ -4104,15 +4110,16 @@ export const startMinigame =
     });
 
     if (!isHybrid || !hasHuman) {
-      // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games
+      // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games,
+      // (c) Quick Tap Race (isHybridScoredGame returns false for it so it lands here).
       const isQuickTap = opts.key === 'quickTap';
       const isSnake = opts.key === 'snake';
       opts.participants.forEach((id, index) => {
         const p = state.players.find((pl) => pl.id === id);
         if (p && !p.isUser) {
           if (isQuickTap) {
-            // Quick Tap had a bespoke band-based simulator; keep it for AI-only runs.
-            // Human-present Quick Tap is hybrid-resolved (isHybrid=true, hasHuman=true).
+            // Quick Tap uses a bespoke band-based simulator for all runs
+            // (AI-only and human-present alike), bypassing hybrid resolution.
             aiScores[id] = simulateQuickTapAiScore({
               seed: opts.seed,
               playerId: id,

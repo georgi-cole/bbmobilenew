@@ -14,8 +14,14 @@
  *      players must explicitly tap the prompt to gain the effect,
  *      creating a meaningful risk/reward tradeoff against tapping rhythm.
  *  - Booster types: 2x, 3x, 0.5x, -1x, +3s, -3s
- *  - Hybrid AI scoring: AI scores are resolved after the human finishes, not
- *    precomputed. Uses `resolveHybridAiScores` with the human score as anchor.
+ *  - Direct AI scoring for Quick Tap: AI scores are precomputed via
+ *    `simulateQuickTapAiScore()` before the game starts, giving a competitive
+ *    band-based distribution independent of the human score.
+ *  - Hybrid AI scoring for fallback sessions: when QuickTapRace renders as a
+ *    fallback for an unrecognised game key, the session may have
+ *    `hybridResolveOnComplete: true`; in that case AI scores are resolved after
+ *    the human finishes (same as completeMinigame will do) so the UI leaderboard
+ *    matches the authoritative Redux outcome.
  *  - Canonical last-place derivation from effective scores
  */
 
@@ -365,9 +371,12 @@ export default function QuickTapRace({
 
     if (session) {
       // LOH/POS path — build full leaderboard and dispatch to Redux.
-      // For hybrid sessions, resolve AI scores NOW (after human score is known)
-      // using the same pure resolver that completeMinigame will call, so the
-      // displayed results are identical to the authoritative Redux outcome.
+      // For Quick Tap (session.hybridResolveOnComplete is false/absent), AI scores
+      // are precomputed via simulateQuickTapAiScore() and stored in session.aiScores.
+      // For hybrid fallback sessions (session.hybridResolveOnComplete === true, i.e.
+      // when QuickTapRace renders for an unrecognised game key), resolve AI scores
+      // now using the same resolver that completeMinigame will call, so the displayed
+      // results match the authoritative Redux outcome.
       let resolvedAiScores: Record<string, number>;
       if (session.hybridResolveOnComplete) {
         const aiParticipants = session.participants

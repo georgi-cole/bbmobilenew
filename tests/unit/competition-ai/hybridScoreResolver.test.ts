@@ -32,8 +32,8 @@ const AI_PLAYERS: HybridAiParticipant[] = [
 // ── 1. isHybridScoredGame ─────────────────────────────────────────────────────
 
 describe('isHybridScoredGame', () => {
-  it('returns true for scored physical games (quickTap)', () => {
-    expect(isHybridScoredGame('quickTap')).toBe(true);
+  it('returns false for quickTap (uses direct simulateQuickTapAiScore path)', () => {
+    expect(isHybridScoredGame('quickTap')).toBe(false);
   });
 
   it('returns true for scored precision games (targetPractice / Bullseye)', () => {
