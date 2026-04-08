@@ -516,19 +516,24 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
       }),
     );
 
-    const precomputedAiScores = store.getState().game.pendingMinigame?.aiScores ?? {};
+    const precomputedAiScores = (store.getState().game.pendingMinigame?.aiScores ?? {}) as Record<string, number>;
+    const expectedLastFinisherId = Object.entries(precomputedAiScores).reduce(
+      (slowestId, [id, score]) =>
+        score < precomputedAiScores[slowestId] ? id : slowestId,
+      Object.keys(precomputedAiScores)[0],
+    );
 
-    // Human wins with a very high score so we can verify AI scores are from the session
+    // Human wins with a very high score so we can verify AI placements come from the
+    // precomputed session scores rather than being re-resolved near the human score.
     store.dispatch(completeMinigame({ humanScore: 9999 } as CompleteMinigamePayload));
 
-    // After completing, lohId should be human (p0 wins with score 9999)
-    expect(store.getState().game.lohId).toBe('p0');
+    const game = store.getState().game;
 
-    // All AI players should have been scored using the precomputed values (not the
-    // hybrid resolver's output, which would be anchored near the human score of 9999)
-    for (const score of Object.values(precomputedAiScores)) {
-      expect(score).toBeGreaterThanOrEqual(50);
-      expect(score).toBeLessThanOrEqual(280);
-    }
+    // After completing, lohId should be human (p0 wins with score 9999)
+    expect(game.lohId).toBe('p0');
+
+    // The last finisher among the HOH competition participants should be the AI with
+    // the lowest precomputed score captured at startMinigame time.
+    expect(game.lastHohCompFinisherId).toBe(expectedLastFinisherId);
   });
 });
