@@ -82,10 +82,15 @@ const rewardHandlers = new Map<AdPlacement, RewardHandler>();
  */
 export function initAdBridge(): void {
   window.onAdRewardGranted = (placement: string, payload?: Record<string, unknown>) => {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] reward granted: ${placement}`, payload ?? {});
+    }
     const handler = rewardHandlers.get(placement as AdPlacement);
     if (handler) {
       handler(payload);
       rewardHandlers.delete(placement as AdPlacement);
+    } else if (import.meta.env.DEV) {
+      console.log(`[ads] reward granted: ${placement} — no handler registered (ad may have been dismissed)`);
     }
   };
 }
@@ -125,14 +130,32 @@ export function canShowAd(
   const hasNoAdsPack = state.ads?.hasNoAdsPack ?? false;
 
   // Automatic ads are blocked when No Ads Pack is owned.
-  if (INTERSTITIAL_PLACEMENTS.has(placement) && hasNoAdsPack) return false;
+  if (INTERSTITIAL_PLACEMENTS.has(placement) && hasNoAdsPack) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} blocked: No Ads Pack owned`);
+    }
+    return false;
+  }
 
   // competition_retry is blocked during the final-3 week.
-  if (placement === 'competition_retry' && options?.isFinal3Week) return false;
+  if (placement === 'competition_retry' && options?.isFinal3Week) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} blocked: final-3 week`);
+    }
+    return false;
+  }
 
   // Daily-limited placements respect once-per-day constraint.
-  if (isAdDailyLimitReached(placement, state)) return false;
+  if (isAdDailyLimitReached(placement, state)) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} blocked: daily limit reached`);
+    }
+    return false;
+  }
 
+  if (import.meta.env.DEV) {
+    console.log(`[ads] ${placement} eligible`);
+  }
   return true;
 }
 
@@ -156,8 +179,16 @@ export function showInterstitial(
   options?: { isFinal3Week?: boolean },
 ): boolean {
   if (!canShowAd(placement, state, options)) return false;
-  if (!window.GameAds?.showInterstitial) return false;
+  if (!window.GameAds?.showInterstitial) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} interstitial skipped: native bridge absent`);
+    }
+    return false;
+  }
 
+  if (import.meta.env.DEV) {
+    console.log(`[ads] requesting interstitial: ${placement}`);
+  }
   dispatch(recordAdShown(placement));
   window.GameAds.showInterstitial(placement);
   return true;
@@ -184,8 +215,16 @@ export function showRewarded(
   options?: { isFinal3Week?: boolean },
 ): boolean {
   if (!canShowAd(placement, state, options)) return false;
-  if (!window.GameAds?.showRewarded) return false;
+  if (!window.GameAds?.showRewarded) {
+    if (import.meta.env.DEV) {
+      console.log(`[ads] ${placement} rewarded skipped: native bridge absent`);
+    }
+    return false;
+  }
 
+  if (import.meta.env.DEV) {
+    console.log(`[ads] requesting rewarded: ${placement}`);
+  }
   dispatch(recordAdShown(placement));
   rewardHandlers.set(placement, onReward);
   window.GameAds.showRewarded(placement);

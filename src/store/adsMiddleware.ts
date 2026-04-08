@@ -65,8 +65,14 @@ export const adsMiddleware: Middleware =
             ? (typedAction.payload as CompleteMinigamePayload)
             : null;
         const lastPlaceId = payload?.lastPlaceId;
+        if (import.meta.env.DEV) {
+          console.log('[ads] completeMinigame (loh_comp) — lastPlaceId:', lastPlaceId, '| humanId:', humanId);
+        }
         const result = next(action);
         if (lastPlaceId === humanId) {
+          if (import.meta.env.DEV) {
+            console.log('[ads] competition_retry recorded for loh (completeMinigame)');
+          }
           api.dispatch(recordLastCompLastPlace('loh'));
         }
         return result;
@@ -79,8 +85,14 @@ export const adsMiddleware: Middleware =
             ? (typedAction.payload as CompleteMinigamePayload)
             : null;
         const lastPlaceId = payload?.lastPlaceId;
+        if (import.meta.env.DEV) {
+          console.log('[ads] completeMinigame (pos_comp) — lastPlaceId:', lastPlaceId, '| humanId:', humanId);
+        }
         const result = next(action);
         if (lastPlaceId === humanId) {
+          if (import.meta.env.DEV) {
+            console.log('[ads] competition_retry recorded for pos (completeMinigame)');
+          }
           api.dispatch(recordLastCompLastPlace('pos'));
         }
         return result;
@@ -105,8 +117,13 @@ export const adsMiddleware: Middleware =
 
       let derivedLastPlace: string | null = null;
 
-      if (lastPlaceId && participants.includes(lastPlaceId)) {
-        derivedLastPlace = lastPlaceId;
+      if (lastPlaceId) {
+        // Trust the explicitly provided lastPlaceId. When participants is
+        // available, use it to validate; when absent (e.g. MinigameHost path
+        // which does not forward the full leaderboard), accept it directly.
+        if (participants.length === 0 || participants.includes(lastPlaceId)) {
+          derivedLastPlace = lastPlaceId;
+        }
       } else if (scores && winnerId) {
         const nonWinners = participants.filter((id) => id !== winnerId);
         if (nonWinners.length > 0) {
@@ -118,12 +135,26 @@ export const adsMiddleware: Middleware =
         }
       }
 
+      if (import.meta.env.DEV) {
+        console.log(
+          `[ads] applyMinigameWinner (${phase}) — lastPlaceId:`, lastPlaceId,
+          '| derivedLastPlace:', derivedLastPlace,
+          '| humanId:', humanId,
+        );
+      }
+
       const result = next(action);
 
       if (derivedLastPlace === humanId) {
         if (phase === 'loh_comp') {
+          if (import.meta.env.DEV) {
+            console.log('[ads] competition_retry recorded for loh (applyMinigameWinner)');
+          }
           api.dispatch(recordLastCompLastPlace('loh'));
         } else if (phase === 'pos_comp') {
+          if (import.meta.env.DEV) {
+            console.log('[ads] competition_retry recorded for pos (applyMinigameWinner)');
+          }
           api.dispatch(recordLastCompLastPlace('pos'));
         }
       }

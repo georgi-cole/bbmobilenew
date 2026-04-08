@@ -154,6 +154,7 @@ export default function GameScreen() {
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
+  const suppressCompRetryPromptRef = useRef(false)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -1459,10 +1460,28 @@ export default function GameScreen() {
   // Show a rewarded-ad prompt when the user finishes last in a LOH or POS
   // competition, except during the final-3 week (≤3 players alive).
   const isFinal3Week = alivePlayers.length <= 3
+  const competitionRetryInResultsEnabled = useMemo(() => {
+    if (!pendingChallenge) return false
+    const prizeType = pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH')
+    if (prizeType !== 'LOH' && prizeType !== 'POS') return false
+    const state = storeRef.current.getState()
+    return canShowAd('competition_retry', state, { isFinal3Week })
+  }, [pendingChallenge, game.phase, isFinal3Week])
   const lastDislikedPromptDateRef = useRef<string | null>(null)
   useEffect(() => {
     if (!adsState?.lastCompLastPlaceType) return
+    if (suppressCompRetryPromptRef.current) {
+      if (import.meta.env.DEV) {
+        console.log('[ads] competition_retry modal suppressed: already handled in minigame results')
+      }
+      suppressCompRetryPromptRef.current = false
+      dispatch(clearLastCompLastPlace())
+      return
+    }
     if (isFinal3Week) {
+      if (import.meta.env.DEV) {
+        console.log('[ads] competition_retry suppressed: final-3 week')
+      }
       dispatch(clearLastCompLastPlace())
       return
     }
@@ -1472,12 +1491,21 @@ export default function GameScreen() {
       adsState.lastCompLastPlaceType === 'loh'
         ? new Set(['loh_comp_announcement', 'loh_comp', 'loh_results'])
         : new Set(['pos_comp', 'pos_results'])
+    if (import.meta.env.DEV) {
+      console.log('[ads] competition_retry check — lastCompLastPlaceType:', adsState.lastCompLastPlaceType, '| phase:', game.phase, '| resultPhase:', resultPhase)
+    }
     if (game.phase === resultPhase) {
+      if (import.meta.env.DEV) {
+        console.log('[ads] competition_retry prompt shown')
+      }
       setShowCompRetryPrompt(true)
       dispatch(clearLastCompLastPlace())
       return
     }
     if (!pendingPhases.has(game.phase)) {
+      if (import.meta.env.DEV) {
+        console.log('[ads] competition_retry cleared: phase', game.phase, 'is outside pending window')
+      }
       dispatch(clearLastCompLastPlace())
     }
   }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch])
@@ -1571,20 +1599,39 @@ export default function GameScreen() {
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
   // Show a rewarded prompt when the user's social energy hits 0 (once per day).
+  // Guards: week is not 1, not final-3 week, phase is social_1 or social_2.
   const userEnergy = useAppSelector(
     (s: RootState) => (humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0),
   )
   useEffect(() => {
     if (!humanPlayer) return
-    if (userEnergy === 0) {
+    const energyIsZero = userEnergy === 0
+    const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
+    if (
+      energyIsZero &&
+      game.week !== 1 &&
+      !isFinal3Week &&
+      inSocialPhase
+    ) {
       const state = storeRef.current.getState()
       if (canShowAd('social_energy_recharge', state)) {
+        if (import.meta.env.DEV) {
+          console.log('[ads] social_energy_recharge prompt shown — week:', game.week, '| phase:', game.phase)
+        }
         setShowEnergyRechargePrompt(true)
       }
     } else {
+      if (import.meta.env.DEV && energyIsZero) {
+        console.log(
+          '[ads] social_energy_recharge suppressed — week:', game.week,
+          '| phase:', game.phase,
+          '| isFinal3Week:', isFinal3Week,
+          '| inSocialPhase:', inSocialPhase,
+        )
+      }
       setShowEnergyRechargePrompt(false)
     }
-  }, [userEnergy, humanPlayer])
+  }, [userEnergy, humanPlayer, game.week, game.phase, isFinal3Week])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
   // Show a rewarded prompt when the user's approval drops into the Disliked
@@ -2072,6 +2119,34 @@ export default function GameScreen() {
             // Fall back to deriving from current game.phase for backward compatibility.
             prizeType: pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH'),
           }}
+          competitionRetry={{
+            enabled: competitionRetryInResultsEnabled,
+            pending: adPending,
+            onWatch: (onReward) => {
+              if (adPending) return
+              setAdPending(true)
+              const state = storeRef.current.getState()
+              const requested = showRewarded(
+                'competition_retry',
+                state,
+                dispatch,
+                () => {
+                  if (import.meta.env.DEV) {
+                    console.log('[ads] competition_retry reward granted in minigame results')
+                  }
+                  onReward()
+                  setAdPending(false)
+                },
+                { isFinal3Week },
+              )
+              if (!requested) {
+                setAdPending(false)
+              }
+            },
+            onContinueWithoutRetry: () => {
+              suppressCompRetryPromptRef.current = true
+            },
+          }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);
             const aiScore = pendingChallenge.aiScores[id] ?? 0;
@@ -2214,15 +2289,24 @@ export default function GameScreen() {
               });
             }
 
-            // Compute the last-place finisher for the LOH third-nominee rule.
-            // Use computeScores with the game's actual scoringAdapter so the canonical
-            // ranking matches the results screen (handles both lowerBetter and higherBetter).
-            // For POS comps this field is unused (applyMinigameWinner only uses it in loh_comp branch).
+            // Compute the last-place finisher for this competition.
+            // For LOH: also used by applyMinigameWinner for the third-nominee rule
+            // (the worst LOH finisher becomes an eligible third nominee).
+            // For POS: needed by adsMiddleware to detect competition_retry eligibility.
             // Note: for feature-managed games (holdTheWall, glassBridge, etc.)
             // the feature thunk has already called applyMinigameWinner with its own lastPlaceId,
             // so the idempotency guard will skip this call.
-            const hohLastPlaceId = (() => {
-              if (!isHohComp) return null;
+            const compLastPlaceId = (() => {
+              if (partial && humanPlayer?.id && capturedParticipants.includes(humanPlayer.id)) {
+                if (import.meta.env.DEV) {
+                  console.log('[ads] competition_retry last place forced to human due to early exit', {
+                    humanId: humanPlayer.id,
+                    capturedGameKey,
+                    capturedPrizeType,
+                  })
+                }
+                return humanPlayer.id
+              }
               const ranked = computeScores(
                 pendingChallenge.game.scoringAdapter,
                 rawResults,
@@ -2235,7 +2319,7 @@ export default function GameScreen() {
             })();
 
             if (partial) {
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: compLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
 
@@ -2244,7 +2328,7 @@ export default function GameScreen() {
 
             if (!winnerPlayer || !sourceDomRect) {
               // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: compLastPlaceId, skipSeasonUpdate: true }));
               return;
             }
             // Defer the store mutation until after the CeremonyOverlay completes.
@@ -2267,7 +2351,7 @@ export default function GameScreen() {
               badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
             }];
             pendingWinnerDispatchRef.current = () =>
-              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: hohLastPlaceId, skipSeasonUpdate: true }));
+              dispatch(applyMinigameWinner({ winnerId: finalWinnerId, lastPlaceId: compLastPlaceId, skipSeasonUpdate: true }));
             setPendingWinnerCeremony({
               tiles,
               caption: `${winnerPlayer.name} wins ${winLabel}!`,

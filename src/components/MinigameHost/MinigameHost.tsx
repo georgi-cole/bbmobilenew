@@ -87,6 +87,12 @@ interface Props {
    * screen shows a full ranked leaderboard instead of the human's score alone.
    */
   participants?: MinigameParticipant[];
+  competitionRetry?: {
+    enabled: boolean;
+    pending?: boolean;
+    onWatch: (onReward: () => void) => void;
+    onContinueWithoutRetry?: () => void;
+  };
 }
 
 type HostPhase = 'rules' | 'countdown' | 'playing' | 'results';
@@ -117,6 +123,7 @@ export default function MinigameHost({
   skipRules = false,
   skipCountdown = false,
   participants,
+  competitionRetry,
 }: Props) {
   const [phase, setPhase] = useState<HostPhase>(skipRules ? 'countdown' : 'rules');
   const [countdown, setCountdown] = useState(3);
@@ -124,6 +131,7 @@ export default function MinigameHost({
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null);
   const [wasPartial, setWasPartial] = useState(false);
   const rankingOnly = isPlacementRankingGame(game);
+  const competitionRetryEnabled = competitionRetry?.enabled ?? false;
   const rulesGame = useMemo(
     () =>
       game.key === 'glass_bridge_brutal'
@@ -223,14 +231,29 @@ export default function MinigameHost({
       return { ...p, score, isPR };
     });
     entries.sort((a, b) => {
-      if (rankingOnly && wasPartial) {
+      // Scope the forced-last partial handling to the competition retry flow so
+      // non-retry result leaderboards keep their original ranking behavior.
+      if (competitionRetryEnabled && wasPartial) {
         if (a.isHuman !== b.isHuman) return a.isHuman ? 1 : -1;
       }
       // Sort: lower-is-better adapters sort ascending; all others sort descending.
       return lowerBetter ? a.score - b.score : b.score - a.score;
     });
     return entries;
-  }, [participants, finalValue, game.scoringAdapter, rankingOnly, wasPartial]);
+  }, [competitionRetryEnabled, participants, finalValue, game.scoringAdapter, wasPartial]);
+  const humanLastPlaceEntry = leaderboard?.[leaderboard.length - 1] ?? null;
+  const showCompetitionRetry =
+    competitionRetryEnabled && !!humanLastPlaceEntry?.isHuman;
+  const activeCompetitionRetry =
+    showCompetitionRetry && competitionRetry ? competitionRetry : null;
+
+  const handleRetryRestart = useCallback(() => {
+    setFinalValue(null);
+    setFinalTiebreakerMs(null);
+    setWasPartial(false);
+    setCountdown(3);
+    setPhase(skipCountdown ? 'playing' : 'countdown');
+  }, [skipCountdown]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
@@ -563,8 +586,33 @@ export default function MinigameHost({
             </p>
           )}
 
-          <button className="minigame-host-results-btn" onClick={handleContinue} autoFocus>
-            Continue ▶
+          {activeCompetitionRetry && (
+            <div className="minigame-host-results-retry" role="group" aria-label="Competition retry">
+              <p className="minigame-host-results-retry-copy">
+                Finished last? Watch a short ad to retry before the result is locked in.
+              </p>
+              <button
+                className="minigame-host-results-btn minigame-host-results-btn--retry"
+                onClick={() => activeCompetitionRetry.onWatch(handleRetryRestart)}
+                disabled={activeCompetitionRetry.pending}
+                autoFocus
+              >
+                {activeCompetitionRetry.pending ? 'Opening Ad…' : 'Watch Ad to Retry'}
+              </button>
+            </div>
+          )}
+
+          <button
+            className="minigame-host-results-btn"
+            onClick={() => {
+              if (showCompetitionRetry) {
+                competitionRetry?.onContinueWithoutRetry?.();
+              }
+              handleContinue();
+            }}
+            {...(!showCompetitionRetry ? { autoFocus: true } : {})}
+          >
+            {showCompetitionRetry ? 'No Thanks — Continue ▶' : 'Continue ▶'}
           </button>
         </div>
       )}

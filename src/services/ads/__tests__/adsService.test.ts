@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RootState } from '../../../store/store';
-import { showInterstitial, showRewarded } from '../adsService';
+import { canShowAd, showInterstitial, showRewarded } from '../adsService';
 
 function makeState(overrides?: Partial<RootState['ads']>): RootState {
   return {
@@ -54,5 +54,38 @@ describe('adsService bridge guards', () => {
       }),
     );
     expect(showRewardedBridge).toHaveBeenCalledWith('social_energy_recharge');
+  });
+});
+
+describe('canShowAd guard logic', () => {
+  it('blocks automatic interstitials when No Ads Pack is owned', () => {
+    expect(canShowAd('eviction_auto', makeState({ hasNoAdsPack: true }))).toBe(false);
+  });
+
+  it('does not block rewarded ads when No Ads Pack is owned', () => {
+    expect(canShowAd('social_energy_recharge', makeState({ hasNoAdsPack: true }))).toBe(true);
+    expect(canShowAd('competition_retry', makeState({ hasNoAdsPack: true }))).toBe(true);
+  });
+
+  it('blocks competition_retry during the final-3 week', () => {
+    expect(canShowAd('competition_retry', makeState(), { isFinal3Week: true })).toBe(false);
+  });
+
+  it('allows competition_retry outside the final-3 week', () => {
+    expect(canShowAd('competition_retry', makeState(), { isFinal3Week: false })).toBe(true);
+    expect(canShowAd('competition_retry', makeState())).toBe(true);
+  });
+
+  it('blocks daily-limited placements when already shown today', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    expect(
+      canShowAd('social_energy_recharge', makeState({ dailyUsage: { social_energy_recharge: today } })),
+    ).toBe(false);
+  });
+
+  it('allows daily-limited placements when last shown on a different day', () => {
+    expect(
+      canShowAd('social_energy_recharge', makeState({ dailyUsage: { social_energy_recharge: '2000-01-01' } })),
+    ).toBe(true);
   });
 });
