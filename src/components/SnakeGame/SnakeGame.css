@@ -3,14 +3,21 @@
 /* ── Root ───────────────────────────────────────────────────────────────── */
 
 .snake-root {
-  --snake-phone-width: min(92vw, 360px);
+  --snake-phone-width: min(100%, 500px);
   --snake-results-width: min(92vw, 420px);
+  --snake-dpad-size: clamp(44px, 12vw, 60px);
+  --snake-action-btn-size: clamp(28px, 7vw, 36px);
+  --snake-action-btn-main-size: clamp(36px, 9vw, 48px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 20px 20px 28px;
-  min-height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  padding: 16px 16px 28px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #1a1f2e;
 }
 
@@ -21,14 +28,16 @@
   flex-direction: column;
   align-items: center;
   width: var(--snake-phone-width);
+  max-width: 100%;
   background: linear-gradient(160deg, #2b2b3b 0%, #1a1a28 100%);
   border-radius: 24px 24px 40px 40px;
-  padding: 18px 18px 24px;
+  padding: 18px 18px 22px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.6),
     inset 0 1px 2px rgba(255, 255, 255, 0.08),
     inset 0 -2px 4px rgba(0, 0, 0, 0.4);
   border: 1px solid #3a3a50;
+  box-sizing: border-box;
 }
 
 /* ── LCD bezel ──────────────────────────────────────────────────────────── */
@@ -48,6 +57,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 4px;
+  width: 100%;
 }
 
 /* ── Canvas ─────────────────────────────────────────────────────────────── */
@@ -189,7 +199,7 @@
 /* ── Brand strip ────────────────────────────────────────────────────────── */
 
 .snake-brand {
-  margin: 10px 0 6px;
+  margin: 10px 0 4px;
   padding: 2px 12px;
   border-top: 1px solid #3a3a50;
   border-bottom: 1px solid #3a3a50;
@@ -213,7 +223,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  margin: 12px 0 8px;
+  margin: 10px 0 6px;
 }
 
 .snake-dpad-row {
@@ -227,8 +237,8 @@
 }
 
 .snake-dpad-btn {
-  width: 44px;
-  height: 44px;
+  width: var(--snake-dpad-size);
+  height: var(--snake-dpad-size);
   position: relative;
   background: linear-gradient(135deg, #3a3a50 0%, #2a2a40 100%);
   border: 2px solid #4a4a60;
@@ -282,8 +292,8 @@
 }
 
 .snake-dpad-center {
-  width: 44px;
-  height: 44px;
+  width: var(--snake-dpad-size);
+  height: var(--snake-dpad-size);
   background: radial-gradient(circle, #1a1a30 0%, #2a2a40 100%);
   border: 2px solid #3a3a50;
   border-radius: 50%;
@@ -299,8 +309,8 @@
 }
 
 .snake-action-btn {
-  width: 28px;
-  height: 28px;
+  width: var(--snake-action-btn-size);
+  height: var(--snake-action-btn-size);
   background: radial-gradient(circle, #3a3a50 0%, #2a2a40 100%);
   border: 1px solid #4a4a60;
   border-radius: 50%;
@@ -308,15 +318,15 @@
 }
 
 .snake-action-btn--main {
-  width: 36px;
-  height: 36px;
+  width: var(--snake-action-btn-main-size);
+  height: var(--snake-action-btn-main-size);
   background: radial-gradient(circle, #4a4a64 0%, #2a2a3c 100%);
 }
 
 /* ── Async waiting state ───────────────────────────────────────────────────── */
 
 .snake-waiting {
-  width: var(--snake-results-width);
+  width: min(100%, var(--snake-results-width));
   background: linear-gradient(180deg, #1f2738 0%, #171d2a 100%);
   border: 1px solid #2f3a54;
   border-radius: 16px;
@@ -407,8 +417,7 @@
 /* ── Results ────────────────────────────────────────────────────────────── */
 
 .snake-results {
-  width: 100%;
-  max-width: var(--snake-results-width);
+  width: min(100%, var(--snake-results-width));
   background: #1e2535;
   border: 1px solid #2e3550;
   border-radius: 12px;
@@ -495,17 +504,7 @@
 
 @media (max-width: 360px) {
   .snake-root {
-    --snake-phone-width: min(94vw, 300px);
-  }
-
-  .snake-dpad-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .snake-dpad-center {
-    width: 36px;
-    height: 36px;
+    --snake-phone-width: min(100%, 340px);
   }
 }
 

@@ -86,6 +86,9 @@ describe('SnakeGame competition reveal flow', () => {
     await driveGameToWaiting();
 
     expect(screen.getByText(/Some players still wrapping up/i)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /snake activity animation/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/snake game board/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/direction controls/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /competition results/i })).not.toBeInTheDocument();
 
     await act(async () => {
