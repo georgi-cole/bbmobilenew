@@ -44,6 +44,7 @@ import TimingBar from '../components/TimingBar/TimingBar';
 import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
+import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -96,6 +97,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   Minesweeps: Minesweeps as ComponentType<GenericMinigameProps>,
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
   NumberTrivia: NumberTrivia as ComponentType<GenericMinigameProps>,
+  CodeBreaker: CodeBreakerComp as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
