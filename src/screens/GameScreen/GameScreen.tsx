@@ -2159,12 +2159,13 @@ export default function GameScreen() {
                   rawValue: ordered.length - index,
                 }))
               : capturedParticipants.map((id) => ({
-                playerId: id,
-                rawValue:
-                  id === humanPlayer?.id
-                    ? rawValue
-                    : (pendingChallenge.aiScores[id] ?? rawValue),
-                // Forward time-based tiebreaker: human's comes from the minigame
+                  playerId: id,
+                  rawValue:
+                    reactCompletion?.rawResults?.[id] ??
+                    (id === humanPlayer?.id
+                      ? rawValue
+                      : (pendingChallenge.aiScores[id] ?? rawValue)),
+                  // Forward time-based tiebreaker: human's comes from the minigame
                 // (via reactCompletion.tiebreakerMs); AI tiebreakers are pre-simulated
                 // in startChallenge and stored alongside aiScores.
                 ...(id === humanPlayer?.id
