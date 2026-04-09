@@ -21,6 +21,7 @@ import gameReducer, {
   tryActivateDoubleEviction,
   commitNominees,
   finalizePendingEviction,
+  submitTieBreak,
 } from '../src/store/gameSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import type { GameState, Player, DoubleEvictionState } from '../src/types';
@@ -418,10 +419,14 @@ describe('commitNominees with Double Eviction', () => {
 describe('advance() — eviction_results with Double Eviction', () => {
   // advance() from 'live_vote' → 'eviction_results' runs the eviction logic.
   // Votes are already set before advance() is called.
-  function makeEvictionStore(votes: Record<string, string>) {
+  function makeEvictionStore(
+    votes: Record<string, string>,
+    options: { humanLoh?: boolean; publicModeEnabled?: boolean } = {},
+  ) {
+    const { humanLoh = false, publicModeEnabled = false } = options;
     // 14 players, AI LOH, 3 nominees (p1/p2/p3)
     const players: Player[] = [
-      { id: 'p0', name: 'AI LOH', avatar: '🧑', status: 'loh', isUser: false },
+      { id: 'p0', name: humanLoh ? 'Human LOH' : 'AI LOH', avatar: '🧑', status: 'loh', isUser: humanLoh },
       { id: 'p1', name: 'Nominee 1', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p2', name: 'Nominee 2', avatar: '🧑', status: 'nominated', isUser: false },
       { id: 'p3', name: 'Nominee 3', avatar: '🧑', status: 'nominated', isUser: false },
@@ -437,6 +442,7 @@ describe('advance() — eviction_results with Double Eviction', () => {
       phase: 'live_vote', // advance() from live_vote → eviction_results triggers eviction logic
       lohId: 'p0',
       nomineeIds: ['p1', 'p2', 'p3'],
+      publicModeEnabled,
       players,
       votes,
       doubleEviction: { usedCount: 1, weekActive: true, pendingSecondEviction: null },
@@ -467,6 +473,38 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(store.getState().game.voteResults).not.toBeNull();
   });
 
+  it('requires a public tie-break when the second eviction slot is tied in public mode', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p1', v3: 'p1', v4: 'p1',
+      v5: 'p2',
+      v6: 'p3',
+    }, { publicModeEnabled: true });
+
+    store.dispatch(advance());
+
+    const { awaitingTieBreak, tiedNomineeIds, pendingEviction, doubleEviction } = store.getState().game;
+    expect(pendingEviction?.evicteeId).toBe('p1');
+    expect(awaitingTieBreak).toBe(true);
+    expect(tiedNomineeIds).toEqual(['p2', 'p3']);
+    expect(doubleEviction?.pendingSecondEviction).toBeNull();
+  });
+
+  it('requires a human LOH tie-break when the second eviction slot is tied outside public mode', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p1', v3: 'p1', v4: 'p1',
+      v5: 'p2',
+      v6: 'p3',
+    }, { humanLoh: true });
+
+    store.dispatch(advance());
+
+    const { awaitingTieBreak, tiedNomineeIds, pendingEviction, doubleEviction } = store.getState().game;
+    expect(pendingEviction?.evicteeId).toBe('p1');
+    expect(awaitingTieBreak).toBe(true);
+    expect(tiedNomineeIds).toEqual(['p2', 'p3']);
+    expect(doubleEviction?.pendingSecondEviction).toBeNull();
+  });
+
   it('uses a deterministic precomputed tie-break when all three nominees are tied', () => {
     const store = makeEvictionStore({
       v0: 'p1', v1: 'p2', v2: 'p3',
@@ -476,6 +514,22 @@ describe('advance() — eviction_results with Double Eviction', () => {
     expect(pendingEviction).not.toBeNull();
     expect(doubleEviction?.pendingSecondEviction).not.toBeNull();
     expect(pendingEviction?.evicteeId).not.toBe(doubleEviction?.pendingSecondEviction?.evicteeId);
+  });
+
+  it('submitTieBreak queues the second eviction instead of replacing the first during double eviction', () => {
+    const store = makeEvictionStore({
+      v0: 'p1', v1: 'p1', v2: 'p1', v3: 'p1', v4: 'p1',
+      v5: 'p2',
+      v6: 'p3',
+    }, { publicModeEnabled: true });
+
+    store.dispatch(advance());
+    store.dispatch(submitTieBreak('p2'));
+
+    const { awaitingTieBreak, pendingEviction, doubleEviction } = store.getState().game;
+    expect(awaitingTieBreak).toBe(false);
+    expect(pendingEviction?.evicteeId).toBe('p1');
+    expect(doubleEviction?.pendingSecondEviction?.evicteeId).toBe('p2');
   });
 });
 

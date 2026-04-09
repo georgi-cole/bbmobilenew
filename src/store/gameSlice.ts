@@ -1435,6 +1435,21 @@ const gameSlice = createSlice({
       state.awaitingTieBreak = false;
       state.tiedNomineeIds = null;
       state.votes = {};
+
+      if (
+        state.doubleEviction?.weekActive &&
+        state.pendingEviction &&
+        !state.doubleEviction.pendingSecondEviction
+      ) {
+        state.doubleEviction.pendingSecondEviction = {
+          evicteeId: nomineeId,
+          evictionMessage: state.publicModeEnabled
+            ? `${evictee.name} had the lower public approval and has been eliminated from The Big Eye house. 📉`
+            : `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evictee.name}. ${evictee.name} has been eliminated from The Big Eye house. 🗳️`,
+        };
+        return;
+      }
+
       // voteResults was already shown before the tie-break prompt; clear it now.
       state.voteResults = null;
       // Defer the eviction commit until the cinematic overlay completes.
@@ -3479,6 +3494,12 @@ const gameSlice = createSlice({
             const secondId = sortedIds[1];
             const firstEvictee = state.players.find((p) => p.id === firstId);
             const secondEvictee = state.players.find((p) => p.id === secondId);
+            const firstVotes = voteCounts[firstId] ?? 0;
+            const tiedForSecond = state.nomineeIds.filter((id) => id !== firstId && (voteCounts[id] ?? 0) === (voteCounts[secondId] ?? 0));
+            const secondTieRequiresDecision =
+              (voteCounts[secondId] ?? 0) < firstVotes &&
+              tiedForSecond.length > 1;
+            const lohPlayer = state.players.find((p) => p.id === state.lohId);
 
             if (firstEvictee && secondEvictee) {
               state.voteResults = { ...voteCounts };
@@ -3487,10 +3508,15 @@ const gameSlice = createSlice({
                 evicteeId: firstId,
                 evictionMessage: `${firstEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
               };
-              state.doubleEviction.pendingSecondEviction = {
-                evicteeId: secondId,
-                evictionMessage: `${secondEvictee.name}, you have also been evicted in tonight's Double Eviction! 🚪`,
-              };
+              if (secondTieRequiresDecision && (state.publicModeEnabled || lohPlayer?.isUser)) {
+                state.awaitingTieBreak = true;
+                state.tiedNomineeIds = tiedForSecond;
+              } else {
+                state.doubleEviction.pendingSecondEviction = {
+                  evicteeId: secondId,
+                  evictionMessage: `${secondEvictee.name}, you have also been evicted in tonight's Double Eviction! 🚪`,
+                };
+              }
             }
             break;
           }
