@@ -29,6 +29,29 @@ function getProfile(
   );
 }
 
+export function rankPublicEvictionTieNominees(params: {
+  nomineeIds: string[];
+  profiles: Record<string, PlayerPublicProfile>;
+}): string[] {
+  const { nomineeIds, profiles } = params;
+  return [...nomineeIds].sort((a, b) => {
+    const profA = getProfile(a, profiles);
+    const profB = getProfile(b, profiles);
+
+    if (profA.approval !== profB.approval) return profA.approval - profB.approval;
+
+    const avgA = seasonAvg(profA);
+    const avgB = seasonAvg(profB);
+    if (Math.abs(avgA - avgB) > FLOAT_EQUALITY_EPSILON) return avgA - avgB;
+
+    if (profA.completedDirectionCount !== profB.completedDirectionCount) {
+      return profA.completedDirectionCount - profB.completedDirectionCount;
+    }
+
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+}
+
 /**
  * Resolve which tied nominee should be evicted by the public.
  *
@@ -50,23 +73,7 @@ export function resolvePublicEvictionTieNominee(params: {
     return { evicteeId: nomineeIds[0], tieBreakUsed: false };
   }
 
-  const sorted = [...nomineeIds].sort((a, b) => {
-    const profA = getProfile(a, profiles);
-    const profB = getProfile(b, profiles);
-
-    if (profA.approval !== profB.approval) return profA.approval - profB.approval;
-
-    const avgA = seasonAvg(profA);
-    const avgB = seasonAvg(profB);
-    if (Math.abs(avgA - avgB) > FLOAT_EQUALITY_EPSILON) return avgA - avgB;
-
-    if (profA.completedDirectionCount !== profB.completedDirectionCount) {
-      return profA.completedDirectionCount - profB.completedDirectionCount;
-    }
-
-    return a < b ? -1 : a > b ? 1 : 0;
-  });
-
+  const sorted = rankPublicEvictionTieNominees({ nomineeIds, profiles });
   const loser = sorted[0];
   const runnerUp = sorted[1];
   const loserProfile = getProfile(loser, profiles);

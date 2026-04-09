@@ -48,6 +48,7 @@ import {
   type MissionTask,
   type MissionRewardType,
 } from '../bb/secretMission';
+import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -1461,6 +1462,54 @@ const gameSlice = createSlice({
       // bypassing the advance() case 'week_end' branch that normally emits it.
       pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon… ✨`, 'game');
       state.phase = 'week_end';
+    },
+
+    submitDoubleEvictionTieBreak(state, action: PayloadAction<string[]>) {
+      if (!state.doubleEviction?.weekActive || !state.awaitingTieBreak) return;
+
+      const tied = state.tiedNomineeIds ?? state.nomineeIds;
+      const selectedIds = [...new Set(action.payload)].filter((id) => tied.includes(id));
+      const slotsRequired = calculateRequiredDoubleEvictionSlots(
+        tied.length,
+        Boolean(state.pendingEviction),
+      );
+      if (selectedIds.length !== slotsRequired) return;
+
+      const lohPlayer = state.players.find((p) => p.id === state.lohId);
+      const selectedPlayers = selectedIds
+        .map((id) => state.players.find((player) => player.id === id))
+        .filter((player): player is Player => Boolean(player));
+
+      if (selectedPlayers.length !== selectedIds.length) return;
+
+      state.awaitingTieBreak = false;
+      state.tiedNomineeIds = null;
+      state.votes = {};
+
+      const buildMessage = (player: Player) =>
+        state.publicModeEnabled
+          ? `${player.name} had the lower public approval and has been eliminated from The Big Eye house. 📉`
+          : `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${player.name}. ${player.name} has been eliminated from The Big Eye house. 🗳️`;
+
+      if (state.pendingEviction && !state.doubleEviction.pendingSecondEviction) {
+        state.doubleEviction.pendingSecondEviction = {
+          evicteeId: selectedPlayers[0].id,
+          evictionMessage: buildMessage(selectedPlayers[0]),
+        };
+        return;
+      }
+
+      state.pendingEviction = {
+        evicteeId: selectedPlayers[0].id,
+        evictionMessage: buildMessage(selectedPlayers[0]),
+      };
+
+      if (selectedPlayers[1]) {
+        state.doubleEviction.pendingSecondEviction = {
+          evicteeId: selectedPlayers[1].id,
+          evictionMessage: buildMessage(selectedPlayers[1]),
+        };
+      }
     },
 
     /**
@@ -3494,23 +3543,32 @@ const gameSlice = createSlice({
             const secondId = sortedIds[1];
             const firstEvictee = state.players.find((p) => p.id === firstId);
             const secondEvictee = state.players.find((p) => p.id === secondId);
-            const firstVotes = voteCounts[firstId] ?? 0;
-            const tiedForSecond = state.nomineeIds.filter((id) => id !== firstId && (voteCounts[id] ?? 0) === (voteCounts[secondId] ?? 0));
-            const secondTieRequiresDecision =
-              (voteCounts[secondId] ?? 0) < firstVotes &&
-              tiedForSecond.length > 1;
-            const lohPlayer = state.players.find((p) => p.id === state.lohId);
+            const boundaryVoteCount = voteCounts[secondId] ?? 0;
+            const guaranteedIds = state.nomineeIds.filter((id) => (voteCounts[id] ?? 0) > boundaryVoteCount);
+            const tiedBoundaryIds = state.nomineeIds.filter((id) => (voteCounts[id] ?? 0) === boundaryVoteCount);
+            const remainingBoundarySlots = Math.max(0, 2 - guaranteedIds.length);
+            const ambiguousBoundaryTie =
+              tiedBoundaryIds.length > remainingBoundarySlots && remainingBoundarySlots > 0;
 
             if (firstEvictee && secondEvictee) {
               state.voteResults = { ...voteCounts };
               state.votes = {};
-              state.pendingEviction = {
-                evicteeId: firstId,
-                evictionMessage: `${firstEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
-              };
-              if (secondTieRequiresDecision && (state.publicModeEnabled || lohPlayer?.isUser)) {
+              if (guaranteedIds.length > 0) {
+                state.pendingEviction = {
+                  evicteeId: guaranteedIds[0],
+                  evictionMessage: `${firstEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
+                };
+              } else if (!ambiguousBoundaryTie) {
+                state.pendingEviction = {
+                  evicteeId: firstId,
+                  evictionMessage: `${firstEvictee.name}, you have been eliminated from The Big Eye house. 🚪`,
+                };
+              } else {
+                state.pendingEviction = null;
+              }
+              if (ambiguousBoundaryTie) {
                 state.awaitingTieBreak = true;
-                state.tiedNomineeIds = tiedForSecond;
+                state.tiedNomineeIds = tiedBoundaryIds;
               } else {
                 state.doubleEviction.pendingSecondEviction = {
                   evicteeId: secondId,
@@ -3929,6 +3987,7 @@ export const {
   submitPovSaveTarget,
   submitHumanVote,
   submitTieBreak,
+  submitDoubleEvictionTieBreak,
   dismissVoteResults,
   dismissEvictionSplash,
   setEvictionOverlay,

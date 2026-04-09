@@ -37,7 +37,7 @@ export interface PublicEvictionTiebreakDisplay {
     nominee: Player;
     approval: number;
   }>;
-  evicteeId: string;
+  evicteeIds: string[];
   countdownMs?: number;
 }
 
@@ -47,7 +47,7 @@ export interface AnimatedVoteResultsModalProps {
   evictee?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
-  onPublicTiebreakResolved?: (evicteeId: string) => void;
+  onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
   revealIntervalMs?: number;
   postRevealDelayMs?: number;
@@ -147,15 +147,15 @@ export default function AnimatedVoteResultsModal({
   useEffect(() => {
     if (!allRevealed) return;
     const id = setTimeout(() => {
+      if (publicTiebreak) {
+        setPublicTiebreakVisible(true);
+        return;
+      }
       if (isTied) {
         if (onTiebreakerRequired) {
           onTiebreakerRequired(tiedIds);
         }
         // If tied and no tiebreaker callback is provided, do not proceed to outcome/eviction.
-        return;
-      }
-      if (publicTiebreak) {
-        setPublicTiebreakVisible(true);
         return;
       }
       setOutcomeVisible(true);
@@ -169,7 +169,7 @@ export default function AnimatedVoteResultsModal({
     const id = setTimeout(() => {
       if (!publicResolvedRef.current) {
         publicResolvedRef.current = true;
-        onPublicTiebreakResolved?.(publicTiebreak.evicteeId);
+        onPublicTiebreakResolved?.(publicTiebreak.evicteeIds);
       }
       fire();
     }, publicTiebreak.countdownMs ?? 2200);
@@ -250,7 +250,7 @@ export default function AnimatedVoteResultsModal({
           </footer>
         )}
 
-        {allRevealed && isTied && !outcomeVisible && (
+        {allRevealed && isTied && !outcomeVisible && !publicTiebreak && (
           <div className="avrm__tie-banner" role="status" aria-live="assertive">
             <span className="avrm__tie-icon">⚖️</span>
             <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>
@@ -265,7 +265,7 @@ export default function AnimatedVoteResultsModal({
             </div>
             <div className="avrm__public-tiebreak-options">
               {publicTiebreak.tiedNominees.map(({ nominee, approval }) => {
-                const isEvictee = nominee.id === publicTiebreak.evicteeId;
+                const isEvictee = publicTiebreak.evicteeIds.includes(nominee.id);
                 return (
                   <div
                     key={nominee.id}
@@ -282,7 +282,9 @@ export default function AnimatedVoteResultsModal({
               })}
             </div>
             <p className="avrm__public-tiebreak-caption">
-              The nominee with lower public approval will be eliminated.
+              {publicTiebreak.evicteeIds.length > 1
+                ? 'The nominees with lower public approval will be eliminated.'
+                : 'The nominee with lower public approval will be eliminated.'}
             </p>
           </div>
         )}

@@ -20,6 +20,7 @@ import {
   setReplacementNominee,
   submitHumanVote,
   submitTieBreak,
+  submitDoubleEvictionTieBreak,
   dismissVoteResults,
   aiReplacementRendered,
   advance,
@@ -85,10 +86,11 @@ import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
 import type { Player } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
+import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
 import { mulberry32 } from '../../store/rng'
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
 import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
-import { resolvePublicEvictionTieNominee } from '../../publicOpinion/PublicEvictionTieService'
+import { rankPublicEvictionTieNominees } from '../../publicOpinion/PublicEvictionTieService'
 import { resolvePublicSaveNominee } from '../../publicOpinion/PublicSaveService'
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
@@ -1179,15 +1181,21 @@ export default function GameScreen() {
     game.phase === 'eviction_results' &&
     Boolean(game.awaitingTieBreak) &&
     humanIsHoH &&
-    !game.voteResults &&
-    !(
-      game.doubleEviction?.weekActive &&
-      game.publicModeEnabled &&
-      !!game.pendingEviction
-    )
+    !game.voteResults
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
+  const doubleEvictionTieBreakSelectCount =
+    game.doubleEviction?.weekActive && game.awaitingTieBreak
+      ? calculateRequiredDoubleEvictionSlots(
+          (game.tiedNomineeIds ?? []).length,
+          Boolean(game.pendingEviction),
+        )
+      : 1
+  const showTieBreakMultiSelectModal =
+    showTieBreakModal &&
+    game.doubleEviction?.weekActive === true &&
+    doubleEvictionTieBreakSelectCount > 1
 
   // ── Final 3 human Final LOH eviction ─────────────────────────────────────
   // Shown when phase is final3_decision and the human player is the Final LOH.
@@ -1316,14 +1324,13 @@ export default function GameScreen() {
       !showVoteResults ||
       !game.publicModeEnabled ||
       !game.doubleEviction?.weekActive ||
-      !game.awaitingTieBreak ||
-      !game.pendingEviction
+      !game.awaitingTieBreak
     ) {
       return null
     }
 
     const tiedIds = game.tiedNomineeIds ?? []
-    if (tiedIds.length !== 2) return null
+    if (tiedIds.length < 2) return null
 
     const tiedNominees = tiedIds
       .map((id) => {
@@ -1336,18 +1343,23 @@ export default function GameScreen() {
       })
       .filter((entry): entry is { nominee: Player; approval: number } => entry !== null)
 
-    if (tiedNominees.length !== 2) return null
+    if (tiedNominees.length < 2) return null
 
-    const result = resolvePublicEvictionTieNominee({
+    const rankedIds = rankPublicEvictionTieNominees({
       nomineeIds: tiedNominees.map((entry) => entry.nominee.id),
       profiles: publicOpinionProfiles,
     })
+    const evicteeCount = calculateRequiredDoubleEvictionSlots(
+      tiedNominees.length,
+      Boolean(game.pendingEviction),
+    )
+    const evicteeIds = rankedIds.slice(0, evicteeCount)
 
-    if (!result.evicteeId) return null
+    if (evicteeIds.length !== evicteeCount) return null
 
     return {
       tiedNominees,
-      evicteeId: result.evicteeId,
+      evicteeIds,
     }
   }, [
     game.awaitingTieBreak,
@@ -1360,25 +1372,30 @@ export default function GameScreen() {
     showVoteResults,
   ])
 
-  const handlePublicEvictionTiebreakResolved = useCallback((evicteeId: string) => {
-    if (!evicteeId) return
-    dispatch(submitTieBreak(evicteeId))
+  const handlePublicEvictionTiebreakResolved = useCallback((evicteeIds: string[]) => {
+    if (evicteeIds.length === 0) return
+    dispatch(submitDoubleEvictionTieBreak(evicteeIds))
   }, [dispatch])
 
-  const aiSecondTieBreakChoiceId = useMemo(() => {
+  const aiDoubleEvictionTieBreakChoiceIds = useMemo(() => {
     if (
       !game.awaitingTieBreak ||
       !game.doubleEviction?.weekActive ||
-      !game.pendingEviction ||
       humanIsHoH ||
       game.publicModeEnabled
     ) {
-      return null
+      return []
     }
     const tiedIds = game.tiedNomineeIds ?? []
-    if (tiedIds.length === 0) return null
+    if (tiedIds.length === 0) return []
     const aiRng = mulberry32((game.seed ^ 0xdeadbeef) >>> 0)
-    return tiedIds[Math.floor(aiRng() * tiedIds.length)] ?? null
+    const tieBreakRanks = Object.fromEntries(tiedIds.map((id) => [id, aiRng()]))
+    const rankedIds = [...tiedIds].sort((a, b) => (tieBreakRanks[b] ?? 0) - (tieBreakRanks[a] ?? 0))
+    const selectionCount = calculateRequiredDoubleEvictionSlots(
+      tiedIds.length,
+      Boolean(game.pendingEviction),
+    )
+    return rankedIds.slice(0, selectionCount)
   }, [
     game.awaitingTieBreak,
     game.doubleEviction?.weekActive,
@@ -1394,16 +1411,15 @@ export default function GameScreen() {
     Boolean(game.awaitingTieBreak) &&
     !humanIsHoH &&
     !game.publicModeEnabled &&
-    !!game.pendingEviction &&
     !game.voteResults
 
   useEffect(() => {
-    if (!showAiSecondTieBreakOverlay || !aiSecondTieBreakChoiceId) return
+    if (!showAiSecondTieBreakOverlay || aiDoubleEvictionTieBreakChoiceIds.length === 0) return
     const id = window.setTimeout(() => {
-      dispatch(submitTieBreak(aiSecondTieBreakChoiceId))
+      dispatch(submitDoubleEvictionTieBreak(aiDoubleEvictionTieBreakChoiceIds))
     }, 3000)
     return () => window.clearTimeout(id)
-  }, [aiSecondTieBreakChoiceId, dispatch, showAiSecondTieBreakOverlay])
+  }, [aiDoubleEvictionTieBreakChoiceIds, dispatch, showAiSecondTieBreakOverlay])
 
   // After 3 s of "thinking" choreography, dismiss vote results for AI tiebreak.
   useEffect(() => {
@@ -2144,7 +2160,7 @@ export default function GameScreen() {
       )}
 
       {/* ── Human LOH tie-break ──────────────────────────────────────────── */}
-      {showTieBreakModal && (
+      {showTieBreakModal && !showTieBreakMultiSelectModal && (
         <TvDecisionModal
           title="Tie-Break — LOH Casts the Deciding Vote"
           subtitle={`${humanPlayer?.name}, the vote is tied! As LOH, you must break the tie.`}
@@ -2152,6 +2168,18 @@ export default function GameScreen() {
           onSelect={(id) => dispatch(submitTieBreak(id))}
           danger
           stingerMessage="TIE BREAKER CAST"
+        />
+      )}
+
+      {showTieBreakMultiSelectModal && (
+        <TvMultiSelectModal
+          title="Double Eviction Tie-Break"
+          subtitle={`${humanPlayer?.name}, choose the ${doubleEvictionTieBreakSelectCount} houseguests to eliminate.`}
+          options={tieBreakOptions}
+          maxSelect={doubleEvictionTieBreakSelectCount}
+          onConfirm={(ids) => dispatch(submitDoubleEvictionTieBreak(ids))}
+          confirmLabel="Confirm Evictions"
+          stingerMessage="DOUBLE EVICTION DECIDED"
         />
       )}
 
