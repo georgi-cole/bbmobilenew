@@ -32,11 +32,22 @@ export interface VoteTally {
   voteCount: number;
 }
 
+export interface PublicEvictionTiebreakDisplay {
+  tiedNominees: Array<{
+    nominee: Player;
+    approval: number;
+  }>;
+  evicteeIds: string[];
+  countdownMs?: number;
+}
+
 export interface AnimatedVoteResultsModalProps {
   nominees: VoteTally[];
   /** Pre-determined evictee; pass null to let the component detect ties. */
   evictee?: Player | null;
   onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
+  publicTiebreak?: PublicEvictionTiebreakDisplay | null;
+  onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
   revealIntervalMs?: number;
   postRevealDelayMs?: number;
@@ -67,6 +78,8 @@ export default function AnimatedVoteResultsModal({
   nominees,
   evictee: evicteeProp = null,
   onTiebreakerRequired,
+  publicTiebreak = null,
+  onPublicTiebreakResolved,
   onDone,
   revealIntervalMs = 700,
   postRevealDelayMs = 1000,
@@ -74,8 +87,10 @@ export default function AnimatedVoteResultsModal({
 }: AnimatedVoteResultsModalProps) {
   const [revealStep, setRevealStep] = useState(0);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
+  const [publicTiebreakVisible, setPublicTiebreakVisible] = useState(false);
   const [countdown, setCountdown] = useState(Math.ceil(countdownMs / 1000));
   const firedRef = useRef(false);
+  const publicResolvedRef = useRef(false);
 
   const totalVotes = useMemo(
     () => nominees.reduce((s, t) => s + t.voteCount, 0),
@@ -132,6 +147,10 @@ export default function AnimatedVoteResultsModal({
   useEffect(() => {
     if (!allRevealed) return;
     const id = setTimeout(() => {
+      if (publicTiebreak) {
+        setPublicTiebreakVisible(true);
+        return;
+      }
       if (isTied) {
         if (onTiebreakerRequired) {
           onTiebreakerRequired(tiedIds);
@@ -144,6 +163,19 @@ export default function AnimatedVoteResultsModal({
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRevealed]);
+
+  useEffect(() => {
+    if (!publicTiebreakVisible || !publicTiebreak) return;
+    const id = setTimeout(() => {
+      if (!publicResolvedRef.current) {
+        publicResolvedRef.current = true;
+        onPublicTiebreakResolved?.(publicTiebreak.evicteeIds);
+      }
+      fire();
+    }, publicTiebreak.countdownMs ?? 2200);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);
 
   // Countdown after outcome is visible.
   useEffect(() => {
@@ -218,10 +250,42 @@ export default function AnimatedVoteResultsModal({
           </footer>
         )}
 
-        {allRevealed && isTied && !outcomeVisible && (
+        {allRevealed && isTied && !outcomeVisible && !publicTiebreak && (
           <div className="avrm__tie-banner" role="status" aria-live="assertive">
             <span className="avrm__tie-icon">⚖️</span>
             <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>
+          </div>
+        )}
+
+        {publicTiebreakVisible && publicTiebreak && (
+          <div className="avrm__public-tiebreak" role="status" aria-live="assertive">
+            <div className="avrm__public-tiebreak-header">
+              <span className="avrm__tie-icon">📉</span>
+              <span className="avrm__tie-text">Public approval breaks the tie.</span>
+            </div>
+            <div className="avrm__public-tiebreak-options">
+              {publicTiebreak.tiedNominees.map(({ nominee, approval }) => {
+                const isEvictee = publicTiebreak.evicteeIds.includes(nominee.id);
+                return (
+                  <div
+                    key={nominee.id}
+                    className={[
+                      'avrm__public-tiebreak-option',
+                      isEvictee ? 'avrm__public-tiebreak-option--evictee' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
+                    <PlayerAvatar player={nominee} size="sm" showEvictedStyle={false} />
+                    <span className="avrm__public-tiebreak-name">{nominee.name}</span>
+                    <span className="avrm__public-tiebreak-approval">{approval}% approval</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="avrm__public-tiebreak-caption">
+              {publicTiebreak.evicteeIds.length > 1
+                ? 'The nominees with lower public approval will be eliminated.'
+                : 'The nominee with lower public approval will be eliminated.'}
+            </p>
           </div>
         )}
       </div>
