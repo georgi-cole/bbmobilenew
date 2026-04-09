@@ -20,8 +20,8 @@ export interface AdsState {
   dailyUsage: Record<string, string>;
   /**
    * Tracks the last competition where the user finished in last place.
-   * Set by the adsMiddleware so GameScreen can show a competition_retry prompt.
-   * Cleared once the prompt is shown or the phase changes past loh_results / pos_results.
+   * Set by the adsMiddleware as a transient marker. Retry UI now lives in the
+   * competition scoreboard/results flow, and GameScreen clears this legacy flag.
    */
   lastCompLastPlaceType: 'loh' | 'pos' | null;
 }
@@ -96,15 +96,14 @@ const adsSlice = createSlice({
 
     /**
      * Record that the user finished last in a competition (LOH or POS).
-     * Used by the adsMiddleware to trigger the competition_retry prompt.
+     * Used by the adsMiddleware to mark retry eligibility for the current result.
      */
     recordLastCompLastPlace(state, action: PayloadAction<'loh' | 'pos'>) {
       state.lastCompLastPlaceType = action.payload;
     },
 
     /**
-     * Clear the last competition last-place record (after the prompt is shown
-     * or the phase moves on).
+     * Clear the transient last-competition last-place record.
      */
     clearLastCompLastPlace(state) {
       state.lastCompLastPlaceType = null;

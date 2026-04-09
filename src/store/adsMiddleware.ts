@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  *  1. Detect when the user finishes last in a LOH or POS competition and
- *     record it so GameScreen can show a competition_retry prompt.
+ *     record it as a transient competition_retry marker.
  *
  * This middleware reads pre-action state (phase / players) before calling
  * next(action) to avoid depending on the post-action state shape.
