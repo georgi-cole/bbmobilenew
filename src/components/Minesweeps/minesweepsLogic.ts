@@ -3,6 +3,10 @@ export const MINESWEEPS_COLS = 9;
 export const MINESWEEPS_MINES = 10;
 export const MINESWEEPS_SCORE_SCALE = 1000;
 const MINESWEEPS_PARTIAL_PROGRESS_CAP = 50;
+const MINESWEEPS_WIN_SCORE_FLOOR = 650;
+const MINESWEEPS_WIN_SCORE_CEILING = 980;
+const MINESWEEPS_FAST_CLEAR_MS = 45_000;
+const MINESWEEPS_SLOW_CLEAR_MS = 180_000;
 
 export interface MinesweepsCell {
   mine: boolean;
@@ -31,6 +35,7 @@ interface FinalScoreOptions {
   won: boolean;
   revealedSafeCells: number;
   totalSafeCells: number;
+  elapsedMs?: number;
 }
 
 function cloneCell(cell: MinesweepsCell): MinesweepsCell {
@@ -193,8 +198,17 @@ export function computeFinalScore({
   won,
   revealedSafeCells,
   totalSafeCells,
+  elapsedMs = 0,
 }: FinalScoreOptions): number {
-  if (won) return MINESWEEPS_SCORE_SCALE;
+  if (won) {
+    const clampedElapsedMs = Math.max(0, elapsedMs);
+    const slowWindow = Math.max(1, MINESWEEPS_SLOW_CLEAR_MS - MINESWEEPS_FAST_CLEAR_MS);
+    const paceRatio = 1 - Math.min(1, Math.max(0, clampedElapsedMs - MINESWEEPS_FAST_CLEAR_MS) / slowWindow);
+    return Math.round(
+      MINESWEEPS_WIN_SCORE_FLOOR +
+      paceRatio * (MINESWEEPS_WIN_SCORE_CEILING - MINESWEEPS_WIN_SCORE_FLOOR),
+    );
+  }
   if (totalSafeCells <= 0) return 0;
   const rawScore = Math.round(
     (revealedSafeCells / totalSafeCells) * MINESWEEPS_PARTIAL_PROGRESS_CAP,

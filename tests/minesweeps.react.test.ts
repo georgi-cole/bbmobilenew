@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getMinigameAiModel } from '../src/ai/competition';
 import { getGame } from '../src/minigames/registry';
 import reactComponents from '../src/minigames/reactComponents';
 import {
@@ -52,8 +53,18 @@ describe('minesweeps logic helpers', () => {
         won: true,
         revealedSafeCells: 71,
         totalSafeCells: 71,
+        elapsedMs: 15_000,
       }),
-    ).toBe(1000);
+    ).toBe(980);
+
+    expect(
+      computeFinalScore({
+        won: true,
+        revealedSafeCells: 71,
+        totalSafeCells: 71,
+        elapsedMs: 180_000,
+      }),
+    ).toBe(650);
 
     expect(
       computeFinalScore({
@@ -73,5 +84,12 @@ describe('minesweeps logic helpers', () => {
         totalSafeCells: 10,
       }),
     ).toBe(1000);
+  });
+
+  it('registers a competitive AI score range for minesweeps clears', () => {
+    expect(getMinigameAiModel('minesweeps')).toMatchObject({
+      minScore: 520,
+      maxScore: 980,
+    });
   });
 });
