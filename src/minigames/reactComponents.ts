@@ -37,6 +37,7 @@ import TrapAuction from '../components/TrapAuction/TrapAuction';
 import TimingBar from '../components/TimingBar/TimingBar';
 import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
+import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -49,7 +50,12 @@ export interface GenericMinigameProps {
   onFinish?: (
     value: number,
     tiebreakerMs?: number,
-    completion?: { authoritativeWinnerId?: string | null },
+    completion?: {
+      authoritativeWinnerId?: string | null;
+      rawValue?: number;
+      rawResults?: Record<string, number>;
+      tiebreakerMs?: number;
+    },
   ) => void;
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number;
@@ -83,6 +89,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   TimingBar: TimingBar as ComponentType<GenericMinigameProps>,
   Minesweeps: Minesweeps as ComponentType<GenericMinigameProps>,
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
+  NumberTrivia: NumberTrivia as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
