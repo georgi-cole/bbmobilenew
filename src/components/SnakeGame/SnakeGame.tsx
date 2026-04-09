@@ -661,8 +661,13 @@ export default function SnakeGame({
               <div className="snake-mini-scanlines" />
             </div>
           </div>
-          {showFastForward && (
-            <button className="snake-btn snake-btn--ff" onClick={handleFastForward}>
+          {(showFastForward || isFastForwarding) && (
+            <button
+              className="snake-btn snake-btn--ff"
+              onClick={handleFastForward}
+              disabled={isFastForwarding}
+              aria-label={isFastForwarding ? 'Fast forwarding rankings' : 'Fast forward ranking reveal'}
+            >
               {isFastForwarding ? 'Fast forwarding…' : 'Fast forward'}
             </button>
           )}

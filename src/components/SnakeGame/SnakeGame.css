@@ -179,6 +179,11 @@
   background: #ebca54;
 }
 
+.snake-btn--ff:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 /* ── Brand strip ────────────────────────────────────────────────────────── */
 
 .snake-brand {
