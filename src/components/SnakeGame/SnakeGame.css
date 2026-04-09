@@ -7,7 +7,7 @@
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 20px;
+  padding: 20px 20px 28px;
   min-height: 100%;
   background: #1a1f2e;
 }
@@ -18,10 +18,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 240px;
+  width: min(92vw, 360px);
   background: linear-gradient(160deg, #2b2b3b 0%, #1a1a28 100%);
   border-radius: 24px 24px 40px 40px;
-  padding: 16px 16px 24px;
+  padding: 18px 18px 24px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.6),
     inset 0 1px 2px rgba(255, 255, 255, 0.08),
@@ -167,6 +167,18 @@
   background: #3a8eef;
 }
 
+.snake-btn--ff {
+  background: #f2d46b;
+  color: #1f2535;
+  border-color: #d6b94f;
+  font-size: 0.8rem;
+  padding: 9px 18px;
+}
+
+.snake-btn--ff:hover {
+  background: #ebca54;
+}
+
 /* ── Brand strip ────────────────────────────────────────────────────────── */
 
 .snake-brand {
@@ -294,11 +306,102 @@
   background: radial-gradient(circle, #4a4a64 0%, #2a2a3c 100%);
 }
 
+/* ── Async waiting state ───────────────────────────────────────────────────── */
+
+.snake-waiting {
+  width: min(92vw, 420px);
+  background: linear-gradient(180deg, #1f2738 0%, #171d2a 100%);
+  border: 1px solid #2f3a54;
+  border-radius: 16px;
+  padding: 20px 22px 22px;
+  color: #e3ecf5;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.snake-waiting-title {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 1px;
+  color: #f7f3df;
+}
+
+.snake-waiting-copy {
+  margin: 0 0 18px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #c8d3e3;
+}
+
+.snake-mini-shell {
+  width: min(100%, 240px);
+  margin: 0 auto 16px;
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #30384b 0%, #242c3c 100%);
+  border: 1px solid #434e6d;
+}
+
+.snake-mini-lcd {
+  position: relative;
+  overflow: hidden;
+  height: 104px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
+    #b7d378;
+}
+
+.snake-mini-food {
+  position: absolute;
+  top: 18px;
+  right: 42px;
+  width: 10px;
+  height: 10px;
+  background: #202020;
+  border-radius: 2px;
+  animation: snake-mini-food-blink 1.2s ease-in-out infinite;
+}
+
+.snake-mini-snake {
+  position: absolute;
+  top: 50px;
+  left: 18px;
+  display: flex;
+  gap: 4px;
+  animation: snake-mini-slither 2.4s steps(4, end) infinite;
+}
+
+.snake-mini-segment {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #2d2d2d;
+}
+
+.snake-mini-segment--head {
+  background: #111;
+}
+
+.snake-mini-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.07) 0,
+    rgba(0, 0, 0, 0.07) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
 /* ── Results ────────────────────────────────────────────────────────────── */
 
 .snake-results {
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
   background: #1e2535;
   border: 1px solid #2e3550;
   border-radius: 12px;
@@ -385,7 +488,7 @@
 
 @media (max-width: 360px) {
   .snake-phone {
-    width: 200px;
+    width: min(94vw, 300px);
   }
 
   .snake-dpad-btn {
@@ -396,5 +499,35 @@
   .snake-dpad-center {
     width: 36px;
     height: 36px;
+  }
+}
+
+@keyframes snake-mini-slither {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(28px, 0);
+  }
+  50% {
+    transform: translate(28px, -18px);
+  }
+  75% {
+    transform: translate(64px, -18px);
+  }
+  100% {
+    transform: translate(64px, 12px);
+  }
+}
+
+@keyframes snake-mini-food-blink {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
   }
 }

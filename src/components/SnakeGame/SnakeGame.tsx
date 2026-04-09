@@ -4,7 +4,8 @@
  * Supports two rendering modes:
  *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
  *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
- *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(score)`.
+ *  2. MinigameHost (challenge) path: receives `participantIds` + `onFinish`;
+ *     reveals a local leaderboard, then calls `onFinish(score)` after Continue.
  *
  * Presentation: Nokia 3310-style retro phone shell with a green LCD display.
  * Controls: keyboard (Arrow/WASD) + on-screen D-pad + swipe gestures.
@@ -42,13 +43,16 @@ const POINTS_PER_FOOD = 10;
 const SCORE_SCALE = 1000;
 /** Raw score cap before normalisation. */
 const RAW_SCORE_CAP = 100;
+const RESULTS_REVEAL_MS = 10_000;
+const FAST_FORWARD_DELAY_MS = 4_000;
+const FAST_FORWARD_RESOLVE_MS = 2_000;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Vec2 = { x: number; y: number };
-type GamePhase = 'ready' | 'playing' | 'over' | 'results';
+type GamePhase = 'ready' | 'playing' | 'over' | 'waiting' | 'results';
 
 interface ScoreEntry {
   id: string;
@@ -71,6 +75,8 @@ interface Props {
   seed?: number;
   /** When true the game starts immediately on mount. */
   autoStart?: boolean;
+  /** Hosted competition participant ids for local leaderboard display. */
+  participantIds?: string[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,10 +92,14 @@ export default function SnakeGame({
   session,
   players = [],
   onFinish,
+  seed = 0,
   autoStart = false,
+  participantIds = [],
 }: Props) {
   const dispatch = useAppDispatch();
-  const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
+  const storePlayers = useAppSelector((s) => s.game.players);
+  const roster = players.length > 0 ? players : storePlayers;
+  const humanId = roster.find((p) => p.isUser)?.id;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +107,8 @@ export default function SnakeGame({
   const [foodEaten, setFoodEaten] = useState(0);
   const [snakeLength, setSnakeLength] = useState(1);
   const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [showFastForward, setShowFastForward] = useState(false);
+  const [isFastForwarding, setIsFastForwarding] = useState(false);
 
   // ── Refs (game loop internals — never cause re-renders) ────────────────────
 
@@ -113,11 +125,54 @@ export default function SnakeGame({
   const endGameRef = useRef<(() => void) | null>(null);
   /** Timeout id for the post-game-over delay in endGame; cleared on unmount. */
   const endGameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Timeout id for revealing the leaderboard after the waiting animation. */
+  const resultsRevealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Timeout id for showing the fast-forward affordance. */
+  const fastForwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep phaseRef in sync with React state for use inside event handlers
   useEffect(() => {
     gamePhaseRef.current = gamePhase;
   }, [gamePhase]);
+
+  const clearWaitingTimers = useCallback(() => {
+    if (resultsRevealTimeoutRef.current !== null) {
+      clearTimeout(resultsRevealTimeoutRef.current);
+      resultsRevealTimeoutRef.current = null;
+    }
+    if (fastForwardTimeoutRef.current !== null) {
+      clearTimeout(fastForwardTimeoutRef.current);
+      fastForwardTimeoutRef.current = null;
+    }
+  }, []);
+
+  const revealResults = useCallback(() => {
+    clearWaitingTimers();
+    setShowFastForward(false);
+    setIsFastForwarding(false);
+    setGamePhase('results');
+  }, [clearWaitingTimers]);
+
+  const beginLeaderboardReveal = useCallback((ranked: ScoreEntry[]) => {
+    setScores(ranked);
+
+    if (ranked.length <= 1) {
+      setGamePhase('results');
+      return;
+    }
+
+    setShowFastForward(false);
+    setIsFastForwarding(false);
+    setGamePhase('waiting');
+
+    fastForwardTimeoutRef.current = setTimeout(() => {
+      setShowFastForward(true);
+    }, FAST_FORWARD_DELAY_MS);
+
+    resultsRevealTimeoutRef.current = setTimeout(() => {
+      revealResults();
+    }, RESULTS_REVEAL_MS);
+  }, [revealResults]);
 
   // ── Canvas drawing ─────────────────────────────────────────────────────────
 
@@ -235,7 +290,7 @@ export default function SnakeGame({
           resolvedAiScores = {};
           for (const id of session.participants) {
             if (id === humanId) continue;
-            const p = players.find((pl) => pl.id === id);
+            const p = roster.find((pl) => pl.id === id);
             resolvedAiScores[id] = simulateSnakeAiScore({
               sessionSeed: session.seed,
               playerId: id,
@@ -252,7 +307,7 @@ export default function SnakeGame({
         };
 
         const entries: ScoreEntry[] = session.participants.map((id) => {
-          const p = players.find((pl) => pl.id === id);
+          const p = roster.find((pl) => pl.id === id);
           const isHuman = id === humanId;
           const score = allScores[id] ?? 0;
           // Reverse-engineer food count for display: score / SCORE_SCALE * RAW_SCORE_CAP / POINTS_PER_FOOD
@@ -269,14 +324,45 @@ export default function SnakeGame({
         });
 
         const ranked = [...entries].sort((a, b) => b.score - a.score);
-        setScores(ranked);
-        setGamePhase('results');
+        beginLeaderboardReveal(ranked);
       } else {
-        // MinigameHost challenge path
-        if (onFinish) onFinish(humanScore);
+        const activeParticipantIds = participantIds.length > 0
+          ? participantIds
+          : (humanId ? [humanId] : []);
+
+        if (activeParticipantIds.length <= 1) {
+          if (onFinish) onFinish(humanScore);
+          return;
+        }
+
+        const ranked = activeParticipantIds
+          .map((id) => {
+            const p = roster.find((pl) => pl.id === id);
+            const isHuman = id === humanId;
+            const score = isHuman
+              ? humanScore
+              : simulateSnakeAiScore({
+                  sessionSeed: seed,
+                  playerId: id,
+                  profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
+                });
+
+            return {
+              id,
+              name: p?.name ?? id,
+              score,
+              foodEaten: isHuman
+                ? humanFood
+                : Math.round((score / SCORE_SCALE) * RAW_SCORE_CAP / POINTS_PER_FOOD),
+              isHuman,
+            };
+          })
+          .sort((a, b) => b.score - a.score);
+
+        beginLeaderboardReveal(ranked);
       }
     }, 1200);
-  }, [session, humanId, players, onFinish]);
+  }, [session, humanId, roster, onFinish, beginLeaderboardReveal, participantIds, seed]);
 
   // Keep endGameRef pointing to the latest endGame closure so tick can call
   // it without capturing a stale reference (avoids circular useCallback deps).
@@ -300,6 +386,10 @@ export default function SnakeGame({
 
     setFoodEaten(0);
     setSnakeLength(1);
+    setScores([]);
+    setShowFastForward(false);
+    setIsFastForwarding(false);
+    clearWaitingTimers();
     setGamePhase('playing');
     gamePhaseRef.current = 'playing';
 
@@ -307,7 +397,7 @@ export default function SnakeGame({
     draw();
 
     tickRef.current = setInterval(tick, TICK_MS);
-  }, [draw, placeFood, tick]);
+  }, [clearWaitingTimers, draw, placeFood, tick]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -318,8 +408,9 @@ export default function SnakeGame({
       if (endGameTimeoutRef.current !== null) {
         clearTimeout(endGameTimeoutRef.current);
       }
+      clearWaitingTimers();
     };
-  }, []);
+  }, [clearWaitingTimers]);
 
   // Auto-start support
   useEffect(() => {
@@ -432,12 +523,27 @@ export default function SnakeGame({
   // ── Dispatch on "Continue" ─────────────────────────────────────────────────
 
   const handleDone = useCallback(() => {
-    if (!session) return;
     const humanScore = normaliseScore(foodEatenRef.current);
-    const lastPlaceId = scores.length > 0 ? scores[scores.length - 1].id : undefined;
-    const payload: CompleteMinigamePayload = { humanScore, lastPlaceId };
-    dispatch(completeMinigame(payload));
-  }, [dispatch, scores, session]);
+    if (session) {
+      const lastPlaceId = scores.length > 0 ? scores[scores.length - 1].id : undefined;
+      const payload: CompleteMinigamePayload = { humanScore, lastPlaceId };
+      dispatch(completeMinigame(payload));
+      return;
+    }
+    if (onFinish) onFinish(humanScore);
+  }, [dispatch, onFinish, scores, session]);
+
+  const handleFastForward = useCallback(() => {
+    if (gamePhase !== 'waiting' || isFastForwarding) return;
+    if (resultsRevealTimeoutRef.current !== null) {
+      clearTimeout(resultsRevealTimeoutRef.current);
+    }
+    setShowFastForward(false);
+    setIsFastForwarding(true);
+    resultsRevealTimeoutRef.current = setTimeout(() => {
+      revealResults();
+    }, FAST_FORWARD_RESOLVE_MS);
+  }, [gamePhase, isFastForwarding, revealResults]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -535,6 +641,33 @@ export default function SnakeGame({
           <div className="snake-action-btn" />
         </div>
       </div>
+
+      {gamePhase === 'waiting' && (
+        <div className="snake-waiting" role="status" aria-live="polite">
+          <h2 className="snake-waiting-title">Some players still wrapping up…</h2>
+          <p className="snake-waiting-copy">
+            This challenge resolves asynchronously. Rankings unlock once every player posts
+            their run.
+          </p>
+          <div className="snake-mini-shell" aria-hidden="true">
+            <div className="snake-mini-lcd">
+              <div className="snake-mini-food" />
+              <div className="snake-mini-snake">
+                <span className="snake-mini-segment snake-mini-segment--head" />
+                <span className="snake-mini-segment" />
+                <span className="snake-mini-segment" />
+                <span className="snake-mini-segment" />
+              </div>
+              <div className="snake-mini-scanlines" />
+            </div>
+          </div>
+          {showFastForward && (
+            <button className="snake-btn snake-btn--ff" onClick={handleFastForward}>
+              {isFastForwarding ? 'Fast forwarding…' : 'Fast forward'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Results screen (shown outside the phone body for readability) */}
       {gamePhase === 'results' && scores.length > 0 && (
