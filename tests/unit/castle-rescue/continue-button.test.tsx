@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, createEvent } from '@testing-library/react';
 import CastleRescueGame from '../../../src/minigames/castleRescue/CastleRescueGame';
 
 // ── Canvas + rAF stubs ─────────────────────────────────────────────────────────
@@ -104,6 +104,10 @@ async function renderCompleted(onFinish?: (score: number) => void) {
   }
 }
 
+function renderActiveGame() {
+  render(<CastleRescueGame seed={42} autoStart={false} />);
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('CastleRescueGame — Continue / Play Again button', () => {
@@ -153,5 +157,28 @@ describe('CastleRescueGame — Continue / Play Again button', () => {
     await renderCompleted(vi.fn());
     const canvas = screen.getByLabelText('Castle Rescue platformer game');
     expect(canvas).toHaveStyle({ pointerEvents: 'none' });
+  });
+
+  it('renders touch controls with selection and callout suppression styles', () => {
+    renderActiveGame();
+    const moveLeftBtn = screen.getByRole('button', { name: /move left/i });
+    const inlineStyle = moveLeftBtn.getAttribute('style') ?? '';
+
+    expect(inlineStyle).toContain('touch-action: none');
+    expect(inlineStyle).toContain('user-select: none');
+    expect(inlineStyle).toContain('-webkit-user-select: none');
+  });
+
+  it('prevents context-menu and drag behavior on touch controls', () => {
+    renderActiveGame();
+    const jumpBtn = screen.getByRole('button', { name: /jump/i });
+
+    const contextMenuEvent = createEvent.contextMenu(jumpBtn);
+    fireEvent(jumpBtn, contextMenuEvent);
+    expect(contextMenuEvent.defaultPrevented).toBe(true);
+
+    const dragStartEvent = createEvent.dragStart(jumpBtn);
+    fireEvent(jumpBtn, dragStartEvent);
+    expect(dragStartEvent.defaultPrevented).toBe(true);
   });
 });

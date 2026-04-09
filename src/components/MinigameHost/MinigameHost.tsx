@@ -65,6 +65,7 @@ export interface MinigameParticipant {
 export interface ReactMinigameCompletion {
   authoritativeWinnerId?: string | null;
   rawValue?: number;
+  rawResults?: Record<string, number>;
   /** Optional time-based tie-breaker in ms (lower = faster = better rank). */
   tiebreakerMs?: number;
 }
@@ -502,6 +503,7 @@ export default function MinigameHost({
                   seed={seed}
                   autoStart={true}
                   participantIds={participantIds}
+                  participants={participants}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
                     if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
                       onDone(value, false, completion);

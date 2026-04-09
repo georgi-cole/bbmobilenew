@@ -74,6 +74,10 @@ interface Props {
   onComplete: (completion?: ReactMinigameCompletion) => void;
 }
 
+type ResultsRowStyle = CSSProperties & {
+  '--mc-row-index': number;
+};
+
 export default function MemoryColorsComp({
   participantIds,
   participants,
@@ -256,41 +260,45 @@ export default function MemoryColorsComp({
           <div className="mc-results-title">🧠 Memory Colors</div>
           <div className="mc-results-subtitle">20-color pool • 3 mistakes max</div>
 
-          <ol className="mc-results-list">
-            {ranking.map((id, i) => {
-              const r = allResults[id];
-              const isHuman = id === mc.humanPlayerId;
-              const isWinner = i === 0;
-              const isLast = i === ranking.length - 1;
-              const furthestRound = r?.furthestRoundReached ?? r?.roundsCleared ?? 0;
-              return (
-                <li
-                  key={id}
-                  className={[
-                    'mc-results-row',
-                    isHuman ? 'mc-results-row--you' : '',
-                    isWinner ? 'mc-results-row--winner' : '',
-                    isLast ? 'mc-results-row--last' : '',
-                  ].filter(Boolean).join(' ')}
-                >
-                  <span className="mc-results-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
-                  <span className="mc-results-name">
-                    {getPlayerName(id)}
-                    {isHuman && <span className="mc-results-you"> (You)</span>}
-                    {isWinner && <span className="mc-results-badge mc-results-badge--win">🏆 Winner</span>}
-                    {isLast && ranking.length > 1 && <span className="mc-results-badge mc-results-badge--last">⬇ Last Place</span>}
-                  </span>
-                  {r && (
-                    <span className="mc-results-score">
-                      Round {furthestRound}
-                      <span className="mc-results-detail"> • {r.mistakesUsed}/{MAX_MISTAKES} mistakes</span>
-                      <span className="mc-results-detail"> • {(r.totalResponseMs / 1000).toFixed(1)}s</span>
+          <div className="mc-results-scroll" role="region" aria-label="Final standings">
+            <ol className="mc-results-list">
+              {ranking.map((id, i) => {
+                const r = allResults[id];
+                const isHuman = id === mc.humanPlayerId;
+                const isWinner = i === 0;
+                const isLast = i === ranking.length - 1;
+                const furthestRound = r?.furthestRoundReached ?? r?.roundsCleared ?? 0;
+                const rowStyle: ResultsRowStyle = { '--mc-row-index': i };
+                return (
+                  <li
+                    key={id}
+                    className={[
+                      'mc-results-row',
+                      isHuman ? 'mc-results-row--you' : '',
+                      isWinner ? 'mc-results-row--winner' : '',
+                      isLast ? 'mc-results-row--last' : '',
+                    ].filter(Boolean).join(' ')}
+                    style={rowStyle}
+                  >
+                    <span className="mc-results-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                    <span className="mc-results-name">
+                      {getPlayerName(id)}
+                      {isHuman && <span className="mc-results-you"> (You)</span>}
+                      {isWinner && <span className="mc-results-badge mc-results-badge--win">🏆 Winner</span>}
+                      {isLast && ranking.length > 1 && <span className="mc-results-badge mc-results-badge--last">⬇ Last Place</span>}
                     </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
+                    {r && (
+                      <span className="mc-results-score">
+                        Round {furthestRound}
+                        <span className="mc-results-detail"> • {r.mistakesUsed}/{MAX_MISTAKES} mistakes</span>
+                        <span className="mc-results-detail"> • {(r.totalResponseMs / 1000).toFixed(1)}s</span>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
 
           <button className="mc-btn mc-btn--primary mc-btn--done" onClick={handleDone} autoFocus>
             Continue ▶

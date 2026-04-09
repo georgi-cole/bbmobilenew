@@ -183,6 +183,7 @@ export function createInitialGameState(): GameState {
     posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
+    povProtectedIds: [],
     awaitingNominations: false,
     pendingNominee1Id: null,
     awaitingPovDecision: false,
@@ -258,6 +259,40 @@ function pushEvent(
 function formatNameList(names: string[]): string {
   if (names.length <= 2) return names.join(' and ');
   return names.join(', ');
+}
+
+function getPovProtectedIds(state: GameState): string[] {
+  const ids = new Set<string>(state.povProtectedIds ?? []);
+  if (state.povSavedId) ids.add(state.povSavedId);
+  return [...ids];
+}
+
+function addPovProtectedId(state: GameState, playerId: string | null | undefined) {
+  if (!playerId) return;
+  const ids = new Set(getPovProtectedIds(state));
+  ids.add(playerId);
+  state.povProtectedIds = [...ids];
+}
+
+function getReplacementEligiblePlayers(
+  state: GameState,
+  alivePlayers: Player[],
+  neededCount = 1,
+): Player[] {
+  const baseEligible = alivePlayers.filter(
+    (pl) =>
+      pl.id !== state.lohId &&
+      pl.id !== state.posWinnerId &&
+      !state.nomineeIds.includes(pl.id),
+  );
+  const protectedIds = new Set(getPovProtectedIds(state));
+  const nonProtected = baseEligible.filter((player) => !protectedIds.has(player.id));
+  return nonProtected.length >= neededCount ? nonProtected : baseEligible;
+}
+
+function isEligibleReplacementNominee(state: GameState, playerId: string, neededCount = 1): boolean {
+  const alivePlayers = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  return getReplacementEligiblePlayers(state, alivePlayers, neededCount).some((player) => player.id === playerId);
 }
 
 function pushPovCompetitionAnnouncement(state: GameState) {
@@ -1044,7 +1079,7 @@ const gameSlice = createSlice({
         id === state.lohId ||
         id === state.posWinnerId ||
         state.nomineeIds.includes(id) ||
-        id === state.povSavedId
+        !isEligibleReplacementNominee(state, id)
       ) {
         return;
       }
@@ -1271,6 +1306,7 @@ const gameSlice = createSlice({
           const removedNames = oldNominees.map((n) => n.name).join(' and ');
           state.nomineeIds = [];
           state.povSavedId = null;
+          state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
           pushEvent(
             state,
             `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`,
@@ -1316,6 +1352,7 @@ const gameSlice = createSlice({
       state.awaitingPovSaveTarget = false;
       // Track the saved player so they cannot be immediately re-nominated as the replacement
       state.povSavedId = saveId;
+      addPovProtectedId(state, saveId);
       pushEvent(
         state,
         `${posWinner.name} used the power on ${savedPlayer.name}! 🛡️`,
@@ -1334,13 +1371,7 @@ const gameSlice = createSlice({
         } else {
           // AI holder names replacement
           const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-          const eligible = alive.filter(
-            (pl) =>
-              pl.id !== state.lohId &&
-              pl.id !== state.posWinnerId &&
-              !state.nomineeIds.includes(pl.id) &&
-              pl.id !== saveId,
-          );
+          const eligible = getReplacementEligiblePlayers(state, alive);
           if (eligible.length > 0) {
             const rng = mulberry32(state.seed);
             const replacement = seededPick(rng, eligible);
@@ -1373,13 +1404,7 @@ const gameSlice = createSlice({
       } else {
         // AI LOH: deterministically pick replacement
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-        const eligible = alive.filter(
-          (pl) =>
-            pl.id !== state.lohId &&
-            pl.id !== state.posWinnerId &&
-            !state.nomineeIds.includes(pl.id) &&
-            pl.id !== saveId,
-        );
+        const eligible = getReplacementEligiblePlayers(state, alive);
         if (eligible.length > 0) {
           const rng = mulberry32(state.seed);
           const replacement = seededPick(rng, eligible);
@@ -1553,6 +1578,9 @@ const gameSlice = createSlice({
       if (state.lohId === playerId) state.lohId = null;
       if (state.posWinnerId === playerId) state.posWinnerId = null;
       if (state.povSavedId === playerId) state.povSavedId = null;
+      if (state.povProtectedIds?.includes(playerId)) {
+        state.povProtectedIds = state.povProtectedIds.filter((id) => id !== playerId);
+      }
       if (state.pendingNominee1Id === playerId) state.pendingNominee1Id = null;
       if (state.pendingEviction?.evicteeId === playerId) state.pendingEviction = null;
 
@@ -1825,7 +1853,7 @@ const gameSlice = createSlice({
         id === state.lohId ||
         id === state.posWinnerId ||
         state.nomineeIds.includes(id) ||
-        id === state.povSavedId
+        !isEligibleReplacementNominee(state, id)
       ) return;
       const player = state.players.find((p) => p.id === id);
       const povHolder = state.players.find((p) => p.id === state.posWinnerId);
@@ -1933,6 +1961,7 @@ const gameSlice = createSlice({
       state.specialVeto.awaitingVipSecondSaveTarget = false;
       state.specialVeto.vipUseStage = 3;
       state.povSavedId = saveId;
+      addPovProtectedId(state, saveId);
       pushEvent(
         state,
         `${povHolder.name} used Double Trouble a second time, saving ${savedPlayer.name}! 👑`,
@@ -1943,10 +1972,7 @@ const gameSlice = createSlice({
         pushEvent(state, `${lohPlayer.name} must now name another backup nominee. 🎯`, 'game');
       } else {
         const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
-        const eligible = aliveNow.filter(
-          (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
-            !state.nomineeIds.includes(pl.id) && pl.id !== saveId,
-        );
+        const eligible = getReplacementEligiblePlayers(state, aliveNow);
         if (eligible.length > 0) {
           const rng = mulberry32(state.seed);
           const replacement = seededPick(rng, eligible);
@@ -2513,6 +2539,7 @@ const gameSlice = createSlice({
         state.posWinnerId = null;
         state.replacementNeeded = false;
         state.povSavedId = null;
+        state.povProtectedIds = [];
         state.lastHohCompFinisherId = null;
         state.lastHohCompFinisherType = null;
         state.publicSavedNomineeId = null;
@@ -2798,13 +2825,7 @@ const gameSlice = createSlice({
         const rng = mulberry32(state.seed);
         const aliveNow = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
         const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
-        const eligible = aliveNow.filter(
-          (pl) =>
-            pl.id !== state.lohId &&
-            pl.id !== state.posWinnerId &&
-            !state.nomineeIds.includes(pl.id) &&
-            pl.id !== state.povSavedId,
-        );
+        const eligible = getReplacementEligiblePlayers(state, aliveNow);
         if (eligible.length > 0) {
           const replacement = seededPick(rng, eligible);
           state.nomineeIds.push(replacement.id);
@@ -2858,6 +2879,7 @@ const gameSlice = createSlice({
             const savedP = state.players.find((p) => p.id === nominee2.id);
             if (savedP) savedP.status = 'active';
             state.povSavedId = nominee2.id;
+            addPovProtectedId(state, nominee2.id);
             pushEvent(
               state,
               `${povHolder?.name ?? 'The Double Trouble holder'} used Double Trouble a second time, saving ${nominee2.name}! 👑`,
@@ -2908,6 +2930,7 @@ const gameSlice = createSlice({
           state.posWinnerId = null;
           state.replacementNeeded = false;
           state.povSavedId = null;
+          state.povProtectedIds = [];
           state.awaitingNominations = false;
           state.pendingNominee1Id = null;
           state.awaitingPovDecision = false;
@@ -3123,16 +3146,14 @@ const gameSlice = createSlice({
               state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
               posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
+              addPovProtectedId(state, autoSavedId);
               pushEvent(state, `${savedName} used Force Majeure and saved themselves! ✨`, 'game');
               const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
               if (lohPlayer?.isUser) {
                 state.replacementNeeded = true;
                 pushEvent(state, `${lohPlayer.name} must now name a backup nominee. 🎯`, 'game');
               } else {
-                const eligible = alive.filter(
-                  (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
-                    !state.nomineeIds.includes(pl.id) && pl.id !== autoSavedId,
-                );
+                const eligible = getReplacementEligiblePlayers(state, alive);
                 if (eligible.length > 0) {
                   const replacement = seededPick(rng, eligible);
                   state.nomineeIds.push(replacement.id);
@@ -3156,6 +3177,7 @@ const gameSlice = createSlice({
                 const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                 if (savedP) savedP.status = 'active';
                 state.povSavedId = nomineeToSave.id;
+                addPovProtectedId(state, nomineeToSave.id);
                 pushEvent(state, `${posWinner?.name ?? 'The Force Majeure holder'} used Force Majeure on ${savedName}! ✨`, 'game');
                 const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
                 if (lohPlayer?.isUser) {
@@ -3177,15 +3199,13 @@ const gameSlice = createSlice({
               state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
               posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
+              addPovProtectedId(state, autoSavedId);
               pushEvent(state, `${savedName} used Halo Exchange and saved themselves! 😇`, 'game');
               if (posWinner.isUser) {
                 state.specialVeto!.awaitingHolderReplacement = true;
                 pushEvent(state, `${posWinner.name}, as the Halo Exchange holder, you must name the backup nominee. 😇`, 'game');
               } else {
-                const eligible = alive.filter(
-                  (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
-                    !state.nomineeIds.includes(pl.id) && pl.id !== autoSavedId,
-                );
+                const eligible = getReplacementEligiblePlayers(state, alive);
                 if (eligible.length > 0) {
                   const replacement = seededPick(rng, eligible);
                   state.nomineeIds.push(replacement.id);
@@ -3208,11 +3228,9 @@ const gameSlice = createSlice({
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
+                  addPovProtectedId(state, nomineeToSave.id);
                   pushEvent(state, `${posWinner?.name ?? 'The Halo Exchange holder'} used Halo Exchange on ${nomineeToSave.name}! 😇`, 'game');
-                  const eligible = alive.filter(
-                    (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId &&
-                      !state.nomineeIds.includes(pl.id) && pl.id !== nomineeToSave.id,
-                  );
+                  const eligible = getReplacementEligiblePlayers(state, alive);
                   if (eligible.length > 0) {
                     const replacement = seededPick(rng, eligible);
                     state.nomineeIds.push(replacement.id);
@@ -3245,11 +3263,10 @@ const gameSlice = createSlice({
                 oldNominees.forEach((n) => { n.status = 'active'; });
                 state.nomineeIds = [];
                 state.povSavedId = null;
+                state.povProtectedIds = oldNominees.map((nominee) => nominee.id);
                 const removedNames = oldNominees.map((n) => n.name).join(' and ');
                 pushEvent(state, `${posWinner?.name ?? 'The Detox holder'} used Detox! ${removedNames} are cleared from the block! ⚡`, 'game');
-                const eligible = alive.filter(
-                  (pl) => pl.id !== state.lohId && pl.id !== state.posWinnerId,
-                );
+                const eligible = getReplacementEligiblePlayers(state, alive, 2);
                 if (eligible.length >= 2) {
                   const replacements = seededPickN(rng, eligible, 2);
                   replacements.forEach((r) => {
@@ -3283,6 +3300,7 @@ const gameSlice = createSlice({
               state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id);
               posWinner.status = 'pos';
               state.povSavedId = autoSavedId;
+              addPovProtectedId(state, autoSavedId);
               state.specialVeto!.vipUseStage = 1;
               pushEvent(state, `${savedName} used Double Trouble and saved themselves! 👑`, 'game');
               const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
@@ -3309,6 +3327,7 @@ const gameSlice = createSlice({
                   const savedP = state.players.find((p) => p.id === nomineeToSave.id);
                   if (savedP) savedP.status = 'active';
                   state.povSavedId = nomineeToSave.id;
+                  addPovProtectedId(state, nomineeToSave.id);
                   state.specialVeto!.vipUseStage = 1;
                   pushEvent(state, `${posWinner?.name ?? 'The Double Trouble holder'} used Double Trouble on ${nomineeToSave.name}! 👑`, 'game');
                   const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
@@ -3339,6 +3358,7 @@ const gameSlice = createSlice({
             posWinner.status = 'pos';
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId;
+            addPovProtectedId(state, autoSavedId);
             pushEvent(state, `${savedName} used the Safety and saved themselves! 🛡️`, 'game');
 
             // LOH must name a replacement
@@ -3353,13 +3373,7 @@ const gameSlice = createSlice({
               );
             } else {
               // AI LOH: deterministically pick replacement (exclude LOH, POS holder, current nominees, and the self-saved player)
-              const eligible = alive.filter(
-                (pl) =>
-                  pl.id !== state.lohId &&
-                  pl.id !== state.posWinnerId &&
-                  !state.nomineeIds.includes(pl.id) &&
-                  pl.id !== autoSavedId,
-              );
+               const eligible = getReplacementEligiblePlayers(state, alive);
               if (eligible.length > 0) {
                 const replacement = seededPick(rng, eligible);
                 state.nomineeIds.push(replacement.id);

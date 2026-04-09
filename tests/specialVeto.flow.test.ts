@@ -17,6 +17,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   advance,
   activateSpecialVeto,
+  setReplacementNominee,
   tryActivateSpecialVeto,
   submitDiamondReplacement,
   submitCoupReplacement,
@@ -549,6 +550,65 @@ describe('Double Trouble — second use decision (human POS holder)', () => {
     // LOH is not human (p5 is human pov holder, but p0 is non-human LOH), so AI names
     // a replacement and vipUseStage ends at -1
     expect(state.specialVeto?.vipUseStage).toBe(-1);
+  });
+
+  it('keeps earlier Double Trouble saves ineligible for the second replacement when alternatives exist', () => {
+    const players = makePlayers(8, 0); // p0 is human LOH
+    players[0].status = 'loh';
+    players[1].status = 'pos';
+    players[5].status = 'nominated';
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p5'],
+      replacementNeeded: true,
+      povSavedId: 'p4',
+      povProtectedIds: ['p3', 'p4'],
+      players,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'vip',
+        vipUseStage: 3,
+      },
+    });
+
+    store.dispatch(setReplacementNominee('p3'));
+    let state = store.getState().game;
+    expect(state.replacementNeeded).toBe(true);
+    expect(state.nomineeIds).toEqual(['p5']);
+
+    store.dispatch(setReplacementNominee('p6'));
+    state = store.getState().game;
+    expect(state.replacementNeeded).toBe(false);
+    expect(state.nomineeIds).toEqual(['p5', 'p6']);
+  });
+
+  it('allows a previously saved nominee as the fallback replacement when nobody else is eligible', () => {
+    const players = makePlayers(4, 0); // p0 is human LOH
+    players[0].status = 'loh';
+    players[1].status = 'pos';
+    players[2].status = 'nominated';
+    const store = makeStore({
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p2'],
+      replacementNeeded: true,
+      povSavedId: 'p3',
+      povProtectedIds: ['p3'],
+      players,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'vip',
+        vipUseStage: 3,
+      },
+    });
+
+    store.dispatch(setReplacementNominee('p3'));
+    const state = store.getState().game;
+    expect(state.replacementNeeded).toBe(false);
+    expect(state.nomineeIds).toEqual(['p2', 'p3']);
   });
 });
 

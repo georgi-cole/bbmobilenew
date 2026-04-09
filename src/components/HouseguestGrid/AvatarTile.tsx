@@ -31,7 +31,7 @@ type Props = {
    * Game statuses to display as badge overlays on the avatar.
    * Accepts a single PlayerStatus string (e.g. 'loh', 'nominated+pos')
    * or an array of individual status codes.
-   * Supported codes: 'loh' 👑, 'pos' 🛡️, 'nominated' ❓, 'jury' ⚖️
+   * Supported codes: 'loh' 👑, 'pos' 🛡️, 'veto_safe' 🔰, 'nominated' ❓, 'jury' ⚖️
    * Medal codes (derived from finalRank): 'first' 🥇, 'second' 🥈, 'third' 🥉
    */
   statuses?: string | string[]

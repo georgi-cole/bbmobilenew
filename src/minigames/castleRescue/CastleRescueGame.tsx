@@ -1541,9 +1541,17 @@ interface TouchBtnProps {
 function TouchBtn({ code, label, ariaLabel, color = '#374151', onPress, onRelease }: TouchBtnProps) {
   return (
     <button
+      type="button"
       aria-label={ariaLabel}
+      draggable={false}
       style={touchBtnCss(color)}
-      onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPress(code); }}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        onPress(code);
+      }}
       onPointerUp={() => onRelease(code)}
       onPointerCancel={() => onRelease(code)}
       onLostPointerCapture={() => onRelease(code)}
@@ -1591,6 +1599,10 @@ function touchBtnCss(bg: string): CSSProperties {
     fontWeight: 700,
     cursor: 'pointer',
     touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
+    WebkitTapHighlightColor: 'transparent',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

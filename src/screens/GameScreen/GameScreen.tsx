@@ -147,14 +147,12 @@ export default function GameScreen() {
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
-  const [showCompRetryPrompt, setShowCompRetryPrompt] = useState(false)
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
   const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
-  const suppressCompRetryPromptRef = useRef(false)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -442,8 +440,10 @@ export default function GameScreen() {
   function playerToHouseguest(p: Player) {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
     const parts: string[] = []
+    const povProtectedIds = new Set(game.povProtectedIds ?? [])
     if (game.lohId === p.id) parts.push('loh')
     if (game.posWinnerId === p.id) parts.push('pos')
+    if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     // Suppress permanent nomination badge while the nomination animation is
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
@@ -479,13 +479,17 @@ export default function GameScreen() {
   const replacementNeeded = game.replacementNeeded === true
   const humanIsHoH = humanPlayer && game.lohId === humanPlayer.id
 
-  const replacementOptions = alivePlayers.filter(
+  const replacementBaseOptions = alivePlayers.filter(
     (p) =>
       p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id) &&
-      p.id !== game.povSavedId
+      !game.nomineeIds.includes(p.id)
   )
+  const replacementOptions = (() => {
+    const protectedIds = new Set(game.povProtectedIds ?? [])
+    const nonProtected = replacementBaseOptions.filter((player) => !protectedIds.has(player.id))
+    return nonProtected.length > 0 ? nonProtected : replacementBaseOptions
+  })()
 
   // ── Nomination animation state ────────────────────────────────────────────
   // pendingNominees holds the player IDs while the animation plays.
@@ -896,20 +900,20 @@ export default function GameScreen() {
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
-  const holderReplacementOptions = alivePlayers.filter(
-    (p) =>
-      p.id !== game.lohId &&
-      p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id) &&
-      p.id !== game.povSavedId
-  )
-  const coupReplacementOptions = alivePlayers.filter(
+  const holderReplacementOptions = replacementOptions
+  const coupBaseOptions = alivePlayers.filter(
     (p) =>
       p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.specialVeto?.coupReplacement1Id
   )
+  const coupReplacementOptions = (() => {
+    const protectedIds = new Set(game.povProtectedIds ?? [])
+    const nonProtected = coupBaseOptions.filter((player) => !protectedIds.has(player.id))
+    const neededCount = game.specialVeto?.awaitingCoupReplacement1 ? 2 : 1
+    return nonProtected.length >= neededCount ? nonProtected : coupBaseOptions
+  })()
 
   // ── AI replacement nominee animation ───────────────────────────────────
   // When an AI LOH picks a replacement nominee, the store already has the
@@ -1457,8 +1461,8 @@ export default function GameScreen() {
   const showQuickTapRace = showLohMinigame && !showPressurePlank && !showBullseyeBlitz && !showTravelingDots
 
   // ── Ad hook: competition_retry ─────────────────────────────────────────────
-  // Show a rewarded-ad prompt when the user finishes last in a LOH or POS
-  // competition, except during the final-3 week (≤3 players alive).
+  // Retry now lives in the MinigameHost results UI itself, so GameScreen only
+  // consumes the legacy last-place marker and never shows a separate popup.
   const isFinal3Week = alivePlayers.length <= 3
   const competitionRetryInResultsEnabled = useMemo(() => {
     if (!pendingChallenge) return false
@@ -1470,44 +1474,13 @@ export default function GameScreen() {
   const lastDislikedPromptDateRef = useRef<string | null>(null)
   useEffect(() => {
     if (!adsState?.lastCompLastPlaceType) return
-    if (suppressCompRetryPromptRef.current) {
-      if (import.meta.env.DEV) {
-        console.log('[ads] competition_retry modal suppressed: already handled in minigame results')
-      }
-      suppressCompRetryPromptRef.current = false
-      dispatch(clearLastCompLastPlace())
-      return
-    }
-    if (isFinal3Week) {
-      if (import.meta.env.DEV) {
-        console.log('[ads] competition_retry suppressed: final-3 week')
-      }
-      dispatch(clearLastCompLastPlace())
-      return
-    }
-    const resultPhase =
-      adsState.lastCompLastPlaceType === 'loh' ? 'loh_results' : 'pos_results'
-    const pendingPhases =
-      adsState.lastCompLastPlaceType === 'loh'
-        ? new Set(['loh_comp_announcement', 'loh_comp', 'loh_results'])
-        : new Set(['pos_comp', 'pos_results'])
     if (import.meta.env.DEV) {
-      console.log('[ads] competition_retry check — lastCompLastPlaceType:', adsState.lastCompLastPlaceType, '| phase:', game.phase, '| resultPhase:', resultPhase)
+      console.log(
+        '[ads] competition_retry standalone prompt removed; relying on minigame results UI',
+        { lastCompLastPlaceType: adsState.lastCompLastPlaceType, phase: game.phase, isFinal3Week },
+      )
     }
-    if (game.phase === resultPhase) {
-      if (import.meta.env.DEV) {
-        console.log('[ads] competition_retry prompt shown')
-      }
-      setShowCompRetryPrompt(true)
-      dispatch(clearLastCompLastPlace())
-      return
-    }
-    if (!pendingPhases.has(game.phase)) {
-      if (import.meta.env.DEV) {
-        console.log('[ads] competition_retry cleared: phase', game.phase, 'is outside pending window')
-      }
-      dispatch(clearLastCompLastPlace())
-    }
+    dispatch(clearLastCompLastPlace())
   }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch])
 
   // ── Ad hook: automatic interstitials (phase-based) ────────────────────────
@@ -2143,9 +2116,6 @@ export default function GameScreen() {
                 setAdPending(false)
               }
             },
-            onContinueWithoutRetry: () => {
-              suppressCompRetryPromptRef.current = true
-            },
           }}
           participants={pendingChallenge.participants.map((id): MinigameParticipant => {
             const player = game.players.find((p) => p.id === id);
@@ -2189,12 +2159,13 @@ export default function GameScreen() {
                   rawValue: ordered.length - index,
                 }))
               : capturedParticipants.map((id) => ({
-                playerId: id,
-                rawValue:
-                  id === humanPlayer?.id
-                    ? rawValue
-                    : (pendingChallenge.aiScores[id] ?? rawValue),
-                // Forward time-based tiebreaker: human's comes from the minigame
+                  playerId: id,
+                  rawValue:
+                    reactCompletion?.rawResults?.[id] ??
+                    (id === humanPlayer?.id
+                      ? rawValue
+                      : (pendingChallenge.aiScores[id] ?? rawValue)),
+                  // Forward time-based tiebreaker: human's comes from the minigame
                 // (via reactCompletion.tiebreakerMs); AI tiebreakers are pre-simulated
                 // in startChallenge and stored alongside aiScores.
                 ...(id === humanPlayer?.id
@@ -2573,43 +2544,6 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
-      {/* competition_retry: rewarded prompt after the user finishes last */}
-      {showCompRetryPrompt && humanPlayer && (
-        <AdPrompt
-          icon="🎮"
-          title="Want to Retry?"
-          description="Watch a short ad to re-enter the competition and try again."
-          watchLabel="Watch Ad to Retry"
-          onWatch={() => {
-            if (adPending) return
-            setAdPending(true)
-            const state = storeRef.current.getState()
-            const requested = showRewarded(
-              'competition_retry',
-              state,
-              dispatch,
-              () => {
-                // Reward: re-enter the competition (handled by the native wrapper
-                // signalling the game to re-open the minigame for this phase).
-                // For now we just dismiss; the native side controls re-entry.
-                setShowCompRetryPrompt(false)
-                dispatch(clearLastCompLastPlace())
-                setAdPending(false)
-              },
-              { isFinal3Week },
-            )
-            if (!requested) {
-              setAdPending(false)
-            }
-          }}
-          onSkip={() => {
-            setShowCompRetryPrompt(false)
-            dispatch(clearLastCompLastPlace())
-          }}
-          pending={adPending}
-        />
-      )}
-
       {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
       {showEnergyRechargePrompt && humanPlayer && (
         <AdPrompt
