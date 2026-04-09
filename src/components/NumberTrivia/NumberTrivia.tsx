@@ -248,8 +248,9 @@ export default function NumberTrivia({
 
   const submitAnswer = useCallback(() => {
     if (!currentQuestion || !humanStillActive || scoreboard) return;
-    const guess = Number.parseInt(answerInput, 10);
-    if (Number.isNaN(guess)) {
+    const trimmedAnswerInput = answerInput.trim();
+    const guess = Number(trimmedAnswerInput);
+    if (trimmedAnswerInput === '' || !Number.isInteger(guess)) {
       setInputError('Please enter a whole number.');
       return;
     }

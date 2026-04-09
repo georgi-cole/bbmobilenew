@@ -53,6 +53,24 @@ describe('NumberTrivia component', () => {
     expect(screen.queryByLabelText('Round 1 scoreboard')).toBeNull();
   });
 
+  it('rejects non-integer input instead of truncating it', () => {
+    render(
+      <NumberTrivia
+        participants={participants}
+        participantIds={participants.map((participant) => participant.id)}
+        seed={7}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Answer input' }), {
+      target: { value: '1.5' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(screen.getByText('Please enter a whole number.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Round 1 scoreboard')).toBeNull();
+  });
+
   it('shows a round scoreboard and finishes after five rounds', () => {
     const onFinish = vi.fn();
 

@@ -739,12 +739,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   threeDigitsQuiz: {
     key: 'threeDigitsQuiz',
     title: 'Number Trivia',
-    description: 'Answer numeric trivia questions with higher/lower hints',
+    description: 'Survive five rounds of number trivia with eliminations between scoreboards',
     instructions: [
-      'Three questions are presented in sequence',
-      'Each question asks for a specific number',
-      'Hints are provided with graded accuracy',
-      'Submit your answer for each question',
+      'Five trivia rounds are played with a scoreboard after each round',
+      'Enter a whole-number answer and use the higher/lower hints to narrow it down',
+      'Correct answers rank above misses; speed and attempts break ties',
+      'Lowest players are eliminated between rounds until the final scoreboard',
     ],
     metricKind: 'hybrid',
     metricLabel: 'Score',

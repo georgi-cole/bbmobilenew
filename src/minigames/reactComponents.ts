@@ -12,12 +12,18 @@
 //   onFinish?: (
 //                value: number,
 //                tiebreakerMs?: number,
-//                completion?: { authoritativeWinnerId?: string | null },
+//                completion?: {
+//                  authoritativeWinnerId?: string | null,
+//                  rawValue?: number,
+//                  rawResults?: Record<string, number>,
+//                  tiebreakerMs?: number,
+//                },
 //              ) => void
 //                        — called with the final score; tiebreakerMs is an
 //                          optional secondary sort key (lower = faster = better),
-//                          and completion.authoritativeWinnerId preserves a
-//                          minigame-declared winner through MinigameHost
+//                          completion.authoritativeWinnerId preserves a
+//                          minigame-declared winner through MinigameHost, and
+//                          rawValue/rawResults carry authoritative result data
 //   seed?: number        — competition seed forwarded from gameOptions.seed
 //   autoStart?: boolean  — when true the game begins immediately on mount
 
