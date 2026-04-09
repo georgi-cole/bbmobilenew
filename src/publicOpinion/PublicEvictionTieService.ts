@@ -73,12 +73,16 @@ export function resolvePublicEvictionTieNominee(params: {
   const runnerUpProfile = getProfile(runnerUp, profiles);
 
   let tieBreakUsed = false;
-  if (loserProfile.approval === runnerUpProfile.approval) {
+  if (Math.abs(loserProfile.approval - runnerUpProfile.approval) < FLOAT_EQUALITY_EPSILON) {
     const avgDiff = Math.abs(seasonAvg(loserProfile) - seasonAvg(runnerUpProfile));
-    tieBreakUsed =
-      avgDiff > FLOAT_EQUALITY_EPSILON ||
-      loserProfile.completedDirectionCount !== runnerUpProfile.completedDirectionCount ||
-      loser !== runnerUp;
+    if (avgDiff > FLOAT_EQUALITY_EPSILON) {
+      tieBreakUsed = true;
+    } else if (loserProfile.completedDirectionCount !== runnerUpProfile.completedDirectionCount) {
+      tieBreakUsed = true;
+    } else {
+      // All numeric criteria are equal, so stable player-ID ordering broke the tie.
+      tieBreakUsed = true;
+    }
   }
 
   return { evicteeId: loser, tieBreakUsed };

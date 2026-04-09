@@ -22,7 +22,7 @@
  *   countdownMs         – ms countdown before onDone fires (default 4000)
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './AnimatedVoteResultsModal.css';
@@ -130,11 +130,11 @@ export default function AnimatedVoteResultsModal({
   const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
 
-  const fire = useCallback(() => {
+  function fire() {
     if (firedRef.current) return;
     firedRef.current = true;
     onDone();
-  }, [onDone]);
+  }
 
   // Advance reveal step one vote at a time.
   useEffect(() => {
@@ -174,7 +174,8 @@ export default function AnimatedVoteResultsModal({
       fire();
     }, publicTiebreak.countdownMs ?? 2200);
     return () => clearTimeout(id);
-  }, [fire, onPublicTiebreakResolved, publicTiebreak, publicTiebreakVisible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);
 
   // Countdown after outcome is visible.
   useEffect(() => {
