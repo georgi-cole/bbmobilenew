@@ -9,13 +9,3 @@ export function shouldShowDislikedBoostPrompt(
 ): boolean {
   return userApproval <= DISLIKED_MAX_APPROVAL && lastPromptDate !== todayIsoDate
 }
-
-export function getNextDislikedBoostPromptDate(
-  userApproval: number,
-  lastPromptDate: string | null,
-  todayIsoDate: string,
-): string | null {
-  return shouldShowDislikedBoostPrompt(userApproval, lastPromptDate, todayIsoDate)
-    ? todayIsoDate
-    : lastPromptDate
-}

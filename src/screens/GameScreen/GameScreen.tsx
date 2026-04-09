@@ -105,7 +105,6 @@ import {
 import {
   DISLIKED_BOOST_PROMPT_DESCRIPTION,
   DISLIKED_MAX_APPROVAL,
-  getNextDislikedBoostPromptDate,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
 import './GameScreen.css'
@@ -1640,8 +1639,8 @@ export default function GameScreen() {
   }, [userEnergy, humanPlayer, game.week, game.phase, isFinal3Week])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
-  // Show a rewarded prompt when the user's approval drops into the Disliked
-  // band (20–39%), at most once per day.
+  // Show a rewarded prompt when the user's approval drops below 40%
+  // (disliked or worse), at most once per day.
   const userApproval = useAppSelector(
     (s: RootState) =>
       humanPlayer
@@ -1660,11 +1659,7 @@ export default function GameScreen() {
     ) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
-        lastDislikedPromptDateRef.current = getNextDislikedBoostPromptDate(
-          userApproval,
-          lastDislikedPromptDateRef.current,
-          todayIsoDate,
-        )
+        lastDislikedPromptDateRef.current = todayIsoDate
         setShowDislikedBoostPrompt(true)
       }
     }
