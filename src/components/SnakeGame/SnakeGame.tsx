@@ -98,8 +98,8 @@ export default function SnakeGame({
 }: Props) {
   const dispatch = useAppDispatch();
   const storePlayers = useAppSelector((s) => s.game.players);
-  const roster = players.length > 0 ? players : storePlayers;
-  const humanId = roster.find((p) => p.isUser)?.id;
+  const resolvedPlayers = players.length > 0 ? players : storePlayers;
+  const humanId = resolvedPlayers.find((p) => p.isUser)?.id;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -290,7 +290,7 @@ export default function SnakeGame({
           resolvedAiScores = {};
           for (const id of session.participants) {
             if (id === humanId) continue;
-            const p = roster.find((pl) => pl.id === id);
+            const p = resolvedPlayers.find((pl) => pl.id === id);
             resolvedAiScores[id] = simulateSnakeAiScore({
               sessionSeed: session.seed,
               playerId: id,
@@ -307,7 +307,7 @@ export default function SnakeGame({
         };
 
         const entries: ScoreEntry[] = session.participants.map((id) => {
-          const p = roster.find((pl) => pl.id === id);
+          const p = resolvedPlayers.find((pl) => pl.id === id);
           const isHuman = id === humanId;
           const score = allScores[id] ?? 0;
           // Reverse-engineer food count for display: score / SCORE_SCALE * RAW_SCORE_CAP / POINTS_PER_FOOD
@@ -326,9 +326,10 @@ export default function SnakeGame({
         const ranked = [...entries].sort((a, b) => b.score - a.score);
         beginLeaderboardReveal(ranked);
       } else {
-        const activeParticipantIds = participantIds.length > 0
-          ? participantIds
-          : (humanId ? [humanId] : []);
+        let activeParticipantIds = participantIds;
+        if (activeParticipantIds.length === 0 && humanId) {
+          activeParticipantIds = [humanId];
+        }
 
         if (activeParticipantIds.length <= 1) {
           if (onFinish) onFinish(humanScore);
@@ -337,7 +338,7 @@ export default function SnakeGame({
 
         const ranked = activeParticipantIds
           .map((id) => {
-            const p = roster.find((pl) => pl.id === id);
+            const p = resolvedPlayers.find((pl) => pl.id === id);
             const isHuman = id === humanId;
             const score = isHuman
               ? humanScore
@@ -362,7 +363,7 @@ export default function SnakeGame({
         beginLeaderboardReveal(ranked);
       }
     }, 1200);
-  }, [session, humanId, roster, onFinish, beginLeaderboardReveal, participantIds, seed]);
+  }, [session, humanId, resolvedPlayers, onFinish, beginLeaderboardReveal, participantIds, seed]);
 
   // Keep endGameRef pointing to the latest endGame closure so tick can call
   // it without capturing a stale reference (avoids circular useCallback deps).

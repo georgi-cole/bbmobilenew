@@ -3,6 +3,8 @@
 /* ── Root ───────────────────────────────────────────────────────────────── */
 
 .snake-root {
+  --snake-phone-width: min(92vw, 360px);
+  --snake-results-width: min(92vw, 420px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -18,7 +20,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(92vw, 360px);
+  width: var(--snake-phone-width);
   background: linear-gradient(160deg, #2b2b3b 0%, #1a1a28 100%);
   border-radius: 24px 24px 40px 40px;
   padding: 18px 18px 24px;
@@ -314,7 +316,7 @@
 /* ── Async waiting state ───────────────────────────────────────────────────── */
 
 .snake-waiting {
-  width: min(92vw, 420px);
+  width: var(--snake-results-width);
   background: linear-gradient(180deg, #1f2738 0%, #171d2a 100%);
   border: 1px solid #2f3a54;
   border-radius: 16px;
@@ -406,7 +408,7 @@
 
 .snake-results {
   width: 100%;
-  max-width: 420px;
+  max-width: var(--snake-results-width);
   background: #1e2535;
   border: 1px solid #2e3550;
   border-radius: 12px;
@@ -492,8 +494,8 @@
 /* ── Responsive: smaller phones ─────────────────────────────────────────── */
 
 @media (max-width: 360px) {
-  .snake-phone {
-    width: min(94vw, 300px);
+  .snake-root {
+    --snake-phone-width: min(94vw, 300px);
   }
 
   .snake-dpad-btn {
