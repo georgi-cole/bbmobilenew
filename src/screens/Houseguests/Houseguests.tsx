@@ -16,6 +16,7 @@ export default function Houseguests() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
   const settings = useAppSelector(selectSettings)
+  const povProtectedIds = new Set(game.povProtectedIds ?? [])
 
   const { castSize } = settings.gameUX
   const playerCount = players.length
@@ -28,6 +29,7 @@ export default function Houseguests() {
     const parts: string[] = []
     if (lohId === p.id) parts.push('loh')
     if (posWinnerId === p.id) parts.push('pos')
+    if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     if (Array.isArray(nomineeIds) && nomineeIds.includes(p.id)) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')
 

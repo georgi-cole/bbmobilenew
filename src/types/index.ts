@@ -433,6 +433,13 @@ export interface GameState {
    */
   povSavedId?: string | null;
   /**
+   * All players protected by a veto/safety effect for the current cycle.
+   * Used to keep previously saved nominees ineligible for re-nomination later
+   * in the same ceremony (for example Double Trouble second-use flows).
+   * Cleared on the next week reset / phase reset.
+   */
+  povProtectedIds?: string[];
+  /**
    * Player ID of the houseguest who finished last in the LOH competition.
    * Used by the third-nominee rule: in normal weeks, this player is automatically
    * added as the third nominee after the LOH selects two.

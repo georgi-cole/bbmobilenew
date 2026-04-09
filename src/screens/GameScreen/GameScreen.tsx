@@ -440,8 +440,10 @@ export default function GameScreen() {
   function playerToHouseguest(p: Player) {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
     const parts: string[] = []
+    const povProtectedIds = new Set(game.povProtectedIds ?? [])
     if (game.lohId === p.id) parts.push('loh')
     if (game.posWinnerId === p.id) parts.push('pos')
+    if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     // Suppress permanent nomination badge while the nomination animation is
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
@@ -477,13 +479,17 @@ export default function GameScreen() {
   const replacementNeeded = game.replacementNeeded === true
   const humanIsHoH = humanPlayer && game.lohId === humanPlayer.id
 
-  const replacementOptions = alivePlayers.filter(
+  const replacementBaseOptions = alivePlayers.filter(
     (p) =>
       p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id) &&
-      p.id !== game.povSavedId
+      !game.nomineeIds.includes(p.id)
   )
+  const replacementOptions = (() => {
+    const protectedIds = new Set(game.povProtectedIds ?? [])
+    const nonProtected = replacementBaseOptions.filter((player) => !protectedIds.has(player.id))
+    return nonProtected.length > 0 ? nonProtected : replacementBaseOptions
+  })()
 
   // ── Nomination animation state ────────────────────────────────────────────
   // pendingNominees holds the player IDs while the animation plays.
@@ -894,20 +900,20 @@ export default function GameScreen() {
 
   // Hide the replacement modal while the replacement animation is playing.
   const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
-  const holderReplacementOptions = alivePlayers.filter(
-    (p) =>
-      p.id !== game.lohId &&
-      p.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(p.id) &&
-      p.id !== game.povSavedId
-  )
-  const coupReplacementOptions = alivePlayers.filter(
+  const holderReplacementOptions = replacementOptions
+  const coupBaseOptions = alivePlayers.filter(
     (p) =>
       p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.specialVeto?.coupReplacement1Id
   )
+  const coupReplacementOptions = (() => {
+    const protectedIds = new Set(game.povProtectedIds ?? [])
+    const nonProtected = coupBaseOptions.filter((player) => !protectedIds.has(player.id))
+    const neededCount = game.specialVeto?.awaitingCoupReplacement1 ? 2 : 1
+    return nonProtected.length >= neededCount ? nonProtected : coupBaseOptions
+  })()
 
   // ── AI replacement nominee animation ───────────────────────────────────
   // When an AI LOH picks a replacement nominee, the store already has the

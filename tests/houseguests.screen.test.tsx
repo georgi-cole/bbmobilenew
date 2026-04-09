@@ -9,11 +9,17 @@ import Houseguests from '../src/screens/Houseguests/Houseguests';
 import { AVATAR_TILE_LONG_PRESS_DELAY_MS, LONG_PRESS_CLICK_SUPPRESSION_MS, LONG_PRESS_MOVE_THRESHOLD_PX } from '../src/components/HouseguestGrid/AvatarTile';
 import { enrichPlayer } from '../src/utils/houseguestLookup';
 
-function makeStore() {
+function makeStore(gameOverrides: Record<string, unknown> = {}) {
+  const baseGame = gameReducer(undefined, { type: '@@INIT' });
+  const baseSettings = settingsReducer(undefined, { type: '@@INIT' });
   return configureStore({
     reducer: {
       game: gameReducer,
       settings: settingsReducer,
+    },
+    preloadedState: {
+      game: { ...baseGame, ...gameOverrides },
+      settings: baseSettings,
     },
   });
 }
@@ -45,6 +51,26 @@ describe('Houseguests screen', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: /Housemates/i })).toBeInTheDocument();
     expect(screen.getByLabelText(`${playerCount}/${playerCount} housemates`)).toBeInTheDocument();
+  });
+
+  it('shows the veto-safe badge label for players protected for the rest of the cycle', () => {
+    const baseStore = makeStore();
+    const protectedPlayer = baseStore.getState().game.players.find((player) => player.status === 'active');
+    if (!protectedPlayer) throw new Error('Expected an active player to mark as veto-safe');
+
+    const store = makeStore({ povProtectedIds: [protectedPlayer.id] });
+
+    render(
+      <Provider store={store}>
+        <Houseguests />
+      </Provider>,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: new RegExp(`${protectedPlayer.name}.*Veto Safe`, 'i'),
+      }),
+    ).toBeInTheDocument();
   });
 
   it('opens the compact player info dialog on avatar tap', async () => {
