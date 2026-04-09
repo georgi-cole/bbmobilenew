@@ -198,10 +198,10 @@ export function computeFinalScore({
   won,
   revealedSafeCells,
   totalSafeCells,
-  elapsedMs = 0,
+  elapsedMs,
 }: FinalScoreOptions): number {
   if (won) {
-    const clampedElapsedMs = Math.max(0, elapsedMs);
+    const clampedElapsedMs = Math.max(0, elapsedMs ?? 0);
     const slowWindow = Math.max(1, MINESWEEPS_SLOW_CLEAR_MS - MINESWEEPS_FAST_CLEAR_MS);
     const paceRatio = 1 - Math.min(1, Math.max(0, clampedElapsedMs - MINESWEEPS_FAST_CLEAR_MS) / slowWindow);
     return Math.round(
