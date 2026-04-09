@@ -6,8 +6,9 @@
   --snake-phone-width: min(100%, 500px);
   --snake-results-width: min(92vw, 420px);
   --snake-dpad-size: clamp(44px, 12vw, 60px);
-  --snake-action-btn-size: clamp(28px, 7vw, 36px);
-  --snake-action-btn-main-size: clamp(36px, 9vw, 48px);
+  --snake-keypad-btn-height: clamp(26px, 7vw, 32px);
+  --snake-keypad-soft-width: clamp(54px, 16vw, 72px);
+  --snake-keypad-soft-height: clamp(16px, 4.5vw, 22px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -299,28 +300,77 @@
   border-radius: 50%;
 }
 
-/* ── Bottom action row ──────────────────────────────────────────────────── */
+/* ── Decorative keypad ──────────────────────────────────────────────────── */
 
-.snake-action-row {
+.snake-keypad {
+  width: min(100%, 260px);
+  margin-top: 10px;
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  flex-direction: column;
   align-items: center;
+  gap: 12px;
 }
 
-.snake-action-btn {
-  width: var(--snake-action-btn-size);
-  height: var(--snake-action-btn-size);
-  background: radial-gradient(circle, #3a3a50 0%, #2a2a40 100%);
-  border: 1px solid #4a4a60;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+.snake-keypad-soft-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
 }
 
-.snake-action-btn--main {
-  width: var(--snake-action-btn-main-size);
-  height: var(--snake-action-btn-main-size);
-  background: radial-gradient(circle, #4a4a64 0%, #2a2a3c 100%);
+.snake-keypad-soft {
+  width: var(--snake-keypad-soft-width);
+  height: var(--snake-keypad-soft-height);
+  border-radius: 999px;
+  border: 1px solid #4e5169;
+  background: linear-gradient(180deg, #4c4f67 0%, #2a2c40 100%);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14);
+}
+
+.snake-keypad-soft--left,
+.snake-keypad-soft--right {
+  transform: translateY(2px) rotate(calc(var(--snake-keypad-tilt, 0deg)));
+}
+
+.snake-keypad-soft--left {
+  --snake-keypad-tilt: -14deg;
+}
+
+.snake-keypad-soft--right {
+  --snake-keypad-tilt: 14deg;
+}
+
+.snake-keypad-soft--center {
+  width: clamp(42px, 12vw, 50px);
+}
+
+.snake-keypad-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.snake-keypad-btn {
+  height: var(--snake-keypad-btn-height);
+  border-radius: 999px;
+  border: 1px solid #4c5067;
+  background: linear-gradient(180deg, #4a4d65 0%, #2a2d42 100%);
+  color: #c9cedf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12);
 }
 
 /* ── Async waiting state ───────────────────────────────────────────────────── */

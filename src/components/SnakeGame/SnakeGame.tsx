@@ -636,11 +636,20 @@ export default function SnakeGame({
             </div>
           </div>
 
-          {/* Bottom action buttons */}
-          <div className="snake-action-row" aria-hidden="true">
-            <div className="snake-action-btn" />
-            <div className="snake-action-btn snake-action-btn--main" />
-            <div className="snake-action-btn" />
+          {/* Decorative keypad */}
+          <div className="snake-keypad" aria-hidden="true">
+            <div className="snake-keypad-soft-row">
+              <div className="snake-keypad-soft snake-keypad-soft--left" />
+              <div className="snake-keypad-soft snake-keypad-soft--center" />
+              <div className="snake-keypad-soft snake-keypad-soft--right" />
+            </div>
+            <div className="snake-keypad-grid">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((keyLabel) => (
+                <div key={keyLabel} className="snake-keypad-btn">
+                  {keyLabel}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
