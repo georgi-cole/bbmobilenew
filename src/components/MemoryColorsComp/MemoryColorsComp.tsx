@@ -74,6 +74,10 @@ interface Props {
   onComplete: (completion?: ReactMinigameCompletion) => void;
 }
 
+type ResultsRowStyle = CSSProperties & {
+  '--mc-row-index': number;
+};
+
 export default function MemoryColorsComp({
   participantIds,
   participants,
@@ -264,6 +268,7 @@ export default function MemoryColorsComp({
                 const isWinner = i === 0;
                 const isLast = i === ranking.length - 1;
                 const furthestRound = r?.furthestRoundReached ?? r?.roundsCleared ?? 0;
+                const rowStyle: ResultsRowStyle = { '--mc-row-index': i };
                 return (
                   <li
                     key={id}
@@ -273,7 +278,7 @@ export default function MemoryColorsComp({
                       isWinner ? 'mc-results-row--winner' : '',
                       isLast ? 'mc-results-row--last' : '',
                     ].filter(Boolean).join(' ')}
-                    style={{ '--mc-row-index': i } as CSSProperties}
+                    style={rowStyle}
                   >
                     <span className="mc-results-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
                     <span className="mc-results-name">

@@ -297,6 +297,7 @@
 .mc-results-panel::before {
   content: '';
   position: absolute;
+  /* Soft diagonal glow that stays tucked behind the title area on all card sizes. */
   inset: -30% auto auto -15%;
   width: 58%;
   height: 180px;
