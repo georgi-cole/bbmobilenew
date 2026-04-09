@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import NumberTrivia from '../../../src/components/NumberTrivia/NumberTrivia';
 import {
@@ -38,6 +38,21 @@ describe('NumberTrivia helpers', () => {
 });
 
 describe('NumberTrivia component', () => {
+  it('keeps the question and answer input together in the gameplay panel', () => {
+    render(
+      <NumberTrivia
+        participants={participants}
+        participantIds={participants.map((participant) => participant.id)}
+        seed={7}
+      />,
+    );
+
+    const gameplayPanel = screen.getByLabelText('Gameplay panel');
+    expect(within(gameplayPanel).getByText('Question')).toBeInTheDocument();
+    expect(within(gameplayPanel).getByRole('spinbutton', { name: 'Answer input' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Round 1 scoreboard')).toBeNull();
+  });
+
   it('shows a round scoreboard and finishes after five rounds', () => {
     const onFinish = vi.fn();
 
@@ -58,6 +73,7 @@ describe('NumberTrivia component', () => {
 
       const scoreboardLabel = round === 5 ? 'Final scoreboard' : `Round ${round} scoreboard`;
       expect(screen.getByLabelText(scoreboardLabel)).toBeInTheDocument();
+      expect(screen.queryByLabelText('Gameplay panel')).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     }
 

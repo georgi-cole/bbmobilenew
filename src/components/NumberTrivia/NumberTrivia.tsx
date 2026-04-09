@@ -336,53 +336,53 @@ export default function NumberTrivia({
   }, [finishCompetition, humanId, resolveRound, roundIndex, scoreboard, standings]);
 
   const winner = scoreboard?.standings[0] ?? standings.slice().sort(compareTriviaStandings)[0] ?? null;
+  const rootClassName = scoreboard ? 'number-trivia number-trivia--scoreboard' : 'number-trivia number-trivia--playing';
 
   return (
-    <div className="number-trivia" data-testid="number-trivia-root">
+    <div className={rootClassName} data-testid="number-trivia-root">
       <div className="number-trivia__shell">
-        <header className="number-trivia__header">
-          <p className="number-trivia__eyebrow">
-            Round {Math.min(currentRoundNumber, NUMBER_TRIVIA_TOTAL_ROUNDS)} of {NUMBER_TRIVIA_TOTAL_ROUNDS}
-          </p>
-          <h2 className="number-trivia__title">Number Trivia</h2>
-          <p className="number-trivia__subtitle">
-            Answer numeric trivia questions. A correct guess matters most, then speed, then attempts.
-          </p>
-        </header>
-
-        <section className="number-trivia__summary" aria-label="Tournament summary">
-          <div className="number-trivia__summary-item">
-            <span className="number-trivia__summary-label">Players left</span>
-            <strong>{activeStandings.length}</strong>
-          </div>
-          <div className="number-trivia__summary-item">
-            <span className="number-trivia__summary-label">Your total</span>
-            <strong>{humanStanding?.cumulativeScore ?? 0}</strong>
-          </div>
-          <div className="number-trivia__summary-item">
-            <span className="number-trivia__summary-label">Attempts used</span>
-            <strong>{roundAttempts}</strong>
-          </div>
-        </section>
-
         {!scoreboard && currentQuestion && (
           <section className="number-trivia__round" aria-live="polite">
-            <div className="number-trivia__question-card">
+            <header className="number-trivia__header number-trivia__header--playing">
+              <p className="number-trivia__eyebrow">
+                Round {Math.min(currentRoundNumber, NUMBER_TRIVIA_TOTAL_ROUNDS)} of {NUMBER_TRIVIA_TOTAL_ROUNDS}
+              </p>
+              <h2 className="number-trivia__title">Number Trivia</h2>
+              <p className="number-trivia__subtitle number-trivia__subtitle--compact">
+                Question and answer stay together on one gameplay screen.
+              </p>
+            </header>
+
+            <section className="number-trivia__summary number-trivia__summary--playing" aria-label="Tournament summary">
+              <div className="number-trivia__summary-item">
+                <span className="number-trivia__summary-label">Players left</span>
+                <strong>{activeStandings.length}</strong>
+              </div>
+              <div className="number-trivia__summary-item">
+                <span className="number-trivia__summary-label">Your total</span>
+                <strong>{humanStanding?.cumulativeScore ?? 0}</strong>
+              </div>
+              <div className="number-trivia__summary-item">
+                <span className="number-trivia__summary-label">Attempts used</span>
+                <strong>{roundAttempts}</strong>
+              </div>
+            </section>
+
+            <div className="number-trivia__question-card number-trivia__gameplay-card" aria-label="Gameplay panel">
               <p className="number-trivia__question-label">Question</p>
               <p className="number-trivia__question-text">{currentQuestion.prompt}</p>
-            </div>
 
-            <div className="number-trivia__status-card">
-              <p className="number-trivia__status-text">{hint}</p>
-              <p className="number-trivia__status-meta">
-                {humanStillActive
-                  ? `${NUMBER_TRIVIA_MAX_ATTEMPTS - roundAttempts} attempts remaining`
-                  : 'Spectator mode — remaining players are being simulated.'}
-              </p>
-            </div>
+              <div className="number-trivia__status-card number-trivia__status-card--embedded">
+                <p className="number-trivia__status-text">{hint}</p>
+                <p className="number-trivia__status-meta">
+                  {humanStillActive
+                    ? `${NUMBER_TRIVIA_MAX_ATTEMPTS - roundAttempts} attempts remaining`
+                    : 'Spectator mode — remaining players are being simulated.'}
+                </p>
+              </div>
 
-            {humanStillActive ? (
-              <>
+              {humanStillActive ? (
+                <>
                 <label className="number-trivia__input-label" htmlFor="number-trivia-answer">
                   Enter your answer
                 </label>
@@ -408,17 +408,30 @@ export default function NumberTrivia({
                   </button>
                 </div>
                 {inputError && <p className="number-trivia__error">{inputError}</p>}
-              </>
-            ) : (
-              <div className="number-trivia__spectator-card">
-                <p>You were eliminated in round {humanStanding?.eliminatedRound}. Watch the rest of the field finish the tournament.</p>
-              </div>
-            )}
+                </>
+              ) : (
+                <div className="number-trivia__spectator-card">
+                  <p>You were eliminated in round {humanStanding?.eliminatedRound}. Watch the rest of the field finish the tournament.</p>
+                </div>
+              )}
+            </div>
           </section>
         )}
 
         {scoreboard && (
           <section className="number-trivia__scoreboard" aria-label={scoreboard.final ? 'Final scoreboard' : `Round ${scoreboard.roundNumber} scoreboard`}>
+            <header className="number-trivia__header number-trivia__header--scoreboard">
+              <p className="number-trivia__eyebrow">
+                {scoreboard.final ? 'Final results' : `Round ${scoreboard.roundNumber} complete`}
+              </p>
+              <h2 className="number-trivia__title">Number Trivia Scoreboard</h2>
+              <p className="number-trivia__subtitle">
+                {scoreboard.final
+                  ? 'The tournament is over.'
+                  : 'This is the between-round results screen. Continue when you are ready for the next question.'}
+              </p>
+            </header>
+
             <div className="number-trivia__question-card number-trivia__question-card--compact">
               <p className="number-trivia__question-label">{scoreboard.final ? 'Final scoreboard' : `Round ${scoreboard.roundNumber} scoreboard`}</p>
               <p className="number-trivia__question-text">Correct answer: {scoreboard.answer}</p>
