@@ -105,6 +105,11 @@ import {
   canShowAd,
   type AdPlacement,
 } from '../../services/ads/adsService'
+import {
+  DISLIKED_BOOST_PROMPT_DESCRIPTION,
+  DISLIKED_MAX_APPROVAL,
+  shouldShowDislikedBoostPrompt,
+} from './dislikedBoostPrompt'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -1727,10 +1732,8 @@ export default function GameScreen() {
   }, [userEnergy, humanPlayer, game.week, game.phase, isFinal3Week])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
-  // Show a rewarded prompt when the user's approval drops into the Disliked
-  // band (20–39%), once per day if still disliked.
-  // Disliked band: approval < 40 (from publicOpinionConfig).
-  const DISLIKED_MAX = 39
+  // Show a rewarded prompt when the user's approval drops below 40%
+  // (disliked or worse), at most once per day.
   const userApproval = useAppSelector(
     (s: RootState) =>
       humanPlayer
@@ -1740,16 +1743,23 @@ export default function GameScreen() {
   useEffect(() => {
     if (!humanPlayer) return
     const todayIsoDate = new Date().toISOString().slice(0, 10)
-    if (userApproval <= DISLIKED_MAX && lastDislikedPromptDateRef.current !== todayIsoDate) {
+    if (
+      shouldShowDislikedBoostPrompt(
+        userApproval,
+        lastDislikedPromptDateRef.current,
+        todayIsoDate,
+      )
+    ) {
       const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
         lastDislikedPromptDateRef.current = todayIsoDate
         setShowDislikedBoostPrompt(true)
       }
     }
-    // Auto-dismiss if approval recovered above disliked threshold
-    if (userApproval > DISLIKED_MAX) {
-      lastDislikedPromptDateRef.current = null
+    // Auto-dismiss if approval recovered above disliked threshold.
+    // Keep the last shown date so the prompt does not reappear again the same day
+    // if approval dips back into the disliked band.
+    if (userApproval > DISLIKED_MAX_APPROVAL) {
       setShowDislikedBoostPrompt(false)
     }
   }, [userApproval, humanPlayer, adsState?.dailyUsage?.public_meter_disliked_boost])
@@ -2714,7 +2724,7 @@ export default function GameScreen() {
         <AdPrompt
           icon="📊"
           title="Your Approval Is Slipping"
-          description="Watch a short ad to boost your public approval by a random 4–10%."
+          description={DISLIKED_BOOST_PROMPT_DESCRIPTION}
           watchLabel="Watch Ad for Approval Boost"
           onWatch={() => {
             if (adPending) return

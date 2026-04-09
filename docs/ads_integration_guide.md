@@ -81,7 +81,7 @@ These are opt-in; the user must tap "Watch Ad" to proceed.
 |---|---|---|---|
 | `competition_retry` | User finishes last in a LOH or POS competition (except during the Final-3 week) | Re-enter the competition (native wrapper controls re-entry UX) | No daily limit (suppressed automatically during Final-3 week) |
 | `social_energy_recharge` | User's social energy drops to 0 **and** week ≠ 1 **and** not Final-3 week **and** current phase is `social_1` or `social_2` | +3 social energy | Once per day |
-| `public_meter_disliked_boost` | User's public approval drops into the Disliked band (20–39%) | Random +4% to +10% approval (native can pass `{ percent: N }` in the reward payload; otherwise a random value 4–10 is used) | Once per day while still Disliked |
+| `public_meter_disliked_boost` | User's public approval drops below 40% | Random +4% to +10% approval (native can pass `{ percent: N }` in the reward payload; otherwise a random value 4–10 is used) | Once per day |
 
 ---
 
