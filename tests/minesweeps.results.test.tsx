@@ -66,4 +66,27 @@ describe('Minesweeps competition results', () => {
 
     expect(onFinish).toHaveBeenCalledWith(860);
   });
+
+  it('shows the human as the winner when their score tops the field', () => {
+    render(
+      <Minesweeps
+        autoStart
+        onFinish={vi.fn()}
+        participants={[
+          { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+          { id: 'ai-1', name: 'Nova', isHuman: false, precomputedScore: 800, previousPR: null },
+          { id: 'ai-2', name: 'Rex', isHuman: false, precomputedScore: 780, previousPR: null },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('gridcell')[0]);
+
+    expect(screen.getByText('🏆 You take the round with 860 points.')).toBeInTheDocument();
+
+    const entries = screen.getAllByRole('listitem');
+    expect(entries[0]?.textContent).toContain('You (you)');
+    expect(entries[1]?.textContent).toContain('Nova');
+    expect(entries[2]?.textContent).toContain('Rex');
+  });
 });

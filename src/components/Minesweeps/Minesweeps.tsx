@@ -318,7 +318,7 @@ export default function Minesweeps({
               <p className="minesweeps__results-summary">
                 {results[0]?.isHuman
                   ? `🏆 You take the round with ${finalScore} points.`
-                  : `🏆 ${results[0]?.name ?? 'An AI rival'} wins this round.`}
+                  : `🏆 ${results[0].name} wins this round.`}
               </p>
             </div>
 
