@@ -109,6 +109,7 @@ export default function SnakeGame({
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [showFastForward, setShowFastForward] = useState(false);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
+  const [screenFx, setScreenFx] = useState<'boot' | 'death' | null>('boot');
   const showPhoneShell = gamePhase === 'ready' || gamePhase === 'playing' || gamePhase === 'over';
 
   // ── Refs (game loop internals — never cause re-renders) ────────────────────
@@ -134,6 +135,23 @@ export default function SnakeGame({
   // Keep phaseRef in sync with React state for use inside event handlers
   useEffect(() => {
     gamePhaseRef.current = gamePhase;
+  }, [gamePhase]);
+
+  useEffect(() => {
+    if (gamePhase === 'ready') {
+      setScreenFx('boot');
+      const timeoutId = setTimeout(() => setScreenFx(null), 650);
+      return () => clearTimeout(timeoutId);
+    }
+
+    if (gamePhase === 'over') {
+      setScreenFx('death');
+      const timeoutId = setTimeout(() => setScreenFx(null), 850);
+      return () => clearTimeout(timeoutId);
+    }
+
+    setScreenFx(null);
+    return undefined;
   }, [gamePhase]);
 
   const clearWaitingTimers = useCallback(() => {
@@ -183,24 +201,34 @@ export default function SnakeGame({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Nokia green background
-    ctx.fillStyle = '#b7d378';
+    if (typeof ctx.createLinearGradient === 'function') {
+      const lcdGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_PX);
+      lcdGradient.addColorStop(0, '#9bbc0f');
+      lcdGradient.addColorStop(1, '#8bac0f');
+      ctx.fillStyle = lcdGradient;
+    } else {
+      ctx.fillStyle = '#8bac0f';
+    }
     ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
 
-    // Snake body — darker head
+    // Snake body — darker head for LCD contrast
     snakeRef.current.forEach((seg, i) => {
-      ctx.fillStyle = i === 0 ? '#1a1a1a' : '#2d2d2d';
+      ctx.fillStyle = i === 0 ? '#081820' : '#0f380f';
       ctx.fillRect(seg.x * TILE_SIZE, seg.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     });
 
-    // Food
-    ctx.fillStyle = '#1a1a1a';
+    const foodPulse = gamePhaseRef.current === 'playing'
+      ? 0.68 + (((Math.sin(Date.now() / 180) + 1) / 2) * 0.32)
+      : 1;
+    ctx.globalAlpha = foodPulse;
+    ctx.fillStyle = '#0f380f';
     ctx.fillRect(
       foodRef.current.x * TILE_SIZE,
       foodRef.current.y * TILE_SIZE,
       TILE_SIZE - 1,
       TILE_SIZE - 1,
     );
+    ctx.globalAlpha = 1;
   }, []);
 
   // ── Food placement ─────────────────────────────────────────────────────────
@@ -555,7 +583,12 @@ export default function SnakeGame({
         <div className="snake-phone">
           {/* LCD area */}
           <div className="snake-lcd-bezel">
-            <div className="snake-lcd-container">
+            <div
+              className={[
+                'snake-lcd-container',
+                screenFx ? `snake-lcd-container--${screenFx}` : '',
+              ].filter(Boolean).join(' ')}
+            >
               {/* Status line */}
               <div className="snake-status-line" aria-live="polite">
                 LEN {snakeLength}&nbsp;&nbsp;F {foodEaten}
@@ -578,7 +611,7 @@ export default function SnakeGame({
               {/* Ready overlay */}
               {gamePhase === 'ready' && (
                 <div className="snake-overlay">
-                  <p className="snake-overlay-title">🐍 SNAKE</p>
+                  <p className="snake-overlay-title">SNAKE</p>
                   <p className="snake-overlay-hint">Arrow keys or D-pad to move</p>
                   <button className="snake-btn snake-btn--start" onClick={startGame}>
                     START
@@ -589,7 +622,7 @@ export default function SnakeGame({
               {/* Game-over overlay */}
               {gamePhase === 'over' && (
                 <div className="snake-overlay">
-                  <p className="snake-overlay-title" style={{ color: '#ff6b6b' }}>
+                  <p className="snake-overlay-title snake-overlay-title--danger">
                     GAME OVER
                   </p>
                   <p className="snake-overlay-hint">
@@ -636,20 +669,11 @@ export default function SnakeGame({
             </div>
           </div>
 
-          {/* Decorative keypad */}
-          <div className="snake-keypad" aria-hidden="true">
-            <div className="snake-keypad-soft-row">
-              <div className="snake-keypad-soft snake-keypad-soft--left" />
-              <div className="snake-keypad-soft snake-keypad-soft--center" />
-              <div className="snake-keypad-soft snake-keypad-soft--right" />
-            </div>
-            <div className="snake-keypad-grid">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((keyLabel) => (
-                <div key={keyLabel} className="snake-keypad-btn">
-                  {keyLabel}
-                </div>
-              ))}
-            </div>
+          {/* Decorative action buttons */}
+          <div className="snake-action-buttons" aria-hidden="true">
+            <div className="snake-action-button" />
+            <div className="snake-action-button snake-action-button--primary" />
+            <div className="snake-action-button" />
           </div>
         </div>
       )}
