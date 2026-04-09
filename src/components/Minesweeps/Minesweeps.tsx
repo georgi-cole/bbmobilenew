@@ -21,8 +21,13 @@ import './Minesweeps.css';
 
 type Phase = 'intro' | 'playing' | 'finished';
 type FinishState = 'won' | 'lost' | null;
+type ScoreboardEntry = {
+  id: string;
+  name: string;
+  score: number;
+  isHuman: boolean;
+};
 
-const RESULT_DELAY_MS = 900;
 const LONG_PRESS_MS = 420;
 
 function formatTimer(elapsedMs: number): string {
@@ -47,17 +52,22 @@ function getCellLabel(cell: MinesweepsCell, row: number, col: number): string {
   return `${prefix}, ${cell.adjacent} adjacent mines`;
 }
 
-export default function Minesweeps({ onFinish, seed = 1, autoStart = false }: GenericMinigameProps) {
+export default function Minesweeps({
+  onFinish,
+  seed = 1,
+  autoStart = false,
+  participants = [],
+}: GenericMinigameProps) {
   const [board, setBoard] = useState<MinesweepsBoard>(() => createEmptyBoard());
   const [phase, setPhase] = useState<Phase>(autoStart ? 'playing' : 'intro');
   const [flagMode, setFlagMode] = useState(false);
   const [finishState, setFinishState] = useState<FinishState>(null);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
-  const finishTimeoutRef = useRef<number | null>(null);
   const longPressRef = useRef<number | null>(null);
   const longPressCellRef = useRef<string | null>(null);
   const forwardedFinishRef = useRef(false);
@@ -69,7 +79,6 @@ export default function Minesweeps({ onFinish, seed = 1, autoStart = false }: Ge
   useEffect(() => {
     return () => {
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
-      if (finishTimeoutRef.current !== null) window.clearTimeout(finishTimeoutRef.current);
       if (longPressRef.current !== null) window.clearTimeout(longPressRef.current);
     };
   }, []);
@@ -121,20 +130,15 @@ export default function Minesweeps({ onFinish, seed = 1, autoStart = false }: Ge
       won: nextFinishState === 'won',
       revealedSafeCells: countRevealedSafeCells(nextBoard),
       totalSafeCells: countSafeCells(nextBoard),
+      elapsedMs: finalElapsedMs,
     });
 
     setElapsedMs(finalElapsedMs);
     setBoard(nextBoard);
     setFinishState(nextFinishState);
+    setFinalScore(score);
     setPhase('finished');
-
-    if (!onFinish || forwardedFinishRef.current) return;
-    finishTimeoutRef.current = window.setTimeout(() => {
-      if (forwardedFinishRef.current) return;
-      forwardedFinishRef.current = true;
-      onFinish(score);
-    }, RESULT_DELAY_MS);
-  }, [elapsedMs, onFinish]);
+  }, [elapsedMs]);
 
   const applyAction = useCallback((row: number, col: number, action: 'reveal' | 'flag') => {
     if (phase !== 'playing') return;
@@ -185,12 +189,34 @@ export default function Minesweeps({ onFinish, seed = 1, autoStart = false }: Ge
   }, [applyAction, clearLongPress, phase]);
 
   const statusCopy = useMemo(() => {
-    if (finishState === 'won') return 'Board cleared. Nicely swept.';
-    if (finishState === 'lost') return 'Boom — a mine was triggered.';
+    if (finishState === 'won') return 'Board cleared. The scoreboard is locked in.';
+    if (finishState === 'lost') return 'Boom — a mine was triggered. The scoreboard is locked in.';
     if (flagMode) return 'Flag mode active. Tap a tile to mark or unmark a mine.';
     if (!hasStarted) return 'First reveal is always safe.';
     return 'Sweep every safe tile and use flags to map out the bombs.';
   }, [finishState, flagMode, hasStarted]);
+
+  const results = useMemo<ScoreboardEntry[]>(() => {
+    if (finalScore === null) return [];
+    const roster = participants.length > 0
+      ? participants
+      : [{ id: 'you', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null }];
+
+    return roster
+      .map((participant) => ({
+        id: participant.id,
+        name: participant.name,
+        isHuman: participant.isHuman,
+        score: participant.isHuman ? finalScore : participant.precomputedScore,
+      }))
+      .sort((a, b) => b.score - a.score);
+  }, [finalScore, participants]);
+
+  const handleContinue = useCallback(() => {
+    if (!onFinish || forwardedFinishRef.current || finalScore === null) return;
+    forwardedFinishRef.current = true;
+    onFinish(finalScore);
+  }, [finalScore, onFinish]);
 
   return (
     <section className="minesweeps" data-testid="minesweeps-game" aria-label="Minesweeps">
@@ -283,6 +309,50 @@ export default function Minesweeps({ onFinish, seed = 1, autoStart = false }: Ge
           <span>{revealedSafeCells} / {safeCells} safe tiles revealed</span>
           <span>Right-click or long-press to flag</span>
         </footer>
+
+        {phase === 'finished' && finalScore !== null && results.length > 0 && (
+          <section className="minesweeps__results" aria-label="Competition results">
+            <div>
+              <p className="minesweeps__results-eyebrow">Scoreboard locked</p>
+              <h3 className="minesweeps__results-title">Competition results</h3>
+              <p className="minesweeps__results-summary">
+                {finishState === 'lost'
+                  ? `💥 You hit a mine and finished with ${finalScore} points.`
+                  : results[0]?.isHuman
+                    ? `🏆 You take the round with ${finalScore} points.`
+                    : `🏆 ${results[0].name} wins this round.`}
+              </p>
+            </div>
+
+            <ol className="minesweeps__leaderboard">
+              {results.map((entry, index) => (
+                <li
+                  key={entry.id}
+                  className={[
+                    'minesweeps__leaderboard-entry',
+                    entry.isHuman ? 'minesweeps__leaderboard-entry--you' : '',
+                    index === 0 ? 'minesweeps__leaderboard-entry--winner' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className="minesweeps__leaderboard-rank">{index + 1}.</span>
+                  <span className="minesweeps__leaderboard-name">
+                    {entry.name}
+                    {entry.isHuman ? ' (you)' : ''}
+                  </span>
+                  <span className="minesweeps__leaderboard-score">{entry.score}</span>
+                </li>
+              ))}
+            </ol>
+
+            {onFinish && (
+              <button type="button" className="minesweeps__control minesweeps__results-cta" onClick={handleContinue}>
+                Continue
+              </button>
+            )}
+          </section>
+        )}
       </div>
     </section>
   );

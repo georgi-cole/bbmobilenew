@@ -368,6 +368,11 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_MENTAL,
+    minScore: 520,
+    maxScore: 980,
+    notes:
+      'Minesweeps rewards full clears, but final score is still speed-sensitive. ' +
+      'Strong AI should regularly land in the upper 700s to 900s so a human clear is competitive, not automatic.',
   },
   laserPantryDash: {
     key: 'laserPantryDash',
