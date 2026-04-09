@@ -316,9 +316,11 @@ export default function Minesweeps({
               <p className="minesweeps__results-eyebrow">Scoreboard locked</p>
               <h3 className="minesweeps__results-title">Competition results</h3>
               <p className="minesweeps__results-summary">
-                {results[0]?.isHuman
-                  ? `🏆 You take the round with ${finalScore} points.`
-                  : `🏆 ${results[0].name} wins this round.`}
+                {finishState === 'lost'
+                  ? `💥 You hit a mine and finished with ${finalScore} points.`
+                  : results[0]?.isHuman
+                    ? `🏆 You take the round with ${finalScore} points.`
+                    : `🏆 ${results[0].name} wins this round.`}
               </p>
             </div>
 
