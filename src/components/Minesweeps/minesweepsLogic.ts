@@ -199,5 +199,8 @@ export function computeFinalScore({
   const rawScore = Math.round(
     (revealedSafeCells / totalSafeCells) * MINESWEEPS_PARTIAL_PROGRESS_CAP,
   );
+  // Legacy scoring normalized Minesweeps to a 0-100 range and then surfaced it on
+  // the shared 0-1000 minigame scale. Partial-loss progress tops out at 50 raw,
+  // so multiplying by 10 preserves that historical 0-500 partial range.
   return Math.max(0, Math.min(MINESWEEPS_SCORE_SCALE, rawScore * 10));
 }

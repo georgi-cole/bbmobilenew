@@ -61,6 +61,7 @@ describe('minesweeps logic helpers', () => {
         revealedSafeCells: 18,
         totalSafeCells: 72,
       }),
+      // Math.round((18 / 72) * 50) * 10 = 130 on the 0-1000 scale.
     ).toBe(130);
   });
 
