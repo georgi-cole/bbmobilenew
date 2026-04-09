@@ -35,6 +35,7 @@ import SnakeGame from '../components/SnakeGame/SnakeGame';
 import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
 import TrapAuction from '../components/TrapAuction/TrapAuction';
 import TimingBar from '../components/TimingBar/TimingBar';
+import Minesweeps from '../components/Minesweeps/Minesweeps';
 import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 
 /**
@@ -80,6 +81,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   RescueTheKing: RescueTheKingGame as ComponentType<GenericMinigameProps>,
   TrapAuction: TrapAuction as ComponentType<GenericMinigameProps>,
   TimingBar: TimingBar as ComponentType<GenericMinigameProps>,
+  Minesweeps: Minesweeps as ComponentType<GenericMinigameProps>,
   HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
 };
 
