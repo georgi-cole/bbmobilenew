@@ -30,6 +30,7 @@ const FREEZE_TRADEOFF_MS = 6_000;
 const SLOW_MS = 12_000;
 const DOUBLE_MS = 8_000;
 const TIME_PENALTY_SURGE_MS = 10_000;
+const SCORE_CUT_MULTIPLIER = 0.88;
 const MEDALS = ['🥇', '🥈', '🥉'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -333,7 +334,8 @@ export default function HangmanChallengeComp({
 
     if (shouldAttemptMysterySpawn(elapsedSeconds)) {
       spawnCheckpointRef.current.add(elapsedSeconds);
-      if (elapsedSeconds === 9 || rngRef.current() <= 0.25) {
+      const shouldSpawnBox = elapsedSeconds === 9 || (elapsedSeconds !== 9 && rngRef.current() <= 0.25);
+      if (shouldSpawnBox) {
         visibleBoxIdRef.current += 1;
         setRoundState((prev) => ({
           ...prev,
@@ -475,7 +477,7 @@ export default function HangmanChallengeComp({
         }
         case 'double_reveal_score_cut': {
           revealed.push(...hiddenLetters());
-          nextState.scoreMultiplier = penaltyProtected ? prev.scoreMultiplier : prev.scoreMultiplier * 0.88;
+          nextState.scoreMultiplier = penaltyProtected ? prev.scoreMultiplier : prev.scoreMultiplier * SCORE_CUT_MULTIPLIER;
           log(penaltyProtected ? 'Mystery Box: score cut neutralized' : 'Mystery Box: 12% score cut applied');
           break;
         }
