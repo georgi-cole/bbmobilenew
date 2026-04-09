@@ -583,6 +583,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Change direction using controls',
       'Eat food to grow longer',
       'Avoid hitting walls or your own tail',
+      'Runs resolve asynchronously — start independently, then wait for the full ranking reveal',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
