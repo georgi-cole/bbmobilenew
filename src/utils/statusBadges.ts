@@ -4,6 +4,7 @@
  * Badge code ↔ emoji mapping:
  *   'loh'       → 👑  (Leader of the House)
  *   'pos'       → 🛡️  (Power of Safety holder)
+ *   'veto_safe' → 🔰  (Safe for the rest of the cycle)
  *   'nominated' → ❓  (Nominated for eviction)
  *   'jury'      → ⚖️  (Jury member)
  *   'evicted'   → (no badge — evictee X overlay used instead)
@@ -19,6 +20,7 @@
 export const STATUS_BADGE_EMOJI: Record<string, string> = {
   loh: '👑',
   pos: '🛡️',
+  veto_safe: '🔰',
   nominated: '❓',
   jury: '⚖️',
   first: '🥇',
@@ -30,6 +32,7 @@ export const STATUS_BADGE_EMOJI: Record<string, string> = {
 export const STATUS_BADGE_LABEL: Record<string, string> = {
   loh: 'Leader of the House',
   pos: 'Power of Safety',
+  veto_safe: 'Veto Safe',
   nominated: 'Nominated',
   jury: 'Tribunal Member',
   first: '1st place',
