@@ -2,6 +2,7 @@ export const MINESWEEPS_ROWS = 9;
 export const MINESWEEPS_COLS = 9;
 export const MINESWEEPS_MINES = 10;
 export const MINESWEEPS_SCORE_SCALE = 1000;
+const MINESWEEPS_PARTIAL_PROGRESS_CAP = 50;
 
 export interface MinesweepsCell {
   mine: boolean;
@@ -195,6 +196,8 @@ export function computeFinalScore({
 }: FinalScoreOptions): number {
   if (won) return MINESWEEPS_SCORE_SCALE;
   if (totalSafeCells <= 0) return 0;
-  const rawScore = Math.round((revealedSafeCells / totalSafeCells) * 50);
+  const rawScore = Math.round(
+    (revealedSafeCells / totalSafeCells) * MINESWEEPS_PARTIAL_PROGRESS_CAP,
+  );
   return Math.max(0, Math.min(MINESWEEPS_SCORE_SCALE, rawScore * 10));
 }

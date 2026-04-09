@@ -63,4 +63,14 @@ describe('minesweeps logic helpers', () => {
       }),
     ).toBe(130);
   });
+
+  it('clamps over-reported progress to the maximum score', () => {
+    expect(
+      computeFinalScore({
+        won: false,
+        revealedSafeCells: 999,
+        totalSafeCells: 10,
+      }),
+    ).toBe(1000);
+  });
 });
