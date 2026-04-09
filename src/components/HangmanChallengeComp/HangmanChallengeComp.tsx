@@ -554,7 +554,7 @@ export default function HangmanChallengeComp({
         ...nextState,
         revealedLetters: Array.from(new Set(revealed)),
         scoreAdjustments: adjustments,
-        waiveNextPenalty: effect.id === 'waive_penalty' ? true : false,
+        waiveNextPenalty: effect.id === 'waive_penalty',
         boardFlash: 'spawn',
         boxLog: effectLabels.slice(0, 4),
       };
@@ -577,8 +577,7 @@ export default function HangmanChallengeComp({
       }
 
       const adjustments = [...prev.scoreAdjustments];
-      let wrongIncrement = prev.shieldNextWrong ? 0 : prev.nextWrongDouble ? 2 : 1;
-      if (prev.shieldNextWrong) wrongIncrement = 0;
+      const wrongIncrement = prev.shieldNextWrong ? 0 : prev.nextWrongDouble ? 2 : 1;
       if (prev.nextWrongExtraPenalty) adjustments.push({ label: 'Risk marker', value: -40 });
       return {
         ...prev,

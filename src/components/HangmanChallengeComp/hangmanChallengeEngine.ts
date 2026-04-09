@@ -264,5 +264,5 @@ export function shouldAttemptMysterySpawn(second: number): boolean {
 }
 
 export function shouldForceSecondMysteryBox(second: number, spawnedCount: number): boolean {
-  return second === 30 && spawnedCount < 2 && spawnedCount < 3;
+  return second === 30 && spawnedCount < 2;
 }
