@@ -15,7 +15,7 @@ const participants = [
 ];
 
 describe('NumberTrivia helpers', () => {
-  it('prioritises solving a question over speed and attempts', () => {
+  it('prioritizes solving a question over speed and attempts', () => {
     const solvedSlow = computeNumberTriviaRoundScore({ guessed: true, attempts: 5, timeMs: 9_000 });
     const missedFast = computeNumberTriviaRoundScore({
       guessed: false,
