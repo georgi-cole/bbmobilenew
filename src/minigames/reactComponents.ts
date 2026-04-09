@@ -35,6 +35,7 @@ import SnakeGame from '../components/SnakeGame/SnakeGame';
 import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
 import TrapAuction from '../components/TrapAuction/TrapAuction';
 import TimingBar from '../components/TimingBar/TimingBar';
+import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -55,6 +56,14 @@ export interface GenericMinigameProps {
   autoStart?: boolean;
   /** Authoritative participant ids forwarded from MinigameHost for hosted competitions. */
   participantIds?: string[];
+  /** Full participant records forwarded when a game needs names/AI scoreboard data. */
+  participants?: Array<{
+    id: string;
+    name: string;
+    isHuman: boolean;
+    precomputedScore: number;
+    previousPR: number | null;
+  }>;
 }
 
 const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
@@ -71,6 +80,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   RescueTheKing: RescueTheKingGame as ComponentType<GenericMinigameProps>,
   TrapAuction: TrapAuction as ComponentType<GenericMinigameProps>,
   TimingBar: TimingBar as ComponentType<GenericMinigameProps>,
+  HangmanChallenge: HangmanChallengeComp as ComponentType<GenericMinigameProps>,
 };
 
 export default reactComponents;
