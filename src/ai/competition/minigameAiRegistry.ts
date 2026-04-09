@@ -403,6 +403,24 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_HYBRID,
     weights: WEIGHTS_HYBRID,
+    // Castle Rescue has a large raw scoring economy (rescue bonus + pickups),
+    // but realistic competitive finishes cluster well below the theoretical
+    // perfect route. Keep AI competitive while avoiding impossible-looking
+    // 2.5k+ finishes from the generic time-scaled fallback.
+    minScore: 0,
+    maxScore: 2000,
+    scoreBuckets: [
+      { minScore: 0, maxScore: 500, weight: 25 / 150 },
+      { minScore: 501, maxScore: 600, weight: 25 / 150 },
+      { minScore: 601, maxScore: 800, weight: 40 / 150 },
+      { minScore: 801, maxScore: 1000, weight: 25 / 150 },
+      { minScore: 1001, maxScore: 1200, weight: 20 / 150 },
+      { minScore: 1201, maxScore: 1500, weight: 10 / 150 },
+      { minScore: 1501, maxScore: 2000, weight: 5 / 150 },
+    ],
+    notes:
+      'Castle Rescue — AI score bands normalized from the requested 25/25/40/25/20/10/5 ' +
+      'ratio across 0–500, 501–600, 601–800, 801–1000, 1001–1200, 1201–1500, and 1501–2000.',
   },
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',
