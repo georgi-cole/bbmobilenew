@@ -137,6 +137,53 @@ describe('FloatingActionBar – social energy badge', () => {
   });
 });
 
+describe('FloatingActionBar – social module availability', () => {
+  it('opens outgoing and incoming social modules for nominated humans outside blocked phases', () => {
+    const store = makeStore(true, {
+      phase: 'social_1',
+      players: makeStore().getState().game.players.map((player) =>
+        player.isUser ? { ...player, status: 'nominated' } : player,
+      ),
+    });
+    renderFAB(store);
+
+    act(() => {
+      screen.getByRole('button', { name: 'Social' }).click();
+      screen.getByRole('button', { name: 'Incoming requests' }).click();
+    });
+
+    expect(store.getState().social.panelOpen).toBe(true);
+    expect(store.getState().social.incomingInboxOpen).toBe(true);
+  });
+
+  it('logs the blocking reason and keeps both modules closed during live vote', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = makeStore(true, { phase: 'live_vote' });
+    renderFAB(store);
+
+    act(() => {
+      screen.getByRole('button', { name: 'Social' }).click();
+      screen.getByRole('button', { name: 'Incoming requests' }).click();
+    });
+
+    expect(store.getState().social.panelOpen).toBe(false);
+    expect(store.getState().social.incomingInboxOpen).toBe(false);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('Outgoing social module did not open: Social modules are blocked during the live_vote phase.'),
+      expect.objectContaining({ phase: 'live_vote' }),
+    );
+    expect(warnSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('Incoming social module did not open: Social modules are blocked during the live_vote phase.'),
+      expect.objectContaining({ phase: 'live_vote' }),
+    );
+
+    warnSpy.mockRestore();
+  });
+});
+
 describe('FloatingActionBar – social button flash animation', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });

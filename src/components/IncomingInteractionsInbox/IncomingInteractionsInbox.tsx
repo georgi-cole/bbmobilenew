@@ -10,6 +10,10 @@ import {
 import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler';
 import { getIncomingInteractionTypeLabel, respondToIncomingInteraction } from '../../social/incomingInteractions';
 import {
+  getSocialModuleAvailability,
+  logBlockedSocialModuleOpen,
+} from '../../social/socialModuleAvailability';
+import {
   getIncomingInteractionResponseLabel,
   getIncomingInteractionResponseOptions,
   getIncomingInteractionTone,
@@ -200,15 +204,17 @@ function InteractionItem({
 
 export default function IncomingInteractionsInbox() {
   const dispatch = useAppDispatch();
+  const game = useAppSelector((s) => s.game);
   const open = useAppSelector(selectIncomingInboxOpen);
   const interactions = useAppSelector(selectIncomingInteractions);
   const unreadCount = useAppSelector(selectUnreadIncomingInteractionCount);
-  const players = useAppSelector((s) => s.game.players);
-  const currentWeek = useAppSelector((s) => s.game.week ?? 1);
+  const players = game.players;
+  const currentWeek = game.week ?? 1;
   const relationships = useAppSelector((s) => s.social?.relationships ?? {});
   const socialMemory = useAppSelector((s) => s.social?.socialMemory ?? {});
 
   const humanPlayer = players.find((player) => player.isUser);
+  const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
 
   const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
 
@@ -270,12 +276,24 @@ export default function IncomingInteractionsInbox() {
       : `${pendingInteractions.length} pending${urgentCount > 0 ? ` • ${urgentCount} urgent` : ''}`;
 
   useEffect(() => {
+    if (!open || socialModuleAvailability.canOpen) {
+      return;
+    }
+    logBlockedSocialModuleOpen(
+      'Incoming social module',
+      socialModuleAvailability,
+      'IncomingInteractionsInbox visibility guard',
+    );
+    dispatch(closeIncomingInbox());
+  }, [dispatch, open, socialModuleAvailability]);
+
+  useEffect(() => {
     if (open && unreadCount > 0) {
       dispatch(markAllIncomingInteractionsRead());
     }
   }, [open, unreadCount, dispatch]);
 
-  if (!open || !humanPlayer) return null;
+  if (!open || !socialModuleAvailability.canOpen || !humanPlayer) return null;
 
   return (
     <div className="inbox-backdrop" role="dialog" aria-modal="true" aria-label="Incoming interactions">
