@@ -50,6 +50,7 @@ export interface AnimatedVoteResultsModalProps {
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
+  /** Renders inside `.tv-zone__viewport` when present, otherwise falls back inline. */
   renderInTvViewport?: boolean;
   revealIntervalMs?: number;
   postRevealDelayMs?: number;
@@ -191,7 +192,7 @@ export default function AnimatedVoteResultsModal({
 
   const content = (
     <div
-      className={['avrm', renderInTvViewport ? 'avrm--viewport' : ''].filter(Boolean).join(' ')}
+      className={renderInTvViewport ? 'avrm avrm--viewport' : 'avrm'}
       role={renderInTvViewport ? 'status' : 'dialog'}
       aria-modal={renderInTvViewport ? undefined : 'true'}
       aria-label="Vote results"
