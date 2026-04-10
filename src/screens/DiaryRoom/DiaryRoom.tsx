@@ -318,6 +318,8 @@ export default function DiaryRoom() {
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
   const confessionalDecisionPending = activeConfessionalDecision !== null;
   const navigationBlocker = useBlocker(confessionalDecisionPending);
+  const navigationBlockerState = navigationBlocker.state;
+  const resetNavigationBlocker = navigationBlocker.reset;
 
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
@@ -386,10 +388,10 @@ export default function DiaryRoom() {
   useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   useEffect(() => {
-    if (navigationBlocker.state === 'blocked') {
-      navigationBlocker.reset();
+    if (navigationBlockerState === 'blocked' && resetNavigationBlocker) {
+      resetNavigationBlocker();
     }
-  }, [navigationBlocker]);
+  }, [navigationBlockerState, resetNavigationBlocker]);
 
   useEffect(() => {
     if (confessionalDecisionPending && showSelfEvictConfirm) {
