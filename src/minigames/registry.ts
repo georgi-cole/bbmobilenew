@@ -511,7 +511,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'A named color swatch appears — study it carefully',
       'Adjust the Red, Green, and Blue sliders to recreate the exact color',
       'Your live accuracy % updates as you tune the sliders',
-      'You can buy up to 2 hints total; each hint costs 5% off your final score',
+      'You can buy up to 2 hints total; in solo, each hint takes 5% off your final average score; in competition, each hint takes 5% off that round’s score',
       'Submit before the timer runs out — time-outs score 0 for that round',
       'After each of the first 3 rounds, the lowest scorer is eliminated (ties are all out)',
       'Round 4 cuts the field in half, leaving at least 2 players for the finale',
