@@ -167,7 +167,7 @@ export default function GameScreen() {
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
-  // "By a vote of X to Y, Z your game ends here" message shown on the main TV
+  // Post-vote eviction message shown on the main TV
   // for 3 s after vote results dismiss and before the eviction animation plays.
   const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
@@ -1321,7 +1321,7 @@ export default function GameScreen() {
       setPostVoteAnnouncement({
         key: 'eviction_vote_result',
         title: voteResultTitle,
-        subtitle: `${evictee.name}, your game ends here.`,
+        subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
         isLive: true,
         autoDismissMs: POST_VOTE_ANNOUNCEMENT_DELAY_MS,
       })
