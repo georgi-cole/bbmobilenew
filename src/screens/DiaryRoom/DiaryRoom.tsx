@@ -332,6 +332,9 @@ export default function DiaryRoom() {
     : null;
   const voteBreakdownRows = activeVoteBreakdown
     ? Object.entries(activeVoteBreakdown.votes).map(([voterKey, targetId]) => {
+      // Double-vote rewards store the second ballot under `${playerId}__dv2`.
+      // Split the synthetic key so the chart can render the original voter name
+      // while still labelling the bonus ballot as a separate vote.
       const [voterId, extraVoteKey] = voterKey.split('__');
       const voterName = players.find((player) => player.id === voterId)?.name ?? voterId;
       const targetName = players.find((player) => player.id === targetId)?.name ?? targetId;

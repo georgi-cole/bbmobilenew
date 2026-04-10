@@ -1275,6 +1275,10 @@ export default function GameScreen() {
     dispatch(activateVoteDeductionReward())
     if (queueVoteBreakdownPrompt()) return
     // Explicitly dismiss vote results so the eviction cinematic can take over.
+    // We do NOT use proceedAfterVoteResults() here because pendingEviction is
+    // always set at this point (the deduction flow only fires when there is a
+    // clear evictee), and calling advance() through that shared branch could
+    // skip the eviction animation entirely.
     dispatch(dismissVoteResults())
   }, [dispatch, queueVoteBreakdownPrompt])
 
