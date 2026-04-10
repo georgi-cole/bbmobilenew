@@ -110,6 +110,7 @@ interface Props {
   seed?: number;
   participantIds?: string[];
   participants?: MinigameParticipant[];
+  autoStart?: boolean;
 }
 
 function createEmptyRoundState(): RoundState {
