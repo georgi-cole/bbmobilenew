@@ -18,14 +18,20 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { mulberry32 } from '../../store/rng';
 import useSound from '../../hooks/useSound';
 import {
+  buildColorMatchCompetitionRawResults,
   type RGB,
   HINT_PENALTY_POINTS,
   applyHintPenalty,
   buildHintMessage,
   calculateColorMatchAccuracy,
+  createColorMatchCompetitionStandings,
   randomStartColor,
+  rankColorMatchCompetitionStandings,
+  resolveColorMatchCompetitionRound,
   rgbToHex,
   seededPick,
+  simulateColorMatchAiRoundScore,
+  type ColorMatchCompetitionStanding,
 } from './colorMatchUtils';
 import './ColorMatchComp.css';
 
@@ -49,11 +55,22 @@ const MAX_ROUNDS = 5;
 const ROUND_TIME_S = 25;
 const MAX_HINTS_TOTAL = 2;
 const MIXING_DURATION_MS = 1600;
+const DEFAULT_AI_FALLBACK_SCORE = 65;
 
 const CLICK_SOUND_KEY = 'ui:navigate';
 const CORRECT_SOUND_KEY = 'ui:confirm';
 const INCORRECT_SOUND_KEY = 'ui:error';
 const WINNER_SOUND_KEY = 'minigame:results';
+
+function fmtOrdinal(value: number): string {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  const mod10 = value % 10;
+  if (mod10 === 1) return `${value}st`;
+  if (mod10 === 2) return `${value}nd`;
+  if (mod10 === 3) return `${value}rd`;
+  return `${value}th`;
+}
 
 const NAMED_COLORS: Array<{ name: string; rgb: RGB }> = [
   { name: 'Scarlet', rgb: { r: 196, g: 30, b: 58 } },
@@ -74,13 +91,73 @@ const NAMED_COLORS: Array<{ name: string; rgb: RGB }> = [
 ];
 
 interface Props {
-  onFinish?: (value: number, tiebreakerMs?: number) => void;
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: {
+      authoritativeWinnerId?: string | null;
+      rawValue?: number;
+      rawResults?: Record<string, number>;
+      tiebreakerMs?: number;
+    },
+  ) => void;
   seed?: number;
   autoStart?: boolean;
+  participantIds?: string[];
+  participants?: Array<{
+    id: string;
+    name: string;
+    isHuman: boolean;
+    precomputedScore: number;
+    previousPR: number | null;
+  }>;
 }
 
-export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }: Props) {
+export default function ColorMatchComp({
+  onFinish,
+  seed = 0,
+  autoStart = false,
+  participantIds = [],
+  participants,
+}: Props) {
   const { play } = useSound();
+  const resolvedParticipants = useMemo(() => {
+    if (participants && participants.length > 0) {
+      return participants.map((participant, index) => ({
+        ...participant,
+        participantIndex: index,
+      }));
+    }
+    return participantIds.map((id, index) => ({
+      id,
+      name: id,
+      isHuman: index === 0,
+      precomputedScore: 50,
+      previousPR: null,
+      participantIndex: index,
+    }));
+  }, [participantIds, participants]);
+  const competitionMode = resolvedParticipants.length > 1;
+  const humanParticipant = useMemo(
+    () => resolvedParticipants.find((participant) => participant.isHuman) ?? null,
+    [resolvedParticipants],
+  );
+  const humanId = humanParticipant?.id ?? null;
+  const aiRoundScores = useMemo(
+    () => Object.fromEntries(
+      resolvedParticipants
+        .filter((participant) => !participant.isHuman)
+        .map((participant) => [
+          participant.id,
+          Array.from({ length: MAX_ROUNDS }, (_, roundIndex) => simulateColorMatchAiRoundScore(
+            participant,
+            roundIndex + 1,
+            seed,
+          )),
+        ]),
+    ) as Record<string, number[]>,
+    [resolvedParticipants, seed],
+  );
 
   const rounds = useMemo(() => {
     const rng = mulberry32((seed ^ 0x7f3da812) >>> 0);
@@ -103,6 +180,16 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const [hintMessage, setHintMessage] = useState('');
   const [hintsUsedTotal, setHintsUsedTotal] = useState(0);
   const [hintsUsedThisRound, setHintsUsedThisRound] = useState(0);
+  const [competitionStandings, setCompetitionStandings] = useState<ColorMatchCompetitionStanding[]>(() =>
+    createColorMatchCompetitionStandings(resolvedParticipants),
+  );
+  const [roundEliminatedIds, setRoundEliminatedIds] = useState<string[]>([]);
+  const [roundScoreboard, setRoundScoreboard] = useState<Array<{
+    participantId: string;
+    participantName: string;
+    score: number;
+    isHuman: boolean;
+  }>>([]);
   /** Whether the accuracy % has been revealed for the current round (via hint). */
   const [accuracyRevealed, setAccuracyRevealed] = useState(false);
   /** Mixing colors shown in the pre-reveal animation blob */
@@ -122,6 +209,15 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const currentRound = rounds[roundIndex];
   const liveAccuracy = Math.round(calculateColorMatchAccuracy(currentRound.target, playerColor));
   const hintsRemaining = MAX_HINTS_TOTAL - hintsUsedTotal;
+  const activeCompetitionStandings = useMemo(
+    () => competitionStandings.filter((standing) => standing.eliminatedRound === null),
+    [competitionStandings],
+  );
+  const humanStanding = useMemo(
+    () => (humanId ? competitionStandings.find((standing) => standing.participantId === humanId) ?? null : null),
+    [competitionStandings, humanId],
+  );
+  const humanStillActive = humanStanding?.eliminatedRound === null;
 
   // Keep refs in sync with latest values.
   useEffect(() => { hintsUsedThisRoundRef.current = hintsUsedThisRound; }, [hintsUsedThisRound]);
@@ -146,7 +242,10 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     (color: RGB, didTimeOut: boolean) => {
       stopTimer();
       const target = currentRoundTargetRef.current;
-      const score = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(target, color));
+      const rawScore = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(target, color));
+      const score = competitionMode
+        ? applyHintPenalty(rawScore, hintsUsedThisRoundRef.current)
+        : rawScore;
       if (didTimeOut || score < 80) {
         playIncorrect();
       } else {
@@ -166,9 +265,38 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
           roundElapsedMs,
         },
       ]);
+      if (competitionMode) {
+        const roundNumber = roundIndex + 1;
+        const roundScoresById = Object.fromEntries(activeCompetitionStandings.map((standing) => [
+          standing.participantId,
+          standing.isHuman
+            ? score
+            : (aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE),
+        ]));
+        const resolvedRound = resolveColorMatchCompetitionRound(
+          competitionStandings,
+          roundNumber,
+          roundScoresById,
+        );
+        setCompetitionStandings(resolvedRound.standings);
+        setRoundEliminatedIds(resolvedRound.eliminatedIds);
+        setRoundScoreboard(
+          activeCompetitionStandings
+            .map((standing) => ({
+              participantId: standing.participantId,
+              participantName: standing.participantName,
+              score: roundScoresById[standing.participantId] ?? 0,
+              isHuman: standing.isHuman,
+            }))
+            .sort((a, b) => b.score - a.score || a.participantName.localeCompare(b.participantName)),
+        );
+      } else {
+        setRoundEliminatedIds([]);
+        setRoundScoreboard([]);
+      }
       setPhase('feedback');
     },
-    [playCorrect, playIncorrect, stopTimer],
+    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, playCorrect, playIncorrect, roundIndex, stopTimer],
   );
 
   // Keep submitRound available via ref so the interval can always call the latest.
@@ -197,6 +325,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   // Note: submitRound is intentionally absent from deps — we use the ref instead.
   useEffect(() => {
     if (phase !== 'playing') return;
+    if (competitionMode && !humanStillActive) return;
     setTimeLeft(ROUND_TIME_S);
     setHintMessage('');
     setHintsUsedThisRound(0);
@@ -218,7 +347,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     }, 1000);
 
     return stopTimer;
-  }, [phase, roundIndex, stopTimer]);
+  }, [competitionMode, humanStillActive, phase, roundIndex, stopTimer]);
 
   useEffect(() => {
     setPlayerColor(rounds[roundIndex].startColor);
@@ -228,15 +357,62 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
     if (phase !== 'results' || winnerPlayedRef.current) return;
     winnerPlayedRef.current = true;
     playWinner();
-    const total = results.reduce((sum, r) => sum + r.score, 0);
-    const rawAverage = Math.round(total / results.length);
-    const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
     const tiebreakerMs = totalElapsedMsRef.current;
     const timeoutId = setTimeout(() => {
-      if (onFinish) onFinish(finalScore, tiebreakerMs);
+      if (!onFinish) return;
+      if (competitionMode) {
+        const ranked = rankColorMatchCompetitionStandings(competitionStandings);
+        const rawResults = buildColorMatchCompetitionRawResults(ranked);
+        const winner = ranked[0];
+        const humanOrWinnerScore = rawResults[humanId ?? ''] ?? rawResults[winner?.participantId ?? ''] ?? 0;
+        onFinish(humanOrWinnerScore, tiebreakerMs, {
+          authoritativeWinnerId: winner?.participantId ?? null,
+          rawValue: humanOrWinnerScore,
+          rawResults,
+        });
+        return;
+      }
+      const total = results.reduce((sum, r) => sum + r.score, 0);
+      const rawAverage = Math.round(total / results.length);
+      const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
+      onFinish(finalScore, tiebreakerMs);
     }, autoStart ? 0 : 2000);
     return () => clearTimeout(timeoutId);
-  }, [autoStart, hintsUsedTotal, onFinish, phase, playWinner, results]);
+  }, [autoStart, competitionMode, competitionStandings, hintsUsedTotal, humanId, onFinish, phase, playWinner, results]);
+
+  useEffect(() => {
+    if (!competitionMode || phase !== 'playing' || humanStillActive) return;
+    const timeoutId = setTimeout(() => {
+      const roundNumber = roundIndex + 1;
+      const roundScoresById = Object.fromEntries(
+        activeCompetitionStandings.map((standing) => [
+          standing.participantId,
+          aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE,
+        ]),
+      );
+      const resolvedRound = resolveColorMatchCompetitionRound(
+        competitionStandings,
+        roundNumber,
+        roundScoresById,
+      );
+      setTimedOut(false);
+      setLastScore(null);
+      setCompetitionStandings(resolvedRound.standings);
+      setRoundEliminatedIds(resolvedRound.eliminatedIds);
+      setRoundScoreboard(
+        activeCompetitionStandings
+          .map((standing) => ({
+            participantId: standing.participantId,
+            participantName: standing.participantName,
+            score: roundScoresById[standing.participantId] ?? 0,
+            isHuman: standing.isHuman,
+          }))
+          .sort((a, b) => b.score - a.score || a.participantName.localeCompare(b.participantName)),
+      );
+      setPhase('feedback');
+    }, 600);
+    return () => clearTimeout(timeoutId);
+  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, phase, roundIndex]);
 
   const handleSliderChange = useCallback(
     (channel: keyof RGB, value: number) => {
@@ -258,13 +434,16 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
   const handleNext = useCallback(() => {
     playClick();
     const nextIndex = roundIndex + 1;
-    if (nextIndex >= MAX_ROUNDS) {
+    const competitionOver = competitionMode
+      ? activeCompetitionStandings.length <= 1 || nextIndex >= MAX_ROUNDS
+      : nextIndex >= MAX_ROUNDS;
+    if (competitionOver) {
       setPhase('results');
     } else {
       setRoundIndex(nextIndex);
       setPhase('mixing');
     }
-  }, [playClick, roundIndex]);
+  }, [activeCompetitionStandings.length, competitionMode, playClick, roundIndex]);
 
   const handleHintPress = useCallback(() => {
     if (phase !== 'playing' || hintsRemaining <= 0) return;
@@ -308,9 +487,59 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               ? '😬 Close-ish'
               : '❌ Way off'
       : '';
+  const rankedCompetitionStandings = useMemo(
+    () => (competitionMode ? rankColorMatchCompetitionStandings(competitionStandings) : []),
+    [competitionMode, competitionStandings],
+  );
+  const competitionWinner = rankedCompetitionStandings[0] ?? null;
+  const humanPlacement = humanId
+    ? rankedCompetitionStandings.findIndex((standing) => standing.participantId === humanId) + 1
+    : 0;
 
   // ── Results screen ───────────────────────────────────────────────────────────
   if (phase === 'results') {
+    if (competitionMode) {
+      return (
+        <div className="cm" data-testid="color-match-comp">
+          <div className="cm__card cm__card--results">
+            <div className="cm__title">🎨 Color Match</div>
+            <div className="cm__subtitle">Competition Results</div>
+            <div className="cm__final-score">{competitionWinner ? `${competitionWinner.participantName}` : 'No Winner'}</div>
+            <p className="cm__final-label">
+              {humanPlacement > 0 ? `You finished ${fmtOrdinal(humanPlacement)}.` : 'Closest match in the finale wins.'}
+            </p>
+            <div className="cm__summary-grid">
+              <div className="cm__summary-chip">
+                <span className="cm__summary-label">Finalists</span>
+                <strong>{activeCompetitionStandings.length}</strong>
+              </div>
+              <div className="cm__summary-chip">
+                <span className="cm__summary-label">Hints Used</span>
+                <strong>{hintsUsedTotal}</strong>
+              </div>
+              <div className="cm__summary-chip">
+                <span className="cm__summary-label">Time</span>
+                <strong>{(totalElapsedMsRef.current / 1000).toFixed(1)}s</strong>
+              </div>
+            </div>
+            <ol className="cm__round-list">
+              {rankedCompetitionStandings.map((standing, index) => (
+                <li key={standing.participantId} className="cm__round-item">
+                  <span className="cm__round-num">{fmtOrdinal(index + 1)}</span>
+                  <span className="cm__round-swatch" style={{ background: index === 0 ? '#f7c948' : '#334155' }} />
+                  <span>{standing.participantName}{standing.isHuman ? ' (You)' : ''}</span>
+                  <span className="cm__round-score">
+                    {standing.eliminatedRound === null
+                      ? `${standing.roundScores[standing.roundScores.length - 1] ?? 0}% finale`
+                      : `Out in R${standing.eliminatedRound}`}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      );
+    }
     const total = results.reduce((sum, r) => sum + r.score, 0);
     const rawAverage = Math.round(total / results.length);
     const finalScore = applyHintPenalty(rawAverage, hintsUsedTotal);
@@ -375,6 +604,11 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               <div className="cm__mix-blob cm__mix-blob--reveal" style={{ background: targetHex }} />
             </div>
             <div className="cm__mixing-name">{currentRound.name}</div>
+            {competitionMode && (
+              <div className="cm__mixing-name">
+                {humanStillActive ? `${activeCompetitionStandings.length} players remain` : 'Spectating remaining players'}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -400,7 +634,11 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
 
         <div className="cm__meta-row">
           <div className="cm__hint-stock">💡 {hintsRemaining} hint{hintsRemaining === 1 ? '' : 's'} left</div>
-          <div className="cm__penalty-chip">-{hintsUsedTotal * HINT_PENALTY_POINTS}% final score</div>
+          <div className="cm__penalty-chip">
+            {competitionMode
+              ? `${activeCompetitionStandings.length} players remain`
+              : `-${hintsUsedTotal * HINT_PENALTY_POINTS}% final score`}
+          </div>
         </div>
 
         <div className="cm__swatches">
@@ -449,7 +687,8 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
           </div>
         )}
 
-        <div className="cm__sliders" aria-label="RGB color controls">
+        {(!competitionMode || humanStillActive) && (
+          <div className="cm__sliders" aria-label="RGB color controls">
           {(['r', 'g', 'b'] as const).map((ch) => {
             const labels: Record<typeof ch, string> = { r: 'Red', g: 'Green', b: 'Blue' };
             return (
@@ -472,9 +711,27 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
-        {phase === 'playing' && (
+        {competitionMode && roundScoreboard.length > 0 && (
+          <div className="cm__hint-panel" aria-live="polite">
+            <div className="cm__hint-panel-title">
+              Round {roundIndex + 1} standings
+              {roundEliminatedIds.length > 0 ? ` — ${roundEliminatedIds.length} eliminated` : ''}
+            </div>
+            <div className="cm__hint-panel-body">
+              {roundScoreboard.map((entry) => (
+                <div key={entry.participantId}>
+                  {entry.participantName}{entry.isHuman ? ' (You)' : ''}: {entry.score}%
+                  {roundEliminatedIds.includes(entry.participantId) ? ' — eliminated' : ''}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {phase === 'playing' && (!competitionMode || humanStillActive) && (
           <div className="cm__action-row">
             <button className="cm__btn cm__btn--hint" onClick={handleHintPress} type="button" disabled={hintsRemaining <= 0}>
               Buy Hint (-5%)
@@ -484,9 +741,19 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
             </button>
           </div>
         )}
+        {phase === 'playing' && competitionMode && !humanStillActive && (
+          <div className="cm__feedback" aria-live="polite">
+            <span className="cm__feedback-text">You were eliminated. Resolving the rest of the round…</span>
+          </div>
+        )}
         {phase === 'feedback' && (
-          <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
-            {roundIndex + 1 < MAX_ROUNDS ? 'Next Round →' : 'See Results →'}
+            <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
+            {(competitionMode && activeCompetitionStandings.length <= 1)
+              || roundIndex + 1 >= MAX_ROUNDS
+              ? 'See Results →'
+              : humanStillActive
+                ? 'Next Round →'
+                : 'Continue Watching →'}
           </button>
         )}
       </div>
@@ -496,7 +763,7 @@ export default function ColorMatchComp({ onFinish, seed = 0, autoStart = false }
           <div className="cm__modal" role="dialog" aria-modal="true" aria-label="Hint purchase warning">
             <h3 className="cm__modal-title">Buy Hint {hintWarning.nextHintNumber}?</h3>
             <p className="cm__modal-copy">
-              This hint will reduce your final score by <strong>{HINT_PENALTY_POINTS}%</strong>.
+              This hint will reduce your {competitionMode ? 'round score' : 'final score'} by <strong>{HINT_PENALTY_POINTS}%</strong>.
               It will also <strong>reveal your % match</strong> for this round.
             </p>
             <p className="cm__modal-copy cm__modal-copy--muted">

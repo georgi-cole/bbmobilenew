@@ -14,8 +14,13 @@ import { getGame } from '../src/minigames/registry';
 import reactComponents from '../src/minigames/reactComponents';
 import {
   applyHintPenalty,
+  buildColorMatchCompetitionRawResults,
   buildHintMessage,
   calculateColorMatchAccuracy,
+  createColorMatchCompetitionStandings,
+  rankColorMatchCompetitionStandings,
+  resolveColorMatchCompetitionRound,
+  simulateColorMatchAiRoundScore,
 } from '../src/components/ColorMatchComp/colorMatchUtils';
 import { minigameAiRegistry } from '../src/ai/competition/minigameAiRegistry';
 import { computeScores } from '../src/minigames/scoring';
@@ -150,18 +155,89 @@ describe('Color Match scoring invariants', () => {
 // ── 5. AI scoring range ───────────────────────────────────────────────────────
 
 describe('colorMatch AI registry', () => {
-  it('has explicit minScore = 0 and maxScore = 100', () => {
+  it('has explicit fallback AI bounds in the intended 65–99 range', () => {
     const model = minigameAiRegistry['colorMatch'];
     expect(model).toBeDefined();
-    expect(model.minScore).toBe(0);
-    expect(model.maxScore).toBe(100);
+    expect(model.minScore).toBe(65);
+    expect(model.maxScore).toBe(99);
   });
 
-  it('AI scores stay in [0, 100] regardless of timeLimitMs', () => {
-    // Regression guard: previously the generic time-scaled fallback produced
-    // maxScore = round(100 * (25/10)) = 250 for a 25-second game.
+  it('AI scores stay in [65, 99] regardless of timeLimitMs', () => {
     const model = minigameAiRegistry['colorMatch'];
-    expect(model.maxScore).not.toBeGreaterThan(100);
+    expect(model.minScore).toBeGreaterThanOrEqual(65);
+    expect(model.maxScore).toBeLessThanOrEqual(99);
+  });
+});
+
+describe('Color Match competition helpers', () => {
+  it('rounds 1-3 eliminate every player tied for the lowest score', () => {
+    const initial = createColorMatchCompetitionStandings([
+      { id: 'p0', name: 'P0', isHuman: true },
+      { id: 'p1', name: 'P1', isHuman: false },
+      { id: 'p2', name: 'P2', isHuman: false },
+      { id: 'p3', name: 'P3', isHuman: false },
+    ]);
+
+    const round1 = resolveColorMatchCompetitionRound(initial, 1, {
+      p0: 88,
+      p1: 70,
+      p2: 70,
+      p3: 92,
+    });
+
+    expect(round1.eliminatedIds).toEqual(['p1', 'p2']);
+    expect(round1.activeIds).toEqual(['p0', 'p3']);
+  });
+
+  it('round 4 cuts the remaining field to at least two finalists, then finale decides the winner', () => {
+    let standings = createColorMatchCompetitionStandings([
+      { id: 'p0', name: 'P0', isHuman: true },
+      { id: 'p1', name: 'P1', isHuman: false },
+      { id: 'p2', name: 'P2', isHuman: false },
+      { id: 'p3', name: 'P3', isHuman: false },
+      { id: 'p4', name: 'P4', isHuman: false },
+      { id: 'p5', name: 'P5', isHuman: false },
+      { id: 'p6', name: 'P6', isHuman: false },
+    ]);
+
+    standings = resolveColorMatchCompetitionRound(standings, 1, {
+      p0: 90, p1: 85, p2: 82, p3: 80, p4: 78, p5: 76, p6: 65,
+    }).standings;
+    standings = resolveColorMatchCompetitionRound(standings, 2, {
+      p0: 91, p1: 86, p2: 83, p3: 81, p4: 79, p5: 66,
+    }).standings;
+    standings = resolveColorMatchCompetitionRound(standings, 3, {
+      p0: 92, p1: 87, p2: 84, p3: 82, p4: 67,
+    }).standings;
+
+    const round4 = resolveColorMatchCompetitionRound(standings, 4, {
+      p0: 93, p1: 89, p2: 72, p3: 69,
+    });
+    expect(round4.eliminatedIds).toEqual(['p3', 'p2']);
+    expect(round4.activeIds).toEqual(['p0', 'p1']);
+
+    const round5 = resolveColorMatchCompetitionRound(round4.standings, 5, {
+      p0: 94,
+      p1: 97,
+    });
+    const ranked = rankColorMatchCompetitionStandings(round5.standings);
+    const rawResults = buildColorMatchCompetitionRawResults(ranked);
+
+    expect(ranked.map((entry) => entry.participantId)).toEqual(['p1', 'p0', 'p2', 'p3', 'p4', 'p5', 'p6']);
+    expect(rawResults.p1).toBeGreaterThan(rawResults.p0);
+    expect(rawResults.p0).toBeGreaterThan(rawResults.p2);
+  });
+
+  it('AI scores stay between 65 and 99 and trend upward in later rounds', () => {
+    const participant = { id: 'ai-1', participantIndex: 1, precomputedScore: 78 };
+    const round1Scores = Array.from({ length: 50 }, (_, seed) => simulateColorMatchAiRoundScore(participant, 1, seed));
+    const round5Scores = Array.from({ length: 50 }, (_, seed) => simulateColorMatchAiRoundScore(participant, 5, seed));
+
+    expect(Math.min(...round1Scores)).toBeGreaterThanOrEqual(65);
+    expect(Math.max(...round5Scores)).toBeLessThanOrEqual(99);
+    expect(round5Scores.reduce((sum, value) => sum + value, 0)).toBeGreaterThan(
+      round1Scores.reduce((sum, value) => sum + value, 0),
+    );
   });
 });
 
