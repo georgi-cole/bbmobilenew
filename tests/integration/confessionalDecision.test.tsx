@@ -303,15 +303,16 @@ describe('selectConfessionalAlertCount', () => {
     expect(selectConfessionalAlertCount(store.getState())).toBe(0);
   });
 
-  it('does not double-count doubleVoteOffer (already counted separately + as confessional decision)', () => {
+  it('counts both the offer flag and the confessional routing when awaitingDoubleVoteOffer is set', () => {
     const store = makeStore({
       phase: 'live_vote',
       awaitingHumanVote: true,
       awaitingDoubleVoteOffer: true,
     });
-    // awaitingDoubleVoteOffer = 1 (from existing logic)
-    // selectActiveConfessionalDecision = non-null → +1 for ceremony
-    // Total = 2 (one for the offer flag, one for the confessional routing)
+    // Both are independent reasons for a confessional alert:
+    //  1. awaitingDoubleVoteOffer = +1 (existing logic for the flag itself)
+    //  2. selectActiveConfessionalDecision = non-null → +1 for the ceremony routing
+    // Total should be at least 2.
     const count = selectConfessionalAlertCount(store.getState());
     expect(count).toBeGreaterThanOrEqual(2);
   });
