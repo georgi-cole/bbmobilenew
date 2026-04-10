@@ -29,28 +29,29 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: () => <div data-testid="tv-zone" />,
-}));
-
-// Module-level captured callback so AnimatedVoteResultsModal can be called.
-let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
-
-vi.mock('../../src/components/AnimatedVoteResultsModal/AnimatedVoteResultsModal', () => ({
   default: ({
-    onTiebreakerRequired,
-    onDone,
+    voteResultsReveal,
   }: {
-    onTiebreakerRequired?: (ids: string[]) => void;
-    onDone: () => void;
+    voteResultsReveal?: {
+      onTiebreakerRequired?: (ids: string[]) => void;
+      onDone: () => void;
+    } | null;
   }) => {
-    capturedOnTiebreakerRequired = onTiebreakerRequired ?? null;
+    capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
     return (
-      <div data-testid="vote-results-modal">
-        <button onClick={onDone}>Done</button>
+      <div data-testid="tv-zone">
+        {voteResultsReveal && (
+          <div data-testid="vote-results-modal">
+            <button onClick={voteResultsReveal.onDone}>Done</button>
+          </div>
+        )}
       </div>
     );
   },
 }));
+
+// Module-level captured callback so the TV vote reveal can be triggered.
+let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

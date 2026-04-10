@@ -179,6 +179,60 @@ describe('TvZone — announcement overlay', () => {
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
   });
 
+  it('renders the vote results reveal inside the main tv viewport', () => {
+    const store = makeStore();
+    const nominees = [
+      makePlayer('p1', 'Blue'),
+      makePlayer('p2', 'Kian'),
+    ];
+
+    renderTvZone(store, {
+      voteResultsReveal: {
+        nominees: [
+          { nominee: nominees[0], voteCount: 2 },
+          { nominee: nominees[1], voteCount: 1 },
+        ],
+        evictee: nominees[0],
+        onDone: vi.fn(),
+      },
+    });
+
+    const viewport = document.querySelector('.tv-zone__viewport');
+    const reveal = document.querySelector('.tv-zone__viewport .avrm');
+
+    expect(viewport).toBeTruthy();
+    expect(reveal).toBeTruthy();
+    expect(screen.getByLabelText(/vote results/i)).toHaveClass('avrm--tv');
+  });
+
+  it('clears the previous viewport message while the vote results reveal is active', () => {
+    const store = makeStore();
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-live-vote',
+            text: 'Houseguests, the votes are in.',
+          }),
+        ),
+      );
+    });
+
+    renderTvZone(store, {
+      voteResultsReveal: {
+        nominees: [
+          { nominee: makePlayer('p1', 'Blue'), voteCount: 2 },
+          { nominee: makePlayer('p2', 'Kian'), voteCount: 1 },
+        ],
+        evictee: makePlayer('p1', 'Blue'),
+        onDone: vi.fn(),
+      },
+    });
+
+    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+  });
+
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
     const store = makeStore();
     renderTvZone(store);

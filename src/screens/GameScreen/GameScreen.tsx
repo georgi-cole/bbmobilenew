@@ -66,7 +66,6 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import { isPlacementRankingGame } from '../../minigames/registry'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
-import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
@@ -1890,6 +1889,20 @@ export default function GameScreen() {
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
+      ) : showVoteResults ? (
+        <TvZone
+          voteResultsReveal={{
+            nominees: voteResultsTallies,
+            evictee: voteResultsEvictee,
+            onTiebreakerRequired: handleTiebreakerRequired,
+            publicTiebreak: publicEvictionTiebreak,
+            onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,
+            onDone: handleVoteResultsDone,
+          }}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          mainLogMaxVisible={compactRosterLogRows}
+        />
       ) : (
         <TvZone
           externalAnnouncement={preAdAnnouncement}
@@ -2572,18 +2585,6 @@ export default function GameScreen() {
           subtitle={pendingSaveCeremony.subtitle}
           onDone={handleSaveCeremonyDone}
           ariaLabel={pendingSaveCeremony.caption}
-        />
-      )}
-
-      {/* ── Vote Results (animated sequential reveal) ────────────────────── */}
-      {showVoteResults && (
-        <AnimatedVoteResultsModal
-          nominees={voteResultsTallies}
-          evictee={voteResultsEvictee}
-          onTiebreakerRequired={handleTiebreakerRequired}
-          publicTiebreak={publicEvictionTiebreak}
-          onPublicTiebreakResolved={handlePublicEvictionTiebreakResolved}
-          onDone={handleVoteResultsDone}
         />
       )}
 
