@@ -2584,7 +2584,6 @@ export default function GameScreen() {
           publicTiebreak={publicEvictionTiebreak}
           onPublicTiebreakResolved={handlePublicEvictionTiebreakResolved}
           onDone={handleVoteResultsDone}
-          renderInTvViewport
         />
       )}
 
