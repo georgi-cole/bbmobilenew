@@ -3608,8 +3608,8 @@ const gameSlice = createSlice({
               // Store vote results for popup reveal, then queue the pending eviction.
               // Intentionally do NOT clear state.votes here — the raw per-voter mapping
               // is preserved for the confessional vote-breakdown unlock that fires after
-              // the eviction animation. Votes are cleared at the start of the next
-              // live_vote phase (week_start) in the normal advance() flow.
+              // the eviction animation. Votes are cleared when the game next enters
+              // the live_vote phase in the normal advance() flow.
               state.voteResults = { ...voteCounts };
               state.pendingEviction = {
                 evicteeId: evicted.id,
