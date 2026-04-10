@@ -592,9 +592,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tv-zone-live-vote-backdrop {
-    animation: none;
-  }
   .tv-zone-de-backdrop {
     animation: none;
   }
