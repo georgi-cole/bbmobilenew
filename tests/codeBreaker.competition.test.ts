@@ -16,6 +16,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
+import { getGame } from '../src/minigames/registry';
+import reactComponents from '../src/minigames/reactComponents';
 import gameReducer, {
   applyMinigameWinner,
   commitNominees,
@@ -37,6 +39,19 @@ import {
   DEFAULT_TIME_LIMIT_MS,
   SOLVED_SCORE_FLOOR,
 } from '../src/components/CodeBreakerComp/codeBreakerLogic';
+
+describe('Vault Cracker registry wiring', () => {
+  it('uses the React CodeBreaker component key', () => {
+    const entry = getGame('logicLocks');
+    expect(entry?.implementation).toBe('react');
+    expect(entry?.reactComponentKey).toBe('CodeBreaker');
+  });
+
+  it('is registered in the generic React minigame map', () => {
+    expect(reactComponents.CodeBreaker).toBeDefined();
+    expect(typeof reactComponents.CodeBreaker).toBe('function');
+  });
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
