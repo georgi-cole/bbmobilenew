@@ -168,6 +168,19 @@ function secondsLabel(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function compactRoundMeta(entry: RoundSummary): string[] {
+  const tokens = [
+    `${entry.errors} err`,
+    secondsLabel(entry.elapsedSeconds),
+    `${entry.boxesOpened} bx`,
+    `+${entry.roundScore}`,
+  ];
+  if (entry.appliedEffects.length > 0) {
+    tokens.splice(2, 0, entry.appliedEffects[0]);
+  }
+  return tokens;
+}
+
 function findRandomHiddenLetters(word: string, guessedLetters: string[], revealedLetters: string[], amount: number, rng: () => number): string[] {
   const guessed = new Set([...guessedLetters, ...revealedLetters].map((letter) => letter.toUpperCase()));
   const hiddenUnique = Array.from(new Set(normalizeWord(word).split('').filter((char) => isLetter(char) && !guessed.has(char))));
@@ -935,30 +948,17 @@ export default function HangmanChallengeComp({
                 <article className="hangman-challenge__score-row" key={entry.participantId}>
                   <div className="hangman-challenge__score-rank">{MEDALS[index] ?? `#${index + 1}`}</div>
                   <div className="hangman-challenge__score-main">
-                    <div className="hangman-challenge__score-name-row">
+                    <div className="hangman-challenge__score-primary-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <div className="hangman-challenge__score-summary">
-                        <strong>{entry.participantName}</strong>
-                        <span>{entry.solved ? 'Solved' : 'Failed'} • {entry.word}</span>
-                      </div>
-                      <div className="hangman-challenge__score-total">
-                        <span>Total</span>
-                        <strong>{entry.cumulativeScore}</strong>
-                      </div>
+                      <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
+                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
                     </div>
-                    <div className="hangman-challenge__score-meta">
-                      <span>{entry.errors} errors</span>
-                      <span>{secondsLabel(entry.elapsedSeconds)}</span>
-                      <span>{entry.boxesOpened} boxes</span>
-                      <span>Round {entry.roundScore}</span>
+                    <div className="hangman-challenge__score-secondary-row">
+                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved' : 'Failed'} • {entry.word}</span>
+                      {compactRoundMeta(entry).map((label) => (
+                        <span key={label}>{label}</span>
+                      ))}
                     </div>
-                    {entry.appliedEffects.length > 0 && (
-                      <div className="hangman-challenge__score-tags">
-                        {entry.appliedEffects.slice(0, 3).map((label) => (
-                          <span key={label}>{label}</span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </article>
               ))}
@@ -983,22 +983,16 @@ export default function HangmanChallengeComp({
                 <article className={`hangman-challenge__score-row${index === 0 ? ' is-winner' : ''}`} key={entry.participantId}>
                   <div className="hangman-challenge__score-rank">{MEDALS[index] ?? `#${index + 1}`}</div>
                   <div className="hangman-challenge__score-main">
-                    <div className="hangman-challenge__score-name-row">
+                    <div className="hangman-challenge__score-primary-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <div className="hangman-challenge__score-summary">
-                        <strong>{entry.participantName}</strong>
-                        <span>{entry.solved ? 'Solved final round' : 'Missed final round'} • {entry.word}</span>
-                      </div>
-                      <div className="hangman-challenge__score-total">
-                        <span>Total</span>
-                        <strong>{entry.cumulativeScore}</strong>
-                      </div>
+                      <strong className="hangman-challenge__score-name">{entry.participantName}</strong>
+                      <span className="hangman-challenge__score-inline-total">Total <strong>{entry.cumulativeScore}</strong></span>
                     </div>
-                    <div className="hangman-challenge__score-meta">
-                      <span>Round {entry.roundScore}</span>
-                      <span>{entry.errors} errors</span>
-                      <span>{secondsLabel(entry.elapsedSeconds)}</span>
-                      <span>{entry.boxesOpened} boxes</span>
+                    <div className="hangman-challenge__score-secondary-row">
+                      <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved final' : 'Missed final'} • {entry.word}</span>
+                      {compactRoundMeta(entry).map((label) => (
+                        <span key={label}>{label}</span>
+                      ))}
                     </div>
                   </div>
                 </article>
