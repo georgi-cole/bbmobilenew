@@ -442,6 +442,7 @@ export default function TvZone(props: TvZoneProps) {
 
   // Whether the current announcement is a double eviction (for spotlight effect).
   const isDeSpotlight = deSpotlightActive;
+  const isLiveVoteSpotlight = voteResultsRevealActive;
 
   const handleSave = useCallback(() => {
     if (!canSave || !activeProfileId) return;
@@ -466,13 +467,21 @@ export default function TvZone(props: TvZoneProps) {
 
   return (
     <section
-      className={`tv-zone${isDeSpotlight ? ' tv-zone--de-spotlight' : ''}`}
+      className={[
+        'tv-zone',
+        isDeSpotlight ? 'tv-zone--de-spotlight' : '',
+        isLiveVoteSpotlight ? 'tv-zone--live-vote-focus' : '',
+      ].filter(Boolean).join(' ')}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
     >
       {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
       {isDeSpotlight && createPortal(
         <div className="tv-zone-de-backdrop" aria-hidden="true" />,
+        document.body,
+      )}
+      {isLiveVoteSpotlight && createPortal(
+        <div className="tv-zone-live-vote-backdrop" aria-hidden="true" />,
         document.body,
       )}
 

@@ -233,6 +233,41 @@ describe('TvZone — announcement overlay', () => {
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
   });
 
+  it('dims the surrounding screen while the vote results reveal is active', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      voteResultsReveal: {
+        nominees: [
+          { nominee: makePlayer('p1', 'Blue'), voteCount: 2 },
+          { nominee: makePlayer('p2', 'Kian'), voteCount: 1 },
+        ],
+        evictee: makePlayer('p1', 'Blue'),
+        onDone: vi.fn(),
+      },
+    });
+
+    expect(screen.getByLabelText('Game action zone')).toHaveClass('tv-zone--live-vote-focus');
+    expect(document.body.querySelector('.tv-zone-live-vote-backdrop')).not.toBeNull();
+  });
+
+  it('restores normal brightness for the post-vote summary announcement state', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'eviction_vote_result',
+        title: 'By a vote of 5 to 4',
+        subtitle: 'Blue, your game ends here.',
+        isLive: true,
+        autoDismissMs: 3000,
+      },
+    });
+
+    expect(screen.getByLabelText('Game action zone')).not.toHaveClass('tv-zone--live-vote-focus');
+    expect(document.body.querySelector('.tv-zone-live-vote-backdrop')).toBeNull();
+  });
+
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
     const store = makeStore();
     renderTvZone(store);

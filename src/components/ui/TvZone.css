@@ -344,6 +344,38 @@
 .tv-zone__feed-item--twist  { border-left: 2px solid #f59e0b; }
 .tv-zone__feed-item--diary  { border-left: 2px solid #8b5cf6; }
 
+.tv-zone--live-vote-focus {
+  position: relative;
+  z-index: 9997;
+}
+
+.tv-zone-live-vote-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9996;
+  background:
+    radial-gradient(
+      circle at 50% 34%,
+      rgba(120, 168, 255, 0.08) 0%,
+      rgba(120, 168, 255, 0.04) 16%,
+      rgba(0, 0, 0, 0) 30%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(3, 8, 18, 0.24) 0%,
+      rgba(2, 6, 12, 0.38) 100%
+    );
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+  animation: liveVoteBackdropFadeIn 220ms ease-out both;
+}
+
+@keyframes liveVoteBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .tv-zone__head {
@@ -465,6 +497,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tv-zone-live-vote-backdrop,
   .tv-zone__viewport::before {
     animation: none;
   }
@@ -559,6 +592,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tv-zone-live-vote-backdrop {
+    animation: none;
+  }
   .tv-zone-de-backdrop {
     animation: none;
   }
