@@ -353,7 +353,7 @@ export default function CodeBreakerComp({
 
           <ol className="cb__leaderboard">
             {leaderboard.map((entry, i) => {
-              const entryParticipant = participants.find((participant) => participant.id === entry.id);
+              const participant = participants.find((candidate) => candidate.id === entry.id);
               const isWinner = i === 0;
               const isLast = i === leaderboard.length - 1;
               const isYou = entry.id === humanId;
@@ -372,7 +372,7 @@ export default function CodeBreakerComp({
                     {i < 3 ? MEDALS[i] : `${i + 1}.`}
                   </span>
                   <span className="cb__lb-name">
-                    {entryParticipant?.name ?? entry.id}
+                    {participant?.name ?? entry.id}
                     {isYou ? ' (You)' : ''}
                   </span>
                   <span className="cb__lb-score">{entry.score}</span>
@@ -437,10 +437,14 @@ export default function CodeBreakerComp({
               >
                 ▲
               </button>
-              <div className="cb__dial-window" aria-label={`Digit ${i + 1}: ${digit}`}>
-                <span className="cb__dial-preview">{(digit + 9) % 10}</span>
+              <div
+                className="cb__dial-window"
+                role="img"
+                aria-label={`Digit ${i + 1}: ${digit}`}
+              >
+                <span className="cb__dial-preview" aria-hidden="true">{(digit + 9) % 10}</span>
                 <span className="cb__dial-digit">{digit}</span>
-                <span className="cb__dial-preview">{(digit + 1) % 10}</span>
+                <span className="cb__dial-preview" aria-hidden="true">{(digit + 1) % 10}</span>
               </div>
               <button
                 className="cb__dial-btn"

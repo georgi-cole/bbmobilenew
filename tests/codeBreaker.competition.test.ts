@@ -217,7 +217,7 @@ describe('Vault Cracker — scoring', () => {
     expect(computeSolvedScore(1, 0)).toBe(100);
   });
 
-  it('clamps non-positive attempts and elapsed values to a valid top-end solve score', () => {
+  it('treats zero attempts and negative elapsed values like an immediate one-attempt solve', () => {
     expect(computeSolvedScore(0, -5_000)).toBe(100);
   });
 
