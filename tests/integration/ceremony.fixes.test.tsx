@@ -32,11 +32,16 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: ({
     voteResultsReveal,
+    externalAnnouncement,
     onExternalAnnouncementDismiss,
   }: {
     voteResultsReveal?: {
       onTiebreakerRequired?: (ids: string[]) => void;
       onDone: () => void;
+    } | null;
+    externalAnnouncement?: {
+      title: string;
+      subtitle?: string;
     } | null;
     onExternalAnnouncementDismiss?: () => void;
   }) => {
@@ -47,6 +52,12 @@ vi.mock('../../src/components/ui/TvZone', () => ({
         {voteResultsReveal && (
           <div data-testid="vote-results-modal">
             <button onClick={voteResultsReveal.onDone}>Done</button>
+          </div>
+        )}
+        {externalAnnouncement && (
+          <div data-testid="external-announcement">
+            <div>{externalAnnouncement.title}</div>
+            {externalAnnouncement.subtitle && <div>{externalAnnouncement.subtitle}</div>}
           </div>
         )}
       </div>
@@ -288,12 +299,22 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       screen.getByText('Done').click();
     });
 
-    // Dismiss the "By a vote of X to Y" post-vote announcement on the main TV.
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 5 to 4');
+
+    // Dismiss the post-vote announcement on the main TV.
     await act(async () => {
       capturedOnExternalAnnouncementDismiss?.();
     });
 
-    // Eviction animation should now show; complete it.
+    // The eviction animation starts only after the extra post-announcement delay.
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(2999);
+    });
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
     expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
     await act(async () => {
       capturedEvictionSplashDone?.();
@@ -319,9 +340,14 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       screen.getByText('Done').click();
     });
 
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 5 to 4');
+
     // Dismiss post-vote announcement then complete eviction animation.
     await act(async () => {
       capturedOnExternalAnnouncementDismiss?.();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
     });
     await act(async () => {
       capturedEvictionSplashDone?.();
@@ -338,5 +364,25 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       status: 'available',
     });
     expect(store.getState().game.voteResults).toBeNull();
+  });
+
+  it('uses vote-count wording instead of X-to-Y copy when more than two nominees are present', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      voteResults: { p2: 5, p3: 3, p4: 1 },
+      votes: { p1: 'p2', p5: 'p2' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('With 5 votes');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 2, your game ends here.');
   });
 });

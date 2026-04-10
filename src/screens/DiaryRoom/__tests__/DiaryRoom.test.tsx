@@ -313,6 +313,33 @@ describe('DiaryRoom', () => {
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
   });
 
+  it('does not offer the eviction vote reveal when the stored unlock phase is not eviction_results', async () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        saveEvictionVoteBreakdownUnlock({
+          week: 2,
+          phase: 'live_vote',
+          votes: {
+            [game.players[1].id]: game.players[2].id,
+            [game.players[3].id]: game.players[2].id,
+          },
+          nomineeIds: [game.players[2].id, game.players[4].id],
+          evicteeId: game.players[2].id,
+          status: 'available',
+        });
+        appStore.dispatch(hydrateGame({
+          ...game,
+          week: 2,
+          phase: 'week_end',
+        }));
+      },
+    });
+
+    expect(screen.queryByText(/are you ready to peek behind the curtain/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
+  });
+
   it('reveals the vote chart after accepting the confessional vote breakdown', async () => {
     renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (appStore) => {

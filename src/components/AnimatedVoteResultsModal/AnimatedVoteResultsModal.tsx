@@ -8,8 +8,12 @@
  *      (e.g., A then B then A…) for a more dramatic reveal.
  *   3. After the last vote is revealed, waits `postRevealDelayMs` then:
  *      - If tied → calls `onTiebreakerRequired(tiedNomineeIds)` and does NOT evict.
- *      - Otherwise → highlights the losing nominee with a red outline +
- *        "EVICTED" label, then calls `onDone()` after `countdownMs`.
+ *      - Otherwise → highlights the losing nominee with a red outline and, in
+ *        the modal variant, shows the "EVICTED" label before calling `onDone()`
+ *        after `countdownMs`.
+ *   4. The TV variant is presentation-only: it hides the ballot icon, disables
+ *      click-to-skip, and omits the inline "EVICTED"/countdown footer UI used
+ *      by the modal presentation.
  *
  * Props:
  *   nominees            – nominees with their final vote counts

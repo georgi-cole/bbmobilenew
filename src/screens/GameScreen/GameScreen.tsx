@@ -169,6 +169,7 @@ export default function GameScreen() {
   // "By a vote of X to Y, Z your game ends here" message shown on the main TV
   // for 3 s after vote results dismiss and before the eviction animation plays.
   const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
+  const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   // When true, the confessional prompt is shown after the eviction animation
   // instead of inline with the vote results (post-eviction mode).
   const isPostEvictionConfessionalModeRef = useRef(false)
@@ -1284,9 +1285,10 @@ export default function GameScreen() {
 
     // When there is a clear evictee, use the new post-eviction sequence:
     //   1. Dismiss vote results (eviction animation blocked by postVoteAnnouncement)
-    //   2. Show "By a vote of X to Y, Z your game ends here" for 3 s
-    //   3. Eviction animation plays once announcement clears
-    //   4. Confessional prompt shows after the animation (if eligible)
+    //   2. Show the post-vote TV announcement for 3 s
+    //   3. Wait an additional 3 s beat after it clears
+    //   4. Eviction animation plays
+    //   5. Confessional prompt shows after the animation (if eligible)
     const evicteeId = game.pendingEviction?.evicteeId
     const evictee = evicteeId
       ? game.players.find((p) => p.id === evicteeId) ?? null
@@ -1306,13 +1308,18 @@ export default function GameScreen() {
       }
 
       const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
+      const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
       const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
         (s, [id, count]) => (id !== evictee.id ? s + count : s),
         0,
       )
+      const voteResultTitle = hasTwoNominees
+        ? `By a vote of ${evicteeVotes} to ${otherVotes}`
+        : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`
+      setPostVoteAnnouncementDelayActive(false)
       setPostVoteAnnouncement({
         key: 'eviction_vote_result',
-        title: `By a vote of ${evicteeVotes} to ${otherVotes}`,
+        title: voteResultTitle,
         subtitle: `${evictee.name}, your game ends here.`,
         isLive: true,
         autoDismissMs: 3000,
@@ -1342,8 +1349,16 @@ export default function GameScreen() {
 
   const handlePostVoteAnnouncementDismiss = useCallback(() => {
     setPostVoteAnnouncement(null)
-    // postVoteAnnouncement cleared → showEvictionSplash unblocks automatically.
+    setPostVoteAnnouncementDelayActive(true)
   }, [])
+
+  useEffect(() => {
+    if (!postVoteAnnouncementDelayActive) return
+    const id = window.setTimeout(() => {
+      setPostVoteAnnouncementDelayActive(false)
+    }, 3000)
+    return () => window.clearTimeout(id)
+  }, [postVoteAnnouncementDelayActive])
 
   const handleVoteDeductionAccept = useCallback(() => {
     setShowVoteDeductionOffer(false)
@@ -1603,10 +1618,11 @@ export default function GameScreen() {
     : null
   // For normal evictions (not Final-4), show whenever pendingEviction is set.
   // For Final-4, show only during the 'splash' stage (after the announcement).
-  // Also blocked while postVoteAnnouncement is showing ("By a vote of X to Y" message).
+  // Also blocked while the post-vote announcement or its follow-up pause is active.
   const showEvictionSplash =
     !showVoteResults &&
     !postVoteAnnouncement &&
+    !postVoteAnnouncementDelayActive &&
     !!game.pendingEviction &&
     !game.awaitingTieBreak &&
     (game.phase !== 'final4_eviction' || final4Stage === 'splash')
