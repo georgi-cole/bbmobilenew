@@ -12,7 +12,10 @@ import gameReducer, {
 } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
 import type { RootState } from '../../../store/store';
-import { saveEvictionVoteBreakdownUnlock } from '../../../features/evictionVoteBreakdownStorage';
+import {
+  loadEvictionVoteBreakdownUnlock,
+  saveEvictionVoteBreakdownUnlock,
+} from '../../../features/evictionVoteBreakdownStorage';
 
 function renderDiaryRoom(
   initialEntries = ['/game', '/diary-room'],
@@ -368,5 +371,38 @@ describe('DiaryRoom', () => {
     expect(screen.getByLabelText(/eviction vote breakdown/i)).toBeTruthy();
     expect(screen.getByText(/who voted for whom/i)).toBeTruthy();
     expect(screen.getByText(/then look closely\. the curtain is lifting now\./i)).toBeTruthy();
+  });
+
+  it('updates the main TV message after declining the confessional vote breakdown and returning to the game', async () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        saveEvictionVoteBreakdownUnlock({
+          week: 2,
+          phase: 'eviction_results',
+          votes: {
+            [game.players[1].id]: game.players[2].id,
+            [game.players[3].id]: game.players[4].id,
+          },
+          nomineeIds: [game.players[2].id, game.players[4].id],
+          evicteeId: game.players[2].id,
+          status: 'available',
+        });
+        appStore.dispatch(hydrateGame({
+          ...game,
+          week: 2,
+          phase: 'week_end',
+        }));
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
+
+    expect(screen.queryByText(/are you ready to peek behind the curtain/i)).toBeNull();
+    expect(loadEvictionVoteBreakdownUnlock()).toMatchObject({ status: 'declined' });
+    expect(store.getState().game.tvFeed[0]?.text).toBe(
+      "It's getting quiet in the house. Sandman on the way?",
+    );
   });
 });
