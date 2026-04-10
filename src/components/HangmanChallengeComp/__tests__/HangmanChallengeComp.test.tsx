@@ -70,9 +70,10 @@ describe('HangmanChallengeComp', () => {
     const scoreboard = screen.getByLabelText(/round scoreboard/i);
     const firstRow = scoreboard.querySelector('.hangman-challenge__score-row');
 
+    expect(firstRow).not.toBeNull();
     expect(firstRow?.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
     expect(firstRow?.querySelector('.hangman-challenge__score-secondary-row')).toBeTruthy();
-    expect(within(firstRow as HTMLElement).getByText(/total/i)).toBeInTheDocument();
-    expect(within(firstRow as HTMLElement).getByText(/\+\d+/)).toBeInTheDocument();
+    expect(within(firstRow).getByText(/total/i)).toBeInTheDocument();
+    expect(within(firstRow).getByText(/\+\d+/)).toBeInTheDocument();
   });
 });
