@@ -118,6 +118,7 @@ import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
+export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 3000
 
 /**
  * GameScreen — main gameplay view.
@@ -1322,7 +1323,7 @@ export default function GameScreen() {
         title: voteResultTitle,
         subtitle: `${evictee.name}, your game ends here.`,
         isLive: true,
-        autoDismissMs: 3000,
+        autoDismissMs: POST_VOTE_ANNOUNCEMENT_DELAY_MS,
       })
       // Dismiss vote results only — eviction splash is gated on postVoteAnnouncement
       proceedAfterVoteResults()
@@ -1356,7 +1357,7 @@ export default function GameScreen() {
     if (!postVoteAnnouncementDelayActive) return
     const id = window.setTimeout(() => {
       setPostVoteAnnouncementDelayActive(false)
-    }, 3000)
+    }, POST_VOTE_ANNOUNCEMENT_DELAY_MS)
     return () => window.clearTimeout(id)
   }, [postVoteAnnouncementDelayActive])
 

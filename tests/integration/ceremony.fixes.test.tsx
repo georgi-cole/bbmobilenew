@@ -20,7 +20,7 @@ import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
-import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import GameScreen, { POST_VOTE_ANNOUNCEMENT_DELAY_MS } from '../../src/screens/GameScreen/GameScreen';
 import { loadEvictionVoteBreakdownUnlock } from '../../src/features/evictionVoteBreakdownStorage';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     // The eviction animation starts only after the extra post-announcement delay.
     expect(screen.queryByTestId('eviction-overlay')).toBeNull();
     await act(async () => {
-      vi.advanceTimersByTime(2999);
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS - 1);
     });
     expect(screen.queryByTestId('eviction-overlay')).toBeNull();
     await act(async () => {
@@ -347,7 +347,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       capturedOnExternalAnnouncementDismiss?.();
     });
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
     });
     await act(async () => {
       capturedEvictionSplashDone?.();
@@ -389,7 +389,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     });
     expect(screen.queryByTestId('eviction-overlay')).toBeNull();
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
     });
     expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
   });
