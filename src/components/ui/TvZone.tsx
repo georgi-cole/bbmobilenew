@@ -520,9 +520,6 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Bezel + Viewport ────────────────────────────────────────────────── */}
       <div className="tv-zone__bezel">
         <div className="tv-zone__bezel-frame">
-          <div className="tv-zone__bezel-brand" aria-hidden="true">
-            <span className="tv-zone__bezel-brand__text">EW</span>
-          </div>
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
             <p
@@ -570,6 +567,7 @@ export default function TvZone(props: TvZoneProps) {
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
                 onDone={props.voteResultsReveal.onDone}
                 variant="tv"
+                countdownMs={3000}
               />
             )}
           </div>

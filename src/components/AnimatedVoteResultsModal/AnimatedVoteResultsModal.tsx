@@ -198,11 +198,11 @@ export default function AnimatedVoteResultsModal({
       role={variant === 'tv' ? 'status' : 'dialog'}
       aria-modal={variant === 'tv' ? undefined : 'true'}
       aria-label="Vote results"
-      onClick={outcomeVisible ? fire : undefined}
+      onClick={variant === 'tv' ? undefined : (outcomeVisible ? fire : undefined)}
     >
       <div className={`avrm__card${variant === 'tv' ? ' avrm__card--tv' : ''}`}>
         <header className="avrm__header">
-          <span className="avrm__header-icon">🗳️</span>
+          {variant !== 'tv' && <span className="avrm__header-icon">🗳️</span>}
           <h2 className="avrm__title">VOTE RESULTS</h2>
           {variant === 'tv' && <span className="avrm__live-badge">LIVE FEED</span>}
         </header>
@@ -246,9 +246,6 @@ export default function AnimatedVoteResultsModal({
                       </div>
                       <span className="avrm__tally-count">{shown}</span>
                     </div>
-                    {outcomeVisible && isEvictee && (
-                      <span className="avrm__tv-evicted-chip">EVICTED</span>
-                    )}
                   </>
                 ) : (
                   <>
@@ -270,14 +267,14 @@ export default function AnimatedVoteResultsModal({
           })}
         </div>
 
-        {outcomeVisible && resolvedEvictee && (
+        {outcomeVisible && resolvedEvictee && variant !== 'tv' && (
           <div className="avrm__evictee" role="status">
             <span className="avrm__evictee-label">ELIMINATED</span>
             <span className="avrm__evictee-name">{resolvedEvictee.name}</span>
           </div>
         )}
 
-        {outcomeVisible && (
+        {outcomeVisible && variant !== 'tv' && (
           <footer className="avrm__footer">
             <span className="avrm__countdown" aria-live="polite">
               Continuing in {countdown}s&hellip;

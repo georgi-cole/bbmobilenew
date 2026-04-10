@@ -32,13 +32,16 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: ({
     voteResultsReveal,
+    onExternalAnnouncementDismiss,
   }: {
     voteResultsReveal?: {
       onTiebreakerRequired?: (ids: string[]) => void;
       onDone: () => void;
     } | null;
+    onExternalAnnouncementDismiss?: () => void;
   }) => {
     capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
+    capturedOnExternalAnnouncementDismiss = onExternalAnnouncementDismiss ?? null;
     return (
       <div data-testid="tv-zone">
         {voteResultsReveal && (
@@ -51,8 +54,17 @@ vi.mock('../../src/components/ui/TvZone', () => ({
   },
 }));
 
-// Module-level captured callback so the TV vote reveal can be triggered.
+vi.mock('../../src/components/Eviction/SpotlightEvictionOverlay', () => ({
+  default: ({ onDone }: { onDone: () => void }) => {
+    capturedEvictionSplashDone = onDone;
+    return <div data-testid="eviction-overlay" />;
+  },
+}));
+
+// Module-level captured callbacks so the TV vote reveal / eviction can be triggered.
 let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
+let capturedOnExternalAnnouncementDismiss: (() => void) | null = null;
+let capturedEvictionSplashDone: (() => void) | null = null;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -248,6 +260,8 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
 
 describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
   beforeEach(() => {
+    capturedOnExternalAnnouncementDismiss = null;
+    capturedEvictionSplashDone = null;
     sessionStorage.clear();
     vi.useFakeTimers();
   });
@@ -257,7 +271,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     vi.restoreAllMocks();
   });
 
-  it('offers the rewarded vote breakdown reveal before dismissing live vote results', async () => {
+  it('offers the rewarded vote breakdown reveal after the eviction animation', async () => {
     const store = makeStore({
       phase: 'eviction_results',
       nomineeIds: ['p2', 'p3'],
@@ -272,6 +286,17 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     screen.getByTestId('vote-results-modal');
     act(() => {
       screen.getByText('Done').click();
+    });
+
+    // Dismiss the "By a vote of X to Y" post-vote announcement on the main TV.
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+
+    // Eviction animation should now show; complete it.
+    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
+    await act(async () => {
+      capturedEvictionSplashDone?.();
     });
 
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
@@ -292,6 +317,14 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
 
     act(() => {
       screen.getByText('Done').click();
+    });
+
+    // Dismiss post-vote announcement then complete eviction animation.
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    await act(async () => {
+      capturedEvictionSplashDone?.();
     });
 
     act(() => {

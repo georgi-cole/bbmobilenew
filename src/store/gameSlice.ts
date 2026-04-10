@@ -3605,9 +3605,12 @@ const gameSlice = createSlice({
             // Clear winner — defer the commit until the cinematic overlay completes
             const evicted = state.players.find((p) => p.id === topNominees[0]);
             if (evicted) {
-              // Store vote results for popup reveal, then queue the pending eviction
+              // Store vote results for popup reveal, then queue the pending eviction.
+              // Intentionally do NOT clear state.votes here — the raw per-voter mapping
+              // is preserved for the confessional vote-breakdown unlock that fires after
+              // the eviction animation. Votes are cleared at the start of the next
+              // live_vote phase (week_start) in the normal advance() flow.
               state.voteResults = { ...voteCounts };
-              state.votes = {};
               state.pendingEviction = {
                 evicteeId: evicted.id,
                 evictionMessage: `${evicted.name}, you have been eliminated from The Big Eye house. 🚪`,
@@ -3654,9 +3657,10 @@ const gameSlice = createSlice({
               const evicteeId = topNominees[Math.floor(aiRng() * topNominees.length)];
               const evicted = state.players.find((p) => p.id === evicteeId);
               if (evicted) {
-                // Store vote results for popup reveal, then queue the pending eviction
+                // Store vote results for popup reveal, then queue the pending eviction.
+                // Do NOT clear state.votes — preserve per-voter mapping for the
+                // post-eviction confessional unlock (same as the clear-winner path).
                 state.voteResults = { ...voteCounts };
-                state.votes = {};
                 state.pendingEviction = {
                   evicteeId: evicted.id,
                   evictionMessage: `${lohPlayer?.name ?? 'The LOH'} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
