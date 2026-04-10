@@ -272,7 +272,7 @@
 }
 
 .hangman-challenge__playfield {
-  grid-template-columns: minmax(0, 1.25fr) minmax(140px, 0.72fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 5fr) minmax(140px, 3fr) minmax(0, 4fr);
   align-items: start;
   margin: 16px 0 0;
 }

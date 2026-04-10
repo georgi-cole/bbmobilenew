@@ -33,7 +33,7 @@ const TIME_PENALTY_SURGE_MS = 10_000;
 const SCORE_CUT_MULTIPLIER = 0.88;
 const MEDALS = ['🥇', '🥈', '🥉'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const PRESSURE_CRACKS = Array.from({ length: MAX_ERRORS }, (_, index) => index);
+const PRESSURE_CRACK_INDICES = Array.from({ length: MAX_ERRORS }, (_, index) => index);
 
 const participantFallbacks: Array<Pick<MinigameParticipant, 'id' | 'name' | 'isHuman' | 'precomputedScore' | 'previousPR'>> = [
   { id: 'you', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
@@ -108,7 +108,6 @@ interface RoundState {
 interface Props {
   onFinish?: (value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => void;
   seed?: number;
-  autoStart?: boolean;
   participantIds?: string[];
   participants?: MinigameParticipant[];
 }
@@ -807,7 +806,7 @@ export default function HangmanChallengeComp({
                 aria-hidden="true"
               >
                 <div className="hangman-challenge__pressure-glass-fill" style={{ height: `${(roundState.wrongCount / MAX_ERRORS) * 100}%` }} />
-                {PRESSURE_CRACKS.map((index) => (
+                {PRESSURE_CRACK_INDICES.map((index) => (
                   <span
                     key={index}
                     className={`hangman-challenge__pressure-crack hangman-challenge__pressure-crack--${(index % 4) + 1}${index < roundState.wrongCount ? ' is-visible' : ''}`}

@@ -18,7 +18,7 @@ describe('HangmanChallengeComp', () => {
   });
 
   it('waits for the CTA before leaving the intro screen', () => {
-    render(<HangmanChallengeComp autoStart participants={participants} seed={42} />);
+    render(<HangmanChallengeComp participants={participants} seed={42} />);
 
     act(() => {
       vi.advanceTimersByTime(2_000);
