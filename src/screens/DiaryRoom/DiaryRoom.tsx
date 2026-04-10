@@ -85,6 +85,8 @@ const REWARD_MESSAGES: Record<string, string> = {
     `But perhaps the real prize was the courage to open it. 😶‍🌫️ The Big Eye is amused.`,
 };
 
+const VOTE_BREAKDOWN_DECLINED_TV_MESSAGE = "It's getting quiet in the house. Sandman on the way?";
+
 const TIC_TAC_TOE_LINES: ReadonlyArray<readonly [number, number, number]> = [
   [0, 1, 2],
   [3, 4, 5],
@@ -447,14 +449,16 @@ export default function DiaryRoom() {
     };
   }, [ticTacToeActive, ticTacToeDraw, ticTacToeNextTurn, ticTacToeWinner]);
 
-  // On unmount: emit a single generic summary to tvFeed if chat is non-empty.
-  // Use loadChat() from sessionStorage rather than messagesRef so the check
-  // is always accurate even if the user navigates before the ref-sync effect runs.
+  // On unmount: emit a single generic summary to tvFeed only when the player
+  // actually sent at least one message. Use loadChat() from sessionStorage
+  // rather than messagesRef so the check is always accurate even if the user
+  // navigates before the ref-sync effect runs.
   useEffect(() => {
     return () => {
       const pid = playerIdRef.current;
       const msgs = loadChat(pid);
-      if (msgs.length > 0 && !hasSummaryEmitted(pid)) {
+      const hasUserMessage = msgs.some((msg) => msg.role === 'user');
+      if (hasUserMessage && !hasSummaryEmitted(pid)) {
         markSummaryEmitted(pid);
         const text = pickSummary(playerNameRef.current, seedRef.current ?? 0);
         dispatchRef.current(addTvEvent({ text, type: 'game' }));
@@ -873,6 +877,10 @@ export default function DiaryRoom() {
                     type="button"
                     onClick={() => {
                       setVoteBreakdownUnlock(updateEvictionVoteBreakdownStatus('declined'));
+                      dispatch(addTvEvent({
+                        text: VOTE_BREAKDOWN_DECLINED_TV_MESSAGE,
+                        type: 'game',
+                      }));
                       pushBigEyeMessage('The house secret is safe with me. You can leave the Confessional.');
                     }}
                   >
