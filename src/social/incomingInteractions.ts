@@ -40,8 +40,63 @@ const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
   ignore: 'ignored',
 };
 
+const IGNORED_INTERACTION_SUMMARY_LABELS: Record<IncomingInteractionType, { singular: string; plural: string }> = {
+  compliment: { singular: 'compliment', plural: 'compliments' },
+  gossip: { singular: 'gossip drop', plural: 'gossip drops' },
+  warning: { singular: 'warning', plural: 'warnings' },
+  alliance_proposal: { singular: 'alliance proposal', plural: 'alliance proposals' },
+  deal_offer: { singular: 'deal offer', plural: 'deal offers' },
+  nomination_plea: { singular: 'nomination plea', plural: 'nomination pleas' },
+  check_in: { singular: 'check-in', plural: 'check-ins' },
+  snide_remark: { singular: 'snide remark', plural: 'snide remarks' },
+  other: { singular: 'message', plural: 'messages' },
+};
+
+const IGNORED_INTERACTION_TYPE_PRIORITY: Record<IncomingInteractionType, number> = {
+  deal_offer: 0,
+  nomination_plea: 1,
+  alliance_proposal: 2,
+  warning: 3,
+  check_in: 4,
+  gossip: 5,
+  compliment: 6,
+  snide_remark: 7,
+  other: 8,
+};
+
+const DEFAULT_IGNORED_INTERACTION_LABEL = 'messages';
+
 export function getIncomingInteractionTypeLabel(type: IncomingInteractionType): string {
   return TYPE_LABELS[type];
+}
+
+function formatList(items: string[]): string {
+  if (items.length === 0) return DEFAULT_IGNORED_INTERACTION_LABEL;
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteraction[]): string {
+  const counts = new Map<IncomingInteractionType, number>();
+  interactions.forEach((interaction) => {
+    counts.set(interaction.type, (counts.get(interaction.type) ?? 0) + 1);
+  });
+  const uniqueSenderCount = new Set(interactions.map((interaction) => interaction.fromId)).size;
+  const typeFragments = Array.from(counts.entries())
+    .sort(([leftType], [rightType]) =>
+      IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
+    )
+    .map(([type, count]) => {
+      const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
+      return count === 1 ? labels.singular : labels.plural;
+    });
+
+  if (uniqueSenderCount === 1) {
+    return `One housemate's ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
+  }
+
+  return `Several housemates' ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
 }
 
 function getResponseDelta(responseType: IncomingInteractionResponseType): number {
@@ -157,8 +212,6 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
         week,
         detail: 'week_end',
       });
-      const fromPlayer = state.game.players.find((player) => player.id === interaction.fromId);
-      const fromName = fromPlayer?.name ?? interaction.fromId;
 
       if (ignoreDelta !== 0 && interaction.fromId !== humanPlayer.id) {
         dispatch(
@@ -191,16 +244,16 @@ export function autoResolveExpiredIncomingInteractionsForWeek(week: number) {
         );
       }
 
-      const text = buildResponseLogText(interaction, 'ignore', fromName);
-      dispatch(
-        addTvEvent({
-          text,
-          type: 'social',
-          source: 'system',
-          channels: ['tv', 'mainLog'],
-        }),
-      );
     });
+
+    dispatch(
+      addTvEvent({
+        text: buildIgnoredIncomingInteractionsSummary(interactions),
+        type: 'social',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+      }),
+    );
 
     dispatch(resolveExpiredIncomingInteractionsForWeek({ week, resolvedAt }));
   };
