@@ -30,6 +30,7 @@ export interface ColorMatchCompetitionRoundState {
 
 export const MAX_RGB_DIST = Math.sqrt(255 * 255 * 3);
 export const HINT_PENALTY_POINTS = 5;
+export const COLOR_MATCH_COMPETITION_SCORE_PRECISION = 3;
 
 export function rgbToHex({ r, g, b }: RGB): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
@@ -84,6 +85,30 @@ export function buildHintMessage(target: RGB, current: RGB): string {
 
 export function applyHintPenalty(rawAverage: number, hintsUsed: number): number {
   return Math.max(0, Math.round(rawAverage - hintsUsed * HINT_PENALTY_POINTS));
+}
+
+export function normalizeColorMatchCompetitionScore(value: number): number {
+  return Number(clamp(value, 0, 100).toFixed(COLOR_MATCH_COMPETITION_SCORE_PRECISION));
+}
+
+export function getColorMatchScoreDisplayPrecision(values: number[]): number {
+  const normalizedValues = values
+    .filter((value) => Number.isFinite(value))
+    .map((value) => normalizeColorMatchCompetitionScore(value));
+  if (normalizedValues.length <= 1) return 0;
+
+  for (let precision = 0; precision <= COLOR_MATCH_COMPETITION_SCORE_PRECISION; precision += 1) {
+    const formatted = normalizedValues.map((value) => value.toFixed(precision));
+    if (new Set(formatted).size === formatted.length) {
+      return precision;
+    }
+  }
+
+  return COLOR_MATCH_COMPETITION_SCORE_PRECISION;
+}
+
+export function formatColorMatchScore(value: number, precision = 0): string {
+  return `${normalizeColorMatchCompetitionScore(value).toFixed(precision)}%`;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -143,7 +168,62 @@ export function simulateColorMatchAiRoundScore(
   );
   const clusteredRoll = (rng() + rng() + rng()) / 3;
   const rawScore = 67 + clusteredRoll * 22 + getRoundBoost(roundNumber) + getParticipantScoreBias(participant);
-  return clamp(Math.round(rawScore), 65, 99);
+  return normalizeColorMatchCompetitionScore(clamp(rawScore, 65, 99));
+}
+
+export function getColorMatchAiRoundScore(
+  participant: Pick<ColorMatchCompetitionParticipant, 'id' | 'participantIndex' | 'precomputedScore'>,
+  roundNumber: number,
+  seed: number,
+  precomputedScores?: number[],
+): number {
+  const precomputedScore = precomputedScores?.[roundNumber - 1];
+  return typeof precomputedScore === 'number'
+    ? precomputedScore
+    : simulateColorMatchAiRoundScore(participant, roundNumber, seed);
+}
+
+export function getColorMatchFeedbackState({
+  competitionMode,
+  humanStillActive,
+  activeCompetitionCount,
+  nextIndex,
+  maxRounds,
+}: {
+  competitionMode: boolean;
+  humanStillActive: boolean;
+  activeCompetitionCount: number;
+  nextIndex: number;
+  maxRounds: number;
+}): {
+  rematchPending: boolean;
+  competitionOver: boolean;
+  ctaLabel: string;
+} {
+  const rematchPending = competitionMode && nextIndex >= maxRounds && activeCompetitionCount > 1;
+  const competitionOver = competitionMode
+    ? activeCompetitionCount <= 1 || (!rematchPending && nextIndex >= maxRounds)
+    : nextIndex >= maxRounds;
+
+  return {
+    rematchPending,
+    competitionOver,
+    ctaLabel: competitionOver
+      ? 'See Results →'
+      : humanStillActive
+        ? 'Next Round →'
+        : 'Continue Watching →',
+  };
+}
+
+export function getColorMatchFeedbackCtaLabel(args: {
+  competitionMode: boolean;
+  humanStillActive: boolean;
+  activeCompetitionCount: number;
+  nextIndex: number;
+  maxRounds: number;
+}): string {
+  return getColorMatchFeedbackState(args).ctaLabel;
 }
 
 export function resolveColorMatchCompetitionRound(
@@ -160,7 +240,7 @@ export function resolveColorMatchCompetitionRound(
   });
 
   const activeStandings = nextStandings.filter((standing) => standing.eliminatedRound === null);
-  if (activeStandings.length <= 1 || roundNumber >= 5) {
+  if (activeStandings.length <= 1) {
     return {
       standings: nextStandings,
       eliminatedIds: [],
@@ -168,27 +248,37 @@ export function resolveColorMatchCompetitionRound(
     };
   }
 
-  let eliminatedIds: string[] = [];
-  if (roundNumber <= 3) {
+  if (roundNumber < 5) {
     const lowestScore = Math.min(...activeStandings.map((standing) => getEliminationScore(standing)));
-    const lowestScoreIds = activeStandings
+    const eliminatedIds = activeStandings
       .filter((standing) => getEliminationScore(standing) === lowestScore)
       .map((standing) => standing.participantId);
+    const eliminatedSet = new Set(
+      eliminatedIds.length < activeStandings.length ? eliminatedIds : [],
+    );
+    const resolvedStandings = nextStandings.map((standing) => (
+      standing.eliminatedRound === null && eliminatedSet.has(standing.participantId)
+        ? { ...standing, eliminatedRound: roundNumber }
+        : standing
+    ));
 
-    eliminatedIds = lowestScoreIds.length < activeStandings.length ? lowestScoreIds : [];
-  } else if (roundNumber === 4) {
-    const survivorsTarget = Math.max(2, Math.ceil(activeStandings.length / 2));
-    const eliminationCount = Math.max(0, activeStandings.length - survivorsTarget);
-    const orderedForCut = [...activeStandings].sort((a, b) => {
-      const scoreDiff = getEliminationScore(a) - getEliminationScore(b);
-      if (scoreDiff !== 0) return scoreDiff;
-      const cumulativeDiff = getCumulativeScore(a) - getCumulativeScore(b);
-      if (cumulativeDiff !== 0) return cumulativeDiff;
-      return a.participantId.localeCompare(b.participantId);
-    });
-    eliminatedIds = orderedForCut.slice(0, eliminationCount).map((standing) => standing.participantId);
+    return {
+      standings: resolvedStandings,
+      eliminatedIds: [...eliminatedSet],
+      activeIds: resolvedStandings
+        .filter((standing) => standing.eliminatedRound === null)
+        .map((standing) => standing.participantId),
+    };
   }
 
+  const highestScore = Math.max(...activeStandings.map((standing) => getEliminationScore(standing)));
+  const activeIds = activeStandings
+    .filter((standing) => getEliminationScore(standing) === highestScore)
+    .map((standing) => standing.participantId);
+  const activeSet = new Set(activeIds);
+  const eliminatedIds = activeStandings
+    .filter((standing) => !activeSet.has(standing.participantId))
+    .map((standing) => standing.participantId);
   const eliminatedSet = new Set(eliminatedIds);
   const resolvedStandings = nextStandings.map((standing) => (
     standing.eliminatedRound === null && eliminatedSet.has(standing.participantId)
@@ -199,9 +289,7 @@ export function resolveColorMatchCompetitionRound(
   return {
     standings: resolvedStandings,
     eliminatedIds,
-    activeIds: resolvedStandings
-      .filter((standing) => standing.eliminatedRound === null)
-      .map((standing) => standing.participantId),
+    activeIds,
   };
 }
 
@@ -232,7 +320,11 @@ export function buildColorMatchCompetitionRawResults(
   standings: ColorMatchCompetitionStanding[],
 ): Record<string, number> {
   return Object.fromEntries(standings.map((standing) => {
-    const stageIndex = standing.eliminatedRound === null ? 4 : Math.max(0, standing.eliminatedRound - 1);
+    // Rematches still belong to the finale stage for scoring/ranking purposes,
+    // so any elimination after round 5 keeps the same finale stage weight.
+    const stageIndex = standing.eliminatedRound === null
+      ? 4
+      : Math.min(4, Math.max(0, standing.eliminatedRound - 1));
     const stageBase = stageIndex * 20;
     const eliminationScore = getEliminationScore(standing);
     const cumulativeScore = getCumulativeScore(standing);
