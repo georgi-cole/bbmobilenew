@@ -20,7 +20,7 @@ import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
-import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import GameScreen, { POST_VOTE_ANNOUNCEMENT_DELAY_MS } from '../../src/screens/GameScreen/GameScreen';
 import { loadEvictionVoteBreakdownUnlock } from '../../src/features/evictionVoteBreakdownStorage';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -32,13 +32,21 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: ({
     voteResultsReveal,
+    externalAnnouncement,
+    onExternalAnnouncementDismiss,
   }: {
     voteResultsReveal?: {
       onTiebreakerRequired?: (ids: string[]) => void;
       onDone: () => void;
     } | null;
+    externalAnnouncement?: {
+      title: string;
+      subtitle?: string;
+    } | null;
+    onExternalAnnouncementDismiss?: () => void;
   }) => {
     capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
+    capturedOnExternalAnnouncementDismiss = onExternalAnnouncementDismiss ?? null;
     return (
       <div data-testid="tv-zone">
         {voteResultsReveal && (
@@ -46,13 +54,28 @@ vi.mock('../../src/components/ui/TvZone', () => ({
             <button onClick={voteResultsReveal.onDone}>Done</button>
           </div>
         )}
+        {externalAnnouncement && (
+          <div data-testid="external-announcement">
+            <div>{externalAnnouncement.title}</div>
+            {externalAnnouncement.subtitle && <div>{externalAnnouncement.subtitle}</div>}
+          </div>
+        )}
       </div>
     );
   },
 }));
 
-// Module-level captured callback so the TV vote reveal can be triggered.
+vi.mock('../../src/components/Eviction/SpotlightEvictionOverlay', () => ({
+  default: ({ onDone }: { onDone: () => void }) => {
+    capturedEvictionSplashDone = onDone;
+    return <div data-testid="eviction-overlay" />;
+  },
+}));
+
+// Module-level captured callbacks so the TV vote reveal / eviction can be triggered.
 let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
+let capturedOnExternalAnnouncementDismiss: (() => void) | null = null;
+let capturedEvictionSplashDone: (() => void) | null = null;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -248,6 +271,8 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
 
 describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
   beforeEach(() => {
+    capturedOnExternalAnnouncementDismiss = null;
+    capturedEvictionSplashDone = null;
     sessionStorage.clear();
     vi.useFakeTimers();
   });
@@ -257,7 +282,7 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     vi.restoreAllMocks();
   });
 
-  it('offers the rewarded vote breakdown reveal before dismissing live vote results', async () => {
+  it('offers the rewarded vote breakdown reveal after the eviction animation', async () => {
     const store = makeStore({
       phase: 'eviction_results',
       nomineeIds: ['p2', 'p3'],
@@ -272,6 +297,27 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     screen.getByTestId('vote-results-modal');
     act(() => {
       screen.getByText('Done').click();
+    });
+
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 5 to 4');
+
+    // Dismiss the post-vote announcement on the main TV.
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+
+    // The eviction animation starts only after the extra post-announcement delay.
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS - 1);
+    });
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
+    await act(async () => {
+      capturedEvictionSplashDone?.();
     });
 
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
@@ -294,6 +340,19 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       screen.getByText('Done').click();
     });
 
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 5 to 4');
+
+    // Dismiss post-vote announcement then complete eviction animation.
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
+    });
+    await act(async () => {
+      capturedEvictionSplashDone?.();
+    });
+
     act(() => {
       screen.getByRole('button', { name: /watch ad to unlock vote reveal/i }).click();
     });
@@ -305,5 +364,33 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       status: 'available',
     });
     expect(store.getState().game.voteResults).toBeNull();
+  });
+
+  it('uses vote-count wording instead of X-to-Y copy when more than two nominees are present', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3', 'p4'],
+      voteResults: { p2: 5, p3: 3, p4: 1 },
+      votes: { p1: 'p2', p5: 'p2' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('With 5 votes');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 2, your game ends here.');
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
+    });
+    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
   });
 });

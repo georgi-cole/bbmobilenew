@@ -30,12 +30,25 @@ export function saveEvictionVoteBreakdownUnlock(unlock: EvictionVoteBreakdownUnl
   }
 }
 
+/**
+ * Returns true when an eviction vote-breakdown unlock exists and is valid for
+ * the current eviction day. The reveal remains available after the eviction
+ * animation advances from eviction_results into week_end, but it expires once
+ * the next day begins and the game enters week_start. Stored unlocks must
+ * originate from eviction_results so unrelated same-week unlock data does not
+ * accidentally become eligible.
+ */
 export function isEvictionVoteBreakdownActive(
   unlock: EvictionVoteBreakdownUnlock | null,
   week: number,
   phase: Phase,
 ): unlock is EvictionVoteBreakdownUnlock {
-  return Boolean(unlock && unlock.week === week && unlock.phase === phase);
+  return Boolean(
+    unlock &&
+    unlock.week === week &&
+    unlock.phase === 'eviction_results' &&
+    (phase === 'eviction_results' || phase === 'week_end'),
+  );
 }
 
 export function updateEvictionVoteBreakdownStatus(

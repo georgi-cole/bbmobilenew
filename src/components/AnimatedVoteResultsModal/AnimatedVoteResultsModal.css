@@ -98,7 +98,7 @@
 }
 
 .avrm--tv .avrm__title {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   letter-spacing: 0.18em;
   color: #f7d9d9;
 }
@@ -129,10 +129,10 @@
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 1rem;
-  padding: 0.2rem 0.15rem 0.35rem;
+  padding: 0 0.15rem 0.2rem;
 }
 
 .avrm__tally {
@@ -209,6 +209,15 @@
   border-color: rgba(255, 80, 80, 0.6);
   background: rgba(200, 30, 30, 0.15);
   box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.2), 0 0 12px rgba(255, 50, 50, 0.15);
+}
+
+/* TV variant: restore border/padding so the red frame fully wraps avatar + vote count */
+.avrm__tally--tv.avrm__tally--evictee {
+  border: 1.5px solid rgba(255, 80, 80, 0.7);
+  border-radius: 12px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(200, 30, 30, 0.12);
+  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.18), 0 0 14px rgba(255, 50, 50, 0.18);
 }
 
 .avrm__tally-name {
@@ -537,7 +546,7 @@
   }
 
   .avrm--tv .avrm__title {
-    font-size: 0.66rem;
+    font-size: 0.58rem;
   }
 
   .avrm--tv .avrm__live-badge {
