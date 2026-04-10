@@ -171,9 +171,11 @@ export function resolveColorMatchCompetitionRound(
   let eliminatedIds: string[] = [];
   if (roundNumber <= 3) {
     const lowestScore = Math.min(...activeStandings.map((standing) => getEliminationScore(standing)));
-    eliminatedIds = activeStandings
+    const lowestScoreIds = activeStandings
       .filter((standing) => getEliminationScore(standing) === lowestScore)
       .map((standing) => standing.participantId);
+
+    eliminatedIds = lowestScoreIds.length < activeStandings.length ? lowestScoreIds : [];
   } else if (roundNumber === 4) {
     const survivorsTarget = Math.max(2, Math.ceil(activeStandings.length / 2));
     const eliminationCount = Math.max(0, activeStandings.length - survivorsTarget);
