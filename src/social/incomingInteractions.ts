@@ -71,7 +71,8 @@ export function getIncomingInteractionTypeLabel(type: IncomingInteractionType): 
 }
 
 function formatList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? DEFAULT_IGNORED_INTERACTION_LABEL;
+  if (items.length === 0) return DEFAULT_IGNORED_INTERACTION_LABEL;
+  if (items.length === 1) return items[0];
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
@@ -81,17 +82,18 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
   interactions.forEach((interaction) => {
     counts.set(interaction.type, (counts.get(interaction.type) ?? 0) + 1);
   });
+  const uniqueSenderCount = new Set(interactions.map((interaction) => interaction.fromId)).size;
   const typeFragments = Array.from(counts.entries())
     .sort(([leftType], [rightType]) =>
       IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
     )
     .map(([type, count]) => {
       const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
-      return interactions.length === 1 && count === 1 ? labels.singular : labels.plural;
+      return count === 1 ? labels.singular : labels.plural;
     });
 
-  if (interactions.length === 1) {
-    return `One housemate's ${typeFragments[0]} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
+  if (uniqueSenderCount === 1) {
+    return `One housemate's ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
   }
 
   return `Several housemates' ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
