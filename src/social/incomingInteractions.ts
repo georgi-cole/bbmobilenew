@@ -52,12 +52,26 @@ const IGNORED_INTERACTION_SUMMARY_LABELS: Record<IncomingInteractionType, { sing
   other: { singular: 'message', plural: 'messages' },
 };
 
+const IGNORED_INTERACTION_TYPE_PRIORITY: Record<IncomingInteractionType, number> = {
+  deal_offer: 0,
+  nomination_plea: 1,
+  alliance_proposal: 2,
+  warning: 3,
+  check_in: 4,
+  gossip: 5,
+  compliment: 6,
+  snide_remark: 7,
+  other: 8,
+};
+
+const DEFAULT_IGNORED_INTERACTION_LABEL = 'messages';
+
 export function getIncomingInteractionTypeLabel(type: IncomingInteractionType): string {
   return TYPE_LABELS[type];
 }
 
 function formatList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? 'messages';
+  if (items.length <= 1) return items[0] ?? DEFAULT_IGNORED_INTERACTION_LABEL;
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
@@ -67,10 +81,14 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
   interactions.forEach((interaction) => {
     counts.set(interaction.type, (counts.get(interaction.type) ?? 0) + 1);
   });
-  const typeFragments = Array.from(counts.entries()).map(([type, count]) => {
-    const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
-    return interactions.length === 1 && count === 1 ? labels.singular : labels.plural;
-  }).sort((a, b) => a.localeCompare(b));
+  const typeFragments = Array.from(counts.entries())
+    .sort(([leftType], [rightType]) =>
+      IGNORED_INTERACTION_TYPE_PRIORITY[leftType] - IGNORED_INTERACTION_TYPE_PRIORITY[rightType],
+    )
+    .map(([type, count]) => {
+      const labels = IGNORED_INTERACTION_SUMMARY_LABELS[type];
+      return interactions.length === 1 && count === 1 ? labels.singular : labels.plural;
+    });
 
   if (interactions.length === 1) {
     return `One housemate's ${typeFragments[0]} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
