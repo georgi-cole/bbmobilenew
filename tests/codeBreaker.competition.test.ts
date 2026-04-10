@@ -10,7 +10,7 @@
  *  6. Public mode auto-nominee matches the last-place Vault Cracker finisher.
  *  7. Human nomination flow continues correctly after the game resolves.
  *  8. AI-only nomination flow produces the correct winner + last-place.
- *  9. Solved players always outrank unsolved players.
+ *  9. Better attempt/time efficiency produces stronger scores.
  * 10. Tie-breaking is deterministic (stable sort preserves participant order).
  */
 
@@ -31,13 +31,11 @@ import {
   generateSecretCode,
   evaluateGuess,
   computeSolvedScore,
-  computeUnsolvedScore,
   computeAiScore,
   computeAllAiScores,
   rankScores,
   CODE_LENGTH,
-  DEFAULT_TIME_LIMIT_MS,
-  SOLVED_SCORE_FLOOR,
+  DEFAULT_ELAPSED_SCORE_CAP_MS,
 } from '../src/components/CodeBreakerComp/codeBreakerLogic';
 
 describe('Vault Cracker registry wiring', () => {
@@ -215,30 +213,20 @@ describe('Vault Cracker — evaluateGuess', () => {
 // ── 3. Pure logic — scoring ───────────────────────────────────────────────────
 
 describe('Vault Cracker — scoring', () => {
-  it('solved at full time = score 100', () => {
-    expect(computeSolvedScore(DEFAULT_TIME_LIMIT_MS, DEFAULT_TIME_LIMIT_MS)).toBe(100);
+  it('perfect solve = score 100', () => {
+    expect(computeSolvedScore(1, 0)).toBe(100);
   });
 
-  it('solved at half time = score 65', () => {
-    expect(computeSolvedScore(DEFAULT_TIME_LIMIT_MS / 2, DEFAULT_TIME_LIMIT_MS)).toBe(65);
+  it('more attempts reduce score even with the same elapsed time', () => {
+    expect(computeSolvedScore(2, 20_000)).toBeLessThan(computeSolvedScore(1, 20_000));
   });
 
-  it('solved at last moment = score 30', () => {
-    expect(computeSolvedScore(0, DEFAULT_TIME_LIMIT_MS)).toBe(SOLVED_SCORE_FLOOR);
+  it('longer elapsed time reduces score for the same attempt count', () => {
+    expect(computeSolvedScore(2, 90_000)).toBeLessThan(computeSolvedScore(2, 20_000));
   });
 
-  it('unsolved with 0 bulls = score 0', () => {
-    expect(computeUnsolvedScore(0)).toBe(0);
-  });
-
-  it('unsolved with 3 bulls = score 12', () => {
-    expect(computeUnsolvedScore(3)).toBe(12);
-  });
-
-  it('all unsolved scores are below SOLVED_SCORE_FLOOR', () => {
-    for (let bulls = 0; bulls <= 3; bulls++) {
-      expect(computeUnsolvedScore(bulls)).toBeLessThan(SOLVED_SCORE_FLOOR);
-    }
+  it('very slow high-attempt solves collapse toward the solved floor', () => {
+    expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(31);
   });
 });
 
@@ -246,26 +234,25 @@ describe('Vault Cracker — scoring', () => {
 
 describe('Vault Cracker — AI score determinism', () => {
   it('same seed + playerId always produces the same score', () => {
-    const a = computeAiScore(42, 'player_X', DEFAULT_TIME_LIMIT_MS);
-    const b = computeAiScore(42, 'player_X', DEFAULT_TIME_LIMIT_MS);
+    const a = computeAiScore(42, 'player_X', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    const b = computeAiScore(42, 'player_X', DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(a).toBe(b);
   });
 
   it('different playerIds produce different scores for the same seed (seed=42: p1=64, p2=0)', () => {
-    const a = computeAiScore(42, 'p1', DEFAULT_TIME_LIMIT_MS);
-    const b = computeAiScore(42, 'p2', DEFAULT_TIME_LIMIT_MS);
+    const a = computeAiScore(42, 'p1', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    const b = computeAiScore(42, 'p2', DEFAULT_ELAPSED_SCORE_CAP_MS);
     // Both must be in valid score range
-    expect(a).toBeGreaterThanOrEqual(0);
+    expect(a).toBeGreaterThanOrEqual(30);
     expect(a).toBeLessThanOrEqual(100);
-    expect(b).toBeGreaterThanOrEqual(0);
+    expect(b).toBeGreaterThanOrEqual(30);
     expect(b).toBeLessThanOrEqual(100);
-    // Verify actual inequality — these are known-different for seed 42
     expect(a).not.toBe(b);
   });
 
   it('computeAllAiScores excludes the human', () => {
     const ids = ['p0', 'p1', 'p2'];
-    const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_TIME_LIMIT_MS);
+    const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(scores['p0']).toBeUndefined();
     expect(typeof scores['p1']).toBe('number');
     expect(typeof scores['p2']).toBe('number');
@@ -336,14 +323,13 @@ describe('Vault Cracker — winner correctness', () => {
     expect(store.getState().game.phase).toBe('loh_results');
   });
 
-  it('solved players outrank unsolved players (score ordering)', () => {
+  it('better attempt/time efficiency produces higher scores', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
 
-    // p0 unsolved (score 12), p1 solved late (score 30), p2 solved mid (score 65)
     dispatchCodeBreakerResult(store, {
       participants: ['p0', 'p1', 'p2'],
-      scores: { p0: 12, p1: 30, p2: 65 },
+      scores: { p0: 41, p1: 67, p2: 84 },
       winnerId: 'p2',
       lastPlaceId: 'p0',
     });
@@ -551,19 +537,19 @@ describe('Vault Cracker — POS competition', () => {
 // ── 12. computeAllAiScores integration ────────────────────────────────────────
 
 describe('Vault Cracker — computeAllAiScores integration', () => {
-  it('all AI scores are in valid range [0, 100]', () => {
+  it('all AI scores are in valid range [30, 100]', () => {
     const ids = ['p0', 'p1', 'p2', 'p3', 'p4'];
-    const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_TIME_LIMIT_MS);
+    const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_ELAPSED_SCORE_CAP_MS);
     for (const id of ids.slice(1)) {
-      expect(scores[id]).toBeGreaterThanOrEqual(0);
+      expect(scores[id]).toBeGreaterThanOrEqual(30);
       expect(scores[id]).toBeLessThanOrEqual(100);
     }
   });
 
   it('from the same seed, the game always produces the same winner', () => {
     const ids = ['p0', 'p1', 'p2', 'p3'];
-    const scoresA = computeAllAiScores(999, ids, null, DEFAULT_TIME_LIMIT_MS);
-    const scoresB = computeAllAiScores(999, ids, null, DEFAULT_TIME_LIMIT_MS);
+    const scoresA = computeAllAiScores(999, ids, null, DEFAULT_ELAPSED_SCORE_CAP_MS);
+    const scoresB = computeAllAiScores(999, ids, null, DEFAULT_ELAPSED_SCORE_CAP_MS);
     const rankedA = rankScores(scoresA, ids);
     const rankedB = rankScores(scoresB, ids);
     expect(rankedA[0].id).toBe(rankedB[0].id);

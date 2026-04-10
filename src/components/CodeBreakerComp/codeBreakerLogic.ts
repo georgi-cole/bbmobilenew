@@ -10,23 +10,19 @@ import { mulberry32 } from '../../store/rng';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const CODE_LENGTH = 4;
-export const DEFAULT_TIME_LIMIT_MS = 60_000;
+export const DEFAULT_ELAPSED_SCORE_CAP_MS = 180_000;
 
 /**
- * Minimum score for a player who solved the code (ensures all solvers beat all
- * non-solvers regardless of how late they solved).
+ * Minimum score for a completed solve.
  */
 export const SOLVED_SCORE_FLOOR = 30;
 /**
- * Maximum additional score on top of SOLVED_SCORE_FLOOR (awarded for time remaining).
+ * Maximum additional score on top of SOLVED_SCORE_FLOOR.
  * Total solved range: SOLVED_SCORE_FLOOR .. SOLVED_SCORE_FLOOR + SOLVED_SCORE_RANGE
  */
 export const SOLVED_SCORE_RANGE = 70; // → max 100
-/**
- * Score per correct-digit-in-exact-position for unsolved players.
- * All unsolved scores are < SOLVED_SCORE_FLOOR.
- */
-export const UNSOLVED_SCORE_PER_BULL = 4; // max = 3 * 4 = 12  (4 bulls = solved)
+export const SOLVED_ATTEMPT_WEIGHT = 0.65;
+export const SOLVED_TIME_WEIGHT = 0.35;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,56 +108,44 @@ export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
 /**
  * Compute the score for a player who successfully cracked the code.
  *
- * Score = SOLVED_SCORE_FLOOR + round(SOLVED_SCORE_RANGE * timeRemainingMs / timeLimitMs)
+ * Score = SOLVED_SCORE_FLOOR + round(SOLVED_SCORE_RANGE * weightedPerformance)
  *
- * Range: SOLVED_SCORE_FLOOR (solved at last moment) … 100 (solved instantly)
+ * weightedPerformance blends:
+ *   - Attempts: 1 / attempts
+ *   - Time:     remaining fraction within DEFAULT_ELAPSED_SCORE_CAP_MS
+ *
+ * Fewer attempts carry the most weight, while faster solves add a smaller but
+ * meaningful bonus.
  */
 export function computeSolvedScore(
-  timeRemainingMs: number,
-  timeLimitMs: number,
+  attempts: number,
+  elapsedMs: number,
+  elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): number {
-  const fraction = Math.max(0, Math.min(1, timeRemainingMs / timeLimitMs));
-  return SOLVED_SCORE_FLOOR + Math.round(SOLVED_SCORE_RANGE * fraction);
-}
+  const safeAttempts = Math.max(1, attempts);
+  const attemptsFraction = 1 / safeAttempts;
+  const timeFraction = Math.max(0, 1 - Math.max(0, elapsedMs) / elapsedScoreCapMs);
+  const weightedPerformance =
+    (attemptsFraction * SOLVED_ATTEMPT_WEIGHT) + (timeFraction * SOLVED_TIME_WEIGHT);
 
-/**
- * Compute the score for a player who did NOT crack the code.
- *
- * Score = bestBulls * UNSOLVED_SCORE_PER_BULL
- *
- * Range: 0 … (CODE_LENGTH - 1) * UNSOLVED_SCORE_PER_BULL = 12
- * Always < SOLVED_SCORE_FLOOR (30), so all solvers outrank all non-solvers.
- */
-export function computeUnsolvedScore(bestBulls: number): number {
-  // bestBulls can be 0–3 (4 bulls means solved)
-  return Math.min(CODE_LENGTH - 1, bestBulls) * UNSOLVED_SCORE_PER_BULL;
+  return SOLVED_SCORE_FLOOR + Math.round(SOLVED_SCORE_RANGE * weightedPerformance);
 }
 
 /**
  * Deterministically compute the competition score for a single AI participant.
  *
- * ~65% of AI players solve the code; the rest make partial progress.
- * All computations are derived from (masterSeed, playerId) so they are
- * stable across re-renders and testable.
+ * AI players always eventually solve the code, with attempt efficiency and
+ * elapsed-time profiles derived from (masterSeed, playerId).
  */
 export function computeAiScore(
   masterSeed: number,
   playerId: string,
-  timeLimitMs: number,
+  elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): number {
   const rng = playerRng(masterSeed, playerId);
-
-  const solves = rng() < 0.65;
-  if (solves) {
-    // Solved at a random fraction of the elapsed time [15% … 90%]
-    const fractionElapsed = 0.15 + rng() * 0.75;
-    const timeRemainingMs = timeLimitMs * (1 - fractionElapsed);
-    return computeSolvedScore(timeRemainingMs, timeLimitMs);
-  } else {
-    // Not solved — random best bulls (0–3)
-    const bestBulls = Math.floor(rng() * CODE_LENGTH); // 0–3
-    return computeUnsolvedScore(bestBulls);
-  }
+  const attempts = 1 + Math.floor(rng() * 8);
+  const elapsedMs = 15_000 + Math.round(rng() * elapsedScoreCapMs);
+  return computeSolvedScore(attempts, elapsedMs, elapsedScoreCapMs);
 }
 
 /**
@@ -172,12 +156,12 @@ export function computeAllAiScores(
   masterSeed: number,
   participantIds: string[],
   humanId: string | null,
-  timeLimitMs: number,
+  elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): Record<string, number> {
   const scores: Record<string, number> = {};
   for (const id of participantIds) {
     if (id !== humanId) {
-      scores[id] = computeAiScore(masterSeed, id, timeLimitMs);
+      scores[id] = computeAiScore(masterSeed, id, elapsedScoreCapMs);
     }
   }
   return scores;
