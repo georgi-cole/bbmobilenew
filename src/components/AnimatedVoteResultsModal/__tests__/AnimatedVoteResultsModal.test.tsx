@@ -22,6 +22,28 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     vi.useRealTimers();
   });
 
+  it('renders inside the main TV viewport when requested', () => {
+    const viewport = document.createElement('div');
+    viewport.className = 'tv-zone__viewport';
+    document.body.appendChild(viewport);
+
+    const nominee = makePlayer('p1', 'Nominee 1');
+
+    render(
+      <AnimatedVoteResultsModal
+        nominees={[{ nominee, voteCount: 2 }]}
+        evictee={nominee}
+        onDone={vi.fn()}
+        renderInTvViewport
+      />,
+    );
+
+    expect(viewport.querySelector('.avrm.avrm--viewport')).toBeTruthy();
+    expect(screen.getByText('VOTE RESULTS')).toBeTruthy();
+
+    viewport.remove();
+  });
+
   it('shows tied nominees with approval percentages and resolves the lower-rated nominee', async () => {
     const onDone = vi.fn();
     const onPublicTiebreakResolved = vi.fn();

@@ -15,8 +15,18 @@
   cursor: default;
 }
 
+.avrm--viewport {
+  position: absolute;
+  z-index: 20;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(99, 102, 241, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(9, 14, 28, 0.96) 0%, rgba(11, 18, 36, 0.92) 100%);
+  padding: 0.75rem;
+}
+
 @supports (backdrop-filter: blur(6px)) {
   .avrm { backdrop-filter: blur(6px); }
+  .avrm--viewport { backdrop-filter: blur(10px); }
 }
 
 @keyframes avrmFadeIn {
@@ -35,6 +45,11 @@
     0 12px 60px rgba(0,0,0,0.8),
     0 0 60px rgba(200, 30, 30, 0.12);
   animation: avrmSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avrm--viewport .avrm__card {
+  width: min(32rem, 100%);
+  max-height: 100%;
 }
 
 @keyframes avrmSlideIn {

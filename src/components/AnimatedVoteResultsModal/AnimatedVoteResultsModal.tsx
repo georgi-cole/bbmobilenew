@@ -23,6 +23,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './AnimatedVoteResultsModal.css';
@@ -49,6 +50,7 @@ export interface AnimatedVoteResultsModalProps {
   publicTiebreak?: PublicEvictionTiebreakDisplay | null;
   onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
   onDone: () => void;
+  renderInTvViewport?: boolean;
   revealIntervalMs?: number;
   postRevealDelayMs?: number;
   countdownMs?: number;
@@ -81,6 +83,7 @@ export default function AnimatedVoteResultsModal({
   publicTiebreak = null,
   onPublicTiebreakResolved,
   onDone,
+  renderInTvViewport = false,
   revealIntervalMs = 700,
   postRevealDelayMs = 1000,
   countdownMs = 4000,
@@ -186,11 +189,11 @@ export default function AnimatedVoteResultsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcomeVisible, countdown]);
 
-  return (
+  const content = (
     <div
-      className="avrm"
-      role="dialog"
-      aria-modal="true"
+      className={['avrm', renderInTvViewport ? 'avrm--viewport' : ''].filter(Boolean).join(' ')}
+      role={renderInTvViewport ? 'status' : 'dialog'}
+      aria-modal={renderInTvViewport ? undefined : 'true'}
       aria-label="Vote results"
       onClick={outcomeVisible ? fire : undefined}
     >
@@ -291,4 +294,10 @@ export default function AnimatedVoteResultsModal({
       </div>
     </div>
   );
+
+  const tvViewport = renderInTvViewport
+    ? document.querySelector<HTMLElement>('.tv-zone__viewport')
+    : null;
+
+  return tvViewport ? createPortal(content, tvViewport) : content;
 }
