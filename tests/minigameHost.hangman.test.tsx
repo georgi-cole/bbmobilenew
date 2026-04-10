@@ -10,7 +10,7 @@ import { getGame } from '../src/minigames/registry';
 const hangmanComponentSpy = vi.fn();
 
 vi.mock('../src/components/HangmanChallengeComp/HangmanChallengeComp', () => ({
-  default: (props: { participants?: Array<{ id: string }>; participantIds?: string[] }) => {
+  default: (props: { autoStart?: boolean; participants?: Array<{ id: string }>; participantIds?: string[] }) => {
     hangmanComponentSpy(props);
     return <div data-testid="hangman-react-game">Hangman React Game</div>;
   },
@@ -62,6 +62,7 @@ describe('MinigameHost — hangman routing', () => {
     expect(screen.queryByTestId('legacy-wrapper')).toBeNull();
     expect(hangmanComponentSpy).toHaveBeenCalled();
     expect(hangmanComponentSpy.mock.calls[0][0].participants).toHaveLength(2);
+    expect(hangmanComponentSpy.mock.calls[0][0].autoStart).toBe(false);
   });
 
   it('registers hangman as an authoritative React implementation', () => {

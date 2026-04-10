@@ -501,7 +501,7 @@ export default function MinigameHost({
               return (
                 <GenericComp
                   seed={seed}
-                  autoStart={true}
+                  autoStart={key !== 'HangmanChallenge'}
                   participantIds={participantIds}
                   participants={participants}
                   onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
