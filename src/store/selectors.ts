@@ -5,6 +5,7 @@
  */
 import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from './store';
+import { selectActiveConfessionalDecision } from './confessionalDecisionSelectors';
 import { getSocialModuleAvailability } from '../social/socialModuleAvailability';
 
 /**
@@ -102,6 +103,7 @@ export const selectSocialModuleAvailability = createSelector(
  *  - A doubleVote offer is pending
  *  - A doubleVote is currently active for the live vote
  *  - A voteDeduction prompt is pending
+ *  - A required ceremony decision is pending in the Confessional
  */
 export const selectConfessionalAlertCount = (state: RootState): number => {
   const humanPlayer = state.game?.players?.find((p) => p.isUser);
@@ -110,6 +112,7 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
   }
 
   const sm = state.game?.secretMission;
+  const activeConfessionalDecision = selectActiveConfessionalDecision(state);
   let count = 0;
 
   if (
@@ -125,9 +128,22 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
     count += 1;
   }
 
-  if (state.game?.awaitingDoubleVoteOffer) count += 1;
-  if (state.game?.humanDoubleVoteActive) count += 1;
+  if (
+    state.game?.awaitingDoubleVoteOffer &&
+    activeConfessionalDecision?.type !== 'double_vote_offer'
+  ) {
+    count += 1;
+  }
+  if (
+    state.game?.humanDoubleVoteActive &&
+    activeConfessionalDecision?.type !== 'double_vote'
+  ) {
+    count += 1;
+  }
   if (state.game?.awaitingVoteDeductionPrompt) count += 1;
+
+  // Ceremony decisions routed to the confessional add a mandatory alert.
+  if (activeConfessionalDecision !== null) count += 1;
 
   return count;
 };
