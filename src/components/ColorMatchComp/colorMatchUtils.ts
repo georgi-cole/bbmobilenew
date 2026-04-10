@@ -92,10 +92,13 @@ export function normalizeColorMatchCompetitionScore(value: number): number {
 }
 
 export function getColorMatchScoreDisplayPrecision(values: number[]): number {
-  if (values.length <= 1) return 0;
+  const normalizedValues = values
+    .filter((value) => Number.isFinite(value))
+    .map((value) => normalizeColorMatchCompetitionScore(value));
+  if (normalizedValues.length <= 1) return 0;
 
   for (let precision = 0; precision <= COLOR_MATCH_COMPETITION_SCORE_PRECISION; precision += 1) {
-    const formatted = values.map((value) => normalizeColorMatchCompetitionScore(value).toFixed(precision));
+    const formatted = normalizedValues.map((value) => value.toFixed(precision));
     if (new Set(formatted).size === formatted.length) {
       return precision;
     }

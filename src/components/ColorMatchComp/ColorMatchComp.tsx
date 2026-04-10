@@ -209,7 +209,7 @@ export default function ColorMatchComp({
   const hintsUsedThisRoundRef = useRef(0);
   const currentRoundTargetRef = useRef(rounds[0].target);
 
-  const currentRound = rounds[roundIndex];
+  const currentRound = rounds[roundIndex % rounds.length];
   const liveAccuracy = Math.round(calculateColorMatchAccuracy(currentRound.target, playerColor));
   const hintsRemaining = MAX_HINTS_TOTAL - hintsUsedTotal;
   const activeCompetitionStandings = useMemo(
@@ -353,7 +353,7 @@ export default function ColorMatchComp({
   }, [competitionMode, humanStillActive, phase, roundIndex, stopTimer]);
 
   useEffect(() => {
-    setPlayerColor(rounds[roundIndex].startColor);
+    setPlayerColor(rounds[roundIndex % rounds.length].startColor);
   }, [roundIndex, rounds]);
 
   useEffect(() => {
@@ -482,7 +482,7 @@ export default function ColorMatchComp({
   const playerHex = rgbToHex(playerColor);
   const progressPct = (timeLeft / ROUND_TIME_S) * 100;
   const isUrgent = timeLeft <= 5;
-  const roundLabel = roundIndex < MAX_ROUNDS
+  const roundLabelContent = roundIndex < MAX_ROUNDS
     ? <>Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</>
     : <>Final Rematch <strong>{roundIndex - MAX_ROUNDS + 1}</strong></>;
 
@@ -623,7 +623,7 @@ export default function ColorMatchComp({
       <div className="cm" data-testid="color-match-comp">
         <div className="cm__card">
           <header className="cm__header">
-            <span className="cm__round-label">{roundLabel}</span>
+            <span className="cm__round-label">{roundLabelContent}</span>
             <span className="cm__timer" />
           </header>
           <div className="cm__mixing-stage" aria-label="Color mixing animation">
@@ -651,7 +651,7 @@ export default function ColorMatchComp({
     <div className="cm" data-testid="color-match-comp">
       <div className="cm__card">
         <header className="cm__header">
-          <span className="cm__round-label">{roundLabel}</span>
+          <span className="cm__round-label">{roundLabelContent}</span>
           <span className={['cm__timer', isUrgent ? 'cm__timer--urgent' : ''].filter(Boolean).join(' ')} aria-live={isUrgent ? 'assertive' : 'off'} aria-atomic="true">
             {timeLeft}s
           </span>
