@@ -103,6 +103,7 @@ describe('NumberTrivia helpers', () => {
       closestDistance: 0,
     });
     expect(performance.timeMs).toBeGreaterThan(4_000);
+    expect(performance.timeMs).toBeLessThanOrEqual(6_650);
   });
 
   it('uses near-miss logic for very hard AI misses', () => {
