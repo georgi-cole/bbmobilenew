@@ -100,6 +100,7 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
   }
 
   const sm = state.game?.secretMission;
+  const activeConfessionalDecision = selectActiveConfessionalDecision(state);
   let count = 0;
 
   if (
@@ -115,12 +116,22 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
     count += 1;
   }
 
-  if (state.game?.awaitingDoubleVoteOffer) count += 1;
-  if (state.game?.humanDoubleVoteActive) count += 1;
+  if (
+    state.game?.awaitingDoubleVoteOffer &&
+    activeConfessionalDecision?.type !== 'double_vote_offer'
+  ) {
+    count += 1;
+  }
+  if (
+    state.game?.humanDoubleVoteActive &&
+    activeConfessionalDecision?.type !== 'double_vote'
+  ) {
+    count += 1;
+  }
   if (state.game?.awaitingVoteDeductionPrompt) count += 1;
 
   // Ceremony decisions routed to the confessional add a mandatory alert.
-  if (selectActiveConfessionalDecision(state) !== null) count += 1;
+  if (activeConfessionalDecision !== null) count += 1;
 
   return count;
 };

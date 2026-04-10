@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, type CSSProperties, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBlocker, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
@@ -316,6 +316,8 @@ export default function DiaryRoom() {
   // ── Active ceremony decision routed to the confessional ───────────────────
   // When non-null the player must complete the decision before leaving.
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
+  const confessionalDecisionPending = activeConfessionalDecision !== null;
+  const navigationBlocker = useBlocker(confessionalDecisionPending);
 
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
@@ -382,6 +384,18 @@ export default function DiaryRoom() {
   useEffect(() => { dispatchRef.current = dispatch; }, [dispatch]);
   const confessionalLockedRef = useRef(confessionalLocked);
   useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
+
+  useEffect(() => {
+    if (navigationBlocker.state === 'blocked') {
+      navigationBlocker.reset();
+    }
+  }, [navigationBlocker]);
+
+  useEffect(() => {
+    if (confessionalDecisionPending && showSelfEvictConfirm) {
+      setShowSelfEvictConfirm(false);
+    }
+  }, [confessionalDecisionPending, showSelfEvictConfirm]);
 
   // Stable refs for summary calculation (avoid stale closure on unmount)
   const playerNameRef = useRef(playerName);
@@ -650,7 +664,7 @@ export default function DiaryRoom() {
         setTicTacToeThinking(false);
         launchTicTacToe();
       }
-      if (resp.action === 'open_self_evict_modal') {
+      if (resp.action === 'open_self_evict_modal' && !confessionalDecisionPending) {
         setShowSelfEvictConfirm(true);
       }
 
@@ -744,6 +758,7 @@ export default function DiaryRoom() {
           cancelLabel="No, Stay"
           onConfirm={() => {
             setShowSelfEvictConfirm(false);
+            if (confessionalDecisionPending) return;
             dispatch(selfEvict(playerId));
             navigate('/self-evicted');
           }}
@@ -752,7 +767,7 @@ export default function DiaryRoom() {
 
         {/* Header */}
         <div className="diary-room__header">
-          {activeConfessionalDecision ? (
+          {confessionalDecisionPending ? (
             /* Decision pending — back navigation is locked until resolved. */
             <span
               className="diary-room__back diary-room__back--locked"

@@ -17,7 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
 import settingsReducer from '../../src/store/settingsSlice';
@@ -111,12 +111,13 @@ function makeStore(overrides: Partial<GameState> = {}) {
 function renderGameScreen(store: ReturnType<typeof makeStore>) {
   return render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/game']}>
-        <Routes>
-          <Route path="/game" element={<GameScreen />} />
-          <Route path="/diary-room" element={<div data-testid="diary-room" />} />
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider router={createMemoryRouter([
+        { path: '/game', element: <GameScreen /> },
+        { path: '/diary-room', element: <div data-testid="diary-room" /> },
+      ], {
+        initialEntries: ['/game'],
+      })}
+      />
     </Provider>,
   );
 }
@@ -124,15 +125,14 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
 function renderDiaryRoom(store: ReturnType<typeof makeStore>) {
   return render(
     <Provider store={store}>
-      <MemoryRouter
-        initialEntries={['/game', '/diary-room']}
-        initialIndex={1}
-      >
-        <Routes>
-          <Route path="/game" element={<div data-testid="game-screen" />} />
-          <Route path="/diary-room" element={<DiaryRoom />} />
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider router={createMemoryRouter([
+        { path: '/game', element: <div data-testid="game-screen" /> },
+        { path: '/diary-room', element: <DiaryRoom /> },
+      ], {
+        initialEntries: ['/game', '/diary-room'],
+        initialIndex: 1,
+      })}
+      />
     </Provider>,
   );
 }
@@ -303,18 +303,22 @@ describe('selectConfessionalAlertCount', () => {
     expect(selectConfessionalAlertCount(store.getState())).toBe(0);
   });
 
-  it('counts both the offer flag and the confessional routing when awaitingDoubleVoteOffer is set', () => {
+  it('counts a double-vote offer once when the confessional decision already covers it', () => {
     const store = makeStore({
       phase: 'live_vote',
       awaitingHumanVote: true,
       awaitingDoubleVoteOffer: true,
     });
-    // Both are independent reasons for a confessional alert:
-    //  1. awaitingDoubleVoteOffer = +1 (existing logic for the flag itself)
-    //  2. selectActiveConfessionalDecision = non-null → +1 for the ceremony routing
-    // Total should be at least 2.
-    const count = selectConfessionalAlertCount(store.getState());
-    expect(count).toBeGreaterThanOrEqual(2);
+    expect(selectConfessionalAlertCount(store.getState())).toBe(1);
+  });
+
+  it('counts an active double-vote once when the confessional decision already covers it', () => {
+    const store = makeStore({
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+      humanDoubleVoteActive: true,
+    });
+    expect(selectConfessionalAlertCount(store.getState())).toBe(1);
   });
 });
 

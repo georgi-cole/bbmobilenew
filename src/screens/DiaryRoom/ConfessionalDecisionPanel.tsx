@@ -110,7 +110,7 @@ function DecisionCard({
 // ── Stinger / confirmation flash ──────────────────────────────────────────────
 
 function ConfirmFlash({ message, onDone }: { message: string; onDone: () => void }) {
-  // Auto-dismiss after a short pacing delay so the player sees the stinger.
+  // Keep the stinger visible until the player explicitly continues.
   const [visible, setVisible] = useState(true);
   const handleDone = useCallback(() => {
     setVisible(false);

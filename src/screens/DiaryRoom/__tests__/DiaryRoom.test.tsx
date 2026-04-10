@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider, useNavigate } from 'react-router-dom';
 import DiaryRoom, { DIARY_ROOM_ENTRY_OVERLAY_MS } from '../DiaryRoom';
 import gameReducer, {
   triggerSecretMission,
@@ -31,13 +31,59 @@ function renderDiaryRoom(
     store,
     ...render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
-          <Routes>
-            <Route path="/game" element={<div>Game route</div>} />
-            <Route path="/diary-room" element={<DiaryRoom />} />
-            <Route path="/self-evicted" element={<div>Self-evicted route</div>} />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={createMemoryRouter([
+          { path: '/game', element: <div>Game route</div> },
+          { path: '/diary-room', element: <DiaryRoom /> },
+          { path: '/self-evicted', element: <div>Self-evicted route</div> },
+        ], {
+          initialEntries,
+          initialIndex: initialEntries.length - 1,
+        })}
+        />
+      </Provider>,
+    ),
+  };
+}
+
+function DiaryRoomWithEscapeRoute() {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button type="button" onClick={() => navigate('/game')}>
+        Leave route
+      </button>
+      <DiaryRoom />
+    </>
+  );
+}
+
+function renderDiaryRoomWithEscapeRoute(
+  initialEntries = ['/game', '/diary-room'],
+  options?: { setupStore?: (store: ReturnType<typeof configureStore>) => void },
+) {
+  const store = configureStore({
+    reducer: {
+      game: gameReducer,
+      settings: settingsReducer,
+    },
+  });
+
+  options?.setupStore?.(store);
+
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <RouterProvider router={createMemoryRouter([
+          { path: '/game', element: <div>Game route</div> },
+          { path: '/diary-room', element: <DiaryRoomWithEscapeRoute /> },
+          { path: '/self-evicted', element: <div>Self-evicted route</div> },
+        ], {
+          initialEntries,
+          initialIndex: initialEntries.length - 1,
+        })}
+        />
       </Provider>,
     ),
   };
@@ -142,6 +188,36 @@ describe('DiaryRoom', () => {
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByRole('button', { name: /yes, leave/i })).toBeTruthy();
+  });
+
+  it('does not open the self-evict modal while a confessional decision is pending', async () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          phase: 'live_vote',
+          awaitingHumanVote: true,
+        }));
+      },
+    });
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: 'I wanna leave' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    fireEvent.change(screen.getByLabelText(/diary entry/i), {
+      target: { value: 'yes' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await flushConversationTimers();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
   });
 
   it('persists conversation state so a remounted chat still understands follow-up yes/no replies', async () => {
@@ -314,5 +390,24 @@ describe('DiaryRoom', () => {
     expect(screen.getByLabelText(/eviction vote breakdown/i)).toBeTruthy();
     expect(screen.getByText(/who voted for whom/i)).toBeTruthy();
     expect(screen.getByText(/then look closely\. the curtain is lifting now\./i)).toBeTruthy();
+  });
+
+  it('blocks router navigation away while a confessional decision is pending', () => {
+    renderDiaryRoomWithEscapeRoute(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          phase: 'live_vote',
+          awaitingHumanVote: true,
+        }));
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /leave route/i }));
+
+    expect(screen.queryByText('Game route')).toBeNull();
+    expect(screen.getByLabelText(/confessional chat/i)).toBeTruthy();
+    expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
   });
 });
