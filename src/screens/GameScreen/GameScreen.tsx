@@ -1253,8 +1253,8 @@ export default function GameScreen() {
   const canOfferVoteBreakdown = useMemo(() => (
     game.phase === 'eviction_results' &&
     Boolean(game.pendingEviction?.evicteeId) &&
-    (Object.keys(game.votes ?? {}).length > 0 || Object.keys(game.voteResults ?? {}).length > 0)
-  ), [game.pendingEviction?.evicteeId, game.phase, game.votes, game.voteResults])
+    Object.keys(game.votes ?? {}).length > 0
+  ), [game.pendingEviction?.evicteeId, game.phase, game.votes])
 
   const hasActiveVoteBreakdownUnlock = useCallback(() => {
     const unlock = loadEvictionVoteBreakdownUnlock()
