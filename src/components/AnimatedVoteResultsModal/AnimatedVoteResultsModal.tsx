@@ -200,6 +200,7 @@ export default function AnimatedVoteResultsModal({
         <header className="avrm__header">
           <span className="avrm__header-icon">🗳️</span>
           <h2 className="avrm__title">VOTE RESULTS</h2>
+          {variant === 'tv' && <span className="avrm__live-badge">LIVE FEED</span>}
         </header>
 
         <div className="avrm__tallies">

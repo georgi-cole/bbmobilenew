@@ -19,10 +19,10 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  padding: 0.75rem;
+  padding: 0.45rem;
   background:
-    radial-gradient(circle at top, rgba(255, 80, 80, 0.14), transparent 55%),
-    rgba(4, 5, 12, 0.94);
+    radial-gradient(circle at top, rgba(255, 80, 80, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(6, 10, 18, 0.48) 0%, rgba(4, 8, 14, 0.76) 100%);
 }
 
 @supports (backdrop-filter: blur(6px)) {
@@ -48,8 +48,22 @@
 }
 
 .avrm__card--tv {
-  width: min(100%, 38rem);
+  width: 100%;
+  max-width: none;
+  height: 100%;
   max-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  align-content: center;
+  background:
+    linear-gradient(180deg, rgba(8, 14, 24, 0.74) 0%, rgba(5, 9, 16, 0.88) 100%),
+    linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(239, 68, 68, 0.1));
+  border-color: rgba(120, 146, 255, 0.18);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 12px 30px rgba(0, 0, 0, 0.28);
 }
 
 @keyframes avrmSlideIn {
@@ -66,7 +80,16 @@
   gap: 0.6rem;
 }
 
+.avrm--tv .avrm__header {
+  padding: 0.65rem 0.8rem 0.45rem;
+  background: linear-gradient(180deg, rgba(12, 17, 31, 0.72), rgba(12, 17, 31, 0));
+  border-bottom: none;
+  gap: 0.45rem;
+}
+
 .avrm__header-icon { font-size: 1.5rem; }
+
+.avrm--tv .avrm__header-icon { font-size: 1rem; }
 
 .avrm__title {
   margin: 0;
@@ -77,12 +100,39 @@
   text-transform: uppercase;
 }
 
+.avrm--tv .avrm__title {
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  color: #ffd1d1;
+}
+
+.avrm__live-badge {
+  margin-left: auto;
+  padding: 0.24rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 120, 120, 0.26);
+  background: rgba(255, 74, 74, 0.14);
+  color: #ffd9d9;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px rgba(255, 74, 74, 0.12);
+}
+
 /* ── Tally rows ─────────────────────────────────────────────────────────── */
 .avrm__tallies {
   padding: 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+.avrm--tv .avrm__tallies {
+  min-height: 0;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem 0.45rem;
 }
 
 .avrm__tally {
@@ -97,6 +147,22 @@
   opacity: 0;
   transform: translateX(-12px);
   transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.avrm--tv .avrm__tally {
+  grid-template-columns: auto minmax(0, 5.4rem) minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  padding: 0.42rem 0.55rem;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+    rgba(5, 9, 16, 0.36);
+}
+
+.avrm--tv .pa--sm {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-width: 1px;
 }
 
 .avrm__tally--visible {
@@ -131,11 +197,19 @@
   text-overflow: ellipsis;
 }
 
+.avrm--tv .avrm__tally-name {
+  font-size: 0.78rem;
+}
+
 .avrm__tally-bar-wrap {
   height: 6px;
   background: rgba(255,255,255,0.08);
   border-radius: 3px;
   overflow: hidden;
+}
+
+.avrm--tv .avrm__tally-bar-wrap {
+  height: 5px;
 }
 
 .avrm__tally-bar {
@@ -157,6 +231,11 @@
   text-align: right;
 }
 
+.avrm--tv .avrm__tally-count {
+  min-width: 1rem;
+  font-size: 0.74rem;
+}
+
 .avrm__tally--evictee .avrm__tally-count { color: #ff8080; }
 
 /* ── Evictee announcement ───────────────────────────────────────────────── */
@@ -167,6 +246,14 @@
   align-items: baseline;
   gap: 0.6rem;
   animation: avrmEvicteePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avrm--tv .avrm__evictee {
+  margin: 0 0.65rem 0.3rem;
+  padding: 0.5rem 0.7rem;
+  border-top: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(121, 0, 0, 0.22), rgba(121, 0, 0, 0.08));
 }
 
 @keyframes avrmEvicteePop {
@@ -182,10 +269,18 @@
   text-transform: uppercase;
 }
 
+.avrm--tv .avrm__evictee-label {
+  font-size: 0.62rem;
+}
+
 .avrm__evictee-name {
   font-size: 1.1rem;
   font-weight: 800;
   color: #fff;
+}
+
+.avrm--tv .avrm__evictee-name {
+  font-size: 0.92rem;
 }
 
 /* ── Tie banner ─────────────────────────────────────────────────────────── */
@@ -199,12 +294,23 @@
   background: rgba(255, 200, 60, 0.07);
 }
 
+.avrm--tv .avrm__tie-banner {
+  margin: 0 0.65rem 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border-top: none;
+  border-radius: 12px;
+}
+
 .avrm__tie-icon { font-size: 1.2rem; }
 
 .avrm__tie-text {
   font-size: 0.9rem;
   font-weight: 700;
   color: #ffc83c;
+}
+
+.avrm--tv .avrm__tie-text {
+  font-size: 0.74rem;
 }
 
 /* ── Public approval tie-break ───────────────────────────────────────────── */
@@ -214,6 +320,13 @@
   background: rgba(255, 200, 60, 0.06);
 }
 
+.avrm--tv .avrm__public-tiebreak {
+  margin: 0 0.65rem 0.35rem;
+  padding: 0.55rem 0.7rem 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 200, 60, 0.08);
+}
+
 .avrm__public-tiebreak-header {
   display: flex;
   align-items: center;
@@ -221,10 +334,19 @@
   margin-bottom: 0.75rem;
 }
 
+.avrm--tv .avrm__public-tiebreak-header {
+  margin-bottom: 0.45rem;
+}
+
 .avrm__public-tiebreak-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   gap: 0.65rem;
+}
+
+.avrm--tv .avrm__public-tiebreak-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
 .avrm__public-tiebreak-option {
@@ -236,6 +358,12 @@
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
+}
+
+.avrm--tv .avrm__public-tiebreak-option {
+  gap: 0.25rem;
+  padding: 0.5rem 0.35rem;
+  border-radius: 10px;
 }
 
 .avrm__public-tiebreak-option--evictee {
@@ -262,10 +390,18 @@
   text-align: center;
 }
 
+.avrm--tv .avrm__public-tiebreak-name {
+  font-size: 0.74rem;
+}
+
 .avrm__public-tiebreak-approval {
   font-size: 0.8rem;
   font-weight: 700;
   color: #ffc83c;
+}
+
+.avrm--tv .avrm__public-tiebreak-approval {
+  font-size: 0.7rem;
 }
 
 .avrm__public-tiebreak-caption {
@@ -273,6 +409,11 @@
   font-size: 0.8rem;
   color: #d8ddf0;
   text-align: center;
+}
+
+.avrm--tv .avrm__public-tiebreak-caption {
+  margin-top: 0.5rem;
+  font-size: 0.68rem;
 }
 
 /* ── Footer countdown ───────────────────────────────────────────────────── */
@@ -286,15 +427,48 @@
   cursor: pointer;
 }
 
+.avrm--tv .avrm__footer {
+  padding: 0.45rem 0.7rem 0.55rem;
+  border-top-color: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.24));
+}
+
 .avrm__countdown {
   font-size: 0.8rem;
   color: #8b9dcc;
+}
+
+.avrm--tv .avrm__countdown {
+  font-size: 0.7rem;
 }
 
 .avrm__skip {
   font-size: 0.7rem;
   color: rgba(255,255,255,0.3);
   letter-spacing: 0.04em;
+}
+
+.avrm--tv .avrm__skip {
+  font-size: 0.62rem;
+}
+
+@media (max-width: 420px) {
+  .avrm--tv .avrm__header {
+    padding-inline: 0.65rem;
+  }
+
+  .avrm--tv .avrm__title {
+    font-size: 0.72rem;
+  }
+
+  .avrm--tv .avrm__live-badge {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.54rem;
+  }
+
+  .avrm--tv .avrm__tally {
+    grid-template-columns: auto minmax(0, 4.5rem) minmax(0, 1fr) auto;
+  }
 }
 
 /* ── Reduce motion ──────────────────────────────────────────────────────── */

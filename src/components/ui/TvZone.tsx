@@ -26,6 +26,8 @@ import { getViewportMessageKey } from './tvZoneKeys';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 
+const NOOP = () => {};
+
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
   week_start:               'DAY START',
@@ -555,7 +557,7 @@ export default function TvZone(props: TvZoneProps) {
                 nominees={props.publicSaveReveal.nominees}
                 approvals={props.publicSaveReveal.approvals}
                 savedId={props.publicSaveReveal.savedId}
-                onDone={props.onPublicSaveDone}
+                onDone={props.onPublicSaveDone ?? NOOP}
               />
             )}
 
