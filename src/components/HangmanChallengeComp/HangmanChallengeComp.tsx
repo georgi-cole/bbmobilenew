@@ -33,6 +33,7 @@ const TIME_PENALTY_SURGE_MS = 10_000;
 const SCORE_CUT_MULTIPLIER = 0.88;
 const MEDALS = ['🥇', '🥈', '🥉'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const PRESSURE_CRACKS = Array.from({ length: MAX_ERRORS }, (_, index) => index);
 
 const participantFallbacks: Array<Pick<MinigameParticipant, 'id' | 'name' | 'isHuman' | 'precomputedScore' | 'previousPR'>> = [
   { id: 'you', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
@@ -207,7 +208,6 @@ function formatAdjustment(value: number): string {
 export default function HangmanChallengeComp({
   onFinish,
   seed = 0,
-  autoStart = true,
   participantIds = [],
   participants,
 }: Props) {
@@ -273,7 +273,7 @@ export default function HangmanChallengeComp({
     [currentWord.text, roundState.guessedLetters, roundState.revealedLetters],
   );
   const boxesLocked = roundState.activeTimedEffects.some((effect) => effect.id === 'lock_boxes');
-  const usedLettersDistorted = roundState.activeTimedEffects.some((effect) => effect.id === 'distort_used');
+  const keyboardDistorted = roundState.activeTimedEffects.some((effect) => effect.id === 'distort_used');
 
   const badgeLabels = useMemo(() => {
     const labels = roundState.activeTimedEffects.map((effect) => `${effect.label} ${Math.ceil(effect.remainingMs / 1000)}s`);
@@ -291,15 +291,6 @@ export default function HangmanChallengeComp({
     setBreakdown(null);
     setAnimatedRoundScore(0);
   }, []);
-
-  useEffect(() => {
-    if (phase !== 'intro') return undefined;
-    if (!autoStart) return undefined;
-    const timeout = setTimeout(() => {
-      setPhase('playing');
-    }, 850);
-    return () => clearTimeout(timeout);
-  }, [autoStart, phase, roundIndex]);
 
   useEffect(() => {
     if (phase !== 'playing') return undefined;
@@ -797,11 +788,9 @@ export default function HangmanChallengeComp({
           <p className="hangman-challenge__intro-kicker">Pressure cycle engaged</p>
           <h3>{currentWord.category.toUpperCase()} FILE</h3>
           <p>{currentWord.difficulty <= 2 ? 'Opening phase: common strategic language.' : currentWord.difficulty === 3 ? 'Mid-cycle: layered terms and phrases.' : 'Final phase: prestige phrases and heavier ambiguity.'}</p>
-          {!autoStart && (
-            <button className="hangman-challenge__cta" type="button" onClick={() => setPhase('playing')}>
-              Enter round
-            </button>
-          )}
+          <button className="hangman-challenge__cta" type="button" onClick={() => setPhase('playing')}>
+            Enter round
+          </button>
         </section>
       )}
 
@@ -813,63 +802,84 @@ export default function HangmanChallengeComp({
                 <span>Pressure</span>
                 <strong>{roundState.wrongCount}/{MAX_ERRORS}</strong>
               </div>
-              <div className="hangman-challenge__pressure-meter" aria-hidden="true">
-                <div className="hangman-challenge__pressure-fill" style={{ width: `${(roundState.wrongCount / MAX_ERRORS) * 100}%` }} />
+              <div
+                className={`hangman-challenge__pressure-glass${roundState.wrongCount >= MAX_ERRORS ? ' is-shattered' : ''}`}
+                aria-hidden="true"
+              >
+                <div className="hangman-challenge__pressure-glass-fill" style={{ height: `${(roundState.wrongCount / MAX_ERRORS) * 100}%` }} />
+                {PRESSURE_CRACKS.map((index) => (
+                  <span
+                    key={index}
+                    className={`hangman-challenge__pressure-crack hangman-challenge__pressure-crack--${(index % 4) + 1}${index < roundState.wrongCount ? ' is-visible' : ''}`}
+                  />
+                ))}
               </div>
               <p className="hangman-challenge__pressure-copy">
-                Wrong guesses fracture the board instead of drawing a figure.
+                {roundState.wrongCount >= MAX_ERRORS
+                  ? 'The glass gave out on the last miss.'
+                  : `${MAX_ERRORS - roundState.wrongCount} clean reads left before it shatters.`}
               </p>
             </div>
-            <div className="hangman-challenge__intel-card">
-              <span>Intel</span>
-              <strong>{currentWord.category}</strong>
-              <p>{roundState.clueMessage ?? 'Mystery boxes may reveal broad intel, but never the full phrase.'}</p>
-            </div>
           </section>
 
-          <section className="hangman-challenge__board" aria-label="Solution board">
-            <div className="hangman-challenge__fracture-layer" aria-hidden="true" />
-            <div className="hangman-challenge__tiles">
-              {displayTokens.map((token, index) => (
-                <span
-                  key={`${token}-${index}`}
-                  className={`hangman-challenge__tile${token === '•' ? '' : ' is-revealed'}${token === ' ' ? ' is-gap' : ''}`}
-                >
-                  {token === ' ' ? '' : token}
-                </span>
-              ))}
-            </div>
-          </section>
-
-          <section className="hangman-challenge__midband">
-            <div className="hangman-challenge__used-panel">
-              <div className="hangman-challenge__used-head">
-                <span>Wrong letters</span>
-                <strong>{roundState.wrongLetters.length}</strong>
+          <section className="hangman-challenge__playfield">
+            <section className="hangman-challenge__board" aria-label="Solution board">
+              <div className="hangman-challenge__fracture-layer" aria-hidden="true" />
+              <div className="hangman-challenge__tiles">
+                {displayTokens.map((token, index) => (
+                  <span
+                    key={`${token}-${index}`}
+                    className={`hangman-challenge__tile${token === '•' ? '' : ' is-revealed'}${token === ' ' ? ' is-gap' : ''}`}
+                  >
+                    {token === ' ' ? '' : token}
+                  </span>
+                ))}
               </div>
-              <div className={`hangman-challenge__used-list${usedLettersDistorted ? ' is-distorted' : ''}`}>
-                {roundState.wrongLetters.length > 0 ? roundState.wrongLetters.join(' • ') : 'No pressure spikes yet'}
-              </div>
-            </div>
+            </section>
             <div className="hangman-challenge__box-panel">
               <div className="hangman-challenge__used-head">
-                <span>Mystery Boxes</span>
+                <span>Mystery box</span>
                 <strong>{roundState.boxesOpened}/{Math.min(3, roundState.boxesSpawned)}</strong>
               </div>
               {roundState.visibleBox ? (
                 <div className={`hangman-challenge__box${boxesLocked ? ' is-locked' : ''}`}>
-                  <p>Box manifested at second {roundState.visibleBox.spawnedAtSecond}.</p>
+                  <p>{roundState.clueMessage ?? 'A sealed case is live on the board.'}</p>
                   <button className="hangman-challenge__cta hangman-challenge__cta--box" disabled={boxesLocked} onClick={openMysteryBox} type="button">
                     {boxesLocked ? 'Locked by effect' : 'Open mystery box'}
                   </button>
                 </div>
               ) : (
                 <div className="hangman-challenge__box hangman-challenge__box--idle">
-                  <p>No active box on deck.</p>
-                  <small>First spawn is fixed at 0:09, then pressure rolls decide the rest.</small>
+                  <p>No mystery box is live right now.</p>
+                  <small>Stay in the round and the next case will light up when it is ready.</small>
                 </div>
               )}
             </div>
+            <section className={`hangman-challenge__keyboard-panel${keyboardDistorted ? ' is-distorted' : ''}`} aria-label="Letter board">
+              <div className="hangman-challenge__used-head">
+                <span>Letter board</span>
+                <strong>A–Z</strong>
+              </div>
+              <div className="hangman-challenge__keyboard" aria-label="Letter keyboard">
+                {ALPHABET.map((letter) => {
+                  const isUsed = roundState.guessedLetters.includes(letter) || roundState.wrongLetters.includes(letter);
+                  const isCorrect = roundState.guessedLetters.includes(letter);
+                  const isWrong = roundState.wrongLetters.includes(letter);
+                  const isDisabled = roundState.disabledLetters.includes(letter);
+                  return (
+                    <button
+                      key={letter}
+                      className={`hangman-challenge__key${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}${isDisabled ? ' is-disabled' : ''}`}
+                      disabled={isUsed || isDisabled}
+                      onClick={() => guessLetter(letter)}
+                      type="button"
+                    >
+                      {letter}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           </section>
 
           {badgeLabels.length > 0 && (
@@ -887,26 +897,6 @@ export default function HangmanChallengeComp({
               ))}
             </div>
           )}
-
-          <section className="hangman-challenge__keyboard" aria-label="Letter keyboard">
-            {ALPHABET.map((letter) => {
-              const isUsed = roundState.guessedLetters.includes(letter) || roundState.wrongLetters.includes(letter);
-              const isCorrect = roundState.guessedLetters.includes(letter);
-              const isWrong = roundState.wrongLetters.includes(letter);
-              const isDisabled = roundState.disabledLetters.includes(letter);
-              return (
-                <button
-                  key={letter}
-                  className={`hangman-challenge__key${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}${isDisabled ? ' is-disabled' : ''}`}
-                  disabled={isUsed || isDisabled}
-                  onClick={() => guessLetter(letter)}
-                  type="button"
-                >
-                  {letter}
-                </button>
-              );
-            })}
-          </section>
         </>
       )}
 
@@ -939,7 +929,7 @@ export default function HangmanChallengeComp({
         <section className="hangman-challenge__overlay" aria-label="Round scoreboard">
           <div className="hangman-challenge__overlay-card hangman-challenge__overlay-card--scoreboard">
             <p className="hangman-challenge__eyebrow">Round {roundIndex + 1} standings</p>
-            <h3>Event summary</h3>
+            <h3>Round summary</h3>
             <div className="hangman-challenge__scoreboard">
               {roundLeaderboard.map((entry, index) => (
                 <article className="hangman-challenge__score-row" key={entry.participantId}>
@@ -947,17 +937,20 @@ export default function HangmanChallengeComp({
                   <div className="hangman-challenge__score-main">
                     <div className="hangman-challenge__score-name-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <div>
+                      <div className="hangman-challenge__score-summary">
                         <strong>{entry.participantName}</strong>
                         <span>{entry.solved ? 'Solved' : 'Failed'} • {entry.word}</span>
                       </div>
+                      <div className="hangman-challenge__score-total">
+                        <span>Total</span>
+                        <strong>{entry.cumulativeScore}</strong>
+                      </div>
                     </div>
                     <div className="hangman-challenge__score-meta">
-                      <span>Errors {entry.errors}</span>
-                      <span>Time {secondsLabel(entry.elapsedSeconds)}</span>
-                      <span>Boxes {entry.boxesOpened}</span>
+                      <span>{entry.errors} errors</span>
+                      <span>{secondsLabel(entry.elapsedSeconds)}</span>
+                      <span>{entry.boxesOpened} boxes</span>
                       <span>Round {entry.roundScore}</span>
-                      <span>Total {entry.cumulativeScore}</span>
                     </div>
                     {entry.appliedEffects.length > 0 && (
                       <div className="hangman-challenge__score-tags">
@@ -992,15 +985,20 @@ export default function HangmanChallengeComp({
                   <div className="hangman-challenge__score-main">
                     <div className="hangman-challenge__score-name-row">
                       <span className="hangman-challenge__avatar">{entry.avatarText}</span>
-                      <div>
+                      <div className="hangman-challenge__score-summary">
                         <strong>{entry.participantName}</strong>
-                        <span>Final total {entry.cumulativeScore}</span>
+                        <span>{entry.solved ? 'Solved final round' : 'Missed final round'} • {entry.word}</span>
+                      </div>
+                      <div className="hangman-challenge__score-total">
+                        <span>Total</span>
+                        <strong>{entry.cumulativeScore}</strong>
                       </div>
                     </div>
                     <div className="hangman-challenge__score-meta">
-                      <span>Round score {entry.roundScore}</span>
-                      <span>Word {entry.word}</span>
-                      <span>{entry.solved ? 'Solved final round' : 'Failed final round'}</span>
+                      <span>Round {entry.roundScore}</span>
+                      <span>{entry.errors} errors</span>
+                      <span>{secondsLabel(entry.elapsedSeconds)}</span>
+                      <span>{entry.boxesOpened} boxes</span>
                     </div>
                   </div>
                 </article>
