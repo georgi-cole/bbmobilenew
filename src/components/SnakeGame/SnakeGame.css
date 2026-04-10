@@ -413,11 +413,11 @@
   height: clamp(44px, 11vw, 54px);
 }
 
-.snake-lcd-container--boot {
+.snake-lcd-container--fx-boot {
   animation: snake-lcd-boot-flicker 0.65s steps(4, end);
 }
 
-.snake-lcd-container--death {
+.snake-lcd-container--fx-death {
   animation: snake-lcd-death-flicker 0.85s steps(5, end);
 }
 

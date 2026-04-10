@@ -46,6 +46,9 @@ const RAW_SCORE_CAP = 100;
 const RESULTS_REVEAL_MS = 10_000;
 const FAST_FORWARD_DELAY_MS = 4_000;
 const FAST_FORWARD_RESOLVE_MS = 2_000;
+const FOOD_PULSE_MIN_OPACITY = 0.68;
+const FOOD_PULSE_RANGE = 0.32;
+const FOOD_PULSE_DIVISOR = 180;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -218,7 +221,8 @@ export default function SnakeGame({
     });
 
     const foodPulse = gamePhaseRef.current === 'playing'
-      ? 0.68 + (((Math.sin(Date.now() / 180) + 1) / 2) * 0.32)
+      ? FOOD_PULSE_MIN_OPACITY
+        + (((Math.sin(Date.now() / FOOD_PULSE_DIVISOR) + 1) / 2) * FOOD_PULSE_RANGE)
       : 1;
     ctx.globalAlpha = foodPulse;
     ctx.fillStyle = '#0f380f';
@@ -586,7 +590,7 @@ export default function SnakeGame({
             <div
               className={[
                 'snake-lcd-container',
-                screenFx ? `snake-lcd-container--${screenFx}` : '',
+                screenFx ? `snake-lcd-container--fx-${screenFx}` : '',
               ].filter(Boolean).join(' ')}
             >
               {/* Status line */}
