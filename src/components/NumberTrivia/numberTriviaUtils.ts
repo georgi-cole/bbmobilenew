@@ -108,6 +108,8 @@ function hashNumberTriviaParticipantId(participantId: string): number {
 }
 
 export function createNumberTriviaAiRng(context: NumberTriviaAiRngContext): () => number {
+  // 0x9e3779b9 is the golden-ratio-derived Fibonacci hashing constant, used here
+  // to spread adjacent round numbers apart before mixing in the participant hash.
   const roundSeed = Math.imul(context.roundNumber >>> 0, 0x9e3779b9) >>> 0;
   const participantSeed = hashNumberTriviaParticipantId(context.participantId);
   return mulberry32(((context.seed >>> 0) ^ roundSeed ^ participantSeed) >>> 0);
