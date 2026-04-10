@@ -153,8 +153,7 @@
 
 .hangman-challenge__pressure-head,
 .hangman-challenge__used-head,
-.hangman-challenge__score-primary-row,
-.hangman-challenge__score-meta {
+.hangman-challenge__score-primary-row {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -185,7 +184,6 @@
 .hangman-challenge__pressure-copy,
 .hangman-challenge__box small,
 .hangman-challenge__score-primary-row span,
-.hangman-challenge__score-meta,
 .hangman-challenge__score-inline-total {
   color: rgba(245, 247, 251, 0.72);
 }

@@ -961,8 +961,8 @@ export default function HangmanChallengeComp({
                     </div>
                     <div className="hangman-challenge__score-secondary-row">
                       <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved' : 'Failed'} • {entry.word}</span>
-                      {compactRoundMeta(entry).map((label) => (
-                        <span key={label}>{label}</span>
+                      {compactRoundMeta(entry).map((label, index) => (
+                        <span key={`${entry.participantId}-round-meta-${index}`}>{label}</span>
                       ))}
                     </div>
                   </div>
@@ -996,8 +996,8 @@ export default function HangmanChallengeComp({
                     </div>
                     <div className="hangman-challenge__score-secondary-row">
                       <span className="hangman-challenge__score-outcome">{entry.solved ? 'Solved final' : 'Missed final'} • {entry.word}</span>
-                      {compactRoundMeta(entry).map((label) => (
-                        <span key={label}>{label}</span>
+                      {compactRoundMeta(entry).map((label, index) => (
+                        <span key={`${entry.participantId}-final-meta-${index}`}>{label}</span>
                       ))}
                     </div>
                   </div>
