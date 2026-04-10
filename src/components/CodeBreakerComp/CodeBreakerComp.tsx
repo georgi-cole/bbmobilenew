@@ -90,10 +90,10 @@ export default function CodeBreakerComp({
   const dispatch = useAppDispatch();
   const isCompetitionMode = participantIds.length > 0;
 
-  const secretCode = useRef<number[]>(generateSecretCode(seed));
+  const [secretCode] = useState(() => generateSecretCode(seed));
   const humanParticipant = participants.find((p) => p.isHuman) ?? null;
   const humanId = humanParticipant?.id ?? null;
-  const aiScores = useRef<Record<string, number>>(
+  const [aiScores] = useState<Record<string, number>>(() =>
     computeAllAiScores(seed, participantIds, humanId, DEFAULT_ELAPSED_SCORE_CAP_MS),
   );
 
@@ -102,19 +102,27 @@ export default function CodeBreakerComp({
   const [phase, setPhase] = useState<GamePhase>('playing');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [humanScore, setHumanScore] = useState(0);
-  const [outcomeDispatched, setOutcomeDispatched] = useState(false);
   const [vaultReaction, setVaultReaction] = useState<VaultReaction>('idle');
 
   const phaseRef = useRef<GamePhase>('playing');
   const elapsedMsRef = useRef(0);
   const guessHistoryRef = useRef<GuessResult[]>([]);
+  const outcomeDispatchedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
   const elapsedTickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reactionResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  phaseRef.current = phase;
-  elapsedMsRef.current = elapsedMs;
-  guessHistoryRef.current = guessHistory;
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  useEffect(() => {
+    elapsedMsRef.current = elapsedMs;
+  }, [elapsedMs]);
+
+  useEffect(() => {
+    guessHistoryRef.current = guessHistory;
+  }, [guessHistory]);
 
   const clearReactionReset = useCallback(() => {
     if (reactionResetRef.current !== null) {
@@ -189,7 +197,7 @@ export default function CodeBreakerComp({
     if (phaseRef.current !== 'playing') return;
 
     startElapsedTracking();
-    const result = evaluateGuess(secretCode.current, currentDigits);
+    const result = evaluateGuess(secretCode, currentDigits);
     const nextHistory = [...guessHistoryRef.current, result];
     setGuessHistory(nextHistory);
 
@@ -199,30 +207,11 @@ export default function CodeBreakerComp({
       const finalElapsedMs = getElapsedNow();
       setElapsedMs(finalElapsedMs);
       const score = computeSolvedScore(nextHistory.length, finalElapsedMs);
-      setHumanScore(score);
-      setPhase('solved');
-      setVaultReaction('idle');
-      return;
-    }
 
-    triggerVaultReaction('reject');
-  }, [
-    clearReactionReset,
-    currentDigits,
-    getElapsedNow,
-    startElapsedTracking,
-    stopElapsedTracking,
-    triggerVaultReaction,
-  ]);
-
-  const resolveOutcome = useCallback(
-    (finalHumanScore: number) => {
-      if (outcomeDispatched) return;
-      setOutcomeDispatched(true);
-
-      if (isCompetitionMode) {
-        const allScores: Record<string, number> = { ...aiScores.current };
-        if (humanId) allScores[humanId] = finalHumanScore;
+      if (!outcomeDispatchedRef.current && isCompetitionMode) {
+        outcomeDispatchedRef.current = true;
+        const allScores: Record<string, number> = { ...aiScores };
+        if (humanId) allScores[humanId] = score;
 
         const ranked = rankScores(allScores, participantIds);
         const winnerId = ranked[0]?.id ?? participantIds[0];
@@ -249,14 +238,32 @@ export default function CodeBreakerComp({
           }),
         );
       }
-    },
-    [dispatch, humanId, isCompetitionMode, outcomeDispatched, participantIds, prizeType],
-  );
+
+      setHumanScore(score);
+      setPhase('solved');
+      setVaultReaction('idle');
+      return;
+    }
+
+    triggerVaultReaction('reject');
+  }, [
+    clearReactionReset,
+    currentDigits,
+    aiScores,
+    dispatch,
+    getElapsedNow,
+    humanId,
+    isCompetitionMode,
+    participantIds,
+    prizeType,
+    secretCode,
+    startElapsedTracking,
+    stopElapsedTracking,
+    triggerVaultReaction,
+  ]);
 
   useEffect(() => {
     if (phase !== 'solved') return undefined;
-
-    resolveOutcome(humanScore);
 
     const timeout = setTimeout(() => {
       if (onFinish) {
@@ -267,7 +274,7 @@ export default function CodeBreakerComp({
     }, RESULT_DELAY_MS);
 
     return () => clearTimeout(timeout);
-  }, [humanScore, onFinish, phase, resolveOutcome]);
+  }, [humanScore, onFinish, phase]);
 
   const handleContinue = useCallback(() => {
     onComplete?.();
@@ -275,7 +282,7 @@ export default function CodeBreakerComp({
 
   const leaderboard = (() => {
     if (phase !== 'results') return [];
-    const allScores: Record<string, number> = { ...aiScores.current };
+    const allScores: Record<string, number> = { ...aiScores };
     if (humanId) allScores[humanId] = humanScore;
     return rankScores(allScores, participantIds);
   })();
@@ -336,7 +343,7 @@ export default function CodeBreakerComp({
             </div>
           </div>
           <p className="cb__code-reveal">
-            Code was: <strong>{secretCode.current.join('')}</strong>
+            Code was: <strong>{secretCode.join('')}</strong>
           </p>
         </div>
 
