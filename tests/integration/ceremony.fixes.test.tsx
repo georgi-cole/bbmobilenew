@@ -384,5 +384,13 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
 
     expect(screen.getByTestId('external-announcement')).toHaveTextContent('With 5 votes');
     expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 2, your game ends here.');
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
   });
 });
