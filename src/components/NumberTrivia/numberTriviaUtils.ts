@@ -1,3 +1,4 @@
+import { mulberry32 } from '../../store/rng';
 import type { NumberTriviaDifficulty, NumberTriviaQuestion } from './numberTriviaData';
 
 export const NUMBER_TRIVIA_TOTAL_ROUNDS = 5;
@@ -27,6 +28,12 @@ export interface NumberTriviaAiPerformanceContext {
   precomputedScore: number;
   roundNumber: number;
   question: NumberTriviaQuestion;
+}
+
+export interface NumberTriviaAiRngContext {
+  seed: number;
+  roundNumber: number;
+  participantId: string;
 }
 
 interface NumberTriviaAiDifficultyProfile {
@@ -89,6 +96,21 @@ function clamp(value: number, min: number, max: number): number {
 
 function randomBetween(min: number, max: number, rng: () => number): number {
   return min + (max - min) * rng();
+}
+
+function hashNumberTriviaParticipantId(participantId: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < participantId.length; index += 1) {
+    hash ^= participantId.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function createNumberTriviaAiRng(context: NumberTriviaAiRngContext): () => number {
+  const roundSeed = Math.imul(context.roundNumber >>> 0, 0x9e3779b9) >>> 0;
+  const participantSeed = hashNumberTriviaParticipantId(context.participantId);
+  return mulberry32(((context.seed >>> 0) ^ roundSeed ^ participantSeed) >>> 0);
 }
 
 function getNearMissDistance(answer: number, rng: () => number): number {

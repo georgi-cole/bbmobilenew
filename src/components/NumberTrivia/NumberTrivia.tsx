@@ -5,6 +5,7 @@ import { NUMBER_TRIVIA_QUESTIONS } from './numberTriviaData';
 import {
   compareTriviaStandings,
   computeNumberTriviaRoundScore,
+  createNumberTriviaAiRng,
   formatTriviaTimeMs,
   getNumberTriviaEliminationCount,
   getTriviaHint,
@@ -142,7 +143,6 @@ export default function NumberTrivia({
         .filter((entry) => entry.eliminatedRound === null)
         .map((entry) => entry.participantId),
     );
-    const rng = mulberry32(((seed >>> 0) ^ (effectiveRoundNumber * 0x9e3779b9)) >>> 0);
     const performanceById = new Map<string, TriviaRoundPerformance>();
 
     sourceStandings.forEach((entry) => {
@@ -160,7 +160,11 @@ export default function NumberTrivia({
             roundNumber: effectiveRoundNumber,
             question: effectiveQuestion,
           },
-          rng,
+          createNumberTriviaAiRng({
+            seed,
+            roundNumber: effectiveRoundNumber,
+            participantId: entry.participantId,
+          }),
         ),
       );
     });

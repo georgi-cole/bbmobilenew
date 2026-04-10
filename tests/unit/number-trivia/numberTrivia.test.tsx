@@ -4,6 +4,7 @@ import NumberTrivia from '../../../src/components/NumberTrivia/NumberTrivia';
 import { NUMBER_TRIVIA_QUESTIONS } from '../../../src/components/NumberTrivia/numberTriviaData';
 import {
   computeNumberTriviaRoundScore,
+  createNumberTriviaAiRng,
   getNumberTriviaEliminationCount,
   simulateNumberTriviaAiPerformance,
 } from '../../../src/components/NumberTrivia/numberTriviaUtils';
@@ -121,6 +122,35 @@ describe('NumberTrivia helpers', () => {
     expect(performance.closestDistance).toBe(1);
     expect(performance.timeMs).toBeGreaterThanOrEqual(3_000);
     expect(performance.timeMs).toBeLessThanOrEqual(8_500);
+  });
+
+  it('gives each AI participant an order-independent rng stream per round', () => {
+    const context = {
+      precomputedScore: 58,
+      roundNumber: 4,
+      question: { prompt: 'In which year was the first Nobel Prize awarded?', answer: 1901, difficulty: 'very-hard' as const },
+    };
+
+    const aiOneForward = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-1' }),
+    );
+    const aiTwoForward = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-2' }),
+    );
+
+    const aiTwoReverse = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-2' }),
+    );
+    const aiOneReverse = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-1' }),
+    );
+
+    expect(aiOneForward).toEqual(aiOneReverse);
+    expect(aiTwoForward).toEqual(aiTwoReverse);
   });
 });
 
