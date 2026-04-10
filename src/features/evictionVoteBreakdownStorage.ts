@@ -30,14 +30,19 @@ export function saveEvictionVoteBreakdownUnlock(unlock: EvictionVoteBreakdownUnl
   }
 }
 
+/**
+ * Returns true when an eviction vote-breakdown unlock exists and is valid for
+ * the given week. Phase is no longer checked — the confessional reveal must
+ * remain accessible throughout the entire eviction week regardless of which
+ * phase the player visits the Diary Room in (e.g. week_end or week_start after
+ * the eviction animation completes). The third argument is kept for call-site
+ * compatibility but is intentionally ignored.
+ */
 export function isEvictionVoteBreakdownActive(
   unlock: EvictionVoteBreakdownUnlock | null,
   week: number,
   _phase: Phase,
 ): unlock is EvictionVoteBreakdownUnlock {
-  // Match on week only — the confessional reveal remains accessible throughout
-  // the current week regardless of which phase the player visits the Diary Room
-  // in (e.g. week_end or week_start after the eviction animation completes).
   return Boolean(unlock && unlock.week === week);
 }
 
