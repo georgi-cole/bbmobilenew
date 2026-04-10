@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectEnergyBank,
@@ -11,10 +11,13 @@ import {
   clearSessionLogs,
 } from '../../social/socialSlice';
 import { addTvEvent } from '../../store/gameSlice';
-import { selectHumanIsActive } from '../../store/selectors';
 import { SocialManeuvers } from '../../social/SocialManeuvers';
 import { TV_SOCIAL_CLOSE_MESSAGES } from './socialNarratives';
 import { buildDrSessionSummary } from '../../services/activityService';
+import {
+  getSocialModuleAvailability,
+  logBlockedSocialModuleOpen,
+} from '../../social/socialModuleAvailability';
 import ActionGrid from './ActionGrid';
 import PlayerList from './PlayerList';
 import RecentActivity from './RecentActivity';
@@ -47,17 +50,29 @@ export default function SocialPanelV2() {
   const influenceBank = useAppSelector(selectInfluenceBank);
   const infoBank = useAppSelector(selectInfoBank);
   const socialPanelOpen = useAppSelector(selectSocialPanelOpen);
-  const humanIsActive = useAppSelector(selectHumanIsActive);
   const sessionLogs = useAppSelector(selectSessionLogs);
   const relationships = useAppSelector((s) => s.social?.relationships);
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot);
 
   const humanPlayer = game.players.find((p) => p.isUser);
+  const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
 
   // Panel opens exclusively when the FAB dispatches openSocialPanel()
   // AND the human player is active (not evicted or in jury — they are no
   // longer in the house and cannot participate in social interactions).
-  const open = humanIsActive && socialPanelOpen;
+  const open = socialModuleAvailability.canOpen && socialPanelOpen;
+
+  useEffect(() => {
+    if (!socialPanelOpen || socialModuleAvailability.canOpen) {
+      return;
+    }
+    logBlockedSocialModuleOpen(
+      'Outgoing social module',
+      socialModuleAvailability,
+      'SocialPanelV2 visibility guard',
+    );
+    dispatch(closeSocialPanel());
+  }, [dispatch, socialPanelOpen, socialModuleAvailability]);
 
   function handleClose() {
     if (!humanPlayer) {

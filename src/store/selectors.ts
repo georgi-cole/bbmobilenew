@@ -4,6 +4,7 @@
  * if the game slice shape changes.
  */
 import type { RootState } from './store';
+import { getSocialModuleAvailability } from '../social/socialModuleAvailability';
 
 /**
  * True when the game is blocked on a human decision modal:
@@ -79,6 +80,14 @@ export const selectHumanIsActive = (state: RootState): boolean => {
   const humanPlayer = state.game?.players?.find((p) => p.isUser);
   return humanPlayer?.status === 'active';
 };
+
+/** True when the human player is in the house and the current phase permits social modules. */
+export const selectHumanCanUseSocialModules = (state: RootState): boolean =>
+  getSocialModuleAvailability(state.game).canOpen;
+
+/** Debug metadata explaining why a social module can or cannot open. */
+export const selectSocialModuleAvailability = (state: RootState) =>
+  getSocialModuleAvailability(state.game);
 
 
 /**
