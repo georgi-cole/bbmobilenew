@@ -470,7 +470,7 @@ export default function TvZone(props: TvZoneProps) {
       className={[
         'tv-zone',
         isDeSpotlight ? 'tv-zone--de-spotlight' : '',
-        isLiveVoteSpotlight ? 'tv-zone--live-vote-focus' : '',
+        isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
       ].filter(Boolean).join(' ')}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
@@ -480,7 +480,7 @@ export default function TvZone(props: TvZoneProps) {
         <div className="tv-zone-de-backdrop" aria-hidden="true" />,
         document.body,
       )}
-      {isLiveVoteSpotlight && createPortal(
+      {isLiveVoteFocus && createPortal(
         <div className="tv-zone-live-vote-backdrop" aria-hidden="true" />,
         document.body,
       )}
