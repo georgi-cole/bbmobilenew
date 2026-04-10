@@ -68,11 +68,15 @@ describe('HangmanChallengeComp', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue to scoreboard/i }));
 
     const scoreboard = screen.getByLabelText(/round scoreboard/i);
-    const firstRow = scoreboard.querySelector('.hangman-challenge__score-row');
+    const firstRow = scoreboard.querySelector<HTMLElement>('.hangman-challenge__score-row');
 
     expect(firstRow).not.toBeNull();
-    expect(firstRow?.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
-    expect(firstRow?.querySelector('.hangman-challenge__score-secondary-row')).toBeTruthy();
+    if (!firstRow) {
+      throw new Error('Expected a score row to be rendered');
+    }
+
+    expect(firstRow.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
+    expect(firstRow.querySelector('.hangman-challenge__score-secondary-row')).toBeTruthy();
     expect(within(firstRow).getByText(/total/i)).toBeInTheDocument();
     expect(within(firstRow).getByText(/\+\d+/)).toBeInTheDocument();
   });
