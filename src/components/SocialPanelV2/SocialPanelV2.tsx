@@ -27,8 +27,8 @@ import './SocialPanelV2.css';
  * SocialPanelV2 — full-screen modal overlay for social phases.
  *
  * Visible during non-vote interaction phases (LOH, POS, nomination, pre-vote,
- * and social windows) when a human player exists and is active. Blocked during
- * live_vote and eviction resolution phases.
+ * and social windows) when the human player is still in the house. Blocked
+ * during live_vote and eviction resolution phases.
  * Provides the layout canvas for the interactive social UI; later PRs
  * will implement player cards, action cards, and execute flow.
  *
@@ -58,8 +58,8 @@ export default function SocialPanelV2() {
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
 
   // Panel opens exclusively when the FAB dispatches openSocialPanel()
-  // AND the human player is active (not evicted or in jury — they are no
-  // longer in the house and cannot participate in social interactions).
+  // AND the social module is currently available (for example, the human
+  // player is still in the house and the current phase allows social actions).
   const open = socialModuleAvailability.canOpen && socialPanelOpen;
 
   useEffect(() => {

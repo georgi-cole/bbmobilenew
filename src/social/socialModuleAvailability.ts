@@ -1,6 +1,9 @@
-import type { PlayerStatus } from '../types';
+import type { Phase, PlayerStatus } from '../types';
 
-const SOCIAL_MODULE_BLOCKED_PHASES = new Set<string>(['live_vote', 'eviction_results']);
+const SOCIAL_MODULE_BLOCKED_PHASES: ReadonlySet<Phase> = new Set<Phase>([
+  'live_vote',
+  'eviction_results',
+]);
 
 interface HumanPlayerLike {
   id: string;
@@ -9,14 +12,14 @@ interface HumanPlayerLike {
 }
 
 interface GameLike {
-  phase?: string | null;
+  phase?: Phase | null;
   players?: ReadonlyArray<HumanPlayerLike>;
 }
 
 export interface SocialModuleAvailability {
   canOpen: boolean;
   reason: string | null;
-  phase: string | null;
+  phase: Phase | null;
   humanPlayerId: string | null;
   humanStatus: PlayerStatus | null;
 }

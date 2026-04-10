@@ -3,6 +3,7 @@
  * Non-invasive helper so other code can import selectors without failing
  * if the game slice shape changes.
  */
+import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import { getSocialModuleAvailability } from '../social/socialModuleAvailability';
 
@@ -86,8 +87,10 @@ export const selectHumanCanUseSocialModules = (state: RootState): boolean =>
   getSocialModuleAvailability(state.game).canOpen;
 
 /** Debug metadata explaining why a social module can or cannot open. */
-export const selectSocialModuleAvailability = (state: RootState) =>
-  getSocialModuleAvailability(state.game);
+export const selectSocialModuleAvailability = createSelector(
+  [(state: RootState) => state.game],
+  (game) => getSocialModuleAvailability(game),
+);
 
 
 /**
