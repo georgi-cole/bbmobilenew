@@ -300,6 +300,9 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     });
 
     expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 5 to 4');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent(
+      "Player 2, please say your goodbyes and leave through the Confessional's special exit.",
+    );
 
     // Dismiss the post-vote announcement on the main TV.
     await act(async () => {
@@ -383,7 +386,9 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     });
 
     expect(screen.getByTestId('external-announcement')).toHaveTextContent('With 5 votes');
-    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 2, your game ends here.');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent(
+      "Player 2, please say your goodbyes and leave through the Confessional's special exit.",
+    );
     await act(async () => {
       capturedOnExternalAnnouncementDismiss?.();
     });
