@@ -301,7 +301,7 @@ export default function CodeBreakerComp({
         : 'Dial the tumblers and test the mechanism';
   const hintText =
     phase === 'solved'
-      ? `${elapsedLabel} elapsed • Score ${humanScore}`
+      ? `${elapsedLabel} Elapsed • Score ${humanScore}`
       : attempts > 0
         ? `Best alignment so far: ${bestBulls}/${CODE_LENGTH} exact`
         : 'Unlimited attempts. Higher scores come from solving in fewer tries and less time.';
@@ -353,7 +353,7 @@ export default function CodeBreakerComp({
 
           <ol className="cb__leaderboard">
             {leaderboard.map((entry, i) => {
-              const participant = participants.find((candidate) => candidate.id === entry.id);
+              const entryParticipant = participants.find((participant) => participant.id === entry.id);
               const isWinner = i === 0;
               const isLast = i === leaderboard.length - 1;
               const isYou = entry.id === humanId;
@@ -372,7 +372,7 @@ export default function CodeBreakerComp({
                     {i < 3 ? MEDALS[i] : `${i + 1}.`}
                   </span>
                   <span className="cb__lb-name">
-                    {participant?.name ?? entry.id}
+                    {entryParticipant?.name ?? entry.id}
                     {isYou ? ' (You)' : ''}
                   </span>
                   <span className="cb__lb-score">{entry.score}</span>

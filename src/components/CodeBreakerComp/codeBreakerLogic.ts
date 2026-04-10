@@ -144,7 +144,10 @@ export function computeAiScore(
 ): number {
   const rng = playerRng(masterSeed, playerId);
   const attempts = 1 + Math.floor(rng() * 8);
-  const elapsedMs = 15_000 + Math.round(rng() * elapsedScoreCapMs);
+  const elapsedMs = Math.min(
+    elapsedScoreCapMs,
+    15_000 + Math.round(rng() * elapsedScoreCapMs),
+  );
   return computeSolvedScore(attempts, elapsedMs, elapsedScoreCapMs);
 }
 

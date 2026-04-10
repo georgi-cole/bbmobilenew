@@ -217,6 +217,10 @@ describe('Vault Cracker — scoring', () => {
     expect(computeSolvedScore(1, 0)).toBe(100);
   });
 
+  it('clamps non-positive attempts and elapsed values to a valid top-end solve score', () => {
+    expect(computeSolvedScore(0, -5_000)).toBe(100);
+  });
+
   it('more attempts reduce score even with the same elapsed time', () => {
     expect(computeSolvedScore(2, 20_000)).toBeLessThan(computeSolvedScore(1, 20_000));
   });
@@ -227,6 +231,12 @@ describe('Vault Cracker — scoring', () => {
 
   it('very slow high-attempt solves collapse toward the solved floor', () => {
     expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(31);
+  });
+
+  it('AI scores stay within the elapsed cap when computing deterministic results', () => {
+    const score = computeAiScore(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    expect(score).toBeLessThanOrEqual(100);
+    expect(score).toBeGreaterThanOrEqual(30);
   });
 });
 
