@@ -70,4 +70,85 @@ describe('social memory integration for incoming interactions', () => {
     expect(entry.neglect).toBe(expected);
     expect(entry.recentEvents[0].type).toBe('ignored_compliment');
   });
+
+  it('adds one cheerful TV summary when multiple incoming interactions expire together', () => {
+    const store = makeStore();
+    const { players, week } = store.getState().game;
+    const aiPlayers = players.filter((p) => !p.isUser);
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'i-expired-deal',
+          fromId: aiPlayers[0].id,
+          type: 'deal_offer',
+          createdWeek: week,
+          expiresAtWeek: week,
+        }),
+      ),
+    );
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'i-expired-plea',
+          fromId: aiPlayers[1].id,
+          type: 'nomination_plea',
+          createdWeek: week,
+          expiresAtWeek: week,
+        }),
+      ),
+    );
+
+    store.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week + 1) as never);
+
+    const socialEvents = store
+      .getState()
+      .game.tvFeed.filter((event) => event.type === 'social' && event.source === 'system');
+
+    expect(socialEvents).toHaveLength(1);
+    expect(socialEvents[0].channels).toEqual(['tv', 'mainLog']);
+    expect(socialEvents[0].text).toBe(
+      "Several housemates' deal offer and nomination plea went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.",
+    );
+  });
+
+  it('uses singular housemate wording when multiple expired interactions came from one sender', () => {
+    const store = makeStore();
+    const { players, week } = store.getState().game;
+    const ai = players.find((p) => !p.isUser)!;
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'i-expired-deal-same-sender',
+          fromId: ai.id,
+          type: 'deal_offer',
+          createdWeek: week,
+          expiresAtWeek: week,
+        }),
+      ),
+    );
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'i-expired-plea-same-sender',
+          fromId: ai.id,
+          type: 'nomination_plea',
+          createdWeek: week,
+          expiresAtWeek: week,
+        }),
+      ),
+    );
+
+    store.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week + 1) as never);
+
+    const socialEvents = store
+      .getState()
+      .game.tvFeed.filter((event) => event.type === 'social' && event.source === 'system');
+
+    expect(socialEvents).toHaveLength(1);
+    expect(socialEvents[0].text).toBe(
+      "One housemate's deal offer and nomination plea went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.",
+    );
+  });
 });

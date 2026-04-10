@@ -84,7 +84,7 @@ import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
 import { resolveAvatar } from '../../utils/avatar'
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils'
 import { detectDebugMode } from '../../utils/debugMode'
-import type { Player } from '../../types'
+import type { Player, Phase } from '../../types'
 import { simulateBattleBackCompetition } from '../../features/twists/battleBackCompetition'
 import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
 import { mulberry32 } from '../../store/rng'
@@ -120,6 +120,7 @@ import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
+export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 3000
 
 /**
  * GameScreen — main gameplay view.
@@ -174,6 +175,22 @@ export default function GameScreen() {
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
+  // Post-vote eviction message shown on the main TV
+  // for 3 s after vote results dismiss and before the eviction animation plays.
+  const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
+  const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
+  // When true, the confessional prompt is shown after the eviction animation
+  // instead of inline with the vote results (post-eviction mode).
+  const isPostEvictionConfessionalModeRef = useRef(false)
+  // Snapshot of vote data captured at handleVoteResultsDone time for use in
+  // unlockVoteBreakdown when game state may have already advanced.
+  const postEvictionVoteSnapshotRef = useRef<{
+    votes: Record<string, string>
+    nomineeIds: string[]
+    evicteeId: string | null
+    week: number
+    phase: Phase
+  } | null>(null)
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const juryPlayers = useMemo(
@@ -1287,9 +1304,83 @@ export default function GameScreen() {
       setShowVoteDeductionOffer(true)
       return
     }
+
+    // When there is a clear evictee, use the new post-eviction sequence:
+    //   1. Dismiss vote results (eviction animation blocked by postVoteAnnouncement)
+    //   2. Show the post-vote TV announcement for 3 s
+    //   3. Wait an additional 3 s beat after it clears
+    //   4. Eviction animation plays
+    //   5. Confessional prompt shows after the animation (if eligible)
+    const evicteeId = game.pendingEviction?.evicteeId
+    const evictee = evicteeId
+      ? game.players.find((p) => p.id === evicteeId) ?? null
+      : null
+    if (evictee && game.pendingEviction) {
+      // Decide whether to offer the confessional breakdown after the animation.
+      if (canOfferVoteBreakdown && !hasActiveVoteBreakdownUnlock()) {
+        isPostEvictionConfessionalModeRef.current = true
+        // Snapshot vote data now before any state changes.
+        postEvictionVoteSnapshotRef.current = {
+          votes: { ...(game.votes ?? {}) },
+          nomineeIds: [...game.nomineeIds],
+          evicteeId: game.pendingEviction.evicteeId,
+          week: game.week,
+          phase: game.phase,
+        }
+      }
+
+      const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
+      const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
+      const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
+        (s, [id, count]) => (id !== evictee.id ? s + count : s),
+        0,
+      )
+      const voteResultTitle = hasTwoNominees
+        ? `By a vote of ${evicteeVotes} to ${otherVotes}`
+        : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`
+      setPostVoteAnnouncementDelayActive(false)
+      setPostVoteAnnouncement({
+        key: 'eviction_vote_result',
+        title: voteResultTitle,
+        subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
+        isLive: true,
+        autoDismissMs: POST_VOTE_ANNOUNCEMENT_DELAY_MS,
+      })
+      // Dismiss vote results only — eviction splash is gated on postVoteAnnouncement
+      proceedAfterVoteResults()
+      return
+    }
+
+    // No clear evictee (tie or edge case): fall back to the original inline flow.
     if (queueVoteBreakdownPrompt()) return
     proceedAfterVoteResults()
-  }, [game.awaitingVoteDeductionPrompt, proceedAfterVoteResults, queueVoteBreakdownPrompt])
+  }, [
+    canOfferVoteBreakdown,
+    game.awaitingVoteDeductionPrompt,
+    game.nomineeIds,
+    game.pendingEviction,
+    game.phase,
+    game.players,
+    game.votes,
+    game.voteResults,
+    game.week,
+    hasActiveVoteBreakdownUnlock,
+    proceedAfterVoteResults,
+    queueVoteBreakdownPrompt,
+  ])
+
+  const handlePostVoteAnnouncementDismiss = useCallback(() => {
+    setPostVoteAnnouncement(null)
+    setPostVoteAnnouncementDelayActive(true)
+  }, [])
+
+  useEffect(() => {
+    if (!postVoteAnnouncementDelayActive) return
+    const id = window.setTimeout(() => {
+      setPostVoteAnnouncementDelayActive(false)
+    }, POST_VOTE_ANNOUNCEMENT_DELAY_MS)
+    return () => window.clearTimeout(id)
+  }, [postVoteAnnouncementDelayActive])
 
   const handleVoteDeductionAccept = useCallback(() => {
     setShowVoteDeductionOffer(false)
@@ -1311,21 +1402,43 @@ export default function GameScreen() {
   }, [dispatch, proceedAfterVoteResults, queueVoteBreakdownPrompt])
 
   const unlockVoteBreakdown = useCallback(() => {
-    saveEvictionVoteBreakdownUnlock({
-      week: game.week,
-      phase: game.phase,
-      votes: { ...(game.votes ?? {}) },
-      nomineeIds: [...game.nomineeIds],
-      evicteeId: game.pendingEviction?.evicteeId ?? null,
-      status: 'available',
-    })
+    // In post-eviction mode the game has already advanced (pendingEviction is null,
+    // phase may be week_end). Use the snapshot captured at vote-results dismiss time
+    // to save the correct week/phase and per-voter vote data.
+    const snapshot = postEvictionVoteSnapshotRef.current
+    if (snapshot) {
+      saveEvictionVoteBreakdownUnlock({
+        week: snapshot.week,
+        phase: snapshot.phase,
+        votes: snapshot.votes,
+        nomineeIds: snapshot.nomineeIds,
+        evicteeId: snapshot.evicteeId,
+        status: 'available',
+      })
+    } else {
+      saveEvictionVoteBreakdownUnlock({
+        week: game.week,
+        phase: game.phase,
+        votes: { ...(game.votes ?? {}) },
+        nomineeIds: [...game.nomineeIds],
+        evicteeId: game.pendingEviction?.evicteeId ?? null,
+        status: 'available',
+      })
+    }
     dispatch(addTvEvent({
-      text: 'Go to the Confessional room.',
+      text: 'Go to the Confessional before the day is over.',
       type: 'game',
     }))
+    const wasPostEviction = isPostEvictionConfessionalModeRef.current
+    postEvictionVoteSnapshotRef.current = null
+    isPostEvictionConfessionalModeRef.current = false
     setShowVoteBreakdownPrompt(false)
     setAdPending(false)
-    proceedAfterVoteResults()
+    if (!wasPostEviction) {
+      // Only advance in the classic inline flow; in post-eviction mode the game
+      // has already moved past eviction_results.
+      proceedAfterVoteResults()
+    }
   }, [
     dispatch,
     game.nomineeIds,
@@ -1527,15 +1640,18 @@ export default function GameScreen() {
     : null
   // For normal evictions (not Final-4), show whenever pendingEviction is set.
   // For Final-4, show only during the 'splash' stage (after the announcement).
+  // Also blocked while the post-vote announcement or its follow-up pause is active.
   const showEvictionSplash =
     !showVoteResults &&
+    !postVoteAnnouncement &&
+    !postVoteAnnouncementDelayActive &&
     !!game.pendingEviction &&
     !game.awaitingTieBreak &&
     (game.phase !== 'final4_eviction' || final4Stage === 'splash')
 
   // After the eviction cinematic completes, commit the pending eviction then
   // attempt Battle Back activation (normal evictions only) or advance the Final-4
-  // local state machine.
+  // local state machine. Also show the confessional prompt if it was queued.
   const handleEvictionSplashDone = useCallback(() => {
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
@@ -1552,6 +1668,11 @@ export default function GameScreen() {
       if (!activated) {
         dispatch(advance())
       }
+    }
+    // Show the confessional breakdown prompt if it was flagged during vote-results
+    // dismissal (post-eviction confessional mode).
+    if (isPostEvictionConfessionalModeRef.current) {
+      setShowVoteBreakdownPrompt(true)
     }
   }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
 
@@ -1984,8 +2105,10 @@ export default function GameScreen() {
         />
       ) : (
         <TvZone
-          externalAnnouncement={preAdAnnouncement}
-          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          externalAnnouncement={postVoteAnnouncement ?? preAdAnnouncement}
+          onExternalAnnouncementDismiss={
+            postVoteAnnouncement ? handlePostVoteAnnouncementDismiss : handlePreAdAnnouncementDismiss
+          }
           mainLogMaxVisible={compactRosterLogRows}
         />
       )}
@@ -2825,9 +2948,14 @@ export default function GameScreen() {
             }
           }}
           onSkip={() => {
+            const wasPostEviction = isPostEvictionConfessionalModeRef.current
+            postEvictionVoteSnapshotRef.current = null
+            isPostEvictionConfessionalModeRef.current = false
             setShowVoteBreakdownPrompt(false)
             setAdPending(false)
-            proceedAfterVoteResults()
+            if (!wasPostEviction) {
+              proceedAfterVoteResults()
+            }
           }}
           pending={adPending}
         />

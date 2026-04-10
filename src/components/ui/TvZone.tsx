@@ -440,8 +440,9 @@ export default function TvZone(props: TvZoneProps) {
               ? 'Save failed — try again'
               : 'Save game';
 
-  // Whether the current announcement is a double eviction (for spotlight effect).
+  // Distinguish the double-eviction spotlight from the live-vote focus state.
   const isDeSpotlight = deSpotlightActive;
+  const isLiveVoteFocus = voteResultsRevealActive;
 
   const handleSave = useCallback(() => {
     if (!canSave || !activeProfileId) return;
@@ -466,13 +467,21 @@ export default function TvZone(props: TvZoneProps) {
 
   return (
     <section
-      className={`tv-zone${isDeSpotlight ? ' tv-zone--de-spotlight' : ''}`}
+      className={[
+        'tv-zone',
+        isDeSpotlight ? 'tv-zone--de-spotlight' : '',
+        isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
+      ].filter(Boolean).join(' ')}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
     >
       {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
       {isDeSpotlight && createPortal(
         <div className="tv-zone-de-backdrop" aria-hidden="true" />,
+        document.body,
+      )}
+      {isLiveVoteFocus && createPortal(
+        <div className="tv-zone-live-vote-backdrop" aria-hidden="true" />,
         document.body,
       )}
 
@@ -520,9 +529,6 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Bezel + Viewport ────────────────────────────────────────────────── */}
       <div className="tv-zone__bezel">
         <div className="tv-zone__bezel-frame">
-          <div className="tv-zone__bezel-brand" aria-hidden="true">
-            <span className="tv-zone__bezel-brand__text">EW</span>
-          </div>
 
           <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
             <p
@@ -570,6 +576,7 @@ export default function TvZone(props: TvZoneProps) {
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
                 onDone={props.voteResultsReveal.onDone}
                 variant="tv"
+                countdownMs={3000}
               />
             )}
           </div>

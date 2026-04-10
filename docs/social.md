@@ -2,7 +2,7 @@
 
 ## Overview
 
-The social module drives player-to-player social interactions whenever the human player is alive and the game is in a non-vote interaction window. This includes LOH phases, POS phases, nomination phases, pre-vote phases, and the traditional `social_1` / `social_2` windows. Social interactions are blocked during `live_vote` and eviction resolution phases. It consists of two UI layers:
+The social module drives player-to-player social interactions whenever the human player is still in the house (including LOH, POS, and nominated states) and the game is not in a blocked voting window. This includes LOH phases, POS phases, nomination phases, pre-vote phases, and the traditional `social_1` / `social_2` windows. Social interactions are blocked during `live_vote` and `eviction_results`, and blocked open attempts now emit a debug log explaining why. It consists of two UI layers:
 
 | Layer | Component | Status |
 |---|---|---|

@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../../store/gameSlice';
+import gameReducer, { setPhase } from '../../../store/gameSlice';
 import socialReducer, {
   openIncomingInbox,
   pushIncomingInteraction,
@@ -215,5 +215,27 @@ describe('IncomingInteractionsInbox', () => {
 
     expect(screen.getByRole('button', { name: 'Fire back' })).toBeInTheDocument();
     expect(screen.getByText(/Bitter/)).toBeInTheDocument();
+  });
+
+  it('closes and logs the reason when the phase changes to eviction results', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = makeStore();
+    store.dispatch(openIncomingInbox());
+
+    renderInbox(store);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    act(() => {
+      store.dispatch(setPhase('eviction_results'));
+    });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(store.getState().social.incomingInboxOpen).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Incoming social module did not open: Social modules are blocked during the eviction_results phase.'),
+      expect.objectContaining({ phase: 'eviction_results' }),
+    );
+
+    warnSpy.mockRestore();
   });
 });

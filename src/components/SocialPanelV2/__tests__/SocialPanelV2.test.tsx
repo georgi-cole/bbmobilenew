@@ -42,6 +42,7 @@ function makeStore(overrides?: {
   phase?: string;
   energyBank?: Record<string, number>;
   hasHuman?: boolean;
+  humanStatus?: RootState['game']['players'][number]['status'];
 }) {
   const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
   const defaultState = base.getState() as RootState;
@@ -49,7 +50,11 @@ function makeStore(overrides?: {
   // Build the preloaded state by patching the default game state.
   const players = overrides?.hasHuman === false
     ? defaultState.game.players.map((p) => ({ ...p, isUser: false }))
-    : defaultState.game.players;
+    : defaultState.game.players.map((player) =>
+        player.isUser && overrides?.humanStatus
+          ? { ...player, status: overrides.humanStatus }
+          : player,
+      );
 
   const preloadedState = {
     game: {
@@ -106,6 +111,13 @@ describe('SocialPanelV2 – visibility', () => {
 
   it('renders during social_2 phase when opened via FAB', () => {
     const store = makeStore({ phase: 'social_2' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+    expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  it('renders for a nominated human player while still in the house', () => {
+    const store = makeStore({ phase: 'social_1', humanStatus: 'nominated' });
     act(() => { store.dispatch(openSocialPanel()); });
     renderPanel(store);
     expect(screen.getByRole('dialog')).toBeDefined();
@@ -201,6 +213,28 @@ describe('SocialPanelV2 – close behaviour', () => {
       store.dispatch(setPhase('social_2'));
     });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes and logs the reason when the phase changes to live vote', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = makeStore({ phase: 'social_1' });
+    act(() => { store.dispatch(openSocialPanel()); });
+    renderPanel(store);
+
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    act(() => {
+      store.dispatch(setPhase('live_vote'));
+    });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(store.getState().social.panelOpen).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Outgoing social module did not open: Social modules are blocked during the live_vote phase.'),
+      expect.objectContaining({ phase: 'live_vote' }),
+    );
+
+    warnSpy.mockRestore();
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { advance } from '../../store/gameSlice';
@@ -12,9 +12,13 @@ import { selectAllDirections } from '../../publicOpinion';
 import {
   selectAdvanceEnabled,
   selectIsWaitingForInput,
-  selectHumanIsActive,
   selectConfessionalAlertCount,
+  selectHumanCanUseSocialModules,
 } from '../../store/selectors';
+import {
+  getSocialModuleAvailability,
+  logBlockedSocialModuleOpen,
+} from '../../social/socialModuleAvailability';
 import GameControlDock from '../GameControlDock/GameControlDock';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
@@ -36,8 +40,9 @@ export default function FloatingActionBar() {
   const canAdvance = useAppSelector(selectAdvanceEnabled);
   const isWaiting = useAppSelector(selectIsWaitingForInput);
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
-  const humanIsActive = useAppSelector(selectHumanIsActive);
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
+  const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules);
+  const game = useAppSelector((s) => s.game);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
   const directions = useAppSelector(selectAllDirections);
@@ -53,6 +58,7 @@ export default function FloatingActionBar() {
         : 0,
     [directions, humanPlayer],
   );
+  const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game]);
 
   // Flash the social button whenever the human player's energy changes.
   const [isFlashing, setIsFlashing] = useState(false);
@@ -96,10 +102,34 @@ export default function FloatingActionBar() {
     };
   }, [confessionalAlertCount]);
 
+  const handleChatClick = useCallback(() => {
+    if (!canUseSocialModules) {
+      logBlockedSocialModuleOpen(
+        'Outgoing social module',
+        socialModuleAvailability,
+        'FloatingActionBar chat button',
+      );
+      return;
+    }
+    dispatch(openSocialPanel());
+  }, [canUseSocialModules, dispatch, socialModuleAvailability]);
+
+  const handleIncomingRequestsClick = useCallback(() => {
+    if (!canUseSocialModules) {
+      logBlockedSocialModuleOpen(
+        'Incoming social module',
+        socialModuleAvailability,
+        'FloatingActionBar incoming requests button',
+      );
+      return;
+    }
+    dispatch(openIncomingInbox());
+  }, [canUseSocialModules, dispatch, socialModuleAvailability]);
+
   return (
     <GameControlDock
-      onChatClick={humanIsActive ? () => dispatch(openSocialPanel()) : undefined}
-      onIncomingRequestsClick={humanIsActive ? () => dispatch(openIncomingInbox()) : undefined}
+      onChatClick={handleChatClick}
+      onIncomingRequestsClick={handleIncomingRequestsClick}
       onPrimaryActionClick={() => {
         dispatch(advance());
         try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
