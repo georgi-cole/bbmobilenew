@@ -260,15 +260,14 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PUZZLE,
     weights: WEIGHTS_PRECISION,
-    // Color Match accuracy is always 0–100; pin the range explicitly so the
-    // generic time-scaled fallback (which would compute maxScore = 250 for a
-    // 25-second round) cannot produce impossible accuracy values.
-    minScore: 0,
-    maxScore: 100,
+    // Keep fallback AI Color Match scores inside the competition's intended
+    // performance band so precomputed scores still look like realistic matches.
+    minScore: 65,
+    maxScore: 99,
     // 5 rounds × 25 s each = 125 000 ms maximum total elapsed time.
     // Used to generate a simulated elapsed-time tiebreaker for AI players.
     tiebreakerMaxMs: 125_000,
-    notes: 'Color Match — 5-round average accuracy in [0, 100]. AI produces realistic match percentages.',
+    notes: 'Color Match — elimination-based accuracy duel. Fallback AI stays in a realistic 65–99% band.',
   },
   socialStrings: {
     key: 'socialStrings',
