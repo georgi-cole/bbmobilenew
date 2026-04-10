@@ -28,6 +28,19 @@ function renderAndPlay(onFinish = vi.fn()) {
   return result;
 }
 
+function renderCompetitionAndPlay() {
+  const participants = [
+    { id: 'human', name: 'Human', isHuman: true, precomputedScore: 92, previousPR: null },
+    { id: 'ai-1', name: 'AI One', isHuman: false, precomputedScore: 70, previousPR: null },
+    { id: 'ai-2', name: 'AI Two', isHuman: false, precomputedScore: 68, previousPR: null },
+  ];
+  const result = render(
+    <ColorMatchComp seed={42} autoStart={false} participants={participants} onFinish={vi.fn()} />,
+  );
+  act(() => { vi.advanceTimersByTime(1600); });
+  return result;
+}
+
 /** Click "Buy Hint" then confirm in the modal. */
 function purchaseHint() {
   const buyBtns = screen.getAllByRole('button', { name: /buy hint/i });
@@ -89,5 +102,23 @@ describe('Color Match accuracy display', () => {
     fireEvent.click(screen.getByRole('button', { name: /submit match/i }));
     // Phase transitions to feedback; accuracy meter should still show "?"
     expect(screen.getByText(/buy hint to reveal/i)).toBeInTheDocument();
+  });
+});
+
+describe('Color Match round standings', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('only shows the standings panel during the between-round feedback state', () => {
+    renderCompetitionAndPlay();
+
+    fireEvent.click(screen.getByRole('button', { name: /submit match/i }));
+    expect(screen.getByText(/round 1 standings/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue watching|next round/i }));
+    act(() => { vi.advanceTimersByTime(1600); });
+
+    expect(screen.queryByText(/round 1 standings/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/resolving the rest of the round/i)).toBeInTheDocument();
   });
 });

@@ -18,6 +18,8 @@ import {
   buildHintMessage,
   calculateColorMatchAccuracy,
   createColorMatchCompetitionStandings,
+  formatColorMatchScore,
+  getColorMatchScoreDisplayPrecision,
   rankColorMatchCompetitionStandings,
   resolveColorMatchCompetitionRound,
   simulateColorMatchAiRoundScore,
@@ -170,7 +172,7 @@ describe('colorMatch AI registry', () => {
 });
 
 describe('Color Match competition helpers', () => {
-  it('rounds 1-3 eliminate every player tied for the lowest score', () => {
+  it('rounds 1-4 eliminate every player tied for the lowest score', () => {
     const initial = createColorMatchCompetitionStandings([
       { id: 'p0', name: 'P0', isHuman: true },
       { id: 'p1', name: 'P1', isHuman: false },
@@ -189,7 +191,29 @@ describe('Color Match competition helpers', () => {
     expect(round1.activeIds).toEqual(['p0', 'p3']);
   });
 
-  it('round 4 cuts the remaining field to at least two finalists, then finale decides the winner', () => {
+  it('round 4 also eliminates every player tied for the lowest score', () => {
+    const standings = createColorMatchCompetitionStandings([
+      { id: 'p0', name: 'P0', isHuman: true },
+      { id: 'p1', name: 'P1', isHuman: false },
+      { id: 'p2', name: 'P2', isHuman: false },
+      { id: 'p3', name: 'P3', isHuman: false },
+    ]).map((standing, index) => ({
+      ...standing,
+      roundScores: [95 - index, 94 - index, 93 - index],
+    }));
+
+    const round4 = resolveColorMatchCompetitionRound(standings, 4, {
+      p0: 90,
+      p1: 66,
+      p2: 66,
+      p3: 66,
+    });
+
+    expect(round4.eliminatedIds).toEqual(['p1', 'p2', 'p3']);
+    expect(round4.activeIds).toEqual(['p0']);
+  });
+
+  it('finale keeps only the exact top tie group active for a rematch', () => {
     let standings = createColorMatchCompetitionStandings([
       { id: 'p0', name: 'P0', isHuman: true },
       { id: 'p1', name: 'P1', isHuman: false },
@@ -213,19 +237,29 @@ describe('Color Match competition helpers', () => {
     const round4 = resolveColorMatchCompetitionRound(standings, 4, {
       p0: 93, p1: 89, p2: 72, p3: 69,
     });
-    expect(round4.eliminatedIds).toEqual(['p3', 'p2']);
-    expect(round4.activeIds).toEqual(['p0', 'p1']);
+    expect(round4.eliminatedIds).toEqual(['p3']);
+    expect(round4.activeIds).toEqual(['p0', 'p1', 'p2']);
 
     const round5 = resolveColorMatchCompetitionRound(round4.standings, 5, {
-      p0: 94,
-      p1: 97,
+      p0: 97.445,
+      p1: 97.445,
+      p2: 95.112,
     });
-    const ranked = rankColorMatchCompetitionStandings(round5.standings);
+    expect(round5.eliminatedIds).toEqual(['p2']);
+    expect(round5.activeIds).toEqual(['p0', 'p1']);
+
+    const rematch = resolveColorMatchCompetitionRound(round5.standings, 6, {
+      p0: 98.111,
+      p1: 97.876,
+    });
+    expect(rematch.activeIds).toEqual(['p0']);
+
+    const ranked = rankColorMatchCompetitionStandings(rematch.standings);
     const rawResults = buildColorMatchCompetitionRawResults(ranked);
 
-    expect(ranked.map((entry) => entry.participantId)).toEqual(['p1', 'p0', 'p2', 'p3', 'p4', 'p5', 'p6']);
-    expect(rawResults.p1).toBeGreaterThan(rawResults.p0);
-    expect(rawResults.p0).toBeGreaterThan(rawResults.p2);
+    expect(ranked.map((entry) => entry.participantId)).toEqual(['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+    expect(rawResults.p0).toBeGreaterThan(rawResults.p1);
+    expect(rawResults.p1).toBeGreaterThan(rawResults.p2);
   });
 
   it('AI scores stay between 65 and 99 and trend upward in later rounds', () => {
@@ -238,6 +272,13 @@ describe('Color Match competition helpers', () => {
     expect(round5Scores.reduce((sum, value) => sum + value, 0)).toBeGreaterThan(
       round1Scores.reduce((sum, value) => sum + value, 0),
     );
+  });
+
+  it('shows only as many decimal places as needed to break visible ties', () => {
+    expect(getColorMatchScoreDisplayPrecision([88.31, 88.36, 70])).toBe(1);
+    expect(formatColorMatchScore(88.31, 1)).toBe('88.3%');
+    expect(getColorMatchScoreDisplayPrecision([99.941, 99.944, 80])).toBe(3);
+    expect(formatColorMatchScore(99.944, 3)).toBe('99.944%');
   });
 });
 

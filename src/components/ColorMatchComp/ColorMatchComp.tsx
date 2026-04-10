@@ -25,6 +25,9 @@ import {
   buildHintMessage,
   calculateColorMatchAccuracy,
   createColorMatchCompetitionStandings,
+  formatColorMatchScore,
+  getColorMatchScoreDisplayPrecision,
+  normalizeColorMatchCompetitionScore,
   randomStartColor,
   rankColorMatchCompetitionStandings,
   resolveColorMatchCompetitionRound,
@@ -161,7 +164,7 @@ export default function ColorMatchComp({
 
   const rounds = useMemo(() => {
     const rng = mulberry32((seed ^ 0x7f3da812) >>> 0);
-    const picked = seededPick(NAMED_COLORS, MAX_ROUNDS, rng);
+    const picked = seededPick(NAMED_COLORS, NAMED_COLORS.length, rng);
     return picked.map((nc) => ({
       name: nc.name,
       target: { ...nc.rgb },
@@ -242,10 +245,10 @@ export default function ColorMatchComp({
     (color: RGB, didTimeOut: boolean) => {
       stopTimer();
       const target = currentRoundTargetRef.current;
-      const rawScore = didTimeOut ? 0 : Math.round(calculateColorMatchAccuracy(target, color));
+      const rawScore = didTimeOut ? 0 : calculateColorMatchAccuracy(target, color);
       const score = competitionMode
-        ? applyHintPenalty(rawScore, hintsUsedThisRoundRef.current)
-        : rawScore;
+        ? normalizeColorMatchCompetitionScore(rawScore - hintsUsedThisRoundRef.current * HINT_PENALTY_POINTS)
+        : Math.round(rawScore);
       if (didTimeOut || score < 80) {
         playIncorrect();
       } else {
@@ -434,12 +437,17 @@ export default function ColorMatchComp({
   const handleNext = useCallback(() => {
     playClick();
     const nextIndex = roundIndex + 1;
+    const rematchPending = competitionMode
+      && roundIndex + 1 >= MAX_ROUNDS
+      && activeCompetitionStandings.length > 1;
     const competitionOver = competitionMode
-      ? activeCompetitionStandings.length <= 1 || nextIndex >= MAX_ROUNDS
+      ? activeCompetitionStandings.length <= 1 || (!rematchPending && nextIndex >= MAX_ROUNDS)
       : nextIndex >= MAX_ROUNDS;
     if (competitionOver) {
       setPhase('results');
     } else {
+      setRoundScoreboard([]);
+      setRoundEliminatedIds([]);
       setRoundIndex(nextIndex);
       setPhase('mixing');
     }
@@ -474,6 +482,9 @@ export default function ColorMatchComp({
   const playerHex = rgbToHex(playerColor);
   const progressPct = (timeLeft / ROUND_TIME_S) * 100;
   const isUrgent = timeLeft <= 5;
+  const roundLabel = roundIndex < MAX_ROUNDS
+    ? <>Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</>
+    : <>Final Rematch <strong>{roundIndex - MAX_ROUNDS + 1}</strong></>;
 
   const feedbackLabel =
     lastScore !== null
@@ -491,10 +502,27 @@ export default function ColorMatchComp({
     () => (competitionMode ? rankColorMatchCompetitionStandings(competitionStandings) : []),
     [competitionMode, competitionStandings],
   );
+  const roundScorePrecision = useMemo(
+    () => getColorMatchScoreDisplayPrecision(roundScoreboard.map((entry) => entry.score)),
+    [roundScoreboard],
+  );
+  const rankedScorePrecision = useMemo(
+    () => getColorMatchScoreDisplayPrecision(
+      rankedCompetitionStandings
+        .map((standing) => standing.roundScores[standing.roundScores.length - 1])
+        .filter((score): score is number => typeof score === 'number'),
+    ),
+    [rankedCompetitionStandings],
+  );
   const competitionWinner = rankedCompetitionStandings[0] ?? null;
   const humanPlacement = humanId
     ? rankedCompetitionStandings.findIndex((standing) => standing.participantId === humanId) + 1
     : 0;
+  const feedbackScoreText = lastScore === null
+    ? ''
+    : competitionMode
+      ? formatColorMatchScore(lastScore, roundScorePrecision)
+      : `${Math.round(lastScore)}%`;
 
   // ── Results screen ───────────────────────────────────────────────────────────
   if (phase === 'results') {
@@ -530,7 +558,10 @@ export default function ColorMatchComp({
                   <span>{standing.participantName}{standing.isHuman ? ' (You)' : ''}</span>
                   <span className="cm__round-score">
                     {standing.eliminatedRound === null
-                      ? `${standing.roundScores[standing.roundScores.length - 1] ?? 0}% finale`
+                      ? `${formatColorMatchScore(
+                        standing.roundScores[standing.roundScores.length - 1] ?? 0,
+                        rankedScorePrecision,
+                      )} finale`
                       : `Out in R${standing.eliminatedRound}`}
                   </span>
                 </li>
@@ -592,7 +623,7 @@ export default function ColorMatchComp({
       <div className="cm" data-testid="color-match-comp">
         <div className="cm__card">
           <header className="cm__header">
-            <span className="cm__round-label">Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</span>
+            <span className="cm__round-label">{roundLabel}</span>
             <span className="cm__timer" />
           </header>
           <div className="cm__mixing-stage" aria-label="Color mixing animation">
@@ -620,7 +651,7 @@ export default function ColorMatchComp({
     <div className="cm" data-testid="color-match-comp">
       <div className="cm__card">
         <header className="cm__header">
-          <span className="cm__round-label">Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</span>
+          <span className="cm__round-label">{roundLabel}</span>
           <span className={['cm__timer', isUrgent ? 'cm__timer--urgent' : ''].filter(Boolean).join(' ')} aria-live={isUrgent ? 'assertive' : 'off'} aria-atomic="true">
             {timeLeft}s
           </span>
@@ -682,7 +713,7 @@ export default function ColorMatchComp({
             {timedOut ? (
               <span className="cm__feedback-text cm__feedback-text--timeout">⏱ Time's up! +0</span>
             ) : (
-              <span className="cm__feedback-text">{feedbackLabel} — {lastScore}%</span>
+              <span className="cm__feedback-text">{feedbackLabel} — {feedbackScoreText}</span>
             )}
           </div>
         )}
@@ -714,7 +745,7 @@ export default function ColorMatchComp({
           </div>
         )}
 
-        {competitionMode && roundScoreboard.length > 0 && (
+        {competitionMode && phase === 'feedback' && roundScoreboard.length > 0 && (
           <div className="cm__hint-panel" aria-live="polite">
             <div className="cm__hint-panel-title">
               Round {roundIndex + 1} standings
@@ -723,7 +754,7 @@ export default function ColorMatchComp({
             <div className="cm__hint-panel-body">
               {roundScoreboard.map((entry) => (
                 <div key={entry.participantId}>
-                  {entry.participantName}{entry.isHuman ? ' (You)' : ''}: {entry.score}%
+                  {entry.participantName}{entry.isHuman ? ' (You)' : ''}: {formatColorMatchScore(entry.score, roundScorePrecision)}
                   {roundEliminatedIds.includes(entry.participantId) ? ' — eliminated' : ''}
                 </div>
               ))}
