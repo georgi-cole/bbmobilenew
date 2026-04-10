@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
@@ -57,14 +58,19 @@ describe('CodeBreakerComp', () => {
     const root = container.querySelector('.cb');
     expect(root).toBeTruthy();
 
-    const styles = readFileSync(
-      '/home/runner/work/bbmobilenew/bbmobilenew/src/components/CodeBreakerComp/CodeBreakerComp.css',
+    const styleTag = document.createElement('style');
+    styleTag.textContent = readFileSync(
+      resolve(process.cwd(), 'src/components/CodeBreakerComp/CodeBreakerComp.css'),
       'utf8',
     );
+    document.head.appendChild(styleTag);
 
-    expect(styles).toContain('height: 100%;');
-    expect(styles).toContain('overflow-x: hidden;');
-    expect(styles).toContain('overflow-y: auto;');
+    const style = getComputedStyle(root as HTMLElement);
+    expect(style.height).toBe('100%');
+    expect(style.overflowX).toBe('hidden');
+    expect(style.overflowY).toBe('auto');
+
+    styleTag.remove();
   });
 
   it('scores a solved run from attempts and elapsed time', async () => {
