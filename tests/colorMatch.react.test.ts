@@ -19,6 +19,8 @@ import {
   calculateColorMatchAccuracy,
   createColorMatchCompetitionStandings,
   formatColorMatchScore,
+  getColorMatchAiRoundScore,
+  getColorMatchFeedbackCtaLabel,
   getColorMatchScoreDisplayPrecision,
   rankColorMatchCompetitionStandings,
   resolveColorMatchCompetitionRound,
@@ -279,6 +281,52 @@ describe('Color Match competition helpers', () => {
     expect(formatColorMatchScore(88.31, 1)).toBe('88.3%');
     expect(getColorMatchScoreDisplayPrecision([99.941, 99.944, 80])).toBe(3);
     expect(formatColorMatchScore(99.944, 3)).toBe('99.944%');
+  });
+
+  it('uses simulated AI scores for rematch rounds beyond the precomputed opening rounds', () => {
+    const participant = {
+      id: 'p1',
+      name: 'P1',
+      isHuman: false,
+      precomputedScore: 84,
+      participantIndex: 1,
+    };
+    const openingScores = Array.from({ length: 5 }, (_, index) => simulateColorMatchAiRoundScore(
+      participant,
+      index + 1,
+      42,
+    ));
+
+    expect(getColorMatchAiRoundScore(participant, 3, 42, openingScores)).toBe(openingScores[2]);
+    expect(getColorMatchAiRoundScore(participant, 6, 42, openingScores)).toBe(
+      simulateColorMatchAiRoundScore(participant, 6, 42),
+    );
+  });
+
+  it('matches the feedback CTA label to rematch-vs-results behavior', () => {
+    expect(getColorMatchFeedbackCtaLabel({
+      competitionMode: true,
+      humanStillActive: false,
+      activeCompetitionCount: 2,
+      nextIndex: 5,
+      maxRounds: 5,
+    })).toBe('Continue Watching →');
+
+    expect(getColorMatchFeedbackCtaLabel({
+      competitionMode: true,
+      humanStillActive: true,
+      activeCompetitionCount: 2,
+      nextIndex: 5,
+      maxRounds: 5,
+    })).toBe('Next Round →');
+
+    expect(getColorMatchFeedbackCtaLabel({
+      competitionMode: true,
+      humanStillActive: true,
+      activeCompetitionCount: 1,
+      nextIndex: 5,
+      maxRounds: 5,
+    })).toBe('See Results →');
   });
 });
 

@@ -171,6 +171,40 @@ export function simulateColorMatchAiRoundScore(
   return normalizeColorMatchCompetitionScore(clamp(rawScore, 65, 99));
 }
 
+export function getColorMatchAiRoundScore(
+  participant: Pick<ColorMatchCompetitionParticipant, 'id' | 'participantIndex' | 'precomputedScore'>,
+  roundNumber: number,
+  seed: number,
+  precomputedScores?: number[],
+): number {
+  const precomputedScore = precomputedScores?.[roundNumber - 1];
+  return typeof precomputedScore === 'number'
+    ? precomputedScore
+    : simulateColorMatchAiRoundScore(participant, roundNumber, seed);
+}
+
+export function getColorMatchFeedbackCtaLabel({
+  competitionMode,
+  humanStillActive,
+  activeCompetitionCount,
+  nextIndex,
+  maxRounds,
+}: {
+  competitionMode: boolean;
+  humanStillActive: boolean;
+  activeCompetitionCount: number;
+  nextIndex: number;
+  maxRounds: number;
+}): string {
+  const rematchPending = competitionMode && nextIndex >= maxRounds && activeCompetitionCount > 1;
+  const competitionOver = competitionMode
+    ? activeCompetitionCount <= 1 || (!rematchPending && nextIndex >= maxRounds)
+    : nextIndex >= maxRounds;
+
+  if (competitionOver) return 'See Results →';
+  return humanStillActive ? 'Next Round →' : 'Continue Watching →';
+}
+
 export function resolveColorMatchCompetitionRound(
   standings: ColorMatchCompetitionStanding[],
   roundNumber: number,

@@ -26,6 +26,8 @@ import {
   calculateColorMatchAccuracy,
   createColorMatchCompetitionStandings,
   formatColorMatchScore,
+  getColorMatchAiRoundScore,
+  getColorMatchFeedbackCtaLabel,
   getColorMatchScoreDisplayPrecision,
   normalizeColorMatchCompetitionScore,
   randomStartColor,
@@ -161,6 +163,10 @@ export default function ColorMatchComp({
     ) as Record<string, number[]>,
     [resolvedParticipants, seed],
   );
+  const participantsById = useMemo(
+    () => Object.fromEntries(resolvedParticipants.map((participant) => [participant.id, participant])),
+    [resolvedParticipants],
+  );
 
   const rounds = useMemo(() => {
     const rng = mulberry32((seed ^ 0x7f3da812) >>> 0);
@@ -274,7 +280,17 @@ export default function ColorMatchComp({
           standing.participantId,
           standing.isHuman
             ? score
-            : (aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE),
+            : (() => {
+              const participant = participantsById[standing.participantId];
+              return participant
+                ? getColorMatchAiRoundScore(
+                  participant,
+                  roundNumber,
+                  seed,
+                  aiRoundScores[standing.participantId],
+                )
+                : DEFAULT_AI_FALLBACK_SCORE;
+            })(),
         ]));
         const resolvedRound = resolveColorMatchCompetitionRound(
           competitionStandings,
@@ -299,7 +315,7 @@ export default function ColorMatchComp({
       }
       setPhase('feedback');
     },
-    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, playCorrect, playIncorrect, roundIndex, stopTimer],
+    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, participantsById, playCorrect, playIncorrect, roundIndex, seed, stopTimer],
   );
 
   // Keep submitRound available via ref so the interval can always call the latest.
@@ -390,7 +406,17 @@ export default function ColorMatchComp({
       const roundScoresById = Object.fromEntries(
         activeCompetitionStandings.map((standing) => [
           standing.participantId,
-          aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE,
+          (() => {
+            const participant = participantsById[standing.participantId];
+            return participant
+              ? getColorMatchAiRoundScore(
+                participant,
+                roundNumber,
+                seed,
+                aiRoundScores[standing.participantId],
+              )
+              : DEFAULT_AI_FALLBACK_SCORE;
+          })(),
         ]),
       );
       const resolvedRound = resolveColorMatchCompetitionRound(
@@ -415,7 +441,7 @@ export default function ColorMatchComp({
       setPhase('feedback');
     }, 600);
     return () => clearTimeout(timeoutId);
-  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, phase, roundIndex]);
+  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, participantsById, phase, roundIndex, seed]);
 
   const handleSliderChange = useCallback(
     (channel: keyof RGB, value: number) => {
@@ -434,15 +460,23 @@ export default function ColorMatchComp({
     });
   }, [phase, playClick]);
 
+  const nextIndex = roundIndex + 1;
+  const feedbackCtaLabel = getColorMatchFeedbackCtaLabel({
+    competitionMode,
+    humanStillActive,
+    activeCompetitionCount: activeCompetitionStandings.length,
+    nextIndex,
+    maxRounds: MAX_ROUNDS,
+  });
+  const rematchPending = competitionMode
+    && nextIndex >= MAX_ROUNDS
+    && activeCompetitionStandings.length > 1;
+  const competitionOver = competitionMode
+    ? activeCompetitionStandings.length <= 1 || (!rematchPending && nextIndex >= MAX_ROUNDS)
+    : nextIndex >= MAX_ROUNDS;
+
   const handleNext = useCallback(() => {
     playClick();
-    const nextIndex = roundIndex + 1;
-    const rematchPending = competitionMode
-      && roundIndex + 1 >= MAX_ROUNDS
-      && activeCompetitionStandings.length > 1;
-    const competitionOver = competitionMode
-      ? activeCompetitionStandings.length <= 1 || (!rematchPending && nextIndex >= MAX_ROUNDS)
-      : nextIndex >= MAX_ROUNDS;
     if (competitionOver) {
       setPhase('results');
     } else {
@@ -451,7 +485,7 @@ export default function ColorMatchComp({
       setRoundIndex(nextIndex);
       setPhase('mixing');
     }
-  }, [activeCompetitionStandings.length, competitionMode, playClick, roundIndex]);
+  }, [competitionOver, nextIndex, playClick]);
 
   const handleHintPress = useCallback(() => {
     if (phase !== 'playing' || hintsRemaining <= 0) return;
@@ -780,12 +814,7 @@ export default function ColorMatchComp({
         )}
         {phase === 'feedback' && (
             <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
-            {(competitionMode && activeCompetitionStandings.length <= 1)
-              || roundIndex + 1 >= MAX_ROUNDS
-              ? 'See Results →'
-              : humanStillActive
-                ? 'Next Round →'
-                : 'Continue Watching →'}
+            {feedbackCtaLabel}
           </button>
         )}
       </div>
