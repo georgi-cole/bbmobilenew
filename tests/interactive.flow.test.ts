@@ -184,7 +184,7 @@ describe('Live vote + eviction tally', () => {
 
     const { game } = store.getState();
     expect(game.phase).toBe('live_vote');
-    expect(game.tvFeed.some((event) => event.text.includes('The live elimination vote has begun!'))).toBe(false);
+    expect(game.tvFeed.some((event) => event.type === 'vote')).toBe(false);
     expect(game.tvFeed[0]?.text).toBe('Housemates make their final pitches before the live vote. 🤝');
   });
 
