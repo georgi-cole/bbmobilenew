@@ -48,7 +48,7 @@ const FAST_FORWARD_DELAY_MS = 4_000;
 const FAST_FORWARD_RESOLVE_MS = 2_000;
 const FOOD_PULSE_MIN_OPACITY = 0.68;
 const FOOD_PULSE_RANGE = 0.32;
-const FOOD_PULSE_DIVISOR = 180;
+const FOOD_PULSE_STEP = 0.55;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -123,6 +123,7 @@ export default function SnakeGame({
   const nextDirRef = useRef<Vec2>({ x: 1, y: 0 });
   const foodRef = useRef<Vec2>({ x: 5, y: 5 });
   const foodEatenRef = useRef(0);
+  const foodPulsePhaseRef = useRef(0);
   const gameOverRef = useRef(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gamePhaseRef = useRef<GamePhase>('ready');
@@ -222,7 +223,7 @@ export default function SnakeGame({
 
     const foodPulse = gamePhaseRef.current === 'playing'
       ? FOOD_PULSE_MIN_OPACITY
-        + (((Math.sin(Date.now() / FOOD_PULSE_DIVISOR) + 1) / 2) * FOOD_PULSE_RANGE)
+        + (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE)
       : 1;
     ctx.globalAlpha = foodPulse;
     ctx.fillStyle = '#0f380f';
@@ -293,6 +294,7 @@ export default function SnakeGame({
       snakeRef.current = snakeRef.current.slice(0, -1);
     }
 
+    foodPulsePhaseRef.current += FOOD_PULSE_STEP;
     draw();
   }, [draw, placeFood]);
 
@@ -416,6 +418,7 @@ export default function SnakeGame({
     dirRef.current = { x: 1, y: 0 };
     nextDirRef.current = { x: 1, y: 0 };
     foodEatenRef.current = 0;
+    foodPulsePhaseRef.current = 0;
     gameOverRef.current = false;
 
     setFoodEaten(0);
@@ -615,7 +618,9 @@ export default function SnakeGame({
               {/* Ready overlay */}
               {gamePhase === 'ready' && (
                 <div className="snake-overlay">
-                  <p className="snake-overlay-title">SNAKE</p>
+                  <p className="snake-overlay-title" aria-label="Snake">
+                    SNAKE
+                  </p>
                   <p className="snake-overlay-hint">Arrow keys or D-pad to move</p>
                   <button className="snake-btn snake-btn--start" onClick={startGame}>
                     START
