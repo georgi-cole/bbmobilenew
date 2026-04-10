@@ -440,9 +440,9 @@ export default function TvZone(props: TvZoneProps) {
               ? 'Save failed — try again'
               : 'Save game';
 
-  // Whether the current announcement is a double eviction (for spotlight effect).
+  // Distinguish the double-eviction spotlight from the live-vote focus state.
   const isDeSpotlight = deSpotlightActive;
-  const isLiveVoteSpotlight = voteResultsRevealActive;
+  const isLiveVoteFocus = voteResultsRevealActive;
 
   const handleSave = useCallback(() => {
     if (!canSave || !activeProfileId) return;
