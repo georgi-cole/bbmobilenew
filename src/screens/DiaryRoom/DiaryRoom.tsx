@@ -388,10 +388,10 @@ export default function DiaryRoom() {
   useEffect(() => { confessionalLockedRef.current = confessionalLocked; }, [confessionalLocked]);
 
   useEffect(() => {
-    if (navigationBlockerState === 'blocked' && resetNavigationBlocker) {
+    if (!confessionalDecisionPending && navigationBlockerState === 'blocked' && resetNavigationBlocker) {
       resetNavigationBlocker();
     }
-  }, [navigationBlockerState, resetNavigationBlocker]);
+  }, [confessionalDecisionPending, navigationBlockerState, resetNavigationBlocker]);
 
   useEffect(() => {
     if (confessionalDecisionPending && showSelfEvictConfirm) {
@@ -760,7 +760,6 @@ export default function DiaryRoom() {
           cancelLabel="No, Stay"
           onConfirm={() => {
             setShowSelfEvictConfirm(false);
-            if (confessionalDecisionPending) return;
             dispatch(selfEvict(playerId));
             navigate('/self-evicted');
           }}
