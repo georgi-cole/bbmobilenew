@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Player } from '../../../types';
 import AnimatedVoteResultsModal from '../AnimatedVoteResultsModal';
 
+let viewportHost: HTMLDivElement | null = null;
+
 function makePlayer(id: string, name: string): Player {
   return {
     id,
@@ -20,6 +22,28 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    viewportHost?.remove();
+    viewportHost = null;
+  });
+
+  it('renders inside the main TV viewport when requested', () => {
+    viewportHost = document.createElement('div');
+    viewportHost.className = 'tv-zone__viewport';
+    document.body.appendChild(viewportHost);
+
+    const nominee = makePlayer('p1', 'Nominee 1');
+
+    render(
+      <AnimatedVoteResultsModal
+        nominees={[{ nominee, voteCount: 2 }]}
+        evictee={nominee}
+        onDone={vi.fn()}
+        renderInTvViewport
+      />,
+    );
+
+    expect(viewportHost.querySelector('.avrm.avrm--viewport')).toBeTruthy();
+    expect(screen.getByText('VOTE RESULTS')).toBeTruthy();
   });
 
   it('shows tied nominees with approval percentages and resolves the lower-rated nominee', async () => {
