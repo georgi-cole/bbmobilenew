@@ -555,7 +555,7 @@ export default function TvZone(props: TvZoneProps) {
                 nominees={props.publicSaveReveal.nominees}
                 approvals={props.publicSaveReveal.approvals}
                 savedId={props.publicSaveReveal.savedId}
-                onDone={props.onPublicSaveDone ?? (() => {})}
+                onDone={props.onPublicSaveDone}
               />
             )}
 

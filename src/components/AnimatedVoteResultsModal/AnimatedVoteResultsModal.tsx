@@ -190,13 +190,13 @@ export default function AnimatedVoteResultsModal({
 
   return (
     <div
-      className={['avrm', variant === 'tv' ? 'avrm--tv' : ''].filter(Boolean).join(' ')}
+      className={`avrm${variant === 'tv' ? ' avrm--tv' : ''}`}
       role={variant === 'tv' ? 'status' : 'dialog'}
       aria-modal={variant === 'tv' ? undefined : 'true'}
       aria-label="Vote results"
       onClick={outcomeVisible ? fire : undefined}
     >
-      <div className={['avrm__card', variant === 'tv' ? 'avrm__card--tv' : ''].filter(Boolean).join(' ')}>
+      <div className={`avrm__card${variant === 'tv' ? ' avrm__card--tv' : ''}`}>
         <header className="avrm__header">
           <span className="avrm__header-icon">🗳️</span>
           <h2 className="avrm__title">VOTE RESULTS</h2>
