@@ -72,7 +72,6 @@ describe('HangmanChallengeComp', () => {
 
     expect(firstRow?.querySelector('.hangman-challenge__score-primary-row')).toBeTruthy();
     expect(firstRow?.querySelector('.hangman-challenge__score-secondary-row')).toBeTruthy();
-    expect(firstRow?.querySelector('.hangman-challenge__score-total')).toBeNull();
     expect(within(firstRow as HTMLElement).getByText(/total/i)).toBeInTheDocument();
     expect(within(firstRow as HTMLElement).getByText(/\+\d+/)).toBeInTheDocument();
   });

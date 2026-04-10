@@ -31,6 +31,7 @@ const SLOW_MS = 12_000;
 const DOUBLE_MS = 8_000;
 const TIME_PENALTY_SURGE_MS = 10_000;
 const SCORE_CUT_MULTIPLIER = 0.88;
+const EFFECT_TOKEN_INSERT_INDEX = 2;
 const MEDALS = ['🥇', '🥈', '🥉'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PRESSURE_CRACK_INDICES = Array.from({ length: MAX_ERRORS }, (_, index) => index);
@@ -176,7 +177,12 @@ function compactRoundMeta(entry: RoundSummary): string[] {
     `+${entry.roundScore}`,
   ];
   if (entry.appliedEffects.length > 0) {
-    tokens.splice(2, 0, entry.appliedEffects[0]);
+    const extraEffects = entry.appliedEffects.length - 1;
+    tokens.splice(
+      EFFECT_TOKEN_INSERT_INDEX,
+      0,
+      extraEffects > 0 ? `${entry.appliedEffects[0]} +${extraEffects}` : entry.appliedEffects[0],
+    );
   }
   return tokens;
 }
