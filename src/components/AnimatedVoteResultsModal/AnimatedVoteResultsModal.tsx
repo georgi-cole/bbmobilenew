@@ -98,6 +98,10 @@ export default function AnimatedVoteResultsModal({
     () => nominees.reduce((s, t) => s + t.voteCount, 0),
     [nominees],
   );
+  const votesNeededForEviction = useMemo(
+    () => Math.max(0, ...nominees.map((t) => t.voteCount)),
+    [nominees],
+  );
 
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
   const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees]);
@@ -209,29 +213,58 @@ export default function AnimatedVoteResultsModal({
             const isEvictee = resolvedEvictee?.id === t.nominee.id;
             const isPulsing = lastRevealedId === t.nominee.id;
             const pct = totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0;
+            const evictionPct = votesNeededForEviction > 0
+              ? Math.round((shown / votesNeededForEviction) * 100)
+              : 0;
             return (
               <div
                 key={t.nominee.id}
                 className={[
                   'avrm__tally',
                   'avrm__tally--visible',
+                  variant === 'tv' ? 'avrm__tally--tv' : '',
                   isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
                   isPulsing ? 'avrm__tally--pulse' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
               >
-                <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
-                <span className="avrm__tally-name">{t.nominee.name}</span>
-                <div className="avrm__tally-bar-wrap">
-                  <div
-                    className="avrm__tally-bar"
-                    style={{
-                      width: shown > 0 ? `${Math.max(pct, MIN_BAR_PCT)}%` : '0%',
-                    }}
-                  />
-                </div>
-                <span className="avrm__tally-count">{shown}</span>
+                {variant === 'tv' ? (
+                  <>
+                    <div className="avrm__tv-avatar-wrap">
+                      <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
+                    </div>
+                    <span className="avrm__tally-name">{t.nominee.name}</span>
+                    <div className="avrm__tv-progress-block">
+                      <div className="avrm__tv-progress-track" aria-hidden="true">
+                        <div
+                          className="avrm__tv-progress-fill"
+                          style={{
+                            width: shown > 0 ? `${Math.max(evictionPct, MIN_BAR_PCT)}%` : '0%',
+                          }}
+                        />
+                      </div>
+                      <span className="avrm__tally-count">{shown}</span>
+                    </div>
+                    {outcomeVisible && isEvictee && (
+                      <span className="avrm__tv-evicted-chip">EVICTED</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
+                    <span className="avrm__tally-name">{t.nominee.name}</span>
+                    <div className="avrm__tally-bar-wrap">
+                      <div
+                        className="avrm__tally-bar"
+                        style={{
+                          width: shown > 0 ? `${Math.max(pct, MIN_BAR_PCT)}%` : '0%',
+                        }}
+                      />
+                    </div>
+                    <span className="avrm__tally-count">{shown}</span>
+                  </>
+                )}
               </div>
             );
           })}

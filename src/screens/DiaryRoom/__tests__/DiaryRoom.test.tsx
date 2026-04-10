@@ -12,6 +12,7 @@ import gameReducer, {
 } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
 import type { RootState } from '../../../store/store';
+import { saveEvictionVoteBreakdownUnlock } from '../../../features/evictionVoteBreakdownStorage';
 
 function renderDiaryRoom(
   initialEntries = ['/game', '/diary-room'],
@@ -255,5 +256,63 @@ describe('DiaryRoom', () => {
     expect(screen.queryByLabelText(/confessional chat/i)).toBeNull();
     expect(screen.queryByLabelText(/secret mission checklist/i)).toBeNull();
     expect(store.getState().game.secretMission?.status).toBe('available');
+  });
+
+  it('offers the eviction vote reveal in the confessional when unlocked for the current phase', async () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        saveEvictionVoteBreakdownUnlock({
+          week: 2,
+          phase: 'eviction_results',
+          votes: {
+            [game.players[1].id]: game.players[2].id,
+            [game.players[3].id]: game.players[2].id,
+          },
+          nomineeIds: [game.players[2].id, game.players[4].id],
+          evicteeId: game.players[2].id,
+          status: 'available',
+        });
+        appStore.dispatch(hydrateGame({
+          ...game,
+          week: 2,
+          phase: 'eviction_results',
+        }));
+      },
+    });
+
+    expect(screen.getByText(/are you ready to peek behind the curtain/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'No' })).toBeTruthy();
+  });
+
+  it('reveals the vote chart after accepting the confessional vote breakdown', async () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        saveEvictionVoteBreakdownUnlock({
+          week: 2,
+          phase: 'eviction_results',
+          votes: {
+            [game.players[1].id]: game.players[2].id,
+            [game.players[3].id]: game.players[4].id,
+          },
+          nomineeIds: [game.players[2].id, game.players[4].id],
+          evicteeId: game.players[2].id,
+          status: 'available',
+        });
+        appStore.dispatch(hydrateGame({
+          ...game,
+          week: 2,
+          phase: 'eviction_results',
+        }));
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+
+    expect(screen.getByLabelText(/eviction vote breakdown/i)).toBeTruthy();
+    expect(screen.getByText(/who voted for whom/i)).toBeTruthy();
+    expect(screen.getByText(/then look closely\. the curtain is lifting now\./i)).toBeTruthy();
   });
 });
