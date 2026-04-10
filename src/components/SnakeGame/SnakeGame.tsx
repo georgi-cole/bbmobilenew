@@ -46,6 +46,9 @@ const RAW_SCORE_CAP = 100;
 const RESULTS_REVEAL_MS = 10_000;
 const FAST_FORWARD_DELAY_MS = 4_000;
 const FAST_FORWARD_RESOLVE_MS = 2_000;
+const FOOD_PULSE_MIN_OPACITY = 0.68;
+const FOOD_PULSE_RANGE = 0.32;
+const FOOD_PULSE_STEP = 0.55;
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -109,6 +112,8 @@ export default function SnakeGame({
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [showFastForward, setShowFastForward] = useState(false);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
+  const [screenFx, setScreenFx] = useState<'boot' | 'death' | null>('boot');
+  const showPhoneShell = gamePhase === 'ready' || gamePhase === 'playing' || gamePhase === 'over';
 
   // ── Refs (game loop internals — never cause re-renders) ────────────────────
 
@@ -118,6 +123,7 @@ export default function SnakeGame({
   const nextDirRef = useRef<Vec2>({ x: 1, y: 0 });
   const foodRef = useRef<Vec2>({ x: 5, y: 5 });
   const foodEatenRef = useRef(0);
+  const foodPulsePhaseRef = useRef(0);
   const gameOverRef = useRef(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gamePhaseRef = useRef<GamePhase>('ready');
@@ -133,6 +139,23 @@ export default function SnakeGame({
   // Keep phaseRef in sync with React state for use inside event handlers
   useEffect(() => {
     gamePhaseRef.current = gamePhase;
+  }, [gamePhase]);
+
+  useEffect(() => {
+    if (gamePhase === 'ready') {
+      setScreenFx('boot');
+      const timeoutId = setTimeout(() => setScreenFx(null), 650);
+      return () => clearTimeout(timeoutId);
+    }
+
+    if (gamePhase === 'over') {
+      setScreenFx('death');
+      const timeoutId = setTimeout(() => setScreenFx(null), 850);
+      return () => clearTimeout(timeoutId);
+    }
+
+    setScreenFx(null);
+    return undefined;
   }, [gamePhase]);
 
   const clearWaitingTimers = useCallback(() => {
@@ -182,24 +205,35 @@ export default function SnakeGame({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Nokia green background
-    ctx.fillStyle = '#b7d378';
+    if (typeof ctx.createLinearGradient === 'function') {
+      const lcdGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_PX);
+      lcdGradient.addColorStop(0, '#9bbc0f');
+      lcdGradient.addColorStop(1, '#8bac0f');
+      ctx.fillStyle = lcdGradient;
+    } else {
+      ctx.fillStyle = '#8bac0f';
+    }
     ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
 
-    // Snake body — darker head
+    // Snake body — darker head for LCD contrast
     snakeRef.current.forEach((seg, i) => {
-      ctx.fillStyle = i === 0 ? '#1a1a1a' : '#2d2d2d';
+      ctx.fillStyle = i === 0 ? '#081820' : '#0f380f';
       ctx.fillRect(seg.x * TILE_SIZE, seg.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     });
 
-    // Food
-    ctx.fillStyle = '#1a1a1a';
+    const foodPulse = gamePhaseRef.current === 'playing'
+      ? FOOD_PULSE_MIN_OPACITY
+        + (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE)
+      : 1;
+    ctx.globalAlpha = foodPulse;
+    ctx.fillStyle = '#0f380f';
     ctx.fillRect(
       foodRef.current.x * TILE_SIZE,
       foodRef.current.y * TILE_SIZE,
       TILE_SIZE - 1,
       TILE_SIZE - 1,
     );
+    ctx.globalAlpha = 1;
   }, []);
 
   // ── Food placement ─────────────────────────────────────────────────────────
@@ -260,6 +294,7 @@ export default function SnakeGame({
       snakeRef.current = snakeRef.current.slice(0, -1);
     }
 
+    foodPulsePhaseRef.current += FOOD_PULSE_STEP;
     draw();
   }, [draw, placeFood]);
 
@@ -383,6 +418,7 @@ export default function SnakeGame({
     dirRef.current = { x: 1, y: 0 };
     nextDirRef.current = { x: 1, y: 0 };
     foodEatenRef.current = 0;
+    foodPulsePhaseRef.current = 0;
     gameOverRef.current = false;
 
     setFoodEaten(0);
@@ -550,98 +586,106 @@ export default function SnakeGame({
 
   return (
     <div className="snake-root" role="dialog" aria-modal="true" aria-label="Snake Competition">
-      {/* Nokia 3310 phone shell */}
-      <div className="snake-phone">
-        {/* LCD area */}
-        <div className="snake-lcd-bezel">
-          <div className="snake-lcd-container">
-            {/* Status line */}
-            <div className="snake-status-line" aria-live="polite">
-              LEN {snakeLength}&nbsp;&nbsp;F {foodEaten}
+      {showPhoneShell && (
+        <div className="snake-phone">
+          {/* LCD area */}
+          <div className="snake-lcd-bezel">
+            <div
+              className={[
+                'snake-lcd-container',
+                screenFx ? `snake-lcd-container--fx-${screenFx}` : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {/* Status line */}
+              <div className="snake-status-line" aria-live="polite">
+                LEN {snakeLength}&nbsp;&nbsp;F {foodEaten}
+              </div>
+
+              {/* Game canvas */}
+              <canvas
+                ref={canvasRef}
+                className="snake-canvas"
+                width={CANVAS_PX}
+                height={CANVAS_PX}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                aria-label="Snake game board"
+              />
+
+              {/* CRT scanlines */}
+              <div className="snake-scanlines" aria-hidden="true" />
+
+              {/* Ready overlay */}
+              {gamePhase === 'ready' && (
+                <div className="snake-overlay">
+                  <p className="snake-overlay-title" aria-label="Snake">
+                    SNAKE
+                  </p>
+                  <p className="snake-overlay-hint">Arrow keys or D-pad to move</p>
+                  <button className="snake-btn snake-btn--start" onClick={startGame}>
+                    START
+                  </button>
+                </div>
+              )}
+
+              {/* Game-over overlay */}
+              {gamePhase === 'over' && (
+                <div className="snake-overlay">
+                  <p className="snake-overlay-title snake-overlay-title--danger">
+                    GAME OVER
+                  </p>
+                  <p className="snake-overlay-hint">
+                    Food: {foodEaten} · Score: {normaliseScore(foodEaten)}
+                  </p>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Game canvas */}
-            <canvas
-              ref={canvasRef}
-              className="snake-canvas"
-              width={CANVAS_PX}
-              height={CANVAS_PX}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              aria-label="Snake game board"
-            />
+          {/* Nokia brand strip */}
+          <div className="snake-brand" aria-hidden="true">
+            <span className="snake-brand-text">Nokia</span>
+          </div>
 
-            {/* CRT scanlines */}
-            <div className="snake-scanlines" aria-hidden="true" />
+          {/* D-pad */}
+          <div className="snake-dpad" aria-label="Direction controls">
+            <div className="snake-dpad-row">
+              <button
+                className="snake-dpad-btn snake-dpad-up"
+                aria-label="Up"
+                onPointerDown={handleDPad({ x: 0, y: -1 })}
+              />
+            </div>
+            <div className="snake-dpad-row snake-dpad-row--mid">
+              <button
+                className="snake-dpad-btn snake-dpad-left"
+                aria-label="Left"
+                onPointerDown={handleDPad({ x: -1, y: 0 })}
+              />
+              <div className="snake-dpad-center" aria-hidden="true" />
+              <button
+                className="snake-dpad-btn snake-dpad-right"
+                aria-label="Right"
+                onPointerDown={handleDPad({ x: 1, y: 0 })}
+              />
+            </div>
+            <div className="snake-dpad-row">
+              <button
+                className="snake-dpad-btn snake-dpad-down"
+                aria-label="Down"
+                onPointerDown={handleDPad({ x: 0, y: 1 })}
+              />
+            </div>
+          </div>
 
-            {/* Ready overlay */}
-            {gamePhase === 'ready' && (
-              <div className="snake-overlay">
-                <p className="snake-overlay-title">🐍 SNAKE</p>
-                <p className="snake-overlay-hint">Arrow keys or D-pad to move</p>
-                <button className="snake-btn snake-btn--start" onClick={startGame}>
-                  START
-                </button>
-              </div>
-            )}
-
-            {/* Game-over overlay */}
-            {gamePhase === 'over' && (
-              <div className="snake-overlay">
-                <p className="snake-overlay-title" style={{ color: '#ff6b6b' }}>
-                  GAME OVER
-                </p>
-                <p className="snake-overlay-hint">
-                  Food: {foodEaten} · Score: {normaliseScore(foodEaten)}
-                </p>
-              </div>
-            )}
+          {/* Decorative action buttons */}
+          <div className="snake-action-buttons" aria-hidden="true">
+            <div className="snake-action-button" />
+            <div className="snake-action-button snake-action-button--primary" />
+            <div className="snake-action-button" />
           </div>
         </div>
-
-        {/* Nokia brand strip */}
-        <div className="snake-brand" aria-hidden="true">
-          <span className="snake-brand-text">Nokia</span>
-        </div>
-
-        {/* D-pad */}
-        <div className="snake-dpad" aria-label="Direction controls">
-          <div className="snake-dpad-row">
-            <button
-              className="snake-dpad-btn snake-dpad-up"
-              aria-label="Up"
-              onPointerDown={handleDPad({ x: 0, y: -1 })}
-            />
-          </div>
-          <div className="snake-dpad-row snake-dpad-row--mid">
-            <button
-              className="snake-dpad-btn snake-dpad-left"
-              aria-label="Left"
-              onPointerDown={handleDPad({ x: -1, y: 0 })}
-            />
-            <div className="snake-dpad-center" aria-hidden="true" />
-            <button
-              className="snake-dpad-btn snake-dpad-right"
-              aria-label="Right"
-              onPointerDown={handleDPad({ x: 1, y: 0 })}
-            />
-          </div>
-          <div className="snake-dpad-row">
-            <button
-              className="snake-dpad-btn snake-dpad-down"
-              aria-label="Down"
-              onPointerDown={handleDPad({ x: 0, y: 1 })}
-            />
-          </div>
-        </div>
-
-        {/* Bottom action buttons */}
-        <div className="snake-action-row" aria-hidden="true">
-          <div className="snake-action-btn" />
-          <div className="snake-action-btn snake-action-btn--main" />
-          <div className="snake-action-btn" />
-        </div>
-      </div>
+      )}
 
       {gamePhase === 'waiting' && (
         <div className="snake-waiting" role="status" aria-live="polite">
@@ -650,7 +694,7 @@ export default function SnakeGame({
             This challenge resolves asynchronously. Rankings unlock once every player posts
             their run.
           </p>
-          <div className="snake-mini-shell" aria-hidden="true">
+          <div className="snake-mini-shell" role="img" aria-label="Snake activity animation">
             <div className="snake-mini-lcd">
               <div className="snake-mini-food" />
               <div className="snake-mini-snake">

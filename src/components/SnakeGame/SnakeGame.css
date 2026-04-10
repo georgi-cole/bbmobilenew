@@ -3,58 +3,133 @@
 /* ── Root ───────────────────────────────────────────────────────────────── */
 
 .snake-root {
-  --snake-phone-width: min(92vw, 360px);
+  --snake-phone-width: min(100%, 500px);
   --snake-results-width: min(92vw, 420px);
+  --snake-dpad-size: clamp(44px, 12vw, 60px);
+  --snake-lcd-inset: clamp(4px, 1vw, 6px);
+  --snake-lcd-status-top: clamp(2px, 0.6vw, 3px);
+  --snake-lcd-status-side: clamp(4px, 1vw, 6px);
+  --snake-device-dark: #242338;
+  --snake-device-mid: #2d2c43;
+  --snake-device-light: #43415f;
+  --snake-lcd-top: #9bbc0f;
+  --snake-lcd-bottom: #8bac0f;
+  --snake-pixel-dark: #0f380f;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 20px 20px 28px;
-  min-height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  padding: 16px 16px 28px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #1a1f2e;
 }
 
 /* ── Phone body ─────────────────────────────────────────────────────────── */
 
 .snake-phone {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: var(--snake-phone-width);
-  background: linear-gradient(160deg, #2b2b3b 0%, #1a1a28 100%);
-  border-radius: 24px 24px 40px 40px;
-  padding: 18px 18px 24px;
+  max-width: 100%;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.12) 0%, transparent 22%),
+    linear-gradient(180deg, #2f3047 0%, var(--snake-device-mid) 26%, var(--snake-device-dark) 100%);
+  border-radius: 30px 30px 46px 46px;
+  padding: 20px 18px 24px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
-  border: 1px solid #3a3a50;
+    0 18px 48px rgba(5, 8, 20, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -4px 12px rgba(0, 0, 0, 0.34);
+  border: 1px solid #4c4b68;
+  box-sizing: border-box;
+}
+
+.snake-phone::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 28px;
+  width: 34%;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
+  filter: blur(1px);
+  pointer-events: none;
 }
 
 /* ── LCD bezel ──────────────────────────────────────────────────────────── */
 
 .snake-lcd-bezel {
   width: 100%;
-  background: #111118;
-  border-radius: 8px;
-  padding: 10px;
+  background: linear-gradient(180deg, #0d0d13 0%, #161722 100%);
+  border-radius: 6px;
+  padding: var(--snake-lcd-inset);
   box-shadow:
-    inset 0 2px 8px rgba(0, 0, 0, 0.8),
-    0 2px 4px rgba(0, 0, 0, 0.3);
+    inset 0 3px 14px rgba(0, 0, 0, 0.85),
+    inset 0 -2px 10px rgba(255, 255, 255, 0.05),
+    0 6px 12px rgba(0, 0, 0, 0.34);
   border: 1px solid #0a0a10;
 }
 
 .snake-lcd-container {
   position: relative;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 2px;
+  width: 100%;
+  background: linear-gradient(180deg, var(--snake-lcd-top) 0%, var(--snake-lcd-bottom) 100%);
+  box-shadow:
+    inset 0 0 18px rgba(15, 56, 15, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.snake-lcd-container::before,
+.snake-lcd-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.snake-lcd-container::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 28%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(15, 56, 15, 0.035) 0,
+      rgba(15, 56, 15, 0.035) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(15, 56, 15, 0.03) 0,
+      rgba(15, 56, 15, 0.03) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  opacity: 0.8;
+}
+
+.snake-lcd-container::after {
+  background:
+    radial-gradient(circle at center, transparent 56%, rgba(15, 56, 15, 0.12) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 24%);
+  mix-blend-mode: multiply;
 }
 
 /* ── Canvas ─────────────────────────────────────────────────────────────── */
 
 .snake-canvas {
   display: block;
-  background: #b7d378;
+  position: relative;
+  z-index: 1;
+  background: transparent;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   width: 100%;
@@ -66,17 +141,19 @@
 
 .snake-status-line {
   position: absolute;
-  top: 4px;
-  left: 6px;
+  top: var(--snake-lcd-status-top);
+  left: var(--snake-lcd-status-side);
   z-index: 2;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 9px;
-  font-weight: bold;
-  color: #1a1a1a;
-  background: rgba(183, 211, 120, 0.85);
-  padding: 1px 4px;
-  border-radius: 2px;
+  font-size: clamp(7px, 1.8vw, 9px);
+  font-weight: 700;
+  color: var(--snake-pixel-dark);
+  background: rgba(155, 188, 15, 0.26);
+  padding: 0 3px;
+  border-radius: 1px;
   letter-spacing: 1px;
+  line-height: 1.1;
+  text-shadow: 0 0 1px rgba(15, 56, 15, 0.2);
   pointer-events: none;
 }
 
@@ -86,14 +163,16 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.06) 0px,
-    rgba(0, 0, 0, 0.06) 1px,
+    rgba(15, 56, 15, 0.05) 0px,
+    rgba(15, 56, 15, 0.05) 1px,
     transparent 1px,
-    transparent 2px
+    transparent 3px
   );
   border-radius: 4px;
+  opacity: 0.65;
 }
 
 /* ── Overlays (ready / game-over) ───────────────────────────────────────── */
@@ -101,13 +180,14 @@
 .snake-overlay {
   position: absolute;
   inset: 0;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(183, 211, 120, 0.92);
-  z-index: 10;
+  background: rgba(147, 176, 19, 0.76);
+  backdrop-filter: blur(0.5px);
   border-radius: 4px;
 }
 
@@ -116,16 +196,21 @@
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   font-weight: bold;
-  color: #1a1a1a;
+  color: var(--snake-pixel-dark);
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.snake-overlay-title--danger {
+  color: #2a1a1a;
+  animation: snake-lcd-death-blink 0.22s steps(2, end) 3;
 }
 
 .snake-overlay-hint {
   margin: 0;
   font-family: 'Courier New', Courier, monospace;
   font-size: 8px;
-  color: #2a2a2a;
+  color: rgba(15, 56, 15, 0.9);
   text-align: center;
   letter-spacing: 0.5px;
 }
@@ -138,16 +223,17 @@
   font-weight: bold;
   letter-spacing: 1px;
   text-transform: uppercase;
-  border: 2px solid #1a1a1a;
+  border: 1px solid rgba(15, 56, 15, 0.8);
   border-radius: 4px;
   cursor: pointer;
   padding: 4px 12px;
-  transition: all 0.1s ease;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
 }
 
 .snake-btn--start {
-  background: #1a1a1a;
-  color: #b7d378;
+  background: var(--snake-pixel-dark);
+  color: #9bbc0f;
+  box-shadow: 0 2px 0 rgba(5, 20, 5, 0.45);
 }
 
 .snake-btn--start:hover {
@@ -189,10 +275,10 @@
 /* ── Brand strip ────────────────────────────────────────────────────────── */
 
 .snake-brand {
-  margin: 10px 0 6px;
-  padding: 2px 12px;
-  border-top: 1px solid #3a3a50;
-  border-bottom: 1px solid #3a3a50;
+  margin: 12px 0 8px;
+  padding: 6px 12px 8px;
+  border-top: 1px solid rgba(109, 108, 145, 0.55);
+  border-bottom: 1px solid rgba(109, 108, 145, 0.55);
   width: 80%;
   text-align: center;
 }
@@ -200,9 +286,10 @@
 .snake-brand-text {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 3px;
-  color: #c0c0d0;
+  font-weight: 700;
+  letter-spacing: 5px;
+  color: #d8d5e6;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.32);
   text-transform: uppercase;
 }
 
@@ -213,7 +300,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  margin: 12px 0 8px;
+  margin: 8px 0 10px;
 }
 
 .snake-dpad-row {
@@ -227,26 +314,31 @@
 }
 
 .snake-dpad-btn {
-  width: 44px;
-  height: 44px;
+  width: var(--snake-dpad-size);
+  height: var(--snake-dpad-size);
   position: relative;
-  background: linear-gradient(135deg, #3a3a50 0%, #2a2a40 100%);
-  border: 2px solid #4a4a60;
-  border-radius: 6px;
+  background: linear-gradient(180deg, #565579 0%, #3a3b58 100%);
+  border: 2px solid #5b5b7a;
+  border-radius: 10px;
   cursor: pointer;
   padding: 0;
-  transition: all 0.08s ease;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+  box-shadow:
+    0 5px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.14);
 }
 
 .snake-dpad-btn:hover {
-  background: linear-gradient(135deg, #4a4a60 0%, #3a3a50 100%);
+  background: linear-gradient(180deg, #616088 0%, #444563 100%);
 }
 
 .snake-dpad-btn:active {
-  background: linear-gradient(135deg, #2a2a40 0%, #1a1a30 100%);
-  transform: translateY(1px);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, #353651 0%, #2c2d45 100%);
+  transform: translateY(1px) scale(0.95);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.45),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(155, 188, 15, 0.18);
 }
 
 /* Arrow indicators */
@@ -263,60 +355,76 @@
 
 .snake-dpad-up::after {
   border-width: 0 10px 14px 10px;
-  border-color: transparent transparent #b7d378 transparent;
+  border-color: transparent transparent #c6df76 transparent;
 }
 
 .snake-dpad-down::after {
   border-width: 14px 10px 0 10px;
-  border-color: #b7d378 transparent transparent transparent;
+  border-color: #c6df76 transparent transparent transparent;
 }
 
 .snake-dpad-left::after {
   border-width: 10px 14px 10px 0;
-  border-color: transparent #b7d378 transparent transparent;
+  border-color: transparent #c6df76 transparent transparent;
 }
 
 .snake-dpad-right::after {
   border-width: 10px 0 10px 14px;
-  border-color: transparent transparent transparent #b7d378;
+  border-color: transparent transparent transparent #c6df76;
 }
 
 .snake-dpad-center {
-  width: 44px;
-  height: 44px;
-  background: radial-gradient(circle, #1a1a30 0%, #2a2a40 100%);
-  border: 2px solid #3a3a50;
+  width: var(--snake-dpad-size);
+  height: var(--snake-dpad-size);
+  background: radial-gradient(circle at 35% 35%, #313252 0%, #262742 72%, #202137 100%);
+  border: 2px solid #464765;
   border-radius: 50%;
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    0 4px 10px rgba(0, 0, 0, 0.22);
 }
 
-/* ── Bottom action row ──────────────────────────────────────────────────── */
+/* ── Decorative action buttons ──────────────────────────────────────────── */
 
-.snake-action-row {
+.snake-action-buttons {
+  width: min(100%, 220px);
+  margin-top: 10px;
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  justify-content: center;
   align-items: center;
+  gap: 16px;
 }
 
-.snake-action-btn {
-  width: 28px;
-  height: 28px;
-  background: radial-gradient(circle, #3a3a50 0%, #2a2a40 100%);
-  border: 1px solid #4a4a60;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+.snake-action-button {
+  width: clamp(34px, 9vw, 42px);
+  height: clamp(34px, 9vw, 42px);
+  border-radius: 999px;
+  border: 2px solid rgba(100, 100, 134, 0.86);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(180deg, #525273 0%, #31324d 100%);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14);
 }
 
-.snake-action-btn--main {
-  width: 36px;
-  height: 36px;
-  background: radial-gradient(circle, #4a4a64 0%, #2a2a3c 100%);
+.snake-action-button--primary {
+  width: clamp(44px, 11vw, 54px);
+  height: clamp(44px, 11vw, 54px);
+}
+
+.snake-lcd-container--fx-boot {
+  animation: snake-lcd-boot-flicker 0.65s steps(4, end);
+}
+
+.snake-lcd-container--fx-death {
+  animation: snake-lcd-death-flicker 0.85s steps(5, end);
 }
 
 /* ── Async waiting state ───────────────────────────────────────────────────── */
 
 .snake-waiting {
-  width: var(--snake-results-width);
+  width: min(100%, var(--snake-results-width));
   background: linear-gradient(180deg, #1f2738 0%, #171d2a 100%);
   border: 1px solid #2f3a54;
   border-radius: 16px;
@@ -357,7 +465,7 @@
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
-    #b7d378;
+    linear-gradient(180deg, var(--snake-lcd-top) 0%, var(--snake-lcd-bottom) 100%);
 }
 
 .snake-mini-food {
@@ -366,7 +474,7 @@
   right: 42px;
   width: 10px;
   height: 10px;
-  background: #202020;
+  background: var(--snake-pixel-dark);
   border-radius: 2px;
   animation: snake-mini-food-blink 1.2s ease-in-out infinite;
 }
@@ -384,11 +492,11 @@
   width: 12px;
   height: 12px;
   border-radius: 2px;
-  background: #2d2d2d;
+  background: var(--snake-pixel-dark);
 }
 
 .snake-mini-segment--head {
-  background: #111;
+  background: #081820;
 }
 
 .snake-mini-scanlines {
@@ -407,8 +515,7 @@
 /* ── Results ────────────────────────────────────────────────────────────── */
 
 .snake-results {
-  width: 100%;
-  max-width: var(--snake-results-width);
+  width: min(100%, var(--snake-results-width));
   background: #1e2535;
   border: 1px solid #2e3550;
   border-radius: 12px;
@@ -495,17 +602,53 @@
 
 @media (max-width: 360px) {
   .snake-root {
-    --snake-phone-width: min(94vw, 300px);
+    --snake-phone-width: min(100%, 340px);
   }
+}
 
-  .snake-dpad-btn {
-    width: 36px;
-    height: 36px;
+@keyframes snake-lcd-boot-flicker {
+  0% {
+    filter: brightness(1.22) contrast(1.08);
+    opacity: 0.92;
   }
+  35% {
+    filter: brightness(0.92) contrast(1.02);
+    opacity: 1;
+  }
+  65% {
+    filter: brightness(1.08) contrast(1.04);
+  }
+  100% {
+    filter: brightness(1) contrast(1);
+    opacity: 1;
+  }
+}
 
-  .snake-dpad-center {
-    width: 36px;
-    height: 36px;
+@keyframes snake-lcd-death-flicker {
+  0%,
+  100% {
+    filter: brightness(1) contrast(1);
+    opacity: 1;
+  }
+  20%,
+  60% {
+    filter: brightness(0.68) contrast(1.15);
+    opacity: 0.82;
+  }
+  40%,
+  80% {
+    filter: brightness(1.12) contrast(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes snake-lcd-death-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
   }
 }
 
