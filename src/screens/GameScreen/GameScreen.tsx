@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -114,6 +115,7 @@ import {
   loadEvictionVoteBreakdownUnlock,
   saveEvictionVoteBreakdownUnlock,
 } from '../../features/evictionVoteBreakdownStorage'
+import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -139,6 +141,7 @@ const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const store = useStore<RootState>()
   const storeRef = useRef(store)
   useEffect(() => {
@@ -147,6 +150,11 @@ export default function GameScreen() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const game = useAppSelector((s) => s.game)
   const settings = useAppSelector(selectSettings)
+  // ── Confessional ceremony decision routing ─────────────────────────────────
+  // When non-null, a required player ceremony decision is pending that must be
+  // resolved inside the Confessional.  The in-game decision modals are hidden
+  // and a main-TV guidance banner is shown instead.
+  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
   const publicOpinionProfiles = useAppSelector(
     (s: RootState): Record<string, PlayerPublicProfile> => s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES,
   )
@@ -629,11 +637,13 @@ export default function GameScreen() {
   // ── Human LOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human LOH must pick their two nominees simultaneously.
   // Hidden while the nomination animation is playing to prevent stacking.
+  // Also hidden when confessional routing is active (decision is in the DR).
   const showNominationsModal =
     game.phase === 'nomination_results' &&
     Boolean(game.awaitingNominations) &&
     humanIsHoH &&
-    !showNomAnim
+    !showNomAnim &&
+    !activeConfessionalDecision
 
   const nomineeOptions = alivePlayers.filter((p) => p.id !== game.lohId)
 
@@ -780,7 +790,8 @@ export default function GameScreen() {
   const showPovDecisionModal =
     game.phase === 'pos_ceremony_results' &&
     Boolean(game.awaitingPovDecision) &&
-    humanIsPosHolder
+    humanIsPosHolder &&
+    !activeConfessionalDecision
 
   // ── Human POS holder picks who to save ───────────────────────────────────
   // Defers submitPovSaveTarget dispatch until the save ceremony animation
@@ -843,23 +854,27 @@ export default function GameScreen() {
     game.phase === 'pos_ceremony_results' &&
     isAwaitingAnySave &&
     humanIsPosHolder &&
-    !pendingSaveCeremony
+    !pendingSaveCeremony &&
+    !activeConfessionalDecision
   const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   const showVipSecondUseModal =
     game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingVipSecondUseDecision) &&
-    humanIsPosHolder
+    humanIsPosHolder &&
+    !activeConfessionalDecision
 
   const showDiamondReplacementModal =
     game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingHolderReplacement) &&
-    humanIsPosHolder
+    humanIsPosHolder &&
+    !activeConfessionalDecision
 
   const showCoupReplacementModal =
     game.phase === 'pos_ceremony_results' &&
     Boolean(game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) &&
-    humanIsPosHolder
+    humanIsPosHolder &&
+    !activeConfessionalDecision
 
   // ── Replacement nominee ceremony animation ─────────────────────────────
   // When the human LOH picks a replacement nominee via TvDecisionModal,
@@ -912,7 +927,8 @@ export default function GameScreen() {
   }, [dispatch, game.players, game.povSavedId, game.lohId, getTileRect])
 
   // Hide the replacement modal while the replacement animation is playing.
-  const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony
+  // Also hidden when confessional routing is active.
+  const showReplacementModal = replacementNeeded && humanIsHoH && !pendingReplacementCeremony && !activeConfessionalDecision
   const holderReplacementOptions = replacementOptions
   const coupBaseOptions = alivePlayers.filter(
     (p) =>
@@ -1159,12 +1175,14 @@ export default function GameScreen() {
 
   // ── Human live eviction vote ──────────────────────────────────────────────
   // Shown when the human player is an eligible voter during live_vote.
+  // Hidden when confessional routing is active (decision is in the DR).
   const showLiveVoteModal =
     game.phase === 'live_vote' &&
     Boolean(game.awaitingHumanVote) &&
     !game.humanDoubleVoteActive &&
     !game.awaitingDoubleVoteOffer &&
-    humanPlayer !== undefined
+    humanPlayer !== undefined &&
+    !activeConfessionalDecision
   const liveVoteOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
 
   // ── PR 3: doubleVote Big Eye offer ────────────────────────────────────────
@@ -1173,7 +1191,8 @@ export default function GameScreen() {
   const showDoubleVoteOffer =
     game.phase === 'live_vote' &&
     Boolean(game.awaitingDoubleVoteOffer) &&
-    humanPlayer !== undefined
+    humanPlayer !== undefined &&
+    !activeConfessionalDecision
 
   // ── PR 3: double vote 2-slot selection ───────────────────────────────────
   // Shown when humanDoubleVoteActive — player must pick 2 nominees.
@@ -1182,7 +1201,8 @@ export default function GameScreen() {
     Boolean(game.awaitingHumanVote) &&
     Boolean(game.humanDoubleVoteActive) &&
     humanPlayer !== undefined &&
-    !game.awaitingDoubleVoteOffer // offer resolved first
+    !game.awaitingDoubleVoteOffer && // offer resolved first
+    !activeConfessionalDecision
 
   // Local state to track the first double-vote selection
   const [doubleVoteFirst, setDoubleVoteFirst] = useState<string | null>(null)
@@ -1195,7 +1215,8 @@ export default function GameScreen() {
     game.phase === 'eviction_results' &&
     Boolean(game.awaitingTieBreak) &&
     humanIsHoH &&
-    !game.voteResults
+    !game.voteResults &&
+    !activeConfessionalDecision
   const tieBreakOptions = alivePlayers.filter((p) =>
     (game.tiedNomineeIds ?? game.nomineeIds).includes(p.id)
   )
@@ -1995,6 +2016,36 @@ export default function GameScreen() {
                 Got it
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confessional call guidance — shown when a ceremony decision is   ── */}
+      {/* ── waiting in the Confessional (DR). All in-game decision modals    ── */}
+      {/* ── are hidden when this is active; the player must go to the DR.   ── */}
+      {activeConfessionalDecision && (
+        <div
+          className="confessional-call-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="confessional-call-title"
+          data-testid="confessional-call-overlay"
+        >
+          <div className="confessional-call-overlay__card">
+            <div className="confessional-call-overlay__icon" aria-hidden="true">📺</div>
+            <h2 className="confessional-call-overlay__title" id="confessional-call-title">
+              Confessional Required
+            </h2>
+            <p className="confessional-call-overlay__message">
+              The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.
+            </p>
+            <button
+              className="confessional-call-overlay__btn"
+              type="button"
+              onClick={() => navigate('/diary-room')}
+            >
+              🚪 Go to Confessional
+            </button>
           </div>
         </div>
       )}

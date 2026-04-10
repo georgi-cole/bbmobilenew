@@ -14,6 +14,8 @@ import { useState, useEffect, useRef, useCallback, type CSSProperties, type Form
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
+import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
+import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import type { MissionRewardType } from '../../bb/secretMission';
 import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
@@ -310,6 +312,10 @@ export default function DiaryRoom() {
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
   const awaitingVoteDeductionPrompt = useAppSelector((s) => s.game.awaitingVoteDeductionPrompt);
   const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury';
+
+  // ── Active ceremony decision routed to the confessional ───────────────────
+  // When non-null the player must complete the decision before leaving.
+  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
 
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
@@ -746,14 +752,26 @@ export default function DiaryRoom() {
 
         {/* Header */}
         <div className="diary-room__header">
-          <button
-            className="diary-room__back"
-            onClick={() => navigate(-1)}
-            type="button"
-            aria-label="Go back"
-          >
-            ‹ Back
-          </button>
+          {activeConfessionalDecision ? (
+            /* Decision pending — back navigation is locked until resolved. */
+            <span
+              className="diary-room__back diary-room__back--locked"
+              aria-label="Decision required — complete your choice before leaving"
+              title="You must complete your decision before leaving the Confessional."
+              data-testid="diary-room-back-locked"
+            >
+              🔒 Locked
+            </span>
+          ) : (
+            <button
+              className="diary-room__back"
+              onClick={() => navigate(-1)}
+              type="button"
+              aria-label="Go back"
+            >
+              ‹ Back
+            </button>
+          )}
           <h1 className="diary-room__title">🚪 Confessional</h1>
         </div>
 
@@ -776,6 +794,15 @@ export default function DiaryRoom() {
             </section>
           ) : (
             <div className="diary-room__confess">
+              {/* ── Ceremony decision panel (required action) ─────────────── */}
+              {activeConfessionalDecision && (
+                <div className="diary-room__decision-zone" data-testid="confessional-decision-zone">
+                  <p className="diary-room__decision-callout" role="alert">
+                    📺 The Big Eye requires your decision before you may leave.
+                  </p>
+                  <ConfessionalDecisionPanel decision={activeConfessionalDecision} />
+                </div>
+              )}
               <p className="diary-room__prompt">
                 "You are now in the Confessional. No one can hear you. Speak freely."
               </p>

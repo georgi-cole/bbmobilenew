@@ -1499,3 +1499,33 @@
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
 }
+
+/* ── Confessional back-locked state ──────────────────────────────────────── */
+
+.diary-room__back--locked {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: default;
+  padding: 0;
+  user-select: none;
+}
+
+/* ── Ceremony decision zone ──────────────────────────────────────────────── */
+
+.diary-room__decision-zone {
+  margin-bottom: 8px;
+}
+
+.diary-room__decision-callout {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f59e0b;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}

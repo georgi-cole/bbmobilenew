@@ -4,6 +4,7 @@
  * if the game slice shape changes.
  */
 import type { RootState } from './store';
+import { selectActiveConfessionalDecision } from './confessionalDecisionSelectors';
 
 /**
  * True when the game is blocked on a human decision modal:
@@ -90,6 +91,7 @@ export const selectHumanIsActive = (state: RootState): boolean => {
  *  - A doubleVote offer is pending
  *  - A doubleVote is currently active for the live vote
  *  - A voteDeduction prompt is pending
+ *  - A required ceremony decision is pending in the Confessional
  */
 export const selectConfessionalAlertCount = (state: RootState): number => {
   const humanPlayer = state.game?.players?.find((p) => p.isUser);
@@ -116,6 +118,9 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
   if (state.game?.awaitingDoubleVoteOffer) count += 1;
   if (state.game?.humanDoubleVoteActive) count += 1;
   if (state.game?.awaitingVoteDeductionPrompt) count += 1;
+
+  // Ceremony decisions routed to the confessional add a mandatory alert.
+  if (selectActiveConfessionalDecision(state) !== null) count += 1;
 
   return count;
 };
