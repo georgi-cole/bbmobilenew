@@ -183,7 +183,7 @@ export function getColorMatchAiRoundScore(
     : simulateColorMatchAiRoundScore(participant, roundNumber, seed);
 }
 
-export function getColorMatchFeedbackCtaLabel({
+export function getColorMatchFeedbackState({
   competitionMode,
   humanStillActive,
   activeCompetitionCount,
@@ -195,14 +195,35 @@ export function getColorMatchFeedbackCtaLabel({
   activeCompetitionCount: number;
   nextIndex: number;
   maxRounds: number;
-}): string {
+}): {
+  rematchPending: boolean;
+  competitionOver: boolean;
+  ctaLabel: string;
+} {
   const rematchPending = competitionMode && nextIndex >= maxRounds && activeCompetitionCount > 1;
   const competitionOver = competitionMode
     ? activeCompetitionCount <= 1 || (!rematchPending && nextIndex >= maxRounds)
     : nextIndex >= maxRounds;
 
-  if (competitionOver) return 'See Results →';
-  return humanStillActive ? 'Next Round →' : 'Continue Watching →';
+  return {
+    rematchPending,
+    competitionOver,
+    ctaLabel: competitionOver
+      ? 'See Results →'
+      : humanStillActive
+        ? 'Next Round →'
+        : 'Continue Watching →',
+  };
+}
+
+export function getColorMatchFeedbackCtaLabel(args: {
+  competitionMode: boolean;
+  humanStillActive: boolean;
+  activeCompetitionCount: number;
+  nextIndex: number;
+  maxRounds: number;
+}): string {
+  return getColorMatchFeedbackState(args).ctaLabel;
 }
 
 export function resolveColorMatchCompetitionRound(

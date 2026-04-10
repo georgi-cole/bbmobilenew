@@ -27,7 +27,7 @@ import {
   createColorMatchCompetitionStandings,
   formatColorMatchScore,
   getColorMatchAiRoundScore,
-  getColorMatchFeedbackCtaLabel,
+  getColorMatchFeedbackState,
   getColorMatchScoreDisplayPrecision,
   normalizeColorMatchCompetitionScore,
   randomStartColor,
@@ -461,19 +461,14 @@ export default function ColorMatchComp({
   }, [phase, playClick]);
 
   const nextIndex = roundIndex + 1;
-  const feedbackCtaLabel = getColorMatchFeedbackCtaLabel({
+  const feedbackState = getColorMatchFeedbackState({
     competitionMode,
     humanStillActive,
     activeCompetitionCount: activeCompetitionStandings.length,
     nextIndex,
     maxRounds: MAX_ROUNDS,
   });
-  const rematchPending = competitionMode
-    && nextIndex >= MAX_ROUNDS
-    && activeCompetitionStandings.length > 1;
-  const competitionOver = competitionMode
-    ? activeCompetitionStandings.length <= 1 || (!rematchPending && nextIndex >= MAX_ROUNDS)
-    : nextIndex >= MAX_ROUNDS;
+  const { competitionOver, ctaLabel: feedbackCtaLabel } = feedbackState;
 
   const handleNext = useCallback(() => {
     playClick();
