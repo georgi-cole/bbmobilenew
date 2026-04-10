@@ -55,6 +55,7 @@ const MAX_ROUNDS = 5;
 const ROUND_TIME_S = 25;
 const MAX_HINTS_TOTAL = 2;
 const MIXING_DURATION_MS = 1600;
+const DEFAULT_AI_FALLBACK_SCORE = 65;
 
 const CLICK_SOUND_KEY = 'ui:navigate';
 const CORRECT_SOUND_KEY = 'ui:confirm';
@@ -270,7 +271,7 @@ export default function ColorMatchComp({
           standing.participantId,
           standing.isHuman
             ? score
-            : (aiRoundScores[standing.participantId]?.[roundIndex] ?? 65),
+            : (aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE),
         ]));
         const resolvedRound = resolveColorMatchCompetitionRound(
           competitionStandings,
@@ -363,9 +364,10 @@ export default function ColorMatchComp({
         const ranked = rankColorMatchCompetitionStandings(competitionStandings);
         const rawResults = buildColorMatchCompetitionRawResults(ranked);
         const winner = ranked[0];
-        onFinish(rawResults[humanId ?? ''] ?? rawResults[winner?.participantId ?? ''] ?? 0, tiebreakerMs, {
+        const humanOrWinnerScore = rawResults[humanId ?? ''] ?? rawResults[winner?.participantId ?? ''] ?? 0;
+        onFinish(humanOrWinnerScore, tiebreakerMs, {
           authoritativeWinnerId: winner?.participantId ?? null,
-          rawValue: rawResults[humanId ?? ''] ?? rawResults[winner?.participantId ?? ''] ?? 0,
+          rawValue: humanOrWinnerScore,
           rawResults,
         });
         return;
@@ -385,7 +387,7 @@ export default function ColorMatchComp({
       const roundScoresById = Object.fromEntries(
         activeCompetitionStandings.map((standing) => [
           standing.participantId,
-          aiRoundScores[standing.participantId]?.[roundIndex] ?? 65,
+          aiRoundScores[standing.participantId]?.[roundIndex] ?? DEFAULT_AI_FALLBACK_SCORE,
         ]),
       );
       const resolvedRound = resolveColorMatchCompetitionRound(
@@ -745,8 +747,8 @@ export default function ColorMatchComp({
           </div>
         )}
         {phase === 'feedback' && (
-          <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
-            {(competitionMode ? activeCompetitionStandings.length <= 1 : roundIndex + 1 >= MAX_ROUNDS)
+            <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
+            {(competitionMode && activeCompetitionStandings.length <= 1)
               || roundIndex + 1 >= MAX_ROUNDS
               ? 'See Results →'
               : humanStillActive

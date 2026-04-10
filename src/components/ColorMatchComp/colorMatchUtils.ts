@@ -234,9 +234,8 @@ export function buildColorMatchCompetitionRawResults(
     const stageBase = stageIndex * 20;
     const eliminationScore = getEliminationScore(standing);
     const cumulativeScore = getCumulativeScore(standing);
-    const rawValue = Number(
-      Math.min(100, stageBase + eliminationScore / 5 + cumulativeScore / 5000).toFixed(3),
-    );
+    const unclampedRawValue = stageBase + eliminationScore / 5 + cumulativeScore / 5000;
+    const rawValue = Number(Math.min(100, unclampedRawValue).toFixed(3));
     return [standing.participantId, rawValue];
   }));
 }
