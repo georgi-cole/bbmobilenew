@@ -335,7 +335,9 @@ export default function DiaryRoom() {
       // Double-vote rewards store the second ballot under `${playerId}__dv2`.
       // Split the synthetic key so the chart can render the original voter name
       // while still labelling the bonus ballot as a separate vote.
-      const [voterId, extraVoteKey] = voterKey.split('__');
+      const voteKeyParts = voterKey.split('__');
+      const voterId = voteKeyParts[0];
+      const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null;
       const voterName = players.find((player) => player.id === voterId)?.name ?? voterId;
       const targetName = players.find((player) => player.id === targetId)?.name ?? targetId;
       return {

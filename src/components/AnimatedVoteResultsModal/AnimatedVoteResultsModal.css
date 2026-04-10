@@ -20,6 +20,8 @@
   inset: 0;
   z-index: 1;
   padding: 0.5rem;
+  /* Cooler highlights help the TV variant read like an in-house broadcast feed
+     instead of reusing the warmer modal palette from the overlay version. */
   background:
     radial-gradient(circle at 50% 20%, rgba(120, 168, 255, 0.14), transparent 36%),
     linear-gradient(180deg, rgba(7, 12, 22, 0.18) 0%, rgba(3, 7, 14, 0.34) 100%);
