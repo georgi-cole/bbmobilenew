@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
@@ -21,13 +22,13 @@ function renderCodeBreaker(props: Partial<ComponentProps<typeof CodeBreakerComp>
   const store = makeStore();
   const onFinish = vi.fn();
 
-  render(
+  const view = render(
     <Provider store={store}>
       <CodeBreakerComp seed={42} onFinish={onFinish} {...props} />
     </Provider>,
   );
 
-  return { onFinish };
+  return { ...view, onFinish };
 }
 
 describe('CodeBreakerComp', () => {
@@ -48,6 +49,22 @@ describe('CodeBreakerComp', () => {
     expect(screen.getByText('Locked')).toBeInTheDocument();
     expect(screen.getByText('00:00')).toBeInTheDocument();
     expect(screen.queryByText(/time's up/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the vault surface as a full-height scroll container for long attempt logs', () => {
+    const { container } = renderCodeBreaker();
+
+    const root = container.querySelector('.cb');
+    expect(root).toBeTruthy();
+
+    const styles = readFileSync(
+      '/home/runner/work/bbmobilenew/bbmobilenew/src/components/CodeBreakerComp/CodeBreakerComp.css',
+      'utf8',
+    );
+
+    expect(styles).toContain('height: 100%;');
+    expect(styles).toContain('overflow-x: hidden;');
+    expect(styles).toContain('overflow-y: auto;');
   });
 
   it('scores a solved run from attempts and elapsed time', async () => {
