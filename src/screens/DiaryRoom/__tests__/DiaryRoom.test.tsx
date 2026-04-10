@@ -466,6 +466,8 @@ describe('DiaryRoom', () => {
     expect(screen.queryByText('Game route')).toBeNull();
     expect(screen.getByLabelText(/confessional chat/i)).toBeTruthy();
     expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
+  });
+
   it('updates the main TV message after declining the confessional vote breakdown and returning to the game', async () => {
     const { store } = renderDiaryRoom(['/game', '/diary-room'], {
       setupStore: (appStore) => {
