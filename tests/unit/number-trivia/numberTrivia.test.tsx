@@ -1,9 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import NumberTrivia from '../../../src/components/NumberTrivia/NumberTrivia';
+import { NUMBER_TRIVIA_QUESTIONS } from '../../../src/components/NumberTrivia/numberTriviaData';
 import {
   computeNumberTriviaRoundScore,
+  createNumberTriviaAiRng,
   getNumberTriviaEliminationCount,
+  simulateNumberTriviaAiPerformance,
 } from '../../../src/components/NumberTrivia/numberTriviaUtils';
 
 const participants = [
@@ -14,7 +17,37 @@ const participants = [
   { id: 'ai-4', name: 'Echo', isHuman: false, precomputedScore: 95, previousPR: null },
 ];
 
+function sequenceRng(values: number[]): () => number {
+  let index = 0;
+  return () => {
+    const value = values[Math.min(index, values.length - 1)];
+    index += 1;
+    return value;
+  };
+}
+
 describe('NumberTrivia helpers', () => {
+  it('uses the new attached question bank with difficulty tiers', () => {
+    expect(NUMBER_TRIVIA_QUESTIONS).toHaveLength(105);
+    expect(NUMBER_TRIVIA_QUESTIONS.filter((question) => question.difficulty === 'easy')).toHaveLength(50);
+    expect(NUMBER_TRIVIA_QUESTIONS.filter((question) => question.difficulty === 'medium')).toHaveLength(25);
+    expect(NUMBER_TRIVIA_QUESTIONS.filter((question) => question.difficulty === 'hard')).toHaveLength(15);
+    expect(NUMBER_TRIVIA_QUESTIONS.filter((question) => question.difficulty === 'very-hard')).toHaveLength(15);
+    expect(NUMBER_TRIVIA_QUESTIONS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ prompt: 'How many minutes are in an hour?', answer: 60, difficulty: 'easy' }),
+        expect.objectContaining({ prompt: 'How many countries are in the EU (2026)?', answer: 27, difficulty: 'medium' }),
+        expect.objectContaining({ prompt: 'In which year did the Berlin Wall fall?', answer: 1989, difficulty: 'hard' }),
+        expect.objectContaining({ prompt: 'In which year did humans first land on the Moon?', answer: 1969, difficulty: 'very-hard' }),
+      ]),
+    );
+    expect(
+      NUMBER_TRIVIA_QUESTIONS.some(
+        (question) => question.prompt === 'How many housemates typically compete in a season of The Big Eye?',
+      ),
+    ).toBe(false);
+  });
+
   it('prioritizes solving a question over speed and attempts', () => {
     const solvedSlow = computeNumberTriviaRoundScore({ guessed: true, attempts: 5, timeMs: 9_000 });
     const missedFast = computeNumberTriviaRoundScore({
@@ -34,6 +67,90 @@ describe('NumberTrivia helpers', () => {
     expect(getNumberTriviaEliminationCount(4, 3)).toBe(1);
     expect(getNumberTriviaEliminationCount(4, 5)).toBe(2);
     expect(getNumberTriviaEliminationCount(4, 6)).toBe(3);
+  });
+
+  it('keeps easy AI answers fast and confident', () => {
+    const performance = simulateNumberTriviaAiPerformance(
+      {
+        precomputedScore: 92,
+        roundNumber: 1,
+        question: { prompt: 'How many days are in a week?', answer: 7, difficulty: 'easy' },
+      },
+      sequenceRng([0.2, 0.1, 0.9]),
+    );
+
+    expect(performance).toMatchObject({
+      guessed: true,
+      attempts: 1,
+      closestDistance: 0,
+    });
+    expect(performance.timeMs).toBeGreaterThanOrEqual(500);
+    expect(performance.timeMs).toBeLessThanOrEqual(2_000);
+  });
+
+  it('lets harder questions create hesitant but correct AI runs', () => {
+    const performance = simulateNumberTriviaAiPerformance(
+      {
+        precomputedScore: 60,
+        roundNumber: 2,
+        question: { prompt: 'In which year was Google founded?', answer: 1998, difficulty: 'hard' },
+      },
+      sequenceRng([0.5, 0.2, 0.3, 0.9]),
+    );
+
+    expect(performance).toMatchObject({
+      guessed: true,
+      attempts: 2,
+      closestDistance: 0,
+    });
+    expect(performance.timeMs).toBeGreaterThan(4_000);
+    expect(performance.timeMs).toBeLessThanOrEqual(6_650);
+  });
+
+  it('uses near-miss logic for very hard AI misses', () => {
+    const performance = simulateNumberTriviaAiPerformance(
+      {
+        precomputedScore: 40,
+        roundNumber: 4,
+        question: { prompt: 'In which year did humans first land on the Moon?', answer: 1969, difficulty: 'very-hard' },
+      },
+      sequenceRng([0.1, 0.95, 0.2, 0.4, 0.3]),
+    );
+
+    expect(performance.guessed).toBe(false);
+    expect(performance.attempts).toBe(1);
+    expect(performance.closestDistance).toBe(1);
+    expect(performance.timeMs).toBeGreaterThanOrEqual(3_000);
+    expect(performance.timeMs).toBeLessThanOrEqual(8_500);
+  });
+
+  it('gives each AI participant an order-independent rng stream per round', () => {
+    const context = {
+      precomputedScore: 58,
+      roundNumber: 4,
+      question: { prompt: 'In which year was the first Nobel Prize awarded?', answer: 1901, difficulty: 'very-hard' as const },
+    };
+
+    const aiOneForward = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-1' }),
+    );
+    const aiTwoForward = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-2' }),
+    );
+
+    const aiTwoReverse = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-2' }),
+    );
+    const aiOneReverse = simulateNumberTriviaAiPerformance(
+      context,
+      createNumberTriviaAiRng({ seed: 12_345, roundNumber: context.roundNumber, participantId: 'ai-1' }),
+    );
+
+    expect(aiOneForward).toEqual(aiOneReverse);
+    expect(aiTwoForward).toEqual(aiTwoReverse);
   });
 });
 

@@ -5,11 +5,13 @@ import { NUMBER_TRIVIA_QUESTIONS } from './numberTriviaData';
 import {
   compareTriviaStandings,
   computeNumberTriviaRoundScore,
+  createNumberTriviaAiRng,
   formatTriviaTimeMs,
   getNumberTriviaEliminationCount,
   getTriviaHint,
   NUMBER_TRIVIA_MAX_ATTEMPTS,
   NUMBER_TRIVIA_TOTAL_ROUNDS,
+  simulateNumberTriviaAiPerformance,
   type TriviaRoundPerformance,
   type TriviaStanding,
 } from './numberTriviaUtils';
@@ -21,12 +23,6 @@ interface ScoreboardState {
   eliminatedIds: string[];
   standings: TriviaStanding[];
   final: boolean;
-}
-
-interface AiPerformanceContext {
-  participantName: string;
-  precomputedScore: number;
-  roundNumber: number;
 }
 
 interface ResolvedParticipant {
@@ -43,31 +39,6 @@ function buildFallbackParticipants(): ResolvedParticipant[] {
     { id: 'ai-2', name: 'Nova', isHuman: false, precomputedScore: 64 },
     { id: 'ai-3', name: 'Atlas', isHuman: false, precomputedScore: 76 },
   ];
-}
-
-function simulateAiPerformance(context: AiPerformanceContext, rng: () => number): TriviaRoundPerformance {
-  const baseline = Math.max(0.38, Math.min(0.92, 0.46 + context.precomputedScore / 180));
-  const roundPenalty = (context.roundNumber - 1) * 0.03;
-  const solveChance = Math.max(0.22, Math.min(0.95, baseline - roundPenalty + (rng() - 0.5) * 0.14));
-  const guessed = rng() < solveChance;
-  if (!guessed) {
-    return {
-      guessed: false,
-      attempts: NUMBER_TRIVIA_MAX_ATTEMPTS,
-      timeMs: 14_000 + Math.round(rng() * 4_000),
-      closestDistance: 3 + Math.round(rng() * 18),
-    };
-  }
-
-  const attempts = 1 + Math.floor(rng() * Math.max(1, 5 - Math.round(baseline * 3)));
-  const timeBase = 2_600 + (1 - baseline) * 6_000 + context.roundNumber * 250;
-  const timeMs = Math.round(timeBase + attempts * 700 + rng() * 1_800);
-  return {
-    guessed: true,
-    attempts,
-    timeMs,
-    closestDistance: 0,
-  };
 }
 
 function makeInitialStandings(participants: ResolvedParticipant[]): TriviaStanding[] {
@@ -172,7 +143,6 @@ export default function NumberTrivia({
         .filter((entry) => entry.eliminatedRound === null)
         .map((entry) => entry.participantId),
     );
-    const rng = mulberry32(((seed >>> 0) ^ (effectiveRoundNumber * 0x9e3779b9)) >>> 0);
     const performanceById = new Map<string, TriviaRoundPerformance>();
 
     sourceStandings.forEach((entry) => {
@@ -184,13 +154,17 @@ export default function NumberTrivia({
       const participant = resolvedParticipants.find((candidate) => candidate.id === entry.participantId);
       performanceById.set(
         entry.participantId,
-        simulateAiPerformance(
+        simulateNumberTriviaAiPerformance(
           {
-            participantName: participant?.name ?? entry.participantName,
             precomputedScore: participant?.precomputedScore ?? 50,
             roundNumber: effectiveRoundNumber,
+            question: effectiveQuestion,
           },
-          rng,
+          createNumberTriviaAiRng({
+            seed,
+            roundNumber: effectiveRoundNumber,
+            participantId: entry.participantId,
+          }),
         ),
       );
     });

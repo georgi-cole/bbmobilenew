@@ -1,3 +1,6 @@
+import { mulberry32 } from '../../store/rng';
+import type { NumberTriviaDifficulty, NumberTriviaQuestion } from './numberTriviaData';
+
 export const NUMBER_TRIVIA_TOTAL_ROUNDS = 5;
 export const NUMBER_TRIVIA_MAX_ATTEMPTS = 6;
 
@@ -19,6 +22,169 @@ export interface TriviaStanding {
   lastRoundTimeMs: number;
   lastRoundGuessed: boolean;
   eliminatedRound: number | null;
+}
+
+export interface NumberTriviaAiPerformanceContext {
+  precomputedScore: number;
+  roundNumber: number;
+  question: NumberTriviaQuestion;
+}
+
+export interface NumberTriviaAiRngContext {
+  seed: number;
+  roundNumber: number;
+  participantId: string;
+}
+
+interface NumberTriviaAiDifficultyProfile {
+  accuracyRange: [number, number];
+  delayRangeMs: [number, number];
+  maxCorrectAttempts: number;
+  maxWrongAttempts: number;
+  hesitationChance: number;
+  nearMissChance: number;
+  giveUpChance: number;
+  confidentWrongChance: number;
+}
+
+const NUMBER_TRIVIA_AI_PROFILES: Record<NumberTriviaDifficulty, NumberTriviaAiDifficultyProfile> = {
+  easy: {
+    accuracyRange: [0.95, 1],
+    delayRangeMs: [500, 2_000],
+    maxCorrectAttempts: 1,
+    maxWrongAttempts: 1,
+    hesitationChance: 0.03,
+    nearMissChance: 0.3,
+    giveUpChance: 0.08,
+    confidentWrongChance: 0.12,
+  },
+  medium: {
+    accuracyRange: [0.75, 0.9],
+    delayRangeMs: [1_000, 4_000],
+    maxCorrectAttempts: 2,
+    maxWrongAttempts: 2,
+    hesitationChance: 0.28,
+    nearMissChance: 0.4,
+    giveUpChance: 0.14,
+    confidentWrongChance: 0.16,
+  },
+  hard: {
+    accuracyRange: [0.5, 0.7],
+    delayRangeMs: [2_000, 6_000],
+    maxCorrectAttempts: 3,
+    maxWrongAttempts: 3,
+    hesitationChance: 0.5,
+    nearMissChance: 0.52,
+    giveUpChance: 0.2,
+    confidentWrongChance: 0.2,
+  },
+  'very-hard': {
+    accuracyRange: [0.25, 0.5],
+    delayRangeMs: [3_000, 8_000],
+    maxCorrectAttempts: 4,
+    maxWrongAttempts: 4,
+    hesitationChance: 0.68,
+    nearMissChance: 0.68,
+    giveUpChance: 0.32,
+    confidentWrongChance: 0.3,
+  },
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function randomBetween(min: number, max: number, rng: () => number): number {
+  return min + (max - min) * rng();
+}
+
+function hashNumberTriviaParticipantId(participantId: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < participantId.length; index += 1) {
+    hash ^= participantId.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function createNumberTriviaAiRng(context: NumberTriviaAiRngContext): () => number {
+  // 0x9e3779b9 is the golden-ratio-derived Fibonacci hashing constant, used here
+  // to spread adjacent round numbers apart before mixing in the participant hash.
+  const roundSeed = Math.imul(context.roundNumber >>> 0, 0x9e3779b9) >>> 0;
+  const participantSeed = hashNumberTriviaParticipantId(context.participantId);
+  return mulberry32(((context.seed >>> 0) ^ roundSeed ^ participantSeed) >>> 0);
+}
+
+function getNearMissDistance(answer: number, rng: () => number): number {
+  const magnitude = Math.abs(answer);
+  if (magnitude <= 5) return 1;
+  if (magnitude < 100) return 1 + Math.floor(rng() * 3);
+  return 1 + Math.floor(rng() * 2);
+}
+
+function getFarMissDistance(answer: number, difficulty: NumberTriviaDifficulty, rng: () => number): number {
+  const magnitude = Math.max(6, Math.abs(answer));
+  const divisor = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 4 : 5;
+  const floor = Math.max(3, Math.round(magnitude / divisor));
+  const ceiling = Math.max(floor + 2, Math.round(magnitude / (difficulty === 'very-hard' ? 2.4 : 2.8)));
+  return floor + Math.floor(rng() * (ceiling - floor + 1));
+}
+
+export function simulateNumberTriviaAiPerformance(
+  context: NumberTriviaAiPerformanceContext,
+  rng: () => number,
+): TriviaRoundPerformance {
+  const profile = NUMBER_TRIVIA_AI_PROFILES[context.question.difficulty];
+  const skillOffset = clamp((context.precomputedScore - 60) / 300, -0.12, 0.12);
+  const fatiguePenalty = Math.max(0, context.roundNumber - 3) * 0.015;
+  const minAccuracy = clamp(profile.accuracyRange[0] + skillOffset - fatiguePenalty, 0.05, 0.995);
+  const maxAccuracy = clamp(profile.accuracyRange[1] + skillOffset - fatiguePenalty, minAccuracy, 0.995);
+  const accuracy = clamp(
+    minAccuracy + (maxAccuracy - minAccuracy) * clamp(0.5 + skillOffset * 2.5, 0, 1),
+    0.05,
+    0.995,
+  );
+  const baseDelayMs = randomBetween(profile.delayRangeMs[0], profile.delayRangeMs[1], rng);
+  const guessed = rng() < accuracy;
+
+  if (guessed) {
+    let attempts = 1;
+    let hesitationChance = clamp(profile.hesitationChance - skillOffset * 1.2, 0.01, 0.9);
+    while (attempts < profile.maxCorrectAttempts && rng() < hesitationChance) {
+      attempts += 1;
+      hesitationChance *= 0.45;
+    }
+
+    return {
+      guessed: true,
+      attempts,
+      timeMs: Math.round(baseDelayMs + (attempts - 1) * 650 + Math.max(0, fatiguePenalty * 3_000)),
+      closestDistance: 0,
+    };
+  }
+
+  let attempts = profile.maxWrongAttempts;
+  const confidentWrong = rng() < clamp(profile.confidentWrongChance + Math.max(0, skillOffset), 0.05, 0.9);
+  if (confidentWrong) {
+    attempts = 1;
+  } else if (rng() < clamp(profile.giveUpChance - skillOffset, 0.02, 0.9)) {
+    attempts = Math.max(1, profile.maxWrongAttempts - 1 - Math.floor(rng() * 2));
+  }
+
+  const nearMiss = rng() < clamp(profile.nearMissChance + skillOffset * 0.6, 0.15, 0.95);
+  return {
+    guessed: false,
+    attempts: clamp(attempts, 1, NUMBER_TRIVIA_MAX_ATTEMPTS),
+    timeMs: Math.round(
+      baseDelayMs
+      + Math.max(0, attempts - 1) * 850
+      + (nearMiss ? 250 : 900)
+      + Math.max(0, fatiguePenalty * 3_000),
+    ),
+    closestDistance: nearMiss
+      ? getNearMissDistance(context.question.answer, rng)
+      : getFarMissDistance(context.question.answer, context.question.difficulty, rng),
+  };
 }
 
 export function computeNumberTriviaRoundScore(performance: TriviaRoundPerformance): number {
