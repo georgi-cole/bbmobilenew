@@ -1389,7 +1389,7 @@ export default function GameScreen() {
       })
     }
     dispatch(addTvEvent({
-      text: 'Go to the Confessional room.',
+      text: 'Go to the Confessional before the day is over.',
       type: 'game',
     }))
     const wasPostEviction = isPostEvictionConfessionalModeRef.current
