@@ -1265,6 +1265,81 @@
   border-top: 1px solid rgba(66, 152, 169, 0.3);
 }
 
+.diary-room__vote-reveal-card,
+.diary-room__vote-chart {
+  margin: 12px 16px 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(196, 181, 253, 0.16);
+  background:
+    linear-gradient(180deg, rgba(20, 25, 46, 0.96) 0%, rgba(10, 14, 28, 0.94) 100%);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+}
+
+.diary-room__vote-reveal-eyebrow {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.diary-room__vote-reveal-copy {
+  margin: 8px 0 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #f5f3ff;
+}
+
+.diary-room__vote-reveal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.diary-room__vote-chart-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #f8fafc;
+}
+
+.diary-room__vote-chart-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diary-room__vote-chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.diary-room__vote-chart-cell {
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.diary-room__vote-chart-cell--target {
+  text-align: right;
+  color: #fca5a5;
+}
+
+.diary-room__vote-chart-arrow {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 800;
+}
+
 .diary-room__mission-btn {
   flex: 1;
   padding: 10px 14px;

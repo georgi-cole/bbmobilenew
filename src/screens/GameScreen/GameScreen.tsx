@@ -66,7 +66,6 @@ import type { MinigameParticipant } from '../../components/MinigameHost/Minigame
 import { isPlacementRankingGame } from '../../minigames/registry'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
-import AnimatedVoteResultsModal from '../../components/AnimatedVoteResultsModal/AnimatedVoteResultsModal'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import type { CeremonyTile } from '../../components/CeremonyOverlay/CeremonyOverlay'
@@ -96,7 +95,7 @@ import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
-import { selectAdsState, clearLastCompLastPlace } from '../../store/adsSlice'
+import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
@@ -110,6 +109,11 @@ import {
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
+import {
+  isEvictionVoteBreakdownActive,
+  loadEvictionVoteBreakdownUnlock,
+  saveEvictionVoteBreakdownUnlock,
+} from '../../features/evictionVoteBreakdownStorage'
 import './GameScreen.css'
 
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -157,6 +161,7 @@ export default function GameScreen() {
   // ── Ad prompt visibility state ─────────────────────────────────────────
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
   const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
+  const [showVoteBreakdownPrompt, setShowVoteBreakdownPrompt] = useState(false)
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
@@ -1230,6 +1235,22 @@ export default function GameScreen() {
   // PR 3: when a voteDeduction prompt is pending, show the offer first and
   // only dismiss results after the player decides.
   const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
+  const canOfferVoteBreakdown = useMemo(() => (
+    game.phase === 'eviction_results' &&
+    Boolean(game.pendingEviction?.evicteeId) &&
+    Object.keys(game.votes ?? {}).length > 0
+  ), [game.pendingEviction?.evicteeId, game.phase, game.votes])
+
+  const hasActiveVoteBreakdownUnlock = useCallback(() => {
+    const unlock = loadEvictionVoteBreakdownUnlock()
+    return isEvictionVoteBreakdownActive(unlock, game.week, game.phase)
+  }, [game.phase, game.week])
+
+  const queueVoteBreakdownPrompt = useCallback(() => {
+    if (!canOfferVoteBreakdown || hasActiveVoteBreakdownUnlock()) return false
+    setShowVoteBreakdownPrompt(true)
+    return true
+  }, [canOfferVoteBreakdown, hasActiveVoteBreakdownUnlock])
 
   const proceedAfterVoteResults = useCallback(() => {
     dispatch(dismissVoteResults())
@@ -1245,25 +1266,61 @@ export default function GameScreen() {
       setShowVoteDeductionOffer(true)
       return
     }
+    if (queueVoteBreakdownPrompt()) return
     proceedAfterVoteResults()
-  }, [game.awaitingVoteDeductionPrompt, proceedAfterVoteResults])
+  }, [game.awaitingVoteDeductionPrompt, proceedAfterVoteResults, queueVoteBreakdownPrompt])
 
   const handleVoteDeductionAccept = useCallback(() => {
     setShowVoteDeductionOffer(false)
     dispatch(activateVoteDeductionReward())
+    if (queueVoteBreakdownPrompt()) return
     // Explicitly dismiss vote results so the eviction cinematic can take over.
     // We do NOT use proceedAfterVoteResults() here because pendingEviction is
     // always set at this point (the deduction flow only fires when there is a
-    // clear evictee), and calling advance() via the stale-closure branch of
-    // proceedAfterVoteResults could skip the eviction animation entirely.
+    // clear evictee), and calling advance() through that shared branch could
+    // skip the eviction animation entirely.
     dispatch(dismissVoteResults())
-  }, [dispatch])
+  }, [dispatch, queueVoteBreakdownPrompt])
 
   const handleVoteDeductionDecline = useCallback(() => {
     setShowVoteDeductionOffer(false)
     dispatch(declineVoteDeduction())
+    if (queueVoteBreakdownPrompt()) return
     proceedAfterVoteResults()
-  }, [dispatch, proceedAfterVoteResults])
+  }, [dispatch, proceedAfterVoteResults, queueVoteBreakdownPrompt])
+
+  const unlockVoteBreakdown = useCallback(() => {
+    saveEvictionVoteBreakdownUnlock({
+      week: game.week,
+      phase: game.phase,
+      votes: { ...(game.votes ?? {}) },
+      nomineeIds: [...game.nomineeIds],
+      evicteeId: game.pendingEviction?.evicteeId ?? null,
+      status: 'available',
+    })
+    dispatch(addTvEvent({
+      text: 'Go to the Confessional room.',
+      type: 'game',
+    }))
+    setShowVoteBreakdownPrompt(false)
+    setAdPending(false)
+    proceedAfterVoteResults()
+  }, [
+    dispatch,
+    game.nomineeIds,
+    game.pendingEviction?.evicteeId,
+    game.phase,
+    game.votes,
+    game.week,
+    proceedAfterVoteResults,
+  ])
+
+  useEffect(() => {
+    if (!showVoteResults) {
+      setShowVoteBreakdownPrompt(false)
+      setAdPending(false)
+    }
+  }, [showVoteResults])
 
   // ── AI LOH tiebreak choreography ─────────────────────────────────────────
   // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
@@ -1886,6 +1943,20 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
+          mainLogMaxVisible={compactRosterLogRows}
+        />
+      ) : showVoteResults ? (
+        <TvZone
+          voteResultsReveal={{
+            nominees: voteResultsTallies,
+            evictee: voteResultsEvictee,
+            onTiebreakerRequired: handleTiebreakerRequired,
+            publicTiebreak: publicEvictionTiebreak,
+            onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,
+            onDone: handleVoteResultsDone,
+          }}
           externalAnnouncement={preAdAnnouncement}
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
@@ -2575,18 +2646,6 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── Vote Results (animated sequential reveal) ────────────────────── */}
-      {showVoteResults && (
-        <AnimatedVoteResultsModal
-          nominees={voteResultsTallies}
-          evictee={voteResultsEvictee}
-          onTiebreakerRequired={handleTiebreakerRequired}
-          publicTiebreak={publicEvictionTiebreak}
-          onPublicTiebreakResolved={handlePublicEvictionTiebreakResolved}
-          onDone={handleVoteResultsDone}
-        />
-      )}
-
       {/* ── PR 3: voteDeduction Big Eye offer (overlays results popup) ───── */}
       {showVoteDeductionOffer && (
         <TvBinaryDecisionModal
@@ -2688,6 +2747,41 @@ export default function GameScreen() {
       {socialSummaryOpen && <SocialSummaryPopup />}
 
       {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
+      {showVoteBreakdownPrompt && (
+        <AdPrompt
+          icon="🗳️"
+          title="Peek Behind the Curtain?"
+          description="Watch a short ad to unlock the Confessional reveal showing who voted for whom after this live eviction."
+          watchLabel="Watch Ad to Unlock Vote Reveal"
+          skipLabel="Continue"
+          onWatch={() => {
+            if (adPending) return
+            setAdPending(true)
+            const state = storeRef.current.getState()
+            if (!window.GameAds?.showRewarded) {
+              dispatch(recordAdShown('eviction_vote_breakdown'))
+              unlockVoteBreakdown()
+              return
+            }
+            const requested = showRewarded(
+              'eviction_vote_breakdown',
+              state,
+              dispatch,
+              () => unlockVoteBreakdown(),
+            )
+            if (!requested) {
+              unlockVoteBreakdown()
+            }
+          }}
+          onSkip={() => {
+            setShowVoteBreakdownPrompt(false)
+            setAdPending(false)
+            proceedAfterVoteResults()
+          }}
+          pending={adPending}
+        />
+      )}
+
       {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
       {showEnergyRechargePrompt && humanPlayer && (
         <AdPrompt

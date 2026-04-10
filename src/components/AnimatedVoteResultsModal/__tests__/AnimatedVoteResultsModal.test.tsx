@@ -113,4 +113,28 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(onPublicTiebreakResolved).toHaveBeenCalledWith(['p3', 'p2']);
     expect(onDone).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the TV variant as avatar-first vote panels with progress bars', async () => {
+    render(
+      <AnimatedVoteResultsModal
+        nominees={[
+          { nominee: makePlayer('p1', 'Nominee 1'), voteCount: 5 },
+          { nominee: makePlayer('p2', 'Nominee 2'), voteCount: 4 },
+        ]}
+        evictee={makePlayer('p1', 'Nominee 1')}
+        onDone={vi.fn()}
+        revealIntervalMs={1}
+        postRevealDelayMs={1}
+        variant="tv"
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5);
+    });
+
+    expect(document.querySelector('.avrm__tally--tv')).toBeTruthy();
+    expect(document.querySelectorAll('.avrm__tv-progress-track')).toHaveLength(2);
+    expect(screen.getByText('LIVE FEED')).toBeTruthy();
+  });
 });

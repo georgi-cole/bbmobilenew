@@ -10,7 +10,7 @@
  * tab navigations within the same session.
  */
 
-import { useState, useEffect, useRef, type CSSProperties, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
@@ -24,6 +24,12 @@ import {
 } from '../../services/bigBrother';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger';
+import {
+  isEvictionVoteBreakdownActive,
+  loadEvictionVoteBreakdownUnlock,
+  updateEvictionVoteBreakdownStatus,
+  type EvictionVoteBreakdownUnlock,
+} from '../../features/evictionVoteBreakdownStorage';
 import './DiaryRoom.css';
 
 /** Delivery status of a user-sent message. */
@@ -298,6 +304,7 @@ export default function DiaryRoom() {
   const playerId = userPlayer?.id ?? 'user';
   const secretMission = useAppSelector((s) => s.game.secretMission);
   const currentWeekForMission = useAppSelector((s) => s.game.week);
+  const players = useAppSelector((s) => s.game.players);
   // PR 3 — read active power states so the Confessional can display status.
   const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
@@ -310,6 +317,9 @@ export default function DiaryRoom() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
   const [showEntryAnimation, setShowEntryAnimation] = useState(false);
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
+  const [voteBreakdownUnlock, setVoteBreakdownUnlock] = useState<EvictionVoteBreakdownUnlock | null>(
+    () => loadEvictionVoteBreakdownUnlock(),
+  );
   const [conversationState, setConversationState] = useState<BigEyeConversationState>(
     () => loadConversationState(playerId),
   );
@@ -317,6 +327,40 @@ export default function DiaryRoom() {
   const [ticTacToeBoard, setTicTacToeBoard] = useState<TicTacToeCell[]>(() => createEmptyTicTacToeBoard());
   const [ticTacToeNextTurn, setTicTacToeNextTurn] = useState<TicTacToeMark>('X');
   const [ticTacToeThinking, setTicTacToeThinking] = useState(false);
+  const activeVoteBreakdown = isEvictionVoteBreakdownActive(voteBreakdownUnlock, currentWeekForMission, phase)
+    ? voteBreakdownUnlock
+    : null;
+  const voteBreakdownRows = activeVoteBreakdown
+    ? Object.entries(activeVoteBreakdown.votes).map(([voterKey, targetId]) => {
+      // Double-vote rewards store the second ballot under `${playerId}__dv2`.
+      // Split the synthetic key so the chart can render the original voter name
+      // while still labelling the bonus ballot as a separate vote.
+      const voteKeyParts = voterKey.split('__');
+      const voterId = voteKeyParts[0];
+      const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null;
+      const voterName = players.find((player) => player.id === voterId)?.name ?? voterId;
+      const targetName = players.find((player) => player.id === targetId)?.name ?? targetId;
+      return {
+        voterKey,
+        voterName: extraVoteKey === 'dv2' ? `${voterName} (Vote 2)` : voterName,
+        targetName,
+      };
+    })
+    : [];
+
+  const pushBigEyeMessage = useCallback((text: string) => {
+    const nextMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'bb',
+      text,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => {
+      const updated = [...prev, nextMessage];
+      saveChat(playerId, updated);
+      return updated;
+    });
+  }, [playerId]);
 
   // ── Mystery box state (PR 2) ──────────────────────────────────────────────
   // A shuffled copy of the pool is created once when entering rewardPending so
@@ -809,6 +853,51 @@ export default function DiaryRoom() {
               </div>
             )}
             <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
+            {activeVoteBreakdown?.status === 'available' && (
+              <div className="diary-room__vote-reveal-card" aria-label="Vote reveal offer">
+                <span className="diary-room__vote-reveal-eyebrow">📺 The Big Eye</span>
+                <p className="diary-room__vote-reveal-copy">Are you ready to peek behind the curtain?</p>
+                <div className="diary-room__vote-reveal-actions">
+                  <button
+                    className="diary-room__mission-btn diary-room__mission-btn--accept"
+                    type="button"
+                    onClick={() => {
+                      setVoteBreakdownUnlock(updateEvictionVoteBreakdownStatus('revealed'));
+                      pushBigEyeMessage('Then look closely. The curtain is lifting now.');
+                    }}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    className="diary-room__mission-btn diary-room__mission-btn--decline"
+                    type="button"
+                    onClick={() => {
+                      setVoteBreakdownUnlock(updateEvictionVoteBreakdownStatus('declined'));
+                      pushBigEyeMessage('The house secret is safe with me. You can leave the Confessional.');
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            )}
+            {activeVoteBreakdown?.status === 'revealed' && (
+              <section className="diary-room__vote-chart" aria-label="Eviction vote breakdown">
+                <div className="diary-room__vote-chart-header">
+                  <span className="diary-room__vote-reveal-eyebrow">Vote Breakdown</span>
+                  <strong>Who voted for whom</strong>
+                </div>
+                <div className="diary-room__vote-chart-table" role="table" aria-label="Eviction vote chart">
+                  {voteBreakdownRows.map((row) => (
+                    <div key={row.voterKey} className="diary-room__vote-chart-row" role="row">
+                      <span className="diary-room__vote-chart-cell" role="cell">{row.voterName}</span>
+                      <span className="diary-room__vote-chart-arrow" aria-hidden="true">→</span>
+                      <span className="diary-room__vote-chart-cell diary-room__vote-chart-cell--target" role="cell">{row.targetName}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             {bbTyping && (
               <div className="diary-room__bb-typing" aria-live="polite" aria-atomic="true">
                 <span className="diary-room__bb-typing-label">📺 The Big Eye</span>

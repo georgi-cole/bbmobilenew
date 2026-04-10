@@ -21,6 +21,7 @@ import settingsReducer from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import { loadEvictionVoteBreakdownUnlock } from '../../src/features/evictionVoteBreakdownStorage';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -29,28 +30,29 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: () => <div data-testid="tv-zone" />,
-}));
-
-// Module-level captured callback so AnimatedVoteResultsModal can be called.
-let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
-
-vi.mock('../../src/components/AnimatedVoteResultsModal/AnimatedVoteResultsModal', () => ({
   default: ({
-    onTiebreakerRequired,
-    onDone,
+    voteResultsReveal,
   }: {
-    onTiebreakerRequired?: (ids: string[]) => void;
-    onDone: () => void;
+    voteResultsReveal?: {
+      onTiebreakerRequired?: (ids: string[]) => void;
+      onDone: () => void;
+    } | null;
   }) => {
-    capturedOnTiebreakerRequired = onTiebreakerRequired ?? null;
+    capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
     return (
-      <div data-testid="vote-results-modal">
-        <button onClick={onDone}>Done</button>
+      <div data-testid="tv-zone">
+        {voteResultsReveal && (
+          <div data-testid="vote-results-modal">
+            <button onClick={voteResultsReveal.onDone}>Done</button>
+          </div>
+        )}
       </div>
     );
   },
 }));
+
+// Module-level captured callback so the TV vote reveal can be triggered.
+let capturedOnTiebreakerRequired: ((tiedIds: string[]) => void) | null = null;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -240,6 +242,68 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
 
     // After 3 s: voteResults dismissed.
     await act(async () => { vi.advanceTimersByTime(1500); });
+    expect(store.getState().game.voteResults).toBeNull();
+  });
+});
+
+describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('offers the rewarded vote breakdown reveal before dismissing live vote results', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 5, p3: 4 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p3' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    screen.getByTestId('vote-results-modal');
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
+  });
+
+  it('unlocks the confessional vote breakdown when the ad is accepted in dev/web', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      week: 3,
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 5, p3: 4 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p3' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    act(() => {
+      screen.getByRole('button', { name: /watch ad to unlock vote reveal/i }).click();
+    });
+
+    expect(loadEvictionVoteBreakdownUnlock()).toMatchObject({
+      week: 3,
+      phase: 'eviction_results',
+      evicteeId: 'p2',
+      status: 'available',
+    });
     expect(store.getState().game.voteResults).toBeNull();
   });
 });

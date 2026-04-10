@@ -14,6 +14,10 @@ import TvAnnouncementOverlay, {
 } from './TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
+import AnimatedVoteResultsModal, {
+  type PublicEvictionTiebreakDisplay,
+  type VoteTally,
+} from '../AnimatedVoteResultsModal/AnimatedVoteResultsModal';
 import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal';
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
 import type { TvEvent } from '../../types';
@@ -21,6 +25,8 @@ import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
 import { getViewportMessageKey } from './tvZoneKeys';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
+
+const NOOP = () => {};
 
 // Compact phase labels — edit these strings to change what appears in the HUD pill.
 const PHASE_LABELS: Record<string, string> = {
@@ -159,21 +165,23 @@ type TvZonePublicSaveReveal = {
   savedId: string;
 };
 
-type TvZoneProps =
-  | {
-      publicSaveReveal: TvZonePublicSaveReveal;
-      onPublicSaveDone: () => void;
-      mainLogMaxVisible?: number;
-      externalAnnouncement?: Announcement | null;
-      onExternalAnnouncementDismiss?: () => void;
-    }
-  | {
-      publicSaveReveal?: null | undefined;
-      onPublicSaveDone?: undefined;
-      mainLogMaxVisible?: number;
-      externalAnnouncement?: Announcement | null;
-      onExternalAnnouncementDismiss?: () => void;
-    };
+type TvZoneVoteResultsReveal = {
+  nominees: VoteTally[];
+  evictee?: Player | null;
+  onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
+  publicTiebreak?: PublicEvictionTiebreakDisplay | null;
+  onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
+  onDone: () => void;
+};
+
+type TvZoneProps = {
+  publicSaveReveal?: TvZonePublicSaveReveal | null;
+  onPublicSaveDone?: () => void;
+  voteResultsReveal?: TvZoneVoteResultsReveal | null;
+  mainLogMaxVisible?: number;
+  externalAnnouncement?: Announcement | null;
+  onExternalAnnouncementDismiss?: () => void;
+};
 
 /**
  * TvZone — the central "TV-like" action zone.
@@ -215,6 +223,7 @@ export default function TvZone(props: TvZoneProps) {
 
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
+  const voteResultsRevealActive = Boolean(props.voteResultsReveal);
   const externalAnnouncement = props.externalAnnouncement ?? null;
 
   // ── Development logging ─────────────────────────────────────────────────────
@@ -307,7 +316,8 @@ export default function TvZone(props: TvZoneProps) {
 
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
-  const hideViewportMessage = postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive;
+  const hideViewportMessage =
+    postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive || voteResultsRevealActive;
   const viewportMessageKey = getViewportMessageKey(latestEvent);
 
   const handleDismiss = useCallback(() => {
@@ -547,7 +557,19 @@ export default function TvZone(props: TvZoneProps) {
                 nominees={props.publicSaveReveal.nominees}
                 approvals={props.publicSaveReveal.approvals}
                 savedId={props.publicSaveReveal.savedId}
-                onDone={props.onPublicSaveDone}
+                onDone={props.onPublicSaveDone ?? NOOP}
+              />
+            )}
+
+            {props.voteResultsReveal && (
+              <AnimatedVoteResultsModal
+                nominees={props.voteResultsReveal.nominees}
+                evictee={props.voteResultsReveal.evictee}
+                onTiebreakerRequired={props.voteResultsReveal.onTiebreakerRequired}
+                publicTiebreak={props.voteResultsReveal.publicTiebreak}
+                onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
+                onDone={props.voteResultsReveal.onDone}
+                variant="tv"
               />
             )}
           </div>

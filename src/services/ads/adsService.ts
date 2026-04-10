@@ -37,7 +37,9 @@ export type AdPlacement =
   /** Rewarded: prompt when the user's social energy hits 0; reward = +3 energy (once/day). */
   | 'social_energy_recharge'
   /** Rewarded: prompt when the user's public meter drops to Disliked; reward = +4–10% approval (once/day). */
-  | 'public_meter_disliked_boost';
+  | 'public_meter_disliked_boost'
+  /** Rewarded: unlock the confessional vote breakdown after live eviction results. */
+  | 'eviction_vote_breakdown';
 
 /** Placements that are automatic/interstitial (suppressed by No Ads Pack). */
 export const INTERSTITIAL_PLACEMENTS = new Set<AdPlacement>([
