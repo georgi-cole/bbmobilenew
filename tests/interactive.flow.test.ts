@@ -161,6 +161,33 @@ describe('Live vote + eviction tally', () => {
     }
   });
 
+  it('does not add a duplicate live-vote tv message when entering live_vote', () => {
+    const players = makePlayers(6);
+    players[1].status = 'nominated';
+    players[2].status = 'nominated';
+    const store = makeStore({
+      phase: 'social_2',
+      lohId: 'p3',
+      nomineeIds: ['p1', 'p2'],
+      players,
+      tvFeed: [
+        {
+          id: 'social-2',
+          text: 'Housemates make their final pitches before the live vote. 🤝',
+          type: 'social',
+          timestamp: Date.now(),
+        },
+      ],
+    });
+
+    store.dispatch(advance()); // social_2 → live_vote
+
+    const { game } = store.getState();
+    expect(game.phase).toBe('live_vote');
+    expect(game.tvFeed.some((event) => event.text.includes('The live elimination vote has begun!'))).toBe(false);
+    expect(game.tvFeed[0]?.text).toBe('Housemates make their final pitches before the live vote. 🤝');
+  });
+
   it('advance() is a no-op while awaitingHumanVote is true', () => {
     const store = makeStore({ phase: 'live_vote', lohId: 'p3', nomineeIds: ['p1', 'p2'], awaitingHumanVote: true, votes: {} });
     store.dispatch(advance());
