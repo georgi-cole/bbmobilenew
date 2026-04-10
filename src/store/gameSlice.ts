@@ -3476,11 +3476,6 @@ const gameSlice = createSlice({
           break;
         }
         case 'live_vote': {
-          const nomNames = state.nomineeIds
-            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
-            .join(' and ');
-          pushEvent(state, `The live elimination vote has begun! ${nomNames} face elimination. 🗳️`, 'vote');
-
           // Cast AI eligible votes (eligible = alive, not LOH, not nominee)
           state.votes = {};
           const eligibleVoters = alive.filter(
