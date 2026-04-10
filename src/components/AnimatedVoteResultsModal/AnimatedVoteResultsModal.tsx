@@ -298,8 +298,7 @@ export default function AnimatedVoteResultsModal({
 
       const nextScale = Math.min(availableWidth / sceneWidth, availableHeight / sceneHeight, 1);
 
-      setTvCompactMode((current) => (current === compact ? current : compact));
-      setTvSceneScale((current) => (Math.abs(current - nextScale) < 0.001 ? current : nextScale));
+      updateTvLayout(compact, nextScale);
     };
 
     measure();
@@ -328,6 +327,10 @@ export default function AnimatedVoteResultsModal({
       ? (tvCompactMode ? TV_SCENE_HEIGHT.tieBannerCompact : TV_SCENE_HEIGHT.tieBannerRegular)
       : (tvCompactMode ? TV_SCENE_HEIGHT.compact : TV_SCENE_HEIGHT.regular);
   const tvSceneWidth = tvCompactMode ? TV_SCENE_WIDTH.compact : TV_SCENE_WIDTH.regular;
+  const updateTvLayout = (compact: boolean, scale: number) => {
+    setTvCompactMode((current) => (current === compact ? current : compact));
+    setTvSceneScale((current) => (Math.abs(current - scale) < 0.001 ? current : scale));
+  };
   const tvSceneStyle = variant === 'tv'
     ? {
       '--avrm-scene-width': `${tvSceneWidth}px`,
