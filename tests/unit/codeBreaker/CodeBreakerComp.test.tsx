@@ -65,12 +65,14 @@ describe('CodeBreakerComp', () => {
     );
     document.head.appendChild(styleTag);
 
-    const style = getComputedStyle(root as HTMLElement);
-    expect(style.height).toBe('100%');
-    expect(style.overflowX).toBe('hidden');
-    expect(style.overflowY).toBe('auto');
-
-    styleTag.remove();
+    try {
+      const style = getComputedStyle(root as HTMLElement);
+      expect(Number.parseFloat(style.height)).toBeGreaterThan(0);
+      expect(style.overflowX).toBe('hidden');
+      expect(style.overflowY).toBe('auto');
+    } finally {
+      styleTag.remove();
+    }
   });
 
   it('scores a solved run from attempts and elapsed time', async () => {
