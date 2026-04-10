@@ -482,9 +482,10 @@ export default function ColorMatchComp({
   const playerHex = rgbToHex(playerColor);
   const progressPct = (timeLeft / ROUND_TIME_S) * 100;
   const isUrgent = timeLeft <= 5;
+  const rematchNumber = roundIndex - MAX_ROUNDS + 1;
   const roundLabelContent = roundIndex < MAX_ROUNDS
     ? <>Round <strong>{roundIndex + 1}</strong>/{MAX_ROUNDS}</>
-    : <>Final Rematch <strong>{roundIndex - MAX_ROUNDS + 1}</strong></>;
+    : <>Final Rematch <strong>{rematchNumber}</strong></>;
 
   const feedbackLabel =
     lastScore !== null

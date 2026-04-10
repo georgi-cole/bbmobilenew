@@ -265,6 +265,8 @@ export function buildColorMatchCompetitionRawResults(
   standings: ColorMatchCompetitionStanding[],
 ): Record<string, number> {
   return Object.fromEntries(standings.map((standing) => {
+    // Rematches still belong to the finale stage for scoring/ranking purposes,
+    // so any elimination after round 5 keeps the same finale stage weight.
     const stageIndex = standing.eliminatedRound === null
       ? 4
       : Math.min(4, Math.max(0, standing.eliminatedRound - 1));
