@@ -46,7 +46,7 @@ type VaultReaction = 'idle' | 'active' | 'reject';
 const MEDALS = ['🥇', '🥈', '🥉'];
 const RESULT_DELAY_MS = 1800;
 const REACTION_RESET_MS = 550;
-const ELAPSED_TICK_MS = 200;
+const ELAPSED_TICK_MS = 1000;
 
 interface Props {
   participantIds?: string[];
@@ -349,7 +349,9 @@ export default function CodeBreakerComp({
 
         <div className="cb__results">
           <p className="cb__results-headline">🔓 Vault Cracked!</p>
-          <p className="cb__results-subhead">Your run now ranks by accuracy first, then speed.</p>
+          <p className="cb__results-subhead">
+            Your run now ranks by score, based on attempts and elapsed time.
+          </p>
 
           <ol className="cb__leaderboard">
             {leaderboard.map((entry, i) => {

@@ -123,8 +123,12 @@ export function computeSolvedScore(
   elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): number {
   const safeAttempts = Math.max(1, attempts);
+  const safeElapsedScoreCapMs = Math.max(1, elapsedScoreCapMs);
   const attemptsFraction = 1 / safeAttempts;
-  const timeFraction = Math.max(0, 1 - Math.max(0, elapsedMs) / elapsedScoreCapMs);
+  const timeFraction = Math.max(
+    0,
+    Math.min(1, 1 - Math.max(0, elapsedMs) / safeElapsedScoreCapMs),
+  );
   const weightedPerformance =
     (attemptsFraction * SOLVED_ATTEMPT_WEIGHT) + (timeFraction * SOLVED_TIME_WEIGHT);
 

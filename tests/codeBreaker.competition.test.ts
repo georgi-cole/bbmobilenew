@@ -221,6 +221,11 @@ describe('Vault Cracker — scoring', () => {
     expect(computeSolvedScore(0, -5_000)).toBe(100);
   });
 
+  it('guards against non-positive elapsed score caps', () => {
+    expect(computeSolvedScore(2, 20_000, 0)).toBe(53);
+    expect(computeSolvedScore(2, -1_000, -25)).toBe(77);
+  });
+
   it('more attempts reduce score even with the same elapsed time', () => {
     expect(computeSolvedScore(2, 20_000)).toBeLessThan(computeSolvedScore(1, 20_000));
   });
@@ -249,7 +254,7 @@ describe('Vault Cracker — AI score determinism', () => {
     expect(a).toBe(b);
   });
 
-  it('different playerIds produce different scores for the same seed (seed=42: p1=64, p2=0)', () => {
+  it('different playerIds produce different scores for the same seed', () => {
     const a = computeAiScore(42, 'p1', DEFAULT_ELAPSED_SCORE_CAP_MS);
     const b = computeAiScore(42, 'p2', DEFAULT_ELAPSED_SCORE_CAP_MS);
     // Both must be in valid score range
