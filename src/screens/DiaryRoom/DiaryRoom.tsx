@@ -201,6 +201,15 @@ function visitCountKey(playerId: string): string {
   return `bb_dr_visit_count_${playerId}`;
 }
 
+function loadChat(playerId: string): ChatMessage[] {
+  try {
+    const raw = sessionStorage.getItem(chatKey(playerId));
+    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function saveChat(playerId: string, messages: ChatMessage[]): void {
   try {
     sessionStorage.setItem(chatKey(playerId), JSON.stringify(messages));
@@ -434,13 +443,11 @@ export default function DiaryRoom() {
   useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
   const seedRef = useRef(seed);
   useEffect(() => { seedRef.current = seed; }, [seed]);
-  const messagesRef = useRef<ChatMessage[]>(messages);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Scroll ref for the chat panel
   const confessEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change
+  // Reset and reinitialize the confessional session when lock state or player changes.
   useEffect(() => {
     clearConversationSession(playerId);
 
@@ -518,11 +525,12 @@ export default function DiaryRoom() {
   }, [ticTacToeActive, ticTacToeDraw, ticTacToeNextTurn, ticTacToeWinner]);
 
   // On unmount: emit a single generic summary to tvFeed only when the player
-  // actually sent at least one message.
+  // actually sent at least one message. Read from sessionStorage so rapid
+  // navigation after a send still sees the most recently persisted chat state.
   useEffect(() => {
     return () => {
       const pid = playerIdRef.current;
-      const msgs = messagesRef.current;
+      const msgs = loadChat(pid);
       const hasUserMessage = msgs.some((msg) => msg.role === 'user');
       if (hasUserMessage && !hasSummaryEmitted(pid)) {
         markSummaryEmitted(pid);
