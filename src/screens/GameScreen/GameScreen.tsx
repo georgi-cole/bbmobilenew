@@ -2239,12 +2239,10 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
-          externalAnnouncement={confessionalTvAnnouncement ?? preAdAnnouncement}
-          onExternalAnnouncementDismiss={
-            confessionalTvAnnouncement
-              ? () => setShowConfessionalTvPrompt(false)
-              : handlePreAdAnnouncementDismiss
-          }
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
       ) : showVoteResults ? (
@@ -2257,27 +2255,24 @@ export default function GameScreen() {
             onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,
             onDone: handleVoteResultsDone,
           }}
-          externalAnnouncement={confessionalTvAnnouncement ?? preAdAnnouncement}
-          onExternalAnnouncementDismiss={
-            confessionalTvAnnouncement
-              ? () => setShowConfessionalTvPrompt(false)
-              : handlePreAdAnnouncementDismiss
-          }
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
+          externalAnnouncement={preAdAnnouncement}
+          onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
       ) : (
         <TvZone
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
-            confessionalTvAnnouncement ??
             aiTiebreakAnnouncement ??
             postVoteAnnouncement ??
             publicSaveResultAnnouncement ??
             preAdAnnouncement
           }
           onExternalAnnouncementDismiss={
-            confessionalTvAnnouncement
-              ? () => setShowConfessionalTvPrompt(false)
-              : aiTiebreakAnnouncement
+            aiTiebreakAnnouncement
               ? handleAiTiebreakAnnouncementDismiss
               : postVoteAnnouncement
                 ? handlePostVoteAnnouncementDismiss

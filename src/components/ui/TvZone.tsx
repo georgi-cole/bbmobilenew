@@ -185,6 +185,8 @@ type TvZoneProps = {
   onPublicSaveDone?: () => void;
   voteResultsReveal?: TvZoneVoteResultsReveal | null;
   mainLogMaxVisible?: number;
+  priorityAnnouncement?: Announcement | null;
+  onPriorityAnnouncementDismiss?: () => void;
   externalAnnouncement?: Announcement | null;
   onExternalAnnouncementDismiss?: () => void;
 };
@@ -205,7 +207,7 @@ type TvZoneProps = {
  */
 export default function TvZone(props: TvZoneProps) {
   const dispatch = useAppDispatch();
-  const { onExternalAnnouncementDismiss } = props;
+  const { onPriorityAnnouncementDismiss, onExternalAnnouncementDismiss } = props;
   const gameState = useAppSelector((s) => s.game);
   const alivePlayers = useAppSelector(selectAlivePlayers);
   const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
@@ -230,6 +232,7 @@ export default function TvZone(props: TvZoneProps) {
   const latestEvent = tvVisibleFeed[0];
   const publicSaveRevealActive = Boolean(props.publicSaveReveal);
   const voteResultsRevealActive = Boolean(props.voteResultsReveal);
+  const priorityAnnouncement = props.priorityAnnouncement ?? null;
   const externalAnnouncement = props.externalAnnouncement ?? null;
 
   // ── Development logging ─────────────────────────────────────────────────────
@@ -321,7 +324,7 @@ export default function TvZone(props: TvZoneProps) {
   }, [latestEvent, dismissedEventId]);
 
   // Active announcement: phase-based takes priority over event-based.
-  const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+  const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const suppressStaleLiveVotePitchMessage =
     latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
@@ -339,11 +342,13 @@ export default function TvZone(props: TvZoneProps) {
       : latestEvent?.text;
 
   const handleDismiss = useCallback(() => {
-    const currentAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+    const currentAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
     const skipPostDismissFade =
       currentAnnouncement != null &&
       CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key);
-    if (externalAnnouncement) {
+    if (priorityAnnouncement) {
+      onPriorityAnnouncementDismiss?.();
+    } else if (externalAnnouncement) {
       // External announcements are used as one-off pre-roll overlays (e.g. ad
       // break copy) for the *current* phase. If an internal phase/event
       // announcement was queued behind the same render, clear it too so the TV
@@ -373,11 +378,13 @@ export default function TvZone(props: TvZoneProps) {
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
   }, [
+    priorityAnnouncement,
     externalAnnouncement,
     latestEvent,
     phaseAnnouncement,
     eventAnnouncement,
     gameState.phase,
+    onPriorityAnnouncementDismiss,
     onExternalAnnouncementDismiss,
   ]);
 

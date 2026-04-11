@@ -368,8 +368,24 @@ describe('FloatingActionBar – navigation buttons', () => {
 });
 
 describe('FloatingActionBar – confessional alert animation', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 250,
+      y: 780,
+      width: 44,
+      height: 44,
+      top: 780,
+      left: 250,
+      bottom: 824,
+      right: 294,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it('animates the confessional button when a new alert arrives', () => {
     const store = makeStore();
@@ -435,10 +451,14 @@ describe('FloatingActionBar – confessional alert animation', () => {
 
     const confessionalButton = screen.getByRole('button', { name: 'Confessional (1)' });
     expect(confessionalButton.className).toContain('dock-hit-area--confessional-persistent');
+    expect(confessionalButton.className).not.toContain('dock-hit-area--confessional-flash');
+    expect(screen.getByTestId('confessional-spotlight')).toBeDefined();
 
     act(() => { vi.advanceTimersByTime(5000); });
     expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
       .toContain('dock-hit-area--confessional-persistent');
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
+    expect(store.getState().game.hasSeenConfessionalSpotlight).toBe(true);
 
     act(() => {
       confessionalButton.click();
@@ -447,5 +467,42 @@ describe('FloatingActionBar – confessional alert animation', () => {
     expect(screen.getByTestId('location').textContent).toBe('/diary-room');
     expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
       .not.toContain('dock-hit-area--confessional-persistent');
+  });
+
+  it('marks the spotlight as seen immediately when the player clicks Confessional during the tutorial', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    expect(screen.getByTestId('confessional-spotlight')).toBeDefined();
+
+    act(() => {
+      screen.getByRole('button', { name: 'Confessional (1)' }).click();
+    });
+
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
+    expect(store.getState().game.hasSeenConfessionalSpotlight).toBe(true);
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
+  });
+
+  it('does not replay the spotlight after it has already been seen in the same season', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+      hasSeenConfessionalSpotlight: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
   });
 });

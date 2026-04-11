@@ -17,7 +17,7 @@
  * 13. New pre-comp announcement phases: loh_comp_announcement and pos_comp_announcement show overlays.
  */
 
-import type { ComponentProps } from 'react';
+import React, { type ComponentProps } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -1097,6 +1097,45 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
 
     expect(onExternalAnnouncementDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps queued phase announcements when a priority announcement is dismissed', () => {
+    const store = makeStore();
+
+    function PriorityAnnouncementHarness() {
+      const [priorityAnnouncement, setPriorityAnnouncement] = React.useState<ComponentProps<typeof TvZone>['priorityAnnouncement']>({
+        key: 'confessional_required',
+        title: 'Confessional Required',
+        subtitle: 'Head to the Confessional to finish your action.',
+        isLive: false,
+        autoDismissMs: null,
+      });
+
+      return (
+        <Provider store={store}>
+          <MemoryRouter>
+            <TvZone
+              priorityAnnouncement={priorityAnnouncement}
+              onPriorityAnnouncementDismiss={() => setPriorityAnnouncement(null)}
+            />
+          </MemoryRouter>
+        </Provider>
+      );
+    }
+
+    render(<PriorityAnnouncementHarness />);
+
+    act(() => {
+      store.dispatch(setPhase('nominations'));
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Confessional Required/i })).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+    });
+
+    expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
   });
 });
 
