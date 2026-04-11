@@ -3437,21 +3437,7 @@ const gameSlice = createSlice({
               state.replacementNeeded = true;
               pushEvent(state, `${lohPlayer.name} is selecting a replacement nominee...`, 'game');
             } else {
-              // AI LOH: deterministically pick replacement (exclude LOH, POS holder, current nominees, and the self-saved player)
-               const eligible = getReplacementEligiblePlayers(state, alive);
-              if (eligible.length > 0) {
-                const replacement = seededPick(rng, eligible);
-                state.nomineeIds.push(replacement.id);
-                const rp = state.players.find((pl) => pl.id === replacement.id);
-                if (rp) rp.status = 'nominated';
-                // Keep povSavedId set so the UI can detect "veto was used" and show
-                // the AI replacement animation. Cleared at week_start.
-                pushEvent(
-                  state,
-                  `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
-                  'game',
-                );
-              }
+              state.aiReplacementStep = 1;
             }
           } else if (posWinner?.isUser) {
             // Human POS holder who is not a nominee: they must decide whether to use it
