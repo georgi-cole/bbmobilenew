@@ -214,9 +214,12 @@ export default function GameScreen() {
     week: number
     phase: Phase
   } | null>(null)
+  const activeConfessionalDecisionKey = activeConfessionalDecision
+    ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
+    : null
 
   useEffect(() => {
-    if (!activeConfessionalDecision) {
+    if (!activeConfessionalDecisionKey) {
       setConfessionalPromptTriggered(false)
       setShowConfessionalTvPrompt(false)
       return
@@ -229,7 +232,7 @@ export default function GameScreen() {
 
     window.addEventListener('ui:playPressed', handlePlayPressed)
     return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
-  }, [activeConfessionalDecision])
+  }, [activeConfessionalDecisionKey])
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const confessionalTvAnnouncement = confessionalPromptTriggered && showConfessionalTvPrompt

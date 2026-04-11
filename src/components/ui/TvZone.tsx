@@ -323,7 +323,8 @@ export default function TvZone(props: TvZoneProps) {
     return majorKey ? buildAnnouncement(majorKey, latestEvent) : null;
   }, [latestEvent, dismissedEventId]);
 
-  // Active announcement: phase-based takes priority over event-based.
+  // Active announcement precedence: priorityAnnouncement, then externalAnnouncement,
+  // then phaseAnnouncement, then eventAnnouncement.
   const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const suppressStaleLiveVotePitchMessage =
     latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&

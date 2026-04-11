@@ -38,16 +38,26 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: ({ externalAnnouncement }: { externalAnnouncement?: { title: string; subtitle: string } | null }) => (
-    <div data-testid="tv-zone">
-      {externalAnnouncement && (
-        <div data-testid="tv-zone-external-announcement">
-          <p>{externalAnnouncement.title}</p>
-          <p>{externalAnnouncement.subtitle}</p>
-        </div>
-      )}
-    </div>
-  ),
+  default: ({
+    priorityAnnouncement,
+    externalAnnouncement,
+  }: {
+    priorityAnnouncement?: { title: string; subtitle: string } | null;
+    externalAnnouncement?: { title: string; subtitle: string } | null;
+  }) => {
+    const announcement = priorityAnnouncement ?? externalAnnouncement;
+
+    return (
+      <div data-testid="tv-zone">
+        {announcement && (
+          <div data-testid="tv-zone-announcement">
+            <p>{announcement.title}</p>
+            <p>{announcement.subtitle}</p>
+          </div>
+        )}
+      </div>
+    );
+  },
 }));
 
 vi.mock('../../src/components/FloatingActionBar/FloatingActionBar', () => ({
@@ -345,14 +355,14 @@ describe('GameScreen — confessional prompt on main TV', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: true });
     renderGameScreen(store);
 
-    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull();
 
     act(() => {
       window.dispatchEvent(new CustomEvent('ui:playPressed'));
     });
 
-    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent('Confessional Required');
-    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent(
+    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent('Confessional Required');
+    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
       'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.',
     );
   });
@@ -371,7 +381,7 @@ describe('GameScreen — confessional prompt on main TV', () => {
       window.dispatchEvent(new CustomEvent('ui:playPressed'));
     });
 
-    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent('Confessional Required');
+    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent('Confessional Required');
   });
 
   it('does NOT show the confessional prompt when no decision is pending', () => {
@@ -382,7 +392,7 @@ describe('GameScreen — confessional prompt on main TV', () => {
       window.dispatchEvent(new CustomEvent('ui:playPressed'));
     });
 
-    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull();
   });
 
   it('does NOT show the confessional prompt for Final 4 phase', () => {
@@ -396,7 +406,7 @@ describe('GameScreen — confessional prompt on main TV', () => {
       window.dispatchEvent(new CustomEvent('ui:playPressed'));
     });
 
-    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull();
   });
 
   it('hides the in-game live vote modal when confessional routing is active', () => {
@@ -408,7 +418,7 @@ describe('GameScreen — confessional prompt on main TV', () => {
     act(() => {
       window.dispatchEvent(new CustomEvent('ui:playPressed'));
     });
-    expect(screen.getByTestId('tv-zone-external-announcement')).toBeTruthy();
+    expect(screen.getByTestId('tv-zone-announcement')).toBeTruthy();
     // No "Live Elimination Vote" heading should be visible in-game
     expect(screen.queryByText(/Live Elimination Vote/i)).toBeNull();
   });
