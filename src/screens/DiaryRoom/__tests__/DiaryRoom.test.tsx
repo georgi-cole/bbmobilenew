@@ -220,7 +220,7 @@ describe('DiaryRoom', () => {
     await flushConversationTimers();
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
+    expect(screen.getByTestId('confessional-decision-message')).toBeTruthy();
   });
 
   it('greets the player on first entry', () => {
@@ -511,7 +511,54 @@ describe('DiaryRoom', () => {
 
     expect(screen.queryByText('Game route')).toBeNull();
     expect(screen.getByLabelText(/confessional chat/i)).toBeTruthy();
-    expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
+    expect(screen.getByTestId('confessional-decision-message')).toBeTruthy();
+  });
+
+  it('renders a pending vote as a Big Eye chat message and appends the user reply after selection', () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          phase: 'live_vote',
+          awaitingHumanVote: true,
+          nomineeIds: [game.players[1].id, game.players[2].id],
+        }));
+      },
+    });
+
+    const targetName = store.getState().game.players[1].name;
+
+    expect(screen.getByTestId('confessional-decision-message')).toBeTruthy();
+    expect(screen.getByText(/choose who you want to eliminate/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(targetName, 'i') }));
+
+    expect(screen.getByText(new RegExp(`I choose ${targetName}`, 'i'))).toBeTruthy();
+    expect(store.getState().game.awaitingHumanVote).toBe(false);
+  });
+
+  it('appends a new Big Eye decision message when one confessional choice leads to the next', () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          phase: 'pos_ceremony_results',
+          awaitingPovDecision: true,
+          awaitingPovSaveTarget: false,
+          posWinnerId: game.players.find((player) => player.isUser)?.id ?? game.players[0].id,
+          nomineeIds: [game.players[1].id, game.players[2].id],
+        }));
+      },
+    });
+
+    expect(screen.getByText(/do you want to use power of safety/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /use power/i }));
+
+    expect(screen.getByText(/i will use power of safety/i)).toBeTruthy();
+    expect(screen.getByText(/choose which nominee you want to save/i)).toBeTruthy();
   });
 
   it('updates the main TV message after declining the confessional vote breakdown and returning to the game', async () => {
