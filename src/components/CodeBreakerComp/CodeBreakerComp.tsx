@@ -34,7 +34,6 @@ import {
   computeSolvedScore,
   computeAllAiSolveProfiles,
   rankScores,
-  type AiSolveProfile,
   type GuessResult,
 } from './codeBreakerLogic';
 import './CodeBreakerComp.css';
@@ -106,10 +105,10 @@ export default function CodeBreakerComp({
       DEFAULT_ELAPSED_SCORE_CAP_MS,
     );
     return {
-      aiSolveProfiles: profiles as Record<string, AiSolveProfile>,
+      aiSolveProfiles: profiles,
       aiScores: Object.fromEntries(
         Object.entries(profiles).map(([id, profile]) => [id, profile.score]),
-      ) as Record<string, number>,
+      ),
     };
   });
 
