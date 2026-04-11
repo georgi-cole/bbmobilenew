@@ -32,6 +32,14 @@ function renderCodeBreaker(props: Partial<ComponentProps<typeof CodeBreakerComp>
   return { ...view, onFinish };
 }
 
+function makeParticipants() {
+  return [
+    { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+    { id: 'ai-1', name: 'Cipher', isHuman: false, precomputedScore: 0, previousPR: null },
+    { id: 'ai-2', name: 'Tumbler', isHuman: false, precomputedScore: 0, previousPR: null },
+  ];
+}
+
 describe('CodeBreakerComp', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -104,5 +112,47 @@ describe('CodeBreakerComp', () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith(computeSolvedScore(2, 15_000));
     expect(screen.getByText('Vault breached in 2 attempts')).toBeInTheDocument();
+  });
+
+  it('shows the competition scoreboard before completing the minigame flow', async () => {
+    const onComplete = vi.fn();
+
+    renderCodeBreaker({
+      onFinish: undefined,
+      onComplete,
+      participantIds: ['human', 'ai-1', 'ai-2'],
+      participants: makeParticipants(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Combination' }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    const secretCode = generateSecretCode(42);
+    secretCode.forEach((digit, index) => {
+      const delta = digit % 10;
+      for (let step = 0; step < delta; step++) {
+        fireEvent.click(screen.getByRole('button', { name: `Increase digit ${index + 1}` }));
+      }
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Combination' }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_800);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('🔓 Vault Cracked!')).toBeInTheDocument();
+    expect(screen.getByText('Your run now ranks by score, based on attempts and elapsed time.')).toBeInTheDocument();
+    expect(screen.getByText('Attempts')).toBeInTheDocument();
+    expect(screen.getByText('Elapsed')).toBeInTheDocument();
+    expect(screen.getByText('Score')).toBeInTheDocument();
+    expect(screen.getByText('You (You)')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });
