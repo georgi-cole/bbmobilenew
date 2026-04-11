@@ -118,6 +118,16 @@
 }
 
 /* ── Tally rows ─────────────────────────────────────────────────────────── */
+.avrm__tv-stage {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.45rem, 2vh, 0.95rem);
+  padding: clamp(0.55rem, 4vh, 1.15rem) 0 clamp(0.15rem, 1.2vh, 0.4rem);
+  overflow: visible;
+}
+
 .avrm__tallies {
   padding: 0.85rem;
   display: flex;
@@ -133,8 +143,8 @@
   align-items: center;
   justify-content: center;
   gap: clamp(0.45rem, 2vw, 1rem);
-  padding: 0 clamp(0.1rem, 1vw, 0.4rem) clamp(0.25rem, 1.8vh, 0.7rem);
-  overflow: hidden;
+  padding: clamp(0.2rem, 1vh, 0.45rem) clamp(0.1rem, 1vw, 0.4rem) 0;
+  overflow: visible;
 }
 
 .avrm__tally {
@@ -192,6 +202,7 @@
   place-items: center;
   width: clamp(5rem, 27vw, 7rem);
   height: clamp(5rem, 27vw, 7rem);
+  overflow: visible;
   filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
@@ -380,7 +391,7 @@
 .avrm__commentary--tv {
   align-self: center;
   width: min(100%, 22rem);
-  padding: clamp(0.25rem, 1.6vh, 0.6rem) 0 0;
+  padding: 0;
   font-size: clamp(0.68rem, 2.2vw, 0.9rem);
   line-height: 1.25;
   font-weight: 700;
@@ -638,6 +649,11 @@
 
   .avrm__tallies--tv {
     gap: 0.35rem;
+  }
+
+  .avrm__tv-stage {
+    gap: 0.55rem;
+    padding-top: clamp(0.7rem, 4.5vh, 1.1rem);
   }
 
   .avrm__tally--tv {

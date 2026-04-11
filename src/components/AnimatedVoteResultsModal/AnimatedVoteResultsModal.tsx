@@ -281,37 +281,37 @@ export default function AnimatedVoteResultsModal({
           {variant === 'tv' && <span className="avrm__live-badge">LIVE FEED</span>}
         </header>
 
-        <div className={`avrm__tallies${variant === 'tv' ? ' avrm__tallies--tv' : ''}`}>
-          {nominees.map((t, index) => {
-            const shown = displayedCounts[t.nominee.id] ?? 0;
-            const isEvictee = resolvedEvictee?.id === t.nominee.id;
-            const isPulsing = lastRevealedId === t.nominee.id;
-            const pct = totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0;
-            const isLeading = outcomeVisible
-              ? isEvictee
-              : leadingShownIds.has(t.nominee.id);
-            return (
-              <Fragment key={t.nominee.id}>
-                {variant === 'tv' && nominees.length === 2 && index === 1 && (
-                  <div className="avrm__tv-duel-divider" aria-hidden="true">
-                    <span>VS</span>
-                  </div>
-                )}
-                <div
-                  className={[
-                    'avrm__tally',
-                    'avrm__tally--visible',
-                    variant === 'tv' ? 'avrm__tally--tv' : '',
-                    nominees.length > 2 ? 'avrm__tally--tv-triple' : '',
-                    isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
-                    isLeading ? 'avrm__tally--leading' : '',
-                    isPulsing ? 'avrm__tally--pulse' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  {variant === 'tv' ? (
-                    <>
+        {variant === 'tv' ? (
+          <div className="avrm__tv-stage">
+            <div className="avrm__tallies avrm__tallies--tv">
+              {nominees.map((t, index) => {
+                const shown = displayedCounts[t.nominee.id] ?? 0;
+                const isEvictee = resolvedEvictee?.id === t.nominee.id;
+                const isPulsing = lastRevealedId === t.nominee.id;
+                const pct = totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0;
+                const isLeading = outcomeVisible
+                  ? isEvictee
+                  : leadingShownIds.has(t.nominee.id);
+                return (
+                  <Fragment key={t.nominee.id}>
+                    {nominees.length === 2 && index === 1 && (
+                      <div className="avrm__tv-duel-divider" aria-hidden="true">
+                        <span>VS</span>
+                      </div>
+                    )}
+                    <div
+                      className={[
+                        'avrm__tally',
+                        'avrm__tally--visible',
+                        'avrm__tally--tv',
+                        nominees.length > 2 ? 'avrm__tally--tv-triple' : '',
+                        isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                        isLeading ? 'avrm__tally--leading' : '',
+                        isPulsing ? 'avrm__tally--pulse' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
                       <VoteRingAvatar
                         player={t.nominee}
                         progress={totalVotes > 0 ? shown / totalVotes : 0}
@@ -325,38 +325,54 @@ export default function AnimatedVoteResultsModal({
                         {shown}
                       </span>
                       <span className="avrm__tv-vote-share">{pct}% of votes</span>
-                    </>
-                  ) : (
-                    <>
-                      <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
-                      <span className="avrm__tally-name">{t.nominee.name}</span>
-                      <div className="avrm__tally-bar-wrap">
-                        <div
-                          className="avrm__tally-bar"
-                          style={{
-                            width: shown > 0
-                              ? `${Math.max(
-                                votesNeededForEviction > 0
-                                  ? Math.round((shown / votesNeededForEviction) * 100)
-                                  : 0,
-                                MIN_BAR_PCT,
-                              )}%`
-                              : '0%',
-                          }}
-                        />
-                      </div>
-                      <span className="avrm__tally-count">{shown}</span>
-                    </>
-                  )}
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+            <div className="avrm__commentary avrm__commentary--tv" role="status" aria-live="polite">
+              {tvCommentary}
+            </div>
+          </div>
+        ) : (
+          <div className="avrm__tallies">
+            {nominees.map((t) => {
+              const shown = displayedCounts[t.nominee.id] ?? 0;
+              const isEvictee = resolvedEvictee?.id === t.nominee.id;
+              const isPulsing = lastRevealedId === t.nominee.id;
+              return (
+                <div
+                  key={t.nominee.id}
+                  className={[
+                    'avrm__tally',
+                    'avrm__tally--visible',
+                    isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                    isPulsing ? 'avrm__tally--pulse' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
+                  <span className="avrm__tally-name">{t.nominee.name}</span>
+                  <div className="avrm__tally-bar-wrap">
+                    <div
+                      className="avrm__tally-bar"
+                      style={{
+                        width: shown > 0
+                          ? `${Math.max(
+                            votesNeededForEviction > 0
+                              ? Math.round((shown / votesNeededForEviction) * 100)
+                              : 0,
+                            MIN_BAR_PCT,
+                          )}%`
+                          : '0%',
+                      }}
+                    />
+                  </div>
+                  <span className="avrm__tally-count">{shown}</span>
                 </div>
-              </Fragment>
-            );
-          })}
-        </div>
-
-        {variant === 'tv' && (
-          <div className="avrm__commentary avrm__commentary--tv" role="status" aria-live="polite">
-            {tvCommentary}
+              );
+            })}
           </div>
         )}
 
