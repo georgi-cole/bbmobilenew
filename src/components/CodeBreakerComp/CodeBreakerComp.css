@@ -672,10 +672,38 @@
 }
 
 .cb__lb-name {
-  flex: 1;
   font-size: 0.94rem;
   font-weight: 600;
   color: #d6e6f8;
+}
+
+.cb__lb-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cb__lb-meta {
+  font-size: 0.78rem;
+  color: #90a9c8;
+  font-variant-numeric: tabular-nums;
+}
+
+.cb__lb-score-wrap {
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cb__lb-score-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7e99bb;
 }
 
 .cb__lb-score {

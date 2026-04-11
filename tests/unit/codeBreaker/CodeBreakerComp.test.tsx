@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CodeBreakerComp from '../../../src/components/CodeBreakerComp/CodeBreakerComp';
 import {
+  computeAllAiSolveProfiles,
   computeSolvedScore,
   generateSecretCode,
 } from '../../../src/components/CodeBreakerComp/codeBreakerLogic';
@@ -30,6 +31,21 @@ function renderCodeBreaker(props: Partial<ComponentProps<typeof CodeBreakerComp>
   );
 
   return { ...view, onFinish };
+}
+
+function makeParticipants() {
+  return [
+    { id: 'human', name: 'You', isHuman: true, precomputedScore: 0, previousPR: null },
+    { id: 'ai-1', name: 'Cipher', isHuman: false, precomputedScore: 0, previousPR: null },
+    { id: 'ai-2', name: 'Tumbler', isHuman: false, precomputedScore: 0, previousPR: null },
+  ];
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 describe('CodeBreakerComp', () => {
@@ -104,5 +120,56 @@ describe('CodeBreakerComp', () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith(computeSolvedScore(2, 15_000));
     expect(screen.getByText('Vault breached in 2 attempts')).toBeInTheDocument();
+  });
+
+  it('shows the competition scoreboard before completing the minigame flow', async () => {
+    const onComplete = vi.fn();
+
+    renderCodeBreaker({
+      onFinish: undefined,
+      onComplete,
+      participantIds: ['human', 'ai-1', 'ai-2'],
+      participants: makeParticipants(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Combination' }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    const secretCode = generateSecretCode(42);
+    secretCode.forEach((digit, index) => {
+      const delta = digit % 10;
+      for (let step = 0; step < delta; step++) {
+        fireEvent.click(screen.getByRole('button', { name: `Increase digit ${index + 1}` }));
+      }
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Combination' }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_800);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByText('🔓 Vault Cracked!')).toBeInTheDocument();
+    expect(screen.getByText('Your run now ranks by score, based on attempts and elapsed time.')).toBeInTheDocument();
+    expect(screen.getByText('Attempts')).toBeInTheDocument();
+    expect(screen.getByText('Elapsed')).toBeInTheDocument();
+    expect(screen.getAllByText('Score').length).toBeGreaterThan(0);
+    expect(screen.getByText('You (You)')).toBeInTheDocument();
+    const aiSolveProfiles = computeAllAiSolveProfiles(42, ['human', 'ai-1', 'ai-2'], 'human');
+    expect(screen.getByText('Cipher')).toBeInTheDocument();
+    expect(
+      screen.getByText(`${aiSolveProfiles['ai-1'].attempts} attempts • ${formatElapsed(aiSolveProfiles['ai-1'].elapsedMs)}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tumbler')).toBeInTheDocument();
+    expect(
+      screen.getByText(`${aiSolveProfiles['ai-2'].attempts} attempts • ${formatElapsed(aiSolveProfiles['ai-2'].elapsedMs)}`),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

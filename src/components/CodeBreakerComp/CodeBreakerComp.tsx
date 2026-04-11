@@ -32,7 +32,7 @@ import {
   evaluateGuess,
   generateSecretCode,
   computeSolvedScore,
-  computeAllAiScores,
+  computeAllAiSolveProfiles,
   rankScores,
   type GuessResult,
 } from './codeBreakerLogic';
@@ -78,6 +78,10 @@ function getAttemptSummary(result: GuessResult): string {
   return `${exactLabel} • ${closeLabel}`;
 }
 
+function formatAttemptCount(attempts: number): string {
+  return `${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}`;
+}
+
 export default function CodeBreakerComp({
   participantIds = [],
   participants = [],
@@ -93,9 +97,20 @@ export default function CodeBreakerComp({
   const [secretCode] = useState(() => generateSecretCode(seed));
   const humanParticipant = participants.find((p) => p.isHuman) ?? null;
   const humanId = humanParticipant?.id ?? null;
-  const [aiScores] = useState<Record<string, number>>(() =>
-    computeAllAiScores(seed, participantIds, humanId, DEFAULT_ELAPSED_SCORE_CAP_MS),
-  );
+  const [{ aiSolveProfiles, aiScores }] = useState(() => {
+    const profiles = computeAllAiSolveProfiles(
+      seed,
+      participantIds,
+      humanId,
+      DEFAULT_ELAPSED_SCORE_CAP_MS,
+    );
+    return {
+      aiSolveProfiles: profiles,
+      aiScores: Object.fromEntries(
+        Object.entries(profiles).map(([id, profile]) => [id, profile.score]),
+      ),
+    };
+  });
 
   const [currentDigits, setCurrentDigits] = useState<number[]>(Array(CODE_LENGTH).fill(0));
   const [guessHistory, setGuessHistory] = useState<GuessResult[]>([]);
@@ -280,13 +295,6 @@ export default function CodeBreakerComp({
     onComplete?.();
   }, [onComplete]);
 
-  const leaderboard = (() => {
-    if (phase !== 'results') return [];
-    const allScores: Record<string, number> = { ...aiScores };
-    if (humanId) allScores[humanId] = humanScore;
-    return rankScores(allScores, participantIds);
-  })();
-
   const isDone = phase === 'solved';
   const attempts = guessHistory.length;
   const lastGuess = guessHistory[guessHistory.length - 1];
@@ -323,6 +331,25 @@ export default function CodeBreakerComp({
     .filter(Boolean)
     .join(' ');
 
+  const leaderboard = (() => {
+    if (phase !== 'results') return [];
+    const allScores: Record<string, number> = { ...aiScores };
+    if (humanId) allScores[humanId] = humanScore;
+    return rankScores(allScores, participantIds).map((entry) => {
+      const participant = participants.find((candidate) => candidate.id === entry.id);
+      const isYou = entry.id === humanId;
+      const solveProfile = isYou
+        ? { attempts, elapsedMs, score: humanScore }
+        : aiSolveProfiles[entry.id];
+      return {
+        ...entry,
+        participantName: participant?.name ?? entry.id,
+        isYou,
+        solveProfile,
+      };
+    });
+  })();
+
   if (phase === 'results') {
     return (
       <div className="cb">
@@ -355,15 +382,13 @@ export default function CodeBreakerComp({
 
           <ol className="cb__leaderboard">
             {leaderboard.map((entry, i) => {
-              const participant = participants.find((candidate) => candidate.id === entry.id);
               const isWinner = i === 0;
               const isLast = i === leaderboard.length - 1;
-              const isYou = entry.id === humanId;
               const cls = [
                 'cb__lb-entry',
                 isWinner ? 'cb__lb-entry--winner' : '',
                 isLast ? 'cb__lb-entry--last' : '',
-                isYou ? 'cb__lb-entry--you' : '',
+                entry.isYou ? 'cb__lb-entry--you' : '',
               ]
                 .filter(Boolean)
                 .join(' ');
@@ -373,11 +398,21 @@ export default function CodeBreakerComp({
                   <span className="cb__lb-rank">
                     {i < 3 ? MEDALS[i] : `${i + 1}.`}
                   </span>
-                  <span className="cb__lb-name">
-                    {participant?.name ?? entry.id}
-                    {isYou ? ' (You)' : ''}
+                  <span className="cb__lb-details">
+                    <span className="cb__lb-name">
+                      {entry.participantName}
+                      {entry.isYou ? ' (You)' : ''}
+                    </span>
+                    {entry.solveProfile && (
+                      <span className="cb__lb-meta">
+                        {formatAttemptCount(entry.solveProfile.attempts)} • {formatElapsed(entry.solveProfile.elapsedMs)}
+                      </span>
+                    )}
                   </span>
-                  <span className="cb__lb-score">{entry.score}</span>
+                  <span className="cb__lb-score-wrap">
+                    <span className="cb__lb-score-label">Score</span>
+                    <span className="cb__lb-score">{entry.score}</span>
+                  </span>
                 </li>
               );
             })}

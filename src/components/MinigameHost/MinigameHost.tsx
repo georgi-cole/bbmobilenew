@@ -35,6 +35,8 @@ import type { BlackjackTournamentCompetitionType } from '../../features/blackjac
 import RiskWheelComp from '../RiskWheelComp/RiskWheelComp';
 import type { RiskWheelCompetitionType } from '../../features/riskWheel/riskWheelSlice';
 import WildcardWesternComp from '../WildcardWesternComp/WildcardWesternComp';
+import CodeBreakerComp from '../CodeBreakerComp/CodeBreakerComp';
+import type { CodeBreakerPrizeType } from '../CodeBreakerComp/CodeBreakerComp';
 import TetrisComp from '../TetrisComp/TetrisComp';
 import type { TetrisPrizeType } from '../../features/tetris/tetrisSlice';
 import TiltLabyrinthComp from '../TiltLabyrinthComp/TiltLabyrinthComp';
@@ -420,6 +422,17 @@ export default function MinigameHost({
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as 'LOH' | 'POS' ?? 'LOH'}
+                  seed={seed}
+                  onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'CodeBreaker') {
+              return (
+                <CodeBreakerComp
+                  participantIds={participantIds}
+                  participants={participants}
+                  prizeType={gameOptions?.prizeType as CodeBreakerPrizeType ?? 'LOH'}
                   seed={seed}
                   onComplete={handleReactComplete}
                 />
