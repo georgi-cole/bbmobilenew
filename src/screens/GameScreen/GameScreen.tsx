@@ -129,10 +129,16 @@ const AI_TIE_RESULT_DELAY_MS = 5000
 
 type PendingPublicSaveResult = {
   savedId: string
-  supportPercent: number | null
+  supportPercent?: number
 }
 
 type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
+
+type AiTiebreakContext = {
+  lohName: string
+  evictee: Player
+  resultTitle: string
+}
 
 /**
  * GameScreen — main gameplay view.
@@ -193,6 +199,7 @@ export default function GameScreen() {
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
+  const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
   // When true, the confessional prompt is shown after the eviction animation
   // instead of inline with the vote results (post-eviction mode).
   const isPostEvictionConfessionalModeRef = useRef(false)
@@ -783,7 +790,7 @@ export default function GameScreen() {
       .map((id) => game.players.find((player) => player.id === id)?.name)
       .filter((name): name is string => Boolean(name))
     const subtitle =
-      pendingPublicSaveResult.supportPercent !== null && remainingNomineeNames.length === 2
+      pendingPublicSaveResult.supportPercent != null && remainingNomineeNames.length === 2
         ? `${savedPlayer.name} was saved with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support. ${remainingNomineeNames.join(' and ')} are still in danger.`
         : remainingNomineeNames.length === 2
           ? `${savedPlayer.name} was saved by the public. ${remainingNomineeNames.join(' and ')} are still in danger.`
@@ -801,7 +808,7 @@ export default function GameScreen() {
     if (!publicSaveWinnerId) return
     setPendingPublicSaveResult({
       savedId: publicSaveWinnerId,
-      supportPercent: publicSaveApprovals[publicSaveWinnerId] ?? null,
+      supportPercent: publicSaveApprovals[publicSaveWinnerId],
     })
   }, [publicSaveApprovals, publicSaveWinnerId])
 
@@ -1541,7 +1548,7 @@ export default function GameScreen() {
     return game.players.find((p) => p.id === evicteeIds[0]) ?? null
   }, [game.voteResults, game.pendingEviction, game.players, humanIsHoH])
 
-  const aiTiebreakContext = useMemo(() => {
+  const aiTiebreakContext = useMemo<AiTiebreakContext | null>(() => {
     if (humanIsHoH || !game.voteResults || !game.pendingEviction?.evicteeId) return null
     let maxVotes = -1
     let topCount = 0
@@ -1565,6 +1572,7 @@ export default function GameScreen() {
       (sum, [id, count]) => (id !== evictee.id ? sum + count : sum),
       0,
     )
+    // The LOH's tie-break choice acts like the deciding extra vote for the evictee.
     return {
       lohName,
       evictee,
@@ -1575,12 +1583,12 @@ export default function GameScreen() {
   }, [game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
 
   const aiTiebreakAnnouncement = useMemo<Announcement | null>(() => {
-    if (!aiTiebreakStage || !aiTiebreakContext) return null
+    if (!aiTiebreakStage || !activeAiTiebreakContext) return null
     if (aiTiebreakStage === 'tie') {
       return {
         key: 'loh_tiebreak_tie',
         title: 'It’s a Tie!',
-        subtitle: `${aiTiebreakContext.lohName} must break the tie.`,
+        subtitle: `${activeAiTiebreakContext.lohName} must break the tie.`,
         isLive: true,
         autoDismissMs: AI_TIE_STAGE_DELAY_MS,
       }
@@ -1588,7 +1596,7 @@ export default function GameScreen() {
     if (aiTiebreakStage === 'deciding') {
       return {
         key: 'loh_tiebreak_deciding',
-        title: `${aiTiebreakContext.lohName} is making a decision…`,
+        title: `${activeAiTiebreakContext.lohName} is making a decision…`,
         subtitle: 'Please wait while the LOH decides who to evict.',
         isLive: true,
         autoDismissMs: AI_TIE_DECIDING_DELAY_MS,
@@ -1597,7 +1605,7 @@ export default function GameScreen() {
     if (aiTiebreakStage === 'decision') {
       return {
         key: 'loh_tiebreak_decision',
-        title: `The LOH chose to evict ${aiTiebreakContext.evictee.name}.`,
+        title: `The LOH chose to evict ${activeAiTiebreakContext.evictee.name}.`,
         subtitle: '',
         isLive: true,
         autoDismissMs: AI_TIE_DECISION_DELAY_MS,
@@ -1605,23 +1613,25 @@ export default function GameScreen() {
     }
     return {
       key: 'loh_tiebreak_result',
-      title: aiTiebreakContext.resultTitle,
-      subtitle: `${aiTiebreakContext.evictee.name}, you have been eliminated from The Big Eye house.`,
+      title: activeAiTiebreakContext.resultTitle,
+      subtitle: `${activeAiTiebreakContext.evictee.name}, you have been eliminated from The Big Eye house.`,
       isLive: true,
       autoDismissMs: AI_TIE_RESULT_DELAY_MS,
     }
-  }, [aiTiebreakContext, aiTiebreakStage])
+  }, [activeAiTiebreakContext, aiTiebreakStage])
 
   const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
     console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
     if (!humanIsHoH) {
+      if (!aiTiebreakContext) return
+      setActiveAiTiebreakContext(aiTiebreakContext)
       dispatch(dismissVoteResults())
       setAiTiebreakStage('tie')
     } else {
       // Human LOH: dismiss the vote results modal — showTieBreakModal will appear.
       handleVoteResultsDone()
     }
-  }, [dispatch, humanIsHoH, handleVoteResultsDone])
+  }, [aiTiebreakContext, dispatch, humanIsHoH, handleVoteResultsDone])
 
   const handleAiTiebreakAnnouncementDismiss = useCallback(() => {
     if (aiTiebreakStage === 'tie') {
@@ -1637,6 +1647,7 @@ export default function GameScreen() {
       return
     }
     setAiTiebreakStage(null)
+    setActiveAiTiebreakContext(null)
   }, [aiTiebreakStage])
 
   const publicEvictionTiebreak = useMemo(() => {
