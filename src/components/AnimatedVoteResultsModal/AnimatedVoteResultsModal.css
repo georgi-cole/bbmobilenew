@@ -242,8 +242,8 @@
   overflow: hidden;
   background: rgba(8, 10, 19, 0.88);
 }
-
 .avrm--tv .pa--lg {
+  /* PlayerAvatar provides the pa--lg size; TV mode stretches it to the ring shell. */
   width: 100%;
   height: 100%;
   border-width: 1px;

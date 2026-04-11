@@ -65,7 +65,9 @@ const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
 
 interface VoteRingAvatarProps {
   player: Player;
+  /** Vote share as a 0..1 fraction for the animated SVG ring. */
   progress: number;
+  /** Coral for the current leader/evictee, violet for the other nominees. */
   tone: 'leading' | 'trailing';
 }
 
