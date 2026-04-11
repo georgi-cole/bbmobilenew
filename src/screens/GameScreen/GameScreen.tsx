@@ -1623,7 +1623,12 @@ export default function GameScreen() {
   const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
     console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
     if (!humanIsHoH) {
-      if (!aiTiebreakContext) return
+      if (!aiTiebreakContext) {
+        // If we cannot build the AI tie-break context, still dismiss the vote
+        // results flow so the UI does not remain stuck in the tied state.
+        handleVoteResultsDone()
+        return
+      }
       setActiveAiTiebreakContext(aiTiebreakContext)
       dispatch(dismissVoteResults())
       setAiTiebreakStage('tie')
