@@ -107,7 +107,13 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
     const selectedNames = selected
       .map((id) => options.find((player) => player.id === id)?.name)
       .filter((name): name is string => Boolean(name));
-    onDecisionCommitted?.(`I nominate ${formatNameList(selectedNames)}.`);
+    const autoNomineeName = autoNomineeId
+      ? options.find((player) => player.id === autoNomineeId)?.name ?? null
+      : null;
+    const nominationSummary = autoNomineeName
+      ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is automatically added as the public auto-nominee.`
+      : `I nominate ${formatNameList(selectedNames)}.`;
+    onDecisionCommitted?.(nominationSummary);
     dispatch(commitNominees(selected));
   }
 

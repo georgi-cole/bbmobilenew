@@ -13,7 +13,18 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type FormEvent } from 'react';
 import { useBlocker, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
+import {
+  addTvEvent,
+  selfEvict,
+  offerSecretMission,
+  acceptSecretMission,
+  reshuffleSecretMission,
+  declineSecretMission,
+  updateMissionTaskProgress,
+  addUniqueDayToTask,
+  claimMissionReward,
+  selectAlivePlayers,
+} from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
 import { getConfessionalDecisionPresentation } from './confessionalDecisionPresentation';
@@ -42,6 +53,7 @@ type TicTacToeCell = TicTacToeMark | null;
 
 export const DIARY_ROOM_ENTRY_OVERLAY_MS = 1320;
 const CONFESSIONAL_LOCKED_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/confessional-locked-door.png`;
+const BIG_EYE_DECISION_CONFIRMATION = 'Your choice has been recorded. The ceremony will proceed.';
 
 /** A single message in the private chat. */
 interface ChatMessage {
@@ -366,6 +378,7 @@ export default function DiaryRoom() {
   const secretMission = useAppSelector((s) => s.game.secretMission);
   const currentWeekForMission = useAppSelector((s) => s.game.week);
   const players = useAppSelector((s) => s.game.players);
+  const alivePlayers = useAppSelector(selectAlivePlayers);
   // PR 3 — read active power states so the Confessional can display status.
   const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
@@ -420,9 +433,9 @@ export default function DiaryRoom() {
     return getConfessionalDecisionPresentation(
       activeConfessionalDecision,
       gameState,
-      players,
+      alivePlayers,
     );
-  }, [activeConfessionalDecision, gameState, players]);
+  }, [activeConfessionalDecision, alivePlayers, gameState]);
 
   const pushBigEyeMessage = useCallback((text: string) => {
     const nextMessage: ChatMessage = {
@@ -814,8 +827,14 @@ export default function DiaryRoom() {
       timestamp: Date.now(),
       status: 'seen',
     };
+    const bigEyeConfirmationMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'bb',
+      text: BIG_EYE_DECISION_CONFIRMATION,
+      timestamp: Date.now(),
+    };
     setMessages((prev) => {
-      const updated = [...prev, userDecisionMsg];
+      const updated = [...prev, userDecisionMsg, bigEyeConfirmationMsg];
       saveChat(playerId, updated);
       return updated;
     });

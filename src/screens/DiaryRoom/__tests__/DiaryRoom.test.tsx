@@ -535,6 +535,7 @@ describe('DiaryRoom', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp(targetName, 'i') }));
 
     expect(screen.getByText(new RegExp(`I choose ${targetName}`, 'i'))).toBeTruthy();
+    expect(screen.getByText(/your choice has been recorded\. the ceremony will proceed\./i)).toBeTruthy();
     expect(store.getState().game.awaitingHumanVote).toBe(false);
   });
 
@@ -558,7 +559,44 @@ describe('DiaryRoom', () => {
     fireEvent.click(screen.getByRole('button', { name: /use power/i }));
 
     expect(screen.getByText(/i will use power of safety/i)).toBeTruthy();
+    expect(screen.getByText(/your choice has been recorded\. the ceremony will proceed\./i)).toBeTruthy();
     expect(screen.getByText(/choose which nominee you want to save/i)).toBeTruthy();
+  });
+
+  it('mentions the public auto-nominee in the appended nomination summary', () => {
+    const { store } = renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        const userId = game.players.find((player) => player.isUser)?.id ?? game.players[0].id;
+        appStore.dispatch(hydrateGame({
+          ...game,
+          phase: 'nomination_results',
+          lohId: userId,
+          awaitingNominations: true,
+          publicModeEnabled: true,
+          lastHohCompFinisherId: game.players[3].id,
+        }));
+      },
+    });
+
+    const state = store.getState().game;
+    const lohId = state.lohId;
+    const autoNomineeId = state.lastHohCompFinisherId;
+    const manualChoices = state.players
+      .filter((player) => player.status === 'active' && player.id !== lohId && player.id !== autoNomineeId)
+      .slice(0, 2);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(manualChoices[0].name, 'i') }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(manualChoices[1].name, 'i') }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm nominations/i }));
+
+    const autoNomineeName = state.players.find((player) => player.id === autoNomineeId)?.name ?? 'Unknown';
+
+    expect(
+      screen.getByText(new RegExp(`${autoNomineeName} is automatically added as the public auto-nominee`, 'i')),
+    ).toBeTruthy();
+    expect(screen.getByText(/your choice has been recorded\. the ceremony will proceed\./i)).toBeTruthy();
+    expect(store.getState().game.nomineeIds).toContain(autoNomineeId);
   });
 
   it('updates the main TV message after declining the confessional vote breakdown and returning to the game', async () => {

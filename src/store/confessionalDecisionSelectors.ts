@@ -13,6 +13,7 @@
  *    the selector only influences *where* the UI renders the decision.
  */
 
+import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import type { Phase } from '../types';
 
@@ -60,10 +61,9 @@ const ENDGAME_PHASES = new Set<Phase>([
  * Priority order matches the canonical phase sequence:
  *   nominations → pos_decision / save / replacement → vote / double-vote → tie-break
  */
-export function selectActiveConfessionalDecision(
-  state: RootState,
+function getActiveConfessionalDecisionFromGame(
+  game: RootState['game'],
 ): ActiveConfessionalDecision | null {
-  const game = state.game;
   if (!game) return null;
 
   const { phase, week } = game;
@@ -118,3 +118,10 @@ export function selectActiveConfessionalDecision(
 
   return null;
 }
+
+const selectGame = (state: RootState) => state.game;
+
+export const selectActiveConfessionalDecision = createSelector(
+  [selectGame],
+  (game) => getActiveConfessionalDecisionFromGame(game),
+);

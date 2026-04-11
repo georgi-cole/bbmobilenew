@@ -23,8 +23,14 @@ export function getConfessionalDecisionPresentation(
 ): DecisionPresentation {
   const tiedIds = game.tiedNomineeIds ?? game.nomineeIds;
   const powerName = getConfessionalPowerName(game);
+  const alivePlayerIds = alivePlayers.map((player) => player.id).join(',');
 
   let prompt = 'The Big Eye is waiting for your decision.';
+  const keyParts = [
+    decision.type,
+    String(decision.week),
+    decision.phase,
+  ];
 
   switch (decision.type) {
     case 'nominations': {
@@ -32,27 +38,50 @@ export function getConfessionalDecisionPresentation(
       prompt = required === 3
         ? 'Choose the three houseguests you want to nominate for the Double Elimination.'
         : 'Choose the two houseguests you want to nominate.';
+      keyParts.push(
+        `required=${required}`,
+        `loh=${game.lohId ?? 'none'}`,
+        `auto=${game.publicModeEnabled && !game.doubleEviction?.weekActive
+          ? (game.lastHohCompFinisherId ?? 'none')
+          : 'none'}`,
+        `alive=${alivePlayerIds}`,
+      );
       break;
     }
     case 'eviction_vote':
       prompt = 'Choose who you want to eliminate.';
+      keyParts.push(`nominees=${game.nomineeIds.join(',')}`);
       break;
     case 'double_vote_offer':
       prompt = 'You have a stored Double Vote. Do you want to use it now?';
+      keyParts.push(`offer=${game.week}`);
       break;
     case 'double_vote':
       prompt = 'Choose your two eviction votes. You may vote for the same nominee twice.';
+      keyParts.push(`nominees=${game.nomineeIds.join(',')}`);
       break;
     case 'pos_decision':
       prompt = `Do you want to use ${powerName}?`;
+      keyParts.push(
+        `power=${game.specialVeto?.activeType ?? 'standard'}`,
+        `winner=${game.posWinnerId ?? 'none'}`,
+      );
       break;
     case 'vip_second_use':
       prompt = 'Do you want to use Double Trouble a second time?';
+      keyParts.push(
+        `power=${game.specialVeto?.activeType ?? 'none'}`,
+        `winner=${game.posWinnerId ?? 'none'}`,
+      );
       break;
     case 'pos_save_target':
       prompt = game.specialVeto?.awaitingVipSecondSaveTarget
         ? 'Choose the second nominee you want to save.'
         : 'Choose which nominee you want to save.';
+      keyParts.push(
+        `nominees=${game.nomineeIds.join(',')}`,
+        `vipSecond=${game.specialVeto?.awaitingVipSecondSaveTarget ? 'yes' : 'no'}`,
+      );
       break;
     case 'replacement_nominee':
       prompt = game.specialVeto?.awaitingCoupReplacement1
@@ -60,6 +89,18 @@ export function getConfessionalDecisionPresentation(
         : game.specialVeto?.awaitingCoupReplacement2
           ? 'Choose the second replacement nominee.'
           : 'Choose the replacement nominee.';
+      keyParts.push(
+        `mode=${game.specialVeto?.awaitingCoupReplacement1
+          ? 'coup1'
+          : game.specialVeto?.awaitingCoupReplacement2
+            ? 'coup2'
+            : game.specialVeto?.awaitingHolderReplacement
+              ? 'holder'
+              : 'standard'}`,
+        `nominees=${game.nomineeIds.join(',')}`,
+        `saved=${game.povSavedId ?? 'none'}`,
+        `alive=${alivePlayerIds}`,
+      );
       break;
     case 'tie_break': {
       const multiSelectCount = game.doubleEviction?.weekActive
@@ -71,13 +112,16 @@ export function getConfessionalDecisionPresentation(
       prompt = multiSelectCount > 1
         ? `Choose the ${multiSelectCount} houseguests you want to eliminate.`
         : 'Break the tie by choosing who you want to eliminate.';
+      keyParts.push(
+        `tied=${tiedIds.join(',')}`,
+        `required=${multiSelectCount}`,
+      );
       break;
     }
     default:
       break;
   }
 
-  const availableNames = new Set(alivePlayers.map((player) => player.name));
-  const key = `${decision.type}:${decision.week}:${decision.phase}:${prompt}:${availableNames.size}`;
+  const key = keyParts.join(':');
   return { key, prompt };
 }
