@@ -99,22 +99,21 @@
 }
 
 .avrm--tv .avrm__title {
-  font-size: clamp(0.62rem, 1.8vw, 0.82rem);
+  font-size: clamp(0.54rem, 1.5vw, 0.72rem);
   letter-spacing: 0.18em;
   color: #f7d9d9;
 }
 
 .avrm__live-badge {
   margin-left: auto;
-  padding: 0.22rem 0.42rem;
+  padding: 0.16rem 0.34rem;
   border-radius: 999px;
   border: 0;
   background: rgba(255, 74, 74, 0.18);
   color: #ffd9d9;
-  font-size: 0.54rem;
+  font-size: 0.46rem;
   font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   box-shadow: 0 0 14px rgba(255, 74, 74, 0.18);
 }
 
@@ -302,16 +301,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.avrm--tv .avrm__tally-name {
-  max-width: 100%;
-  width: 100%;
-  font-size: clamp(0.55rem, 1.7vw, 0.7rem);
-  line-height: 0.95;
-  font-weight: 700;
-  text-align: center;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .avrm__tally-bar-wrap {

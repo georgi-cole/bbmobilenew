@@ -262,7 +262,7 @@ export default function AnimatedVoteResultsModal({
         <header className="avrm__header">
           {variant !== 'tv' && <span className="avrm__header-icon">🗳️</span>}
           <h2 className="avrm__title">VOTE RESULTS</h2>
-          {variant === 'tv' && <span className="avrm__live-badge">LIVE FEED</span>}
+          {variant === 'tv' && <span className="avrm__live-badge">Live</span>}
         </header>
 
         {variant === 'tv' ? (
@@ -300,7 +300,7 @@ export default function AnimatedVoteResultsModal({
                         progress={totalVotes > 0 ? shown / totalVotes : 0}
                         tone={isLeading ? 'leading' : 'trailing'}
                       />
-                      <span className="avrm__tally-name">{t.nominee.name}</span>
+                      <span className="visually-hidden">{t.nominee.name}</span>
                       <span
                         className="avrm__tally-count"
                         aria-label={`${shown} vote${shown === 1 ? '' : 's'}`}
