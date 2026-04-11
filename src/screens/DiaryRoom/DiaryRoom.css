@@ -653,6 +653,17 @@
   border-bottom-left-radius: 4px;
 }
 
+.diary-room__bubble--decision {
+  max-width: min(92%, 540px);
+  background:
+    linear-gradient(160deg, rgba(20, 26, 52, 0.98) 0%, rgba(13, 16, 34, 0.98) 100%);
+  border-color: rgba(129, 140, 248, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(129, 140, 248, 0.08),
+    0 14px 30px rgba(15, 23, 42, 0.34),
+    0 0 28px rgba(99, 102, 241, 0.12);
+}
+
 .diary-room__bubble-author {
   font-size: 0.68rem;
   font-weight: 700;

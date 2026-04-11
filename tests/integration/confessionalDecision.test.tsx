@@ -397,13 +397,13 @@ describe('DiaryRoom — confessional decision panel', () => {
   it('shows the decision zone when a ceremony decision is pending', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: true });
     renderDiaryRoom(store);
-    expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
+    expect(screen.getByTestId('confessional-decision-message')).toBeTruthy();
   });
 
   it('does NOT show the decision zone when no ceremony decision is pending', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: false });
     renderDiaryRoom(store);
-    expect(screen.queryByTestId('confessional-decision-zone')).toBeNull();
+    expect(screen.queryByTestId('confessional-decision-message')).toBeNull();
   });
 
   it('locks the back button when a ceremony decision is pending', () => {
@@ -427,17 +427,17 @@ describe('DiaryRoom — confessional decision panel', () => {
     });
     renderDiaryRoom(store);
     expect(screen.queryByTestId('diary-room-back-locked')).toBeNull();
-    expect(screen.queryByTestId('confessional-decision-zone')).toBeNull();
+    expect(screen.queryByTestId('confessional-decision-message')).toBeNull();
     expect(screen.getByRole('button', { name: /go back/i })).toBeTruthy();
   });
 
-  it('shows the eviction vote panel heading for eviction_vote decision', () => {
+  it('shows the eviction vote prompt inside the chat for eviction_vote decision', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: true });
     renderDiaryRoom(store);
-    expect(screen.getByText(/Live Elimination Vote/i)).toBeTruthy();
+    expect(screen.getByText(/Choose who you want to eliminate/i)).toBeTruthy();
   });
 
-  it('shows the nomination panel heading for nominations decision', () => {
+  it('shows the nomination prompt inside the chat for nominations decision', () => {
     const players = buildPlayers();
     const store = makeStore({
       phase: 'nomination_results',
@@ -446,36 +446,36 @@ describe('DiaryRoom — confessional decision panel', () => {
       players,
     });
     renderDiaryRoom(store);
-    expect(screen.getByText(/Nomination Ceremony/i)).toBeTruthy();
+    expect(screen.getByText(/Choose the two houseguests you want to nominate/i)).toBeTruthy();
   });
 
-  it('shows the POS decision panel heading for pos_decision', () => {
+  it('shows the POS decision prompt inside the chat for pos_decision', () => {
     const store = makeStore({
       phase: 'pos_ceremony_results',
       awaitingPovDecision: true,
       posWinnerId: 'p1',
     });
     renderDiaryRoom(store);
-    expect(screen.getAllByText(/Power of Safety/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Do you want to use Power of Safety/i)).toBeTruthy();
   });
 
-  it('shows the double vote offer panel heading for double_vote_offer', () => {
+  it('shows the double vote offer prompt inside the chat for double_vote_offer', () => {
     const store = makeStore({
       phase: 'live_vote',
       awaitingHumanVote: true,
       awaitingDoubleVoteOffer: true,
     });
     renderDiaryRoom(store);
-    expect(screen.getByText(/Secret Power/i)).toBeTruthy();
+    expect(screen.getByText(/You have a stored Double Vote/i)).toBeTruthy();
   });
 
-  it('shows the double vote panel heading for double_vote type', () => {
+  it('shows the double vote prompt inside the chat for double_vote type', () => {
     const store = makeStore({
       phase: 'live_vote',
       awaitingHumanVote: true,
       humanDoubleVoteActive: true,
     });
     renderDiaryRoom(store);
-    expect(screen.getByText(/Double Vote/i)).toBeTruthy();
+    expect(screen.getByText(/Choose your two eviction votes/i)).toBeTruthy();
   });
 });

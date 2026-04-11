@@ -10,12 +10,24 @@
  * tab navigations within the same session.
  */
 
-import { useState, useEffect, useRef, useCallback, type CSSProperties, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type FormEvent } from 'react';
 import { useBlocker, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addTvEvent, selfEvict, offerSecretMission, acceptSecretMission, reshuffleSecretMission, declineSecretMission, updateMissionTaskProgress, addUniqueDayToTask, claimMissionReward } from '../../store/gameSlice';
+import {
+  addTvEvent,
+  selfEvict,
+  offerSecretMission,
+  acceptSecretMission,
+  reshuffleSecretMission,
+  declineSecretMission,
+  updateMissionTaskProgress,
+  addUniqueDayToTask,
+  claimMissionReward,
+  selectAlivePlayers,
+} from '../../store/gameSlice';
 import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import ConfessionalDecisionPanel from './ConfessionalDecisionPanel';
+import { getConfessionalDecisionPresentation } from './confessionalDecisionPresentation';
 import { applyInfluenceDelta } from '../../social/socialSlice';
 import type { MissionRewardType } from '../../bb/secretMission';
 import { MYSTERY_BOX_POOL, doubleVoteTimingMessage } from '../../bb/secretMission';
@@ -41,6 +53,7 @@ type TicTacToeCell = TicTacToeMark | null;
 
 export const DIARY_ROOM_ENTRY_OVERLAY_MS = 1320;
 const CONFESSIONAL_LOCKED_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/confessional-locked-door.png`;
+const BIG_EYE_DECISION_CONFIRMATION = 'Your choice has been recorded. The ceremony will proceed.';
 
 /** A single message in the private chat. */
 interface ChatMessage {
@@ -50,6 +63,8 @@ interface ChatMessage {
   timestamp: number;
   /** Only present on user messages. */
   status?: MessageStatus;
+  /** Present when a Big Eye message is the active confessional decision node. */
+  decisionKey?: string;
 }
 
 // ─── Summary message pool (10 generic messages, no private content) ───────────
@@ -285,6 +300,8 @@ interface ChatBubblesProps {
   msgs: ChatMessage[];
   playerName: string;
   endRef: React.RefObject<HTMLDivElement | null>;
+  activeDecisionKey?: string | null;
+  activeDecisionPanel?: React.ReactNode;
 }
 
 /** Renders the status indicator for a user message. */
@@ -306,29 +323,43 @@ function MessageStatusIcon({ status }: { status?: MessageStatus }) {
 }
 
 /** Renders private chat messages as styled bubbles. */
-function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
+function ChatBubbles({
+  msgs,
+  playerName,
+  endRef,
+  activeDecisionKey,
+  activeDecisionPanel,
+}: ChatBubblesProps) {
   return (
     <div className="diary-room__chat" aria-live="polite" aria-label="Confessional chat">
       {msgs.length === 0 ? (
         <p className="diary-room__empty">No messages yet. Speak freely.</p>
       ) : (
-        msgs.map((msg) => (
-          <div
-            key={msg.id}
-            className={`diary-room__bubble diary-room__bubble--${msg.role}`}
-          >
-            <span className="diary-room__bubble-author">
-              {msg.role === 'user' ? playerName : '📺 The Big Eye'}
-            </span>
-            <span className="diary-room__bubble-text">{msg.text}</span>
-            <div className="diary-room__bubble-footer">
-              <time className="diary-room__bubble-time">
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </time>
-              {msg.role === 'user' && <MessageStatusIcon status={msg.status} />}
+        msgs.map((msg) => {
+          const isActiveDecision = Boolean(
+            msg.role === 'bb' && msg.decisionKey && activeDecisionKey && msg.decisionKey === activeDecisionKey,
+          );
+
+          return (
+            <div
+              key={msg.id}
+              className={`diary-room__bubble diary-room__bubble--${msg.role}${isActiveDecision ? ' diary-room__bubble--decision' : ''}`}
+              data-testid={isActiveDecision ? 'confessional-decision-message' : undefined}
+            >
+              <span className="diary-room__bubble-author">
+                {msg.role === 'user' ? playerName : '📺 The Big Eye'}
+              </span>
+              <span className="diary-room__bubble-text">{msg.text}</span>
+              {isActiveDecision && activeDecisionPanel}
+              <div className="diary-room__bubble-footer">
+                <time className="diary-room__bubble-time">
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </time>
+                {msg.role === 'user' && <MessageStatusIcon status={msg.status} />}
+              </div>
             </div>
-          </div>
-        ))
+          );
+        })
       )}
       <div ref={endRef} />
     </div>
@@ -338,6 +369,7 @@ function ChatBubbles({ msgs, playerName, endRef }: ChatBubblesProps) {
 export default function DiaryRoom() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const gameState = useAppSelector((s) => s.game);
   const phase = useAppSelector((s) => s.game.phase);
   const seed = useAppSelector((s) => s.game.seed);
   const userPlayer = useAppSelector((s) => s.game.players.find((p) => p.isUser));
@@ -346,6 +378,7 @@ export default function DiaryRoom() {
   const secretMission = useAppSelector((s) => s.game.secretMission);
   const currentWeekForMission = useAppSelector((s) => s.game.week);
   const players = useAppSelector((s) => s.game.players);
+  const alivePlayers = useAppSelector(selectAlivePlayers);
   // PR 3 — read active power states so the Confessional can display status.
   const awaitingDoubleVoteOffer = useAppSelector((s) => s.game.awaitingDoubleVoteOffer);
   const humanDoubleVoteActive = useAppSelector((s) => s.game.humanDoubleVoteActive);
@@ -394,6 +427,15 @@ export default function DiaryRoom() {
       };
     })
     : [];
+
+  const activeDecisionPresentation = useMemo(() => {
+    if (!activeConfessionalDecision) return null;
+    return getConfessionalDecisionPresentation(
+      activeConfessionalDecision,
+      gameState,
+      alivePlayers,
+    );
+  }, [activeConfessionalDecision, alivePlayers, gameState]);
 
   const pushBigEyeMessage = useCallback((text: string) => {
     const nextMessage: ChatMessage = {
@@ -467,9 +509,26 @@ export default function DiaryRoom() {
   }, [confessionalLocked, playerId]);
 
   useEffect(() => {
+    if (confessionalLocked || !activeDecisionPresentation) return;
+    setMessages((prev) => {
+      if (prev.some((msg) => msg.decisionKey === activeDecisionPresentation.key)) return prev;
+      const decisionMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'bb',
+        text: activeDecisionPresentation.prompt,
+        timestamp: Date.now(),
+        decisionKey: activeDecisionPresentation.key,
+      };
+      const updated = [...prev, decisionMsg];
+      saveChat(playerId, updated);
+      return updated;
+    });
+  }, [activeDecisionPresentation, confessionalLocked, playerId]);
+
+  useEffect(() => {
     if (confessionalLocked) return;
     confessEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [confessionalLocked, messages]);
+  }, [activeDecisionPresentation, confessionalLocked, messages]);
 
   useEffect(() => {
     if (confessionalLocked) {
@@ -760,6 +819,27 @@ export default function DiaryRoom() {
     }
   }
 
+  const handleDecisionCommitted = useCallback((summary: string) => {
+    const userDecisionMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      text: summary,
+      timestamp: Date.now(),
+      status: 'seen',
+    };
+    const bigEyeConfirmationMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'bb',
+      text: BIG_EYE_DECISION_CONFIRMATION,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => {
+      const updated = [...prev, userDecisionMsg, bigEyeConfirmationMsg];
+      saveChat(playerId, updated);
+      return updated;
+    });
+  }, [playerId]);
+
   return (
     <div className="diary-room">
       {!confessionalLocked && showEntryAnimation && (
@@ -867,15 +947,6 @@ export default function DiaryRoom() {
             </section>
           ) : (
             <div className="diary-room__confess">
-              {/* ── Ceremony decision panel (required action) ─────────────── */}
-              {activeConfessionalDecision && (
-                <div className="diary-room__decision-zone" data-testid="confessional-decision-zone">
-                  <p className="diary-room__decision-callout" role="alert">
-                    📺 The Big Eye requires your decision before you may leave.
-                  </p>
-                  <ConfessionalDecisionPanel decision={activeConfessionalDecision} />
-                </div>
-              )}
               <p className="diary-room__prompt">
                 "You are now in the Confessional. No one can hear you. Speak freely."
               </p>
@@ -1171,7 +1242,20 @@ export default function DiaryRoom() {
                 )}
               </div>
             )}
-            <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
+            <ChatBubbles
+              msgs={messages}
+              playerName={playerName}
+              endRef={confessEndRef}
+              activeDecisionKey={activeDecisionPresentation?.key}
+              activeDecisionPanel={
+                activeConfessionalDecision && (
+                  <ConfessionalDecisionPanel
+                    decision={activeConfessionalDecision}
+                    onDecisionCommitted={handleDecisionCommitted}
+                  />
+                )
+              }
+            />
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>
               <textarea
                 className="diary-room__textarea"
