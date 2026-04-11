@@ -189,6 +189,7 @@ export default function AnimatedVoteResultsModal({
     const ids = nominees
       .filter((t) => (displayedCounts[t.nominee.id] ?? 0) === maxShownVotes)
       .map((t) => t.nominee.id);
+    // Keep ties neutral so only a single clear leader gets the coral highlight.
     return new Set(ids.length === 1 ? ids : []);
   }, [displayedCounts, maxShownVotes, nominees]);
   const tvCommentary = useMemo(() => {

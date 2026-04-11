@@ -138,7 +138,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelectorAll('.avrm__tv-vote-ring')).toHaveLength(2);
     expect(container.querySelectorAll('.avrm__tv-vote-ring-track')).toHaveLength(2);
     expect(container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')).toBeTruthy();
-    expect(screen.getByLabelText('1 vote')).toBeTruthy();
+    expect(container.querySelector('.avrm__tally-count[aria-label="1 vote"]')).toBeTruthy();
     expect(screen.getByText('LIVE FEED')).toBeTruthy();
     expect(screen.getByText('Vote reveal is live.')).toBeTruthy();
   });
