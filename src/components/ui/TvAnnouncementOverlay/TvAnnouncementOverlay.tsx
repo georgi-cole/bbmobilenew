@@ -41,6 +41,7 @@ export default function TvAnnouncementOverlay({
   const isCoupDetat = announcement.key === 'coup_detat';
   const isSpotlightVeto = announcement.key === 'spotlight_veto';
   const isPublicSaveResult = announcement.key === 'public_save_result';
+  const isConfessionalRequired = announcement.key === 'confessional_required';
   const isRoyalPurple =
     announcement.key === 'live_eviction' ||
     announcement.key === 'eviction_vote_result' ||
@@ -138,7 +139,7 @@ export default function TvAnnouncementOverlay({
             isDiamondPov ? 'tv-announcement--diamond-pov' : '',
             isCoupDetat ? 'tv-announcement--coup-detat' : '',
             isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
-            isPublicSaveResult ? 'tv-announcement--standard' : '',
+            isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
             isRoyalPurple ? 'tv-announcement--royal-purple' : '',
           ].filter(Boolean).join(' ')}
         role="dialog"

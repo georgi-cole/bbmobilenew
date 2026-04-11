@@ -15,6 +15,7 @@ import {
   selectConfessionalAlertCount,
   selectHumanCanUseSocialModules,
 } from '../../store/selectors';
+import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import {
   getSocialModuleAvailability,
   logBlockedSocialModuleOpen,
@@ -42,6 +43,7 @@ export default function FloatingActionBar() {
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
   const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules);
+  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
   const game = useAppSelector((s) => s.game);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
@@ -80,7 +82,12 @@ export default function FloatingActionBar() {
 
   const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
   const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
+  const [triggeredConfessionalDecisionKey, setTriggeredConfessionalDecisionKey] = useState<string | null>(null);
   const prevConfessionalCountRef = useRef(confessionalAlertCount);
+  const hasPendingConfessionalDecision = activeConfessionalDecision !== null;
+  const activeConfessionalDecisionKey = activeConfessionalDecision
+    ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
+    : null;
   useEffect(() => {
     if (confessionalAlertCount <= prevConfessionalCountRef.current) {
       prevConfessionalCountRef.current = confessionalAlertCount;
@@ -101,6 +108,14 @@ export default function FloatingActionBar() {
       clearTimeout(flashOff);
     };
   }, [confessionalAlertCount]);
+  const confessionalPromptActivated =
+    activeConfessionalDecisionKey !== null &&
+    triggeredConfessionalDecisionKey === activeConfessionalDecisionKey;
+  const primaryDisabled = hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting;
+  const primaryPulse = hasPendingConfessionalDecision
+    ? !confessionalPromptActivated
+    : canAdvance && !isWaiting;
+  const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated;
 
   const handleChatClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -126,27 +141,41 @@ export default function FloatingActionBar() {
     dispatch(openIncomingInbox());
   }, [canUseSocialModules, dispatch, socialModuleAvailability]);
 
+  const handlePrimaryActionClick = useCallback(() => {
+    if (hasPendingConfessionalDecision) {
+      setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
+      setConfessionalFlashTick((tick) => tick + 1);
+      try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
+      return;
+    }
+    dispatch(advance());
+    try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
+  }, [activeConfessionalDecisionKey, dispatch, hasPendingConfessionalDecision]);
+
+  const handleToolClick = useCallback(() => {
+    setTriggeredConfessionalDecisionKey(null);
+    navigate('/diary-room');
+  }, [navigate]);
+
   return (
     <GameControlDock
       onChatClick={handleChatClick}
       onIncomingRequestsClick={handleIncomingRequestsClick}
-      onPrimaryActionClick={() => {
-        dispatch(advance());
-        try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
-      }}
+      onPrimaryActionClick={handlePrimaryActionClick}
       onPublicMeterClick={() =>
         navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
       }
-      onToolClick={() => navigate('/diary-room')}
-      primaryDisabled={isWaiting}
+      onToolClick={handleToolClick}
+      primaryDisabled={primaryDisabled}
       chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
       chatFlash={isFlashing}
       incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
       publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
-      primaryPulse={canAdvance && !isWaiting}
+      primaryPulse={primaryPulse}
       confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
-      confessionalFlash={isConfessionalFlashing}
+      confessionalFlash={isConfessionalFlashing || confessionalPersistentFlash}
       confessionalFlashTick={confessionalFlashTick}
+      confessionalPersistentFlash={confessionalPersistentFlash}
     />
   );
 }

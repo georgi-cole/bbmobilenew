@@ -347,6 +347,24 @@ describe('FloatingActionBar – navigation buttons', () => {
     expect(screen.queryByText('2')).toBeNull();
     expect(screen.getByRole('button', { name: 'Confessional' })).toBeDefined();
   });
+
+  it('lets the player press Play once before locking it for a pending confessional decision', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
+    expect(playButton).not.toBeDisabled();
+
+    act(() => {
+      playButton.click();
+    });
+
+    expect(store.getState().game.phase).toBe('live_vote');
+    expect(playButton).toBeDisabled();
+  });
 });
 
 describe('FloatingActionBar – confessional alert animation', () => {
@@ -402,5 +420,32 @@ describe('FloatingActionBar – confessional alert animation', () => {
     act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
       .not.toContain('dock-hit-area--confessional-flash');
+  });
+
+  it('keeps the confessional icon pulsing after play is pressed until the confessional is opened', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    const confessionalButton = screen.getByRole('button', { name: 'Confessional (1)' });
+    expect(confessionalButton.className).toContain('dock-hit-area--confessional-persistent');
+
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
+      .toContain('dock-hit-area--confessional-persistent');
+
+    act(() => {
+      confessionalButton.click();
+    });
+
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
+    expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
+      .not.toContain('dock-hit-area--confessional-persistent');
   });
 });

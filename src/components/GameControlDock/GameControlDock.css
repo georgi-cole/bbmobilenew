@@ -282,11 +282,21 @@
   animation: confessional-icon-announce 0.9s cubic-bezier(0.22, 1, 0.36, 1) 2;
 }
 
+.dock-hit-area--confessional-persistent .dock-hit-area__badge--mission {
+  animation: confessional-badge-announce 1.05s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.game-control-dock__icon--confessional-persistent {
+  animation: confessional-icon-announce 1.05s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dock-hit-area--confessional-flash-0 .dock-hit-area__badge--mission,
   .dock-hit-area--confessional-flash-1 .dock-hit-area__badge--mission,
+  .dock-hit-area--confessional-persistent .dock-hit-area__badge--mission,
   .game-control-dock__icon--confessional-flash-0,
-  .game-control-dock__icon--confessional-flash-1 {
+  .game-control-dock__icon--confessional-flash-1,
+  .game-control-dock__icon--confessional-persistent {
     animation: none;
   }
 }

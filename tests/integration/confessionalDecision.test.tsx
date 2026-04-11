@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -38,7 +38,16 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: () => <div data-testid="tv-zone" />,
+  default: ({ externalAnnouncement }: { externalAnnouncement?: { title: string; subtitle: string } | null }) => (
+    <div data-testid="tv-zone">
+      {externalAnnouncement && (
+        <div data-testid="tv-zone-external-announcement">
+          <p>{externalAnnouncement.title}</p>
+          <p>{externalAnnouncement.subtitle}</p>
+        </div>
+      )}
+    </div>
+  ),
 }));
 
 vi.mock('../../src/components/FloatingActionBar/FloatingActionBar', () => ({
@@ -322,9 +331,9 @@ describe('selectConfessionalAlertCount', () => {
   });
 });
 
-// ── GameScreen: confessional-call overlay ─────────────────────────────────
+// ── GameScreen: confessional prompt on main TV ─────────────────────────────
 
-describe('GameScreen — confessional-call overlay', () => {
+describe('GameScreen — confessional prompt on main TV', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -332,13 +341,23 @@ describe('GameScreen — confessional-call overlay', () => {
     vi.useRealTimers();
   });
 
-  it('shows the confessional-call overlay when awaitingHumanVote is true', () => {
+  it('waits until play is pressed before showing the confessional prompt on the TV', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: true });
     renderGameScreen(store);
-    expect(screen.getByTestId('confessional-call-overlay')).toBeTruthy();
+
+    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    });
+
+    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent('Confessional Required');
+    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent(
+      'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.',
+    );
   });
 
-  it('shows the confessional-call overlay when awaitingNominations is true', () => {
+  it('shows the same TV prompt for nomination decisions once play is pressed', () => {
     const players = buildPlayers();
     const store = makeStore({
       phase: 'nomination_results',
@@ -347,22 +366,37 @@ describe('GameScreen — confessional-call overlay', () => {
       players,
     });
     renderGameScreen(store);
-    expect(screen.getByTestId('confessional-call-overlay')).toBeTruthy();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    });
+
+    expect(screen.getByTestId('tv-zone-external-announcement')).toHaveTextContent('Confessional Required');
   });
 
-  it('does NOT show the confessional-call overlay when no decision is pending', () => {
+  it('does NOT show the confessional prompt when no decision is pending', () => {
     const store = makeStore({ phase: 'live_vote', awaitingHumanVote: false });
     renderGameScreen(store);
-    expect(screen.queryByTestId('confessional-call-overlay')).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    });
+
+    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
   });
 
-  it('does NOT show the confessional-call overlay for Final 4 phase', () => {
+  it('does NOT show the confessional prompt for Final 4 phase', () => {
     const store = makeStore({
       phase: 'final4_eviction',
       awaitingHumanVote: true,
     });
     renderGameScreen(store);
-    expect(screen.queryByTestId('confessional-call-overlay')).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    });
+
+    expect(screen.queryByTestId('tv-zone-external-announcement')).toBeNull();
   });
 
   it('hides the in-game live vote modal when confessional routing is active', () => {
@@ -371,8 +405,10 @@ describe('GameScreen — confessional-call overlay', () => {
       awaitingHumanVote: true,
     });
     renderGameScreen(store);
-    // The confessional overlay is shown instead of the TvDecisionModal
-    expect(screen.getByTestId('confessional-call-overlay')).toBeTruthy();
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    });
+    expect(screen.getByTestId('tv-zone-external-announcement')).toBeTruthy();
     // No "Live Elimination Vote" heading should be visible in-game
     expect(screen.queryByText(/Live Elimination Vote/i)).toBeNull();
   });
