@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { advance } from '../../store/gameSlice';
+import { advance, setHasSeenConfessionalSpotlight } from '../../store/gameSlice';
 import {
   openIncomingInbox,
   openSocialPanel,
@@ -15,11 +15,13 @@ import {
   selectConfessionalAlertCount,
   selectHumanCanUseSocialModules,
 } from '../../store/selectors';
+import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
 import {
   getSocialModuleAvailability,
   logBlockedSocialModuleOpen,
 } from '../../social/socialModuleAvailability';
 import GameControlDock from '../GameControlDock/GameControlDock';
+import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay';
 
 const CONFESSIONAL_FLASH_DURATION_MS = 1800;
 
@@ -42,6 +44,7 @@ export default function FloatingActionBar() {
   const pendingCount = useAppSelector(selectPendingIncomingInteractionCount);
   const confessionalAlertCount = useAppSelector(selectConfessionalAlertCount);
   const canUseSocialModules = useAppSelector(selectHumanCanUseSocialModules);
+  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
   const game = useAppSelector((s) => s.game);
   const players = useAppSelector((s) => s.game.players);
   const energyBank = useAppSelector(selectEnergyBank);
@@ -80,7 +83,15 @@ export default function FloatingActionBar() {
 
   const [isConfessionalFlashing, setIsConfessionalFlashing] = useState(false);
   const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
+  const [triggeredConfessionalDecisionKey, setTriggeredConfessionalDecisionKey] = useState<string | null>(null);
+  const [showConfessionalSpotlight, setShowConfessionalSpotlight] = useState(false);
+  const confessionalButtonRef = useRef<HTMLButtonElement | null>(null);
   const prevConfessionalCountRef = useRef(confessionalAlertCount);
+  const hasPendingConfessionalDecision = activeConfessionalDecision !== null;
+  const hasSeenConfessionalSpotlight = game.hasSeenConfessionalSpotlight === true;
+  const activeConfessionalDecisionKey = activeConfessionalDecision
+    ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
+    : null;
   useEffect(() => {
     if (confessionalAlertCount <= prevConfessionalCountRef.current) {
       prevConfessionalCountRef.current = confessionalAlertCount;
@@ -101,6 +112,25 @@ export default function FloatingActionBar() {
       clearTimeout(flashOff);
     };
   }, [confessionalAlertCount]);
+  const confessionalPromptActivated =
+    activeConfessionalDecisionKey !== null &&
+    triggeredConfessionalDecisionKey === activeConfessionalDecisionKey;
+  const primaryDisabled = hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting;
+  const primaryPulse = hasPendingConfessionalDecision
+    ? !confessionalPromptActivated
+    : canAdvance && !isWaiting;
+  const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated;
+  const confessionalSpotlightEligible =
+    hasPendingConfessionalDecision &&
+    confessionalPromptActivated &&
+    !hasSeenConfessionalSpotlight;
+
+  const completeConfessionalSpotlight = useCallback(() => {
+    setShowConfessionalSpotlight(false);
+    if (!hasSeenConfessionalSpotlight) {
+      dispatch(setHasSeenConfessionalSpotlight(true));
+    }
+  }, [dispatch, hasSeenConfessionalSpotlight]);
 
   const handleChatClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -126,27 +156,69 @@ export default function FloatingActionBar() {
     dispatch(openIncomingInbox());
   }, [canUseSocialModules, dispatch, socialModuleAvailability]);
 
-  return (
-    <GameControlDock
-      onChatClick={handleChatClick}
-      onIncomingRequestsClick={handleIncomingRequestsClick}
-      onPrimaryActionClick={() => {
-        dispatch(advance());
-        try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
-      }}
-      onPublicMeterClick={() =>
-        navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
+  const dispatchPlayPressedEvent = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    } catch (error) {
+      console.warn('Failed to dispatch ui:playPressed event.', error);
+    }
+  }, []);
+
+  const handlePrimaryActionClick = useCallback(() => {
+    if (hasPendingConfessionalDecision) {
+      setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
+      setConfessionalFlashTick((tick) => tick + 1);
+      if (!hasSeenConfessionalSpotlight) {
+        setShowConfessionalSpotlight(true);
       }
-      onToolClick={() => navigate('/diary-room')}
-      primaryDisabled={isWaiting}
-      chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
-      chatFlash={isFlashing}
-      incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
-      publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
-      primaryPulse={canAdvance && !isWaiting}
-      confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
-      confessionalFlash={isConfessionalFlashing}
-      confessionalFlashTick={confessionalFlashTick}
-    />
+      dispatchPlayPressedEvent();
+      return;
+    }
+    dispatch(advance());
+    dispatchPlayPressedEvent();
+  }, [
+    activeConfessionalDecisionKey,
+    dispatch,
+    dispatchPlayPressedEvent,
+    hasPendingConfessionalDecision,
+    hasSeenConfessionalSpotlight,
+  ]);
+
+  const handleToolClick = useCallback(() => {
+    if (confessionalSpotlightEligible) {
+      completeConfessionalSpotlight();
+    }
+    setTriggeredConfessionalDecisionKey(null);
+    navigate('/diary-room');
+  }, [completeConfessionalSpotlight, confessionalSpotlightEligible, navigate]);
+
+  return (
+    <>
+      <GameControlDock
+        onChatClick={handleChatClick}
+        onIncomingRequestsClick={handleIncomingRequestsClick}
+        onPrimaryActionClick={handlePrimaryActionClick}
+        onPublicMeterClick={() =>
+          navigate(publicRequestCount > 0 ? '/public-meter?tab=requests' : '/public-meter')
+        }
+        onToolClick={handleToolClick}
+        primaryDisabled={primaryDisabled}
+        chatBadgeCount={humanEnergy !== null ? humanEnergy : undefined}
+        chatFlash={isFlashing}
+        incomingRequestsBadgeCount={pendingCount > 0 ? pendingCount : undefined}
+        publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
+        primaryPulse={primaryPulse}
+        confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
+        confessionalFlash={isConfessionalFlashing}
+        confessionalFlashTick={confessionalFlashTick}
+        confessionalPersistentFlash={confessionalPersistentFlash}
+        confessionalButtonRef={confessionalButtonRef}
+      />
+      <ConfessionalSpotlightOverlay
+        active={showConfessionalSpotlight && confessionalSpotlightEligible}
+        targetRef={confessionalButtonRef}
+        onComplete={completeConfessionalSpotlight}
+      />
+    </>
   );
 }

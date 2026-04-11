@@ -400,6 +400,8 @@ export interface GameState {
   competitionSeasonStateByPlayerId?: Record<string, CompetitionSeasonState>;
   tvFeed: TvEvent[];
   isLive: boolean;
+  /** One-time per-season tutorial flag for the confessional FAB spotlight. */
+  hasSeenConfessionalSpotlight?: boolean;
   /** Mulberry32 seed – advances on each outcome computation for reproducibility. */
   seed: number;
   /** Player ID of the current Leader of the House, or null between weeks. */

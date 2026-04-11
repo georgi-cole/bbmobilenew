@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import './GameControlDock.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -29,6 +30,10 @@ export interface GameControlDockProps {
   confessionalFlash?: boolean;
   /** Alternates to force the Confessional flash animation to restart */
   confessionalFlashTick?: number;
+  /** Keeps the Confessional icon/badge pulsing until the player opens it */
+  confessionalPersistentFlash?: boolean;
+  /** Ref to the Confessional button hit area for guided overlays/tutorials */
+  confessionalButtonRef?: Ref<HTMLButtonElement>;
 }
 
 export default function GameControlDock({
@@ -47,6 +52,8 @@ export default function GameControlDock({
   confessionalBadgeCount,
   confessionalFlash = false,
   confessionalFlashTick = 0,
+  confessionalPersistentFlash = false,
+  confessionalButtonRef,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
@@ -93,7 +100,7 @@ export default function GameControlDock({
         draggable={false}
       />
       <img
-        className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
+        className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' game-control-dock__icon--confessional-persistent' : ''}`}
         src={assetUrl('fab_icon_confessional_clean.svg')}
         alt=""
         aria-hidden="true"
@@ -147,10 +154,11 @@ export default function GameControlDock({
         )}
       </button>
       <button
-        className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}`}
+        className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' dock-hit-area--confessional-persistent' : ''}`}
         type="button"
         aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
         disabled={disabled}
+        ref={confessionalButtonRef}
         onClick={disabled ? undefined : onToolClick}
       >
         {confessionalBadgeCount != null && confessionalBadgeCount > 0 && (

@@ -31,31 +31,44 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 }));
 
 vi.mock('../../src/components/ui/TvZone', () => ({
-  default: ({
-    publicSaveReveal,
-    onPublicSaveDone,
-    voteResultsReveal,
-    externalAnnouncement,
-    onExternalAnnouncementDismiss,
-  }: {
-    publicSaveReveal?: {
-      savedId: string;
+    default: ({
+      publicSaveReveal,
+      onPublicSaveDone,
+      voteResultsReveal,
+      priorityAnnouncement,
+      onPriorityAnnouncementDismiss,
+      externalAnnouncement,
+      onExternalAnnouncementDismiss,
+    }: {
+      publicSaveReveal?: {
+        savedId: string;
     } | null;
     onPublicSaveDone?: () => void;
-    voteResultsReveal?: {
-      onTiebreakerRequired?: (ids: string[]) => void;
-      onDone: () => void;
-    } | null;
-    externalAnnouncement?: {
-      title: string;
-      subtitle?: string;
-    } | null;
-    onExternalAnnouncementDismiss?: () => void;
-  }) => {
-    capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
-    capturedOnExternalAnnouncementDismiss = onExternalAnnouncementDismiss ?? null;
-    return (
-      <div data-testid="tv-zone">
+      voteResultsReveal?: {
+        onTiebreakerRequired?: (ids: string[]) => void;
+        onDone: () => void;
+      } | null;
+      priorityAnnouncement?: {
+        title: string;
+        subtitle?: string;
+      } | null;
+      onPriorityAnnouncementDismiss?: () => void;
+      externalAnnouncement?: {
+        title: string;
+        subtitle?: string;
+      } | null;
+      onExternalAnnouncementDismiss?: () => void;
+    }) => {
+      capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
+      const announcement = priorityAnnouncement ?? externalAnnouncement;
+      const announcementDismissHandler = priorityAnnouncement
+        ? onPriorityAnnouncementDismiss
+        : onExternalAnnouncementDismiss;
+      capturedOnExternalAnnouncementDismiss = announcement
+        ? announcementDismissHandler ?? null
+        : null;
+      return (
+        <div data-testid="tv-zone">
         {publicSaveReveal && (
           <div data-testid="public-save-reveal">
             <div>{publicSaveReveal.savedId}</div>
@@ -67,14 +80,14 @@ vi.mock('../../src/components/ui/TvZone', () => ({
             <button onClick={voteResultsReveal.onDone}>Done</button>
           </div>
         )}
-        {externalAnnouncement && (
-          <div data-testid="external-announcement">
-            <div>{externalAnnouncement.title}</div>
-            {externalAnnouncement.subtitle && <div>{externalAnnouncement.subtitle}</div>}
-          </div>
-        )}
-      </div>
-    );
+          {announcement && (
+            <div data-testid="external-announcement">
+              <div>{announcement.title}</div>
+              {announcement.subtitle && <div>{announcement.subtitle}</div>}
+            </div>
+          )}
+        </div>
+      );
   },
 }));
 

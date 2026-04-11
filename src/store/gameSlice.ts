@@ -215,6 +215,7 @@ export function createInitialGameState(): GameState {
       { id: 'e1', text: `[Rules] Public mode: ${freshSettings.sim.publicMode === true ? 'ON' : 'OFF'}`, type: 'game', timestamp: Date.now() },
     ],
     isLive: false,
+    hasSeenConfessionalSpotlight: false,
     seasonArchives,
     spectatorActive: null,
     seasonFinale: null,
@@ -2491,7 +2492,14 @@ const gameSlice = createSlice({
      * seasonFinale field is always preserved as-is from the snapshot.
      */
     hydrateGame(_state, action: PayloadAction<GameState>) {
-      return action.payload;
+      return {
+        ...action.payload,
+        hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
+      };
+    },
+
+    setHasSeenConfessionalSpotlight(state, action: PayloadAction<boolean>) {
+      state.hasSeenConfessionalSpotlight = action.payload;
     },
 
     /** Generate a new random RNG seed (debug only). */
@@ -4039,6 +4047,7 @@ export const {
   resetGame,
   rerollSeed,
   hydrateGame,
+  setHasSeenConfessionalSpotlight,
   triggerSecretMission,
   offerSecretMission,
   acceptSecretMission,

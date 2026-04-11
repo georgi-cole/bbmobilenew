@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { LayoutGroup, AnimatePresence } from 'framer-motion'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -126,6 +125,8 @@ const AI_TIE_STAGE_DELAY_MS = 1000
 const AI_TIE_DECIDING_DELAY_MS = 1500
 const AI_TIE_DECISION_DELAY_MS = 1000
 const AI_TIE_RESULT_DELAY_MS = 1500
+const CONFESSIONAL_TV_PROMPT_MESSAGE =
+  'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
 
 type PendingPublicSaveResult = {
   savedId: string
@@ -160,7 +161,6 @@ type AiTiebreakContext = {
  */
 export default function GameScreen() {
   const dispatch = useAppDispatch()
-  const navigate = useNavigate()
   const store = useStore<RootState>()
   const storeRef = useRef(store)
   useEffect(() => {
@@ -196,6 +196,8 @@ export default function GameScreen() {
   // Post-vote eviction message shown on the main TV
   // for 3 s after vote results dismiss and before the eviction animation plays.
   const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
+  const [showConfessionalTvPrompt, setShowConfessionalTvPrompt] = useState(false)
+  const [confessionalPromptTriggered, setConfessionalPromptTriggered] = useState(false)
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
   const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
   const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
@@ -212,8 +214,36 @@ export default function GameScreen() {
     week: number
     phase: Phase
   } | null>(null)
+  const activeConfessionalDecisionKey = activeConfessionalDecision
+    ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
+    : null
+
+  useEffect(() => {
+    if (!activeConfessionalDecisionKey) {
+      setConfessionalPromptTriggered(false)
+      setShowConfessionalTvPrompt(false)
+      return
+    }
+
+    const handlePlayPressed = () => {
+      setConfessionalPromptTriggered(true)
+      setShowConfessionalTvPrompt(true)
+    }
+
+    window.addEventListener('ui:playPressed', handlePlayPressed)
+    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
+  }, [activeConfessionalDecisionKey])
 
   const humanPlayer = game.players.find((p) => p.isUser)
+  const confessionalTvAnnouncement = confessionalPromptTriggered && showConfessionalTvPrompt
+    ? {
+      key: 'confessional_required',
+      title: 'Confessional Required',
+      subtitle: CONFESSIONAL_TV_PROMPT_MESSAGE,
+      isLive: false,
+      autoDismissMs: 3500,
+    }
+    : null
   const juryPlayers = useMemo(
     () => game.players.filter((p) => p.status === 'jury'),
     [game.players],
@@ -2212,6 +2242,8 @@ export default function GameScreen() {
             savedId: publicSaveWinnerId,
           }}
           onPublicSaveDone={handlePublicSaveDone}
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={preAdAnnouncement}
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
@@ -2226,12 +2258,16 @@ export default function GameScreen() {
             onPublicTiebreakResolved: handlePublicEvictionTiebreakResolved,
             onDone: handleVoteResultsDone,
           }}
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={preAdAnnouncement}
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
         />
       ) : (
         <TvZone
+          priorityAnnouncement={confessionalTvAnnouncement}
+          onPriorityAnnouncementDismiss={() => setShowConfessionalTvPrompt(false)}
           externalAnnouncement={
             aiTiebreakAnnouncement ??
             postVoteAnnouncement ??
@@ -2277,36 +2313,6 @@ export default function GameScreen() {
                 Got it
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Confessional call guidance — shown when a ceremony decision is   ── */}
-      {/* ── waiting in the Confessional (DR). All in-game decision modals    ── */}
-      {/* ── are hidden when this is active; the player must go to the DR.   ── */}
-      {activeConfessionalDecision && (
-        <div
-          className="confessional-call-overlay"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="confessional-call-title"
-          data-testid="confessional-call-overlay"
-        >
-          <div className="confessional-call-overlay__card">
-            <div className="confessional-call-overlay__icon" aria-hidden="true">📺</div>
-            <h2 className="confessional-call-overlay__title" id="confessional-call-title">
-              Confessional Required
-            </h2>
-            <p className="confessional-call-overlay__message">
-              The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.
-            </p>
-            <button
-              className="confessional-call-overlay__btn"
-              type="button"
-              onClick={() => navigate('/diary-room')}
-            >
-              🚪 Go to Confessional
-            </button>
           </div>
         </div>
       )}

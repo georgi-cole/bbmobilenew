@@ -347,11 +347,45 @@ describe('FloatingActionBar – navigation buttons', () => {
     expect(screen.queryByText('2')).toBeNull();
     expect(screen.getByRole('button', { name: 'Confessional' })).toBeDefined();
   });
+
+  it('lets the player press Play once before locking it for a pending confessional decision', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' });
+    expect(playButton).not.toBeDisabled();
+
+    act(() => {
+      playButton.click();
+    });
+
+    expect(store.getState().game.phase).toBe('live_vote');
+    expect(playButton).toBeDisabled();
+  });
 });
 
 describe('FloatingActionBar – confessional alert animation', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 250,
+      y: 780,
+      width: 44,
+      height: 44,
+      top: 780,
+      left: 250,
+      bottom: 824,
+      right: 294,
+      toJSON: () => ({}),
+    } as DOMRect);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it('animates the confessional button when a new alert arrives', () => {
     const store = makeStore();
@@ -402,5 +436,73 @@ describe('FloatingActionBar – confessional alert animation', () => {
     act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByRole('button', { name: 'Confessional (2)' }).className)
       .not.toContain('dock-hit-area--confessional-flash');
+  });
+
+  it('keeps the confessional icon pulsing after play is pressed until the confessional is opened', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    const confessionalButton = screen.getByRole('button', { name: 'Confessional (1)' });
+    expect(confessionalButton.className).toContain('dock-hit-area--confessional-persistent');
+    expect(confessionalButton.className).not.toContain('dock-hit-area--confessional-flash');
+    expect(screen.getByTestId('confessional-spotlight')).toBeDefined();
+
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
+      .toContain('dock-hit-area--confessional-persistent');
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
+    expect(store.getState().game.hasSeenConfessionalSpotlight).toBe(true);
+
+    act(() => {
+      confessionalButton.click();
+    });
+
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
+    expect(screen.getByRole('button', { name: 'Confessional (1)' }).className)
+      .not.toContain('dock-hit-area--confessional-persistent');
+  });
+
+  it('marks the spotlight as seen immediately when the player clicks Confessional during the tutorial', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    expect(screen.getByTestId('confessional-spotlight')).toBeDefined();
+
+    act(() => {
+      screen.getByRole('button', { name: 'Confessional (1)' }).click();
+    });
+
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
+    expect(store.getState().game.hasSeenConfessionalSpotlight).toBe(true);
+    expect(screen.getByTestId('location').textContent).toBe('/diary-room');
+  });
+
+  it('does not replay the spotlight after it has already been seen in the same season', () => {
+    const store = makeStore(true, {
+      phase: 'live_vote',
+      awaitingHumanVote: true,
+      hasSeenConfessionalSpotlight: true,
+    });
+    renderFAB(store, '/game');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Advance to next phase' }).click();
+    });
+
+    expect(screen.queryByTestId('confessional-spotlight')).toBeNull();
   });
 });
