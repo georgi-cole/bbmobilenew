@@ -5,8 +5,9 @@
 //     animation is shown (aiReplacementKey returns '').
 //  2. When the veto WAS used (povSavedId set), the AI replacement animation
 //     is triggered.
-//  3. AI LOH tiebreak choreography: AnimatedVoteResultsModal fires
-//     onTiebreakerRequired → 3 s overlay → vote results dismissed → eviction splash.
+//  3. Public-save follow-up copy blocks the POS screen until dismissed.
+//  4. AI LOH tiebreak choreography advances through the TV announcements before
+//     the eviction splash begins.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
@@ -31,10 +32,16 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: ({
+    publicSaveReveal,
+    onPublicSaveDone,
     voteResultsReveal,
     externalAnnouncement,
     onExternalAnnouncementDismiss,
   }: {
+    publicSaveReveal?: {
+      savedId: string;
+    } | null;
+    onPublicSaveDone?: () => void;
     voteResultsReveal?: {
       onTiebreakerRequired?: (ids: string[]) => void;
       onDone: () => void;
@@ -49,6 +56,12 @@ vi.mock('../../src/components/ui/TvZone', () => ({
     capturedOnExternalAnnouncementDismiss = onExternalAnnouncementDismiss ?? null;
     return (
       <div data-testid="tv-zone">
+        {publicSaveReveal && (
+          <div data-testid="public-save-reveal">
+            <div>{publicSaveReveal.savedId}</div>
+            <button onClick={onPublicSaveDone}>Public save done</button>
+          </div>
+        )}
         {voteResultsReveal && (
           <div data-testid="vote-results-modal">
             <button onClick={voteResultsReveal.onDone}>Done</button>
@@ -214,7 +227,7 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows AI thinking overlay when onTiebreakerRequired fires with non-human LOH', async () => {
+  it('runs the AI tiebreak announcement sequence before the eviction animation', async () => {
     // AI LOH (p1) — human is p0.
     // Vote results show a tie, pendingEviction set (AI already picked).
     const store = makeStore({
@@ -237,35 +250,80 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
       capturedOnTiebreakerRequired!(['p2', 'p3']);
     });
 
-    // "LOH is breaking the tie" overlay should appear.
-    expect(screen.getByText(/LOH is breaking the tie/i)).toBeTruthy();
-    // Vote results modal should still be visible (not dismissed yet).
-    expect(store.getState().game.voteResults).not.toBeNull();
+    expect(store.getState().game.voteResults).toBeNull();
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent("It’s a Tie!");
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 1 must break the tie.');
+    expect(screen.queryByTestId('eviction-overlay')).toBeNull();
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 1 is making a decision…');
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('The LOH chose to evict Player 3.');
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('By a vote of 2 to 1');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent(
+      'Player 3, you have been eliminated from The Big Eye house.',
+    );
+    expect(screen.queryByText(/please say your goodbyes/i)).toBeNull();
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
+  });
+});
+
+describe('Ceremony fix: public save follow-up announcement', () => {
+  beforeEach(() => {
+    capturedOnExternalAnnouncementDismiss = null;
+    vi.useFakeTimers();
   });
 
-  it('dismisses vote results after the 3 s choreography completes', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('holds the public save result on screen before entering the POS announcement', async () => {
+    const players = makePlayers(6);
+    players[2].status = 'nominated';
+    players[3].status = 'nominated';
+    players[4].status = 'nominated';
+
     const store = makeStore({
-      phase: 'eviction_results',
-      lohId: 'p1',
-      nomineeIds: ['p2', 'p3'],
-      voteResults: { p2: 1, p3: 1 },
-      pendingEviction: { evicteeId: 'p3', evictionMessage: 'LOH breaks the tie, evicting Player 3. 🗳️' },
-      awaitingTieBreak: false,
+      phase: 'pre_veto_public_save',
+      publicModeEnabled: true,
+      awaitingPublicSave: true,
+      nomineeIds: ['p2', 'p3', 'p4'],
+      players,
     });
+
     renderWithStore(store);
     await act(async () => {});
 
+    screen.getByTestId('public-save-reveal');
     await act(async () => {
-      capturedOnTiebreakerRequired!(['p2', 'p3']);
+      screen.getByText('Public save done').click();
     });
 
-    // Before 3 s: voteResults still set.
-    await act(async () => { vi.advanceTimersByTime(2000); });
-    expect(store.getState().game.voteResults).not.toBeNull();
+    expect(store.getState().game.phase).toBe('pre_veto_public_save');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Public Save Result');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 2 was saved with 50% of the public support.');
+    expect(screen.getByTestId('external-announcement')).toHaveTextContent('Player 3 and Player 4 are still in danger.');
 
-    // After 3 s: voteResults dismissed.
-    await act(async () => { vi.advanceTimersByTime(1500); });
-    expect(store.getState().game.voteResults).toBeNull();
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+
+    expect(store.getState().game.phase).toBe('pos_comp_announcement');
   });
 });
 

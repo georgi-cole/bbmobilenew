@@ -364,7 +364,7 @@ export default function AnimatedVoteResultsModal({
           </footer>
         )}
 
-        {allRevealed && isTied && !outcomeVisible && !publicTiebreak && (
+        {allRevealed && isTied && !outcomeVisible && !publicTiebreak && variant !== 'tv' && (
           <div className="avrm__tie-banner" role="status" aria-live="assertive">
             <span className="avrm__tie-icon">⚖️</span>
             <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>

@@ -213,6 +213,29 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
+.tv-announcement__status-icon {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+}
+
+.tv-announcement__status-icon-spin {
+  display: inline-flex;
+  animation: tvAnnouncementHourglassSpin 1.3s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes tvAnnouncementHourglassSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-announcement__status-icon-spin {
+    animation: none;
+  }
+}
 /* ── Info pill (upper-right corner of overlay) ────────────────────────────── */
 .tv-announcement__info-btn {
   position: absolute;

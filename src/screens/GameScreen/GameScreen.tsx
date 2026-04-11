@@ -121,6 +121,24 @@ import './GameScreen.css'
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 3000
+const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
+const AI_TIE_STAGE_DELAY_MS = 4000
+const AI_TIE_DECIDING_DELAY_MS = 5000
+const AI_TIE_DECISION_DELAY_MS = 3500
+const AI_TIE_RESULT_DELAY_MS = 5000
+
+type PendingPublicSaveResult = {
+  savedId: string
+  supportPercent?: number
+}
+
+type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
+
+type AiTiebreakContext = {
+  lohName: string
+  evictee: Player
+  resultTitle: string
+}
 
 /**
  * GameScreen — main gameplay view.
@@ -179,6 +197,9 @@ export default function GameScreen() {
   // for 3 s after vote results dismiss and before the eviction animation plays.
   const [postVoteAnnouncement, setPostVoteAnnouncement] = useState<Announcement | null>(null)
   const [postVoteAnnouncementDelayActive, setPostVoteAnnouncementDelayActive] = useState(false)
+  const [pendingPublicSaveResult, setPendingPublicSaveResult] = useState<PendingPublicSaveResult | null>(null)
+  const [aiTiebreakStage, setAiTiebreakStage] = useState<AiTiebreakStage | null>(null)
+  const [activeAiTiebreakContext, setActiveAiTiebreakContext] = useState<AiTiebreakContext | null>(null)
   // When true, the confessional prompt is shown after the eviction animation
   // instead of inline with the vote results (post-eviction mode).
   const isPostEvictionConfessionalModeRef = useRef(false)
@@ -738,7 +759,8 @@ export default function GameScreen() {
   const showPublicSaveReveal =
     game.phase === 'pre_veto_public_save' &&
     Boolean(game.awaitingPublicSave) &&
-    game.nomineeIds.length === 3
+    game.nomineeIds.length === 3 &&
+    !pendingPublicSaveResult
 
   // Approval values for display in PublicSaveReveal
   const publicSaveApprovals = useMemo(() => {
@@ -759,16 +781,42 @@ export default function GameScreen() {
     return result.savedId || null
   }, [showPublicSaveReveal, game.nomineeIds, publicOpinionProfiles])
 
-  const handlePublicSaveDone = useCallback(() => {
-    if (publicSaveWinnerId) {
-      dispatch(
-        commitPublicSave({
-          savedId: publicSaveWinnerId,
-          supportPercent: publicSaveApprovals[publicSaveWinnerId],
-        }),
-      )
+  const publicSaveResultAnnouncement = useMemo<Announcement | null>(() => {
+    if (!pendingPublicSaveResult) return null
+    const savedPlayer = game.players.find((player) => player.id === pendingPublicSaveResult.savedId)
+    if (!savedPlayer) return null
+    const remainingNomineeNames = game.nomineeIds
+      .filter((id) => id !== pendingPublicSaveResult.savedId)
+      .map((id) => game.players.find((player) => player.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
+    const subtitle =
+      pendingPublicSaveResult.supportPercent != null && remainingNomineeNames.length === 2
+        ? `${savedPlayer.name} was saved with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support. ${remainingNomineeNames.join(' and ')} are still in danger.`
+        : remainingNomineeNames.length === 2
+          ? `${savedPlayer.name} was saved by the public. ${remainingNomineeNames.join(' and ')} are still in danger.`
+          : `${savedPlayer.name} was saved by the public.`
+    return {
+      key: 'public_save_result',
+      title: 'Public Save Result',
+      subtitle,
+      isLive: true,
+      autoDismissMs: PUBLIC_SAVE_RESULT_DELAY_MS,
     }
-  }, [dispatch, publicSaveApprovals, publicSaveWinnerId])
+  }, [game.nomineeIds, game.players, pendingPublicSaveResult])
+
+  const handlePublicSaveDone = useCallback(() => {
+    if (!publicSaveWinnerId) return
+    setPendingPublicSaveResult({
+      savedId: publicSaveWinnerId,
+      supportPercent: publicSaveApprovals[publicSaveWinnerId],
+    })
+  }, [publicSaveApprovals, publicSaveWinnerId])
+
+  const handlePublicSaveResultDismiss = useCallback(() => {
+    if (!pendingPublicSaveResult) return
+    dispatch(commitPublicSave(pendingPublicSaveResult))
+    setPendingPublicSaveResult(null)
+  }, [dispatch, pendingPublicSaveResult])
 
   const publicSaveNominees = useMemo(
     () =>
@@ -1456,14 +1504,6 @@ export default function GameScreen() {
     }
   }, [showVoteResults])
 
-  // ── AI LOH tiebreak choreography ─────────────────────────────────────────
-  // When AnimatedVoteResultsModal detects a tie and calls onTiebreakerRequired:
-  //   • Human LOH: dismiss the modal → showTieBreakModal appears (existing path).
-  //   • AI LOH:    pendingEviction is set (AI already picked). Show a short
-  //                "LOH is deciding…" overlay for 3 s, then dismiss to let the
-  //                eviction cinematic play.  No additional dispatch needed.
-  const [aiTiebreakerPending, setAiTiebreakerPending] = useState(false)
-
   // For AI tiebreak: pass evictee=null to the modal so it surfaces the tie banner
   // and calls onTiebreakerRequired, giving us the hook to run choreography.
   // Condition: vote tallies have equal max counts AND AI already picked (pendingEviction set)
@@ -1508,16 +1548,112 @@ export default function GameScreen() {
     return game.players.find((p) => p.id === evicteeIds[0]) ?? null
   }, [game.voteResults, game.pendingEviction, game.players, humanIsHoH])
 
+  const aiTiebreakContext = useMemo<AiTiebreakContext | null>(() => {
+    if (humanIsHoH || !game.voteResults || !game.pendingEviction?.evicteeId) return null
+    let maxVotes = -1
+    let topCount = 0
+    for (const count of Object.values(game.voteResults)) {
+      if (count > maxVotes) {
+        maxVotes = count
+        topCount = 1
+      } else if (count === maxVotes) {
+        topCount += 1
+      }
+    }
+    if (topCount < 2) return null
+
+    const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
+    const evictee = game.players.find((player) => player.id === game.pendingEviction?.evicteeId) ?? null
+    if (!evictee) return null
+
+    const evicteeVotes = game.voteResults[evictee.id] ?? 0
+    const hasTwoNominees = Object.keys(game.voteResults).length === 2
+    const otherVotes = Object.entries(game.voteResults).reduce(
+      (sum, [id, count]) => (id !== evictee.id ? sum + count : sum),
+      0,
+    )
+    // The LOH's tie-break choice acts like the deciding extra vote for the evictee.
+    return {
+      lohName,
+      evictee,
+      resultTitle: hasTwoNominees
+        ? `By a vote of ${evicteeVotes + 1} to ${otherVotes}`
+        : `With ${evicteeVotes + 1} vote${evicteeVotes + 1 === 1 ? '' : 's'}`,
+    }
+  }, [game.lohId, game.pendingEviction?.evicteeId, game.players, game.voteResults, humanIsHoH])
+
+  const aiTiebreakAnnouncement = useMemo<Announcement | null>(() => {
+    if (!aiTiebreakStage || !activeAiTiebreakContext) return null
+    if (aiTiebreakStage === 'tie') {
+      return {
+        key: 'loh_tiebreak_tie',
+        title: 'It’s a Tie!',
+        subtitle: `${activeAiTiebreakContext.lohName} must break the tie.`,
+        isLive: true,
+        autoDismissMs: AI_TIE_STAGE_DELAY_MS,
+      }
+    }
+    if (aiTiebreakStage === 'deciding') {
+      return {
+        key: 'loh_tiebreak_deciding',
+        title: `${activeAiTiebreakContext.lohName} is making a decision…`,
+        subtitle: 'Please wait while the LOH decides who to evict.',
+        isLive: true,
+        autoDismissMs: AI_TIE_DECIDING_DELAY_MS,
+      }
+    }
+    if (aiTiebreakStage === 'decision') {
+      return {
+        key: 'loh_tiebreak_decision',
+        title: `The LOH chose to evict ${activeAiTiebreakContext.evictee.name}.`,
+        subtitle: '',
+        isLive: true,
+        autoDismissMs: AI_TIE_DECISION_DELAY_MS,
+      }
+    }
+    return {
+      key: 'loh_tiebreak_result',
+      title: activeAiTiebreakContext.resultTitle,
+      subtitle: `${activeAiTiebreakContext.evictee.name}, you have been eliminated from The Big Eye house.`,
+      isLive: true,
+      autoDismissMs: AI_TIE_RESULT_DELAY_MS,
+    }
+  }, [activeAiTiebreakContext, aiTiebreakStage])
+
   const handleTiebreakerRequired = useCallback((tiedIds: string[]) => {
     console.log('TIE_BREAK_STARTED', { tiedIds, hohIsHuman: !!humanIsHoH, screen: 'GameScreen' })
     if (!humanIsHoH) {
-      // AI LOH already decided; run a short choreography then proceed.
-      setAiTiebreakerPending(true)
+      if (!aiTiebreakContext) {
+        // If we cannot build the AI tie-break context, still dismiss the vote
+        // results flow so the UI does not remain stuck in the tied state.
+        handleVoteResultsDone()
+        return
+      }
+      setActiveAiTiebreakContext(aiTiebreakContext)
+      dispatch(dismissVoteResults())
+      setAiTiebreakStage('tie')
     } else {
       // Human LOH: dismiss the vote results modal — showTieBreakModal will appear.
       handleVoteResultsDone()
     }
-  }, [humanIsHoH, handleVoteResultsDone])
+  }, [aiTiebreakContext, dispatch, humanIsHoH, handleVoteResultsDone])
+
+  const handleAiTiebreakAnnouncementDismiss = useCallback(() => {
+    if (aiTiebreakStage === 'tie') {
+      setAiTiebreakStage('deciding')
+      return
+    }
+    if (aiTiebreakStage === 'deciding') {
+      setAiTiebreakStage('decision')
+      return
+    }
+    if (aiTiebreakStage === 'decision') {
+      setAiTiebreakStage('result')
+      return
+    }
+    setAiTiebreakStage(null)
+    setActiveAiTiebreakContext(null)
+  }, [aiTiebreakStage])
 
   const publicEvictionTiebreak = useMemo(() => {
     if (
@@ -1621,16 +1757,6 @@ export default function GameScreen() {
     return () => window.clearTimeout(id)
   }, [aiDoubleEvictionTieBreakChoiceIds, dispatch, showAiSecondTieBreakOverlay])
 
-  // After 3 s of "thinking" choreography, dismiss vote results for AI tiebreak.
-  useEffect(() => {
-    if (!aiTiebreakerPending) return
-    const id = window.setTimeout(() => {
-      setAiTiebreakerPending(false)
-      handleVoteResultsDone()
-    }, 3000)
-    return () => window.clearTimeout(id)
-  }, [aiTiebreakerPending, handleVoteResultsDone])
-
   // ── Eviction cinematic (pendingEviction-driven) ───────────────────────────
   // Normal evictions: triggered by pendingEviction being set in advance().
   // Final-4 evictions: also driven by pendingEviction (set by finalizeFinal4Eviction
@@ -1643,6 +1769,7 @@ export default function GameScreen() {
   // Also blocked while the post-vote announcement or its follow-up pause is active.
   const showEvictionSplash =
     !showVoteResults &&
+    !aiTiebreakStage &&
     !postVoteAnnouncement &&
     !postVoteAnnouncementDelayActive &&
     !!game.pendingEviction &&
@@ -2065,7 +2192,7 @@ export default function GameScreen() {
     showQuickTapRace ||
     showBullseyeBlitz ||
     showTravelingDots ||
-    aiTiebreakerPending ||
+    aiTiebreakStage !== null ||
     spectatorF3Active ||
     spectatorLegacyActive
 
@@ -2105,9 +2232,20 @@ export default function GameScreen() {
         />
       ) : (
         <TvZone
-          externalAnnouncement={postVoteAnnouncement ?? preAdAnnouncement}
+          externalAnnouncement={
+            aiTiebreakAnnouncement ??
+            postVoteAnnouncement ??
+            publicSaveResultAnnouncement ??
+            preAdAnnouncement
+          }
           onExternalAnnouncementDismiss={
-            postVoteAnnouncement ? handlePostVoteAnnouncementDismiss : handlePreAdAnnouncementDismiss
+            aiTiebreakAnnouncement
+              ? handleAiTiebreakAnnouncementDismiss
+              : postVoteAnnouncement
+                ? handlePostVoteAnnouncementDismiss
+                : publicSaveResultAnnouncement
+                  ? handlePublicSaveResultDismiss
+                  : handlePreAdAnnouncementDismiss
           }
           mainLogMaxVisible={compactRosterLogRows}
         />
@@ -2832,10 +2970,8 @@ export default function GameScreen() {
         />
       )}
 
-      {/* ── AI LOH tiebreak choreography overlay ─────────────────────────── */}
-      {/* Shown for 3 s while the "AI LOH is deciding" suspense plays.        */}
-      {/* onTiebreakerRequired triggers this; handleVoteResultsDone fires after */}
-      {(aiTiebreakerPending || showAiSecondTieBreakOverlay) && (
+      {/* ── AI double-eviction tie-break choreography overlay ─────────────── */}
+      {showAiSecondTieBreakOverlay && (
         <div
           className="tv-binary-modal"
           style={{ zIndex: 8600 }}
