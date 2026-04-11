@@ -2493,8 +2493,8 @@ const gameSlice = createSlice({
      */
     hydrateGame(_state, action: PayloadAction<GameState>) {
       return {
-        hasSeenConfessionalSpotlight: false,
         ...action.payload,
+        hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
       };
     },
 

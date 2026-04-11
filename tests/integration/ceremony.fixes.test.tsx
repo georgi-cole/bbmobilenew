@@ -61,8 +61,11 @@ vi.mock('../../src/components/ui/TvZone', () => ({
     }) => {
       capturedOnTiebreakerRequired = voteResultsReveal?.onTiebreakerRequired ?? null;
       const announcement = priorityAnnouncement ?? externalAnnouncement;
+      const announcementDismissHandler = priorityAnnouncement
+        ? onPriorityAnnouncementDismiss
+        : onExternalAnnouncementDismiss;
       capturedOnExternalAnnouncementDismiss = announcement
-        ? (priorityAnnouncement ? onPriorityAnnouncementDismiss : onExternalAnnouncementDismiss) ?? null
+        ? announcementDismissHandler ?? null
         : null;
       return (
         <div data-testid="tv-zone">
