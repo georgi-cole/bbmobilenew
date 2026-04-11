@@ -4,6 +4,10 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 const SPOTLIGHT_TOTAL_DURATION_MS = 2200;
 const SPOTLIGHT_REDUCED_DURATION_MS = 1400;
+const SPOTLIGHT_RADIUS_SCALE = 0.95;
+const SPOTLIGHT_RADIUS_PADDING_PX = 28;
+const SPOTLIGHT_FEATHER_OFFSET_PX = 34;
+const SPOTLIGHT_GLOW_SIZE_MULTIPLIER = 2.1;
 
 type SpotlightRect = {
   left: number;
@@ -63,9 +67,11 @@ export default function ConfessionalSpotlightOverlay({
     if (!targetRect) return null;
     const centerX = targetRect.left + targetRect.width / 2;
     const centerY = targetRect.top + targetRect.height / 2;
-    const emphasisRadius = Math.max(targetRect.width, targetRect.height) * 0.95 + 28;
-    const featherRadius = emphasisRadius + 34;
-    const glowSize = emphasisRadius * 2.1;
+    const emphasisRadius =
+      Math.max(targetRect.width, targetRect.height) * SPOTLIGHT_RADIUS_SCALE +
+      SPOTLIGHT_RADIUS_PADDING_PX;
+    const featherRadius = emphasisRadius + SPOTLIGHT_FEATHER_OFFSET_PX;
+    const glowSize = emphasisRadius * SPOTLIGHT_GLOW_SIZE_MULTIPLIER;
     return {
       centerX,
       centerY,
