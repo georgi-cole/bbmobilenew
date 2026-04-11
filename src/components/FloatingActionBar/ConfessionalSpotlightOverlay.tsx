@@ -4,10 +4,13 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 const SPOTLIGHT_TOTAL_DURATION_MS = 2200;
 const SPOTLIGHT_REDUCED_DURATION_MS = 1400;
-const SPOTLIGHT_RADIUS_SCALE = 0.95;
-const SPOTLIGHT_RADIUS_PADDING_PX = 28;
-const SPOTLIGHT_FEATHER_OFFSET_PX = 34;
-const SPOTLIGHT_GLOW_SIZE_MULTIPLIER = 2.1;
+const SPOTLIGHT_CLEAR_RADIUS_MIN_PX = 28;
+const SPOTLIGHT_CLEAR_RADIUS_MAX_PX = 36;
+const SPOTLIGHT_CLEAR_RADIUS_PADDING_PX = 10;
+const SPOTLIGHT_FEATHER_OFFSET_PX = 18;
+const SPOTLIGHT_FEATHER_RADIUS_MAX_PX = 60;
+const SPOTLIGHT_HALO_PADDING_PX = 2;
+const SPOTLIGHT_GLOW_PADDING_PX = 10;
 
 type SpotlightRect = {
   left: number;
@@ -22,6 +25,10 @@ type ConfessionalSpotlightOverlayProps = {
   onComplete: () => void;
 };
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export default function ConfessionalSpotlightOverlay({
   active,
   targetRef,
@@ -35,22 +42,51 @@ export default function ConfessionalSpotlightOverlay({
 
     const updateTargetRect = () => {
       const element = targetRef.current;
-      if (!element) return;
+      if (!element) {
+        setTargetRect(null);
+        return;
+      }
       const rect = element.getBoundingClientRect();
-      setTargetRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
+      setTargetRect((previousRect) => {
+        if (
+          previousRect &&
+          previousRect.left === rect.left &&
+          previousRect.top === rect.top &&
+          previousRect.width === rect.width &&
+          previousRect.height === rect.height
+        ) {
+          return previousRect;
+        }
+        return {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
       });
     };
 
     updateTargetRect();
     window.addEventListener('resize', updateTargetRect);
+    window.addEventListener('orientationchange', updateTargetRect);
     window.addEventListener('scroll', updateTargetRect, true);
+    window.visualViewport?.addEventListener('resize', updateTargetRect);
+    window.visualViewport?.addEventListener('scroll', updateTargetRect);
+    const observedElement = targetRef.current;
+    const resizeObserver =
+      observedElement && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateTargetRect)
+        : null;
+    if (observedElement) {
+      resizeObserver?.observe(observedElement);
+    }
     return () => {
       window.removeEventListener('resize', updateTargetRect);
+      window.removeEventListener('orientationchange', updateTargetRect);
       window.removeEventListener('scroll', updateTargetRect, true);
+      window.visualViewport?.removeEventListener('resize', updateTargetRect);
+      window.visualViewport?.removeEventListener('scroll', updateTargetRect);
+      resizeObserver?.disconnect();
     };
   }, [active, targetRef]);
 
@@ -67,16 +103,24 @@ export default function ConfessionalSpotlightOverlay({
     if (!targetRect) return null;
     const centerX = targetRect.left + targetRect.width / 2;
     const centerY = targetRect.top + targetRect.height / 2;
-    const emphasisRadius =
-      Math.max(targetRect.width, targetRect.height) * SPOTLIGHT_RADIUS_SCALE +
-      SPOTLIGHT_RADIUS_PADDING_PX;
-    const featherRadius = emphasisRadius + SPOTLIGHT_FEATHER_OFFSET_PX;
-    const glowSize = emphasisRadius * SPOTLIGHT_GLOW_SIZE_MULTIPLIER;
+    const targetRadius = Math.max(targetRect.width, targetRect.height) / 2;
+    const emphasisRadius = clamp(
+      targetRadius + SPOTLIGHT_CLEAR_RADIUS_PADDING_PX,
+      SPOTLIGHT_CLEAR_RADIUS_MIN_PX,
+      SPOTLIGHT_CLEAR_RADIUS_MAX_PX,
+    );
+    const featherRadius = Math.min(
+      emphasisRadius + SPOTLIGHT_FEATHER_OFFSET_PX,
+      SPOTLIGHT_FEATHER_RADIUS_MAX_PX,
+    );
+    const haloSize = (featherRadius + SPOTLIGHT_HALO_PADDING_PX) * 2;
+    const glowSize = (emphasisRadius + SPOTLIGHT_GLOW_PADDING_PX) * 2;
     return {
       centerX,
       centerY,
       emphasisRadius,
       featherRadius,
+      haloSize,
       glowSize,
     };
   }, [targetRect]);
@@ -93,6 +137,13 @@ export default function ConfessionalSpotlightOverlay({
   } as CSSProperties;
 
   const glowStyle = {
+    left: overlayMetrics.centerX,
+    top: overlayMetrics.centerY,
+    width: overlayMetrics.haloSize,
+    height: overlayMetrics.haloSize,
+  } as CSSProperties;
+
+  const buttonGlowStyle = {
     left: overlayMetrics.centerX,
     top: overlayMetrics.centerY,
     width: overlayMetrics.glowSize,
@@ -141,11 +192,11 @@ export default function ConfessionalSpotlightOverlay({
       {!prefersReducedMotion && (
         <motion.div
           className="confessional-spotlight__button-glow"
-          style={glowStyle}
+          style={buttonGlowStyle}
           initial={{ opacity: 0, scale: 0.84 }}
           animate={{
-            opacity: [0, 0.72, 0.22, 0.58, 0],
-            scale: [0.84, 1.08, 0.96, 1.04, 1],
+            opacity: [0, 0.56, 0.16, 0.4, 0],
+            scale: [0.9, 1.04, 0.98, 1.02, 1],
           }}
           transition={{
             duration: totalDurationSeconds * 0.82,
