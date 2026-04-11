@@ -116,6 +116,7 @@ export default function FloatingActionBar() {
     ? !confessionalPromptActivated
     : canAdvance && !isWaiting;
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated;
+  const confessionalHasAnimation = isConfessionalFlashing || confessionalPersistentFlash;
 
   const handleChatClick = useCallback(() => {
     if (!canUseSocialModules) {
@@ -141,16 +142,24 @@ export default function FloatingActionBar() {
     dispatch(openIncomingInbox());
   }, [canUseSocialModules, dispatch, socialModuleAvailability]);
 
+  const dispatchPlayPressedEvent = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'));
+    } catch (error) {
+      console.warn('Failed to dispatch ui:playPressed event.', error);
+    }
+  }, []);
+
   const handlePrimaryActionClick = useCallback(() => {
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey);
       setConfessionalFlashTick((tick) => tick + 1);
-      try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
+      dispatchPlayPressedEvent();
       return;
     }
     dispatch(advance());
-    try { window.dispatchEvent(new CustomEvent('ui:playPressed')); } catch { /* ignore */ }
-  }, [activeConfessionalDecisionKey, dispatch, hasPendingConfessionalDecision]);
+    dispatchPlayPressedEvent();
+  }, [activeConfessionalDecisionKey, dispatch, dispatchPlayPressedEvent, hasPendingConfessionalDecision]);
 
   const handleToolClick = useCallback(() => {
     setTriggeredConfessionalDecisionKey(null);
@@ -173,7 +182,7 @@ export default function FloatingActionBar() {
       publicMeterBadgeCount={publicRequestCount > 0 ? publicRequestCount : undefined}
       primaryPulse={primaryPulse}
       confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
-      confessionalFlash={isConfessionalFlashing || confessionalPersistentFlash}
+      confessionalFlash={confessionalHasAnimation}
       confessionalFlashTick={confessionalFlashTick}
       confessionalPersistentFlash={confessionalPersistentFlash}
     />
