@@ -49,6 +49,7 @@ import {
   type MissionRewardType,
 } from '../bb/secretMission';
 import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
+import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -3459,7 +3460,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_2': {
-          pushEvent(state, `Housemates make their final pitches before the live vote. 🤝`, 'social');
+          pushEvent(state, LIVE_VOTE_PITCHES_TEXT, 'social', {
+            key: LIVE_VOTE_PITCHES_EVENT_KEY,
+          });
           break;
         }
         case 'live_vote': {

@@ -23,6 +23,7 @@ import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityServic
 import type { TvEvent } from '../../types';
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
 import { getViewportMessageKey } from './tvZoneKeys';
+import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents';
 import './TvZone.css';
 import './TvZoneEnhancements.css';
 
@@ -158,7 +159,6 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
-const LIVE_VOTE_PITCHES_TEXT = 'Housemates make their final pitches before the live vote. 🤝';
 const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
   'loh_tiebreak_tie',
   'loh_tiebreak_deciding',
@@ -323,7 +323,7 @@ export default function TvZone(props: TvZoneProps) {
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
   const suppressStaleLiveVotePitchMessage =
-    latestEvent?.text === LIVE_VOTE_PITCHES_TEXT &&
+    latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
   const hideViewportMessage =
     postDismissBlocked ||

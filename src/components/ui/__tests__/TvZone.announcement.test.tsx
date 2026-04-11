@@ -28,6 +28,7 @@ import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer
 import socialReducer from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
+import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../../../constants/tvEvents';
 import finaleReducer from '../../../store/finaleSlice';
 import settingsReducer from '../../../store/settingsSlice';
 import TvZone from '../TvZone';
@@ -342,8 +343,9 @@ describe('TvZone — announcement overlay', () => {
         addTvEvent(
           makeEvent({
             id: 'ev-final-pitches',
-            text: 'Housemates make their final pitches before the live vote. 🤝',
+            text: LIVE_VOTE_PITCHES_TEXT,
             type: 'social',
+            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
           }),
         ),
       );
@@ -354,6 +356,34 @@ describe('TvZone — announcement overlay', () => {
     act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeNull();
+    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+
+    vi.useRealTimers();
+  });
+
+  it('suppresses the live-vote pitches message by stable event key instead of display copy', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-final-pitches-localized',
+            text: 'Housemates give their last plea before voting begins.',
+            type: 'social',
+            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
+          }),
+        ),
+      );
+      store.dispatch(setPhase('live_vote'));
+    });
+
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
+
+    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Housemates give their last plea before voting begins.');
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
 
     vi.useRealTimers();
