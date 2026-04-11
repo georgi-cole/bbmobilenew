@@ -61,6 +61,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  overflow: visible;
 }
 
 @keyframes avrmSlideIn {
@@ -78,7 +79,7 @@
 }
 
 .avrm--tv .avrm__header {
-  padding: 0.15rem 0.05rem 0.45rem;
+  padding: 0.15rem 0.15rem 0.28rem;
   background: none;
   border-bottom: none;
   gap: 0.45rem;
@@ -98,26 +99,34 @@
 }
 
 .avrm--tv .avrm__title {
-  font-size: 0.6rem;
+  font-size: clamp(0.54rem, 1.5vw, 0.72rem);
   letter-spacing: 0.18em;
   color: #f7d9d9;
 }
 
 .avrm__live-badge {
   margin-left: auto;
-  padding: 0.22rem 0.42rem;
+  padding: 0.16rem 0.34rem;
   border-radius: 999px;
   border: 0;
   background: rgba(255, 74, 74, 0.18);
   color: #ffd9d9;
-  font-size: 0.54rem;
+  font-size: 0.46rem;
   font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   box-shadow: 0 0 14px rgba(255, 74, 74, 0.18);
 }
 
 /* ── Tally rows ─────────────────────────────────────────────────────────── */
+.avrm__tv-stage {
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(0.12rem, 1.2vh, 0.28rem) clamp(0.1rem, 1vw, 0.3rem) 0;
+  overflow: visible;
+}
+
 .avrm__tallies {
   padding: 0.85rem;
   display: flex;
@@ -125,14 +134,17 @@
   gap: 0.6rem;
 }
 
-.avrm--tv .avrm__tallies {
+.avrm__tallies--tv {
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 0 0.15rem 0.2rem;
+  gap: clamp(0.55rem, 2.4vw, 0.95rem);
+  width: 100%;
+  padding: 0;
+  overflow: visible;
 }
 
 .avrm__tally {
@@ -154,12 +166,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.34rem;
+  gap: clamp(0.05rem, 0.3vh, 0.14rem);
+  width: min(30vw, 6.45rem);
+  max-width: 6.45rem;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
   transform: translateY(10px) scale(0.95);
+}
+
+.avrm__tally--tv-triple {
+  width: min(23vw, 4.8rem);
+  max-width: 4.8rem;
 }
 
 .avrm--tv .avrm__tally--visible {
@@ -176,16 +196,69 @@
   100% { transform: translateY(0) scale(1); }
 }
 
-.avrm__tv-avatar-wrap {
+.avrm__tv-vote-ring-shell {
   position: relative;
-  padding: 0.14rem;
+  display: grid;
+  place-items: center;
+  width: clamp(4.1rem, 19.2vw, 4.75rem);
+  height: clamp(4.1rem, 19.2vw, 4.75rem);
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
-.avrm--tv .pa--sm {
-  width: 3.3rem;
-  height: 3.3rem;
+.avrm__tally--tv-triple .avrm__tv-vote-ring-shell {
+  width: clamp(3.25rem, 15.6vw, 3.65rem);
+  height: clamp(3.25rem, 15.6vw, 3.65rem);
+}
+
+.avrm__tv-vote-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.avrm__tv-vote-ring-track,
+.avrm__tv-vote-ring-fill {
+  fill: none;
+  stroke-width: 5;
+}
+
+.avrm__tv-vote-ring-track {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.avrm__tv-vote-ring-fill {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease;
+}
+
+.avrm__tv-vote-ring-fill--leading {
+  stroke: #ff7d6b;
+}
+
+.avrm__tv-vote-ring-fill--trailing {
+  stroke: #7b86ff;
+}
+
+.avrm__tv-avatar-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(100% - clamp(0.8rem, 4vw, 1rem));
+  height: calc(100% - clamp(0.8rem, 4vw, 1rem));
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(8, 10, 19, 0.88);
+}
+.avrm--tv .pa--lg {
+  /* PlayerAvatar provides the pa--lg size; TV mode stretches it to the ring shell. */
+  width: 100%;
+  height: 100%;
   border-width: 1px;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 .avrm__tally--visible {
@@ -211,13 +284,14 @@
   box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.2), 0 0 12px rgba(255, 50, 50, 0.15);
 }
 
-/* TV variant: restore border/padding so the red frame fully wraps avatar + vote count */
+/* TV variant: keep emphasis on the ring glow instead of a card border */
 .avrm__tally--tv.avrm__tally--evictee {
-  border: 1.5px solid rgba(255, 80, 80, 0.7);
-  border-radius: 12px;
-  padding: 0.45rem 0.55rem;
-  background: rgba(200, 30, 30, 0.12);
-  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.18), 0 0 14px rgba(255, 50, 50, 0.18);
+  box-shadow: none;
+}
+
+.avrm__tally--leading .avrm__tv-vote-ring-shell,
+.avrm__tally--tv.avrm__tally--evictee .avrm__tv-vote-ring-shell {
+  filter: drop-shadow(0 0 16px rgba(255, 116, 100, 0.22));
 }
 
 .avrm__tally-name {
@@ -229,13 +303,6 @@
   text-overflow: ellipsis;
 }
 
-.avrm--tv .avrm__tally-name {
-  max-width: 100%;
-  font-size: 0.78rem;
-  text-align: center;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
 .avrm__tally-bar-wrap {
   height: 6px;
   background: rgba(255,255,255,0.08);
@@ -245,35 +312,6 @@
 
 .avrm--tv .avrm__tally-bar-wrap {
   height: 5px;
-}
-
-.avrm__tv-progress-block {
-  width: min(100%, 6.6rem);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.38rem;
-}
-
-.avrm__tv-progress-track {
-  width: 100%;
-  height: 0.3rem;
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.avrm__tv-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7c99ff 0%, #b0c2ff 100%);
-  border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 10px rgba(124, 153, 255, 0.38);
-}
-
-.avrm__tally--evictee .avrm__tv-progress-fill {
-  background: linear-gradient(90deg, #ff6b6b 0%, #ff9f80 100%);
-  box-shadow: 0 0 12px rgba(255, 107, 107, 0.38);
 }
 
 .avrm__tally-bar {
@@ -297,7 +335,7 @@
 
 .avrm--tv .avrm__tally-count {
   min-width: 0;
-  font-size: 1.7rem;
+  font-size: clamp(0.88rem, 3.5vw, 1.1rem);
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -306,6 +344,29 @@
 }
 
 .avrm__tally--evictee .avrm__tally-count { color: #ff8080; }
+
+.avrm__tv-duel-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(1.6rem, 7vw, 2.4rem);
+  align-self: center;
+}
+
+.avrm__tv-duel-divider span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.6rem, 7vw, 2.25rem);
+  height: clamp(1.6rem, 7vw, 2.25rem);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(244, 247, 255, 0.68);
+  font-size: clamp(0.54rem, 1.8vw, 0.72rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
 
 .avrm__tv-evicted-chip {
   padding: 0.18rem 0.45rem;
@@ -554,17 +615,35 @@
     font-size: 0.54rem;
   }
 
-  .avrm--tv .avrm__tallies {
-    gap: 0.55rem;
+  .avrm__tallies--tv {
+    gap: 0.45rem;
   }
 
-  .avrm--tv .pa--sm {
-    width: 2.8rem;
-    height: 2.8rem;
+  .avrm__tv-stage {
+    padding-top: clamp(0.08rem, 0.9vh, 0.18rem);
+    padding-bottom: 0;
+  }
+
+  .avrm__tally--tv {
+    width: min(26vw, 5.2rem);
+  }
+
+  .avrm__tally--tv-triple {
+    width: min(20.5vw, 4.05rem);
   }
 
   .avrm--tv .avrm__tally-count {
-    font-size: 1.4rem;
+    font-size: 0.88rem;
+  }
+
+  .avrm__tv-duel-divider {
+    min-width: 1.2rem;
+  }
+
+  .avrm__tv-duel-divider span {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.5rem;
   }
 }
 
@@ -572,6 +651,9 @@
 @media (prefers-reduced-motion: reduce) {
   .avrm, .avrm__card, .avrm__tally, .avrm__evictee, .avrm__tie-banner, .avrm__public-tiebreak-option--evictee {
     animation: none !important;
+    transition: none !important;
+  }
+  .avrm__tv-vote-ring-fill {
     transition: none !important;
   }
   .avrm { opacity: 1; }

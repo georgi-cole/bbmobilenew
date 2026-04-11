@@ -26,7 +26,7 @@
  *   countdownMs         – ms countdown before onDone fires (default 4000)
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import './AnimatedVoteResultsModal.css';
@@ -60,6 +60,49 @@ export interface AnimatedVoteResultsModalProps {
 }
 
 const MIN_BAR_PCT = 4;
+const TV_RING_RADIUS = 42;
+const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
+
+interface VoteRingAvatarProps {
+  player: Player;
+  /** Vote share as a 0..1 fraction for the animated SVG ring. */
+  progress: number;
+  /** Coral for the current leader/evictee, violet for the other nominees. */
+  tone: 'leading' | 'trailing';
+}
+
+function VoteRingAvatar({ player, progress, tone }: VoteRingAvatarProps) {
+  const clampedProgress = Math.max(0, Math.min(progress, 1));
+  const dashOffset = TV_RING_CIRCUMFERENCE * (1 - clampedProgress);
+
+  return (
+    <div className="avrm__tv-vote-ring-shell">
+      <svg
+        className="avrm__tv-vote-ring"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <circle
+          className="avrm__tv-vote-ring-track"
+          cx="50"
+          cy="50"
+          r={TV_RING_RADIUS}
+        />
+        <circle
+          className={`avrm__tv-vote-ring-fill avrm__tv-vote-ring-fill--${tone}`}
+          cx="50"
+          cy="50"
+          r={TV_RING_RADIUS}
+          strokeDasharray={TV_RING_CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
+        />
+      </svg>
+      <div className="avrm__tv-avatar-wrap">
+        <PlayerAvatar player={player} size="lg" showEvictedStyle={false} />
+      </div>
+    </div>
+  );
+}
 
 /**
  * Build an interleaved vote-reveal sequence from tallies.
@@ -102,11 +145,6 @@ export default function AnimatedVoteResultsModal({
     () => nominees.reduce((s, t) => s + t.voteCount, 0),
     [nominees],
   );
-  const votesNeededForEviction = useMemo(
-    () => Math.max(0, ...nominees.map((t) => t.voteCount)),
-    [nominees],
-  );
-
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
   const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees]);
 
@@ -139,7 +177,18 @@ export default function AnimatedVoteResultsModal({
 
   const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
-
+  const maxShownVotes = useMemo(
+    () => Math.max(0, ...nominees.map((t) => displayedCounts[t.nominee.id] ?? 0)),
+    [displayedCounts, nominees],
+  );
+  const leadingShownIds = useMemo(() => {
+    if (maxShownVotes <= 0) return new Set<string>();
+    const ids = nominees
+      .filter((t) => (displayedCounts[t.nominee.id] ?? 0) === maxShownVotes)
+      .map((t) => t.nominee.id);
+    // Keep ties neutral so only a single clear leader gets the coral highlight.
+    return new Set(ids.length === 1 ? ids : []);
+  }, [displayedCounts, maxShownVotes, nominees]);
   function fire() {
     if (firedRef.current) return;
     firedRef.current = true;
@@ -208,68 +257,96 @@ export default function AnimatedVoteResultsModal({
         <header className="avrm__header">
           {variant !== 'tv' && <span className="avrm__header-icon">🗳️</span>}
           <h2 className="avrm__title">VOTE RESULTS</h2>
-          {variant === 'tv' && <span className="avrm__live-badge">LIVE FEED</span>}
+          {variant === 'tv' && <span className="avrm__live-badge">Live</span>}
         </header>
 
-        <div className="avrm__tallies">
-          {nominees.map((t) => {
-            const shown = displayedCounts[t.nominee.id] ?? 0;
-            const isEvictee = resolvedEvictee?.id === t.nominee.id;
-            const isPulsing = lastRevealedId === t.nominee.id;
-            const pct = totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0;
-            const evictionPct = votesNeededForEviction > 0
-              ? Math.round((shown / votesNeededForEviction) * 100)
-              : 0;
-            return (
-              <div
-                key={t.nominee.id}
-                className={[
-                  'avrm__tally',
-                  'avrm__tally--visible',
-                  variant === 'tv' ? 'avrm__tally--tv' : '',
-                  isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
-                  isPulsing ? 'avrm__tally--pulse' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                {variant === 'tv' ? (
-                  <>
-                    <div className="avrm__tv-avatar-wrap">
-                      <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
-                    </div>
-                    <span className="avrm__tally-name">{t.nominee.name}</span>
-                    <div className="avrm__tv-progress-block">
-                      <div className="avrm__tv-progress-track" aria-hidden="true">
-                        <div
-                          className="avrm__tv-progress-fill"
-                          style={{
-                            width: shown > 0 ? `${Math.max(evictionPct, MIN_BAR_PCT)}%` : '0%',
-                          }}
-                        />
+        {variant === 'tv' ? (
+          <div className="avrm__tv-stage">
+            <div className="avrm__tallies avrm__tallies--tv">
+              {nominees.map((t, index) => {
+                const shown = displayedCounts[t.nominee.id] ?? 0;
+                const isEvictee = resolvedEvictee?.id === t.nominee.id;
+                const isPulsing = lastRevealedId === t.nominee.id;
+                const isLeading = outcomeVisible
+                  ? isEvictee
+                  : leadingShownIds.has(t.nominee.id);
+                return (
+                  <Fragment key={t.nominee.id}>
+                    {nominees.length === 2 && index === 1 && (
+                      <div className="avrm__tv-duel-divider" aria-hidden="true">
+                        <span>VS</span>
                       </div>
-                      <span className="avrm__tally-count">{shown}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
-                    <span className="avrm__tally-name">{t.nominee.name}</span>
-                    <div className="avrm__tally-bar-wrap">
-                      <div
-                        className="avrm__tally-bar"
-                        style={{
-                          width: shown > 0 ? `${Math.max(pct, MIN_BAR_PCT)}%` : '0%',
-                        }}
+                    )}
+                    <div
+                      className={[
+                        'avrm__tally',
+                        'avrm__tally--visible',
+                        'avrm__tally--tv',
+                        nominees.length > 2 ? 'avrm__tally--tv-triple' : '',
+                        isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                        isLeading ? 'avrm__tally--leading' : '',
+                        isPulsing ? 'avrm__tally--pulse' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <VoteRingAvatar
+                        player={t.nominee}
+                        progress={totalVotes > 0 ? shown / totalVotes : 0}
+                        tone={isLeading ? 'leading' : 'trailing'}
                       />
+                      <span className="visually-hidden">{t.nominee.name}</span>
+                      <span
+                        className="avrm__tally-count"
+                        aria-label={`${shown} vote${shown === 1 ? '' : 's'}`}
+                      >
+                        {shown}
+                      </span>
                     </div>
-                    <span className="avrm__tally-count">{shown}</span>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="avrm__tallies">
+            {nominees.map((t) => {
+              const shown = displayedCounts[t.nominee.id] ?? 0;
+              const isEvictee = resolvedEvictee?.id === t.nominee.id;
+              const isPulsing = lastRevealedId === t.nominee.id;
+              return (
+                <div
+                  key={t.nominee.id}
+                  className={[
+                    'avrm__tally',
+                    'avrm__tally--visible',
+                    isEvictee && outcomeVisible ? 'avrm__tally--evictee' : '',
+                    isPulsing ? 'avrm__tally--pulse' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <PlayerAvatar player={t.nominee} size="sm" showEvictedStyle={false} />
+                  <span className="avrm__tally-name">{t.nominee.name}</span>
+                  <div className="avrm__tally-bar-wrap">
+                    <div
+                      className="avrm__tally-bar"
+                      style={{
+                        width: shown > 0
+                          ? `${Math.max(
+                            totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0,
+                            MIN_BAR_PCT,
+                          )}%`
+                          : '0%',
+                      }}
+                    />
+                  </div>
+                  <span className="avrm__tally-count">{shown}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {outcomeVisible && resolvedEvictee && variant !== 'tv' && (
           <div className="avrm__evictee" role="status">
