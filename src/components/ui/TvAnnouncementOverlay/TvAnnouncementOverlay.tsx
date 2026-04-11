@@ -40,6 +40,7 @@ export default function TvAnnouncementOverlay({
   const isDiamondPov = announcement.key === 'diamond_pov';
   const isCoupDetat = announcement.key === 'coup_detat';
   const isSpotlightVeto = announcement.key === 'spotlight_veto';
+  const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
@@ -151,6 +152,11 @@ export default function TvAnnouncementOverlay({
 
         <div className="tv-announcement__body">
           <p className="tv-announcement__title">{title}</p>
+          {showDecisionHourglass && (
+            <div className="tv-announcement__status-icon" aria-hidden="true">
+              <span className="tv-announcement__status-icon-spin">⏳</span>
+            </div>
+          )}
           {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
         </div>
 
