@@ -141,7 +141,9 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')).toBeTruthy();
     expect(container.querySelector('.avrm__tally-count[aria-label="1 vote"]')).toBeTruthy();
     expect(screen.getByText('LIVE FEED')).toBeTruthy();
-    expect(container.querySelector('.avrm__tv-stage .avrm__commentary--tv')?.textContent).toContain('Vote reveal is live.');
+    expect(container.querySelector('.avrm__commentary--tv')).toBeNull();
+    expect(container.querySelector('.avrm__tv-vote-share')).toBeNull();
+    expect(screen.queryByText(/has been eliminated\./i)).toBeNull();
   });
 
   it('keeps three TV nominees in the same compact row for double eliminations', async () => {
@@ -166,5 +168,6 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
 
     expect(container.querySelectorAll('.avrm__tally--tv-triple')).toHaveLength(3);
     expect(container.querySelector('.avrm__tv-duel-divider')).toBeNull();
+    expect(container.querySelector('.avrm__commentary--tv')).toBeNull();
   });
 });

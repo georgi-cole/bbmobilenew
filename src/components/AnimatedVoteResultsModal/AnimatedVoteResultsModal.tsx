@@ -194,22 +194,6 @@ export default function AnimatedVoteResultsModal({
     // Keep ties neutral so only a single clear leader gets the coral highlight.
     return new Set(ids.length === 1 ? ids : []);
   }, [displayedCounts, maxShownVotes, nominees]);
-  const tvCommentary = useMemo(() => {
-    if (publicTiebreakVisible && publicTiebreak) {
-      return 'Public approval breaks the tie.';
-    }
-    if (allRevealed && isTied) {
-      return 'It’s a tie. LOH must break the tie.';
-    }
-    if (outcomeVisible && resolvedEvictee) {
-      return `${resolvedEvictee.name} has been eliminated.`;
-    }
-    if (allRevealed && resolvedEvictee) {
-      return `${resolvedEvictee.name} received the most eviction votes.`;
-    }
-    return totalVotes > 0 ? 'Vote reveal is live.' : 'No votes were cast.';
-  }, [allRevealed, isTied, outcomeVisible, publicTiebreak, publicTiebreakVisible, resolvedEvictee, totalVotes]);
-
   function fire() {
     if (firedRef.current) return;
     firedRef.current = true;
@@ -288,7 +272,6 @@ export default function AnimatedVoteResultsModal({
                 const shown = displayedCounts[t.nominee.id] ?? 0;
                 const isEvictee = resolvedEvictee?.id === t.nominee.id;
                 const isPulsing = lastRevealedId === t.nominee.id;
-                const pct = totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0;
                 const isLeading = outcomeVisible
                   ? isEvictee
                   : leadingShownIds.has(t.nominee.id);
@@ -324,14 +307,10 @@ export default function AnimatedVoteResultsModal({
                       >
                         {shown}
                       </span>
-                      <span className="avrm__tv-vote-share">{pct}% of votes</span>
                     </div>
                   </Fragment>
                 );
               })}
-            </div>
-            <div className="avrm__commentary avrm__commentary--tv" role="status" aria-live="polite">
-              {tvCommentary}
             </div>
           </div>
         ) : (
