@@ -200,15 +200,15 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(3.75rem, 18vw, 4.35rem);
-  height: clamp(3.75rem, 18vw, 4.35rem);
+  width: clamp(4.1rem, 19.2vw, 4.75rem);
+  height: clamp(4.1rem, 19.2vw, 4.75rem);
   overflow: visible;
   filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
 .avrm__tally--tv-triple .avrm__tv-vote-ring-shell {
-  width: clamp(3.05rem, 15vw, 3.45rem);
-  height: clamp(3.05rem, 15vw, 3.45rem);
+  width: clamp(3.25rem, 15.6vw, 3.65rem);
+  height: clamp(3.25rem, 15.6vw, 3.65rem);
 }
 
 .avrm__tv-vote-ring {
