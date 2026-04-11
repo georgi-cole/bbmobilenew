@@ -322,8 +322,9 @@
       circle at var(--confessional-spotlight-x) var(--confessional-spotlight-y),
       rgba(13, 11, 28, 0) 0,
       rgba(13, 11, 28, 0) var(--confessional-spotlight-inner),
-      rgba(18, 20, 42, 0.22) calc(var(--confessional-spotlight-inner) + 16px),
-      rgba(6, 7, 17, 0.82) var(--confessional-spotlight-outer)
+      rgba(18, 20, 42, 0.08) calc(var(--confessional-spotlight-inner) + 4px),
+      rgba(6, 7, 17, 0.74) var(--confessional-spotlight-outer),
+      rgba(6, 7, 17, 0.82) 100%
     );
 }
 
@@ -334,22 +335,22 @@
 }
 
 .confessional-spotlight__halo {
-  border: 1px solid rgba(157, 148, 255, 0.44);
+  border: 1px solid rgba(157, 148, 255, 0.38);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-    0 0 22px rgba(116, 132, 255, 0.34),
-    0 0 42px rgba(56, 189, 248, 0.18);
+    0 0 10px rgba(116, 132, 255, 0.2),
+    0 0 18px rgba(56, 189, 248, 0.08);
 }
 
 .confessional-spotlight__button-glow {
   background: radial-gradient(
     circle,
-    rgba(167, 139, 250, 0.32) 0%,
-    rgba(96, 165, 250, 0.2) 42%,
-    rgba(56, 189, 248, 0.08) 60%,
-    rgba(56, 189, 248, 0) 74%
+    rgba(167, 139, 250, 0.18) 0%,
+    rgba(96, 165, 250, 0.1) 40%,
+    rgba(56, 189, 248, 0.03) 54%,
+    rgba(56, 189, 248, 0) 68%
   );
-  filter: blur(6px);
+  filter: blur(3px);
 }
 
 @media (prefers-reduced-motion: reduce) {

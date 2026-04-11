@@ -85,7 +85,7 @@ export default function FloatingActionBar() {
   const [confessionalFlashTick, setConfessionalFlashTick] = useState(0);
   const [triggeredConfessionalDecisionKey, setTriggeredConfessionalDecisionKey] = useState<string | null>(null);
   const [showConfessionalSpotlight, setShowConfessionalSpotlight] = useState(false);
-  const confessionalButtonRef = useRef<HTMLButtonElement | null>(null);
+  const confessionalIconRef = useRef<HTMLImageElement | null>(null);
   const prevConfessionalCountRef = useRef(confessionalAlertCount);
   const hasPendingConfessionalDecision = activeConfessionalDecision !== null;
   const hasSeenConfessionalSpotlight = game.hasSeenConfessionalSpotlight === true;
@@ -212,11 +212,11 @@ export default function FloatingActionBar() {
         confessionalFlash={isConfessionalFlashing}
         confessionalFlashTick={confessionalFlashTick}
         confessionalPersistentFlash={confessionalPersistentFlash}
-        confessionalButtonRef={confessionalButtonRef}
+        confessionalIconRef={confessionalIconRef}
       />
       <ConfessionalSpotlightOverlay
         active={showConfessionalSpotlight && confessionalSpotlightEligible}
-        targetRef={confessionalButtonRef}
+        targetRef={confessionalIconRef}
         onComplete={completeConfessionalSpotlight}
       />
     </>

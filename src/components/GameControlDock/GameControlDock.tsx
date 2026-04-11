@@ -32,8 +32,8 @@ export interface GameControlDockProps {
   confessionalFlashTick?: number;
   /** Keeps the Confessional icon/badge pulsing until the player opens it */
   confessionalPersistentFlash?: boolean;
-  /** Ref to the Confessional button hit area for guided overlays/tutorials */
-  confessionalButtonRef?: Ref<HTMLButtonElement>;
+  /** Ref to the visible Confessional icon for guided overlays/tutorials */
+  confessionalIconRef?: Ref<HTMLImageElement>;
 }
 
 export default function GameControlDock({
@@ -53,7 +53,7 @@ export default function GameControlDock({
   confessionalFlash = false,
   confessionalFlashTick = 0,
   confessionalPersistentFlash = false,
-  confessionalButtonRef,
+  confessionalIconRef,
 }: GameControlDockProps) {
   const shellSrc = assetUrl('fab_shell_clean.svg');
   const playSrc = assetUrl('fab_center_play_clean.svg');
@@ -105,6 +105,7 @@ export default function GameControlDock({
         alt=""
         aria-hidden="true"
         draggable={false}
+        ref={confessionalIconRef}
       />
 
       <button
@@ -158,7 +159,6 @@ export default function GameControlDock({
         type="button"
         aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
         disabled={disabled}
-        ref={confessionalButtonRef}
         onClick={disabled ? undefined : onToolClick}
       >
         {confessionalBadgeCount != null && confessionalBadgeCount > 0 && (
