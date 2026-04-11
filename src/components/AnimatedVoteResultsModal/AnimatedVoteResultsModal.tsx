@@ -339,9 +339,7 @@ export default function AnimatedVoteResultsModal({
                       style={{
                         width: shown > 0
                           ? `${Math.max(
-                            votesNeededForEviction > 0
-                              ? Math.round((shown / votesNeededForEviction) * 100)
-                              : 0,
+                            totalVotes > 0 ? Math.round((shown / totalVotes) * 100) : 0,
                             MIN_BAR_PCT,
                           )}%`
                           : '0%',
