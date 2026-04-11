@@ -28,6 +28,7 @@ import gameReducer, { activateDoubleEviction, addTvEvent, setPhase, updatePlayer
 import socialReducer from '../../../social/socialSlice';
 import profilesReducer from '../../../store/profilesSlice';
 import challengeReducer from '../../../store/challengeSlice';
+import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../../../constants/tvEvents';
 import finaleReducer from '../../../store/finaleSlice';
 import settingsReducer from '../../../store/settingsSlice';
 import TvZone from '../TvZone';
@@ -87,6 +88,8 @@ function makePlayer(id: string, name: string): Player {
     status: 'nominated',
   };
 }
+
+const POST_DISMISS_SETTLE_MS = 400;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -268,6 +271,42 @@ describe('TvZone — announcement overlay', () => {
     expect(document.body.querySelector('.tv-zone-live-vote-backdrop')).toBeNull();
   });
 
+  it('renders the public save result announcement on the standard screen background', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'public_save_result',
+        title: 'Public Save Result',
+        subtitle: 'Blue was saved by the public.',
+        isLive: true,
+        autoDismissMs: 3000,
+      },
+    });
+
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Public Save Result/i }).className,
+    ).toContain('tv-announcement--standard');
+  });
+
+  it('renders live eviction announcements with the royal purple major-event styling', () => {
+    const store = makeStore();
+
+    renderTvZone(store, {
+      externalAnnouncement: {
+        key: 'live_eviction',
+        title: 'Live Elimination',
+        subtitle: 'The house votes to eliminate.',
+        isLive: true,
+        autoDismissMs: 3000,
+      },
+    });
+
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className,
+    ).toContain('tv-announcement--royal-purple');
+  });
+
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
     const store = makeStore();
     renderTvZone(store);
@@ -292,6 +331,62 @@ describe('TvZone — announcement overlay', () => {
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeNull();
     expect(screen.getByText(/Blue was saved with 50% of the public support/i)).toBeTruthy();
+  });
+
+  it('keeps the final pitches message hidden once live voting begins', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-final-pitches',
+            text: LIVE_VOTE_PITCHES_TEXT,
+            type: 'social',
+            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
+          }),
+        ),
+      );
+      store.dispatch(setPhase('live_vote'));
+    });
+
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
+
+    expect(screen.queryByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeNull();
+    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+
+    vi.useRealTimers();
+  });
+
+  it('suppresses the live-vote pitches message by stable event key instead of display copy', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'ev-final-pitches-localized',
+            text: 'Housemates give their last plea before voting begins.',
+            type: 'social',
+            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
+          }),
+        ),
+      );
+      store.dispatch(setPhase('live_vote'));
+    });
+
+    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
+    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
+
+    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Housemates give their last plea before voting begins.');
+    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+
+    vi.useRealTimers();
   });
 
   it('renders without a settings reducer by falling back to default audio settings', () => {

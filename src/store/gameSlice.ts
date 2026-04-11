@@ -49,6 +49,7 @@ import {
   type MissionRewardType,
 } from '../bb/secretMission';
 import { calculateRequiredDoubleEvictionSlots } from '../features/twists/doubleEvictionTieUtils';
+import { LIVE_VOTE_PITCHES_EVENT_KEY, LIVE_VOTE_PITCHES_TEXT } from '../constants/tvEvents';
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -2866,14 +2867,14 @@ const gameSlice = createSlice({
       // Each call to advance() processes one step so the TV shows each message separately.
       // Each step advances the seed to maintain the deterministic RNG sequence.
       if (state.aiReplacementStep === 1) {
-        // Step 1: show "LOH must name a replacement" message; AI will pick on next advance.
+        // Step 1: show the "LOH is selecting a replacement" beat; AI will pick on next advance.
         // Advance seed to keep the RNG sequence consistent with normal advance() calls.
         const seedRng1 = mulberry32(state.seed);
         state.seed = (seedRng1() * 0x100000000) >>> 0;
         const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
         pushEvent(
           state,
-          `${lohPlayer?.name ?? 'The LOH'} must now name a backup nominee. 🎯`,
+          `${lohPlayer?.name ?? 'The LOH'} is selecting a replacement nominee...`,
           'game',
         );
         state.aiReplacementStep = 2;
@@ -3423,34 +3424,21 @@ const gameSlice = createSlice({
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId;
             addPovProtectedId(state, autoSavedId);
-            pushEvent(state, `${savedName} used the Safety and saved themselves! 🛡️`, 'game');
+            const lohName = state.players.find((pl) => pl.id === state.lohId)?.name ?? 'The LOH';
+            pushEvent(
+              state,
+              `${savedName} has decided to use the Power of Safety on themself. ${lohName} must now name a replacement nominee.`,
+              'game',
+            );
 
             // LOH must name a replacement
             const lohPlayer = state.players.find((pl) => pl.id === state.lohId);
             if (lohPlayer?.isUser) {
               // Human LOH: set flag; UI will render replacement picker; Continue hidden
               state.replacementNeeded = true;
-              pushEvent(
-                state,
-                `${lohPlayer.name} must now name a backup nominee. 🎯`,
-                'game',
-              );
+              pushEvent(state, `${lohPlayer.name} is selecting a replacement nominee...`, 'game');
             } else {
-              // AI LOH: deterministically pick replacement (exclude LOH, POS holder, current nominees, and the self-saved player)
-               const eligible = getReplacementEligiblePlayers(state, alive);
-              if (eligible.length > 0) {
-                const replacement = seededPick(rng, eligible);
-                state.nomineeIds.push(replacement.id);
-                const rp = state.players.find((pl) => pl.id === replacement.id);
-                if (rp) rp.status = 'nominated';
-                // Keep povSavedId set so the UI can detect "veto was used" and show
-                // the AI replacement animation. Cleared at week_start.
-                pushEvent(
-                  state,
-                  `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the backup nominee. 🎯`,
-                  'game',
-                );
-              }
+              state.aiReplacementStep = 1;
             }
           } else if (posWinner?.isUser) {
             // Human POS holder who is not a nominee: they must decide whether to use it
@@ -3472,7 +3460,9 @@ const gameSlice = createSlice({
           break;
         }
         case 'social_2': {
-          pushEvent(state, `Housemates make their final pitches before the live vote. 🤝`, 'social');
+          pushEvent(state, LIVE_VOTE_PITCHES_TEXT, 'social', {
+            key: LIVE_VOTE_PITCHES_EVENT_KEY,
+          });
           break;
         }
         case 'live_vote': {
