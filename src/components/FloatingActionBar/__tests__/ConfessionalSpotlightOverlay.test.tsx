@@ -43,6 +43,7 @@ describe('ConfessionalSpotlightOverlay', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
     globalThis.ResizeObserver = originalResizeObserver;
     Object.defineProperty(window, 'visualViewport', {
       configurable: true,
@@ -75,8 +76,12 @@ describe('ConfessionalSpotlightOverlay', () => {
     expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('209px');
     expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-inner')).toBe('14px');
     expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-outer')).toBe('22px');
+    expect(haloLayer.style.left).toBe('86px');
+    expect(haloLayer.style.top).toBe('186px');
     expect(haloLayer.style.width).toBe('46px');
     expect(haloLayer.style.height).toBe('46px');
+    expect(buttonGlowLayer.style.left).toBe('89px');
+    expect(buttonGlowLayer.style.top).toBe('189px');
     expect(buttonGlowLayer.style.width).toBe('40px');
     expect(buttonGlowLayer.style.height).toBe('40px');
   });
@@ -124,5 +129,35 @@ describe('ConfessionalSpotlightOverlay', () => {
       expect(updatedOverlayLayer.style.getPropertyValue('--confessional-spotlight-x')).toBe('192px');
       expect(updatedOverlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('332px');
     });
+  });
+
+  it('waits for the doubled spotlight duration before completing', () => {
+    vi.useFakeTimers();
+
+    const target = document.createElement('img');
+    const targetRef = createRef<HTMLElement>();
+    targetRef.current = target;
+    target.getBoundingClientRect = () =>
+      ({
+        left: 100,
+        top: 200,
+        width: 18,
+        height: 18,
+        right: 118,
+        bottom: 218,
+      }) as DOMRect;
+
+    const onComplete = vi.fn();
+    render(<ConfessionalSpotlightOverlay active targetRef={targetRef} onComplete={onComplete} />);
+
+    act(() => {
+      vi.advanceTimersByTime(4399);
+    });
+    expect(onComplete).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

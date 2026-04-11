@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useState, type CSSProperties, type
 import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 
-const SPOTLIGHT_TOTAL_DURATION_MS = 2200;
-const SPOTLIGHT_REDUCED_DURATION_MS = 1400;
+const SPOTLIGHT_TOTAL_DURATION_MS = 4400;
+const SPOTLIGHT_REDUCED_DURATION_MS = 2800;
 const SPOTLIGHT_CLEAR_RADIUS_MIN_PX = 14;
 const SPOTLIGHT_CLEAR_RADIUS_MAX_PX = 20;
 const SPOTLIGHT_CLEAR_RADIUS_PADDING_PX = 4;
@@ -137,15 +137,15 @@ export default function ConfessionalSpotlightOverlay({
   } as CSSProperties;
 
   const glowStyle = {
-    left: overlayMetrics.centerX,
-    top: overlayMetrics.centerY,
+    left: overlayMetrics.centerX - overlayMetrics.haloSize / 2,
+    top: overlayMetrics.centerY - overlayMetrics.haloSize / 2,
     width: overlayMetrics.haloSize,
     height: overlayMetrics.haloSize,
   } as CSSProperties;
 
   const buttonGlowStyle = {
-    left: overlayMetrics.centerX,
-    top: overlayMetrics.centerY,
+    left: overlayMetrics.centerX - overlayMetrics.glowSize / 2,
+    top: overlayMetrics.centerY - overlayMetrics.glowSize / 2,
     width: overlayMetrics.glowSize,
     height: overlayMetrics.glowSize,
   } as CSSProperties;

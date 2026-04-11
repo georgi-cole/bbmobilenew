@@ -330,7 +330,6 @@
 
 .confessional-spotlight__halo,
 .confessional-spotlight__button-glow {
-  transform: translate(-50%, -50%);
   border-radius: 999px;
 }
 
