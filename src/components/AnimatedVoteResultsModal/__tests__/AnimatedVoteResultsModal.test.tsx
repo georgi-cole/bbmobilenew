@@ -114,8 +114,8 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the TV variant as avatar-first vote panels with progress bars', async () => {
-    render(
+  it('renders the TV variant as a duel layout with circular vote rings', async () => {
+    const { container } = render(
       <AnimatedVoteResultsModal
         nominees={[
           { nominee: makePlayer('p1', 'Nominee 1'), voteCount: 5 },
@@ -133,8 +133,37 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
       await vi.advanceTimersByTimeAsync(5);
     });
 
-    expect(document.querySelector('.avrm__tally--tv')).toBeTruthy();
-    expect(document.querySelectorAll('.avrm__tv-progress-track')).toHaveLength(2);
+    expect(container.querySelectorAll('.avrm__tally--tv')).toHaveLength(2);
+    expect(container.querySelector('.avrm__tv-duel-divider')?.textContent).toContain('VS');
+    expect(container.querySelectorAll('.avrm__tv-vote-ring')).toHaveLength(2);
+    expect(container.querySelectorAll('.avrm__tv-vote-ring-track')).toHaveLength(2);
+    expect(container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')).toBeTruthy();
+    expect(screen.getByLabelText('1 vote')).toBeTruthy();
     expect(screen.getByText('LIVE FEED')).toBeTruthy();
+    expect(screen.getByText('Vote reveal is live.')).toBeTruthy();
+  });
+
+  it('keeps three TV nominees in the same compact row for double eliminations', async () => {
+    const { container } = render(
+      <AnimatedVoteResultsModal
+        nominees={[
+          { nominee: makePlayer('p1', 'Nominee 1'), voteCount: 4 },
+          { nominee: makePlayer('p2', 'Nominee 2'), voteCount: 3 },
+          { nominee: makePlayer('p3', 'Nominee 3'), voteCount: 2 },
+        ]}
+        evictee={makePlayer('p1', 'Nominee 1')}
+        onDone={vi.fn()}
+        revealIntervalMs={1}
+        postRevealDelayMs={1}
+        variant="tv"
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3);
+    });
+
+    expect(container.querySelectorAll('.avrm__tally--tv-triple')).toHaveLength(3);
+    expect(container.querySelector('.avrm__tv-duel-divider')).toBeNull();
   });
 });

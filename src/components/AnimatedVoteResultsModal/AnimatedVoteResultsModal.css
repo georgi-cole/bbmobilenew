@@ -78,7 +78,7 @@
 }
 
 .avrm--tv .avrm__header {
-  padding: 0.15rem 0.05rem 0.45rem;
+  padding: 0.2rem 0.15rem 0.55rem;
   background: none;
   border-bottom: none;
   gap: 0.45rem;
@@ -98,7 +98,7 @@
 }
 
 .avrm--tv .avrm__title {
-  font-size: 0.6rem;
+  font-size: clamp(0.62rem, 1.8vw, 0.82rem);
   letter-spacing: 0.18em;
   color: #f7d9d9;
 }
@@ -125,14 +125,16 @@
   gap: 0.6rem;
 }
 
-.avrm--tv .avrm__tallies {
+.avrm__tallies--tv {
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 0 0.15rem 0.2rem;
+  gap: clamp(0.45rem, 2vw, 1rem);
+  padding: 0 clamp(0.1rem, 1vw, 0.4rem) clamp(0.25rem, 1.8vh, 0.7rem);
+  overflow: hidden;
 }
 
 .avrm__tally {
@@ -154,12 +156,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.34rem;
+  gap: clamp(0.28rem, 1.1vh, 0.55rem);
+  width: min(29vw, 8rem);
+  max-width: 8rem;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
   transform: translateY(10px) scale(0.95);
+}
+
+.avrm__tally--tv-triple {
+  width: min(25vw, 6.6rem);
+  max-width: 6.6rem;
 }
 
 .avrm--tv .avrm__tally--visible {
@@ -176,16 +186,68 @@
   100% { transform: translateY(0) scale(1); }
 }
 
-.avrm__tv-avatar-wrap {
+.avrm__tv-vote-ring-shell {
   position: relative;
-  padding: 0.14rem;
+  display: grid;
+  place-items: center;
+  width: clamp(5rem, 27vw, 7rem);
+  height: clamp(5rem, 27vw, 7rem);
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
-.avrm--tv .pa--sm {
-  width: 3.3rem;
-  height: 3.3rem;
+.avrm__tally--tv-triple .avrm__tv-vote-ring-shell {
+  width: clamp(4.3rem, 23vw, 5.9rem);
+  height: clamp(4.3rem, 23vw, 5.9rem);
+}
+
+.avrm__tv-vote-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.avrm__tv-vote-ring-track,
+.avrm__tv-vote-ring-fill {
+  fill: none;
+  stroke-width: 5;
+}
+
+.avrm__tv-vote-ring-track {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.avrm__tv-vote-ring-fill {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s ease;
+}
+
+.avrm__tv-vote-ring-fill--leading {
+  stroke: #ff7d6b;
+}
+
+.avrm__tv-vote-ring-fill--trailing {
+  stroke: #7b86ff;
+}
+
+.avrm__tv-avatar-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(100% - clamp(0.8rem, 4vw, 1rem));
+  height: calc(100% - clamp(0.8rem, 4vw, 1rem));
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(8, 10, 19, 0.88);
+}
+
+.avrm--tv .pa--lg {
+  width: 100%;
+  height: 100%;
   border-width: 1px;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 .avrm__tally--visible {
@@ -211,13 +273,14 @@
   box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.2), 0 0 12px rgba(255, 50, 50, 0.15);
 }
 
-/* TV variant: restore border/padding so the red frame fully wraps avatar + vote count */
+/* TV variant: keep emphasis on the ring glow instead of a card border */
 .avrm__tally--tv.avrm__tally--evictee {
-  border: 1.5px solid rgba(255, 80, 80, 0.7);
-  border-radius: 12px;
-  padding: 0.45rem 0.55rem;
-  background: rgba(200, 30, 30, 0.12);
-  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.18), 0 0 14px rgba(255, 50, 50, 0.18);
+  box-shadow: none;
+}
+
+.avrm__tally--leading .avrm__tv-vote-ring-shell,
+.avrm__tally--tv.avrm__tally--evictee .avrm__tv-vote-ring-shell {
+  filter: drop-shadow(0 0 16px rgba(255, 116, 100, 0.22));
 }
 
 .avrm__tally-name {
@@ -231,7 +294,10 @@
 
 .avrm--tv .avrm__tally-name {
   max-width: 100%;
-  font-size: 0.78rem;
+  width: 100%;
+  font-size: clamp(0.72rem, 2.5vw, 0.98rem);
+  line-height: 1.1;
+  font-weight: 700;
   text-align: center;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
@@ -245,35 +311,6 @@
 
 .avrm--tv .avrm__tally-bar-wrap {
   height: 5px;
-}
-
-.avrm__tv-progress-block {
-  width: min(100%, 6.6rem);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.38rem;
-}
-
-.avrm__tv-progress-track {
-  width: 100%;
-  height: 0.3rem;
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.avrm__tv-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7c99ff 0%, #b0c2ff 100%);
-  border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 10px rgba(124, 153, 255, 0.38);
-}
-
-.avrm__tally--evictee .avrm__tv-progress-fill {
-  background: linear-gradient(90deg, #ff6b6b 0%, #ff9f80 100%);
-  box-shadow: 0 0 12px rgba(255, 107, 107, 0.38);
 }
 
 .avrm__tally-bar {
@@ -297,7 +334,7 @@
 
 .avrm--tv .avrm__tally-count {
   min-width: 0;
-  font-size: 1.7rem;
+  font-size: clamp(1.4rem, 6vw, 2.1rem);
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -306,6 +343,51 @@
 }
 
 .avrm__tally--evictee .avrm__tally-count { color: #ff8080; }
+
+.avrm__tv-vote-share {
+  font-size: clamp(0.58rem, 1.9vw, 0.76rem);
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(216, 221, 240, 0.82);
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.avrm__tv-duel-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(1.6rem, 7vw, 2.4rem);
+  align-self: center;
+}
+
+.avrm__tv-duel-divider span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.6rem, 7vw, 2.25rem);
+  height: clamp(1.6rem, 7vw, 2.25rem);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(244, 247, 255, 0.68);
+  font-size: clamp(0.54rem, 1.8vw, 0.72rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.avrm__commentary--tv {
+  align-self: center;
+  width: min(100%, 22rem);
+  padding: clamp(0.25rem, 1.6vh, 0.6rem) 0 0;
+  font-size: clamp(0.68rem, 2.2vw, 0.9rem);
+  line-height: 1.25;
+  font-weight: 700;
+  color: #dbe3ff;
+  text-align: center;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
 
 .avrm__tv-evicted-chip {
   padding: 0.18rem 0.45rem;
@@ -554,17 +636,30 @@
     font-size: 0.54rem;
   }
 
-  .avrm--tv .avrm__tallies {
-    gap: 0.55rem;
+  .avrm__tallies--tv {
+    gap: 0.35rem;
   }
 
-  .avrm--tv .pa--sm {
-    width: 2.8rem;
-    height: 2.8rem;
+  .avrm__tally--tv {
+    width: min(31vw, 7rem);
+  }
+
+  .avrm__tally--tv-triple {
+    width: min(26vw, 5.9rem);
   }
 
   .avrm--tv .avrm__tally-count {
     font-size: 1.4rem;
+  }
+
+  .avrm__tv-duel-divider {
+    min-width: 1.2rem;
+  }
+
+  .avrm__tv-duel-divider span {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.5rem;
   }
 }
 
@@ -572,6 +667,9 @@
 @media (prefers-reduced-motion: reduce) {
   .avrm, .avrm__card, .avrm__tally, .avrm__evictee, .avrm__tie-banner, .avrm__public-tiebreak-option--evictee {
     animation: none !important;
+    transition: none !important;
+  }
+  .avrm__tv-vote-ring-fill {
     transition: none !important;
   }
   .avrm { opacity: 1; }
