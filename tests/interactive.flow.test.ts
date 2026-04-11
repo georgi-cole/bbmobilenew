@@ -136,6 +136,35 @@ describe('Human POS decision', () => {
     expect(state.awaitingPovDecision).toBe(false);
     expect(state.awaitingPovSaveTarget).toBe(true);
   });
+
+  it('breaks the AI replacement flow into separate Safety Ceremony messages', () => {
+    const players = makePlayers(6);
+    players[1].status = 'loh';
+    players[2].status = 'nominated+pos';
+    players[3].status = 'nominated';
+
+    const store = makeStore({
+      phase: 'pos_ceremony',
+      lohId: 'p1',
+      posWinnerId: 'p2',
+      nomineeIds: ['p2', 'p3'],
+      players,
+    });
+
+    store.dispatch(advance()); // pos_ceremony → pos_ceremony_results
+
+    let state = store.getState().game;
+    expect(state.tvFeed[0]?.text).toBe(
+      'Player 2 has decided to use the Power of Safety on themself. Player 1 must now name a replacement nominee.',
+    );
+    expect(state.aiReplacementStep).toBe(1);
+
+    store.dispatch(advance());
+
+    state = store.getState().game;
+    expect(state.tvFeed[0]?.text).toBe('Player 1 is selecting a replacement nominee...');
+    expect(state.aiReplacementStep).toBe(2);
+  });
 });
 
 describe('Live vote + eviction tally', () => {

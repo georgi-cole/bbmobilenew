@@ -158,6 +158,12 @@ function getPhaseAnnouncementKey(phase: Phase, aliveCount: number, doubleEvictio
 // preventing jarring text transitions between the overlay disappearing and new text.
 const POST_DISMISS_FADE_MS = 300;
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
+const LIVE_VOTE_PITCHES_TEXT = 'Housemates make their final pitches before the live vote. 🤝';
+const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
+  'loh_tiebreak_tie',
+  'loh_tiebreak_deciding',
+  'loh_tiebreak_decision',
+]);
 
 type TvZonePublicSaveReveal = {
   nominees: Player[];
@@ -316,9 +322,23 @@ export default function TvZone(props: TvZoneProps) {
 
   // Active announcement: phase-based takes priority over event-based.
   const activeAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+  const suppressStaleLiveVotePitchMessage =
+    latestEvent?.text === LIVE_VOTE_PITCHES_TEXT &&
+    gameState.phase !== 'social_2';
   const hideViewportMessage =
-    postDismissBlocked || !!activeAnnouncement || publicSaveRevealActive || voteResultsRevealActive;
+    postDismissBlocked ||
+    suppressStaleLiveVotePitchMessage ||
+    !!activeAnnouncement ||
+    publicSaveRevealActive ||
+    voteResultsRevealActive;
   const viewportMessageKey = getViewportMessageKey(latestEvent);
+  const mainTvMessage = activeAnnouncement
+    ? activeAnnouncement.title
+    : suppressStaleLiveVotePitchMessage
+      ? undefined
+      : latestEvent?.text;
+  const shouldSkipPostDismissFade = activeAnnouncement != null &&
+    CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
 
   const handleDismiss = useCallback(() => {
     if (externalAnnouncement) {
@@ -339,10 +359,25 @@ export default function TvZone(props: TvZoneProps) {
     } else if (latestEvent) {
       setDismissedEventId(latestEvent.id);
     }
+    if (shouldSkipPostDismissFade) {
+      setPostDismissBlocked(false);
+      if (dismissBlockTimerRef.current !== null) {
+        clearTimeout(dismissBlockTimerRef.current);
+        dismissBlockTimerRef.current = null;
+      }
+      return;
+    }
     setPostDismissBlocked(true);
     if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
     dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
-  }, [externalAnnouncement, latestEvent, phaseAnnouncement, gameState.phase, onExternalAnnouncementDismiss]);
+  }, [
+    externalAnnouncement,
+    latestEvent,
+    phaseAnnouncement,
+    gameState.phase,
+    onExternalAnnouncementDismiss,
+    shouldSkipPostDismissFade,
+  ]);
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {
@@ -586,7 +621,7 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Event log (TVLog with duplicate suppression, compact two-line mobile feed) ──── */}
       <TVLog
         entries={mainLogFeed}
-        mainTVMessage={activeAnnouncement ? activeAnnouncement.title : latestEvent?.text}
+        mainTVMessage={mainTvMessage}
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
       />

@@ -54,6 +54,32 @@
   50%       { opacity: 1;    transform: scale(1.03); }
 }
 
+.tv-announcement--standard {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(116, 92, 255, 0.16), rgba(116, 92, 255, 0) 26%),
+    linear-gradient(180deg, rgba(21, 29, 42, 0.94) 0%, rgba(9, 14, 22, 0.96) 38%, rgba(4, 8, 14, 0.98) 100%);
+}
+
+.tv-announcement--standard::before {
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.06) 16%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 18% 12%, rgba(156, 136, 255, 0.18) 0%, rgba(156, 136, 255, 0) 42%);
+  opacity: 0.8;
+}
+
+.tv-announcement--royal-purple {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(190, 160, 255, 0.28), rgba(190, 160, 255, 0) 28%),
+    linear-gradient(160deg, rgba(32, 13, 78, 0.96) 0%, rgba(68, 36, 134, 0.92) 52%, rgba(24, 9, 64, 0.97) 100%);
+}
+
+.tv-announcement--royal-purple::before {
+  background:
+    linear-gradient(160deg, rgba(196, 181, 253, 0.16) 0%, rgba(167, 139, 250, 0.24) 26%, rgba(139, 92, 246, 0.28) 52%, rgba(167, 139, 250, 0.1) 100%),
+    radial-gradient(circle at 18% 12%, rgba(224, 231, 255, 0.3) 0%, rgba(196, 181, 253, 0.18) 18%, rgba(167, 139, 250, 0) 48%);
+  opacity: 0.92;
+}
+
 /* ── Battle Back variant (orange spotlight) ──────────────────────────────── */
 .tv-announcement--battle-back {
   background: linear-gradient(
