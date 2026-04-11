@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import GameControlDock from '../GameControlDock';
@@ -65,5 +66,15 @@ describe('GameControlDock', () => {
     expect(screen.getByRole('button', { name: 'Advance to next phase' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Public meter' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Confessional' })).toBeDisabled();
+  });
+
+  it('forwards the confessional icon ref for spotlight targeting', () => {
+    const confessionalIconRef = createRef<HTMLImageElement>();
+
+    const { container } = render(<GameControlDock confessionalIconRef={confessionalIconRef} />);
+
+    expect(confessionalIconRef.current).toBe(
+      container.querySelector<HTMLImageElement>('.fab-icon.confessional'),
+    );
   });
 });
