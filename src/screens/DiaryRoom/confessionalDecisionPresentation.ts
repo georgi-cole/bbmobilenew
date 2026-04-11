@@ -23,7 +23,6 @@ export function getConfessionalDecisionPresentation(
 ): DecisionPresentation {
   const tiedIds = game.tiedNomineeIds ?? game.nomineeIds;
   const powerName = getConfessionalPowerName(game);
-  const alivePlayerIds = alivePlayers.map((player) => player.id).join(',');
 
   let prompt = 'The Big Eye is waiting for your decision.';
   const keyParts = [
@@ -35,6 +34,7 @@ export function getConfessionalDecisionPresentation(
   switch (decision.type) {
     case 'nominations': {
       const required = game.doubleEviction?.weekActive ? 3 : 2;
+      const alivePlayerIdsCsv = alivePlayers.map((player) => player.id).join(',');
       prompt = required === 3
         ? 'Choose the three houseguests you want to nominate for the Double Elimination.'
         : 'Choose the two houseguests you want to nominate.';
@@ -44,7 +44,7 @@ export function getConfessionalDecisionPresentation(
         `auto=${game.publicModeEnabled && !game.doubleEviction?.weekActive
           ? (game.lastHohCompFinisherId ?? 'none')
           : 'none'}`,
-        `alive=${alivePlayerIds}`,
+        `alive=${alivePlayerIdsCsv}`,
       );
       break;
     }
@@ -83,7 +83,8 @@ export function getConfessionalDecisionPresentation(
         `vipSecond=${game.specialVeto?.awaitingVipSecondSaveTarget ? 'yes' : 'no'}`,
       );
       break;
-    case 'replacement_nominee':
+    case 'replacement_nominee': {
+      const alivePlayerIdsCsv = alivePlayers.map((player) => player.id).join(',');
       prompt = game.specialVeto?.awaitingCoupReplacement1
         ? 'Choose the first replacement nominee.'
         : game.specialVeto?.awaitingCoupReplacement2
@@ -99,9 +100,10 @@ export function getConfessionalDecisionPresentation(
               : 'standard'}`,
         `nominees=${game.nomineeIds.join(',')}`,
         `saved=${game.povSavedId ?? 'none'}`,
-        `alive=${alivePlayerIds}`,
+        `alive=${alivePlayerIdsCsv}`,
       );
       break;
+    }
     case 'tie_break': {
       const multiSelectCount = game.doubleEviction?.weekActive
         ? calculateRequiredDoubleEvictionSlots(
