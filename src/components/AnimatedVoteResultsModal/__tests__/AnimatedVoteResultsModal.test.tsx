@@ -130,7 +130,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     );
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5);
+      await vi.advanceTimersByTimeAsync(1);
     });
 
     expect(container.querySelectorAll('.avrm__tally--tv')).toHaveLength(2);

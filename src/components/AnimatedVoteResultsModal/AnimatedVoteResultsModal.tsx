@@ -76,7 +76,7 @@ function VoteRingAvatar({ player, progress, tone }: VoteRingAvatarProps) {
   const dashOffset = TV_RING_CIRCUMFERENCE * (1 - clampedProgress);
 
   return (
-    <div className={`avrm__tv-vote-ring-shell avrm__tv-vote-ring-shell--${tone}`}>
+    <div className="avrm__tv-vote-ring-shell">
       <svg
         className="avrm__tv-vote-ring"
         viewBox="0 0 100 100"
@@ -145,11 +145,6 @@ export default function AnimatedVoteResultsModal({
     () => nominees.reduce((s, t) => s + t.voteCount, 0),
     [nominees],
   );
-  const votesNeededForEviction = useMemo(
-    () => Math.max(0, ...nominees.map((t) => t.voteCount)),
-    [nominees],
-  );
-
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
   const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees]);
 
