@@ -229,7 +229,7 @@ function clearConversationSession(playerId: string): void {
 function recordConfessionalVisit(playerId: string): number {
   try {
     const raw = sessionStorage.getItem(visitCountKey(playerId));
-    const current = raw ? Number.parseInt(raw, 10) : 0;
+    const current = raw ? parseInt(raw, 10) : 0;
     const next = Number.isFinite(current) && current > 0 ? current + 1 : 1;
     sessionStorage.setItem(visitCountKey(playerId), String(next));
     return next;
@@ -241,6 +241,8 @@ function recordConfessionalVisit(playerId: string): number {
 function buildEntryGreeting(playerName: string, seed: number, visitCount: number): ChatMessage {
   const text = visitCount <= 1
     ? FIRST_VISIT_GREETING.replace('{name}', playerName)
+    // Second visit should use the first returning line, so offset the
+    // visit count by two before applying the seeded rotation.
     : RETURNING_VISIT_GREETINGS[(seed + visitCount - 2) % RETURNING_VISIT_GREETINGS.length];
 
   return {
@@ -440,22 +442,22 @@ export default function DiaryRoom() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
+    clearConversationSession(playerId);
+
     if (confessionalLocked) {
-      clearConversationSession(playerId);
       setMessages([]);
       setConversationState(createInitialBigEyeState());
       return;
     }
 
-    clearConversationSession(playerId);
     const nextConversationState = createInitialBigEyeState();
     const visitCount = recordConfessionalVisit(playerId);
-    const greeting = buildEntryGreeting(playerName, seed ?? 0, visitCount);
+    const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount);
     setConversationState(nextConversationState);
     saveConversationState(playerId, nextConversationState);
     setMessages([greeting]);
     saveChat(playerId, [greeting]);
-  }, [confessionalLocked, playerId, playerName, seed]);
+  }, [confessionalLocked, playerId]);
 
   useEffect(() => {
     if (confessionalLocked) return;
