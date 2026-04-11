@@ -337,10 +337,12 @@ export default function TvZone(props: TvZoneProps) {
     : suppressStaleLiveVotePitchMessage
       ? undefined
       : latestEvent?.text;
-  const shouldSkipPostDismissFade = activeAnnouncement != null &&
-    CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
 
   const handleDismiss = useCallback(() => {
+    const currentAnnouncement = externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+    const skipPostDismissFade =
+      currentAnnouncement != null &&
+      CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key);
     if (externalAnnouncement) {
       // External announcements are used as one-off pre-roll overlays (e.g. ad
       // break copy) for the *current* phase. If an internal phase/event
@@ -359,7 +361,7 @@ export default function TvZone(props: TvZoneProps) {
     } else if (latestEvent) {
       setDismissedEventId(latestEvent.id);
     }
-    if (shouldSkipPostDismissFade) {
+    if (skipPostDismissFade) {
       setPostDismissBlocked(false);
       if (dismissBlockTimerRef.current !== null) {
         clearTimeout(dismissBlockTimerRef.current);
@@ -374,9 +376,9 @@ export default function TvZone(props: TvZoneProps) {
     externalAnnouncement,
     latestEvent,
     phaseAnnouncement,
+    eventAnnouncement,
     gameState.phase,
     onExternalAnnouncementDismiss,
-    shouldSkipPostDismissFade,
   ]);
 
   // Cleanup post-dismiss timer on unmount

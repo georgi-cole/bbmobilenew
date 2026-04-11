@@ -88,6 +88,8 @@ function makePlayer(id: string, name: string): Player {
   };
 }
 
+const POST_DISMISS_SETTLE_MS = 400;
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('TvZone — announcement overlay', () => {
@@ -281,8 +283,9 @@ describe('TvZone — announcement overlay', () => {
       },
     });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Public Save Result/i }).className)
-      .toContain('tv-announcement--standard');
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Public Save Result/i }).className,
+    ).toContain('tv-announcement--standard');
   });
 
   it('renders live eviction announcements with the royal purple major-event styling', () => {
@@ -298,8 +301,9 @@ describe('TvZone — announcement overlay', () => {
       },
     });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className)
-      .toContain('tv-announcement--royal-purple');
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Live Elimination/i }).className,
+    ).toContain('tv-announcement--royal-purple');
   });
 
   it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
@@ -347,7 +351,7 @@ describe('TvZone — announcement overlay', () => {
     });
 
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-    act(() => { vi.advanceTimersByTime(400); });
+    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeNull();
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
