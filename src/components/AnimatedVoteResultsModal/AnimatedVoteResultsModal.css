@@ -167,8 +167,8 @@
   align-items: center;
   justify-content: center;
   gap: clamp(0.05rem, 0.3vh, 0.14rem);
-  width: min(26vw, 5.6rem);
-  max-width: 5.6rem;
+  width: min(30vw, 6.45rem);
+  max-width: 6.45rem;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -178,8 +178,8 @@
 }
 
 .avrm__tally--tv-triple {
-  width: min(21vw, 4.3rem);
-  max-width: 4.3rem;
+  width: min(23vw, 4.8rem);
+  max-width: 4.8rem;
 }
 
 .avrm--tv .avrm__tally--visible {
@@ -200,15 +200,15 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(3.15rem, 15vw, 3.65rem);
-  height: clamp(3.15rem, 15vw, 3.65rem);
+  width: clamp(3.75rem, 18vw, 4.35rem);
+  height: clamp(3.75rem, 18vw, 4.35rem);
   overflow: visible;
   filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
 .avrm__tally--tv-triple .avrm__tv-vote-ring-shell {
-  width: clamp(2.7rem, 13.5vw, 3.05rem);
-  height: clamp(2.7rem, 13.5vw, 3.05rem);
+  width: clamp(3.05rem, 15vw, 3.45rem);
+  height: clamp(3.05rem, 15vw, 3.45rem);
 }
 
 .avrm__tv-vote-ring {
