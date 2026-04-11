@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import CodeBreakerComp from '../../../src/components/CodeBreakerComp/CodeBreakerComp';
 import {
+  computeAllAiSolveProfiles,
   computeSolvedScore,
   generateSecretCode,
 } from '../../../src/components/CodeBreakerComp/codeBreakerLogic';
@@ -38,6 +39,13 @@ function makeParticipants() {
     { id: 'ai-1', name: 'Cipher', isHuman: false, precomputedScore: 0, previousPR: null },
     { id: 'ai-2', name: 'Tumbler', isHuman: false, precomputedScore: 0, previousPR: null },
   ];
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 describe('CodeBreakerComp', () => {
@@ -149,8 +157,17 @@ describe('CodeBreakerComp', () => {
     expect(screen.getByText('Your run now ranks by score, based on attempts and elapsed time.')).toBeInTheDocument();
     expect(screen.getByText('Attempts')).toBeInTheDocument();
     expect(screen.getByText('Elapsed')).toBeInTheDocument();
-    expect(screen.getByText('Score')).toBeInTheDocument();
+    expect(screen.getAllByText('Score').length).toBeGreaterThan(0);
     expect(screen.getByText('You (You)')).toBeInTheDocument();
+    const aiSolveProfiles = computeAllAiSolveProfiles(42, ['human', 'ai-1', 'ai-2'], 'human');
+    expect(screen.getByText('Cipher')).toBeInTheDocument();
+    expect(
+      screen.getByText(`${aiSolveProfiles['ai-1'].attempts} attempts • ${formatElapsed(aiSolveProfiles['ai-1'].elapsedMs)}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tumbler')).toBeInTheDocument();
+    expect(
+      screen.getByText(`${aiSolveProfiles['ai-2'].attempts} attempts • ${formatElapsed(aiSolveProfiles['ai-2'].elapsedMs)}`),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(onComplete).toHaveBeenCalledTimes(1);

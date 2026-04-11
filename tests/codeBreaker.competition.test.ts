@@ -31,7 +31,9 @@ import {
   generateSecretCode,
   evaluateGuess,
   computeSolvedScore,
+  computeAiSolveProfile,
   computeAiScore,
+  computeAllAiSolveProfiles,
   computeAllAiScores,
   rankScores,
   CODE_LENGTH,
@@ -243,6 +245,15 @@ describe('Vault Cracker — scoring', () => {
     expect(score).toBeLessThanOrEqual(100);
     expect(score).toBeGreaterThanOrEqual(30);
   });
+
+  it('AI solve profiles keep attempts and elapsed time in the expected range', () => {
+    const result = computeAiSolveProfile(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    expect(result.attempts).toBeGreaterThanOrEqual(1);
+    expect(result.attempts).toBeLessThanOrEqual(8);
+    expect(result.elapsedMs).toBeGreaterThanOrEqual(15_000);
+    expect(result.elapsedMs).toBeLessThanOrEqual(DEFAULT_ELAPSED_SCORE_CAP_MS);
+    expect(result.score).toBe(computeAiScore(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS));
+  });
 });
 
 // ── 4. AI score determinism ───────────────────────────────────────────────────
@@ -265,12 +276,26 @@ describe('Vault Cracker — AI score determinism', () => {
     expect(a).not.toBe(b);
   });
 
+  it('same seed + playerId always produces the same solve profile', () => {
+    const a = computeAiSolveProfile(42, 'player_X', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    const b = computeAiSolveProfile(42, 'player_X', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    expect(a).toEqual(b);
+  });
+
   it('computeAllAiScores excludes the human', () => {
     const ids = ['p0', 'p1', 'p2'];
     const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(scores['p0']).toBeUndefined();
     expect(typeof scores['p1']).toBe('number');
     expect(typeof scores['p2']).toBe('number');
+  });
+
+  it('computeAllAiSolveProfiles excludes the human and preserves deterministic scores', () => {
+    const ids = ['p0', 'p1', 'p2'];
+    const profiles = computeAllAiSolveProfiles(42, ids, 'p0', DEFAULT_ELAPSED_SCORE_CAP_MS);
+    expect(profiles['p0']).toBeUndefined();
+    expect(profiles['p1'].score).toBe(computeAiScore(42, 'p1', DEFAULT_ELAPSED_SCORE_CAP_MS));
+    expect(profiles['p2'].score).toBe(computeAiScore(42, 'p2', DEFAULT_ELAPSED_SCORE_CAP_MS));
   });
 });
 

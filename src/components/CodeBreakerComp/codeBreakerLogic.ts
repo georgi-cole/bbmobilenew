@@ -34,6 +34,12 @@ export interface GuessResult {
   cows: number;
 }
 
+export interface AiSolveProfile {
+  attempts: number;
+  elapsedMs: number;
+  score: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Deterministic per-player RNG derived from master seed + player ID. */
@@ -141,18 +147,55 @@ export function computeSolvedScore(
  * AI players always eventually solve the code, with attempt efficiency and
  * elapsed-time profiles derived from (masterSeed, playerId).
  */
-export function computeAiScore(
+export function computeAiSolveProfile(
   masterSeed: number,
   playerId: string,
   elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
-): number {
+): AiSolveProfile {
   const rng = playerRng(masterSeed, playerId);
   const attempts = 1 + Math.floor(rng() * 8);
   const elapsedMs = Math.min(
     elapsedScoreCapMs,
     15_000 + Math.round(rng() * elapsedScoreCapMs),
   );
-  return computeSolvedScore(attempts, elapsedMs, elapsedScoreCapMs);
+  return {
+    attempts,
+    elapsedMs,
+    score: computeSolvedScore(attempts, elapsedMs, elapsedScoreCapMs),
+  };
+}
+
+/**
+ * Deterministically compute the competition score for a single AI participant.
+ *
+ * AI players always eventually solve the code, with attempt efficiency and
+ * elapsed-time profiles derived from (masterSeed, playerId).
+ */
+export function computeAiScore(
+  masterSeed: number,
+  playerId: string,
+  elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
+): number {
+  return computeAiSolveProfile(masterSeed, playerId, elapsedScoreCapMs).score;
+}
+
+/**
+ * Compute deterministic solve profiles for every AI participant in the competition.
+ * Returns a map of playerId → attempts, elapsedMs, and score.
+ */
+export function computeAllAiSolveProfiles(
+  masterSeed: number,
+  participantIds: string[],
+  humanId: string | null,
+  elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
+): Record<string, AiSolveProfile> {
+  const profiles: Record<string, AiSolveProfile> = {};
+  for (const id of participantIds) {
+    if (id !== humanId) {
+      profiles[id] = computeAiSolveProfile(masterSeed, id, elapsedScoreCapMs);
+    }
+  }
+  return profiles;
 }
 
 /**
@@ -166,10 +209,9 @@ export function computeAllAiScores(
   elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): Record<string, number> {
   const scores: Record<string, number> = {};
-  for (const id of participantIds) {
-    if (id !== humanId) {
-      scores[id] = computeAiScore(masterSeed, id, elapsedScoreCapMs);
-    }
+  const profiles = computeAllAiSolveProfiles(masterSeed, participantIds, humanId, elapsedScoreCapMs);
+  for (const [id, profile] of Object.entries(profiles)) {
+    scores[id] = profile.score;
   }
   return scores;
 }
