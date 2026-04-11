@@ -66,6 +66,16 @@ const SUMMARY_POOL = [
   '{name} visited the Confessional. Whatever was said, it stays private.',
 ];
 
+const FIRST_VISIT_GREETING =
+  'Hello, {name}! Welcome to the confessional. Here your thoughts may be echoed off the walls but your secrets will never leave the safe space. Share away.';
+
+const RETURNING_VISIT_GREETINGS = [
+  'Welcome back. I am all eyes.',
+  'I have been expecting you.',
+  'Ah, you return.',
+  'Something tells me you are uneasy.',
+];
+
 // ─── Mystery box reward messages ──────────────────────────────────────────────
 
 const REWARD_PENDING_MSG =
@@ -187,13 +197,8 @@ function conversationStateKey(playerId: string): string {
   return `bb_dr_state_${playerId}`;
 }
 
-function loadChat(playerId: string): ChatMessage[] {
-  try {
-    const raw = sessionStorage.getItem(chatKey(playerId));
-    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
-  } catch {
-    return [];
-  }
+function visitCountKey(playerId: string): string {
+  return `bb_dr_visit_count_${playerId}`;
 }
 
 function saveChat(playerId: string, messages: ChatMessage[]): void {
@@ -204,25 +209,46 @@ function saveChat(playerId: string, messages: ChatMessage[]): void {
   }
 }
 
-function loadConversationState(playerId: string): BigEyeConversationState {
-  try {
-    if (loadChat(playerId).length === 0) {
-      return createInitialBigEyeState();
-    }
-
-    const raw = sessionStorage.getItem(conversationStateKey(playerId));
-    return raw ? (JSON.parse(raw) as BigEyeConversationState) : createInitialBigEyeState();
-  } catch {
-    return createInitialBigEyeState();
-  }
-}
-
 function saveConversationState(playerId: string, state: BigEyeConversationState): void {
   try {
     sessionStorage.setItem(conversationStateKey(playerId), JSON.stringify(state));
   } catch {
     // fail silently
   }
+}
+
+function clearConversationSession(playerId: string): void {
+  try {
+    sessionStorage.removeItem(chatKey(playerId));
+    sessionStorage.removeItem(conversationStateKey(playerId));
+  } catch {
+    // fail silently
+  }
+}
+
+function recordConfessionalVisit(playerId: string): number {
+  try {
+    const raw = sessionStorage.getItem(visitCountKey(playerId));
+    const current = raw ? Number.parseInt(raw, 10) : 0;
+    const next = Number.isFinite(current) && current > 0 ? current + 1 : 1;
+    sessionStorage.setItem(visitCountKey(playerId), String(next));
+    return next;
+  } catch {
+    return 1;
+  }
+}
+
+function buildEntryGreeting(playerName: string, seed: number, visitCount: number): ChatMessage {
+  const text = visitCount <= 1
+    ? FIRST_VISIT_GREETING.replace('{name}', playerName)
+    : RETURNING_VISIT_GREETINGS[(seed + visitCount - 2) % RETURNING_VISIT_GREETINGS.length];
+
+  return {
+    id: crypto.randomUUID(),
+    role: 'bb',
+    text,
+    timestamp: Date.now(),
+  };
 }
 
 function hasSummaryEmitted(playerId: string): boolean {
@@ -326,15 +352,13 @@ export default function DiaryRoom() {
   const [entry, setEntry] = useState('');
   const [loading, setLoading] = useState(false);
   const [bbTyping, setBbTyping] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChat(playerId));
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showEntryAnimation, setShowEntryAnimation] = useState(false);
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false);
   const [voteBreakdownUnlock, setVoteBreakdownUnlock] = useState<EvictionVoteBreakdownUnlock | null>(
     () => loadEvictionVoteBreakdownUnlock(),
   );
-  const [conversationState, setConversationState] = useState<BigEyeConversationState>(
-    () => loadConversationState(playerId),
-  );
+  const [conversationState, setConversationState] = useState<BigEyeConversationState>(createInitialBigEyeState);
   const { active: ticTacToeActive, launchTicTacToe, dismissTicTacToe } = useConfessionalTicTacToeTrigger();
   const [ticTacToeBoard, setTicTacToeBoard] = useState<TicTacToeCell[]>(() => createEmptyTicTacToeBoard());
   const [ticTacToeNextTurn, setTicTacToeNextTurn] = useState<TicTacToeMark>('X');
@@ -408,11 +432,31 @@ export default function DiaryRoom() {
   useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
   const seedRef = useRef(seed);
   useEffect(() => { seedRef.current = seed; }, [seed]);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Scroll ref for the chat panel
   const confessEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
+  useEffect(() => {
+    if (confessionalLocked) {
+      clearConversationSession(playerId);
+      setMessages([]);
+      setConversationState(createInitialBigEyeState());
+      return;
+    }
+
+    clearConversationSession(playerId);
+    const nextConversationState = createInitialBigEyeState();
+    const visitCount = recordConfessionalVisit(playerId);
+    const greeting = buildEntryGreeting(playerName, seed ?? 0, visitCount);
+    setConversationState(nextConversationState);
+    saveConversationState(playerId, nextConversationState);
+    setMessages([greeting]);
+    saveChat(playerId, [greeting]);
+  }, [confessionalLocked, playerId, playerName, seed]);
+
   useEffect(() => {
     if (confessionalLocked) return;
     confessEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -472,19 +516,18 @@ export default function DiaryRoom() {
   }, [ticTacToeActive, ticTacToeDraw, ticTacToeNextTurn, ticTacToeWinner]);
 
   // On unmount: emit a single generic summary to tvFeed only when the player
-  // actually sent at least one message. Use loadChat() from sessionStorage
-  // rather than messagesRef so the check is always accurate even if the user
-  // navigates before the ref-sync effect runs.
+  // actually sent at least one message.
   useEffect(() => {
     return () => {
       const pid = playerIdRef.current;
-      const msgs = loadChat(pid);
+      const msgs = messagesRef.current;
       const hasUserMessage = msgs.some((msg) => msg.role === 'user');
       if (hasUserMessage && !hasSummaryEmitted(pid)) {
         markSummaryEmitted(pid);
         const text = pickSummary(playerNameRef.current, seedRef.current ?? 0);
         dispatchRef.current(addTvEvent({ text, type: 'game' }));
       }
+      clearConversationSession(pid);
     };
   }, []);
 
@@ -899,7 +942,6 @@ export default function DiaryRoom() {
                 </button>
               </div>
             )}
-            <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             {activeVoteBreakdown?.status === 'available' && (
               <div className="diary-room__vote-reveal-card" aria-label="Vote reveal offer">
                 <span className="diary-room__vote-reveal-eyebrow">📺 The Big Eye</span>
@@ -1119,6 +1161,7 @@ export default function DiaryRoom() {
                 )}
               </div>
             )}
+            <ChatBubbles msgs={messages} playerName={playerName} endRef={confessEndRef} />
             <form className="diary-room__confess-form" onSubmit={handleSubmit}>
               <textarea
                 className="diary-room__textarea"

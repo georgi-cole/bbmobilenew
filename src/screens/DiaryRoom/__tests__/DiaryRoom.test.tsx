@@ -223,7 +223,15 @@ describe('DiaryRoom', () => {
     expect(screen.getByTestId('confessional-decision-zone')).toBeTruthy();
   });
 
-  it('persists conversation state so a remounted chat still understands follow-up yes/no replies', async () => {
+  it('greets the player on first entry', () => {
+    renderDiaryRoom();
+
+    expect(
+      screen.getByText(/hello, you! welcome to the confessional\. here your thoughts may be echoed off the walls/i),
+    ).toBeTruthy();
+  });
+
+  it('clears prior chat after leaving and re-entering the confessional', async () => {
     const firstRender = renderDiaryRoom();
 
     fireEvent.change(screen.getByLabelText(/diary entry/i), {
@@ -239,6 +247,12 @@ describe('DiaryRoom', () => {
 
     renderDiaryRoom();
 
+    expect(screen.queryByText(/i'm bored/i)).toBeNull();
+    expect(screen.queryByText(/want to play a game|offer tic tac toe|wake the board/i)).toBeNull();
+    expect(
+      screen.getByText(/welcome back\. i am all eyes\.|i have been expecting you\.|ah, you return\.|something tells me you are uneasy\./i),
+    ).toBeTruthy();
+
     fireEvent.change(screen.getByLabelText(/diary entry/i), {
       target: { value: "I don't think so" },
     });
@@ -247,7 +261,8 @@ describe('DiaryRoom', () => {
     await flushConversationTimers();
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByText(/then sit with it|no game, then|boredom will keep you company/i)).toBeTruthy();
+    expect(screen.queryByText(/then sit with it|no game, then|boredom will keep you company/i)).toBeNull();
+    expect(screen.getByText(/interesting\. resistance leaves a shape\.|refusal can be useful\.|no is still an answer\./i)).toBeTruthy();
   });
 
   it('shows only the confessional view without log or daily tabs', () => {
@@ -363,6 +378,37 @@ describe('DiaryRoom', () => {
     expect(screen.getByText(/are you ready to peek behind the curtain/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'No' })).toBeTruthy();
+  });
+
+  it('surfaces the vote reveal offer before the chat log and message box', async () => {
+    renderDiaryRoom(['/game', '/diary-room'], {
+      setupStore: (appStore) => {
+        const game = (appStore.getState() as RootState).game;
+        saveEvictionVoteBreakdownUnlock({
+          week: 2,
+          phase: 'eviction_results',
+          votes: {
+            [game.players[1].id]: game.players[2].id,
+            [game.players[3].id]: game.players[2].id,
+          },
+          nomineeIds: [game.players[2].id, game.players[4].id],
+          evicteeId: game.players[2].id,
+          status: 'available',
+        });
+        appStore.dispatch(hydrateGame({
+          ...game,
+          week: 2,
+          phase: 'week_end',
+        }));
+      },
+    });
+
+    const voteRevealOffer = screen.getByLabelText(/vote reveal offer/i);
+    const chat = screen.getByLabelText(/confessional chat/i);
+    const diaryEntry = screen.getByLabelText(/diary entry/i);
+
+    expect(voteRevealOffer.compareDocumentPosition(chat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(voteRevealOffer.compareDocumentPosition(diaryEntry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('does not offer the eviction vote reveal after a new day begins', async () => {
