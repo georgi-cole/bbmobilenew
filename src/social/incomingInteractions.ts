@@ -93,10 +93,10 @@ function buildIgnoredIncomingInteractionsSummary(interactions: IncomingInteracti
     });
 
   if (uniqueSenderCount === 1) {
-    return `One housemate's ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
+    return `One housemate's ${formatList(typeFragments)} went unanswered yesterday. It was a tough one, but maybe you will be more talkative today.`;
   }
 
-  return `Several housemates' ${formatList(typeFragments)} went unanswered today. It was a tough day, but maybe you will be more talkative tomorrow.`;
+  return `Several housemates' ${formatList(typeFragments)} went unanswered yesterday. It was a tough day, but maybe you will be more talkative today.`;
 }
 
 function getResponseDelta(responseType: IncomingInteractionResponseType): number {
