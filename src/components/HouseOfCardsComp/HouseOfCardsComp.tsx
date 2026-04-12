@@ -66,7 +66,7 @@ interface TickerEvent {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-function formatMisses(mistakes: number): string {
+function getMissesLabel(mistakes: number): string {
   return `${mistakes} ${mistakes === 1 ? 'miss' : 'misses'}`;
 }
 
@@ -408,7 +408,7 @@ export default function HouseOfCardsComp({
                       </span>
                       <span className="hoc-standing-meta">
                         {outcome.matchedPairs}/{TOTAL_PAIRS} pairs ·{' '}
-                        {formatMisses(outcome.mistakes)}
+                        {getMissesLabel(outcome.mistakes)}
                       </span>
                     </div>
                     <div className="hoc-standing-details">
@@ -441,7 +441,7 @@ export default function HouseOfCardsComp({
           <div className="hoc-complete-winner-name">{winnerName}</div>
           <div className="hoc-complete-winner-score">{winner.clashScore} clash points</div>
           <div className="hoc-complete-winner-meta">
-            {winner.matchedPairs}/{TOTAL_PAIRS} pairs · {formatMisses(winner.mistakes)}
+            {winner.matchedPairs}/{TOTAL_PAIRS} pairs · {getMissesLabel(winner.mistakes)}
           </div>
         </div>
       </MinigameCompleteWrapper>
