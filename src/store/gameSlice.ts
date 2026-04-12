@@ -4168,6 +4168,16 @@ export const fastForwardToEviction =
 /**
  * Public minigame API — startMinigame thunk.
  *
+ * A fresh per-invocation seed is generated on every call so that restarting,
+ * reloading, or re-launching a minigame never replays the exact same game
+ * (same booster sequence, same AI variation, etc.).  This seed is generated
+ * independently of the caller-supplied `opts.seed` — `opts.seed` is not used
+ * by this thunk at all, so even passing the same base seed across replays or
+ * debug runs still produces varied results each time.
+ *
+ * All participants in the same invocation — human UI and precomputed AI scores
+ * — share this single fresh seed, preserving internal consistency for that run.
+ *
  * Score-based (non-endurance) games with a human participant (except Quick Tap):
  *   AI scores are NOT precomputed here. Instead the session is flagged with
  *   `hybridResolveOnComplete: true` and the central hybrid resolver in
@@ -4195,6 +4205,15 @@ export const startMinigame =
     const model = getMinigameAiModel(opts.key);
     const isHybrid = isHybridScoredGame(opts.key);
 
+    // Generate a fresh per-invocation seed so every new game launch / restart /
+    // reload gets a different booster sequence and AI variation, even when the
+    // caller passes the same base seed (e.g. the same game.seed across replays).
+    // Mix Math.random() with Date.now() — the same pattern used elsewhere in
+    // this file — so the result is unpredictable per invocation.
+    const invocationSeed = (
+      (Math.floor(Math.random() * 0x100000000) ^ (Date.now() & 0xffffffff)) >>> 0
+    );
+
     // Always precompute AI scores for AI-only runs (no UI is involved) and for
     // endurance/non-hybrid games (which keep the old precomputed path).
     // For hybrid games with a human participant, precomputation is skipped.
@@ -4213,7 +4232,7 @@ export const startMinigame =
         if (p && !p.isUser) {
           aiScores[id] = simulateMinigameAiScore({
             gameKey: opts.key,
-            seed: opts.seed,
+            seed: invocationSeed,
             playerId: id,
             participantIndex: index,
             profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
@@ -4230,7 +4249,7 @@ export const startMinigame =
       // We do NOT dispatch completeMinigame here — that would write a stale
       // minigameResult that could later be consumed by an unrelated advance().
       const winnerId = determineWinner(opts.participants, aiScores);
-      const result: MinigameResult = { seedUsed: opts.seed, scores: aiScores, winnerId };
+      const result: MinigameResult = { seedUsed: invocationSeed, scores: aiScores, winnerId };
       dispatch(applyCompetitionSeasonUpdate({ participants: opts.participants, scores: aiScores, winnerId }));
       return result;
     }
@@ -4240,7 +4259,7 @@ export const startMinigame =
     const session = {
       key: opts.key,
       participants: opts.participants,
-      seed: opts.seed,
+      seed: invocationSeed,
       options: opts.options,
       aiScores,
       ...(isHybrid ? { hybridResolveOnComplete: true } : {}),
