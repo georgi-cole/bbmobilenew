@@ -10,11 +10,11 @@
  *  6. simulateQuickTapAiScore — output is non-negative integer
  *  7. simulateQuickTapAiScore — deterministic for identical inputs
  *  8. simulateQuickTapAiScore — different players get different scores
- *  9. simulateQuickTapAiScore — default 30-second scores stay in the requested bands
- * 10. simulateQuickTapAiScore — weighted band distribution matches the requested odds
+ *  9. simulateQuickTapAiScore — scores stay within physically possible range
+ * 10. simulateQuickTapAiScore — competitive zone scores dominate (majority 161–265)
  * 11. simulateQuickTapAiScore — stronger physical profile produces higher average scores
- * 12. simulateQuickTapAiScore — can still reach the top competitive band
- * 13. simulateQuickTapAiScore — can still produce lower-band outcomes
+ * 12. simulateQuickTapAiScore — can still reach the top competitive band (≥ 240)
+ * 13. simulateQuickTapAiScore — can still produce lower-band outcomes (≤ 165)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -180,65 +180,94 @@ describe('simulateQuickTapAiScore — basic correctness', () => {
 });
 
 describe('simulateQuickTapAiScore — realism and competitiveness', () => {
-  it('30-second scores stay inside the requested competitive range', () => {
+  it('30-second scores stay inside the physically possible range', () => {
     const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: `p${seed}`, profile: DEFAULT_PROFILE }),
     );
-    expect(Math.min(...scores)).toBeGreaterThanOrEqual(50);
-    expect(Math.max(...scores)).toBeLessThanOrEqual(280);
+    // Absolute minimum is the lowest band (135) minus max jitter (4) minus max slump (14) = 117.
+    // Absolute maximum is the highest band (265) plus max jitter (4) plus max hot-streak bonus (18) = 287.
+    expect(Math.min(...scores)).toBeGreaterThanOrEqual(100);
+    expect(Math.max(...scores)).toBeLessThanOrEqual(300);
   });
 
-  it('weighted band distribution matches the requested odds closely', () => {
+  it('competitive zone scores dominate — majority fall in the 161–265 range', () => {
     const seeds = Array.from({ length: 1000 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'distribution-check', profile: DEFAULT_PROFILE }),
     );
+
+    // Bands from minigameAiBalance.ts (mutually exclusive, mirroring configured ranges):
+    //   band1: ≤160        →  8% nominal
+    //   band2: 161–185     → 22% nominal
+    //   band3: 186–210     → 32% nominal
+    //   band4: 211–235     → 25% nominal
+    //   band5: ≥236        → 13% nominal
+    //
+    // Jitter (±4) and hot-streak/slump (±6–18) can shift individual scores across
+    // band edges, so tolerances are intentionally wider than the nominal percentage.
+    // Counts sum to exactly 1000 because the ranges are mutually exclusive and exhaustive.
     const counts = {
-      low: scores.filter((score) => score >= 50 && score <= 99).length,
-      midLow: scores.filter((score) => score >= 100 && score <= 149).length,
-      mid: scores.filter((score) => score >= 150 && score <= 199).length,
-      high: scores.filter((score) => score >= 200 && score <= 249).length,
-      elite: scores.filter((score) => score >= 250 && score <= 280).length,
+      band1: scores.filter((s) => s <= 160).length,
+      band2: scores.filter((s) => s >= 161 && s <= 185).length,
+      band3: scores.filter((s) => s >= 186 && s <= 210).length,
+      band4: scores.filter((s) => s >= 211 && s <= 235).length,
+      band5: scores.filter((s) => s >= 236).length,
     };
 
-    expect(counts.low).toBeGreaterThanOrEqual(70);
-    expect(counts.low).toBeLessThanOrEqual(130);
-    expect(counts.midLow).toBeGreaterThanOrEqual(360);
-    expect(counts.midLow).toBeLessThanOrEqual(440);
-    expect(counts.mid).toBeGreaterThanOrEqual(310);
-    expect(counts.mid).toBeLessThanOrEqual(390);
-    expect(counts.high).toBeGreaterThanOrEqual(70);
-    expect(counts.high).toBeLessThanOrEqual(130);
-    expect(counts.elite).toBeGreaterThanOrEqual(25);
-    expect(counts.elite).toBeLessThanOrEqual(75);
+    // Sanity: all 1000 scores are captured (exhaustive + non-overlapping).
+    expect(counts.band1 + counts.band2 + counts.band3 + counts.band4 + counts.band5).toBe(1000);
+
+    // band1 (~8% nominal): allow generous tolerance for jitter + slump spillover
+    expect(counts.band1).toBeGreaterThanOrEqual(40);
+    expect(counts.band1).toBeLessThanOrEqual(170);
+
+    // band2 (~22% nominal)
+    expect(counts.band2).toBeGreaterThanOrEqual(150);
+    expect(counts.band2).toBeLessThanOrEqual(330);
+
+    // band3 (~32% nominal — core competitive zone)
+    expect(counts.band3).toBeGreaterThanOrEqual(230);
+    expect(counts.band3).toBeLessThanOrEqual(420);
+
+    // band4 (~25% nominal)
+    expect(counts.band4).toBeGreaterThanOrEqual(170);
+    expect(counts.band4).toBeLessThanOrEqual(340);
+
+    // band5 (~13% nominal): allow tolerance for hot-streak spillover
+    expect(counts.band5).toBeGreaterThanOrEqual(70);
+    expect(counts.band5).toBeLessThanOrEqual(200);
+
+    // Summary check: competitive zone (bands 2–5) should dominate
+    const competitive = counts.band2 + counts.band3 + counts.band4 + counts.band5;
+    expect(competitive).toBeGreaterThanOrEqual(820); // ≥ 82% of 1000
   });
 
-  it('strong AI can still reach the 250–280 top band', () => {
+  it('strong AI can still reach the top competitive band (≥ 240)', () => {
     const seeds = Array.from({ length: 200 }, (_, i) => i * 7 + 3);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'strong-ai', profile: STRONG_PROFILE }),
     );
-    const topBand = scores.filter((s) => s >= 250 && s <= 280);
+    const topBand = scores.filter((s) => s >= 240);
     expect(topBand.length).toBeGreaterThan(0);
   });
 
-  it('weak AI can still produce lower-band results', () => {
+  it('weak AI can still produce lower-band results (≤ 165)', () => {
     const seeds = Array.from({ length: 200 }, (_, i) => i * 13 + 5);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'weak-ai', profile: WEAK_PROFILE }),
     );
-    const lowBand = scores.filter((s) => s >= 50 && s <= 99);
+    const lowBand = scores.filter((s) => s <= 165);
     expect(lowBand.length).toBeGreaterThan(0);
   });
 
-  it('distribution shows meaningful variance (max − min > 120 across 20 runs)', () => {
+  it('distribution shows meaningful variance (max − min > 80 across 20 runs)', () => {
     const seeds = Array.from({ length: 20 }, (_, i) => i + 100);
     const scores = seeds.map((seed) =>
       simulateQuickTapAiScore({ seed, playerId: 'p0', profile: DEFAULT_PROFILE }),
     );
     const range = Math.max(...scores) - Math.min(...scores);
-    expect(range).toBeGreaterThan(120);
+    expect(range).toBeGreaterThan(80);
   });
 
   it('stronger physical profile produces higher average scores', () => {

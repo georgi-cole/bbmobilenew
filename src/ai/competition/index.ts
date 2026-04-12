@@ -2,6 +2,8 @@ import type { GameRegistryEntry } from '../../minigames/registry';
 import { DEFAULT_TAPRACE_OPTIONS } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
 import { minigameAiRegistry } from './minigameAiRegistry';
+import { simulateQuickTapAiScore as simulateQuickTapAiScore_ } from './quickTapSimulation';
+import { simulateSnakeAiScore as simulateSnakeAiScore_ } from './snakeAiSimulator';
 import type {
   CompetitionSeasonState,
   CompetitionSkillProfile,
@@ -618,6 +620,82 @@ export function simulateChallengeAiScore({ game, seed }: ChallengeAiSimulationAr
       timeLimitMs,
       timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
     },
+  });
+}
+
+// ── Shared minigame AI score dispatcher ───────────────────────────────────────
+
+export interface SimulateMinigameAiScoreArgs {
+  /** Minigame registry key (e.g. 'quickTap', 'snake', 'memoryMatch'). */
+  gameKey: string;
+  seed: number;
+  playerId?: string;
+  participantIndex?: number;
+  profile?: CompetitionSkillProfile;
+  seasonState?: CompetitionSeasonState;
+  timeLimitSeconds?: number;
+  timeLimitMs?: number;
+  /** Pre-resolved model; if omitted it is looked up from the registry. */
+  minigameModel?: MinigameAiModel;
+}
+
+/**
+ * Single authoritative entrypoint for computing AI scores in any minigame.
+ *
+ * Routes to the appropriate specialist scorer for games that require custom
+ * logic (quickTap, snake), and falls back to the generic simulateAiPerformance
+ * for all other games.  Both `startMinigame` (gameSlice) and `startChallenge`
+ * (challengeSlice) must call this function so there is no divergent path.
+ *
+ * To retune a game's scoring: edit minigameAiBalance.ts (for band-based games
+ * like quickTap) or minigameAiRegistry.ts (for generic model parameters).
+ */
+export function simulateMinigameAiScore({
+  gameKey,
+  seed,
+  playerId,
+  participantIndex,
+  profile,
+  seasonState,
+  timeLimitSeconds,
+  timeLimitMs,
+  minigameModel,
+}: SimulateMinigameAiScoreArgs): number {
+  if (gameKey === 'quickTap') {
+    const timeLimit =
+      typeof timeLimitSeconds === 'number'
+        ? timeLimitSeconds
+        : typeof timeLimitMs === 'number' && timeLimitMs > 0
+          ? timeLimitMs / 1000
+          : 30;
+    return simulateQuickTapAiScore_({
+      seed,
+      playerId,
+      participantIndex,
+      profile,
+      timeLimitSeconds: timeLimit,
+    });
+  }
+
+  if (gameKey === 'snake') {
+    return simulateSnakeAiScore_({
+      sessionSeed: seed,
+      // simulateSnakeAiScore requires a non-undefined string; fall back to a
+      // deterministic participant-index identifier when no playerId is provided.
+      playerId: playerId ?? `participant-${participantIndex ?? 0}`,
+      profile,
+    });
+  }
+
+  return simulateAiPerformance({
+    minigameKey: gameKey,
+    seed,
+    playerId,
+    participantIndex,
+    profile,
+    minigameModel,
+    seasonState,
+    options: { timeLimitSeconds, timeLimitMs },
   });
 }
 

@@ -118,16 +118,15 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     scoreDirection: 'higher-is-better',
     volatility: VOLATILITY_PHYSICAL,
     weights: WEIGHTS_PHYSICAL_TAP,
-    // Effective-tap score range for a 30-second game.
-    // ~39 raw taps/10s is the observed human upper bound; sustained 30s output
-    // is lower due to fatigue.  AI range is calibrated so competitors are
-    // realistically competitive rather than predetermined to lose.
-    // Values represent effective (multiplier-adjusted) taps.
-    minScore: 48,
-    maxScore: 120,
+    // Score generation for quickTap is handled exclusively by simulateQuickTapAiScore()
+    // via the simulateMinigameAiScore() dispatcher.  The authoritative tuning lives in
+    // minigameAiBalance.ts.  minScore / maxScore are intentionally omitted here to
+    // prevent the generic simulateAiPerformance() path from producing stale fallback
+    // scores if this entry is ever accidentally called through the generic path.
     notes:
-      'Quick Tap Race — 30s game. AI produces effective-tap scores in [48, 120] ' +
-      'matching the expected human range after multiplier effects.',
+      'Quick Tap Race — band-based simulator (see minigameAiBalance.ts). ' +
+      'Routing via simulateMinigameAiScore() ensures both session and challenge flows ' +
+      'use the same authoritative scorer.',
   },
   memoryMatch: {
     key: 'memoryMatch',

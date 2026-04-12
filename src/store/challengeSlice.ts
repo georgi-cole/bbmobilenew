@@ -12,7 +12,7 @@ import {
   getCompetitionSeasonState,
   getDefaultCompetitionProfile,
   getMinigameAiModelForGame,
-  simulateAiPerformance,
+  simulateMinigameAiScore,
 } from '../ai/competition';
 import { selectNextCompetitionGame } from '../ai/competition/scheduling';
 import { applyCompetitionSeasonUpdate, selectAlivePlayers } from './gameSlice';
@@ -313,8 +313,8 @@ export const startChallenge =
     participants.forEach((pid, index) => {
       if (pid !== humanId) {
         const player = gameState?.players?.find((p) => p.id === pid);
-        aiScores[pid] = simulateAiPerformance({
-          minigameKey: gameEntry.key,
+        aiScores[pid] = simulateMinigameAiScore({
+          gameKey: gameEntry.key,
           minigameModel,
           seed: perChallengeSeed,
           playerId: pid,
@@ -324,10 +324,8 @@ export const startChallenge =
             gameState?.competitionSeasonStateByPlayerId,
             pid,
           ),
-          options: {
-            timeLimitMs,
-            timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
-          },
+          timeLimitMs,
+          timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
         });
       }
     });

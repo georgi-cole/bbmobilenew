@@ -19,8 +19,7 @@ import {
   getDefaultCompetitionProfile,
   getDefaultCompetitionSeasonState,
   getMinigameAiModel,
-  simulateAiPerformance,
-  simulateQuickTapAiScore,
+  simulateMinigameAiScore,
   updateCompetitionSeasonStateByPlayerId,
   type CompetitionSeasonUpdateInput,
 } from '../ai/competition';
@@ -4208,42 +4207,20 @@ export const startMinigame =
 
     if (!isHybrid || !hasHuman) {
       // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games,
-      // (c) Quick Tap Race (isHybridScoredGame returns false for it so it lands here).
-      const isQuickTap = opts.key === 'quickTap';
-      const isSnake = opts.key === 'snake';
+      // (c) Quick Tap Race and Snake (isHybridScoredGame returns false for them).
       opts.participants.forEach((id, index) => {
         const p = state.players.find((pl) => pl.id === id);
         if (p && !p.isUser) {
-          if (isQuickTap) {
-            // Quick Tap uses a bespoke band-based simulator for all runs
-            // (AI-only and human-present alike), bypassing hybrid resolution.
-            aiScores[id] = simulateQuickTapAiScore({
-              seed: opts.seed,
-              playerId: id,
-              participantIndex: index,
-              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-              timeLimitSeconds: opts.options.timeLimit,
-            });
-          } else if (isSnake) {
-            // Snake AI uses real headless play simulation — same board rules as
-            // the human game — rather than a generic statistical model.
-            aiScores[id] = simulateSnakeAiScore({
-              sessionSeed: opts.seed,
-              playerId: id,
-              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-            });
-          } else {
-            aiScores[id] = simulateAiPerformance({
-              minigameKey: opts.key,
-              minigameModel: model,
-              seed: opts.seed,
-              playerId: id,
-              participantIndex: index,
-              profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
-              seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
-              options: { timeLimitSeconds: opts.options.timeLimit },
-            });
-          }
+          aiScores[id] = simulateMinigameAiScore({
+            gameKey: opts.key,
+            seed: opts.seed,
+            playerId: id,
+            participantIndex: index,
+            profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
+            seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
+            timeLimitSeconds: opts.options.timeLimit,
+            minigameModel: model,
+          });
         }
       });
     }
