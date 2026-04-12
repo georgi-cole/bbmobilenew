@@ -47,10 +47,22 @@ export interface ScoringOptions {
 
 // ─── Individual adapters ──────────────────────────────────────────────────────
 
-/** Normalize a raw score that is already higher-is-better (e.g. tap count, accuracy 0–100). */
+/**
+ * Normalize a raw score that is already higher-is-better (e.g. tap count, score).
+ *
+ * When maxRaw is omitted, preserve the native score scale instead of clamping to a
+ * legacy default range. This keeps ranking truthful for games whose natural scores
+ * routinely exceed 100.
+ */
 function adapterRaw(rawValue: number, opts: ScoringOptions = {}): AdapterResult {
   const min = opts.minRaw ?? 0;
-  const max = opts.maxRaw ?? 100;
+  if (opts.maxRaw == null) {
+    const clamped = Math.max(min, rawValue);
+    const nativePoints = Math.round(clamped);
+    const score = Math.round(clamped - min);
+    return { score, points: nativePoints };
+  }
+  const max = opts.maxRaw;
   const clamped = Math.max(min, Math.min(max, rawValue));
   const score = max === min ? 0 : Math.round(((clamped - min) / (max - min)) * 1000);
   return { score, points: Math.round(clamped) };
