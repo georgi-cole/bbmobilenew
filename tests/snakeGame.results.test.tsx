@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import SnakeGame from '../src/components/SnakeGame/SnakeGame';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
@@ -49,6 +51,25 @@ function stubCanvas() {
     restore: vi.fn(),
     set fillStyle(_: string) {},
   });
+}
+
+let cachedSnakeStyles: string | null = null;
+
+function getSnakeStyles() {
+  if (cachedSnakeStyles != null) return cachedSnakeStyles;
+  cachedSnakeStyles = readFileSync(
+    path.resolve(process.cwd(), 'src/components/SnakeGame/SnakeGame.css'),
+    'utf8',
+  );
+  return cachedSnakeStyles;
+}
+
+function ensureSnakeStylesInjected() {
+  if (document.getElementById('snake-test-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'snake-test-styles';
+  style.textContent = getSnakeStyles();
+  document.head.appendChild(style);
 }
 
 async function driveGameToWaiting() {
@@ -142,6 +163,33 @@ describe('SnakeGame competition reveal flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
     expect(onFinish).toHaveBeenCalledWith(0);
+  });
+
+  it('renders a larger Nokia status line for points and time', () => {
+    const store = makeStore();
+    ensureSnakeStylesInjected();
+
+    render(
+      <Provider store={store}>
+        <SnakeGame seed={42} participantIds={['p0', 'p1', 'p2']} onFinish={vi.fn()} />
+      </Provider>,
+    );
+
+    const statusLine = document.querySelector('.snake-status-line') as HTMLElement | null;
+    const normalizedStyles = getSnakeStyles().replace(/\s+/g, ' ');
+
+    expect(statusLine).not.toBeNull();
+    expect(statusLine?.textContent ?? '').toContain('PTS');
+    expect(statusLine?.textContent ?? '').toMatch(/\d+:\d{2}\.\d/);
+
+    const styles = getComputedStyle(statusLine as HTMLElement);
+
+    expect(statusLine).toHaveClass('snake-status-line');
+    expect(normalizedStyles).toContain('font-size: clamp(9px, 2.4vw, 12px);');
+    expect(styles.getPropertyValue('padding-top')).toBe('1px');
+    expect(styles.getPropertyValue('padding-right')).toBe('5px');
+    expect(styles.getPropertyValue('padding-bottom')).toBe('1px');
+    expect(styles.getPropertyValue('padding-left')).toBe('5px');
   });
 });
 

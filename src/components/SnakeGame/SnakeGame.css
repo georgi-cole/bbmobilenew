@@ -7,8 +7,8 @@
   --snake-results-width: min(92vw, 420px);
   --snake-dpad-size: clamp(44px, 12vw, 60px);
   --snake-lcd-inset: clamp(4px, 1vw, 6px);
-  --snake-lcd-status-top: clamp(2px, 0.6vw, 3px);
-  --snake-lcd-status-side: clamp(4px, 1vw, 6px);
+  --snake-lcd-status-top: clamp(3px, 0.8vw, 5px);
+  --snake-lcd-status-side: clamp(6px, 1.4vw, 10px);
   --snake-device-dark: #242338;
   --snake-device-mid: #2d2c43;
   --snake-device-light: #43415f;
@@ -145,11 +145,11 @@
   left: var(--snake-lcd-status-side);
   z-index: 2;
   font-family: 'Courier New', Courier, monospace;
-  font-size: clamp(7px, 1.8vw, 9px);
+  font-size: clamp(9px, 2.4vw, 12px);
   font-weight: 700;
   color: var(--snake-pixel-dark);
   background: rgba(155, 188, 15, 0.26);
-  padding: 0 3px;
+  padding: 1px 5px;
   border-radius: 1px;
   letter-spacing: 1px;
   line-height: 1.1;
