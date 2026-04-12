@@ -79,7 +79,9 @@ export interface VariantFamily {
 /**
  * Rich variant pool keyed by scenario key.
  * Each scenario contains multiple families, each with multiple line variants.
- * This replaces the old flat SCENARIO_TEMPLATES array.
+ * For supported scenarios, this augments and effectively supersedes the old
+ * flat SCENARIO_TEMPLATES entries; unsupported scenarios may still use the
+ * legacy SCENARIO_TEMPLATES fallback elsewhere.
  */
 export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
   // ── Week start ─────────────────────────────────────────────────────────

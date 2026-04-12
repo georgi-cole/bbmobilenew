@@ -748,10 +748,21 @@ function generateInteractionText(
   ).length;
 
   // Collect variant family IDs recently used by this actor → player pair so
-  // the selection logic can avoid them.
+  // the selection logic can avoid them. Only consider interactions within the
+  // configured family-cooldown window to prevent unbounded growth.
+  const familyRecencyWindowWeeks = Math.max(
+    0,
+    socialConfig.incomingInteractionDeliveryConfig.dedupe.familyCooldownWeeks ?? 0,
+  );
+  const recentFamilyCutoffWeek = context.week - familyRecencyWindowWeeks;
   const recentFamilyIds = new Set<string>(
     pendingInteractions
-      .filter((interaction) => interaction.fromId === actorId)
+      .filter(
+        (interaction) =>
+          interaction.fromId === actorId &&
+          typeof interaction.createdWeek === 'number' &&
+          interaction.createdWeek >= recentFamilyCutoffWeek,
+      )
       .map((interaction) => interaction.payload?.variantFamilyId as string | undefined)
       .filter((id): id is string => typeof id === 'string'),
   );

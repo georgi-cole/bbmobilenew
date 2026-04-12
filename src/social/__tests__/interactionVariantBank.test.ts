@@ -19,7 +19,9 @@ describe('getVoiceProfile', () => {
 
   it('is deterministic: same ID always returns the same profile', () => {
     const id = 'test_actor_stable';
-    expect(getVoiceProfile(id)).toBe(getVoiceProfile(id));
+    const firstProfile = getVoiceProfile(id);
+    const secondProfile = getVoiceProfile(id);
+    expect(firstProfile).toEqual(secondProfile);
   });
 
   it('produces variation across different IDs', () => {

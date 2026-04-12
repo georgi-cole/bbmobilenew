@@ -209,6 +209,61 @@ describe('incomingInteractionAutonomy thematic routing', () => {
     expect(dedupeReason).toBe('deduped_same_scenario');
   });
 
+  it('dedupes interactions from the same actor that reuse the same variant family within the cooldown window', () => {
+    // Use different interaction types so the sameTypeCooldownWeeks check does not
+    // fire before reaching the family-level dedupe check.
+    const pending = [
+      makeInteraction({
+        fromId: 'ally',
+        type: 'compliment',
+        createdWeek: 2,
+        payload: { scenarioKey: 'generic_check_in', phase: 'week_start', variantFamilyId: 'gci_casual' },
+      }),
+    ];
+
+    const dedupeReason = getInteractionDedupeReason({
+      interaction: makeInteraction({
+        id: 'i-2',
+        fromId: 'ally',
+        type: 'check_in',
+        createdWeek: 2,
+        payload: { scenarioKey: 'generic_check_in', phase: 'social_1', variantFamilyId: 'gci_casual' },
+      }),
+      priority: 'medium',
+      pendingInteractions: pending,
+      week: 2,
+    });
+
+    expect(dedupeReason).toBe('deduped_same_family');
+  });
+
+  it('does not dedupe the same variant family when outside the cooldown window', () => {
+    const pending = [
+      makeInteraction({
+        fromId: 'ally',
+        type: 'compliment',
+        createdWeek: 1,
+        payload: { scenarioKey: 'generic_check_in', phase: 'week_start', variantFamilyId: 'gci_casual' },
+      }),
+    ];
+
+    // familyCooldownWeeks defaults to 1; createdWeek=1, current week=3 → 2 weeks apart → outside window
+    const dedupeReason = getInteractionDedupeReason({
+      interaction: makeInteraction({
+        id: 'i-2',
+        fromId: 'ally',
+        type: 'check_in',
+        createdWeek: 3,
+        payload: { scenarioKey: 'generic_check_in', phase: 'social_1', variantFamilyId: 'gci_casual' },
+      }),
+      priority: 'medium',
+      pendingInteractions: pending,
+      week: 3,
+    });
+
+    expect(dedupeReason).toBeNull();
+  });
+
   it('schedules contextual text and payload for HOH pleas', () => {
     const context = buildContext({
       phase: 'nominations',
