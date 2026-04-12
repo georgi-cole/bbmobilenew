@@ -110,6 +110,7 @@ import {
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
 import {
+  buildEvictionVoteBreakdownPlayerNamesById,
   buildEvictionVoteBreakdownRows,
   isEvictionVoteBreakdownActive,
   loadEvictionVoteBreakdownUnlock,
@@ -1547,13 +1548,17 @@ export default function GameScreen() {
     proceedAfterVoteResults,
   ])
 
+  const postEvictionVoteBreakdownPlayerNamesById = useMemo(
+    () => buildEvictionVoteBreakdownPlayerNamesById(game.players),
+    [game.players],
+  )
   const postEvictionVoteBreakdownRows = useMemo(
     () => (
       postEvictionVoteBreakdown
-        ? buildEvictionVoteBreakdownRows(postEvictionVoteBreakdown.votes, game.players)
+        ? buildEvictionVoteBreakdownRows(postEvictionVoteBreakdown.votes, postEvictionVoteBreakdownPlayerNamesById)
         : []
     ),
-    [game.players, postEvictionVoteBreakdown],
+    [postEvictionVoteBreakdown, postEvictionVoteBreakdownPlayerNamesById],
   )
 
   useEffect(() => {

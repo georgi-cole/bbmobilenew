@@ -39,6 +39,7 @@ import {
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger';
 import {
+  buildEvictionVoteBreakdownPlayerNamesById,
   buildEvictionVoteBreakdownRows,
   isEvictionVoteBreakdownActive,
   loadEvictionVoteBreakdownUnlock,
@@ -411,8 +412,12 @@ export default function DiaryRoom() {
   const activeVoteBreakdown = isEvictionVoteBreakdownActive(voteBreakdownUnlock, currentWeekForMission, phase)
     ? voteBreakdownUnlock
     : null;
+  const voteBreakdownPlayerNamesById = useMemo(
+    () => buildEvictionVoteBreakdownPlayerNamesById(players),
+    [players],
+  );
   const voteBreakdownRows = activeVoteBreakdown
-    ? buildEvictionVoteBreakdownRows(activeVoteBreakdown.votes, players)
+    ? buildEvictionVoteBreakdownRows(activeVoteBreakdown.votes, voteBreakdownPlayerNamesById)
     : [];
 
   const activeDecisionPresentation = useMemo(() => {

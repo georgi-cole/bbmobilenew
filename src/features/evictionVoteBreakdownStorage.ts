@@ -19,6 +19,12 @@ export interface EvictionVoteBreakdownRow {
   targetName: string;
 }
 
+export function buildEvictionVoteBreakdownPlayerNamesById(
+  players: ReadonlyArray<{ id: string; name: string }>,
+): Record<string, string> {
+  return Object.fromEntries(players.map((player) => [player.id, player.name]));
+}
+
 export function loadEvictionVoteBreakdownUnlock(): EvictionVoteBreakdownUnlock | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -69,10 +75,8 @@ export function updateEvictionVoteBreakdownStatus(
 
 export function buildEvictionVoteBreakdownRows(
   votes: Record<string, string>,
-  players: ReadonlyArray<{ id: string; name: string }>,
+  playerNamesById: Record<string, string>,
 ): EvictionVoteBreakdownRow[] {
-  const playerNamesById = Object.fromEntries(players.map((player) => [player.id, player.name]));
-
   return Object.entries(votes).map(([voterKey, targetId]) => {
     const voteKeyParts = voterKey.split('__');
     const voterId = voteKeyParts[0];
