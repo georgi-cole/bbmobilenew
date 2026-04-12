@@ -189,6 +189,8 @@ type TvZoneProps = {
   onPriorityAnnouncementDismiss?: () => void;
   externalAnnouncement?: Announcement | null;
   onExternalAnnouncementDismiss?: () => void;
+  /** Fallback text shown in the viewport when no fresh event is available and the screen would otherwise go blank. */
+  viewportFallbackMessage?: string;
 };
 
 /**
@@ -329,18 +331,28 @@ export default function TvZone(props: TvZoneProps) {
   const suppressStaleLiveVotePitchMessage =
     latestEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
     gameState.phase !== 'social_2';
+  const hasFallbackViewportMessage = Boolean(props.viewportFallbackMessage);
   const hideViewportMessage =
-    postDismissBlocked ||
-    suppressStaleLiveVotePitchMessage ||
+    (postDismissBlocked && !hasFallbackViewportMessage) ||
+    (suppressStaleLiveVotePitchMessage && !hasFallbackViewportMessage) ||
     !!activeAnnouncement ||
     publicSaveRevealActive ||
     voteResultsRevealActive;
+  // When the stale pitch message is suppressed but a fallback is available, use the
+  // fallback instead of the suppressed event text so the viewport stays meaningful.
+  const viewportDisplayText =
+    (suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage)
+      ? props.viewportFallbackMessage
+      : latestEvent?.text ?? props.viewportFallbackMessage ?? 'Welcome to The Big Eye – AI Edition 🏠';
   const viewportMessageKey = getViewportMessageKey(latestEvent);
-  const mainTvMessage = activeAnnouncement
-    ? activeAnnouncement.title
-    : suppressStaleLiveVotePitchMessage
-      ? undefined
-      : latestEvent?.text;
+  let mainTvMessage: string | undefined;
+  if (activeAnnouncement) {
+    mainTvMessage = activeAnnouncement.title;
+  } else if (suppressStaleLiveVotePitchMessage) {
+    mainTvMessage = hasFallbackViewportMessage ? props.viewportFallbackMessage : undefined;
+  } else {
+    mainTvMessage = latestEvent?.text;
+  }
 
   const handleDismiss = useCallback(() => {
     const currentAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
@@ -582,7 +594,7 @@ export default function TvZone(props: TvZoneProps) {
               className={['tv-zone__now', hideViewportMessage ? 'tv-zone__now--hidden' : ''].filter(Boolean).join(' ')}
               style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
-              {latestEvent?.text ?? 'Welcome to The Big Eye – AI Edition 🏠'}
+              {viewportDisplayText}
             </p>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
