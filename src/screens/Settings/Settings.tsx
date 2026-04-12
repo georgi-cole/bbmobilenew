@@ -25,14 +25,6 @@ const THEME_OPTIONS: { value: ThemePreset; label: string }[] = [
 // Add a new member to this union + a matching case in renderItem() to support
 // a new control type (e.g. 'number-input', 'radio-group', …).
 
-type AudioChannelItem = {
-  type: 'audio-channel';
-  id: string;
-  label: string;
-  enabledKey: 'musicOn' | 'sfxOn';
-  volumeKey: 'musicVolume' | 'sfxVolume';
-};
-
 type ToggleItem = {
   type: 'toggle';
   id: string;
@@ -50,11 +42,10 @@ type DropdownItem = {
   onChange: (dispatch: AppDispatch, val: string) => void;
 };
 
-type SettingItem = AudioChannelItem | ToggleItem | DropdownItem;
+type SettingItem = ToggleItem | DropdownItem;
 
 interface SettingSection {
   id: string;
-  heading: string;
   items: SettingItem[];
 }
 
@@ -68,15 +59,25 @@ interface SettingSection {
 const SECTIONS: SettingSection[] = [
   {
     id: 'audio',
-    heading: '🔊 Audio',
     items: [
-      { type: 'audio-channel', id: 'music', label: 'Music', enabledKey: 'musicOn', volumeKey: 'musicVolume' },
-      { type: 'audio-channel', id: 'sfx',   label: 'SFX',   enabledKey: 'sfxOn',   volumeKey: 'sfxVolume'   },
+      {
+        type: 'toggle',
+        id: 'music',
+        label: 'Music',
+        get: (s) => s.audio.musicOn,
+        onChange: (dispatch, val) => dispatch(setAudio({ musicOn: val })),
+      },
+      {
+        type: 'toggle',
+        id: 'sfx',
+        label: 'Sound Effects',
+        get: (s) => s.audio.sfxOn,
+        onChange: (dispatch, val) => dispatch(setAudio({ sfxOn: val })),
+      },
     ],
   },
   {
     id: 'theme',
-    heading: '🎨 Theme',
     items: [
       {
         type: 'dropdown',
@@ -90,7 +91,6 @@ const SECTIONS: SettingSection[] = [
   },
   {
     id: 'accessibility',
-    heading: '♿ Accessibility',
     items: [
       {
         type: 'toggle',
@@ -119,7 +119,6 @@ const SECTIONS: SettingSection[] = [
   },
   {
     id: 'feedback',
-    heading: '📳 Feedback',
     items: [
       {
         type: 'toggle',
@@ -141,35 +140,6 @@ export default function Settings() {
 
   function renderItem(item: SettingItem) {
     switch (item.type) {
-      case 'audio-channel': {
-        const enabled = settings.audio[item.enabledKey];
-        const volume  = settings.audio[item.volumeKey];
-        return (
-          <div key={item.id} className="settings-row settings-row--audio">
-            <span className="settings-row__label">{item.label}</span>
-            <input
-              type="checkbox"
-              className="settings-toggle"
-              checked={enabled}
-              onChange={(e) => dispatch(setAudio({ [item.enabledKey]: e.target.checked }))}
-              aria-label={`Toggle ${item.label.toLowerCase()}`}
-            />
-            <input
-              type="range"
-              className="settings-slider"
-              min={0}
-              max={1}
-              step={0.05}
-              value={volume}
-              onChange={(e) => dispatch(setAudio({ [item.volumeKey]: parseFloat(e.target.value) }))}
-              disabled={!enabled}
-              aria-label={`${item.label} volume`}
-            />
-            <span className="settings-row__vol">{Math.round(volume * 100)}%</span>
-          </div>
-        );
-      }
-
       case 'toggle': {
         const checked = item.get(settings);
         return (
@@ -225,7 +195,6 @@ export default function Settings() {
       <div className="settings-content">
         {SECTIONS.map((section) => (
           <section key={section.id} className="settings-section">
-            <p className="settings-section__heading">{section.heading}</p>
             {section.items.map(renderItem)}
           </section>
         ))}
