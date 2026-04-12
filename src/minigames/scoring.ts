@@ -4,13 +4,15 @@
 //
 // Adapter contract:
 //   computeScore(rawValue, options) → { score: number; points: number }
-//   score  – canonical 0–1000 value (higher is always better after normalisation)
+//   score  – canonical higher-is-better value used for ranking. Most adapters
+//            normalise to 0–1000; unbounded `raw` scores preserve native scale
+//            when `maxRaw` is omitted.
 //   points – integer points awarded (for leaderboard / TV feed)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AdapterResult {
-  /** Canonical score in the range [0, 1000]. Higher is always better. */
+  /** Canonical higher-is-better score; usually [0, 1000], but unbounded raw adapters may exceed it. */
   score: number;
   /** Points awarded (rounded integer, suitable for display). */
   points: number;
@@ -41,7 +43,7 @@ export interface ScoringOptions {
   threshold?: number;
   /** Min raw value expected (used for 'raw' normalization). */
   minRaw?: number;
-  /** Max raw value expected (used for 'raw' normalization). */
+  /** Max raw value expected (used for 'raw' normalization); omit to preserve native raw scale. */
   maxRaw?: number;
 }
 
@@ -144,6 +146,8 @@ export function computeScore(
 /**
  * Compute canonical scores for all participants and return them sorted by score
  * (highest first), augmenting each result with rank and adapter output.
+ * Canonical scores are usually normalised to 0–1000, except unbounded `raw`
+ * scoring which intentionally preserves native scale when `maxRaw` is omitted.
  *
  * @param adapter - Scoring adapter name.
  * @param rawResults - Array of raw results keyed by player ID.
@@ -173,7 +177,7 @@ export function computeScores(
 }
 
 /**
- * Return a record of playerId → canonical score, normalised for ranking.
+ * Return a record of playerId → canonical score, suitable for ranking.
  * Useful for AI pre-simulation: generate a raw score for each AI player and
  * pass through this function to get comparable values.
  */
