@@ -6,6 +6,7 @@ import SnakeGame from '../src/components/SnakeGame/SnakeGame';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import { getGame } from '../src/minigames/registry';
+import { simulateSnakeAiScore } from '../src/ai/competition/snakeAiSimulator';
 
 vi.mock('../src/ai/competition/snakeAiSimulator', () => ({
   simulateSnakeAiScore: vi.fn(({ playerId }: { playerId: string }) => {
@@ -150,5 +151,140 @@ describe('Snake registry instructions', () => {
     expect(snake?.instructions).toContain(
       'Runs resolve asynchronously — start independently, then wait for the full ranking reveal',
     );
+  });
+});
+
+// ── Leaderboard ordering contract ────────────────────────────────────────────
+//
+// sortScoreEntries (private to SnakeGame.tsx) defines race-to-1000 ranking:
+//  1. Completers (completionMs != null) rank above non-completers.
+//  2. Among completers: faster (lower ms) ranks higher.
+//  3. Among non-completers: higher score ranks higher.
+//
+// We verify this via the rendered leaderboard by driving the game to the
+// results screen with a mock that returns controlled completion times.
+
+describe('SnakeGame leaderboard ordering — sortScoreEntries contract', () => {
+  let simulateMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+      fillRect: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
+      closePath: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
+      save: vi.fn(), restore: vi.fn(),
+      set fillStyle(_: string) {},
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    simulateMock = simulateSnakeAiScore as ReturnType<typeof vi.fn>;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function makeStore3() {
+    const base = gameReducer(undefined, { type: '@@INIT' });
+    return configureStore({
+      reducer: { game: gameReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...base,
+          players: [
+            { id: 'p0', name: 'You', avatar: '🙂', status: 'active', isUser: true },
+            { id: 'p1', name: 'FastAI', avatar: '🤖', status: 'active', isUser: false },
+            { id: 'p2', name: 'SlowAI', avatar: '🤖', status: 'active', isUser: false },
+            { id: 'p3', name: 'DidNotFinish', avatar: '🤖', status: 'active', isUser: false },
+          ],
+        },
+      },
+    });
+  }
+
+  async function driveToResults(store: ReturnType<typeof makeStore3>) {
+    render(
+      <Provider store={store}>
+        <SnakeGame
+          autoStart
+          seed={42}
+          participantIds={['p0', 'p1', 'p2', 'p3']}
+          onFinish={vi.fn()}
+        />
+      </Provider>,
+    );
+    // Advance past game-over + 1.2s delay + 10s reveal
+    await act(async () => { vi.advanceTimersByTime(13000); });
+  }
+
+  it('completers rank above non-completers', async () => {
+    // p1 and p2 complete (different times); p0 and p3 don't complete
+    simulateMock.mockImplementation(({ playerId }: { playerId: string }) => {
+      if (playerId === 'p1') return { score: 1000, completionMs: 8000 };
+      if (playerId === 'p2') return { score: 1000, completionMs: 15000 };
+      if (playerId === 'p3') return { score: 600, completionMs: null };
+      return { score: 0, completionMs: null };
+    });
+
+    await driveToResults(makeStore3());
+
+    const items = screen.getAllByRole('listitem');
+    const names = items.map((li) => li.textContent ?? '');
+
+    const fastAiIdx = names.findIndex((t) => t.includes('FastAI'));
+    const slowAiIdx = names.findIndex((t) => t.includes('SlowAI'));
+    const dnfIdx = names.findIndex((t) => t.includes('DidNotFinish'));
+
+    // Both completers should appear before non-completers
+    expect(fastAiIdx).toBeGreaterThanOrEqual(0);
+    expect(slowAiIdx).toBeGreaterThanOrEqual(0);
+    expect(dnfIdx).toBeGreaterThanOrEqual(0);
+    expect(fastAiIdx).toBeLessThan(dnfIdx);
+    expect(slowAiIdx).toBeLessThan(dnfIdx);
+  });
+
+  it('faster completer ranks above slower completer', async () => {
+    simulateMock.mockImplementation(({ playerId }: { playerId: string }) => {
+      if (playerId === 'p1') return { score: 1000, completionMs: 8000 };  // faster
+      if (playerId === 'p2') return { score: 1000, completionMs: 15000 }; // slower
+      if (playerId === 'p3') return { score: 600, completionMs: null };
+      return { score: 0, completionMs: null };
+    });
+
+    await driveToResults(makeStore3());
+
+    const items = screen.getAllByRole('listitem');
+    const names = items.map((li) => li.textContent ?? '');
+
+    const fastAiIdx = names.findIndex((t) => t.includes('FastAI'));
+    const slowAiIdx = names.findIndex((t) => t.includes('SlowAI'));
+
+    expect(fastAiIdx).toBeGreaterThanOrEqual(0);
+    expect(slowAiIdx).toBeGreaterThanOrEqual(0);
+    expect(fastAiIdx).toBeLessThan(slowAiIdx);
+  });
+
+  it('among non-completers, higher score ranks higher', async () => {
+    simulateMock.mockImplementation(({ playerId }: { playerId: string }) => {
+      if (playerId === 'p1') return { score: 300, completionMs: null };
+      if (playerId === 'p2') return { score: 600, completionMs: null }; // higher
+      if (playerId === 'p3') return { score: 200, completionMs: null };
+      return { score: 0, completionMs: null };
+    });
+
+    await driveToResults(makeStore3());
+
+    const items = screen.getAllByRole('listitem');
+    const names = items.map((li) => li.textContent ?? '');
+
+    const p1Idx = names.findIndex((t) => t.includes('FastAI'));   // 300 pts
+    const p2Idx = names.findIndex((t) => t.includes('SlowAI'));   // 600 pts — should be higher
+    const p3Idx = names.findIndex((t) => t.includes('DidNotFinish')); // 200 pts
+
+    expect(p2Idx).toBeGreaterThanOrEqual(0);
+    expect(p1Idx).toBeGreaterThanOrEqual(0);
+    expect(p3Idx).toBeGreaterThanOrEqual(0);
+    expect(p2Idx).toBeLessThan(p1Idx);
+    expect(p1Idx).toBeLessThan(p3Idx);
   });
 });

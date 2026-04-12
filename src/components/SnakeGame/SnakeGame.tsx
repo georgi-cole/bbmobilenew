@@ -168,6 +168,8 @@ export default function SnakeGame({
   const startTimeRef = useRef<number | null>(null);
   /** Final elapsed ms captured in endGame; used for the completion time report. */
   const elapsedMsRef = useRef(0);
+  /** Last Date.now() at which we pushed an elapsedMs state update (throttle). */
+  const lastTimerUpdateRef = useRef(0);
   /** True when the run ended by reaching TARGET_SCORE (not a collision). */
   const goalReachedRef = useRef(false);
   const foodPulsePhaseRef = useRef(0);
@@ -347,7 +349,10 @@ export default function SnakeGame({
         : foodTypeRef.current === 'penalty' ? POINTS_PER_PENALTY_FOOD
         : POINTS_PER_STANDARD_FOOD;
 
-      const newScore = Math.max(0, currentScoreRef.current + points);
+      // Clamp to TARGET_SCORE so the score never exceeds the goal even when
+      // a large bonus food overshoots (e.g. 975 + 75 → 1000, not 1050).
+      const rawScore = Math.max(0, currentScoreRef.current + points);
+      const newScore = rawScore >= TARGET_SCORE ? TARGET_SCORE : rawScore;
       currentScoreRef.current = newScore;
       foodEatenRef.current += 1;
       setCurrentScore(newScore);
@@ -364,9 +369,14 @@ export default function SnakeGame({
       snakeRef.current = snakeRef.current.slice(0, -1);
     }
 
-    // Update live elapsed time display (every tick)
+    // Update live elapsed time display — throttled to every ~250ms to avoid
+    // triggering a full React re-render on every 150ms game-loop tick.
     if (startTimeRef.current !== null) {
-      setElapsedMs(Date.now() - startTimeRef.current);
+      const now = Date.now();
+      if (now - lastTimerUpdateRef.current >= 250) {
+        lastTimerUpdateRef.current = now;
+        setElapsedMs(now - startTimeRef.current);
+      }
     }
 
     foodPulsePhaseRef.current += FOOD_PULSE_STEP;
@@ -413,10 +423,18 @@ export default function SnakeGame({
             });
           }
         } else {
-          // session.aiScores is a plain Record<string, number>; wrap it
+          // Re-simulate AI runs to obtain completion times needed for
+          // race-to-1000 leaderboard ordering.  Plain `session.aiScores`
+          // only stores numeric scores and cannot carry completionMs.
           resolvedAiResults = {};
-          for (const [id, score] of Object.entries(session.aiScores)) {
-            resolvedAiResults[id] = { score, completionMs: null };
+          for (const id of session.participants) {
+            if (id === humanId) continue;
+            const p = resolvedPlayers.find((pl) => pl.id === id);
+            resolvedAiResults[id] = simulateSnakeAiScore({
+              sessionSeed: session.seed,
+              playerId: id,
+              profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
+            });
           }
         }
 
@@ -498,6 +516,7 @@ export default function SnakeGame({
     currentScoreRef.current = 0;
     goalReachedRef.current = false;
     startTimeRef.current = Date.now();
+    lastTimerUpdateRef.current = 0;
     elapsedMsRef.current = 0;
     foodPulsePhaseRef.current = 0;
     gameOverRef.current = false;
@@ -678,8 +697,8 @@ export default function SnakeGame({
                 screenFx ? `snake-lcd-container--fx-${screenFx}` : '',
               ].filter(Boolean).join(' ')}
             >
-              {/* Status line */}
-              <div className="snake-status-line" aria-live="polite">
+              {/* Status line — no aria-live to avoid spamming screen readers with the live timer */}
+              <div className="snake-status-line" aria-live="off">
                 {currentScore} PTS&nbsp;&nbsp;{formatTime(elapsedMs)}
               </div>
 

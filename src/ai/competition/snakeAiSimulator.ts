@@ -240,11 +240,14 @@ export function simulateSnakeAiRun(seed: number, skill: number): SnakeAiRunResul
 
   let accumulatedScore = 0;
   let ticksSinceFood = 0;
+  /** Actual tick at which the loop last executed a body iteration. */
+  let lastTick = 0;
 
   // Position fingerprint buffer for loop detection (head position + direction).
   const recentPositions: string[] = [];
 
   for (let tick = 0; tick < MAX_TICKS; tick++) {
+    lastTick = tick + 1; // record every executed tick so early-exit is accurate
     // ── Compute mistake probability ────────────────────────────────────────
     // Probability grows with snake length (simulates mounting pressure) and
     // decreases with skill level.  At skill=1 and length=1 it is ~3%; at
@@ -284,7 +287,9 @@ export function simulateSnakeAiRun(seed: number, skill: number): SnakeAiRunResul
         : currentFoodType === 'penalty' ? POINTS_PER_PENALTY_FOOD
         : POINTS_PER_STANDARD_FOOD;
 
-      accumulatedScore = Math.max(0, accumulatedScore + points);
+      // Clamp to TARGET_SCORE (mirrors SnakeGame.tsx — no overshooting)
+      const rawScore = Math.max(0, accumulatedScore + points);
+      accumulatedScore = rawScore >= TARGET_SCORE ? TARGET_SCORE : rawScore;
       ticksSinceFood = 0;
       recentPositions.length = 0; // reset loop detector on food
 
@@ -315,7 +320,8 @@ export function simulateSnakeAiRun(seed: number, skill: number): SnakeAiRunResul
     if (ticksSinceFood > Math.max(40, stallLimit)) break;
   }
 
-  return { score: accumulatedScore, ticks: MAX_TICKS, completed: false };
+  // Return the actual tick at which the run ended, not the MAX_TICKS ceiling.
+  return { score: accumulatedScore, ticks: lastTick, completed: false };
 }
 
 /**

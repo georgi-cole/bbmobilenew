@@ -62,6 +62,31 @@ describe('simulateSnakeAiRun — basic correctness', () => {
     expect(Number.isInteger(result.score)).toBe(true);
   });
 
+  it('ticks reflects the actual last tick executed, not the MAX_TICKS ceiling', () => {
+    // A non-completing run should report how many ticks it actually ran, not
+    // the hard loop limit (12 000).  We use a low-skill AI so it is unlikely
+    // to complete, making the ticks value verifiable.
+    const results = Array.from({ length: 20 }, (_, i) => simulateSnakeAiRun(i + 200, 0.1));
+    const nonCompleters = results.filter((r) => !r.completed);
+    expect(nonCompleters.length).toBeGreaterThan(0);
+    for (const r of nonCompleters) {
+      // A short run (low-skill, small seed) should end well below 12 000 ticks.
+      // If it returned MAX_TICKS for every non-completer the bug is still present.
+      expect(r.ticks).toBeLessThan(12_000);
+    }
+  });
+
+  it('score is clamped to TARGET_SCORE when a large bonus food overshoots', () => {
+    // Any completing run must end with exactly 1000, never above.
+    for (let seed = 1; seed <= 50; seed++) {
+      const result = simulateSnakeAiRun(seed, 0.9);
+      if (result.completed) {
+        expect(result.score).toBe(1000);
+        return;
+      }
+    }
+  });
+
   it('score never exceeds the target (1000)', () => {
     for (const seed of [1, 42, 9999, 31337]) {
       const result = simulateSnakeAiRun(seed, 1.0);
