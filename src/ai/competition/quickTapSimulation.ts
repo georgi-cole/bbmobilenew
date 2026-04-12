@@ -73,7 +73,7 @@ export function selectBoosterPrompts(seed: number): ScheduledBoosterPrompt[] {
 
 // ── AI score bands ────────────────────────────────────────────────────────────
 // Score bands are defined in minigameAiBalance.ts (the single authoritative
-// place to tune quickTap AI scoring). Access them via getQuickTapConfig().
+// place to tune quickTap AI scoring). Access them via minigameAiBalance.quickTap.
 
 function hashIdentity(playerId?: string, participantIndex = 0): number {
   if (typeof playerId === 'string' && playerId.length > 0) {
