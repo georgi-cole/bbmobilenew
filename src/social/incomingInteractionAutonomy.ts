@@ -58,7 +58,7 @@ export interface AutonomyContext {
   nomineeIds?: string[];
   posWinnerId?: string | null;
   povSavedId?: string | null;
-  prevLohId?: string | null;
+  prevHohId?: string | null;
   votes?: Record<string, string>;
   recentEvicteeId?: string | null;
   pendingEvictionId?: string | null;
@@ -806,7 +806,7 @@ export function scheduleIncomingInteractionsForPhase(
     nomineeIds: contextOverride?.nomineeIds ?? gameState?.nomineeIds ?? [],
     posWinnerId: contextOverride?.posWinnerId ?? gameState?.posWinnerId ?? null,
     povSavedId: contextOverride?.povSavedId ?? gameState?.povSavedId ?? null,
-    prevLohId: contextOverride?.prevLohId ?? gameState?.prevHohId ?? null,
+    prevHohId: contextOverride?.prevHohId ?? gameState?.prevHohId ?? null,
     votes: contextOverride?.votes ?? gameState?.votes ?? {},
     recentEvicteeId:
       contextOverride?.recentEvicteeId ?? gameState?.pendingEviction?.evicteeId ?? null,

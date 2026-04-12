@@ -105,7 +105,7 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
           nomineeIds: context.nomineeIds ?? [],
           posWinnerId: context.posWinnerId ?? null,
           povSavedId: context.povSavedId ?? null,
-          prevHohId: context.prevLohId ?? null,
+          prevHohId: context.prevHohId ?? null,
           votes: context.votes ?? {},
           pendingEviction: context.pendingEvictionId
             ? { evicteeId: context.pendingEvictionId }

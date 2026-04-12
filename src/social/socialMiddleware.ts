@@ -77,7 +77,7 @@ function handleWeekStart(api: MiddlewareAPI): void {
   api.dispatch(snapshotWeekRelationships());
   scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore, {
     lohId: state.game?.lohId ?? null,
-    prevLohId: state.game?.prevHohId ?? null,
+    prevHohId: state.game?.prevHohId ?? null,
     nomineeIds: state.game?.nomineeIds ?? [],
     posWinnerId: state.game?.posWinnerId ?? null,
     povSavedId: state.game?.povSavedId ?? null,
@@ -102,7 +102,7 @@ function handleAutonomyPhase(api: AutonomyStore, phase: string): void {
   const state = api.getState() as StateWithGame;
   scheduleIncomingInteractionsForPhase(phase, api, {
     lohId: state.game?.lohId ?? null,
-    prevLohId: state.game?.prevHohId ?? null,
+    prevHohId: state.game?.prevHohId ?? null,
     nomineeIds: state.game?.nomineeIds ?? [],
     posWinnerId: state.game?.posWinnerId ?? null,
     povSavedId: state.game?.povSavedId ?? null,
