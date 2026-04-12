@@ -40,9 +40,11 @@ describe('HangmanChallengeComp', () => {
 
     expect(screen.queryByText('Intel')).toBeNull();
     expect(screen.queryByText('Wrong letters')).toBeNull();
+    expect(screen.queryByText('0/7')).toBeNull();
+    expect(screen.queryByText(/clean reads left before it shatters/i)).toBeNull();
 
     const board = screen.getByLabelText(/solution board/i);
-    const letterBoard = screen.getByLabelText(/letter board/i);
+    const letterBoard = screen.getByLabelText(/letter entry/i);
     const playfield = board.closest('.hangman-challenge__playfield');
 
     expect(playfield).toBeTruthy();
@@ -50,15 +52,72 @@ describe('HangmanChallengeComp', () => {
     expect(playfield?.children[1]).toContainElement(screen.getByText('Mystery box'));
     expect(playfield?.children[2]).toBe(letterBoard);
     expect(screen.getByText('Timer').closest('.hangman-challenge__header')).toBeTruthy();
+    expect(screen.queryByLabelText(/letter keyboard/i)).toBeNull();
+  });
+
+  it('uses native text entry and records attempted letters', () => {
+    render(<HangmanChallengeComp participants={participants} seed={42} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /enter round/i }));
+
+    const entryPanel = screen.getByLabelText(/letter entry/i);
+    const input = within(entryPanel).getByLabelText(/guess a letter/i);
+    const guessButton = within(entryPanel).getByRole('button', { name: /guess/i });
+    const attempts = within(entryPanel).getByLabelText(/attempted letters/i);
+    const wordLetters = getSolutionLetters(pickRoundWords(42)[0].text);
+    const correctLetter = wordLetters[0];
+    const wrongLetter = 'Z' === correctLetter ? 'Q' : 'Z';
+
+    fireEvent.change(input, { target: { value: correctLetter.toLowerCase() } });
+    fireEvent.click(guessButton);
+
+    expect(within(attempts).getByText(correctLetter)).toBeInTheDocument();
+    expect(input).toHaveValue('');
+
+    fireEvent.change(input, { target: { value: wrongLetter.toLowerCase() } });
+    fireEvent.click(guessButton);
+
+    expect(within(attempts).getByText(wrongLetter)).toBeInTheDocument();
+    expect(within(entryPanel).getByText(/2 tried/i)).toBeInTheDocument();
+  });
+
+  it('shows the shatter burst briefly before leaving a failed round', () => {
+    render(<HangmanChallengeComp participants={participants} seed={42} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /enter round/i }));
+
+    const entryPanel = screen.getByLabelText(/letter entry/i);
+    const input = within(entryPanel).getByLabelText(/guess a letter/i);
+    const guessButton = within(entryPanel).getByRole('button', { name: /guess/i });
+    const solutionLetters = new Set(getSolutionLetters(pickRoundWords(42)[0].text));
+    const wrongLetters = 'ZXQJKVBMNP'.split('').filter((letter) => !solutionLetters.has(letter)).slice(0, 7);
+
+    for (const letter of wrongLetters) {
+      fireEvent.change(input, { target: { value: letter } });
+      fireEvent.click(guessButton);
+    }
+
+    expect(document.querySelector('.hangman-challenge__shatter-burst')).toBeTruthy();
+    expect(screen.queryByLabelText(/round breakdown/i)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(650);
+    });
+
+    expect(screen.getByLabelText(/round breakdown/i)).toBeInTheDocument();
   });
 
   it('renders a compact two-line round summary after completing a round', () => {
     render(<HangmanChallengeComp participants={participants} seed={42} />);
 
     fireEvent.click(screen.getByRole('button', { name: /enter round/i }));
+    const entryPanel = screen.getByLabelText(/letter entry/i);
+    const input = within(entryPanel).getByLabelText(/guess a letter/i);
+    const guessButton = within(entryPanel).getByRole('button', { name: /guess/i });
 
     for (const letter of getSolutionLetters(pickRoundWords(42)[0].text)) {
-      fireEvent.click(screen.getByRole('button', { name: letter }));
+      fireEvent.change(input, { target: { value: letter } });
+      fireEvent.click(guessButton);
     }
 
     act(() => {
