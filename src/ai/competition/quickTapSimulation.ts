@@ -9,6 +9,8 @@
 
 import { mulberry32, seededPickN } from '../../store/rng';
 import type { CompetitionSkillProfile } from './types';
+import { minigameAiBalance } from './minigameAiBalance';
+import type { ScoreBand } from './minigameAiBalance';
 
 // ── Booster pool ──────────────────────────────────────────────────────────────
 
@@ -70,20 +72,8 @@ export function selectBoosterPrompts(seed: number): ScheduledBoosterPrompt[] {
 }
 
 // ── AI score bands ────────────────────────────────────────────────────────────
-
-interface QuickTapScoreBand {
-  min: number;
-  max: number;
-  weight: number;
-}
-
-const QUICK_TAP_SCORE_BANDS: readonly QuickTapScoreBand[] = [
-  { min: 50, max: 99, weight: 0.10 },
-  { min: 100, max: 149, weight: 0.40 },
-  { min: 150, max: 199, weight: 0.35 },
-  { min: 200, max: 249, weight: 0.10 },
-  { min: 250, max: 280, weight: 0.05 },
-] as const;
+// Score bands are defined in minigameAiBalance.ts (the single authoritative
+// place to tune quickTap AI scoring). Access them via getQuickTapConfig().
 
 function hashIdentity(playerId?: string, participantIndex = 0): number {
   if (typeof playerId === 'string' && playerId.length > 0) {
@@ -109,16 +99,20 @@ export interface SimulateQuickTapAiScoreArgs {
 /**
  * Simulate a Quick Tap Race AI player's effective score for a given seed.
  *
- * For the default 30-second game, the score band probabilities are:
- *  - 50–99  → 10%
- *  - 100–149 → 40%
- *  - 150–199 → 35%
- *  - 200–249 → 10%
- *  - 250–280 → 5%
+ * Score bands and tuning parameters are read from `minigameAiBalance.quickTap`
+ * — edit that file to rebalance AI scoring without touching logic here.
  *
- * A player's profile only biases where they land inside the chosen band so the
- * requested band probabilities stay stable while stronger competitors still
- * trend toward the top of their band.
+ * Distribution (default 30 s game, from minigameAiBalance.ts):
+ *  - 135–160 →  8%   (occasional weak outcome)
+ *  - 161–185 → 22%   (below-competitive)
+ *  - 186–210 → 32%   (competitive core)
+ *  - 211–235 → 25%   (strong finish)
+ *  - 236–265 → 13%   (standout performance)
+ * plus optional ±jitter, hot-streak bonus and slump penalty.
+ *
+ * Profile stats (physical, consistency, luck) only bias the *position within*
+ * the chosen band so band probabilities remain stable — avoiding deterministic
+ * identity lock-in while still letting varied profiles influence outcomes.
  */
 export function simulateQuickTapAiScore({
   seed,
@@ -127,15 +121,18 @@ export function simulateQuickTapAiScore({
   profile,
   timeLimitSeconds = 30,
 }: SimulateQuickTapAiScoreArgs): number {
+  const config = minigameAiBalance.quickTap;
+  const bands: ScoreBand[] = config.scoreBands;
+
   const identity = hashIdentity(playerId, participantIndex);
   const bandRng = mulberry32(((seed >>> 0) ^ identity ^ 0x1a2b3c4d) >>> 0);
   const roll = bandRng();
-  let cumulativeWeight = 0;
-  let band = QUICK_TAP_SCORE_BANDS[QUICK_TAP_SCORE_BANDS.length - 1];
 
-  for (const candidate of QUICK_TAP_SCORE_BANDS) {
-    cumulativeWeight += candidate.weight;
-    if (roll < cumulativeWeight) {
+  let cumulativeChance = 0;
+  let band: ScoreBand = bands[bands.length - 1];
+  for (const candidate of bands) {
+    cumulativeChance += candidate.chance;
+    if (roll < cumulativeChance) {
       band = candidate;
       break;
     }
@@ -153,7 +150,33 @@ export function simulateQuickTapAiScore({
     (luck - 0.5) * 0.08;
   const bandPosition = clamp01(triangularRoll + skillBias);
   const bandSpan = band.max - band.min;
-  const baseScore = band.min + Math.round(bandSpan * bandPosition);
+  let baseScore = band.min + Math.round(bandSpan * bandPosition);
+
+  // Apply optional jitter (±jitter, independent RNG stream).
+  const jitter = config.jitter ?? 0;
+  if (jitter > 0) {
+    const jitterRng = mulberry32(((seed >>> 0) ^ identity ^ 0xabcd1234) >>> 0);
+    const jitterOffset = Math.round((jitterRng() * 2 - 1) * jitter);
+    baseScore += jitterOffset;
+  }
+
+  // Apply optional hot-streak or slump modifier (mutually exclusive).
+  const streakRng = mulberry32(((seed >>> 0) ^ identity ^ 0x5ca1ab1e) >>> 0);
+  const streakRoll = streakRng();
+  const hotChance = config.hotStreakChance ?? 0;
+  const slumpChance = config.slumpChance ?? 0;
+
+  if (hotChance > 0 && streakRoll < hotChance) {
+    const bonusMin = config.hotStreakBonusMin ?? 0;
+    const bonusMax = config.hotStreakBonusMax ?? bonusMin;
+    baseScore += bonusMin + Math.round(streakRng() * (bonusMax - bonusMin));
+  } else if (slumpChance > 0 && streakRoll < hotChance + slumpChance) {
+    const penaltyMin = config.slumpPenaltyMin ?? 0;
+    const penaltyMax = config.slumpPenaltyMax ?? penaltyMin;
+    baseScore -= penaltyMin + Math.round(streakRng() * (penaltyMax - penaltyMin));
+  }
+
+  baseScore = Math.max(0, baseScore);
 
   if (timeLimitSeconds === 30) {
     return baseScore;
