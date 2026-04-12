@@ -83,6 +83,8 @@ function handleWeekStart(api: MiddlewareAPI): void {
     povSavedId: state.game?.povSavedId ?? null,
     votes: state.game?.votes ?? {},
     pendingEvictionId: state.game?.pendingEviction?.evicteeId ?? null,
+    // eviction_results interactions fire before finalizePendingEviction commits the exit,
+    // so the pending evictee is also the best available “recent eviction” context.
     recentEvicteeId: state.game?.pendingEviction?.evicteeId ?? null,
     isDoubleEviction: state.game?.doubleEviction?.weekActive === true,
     specialVeto: state.game?.specialVeto?.activeType ?? null,
@@ -106,6 +108,8 @@ function handleAutonomyPhase(api: AutonomyStore, phase: string): void {
     povSavedId: state.game?.povSavedId ?? null,
     votes: state.game?.votes ?? {},
     pendingEvictionId: state.game?.pendingEviction?.evicteeId ?? null,
+    // eviction_results interactions fire before finalizePendingEviction commits the exit,
+    // so the pending evictee is also the best available “recent eviction” context.
     recentEvicteeId: state.game?.pendingEviction?.evicteeId ?? null,
     isDoubleEviction: state.game?.doubleEviction?.weekActive === true,
     specialVeto: state.game?.specialVeto?.activeType ?? null,

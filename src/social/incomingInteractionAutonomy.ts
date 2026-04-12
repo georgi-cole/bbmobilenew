@@ -285,17 +285,21 @@ function fallbackInteractionPlan(
   constraints: ActorConstraints,
   signals: RelationshipSignals,
 ): InteractionPlan | null {
+  const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds;
   if (constraints.actorIsPendingEvictee) return null;
   if (constraints.actorSurvivedCurrentVote) {
     return { type: 'compliment', scenarioKey: 'survivor_gratitude' };
   }
-  if (signals.tags.has('betrayal') || (signals.resentmentRatio >= 0.45 && signals.affinity < 0)) {
+  if (
+    signals.tags.has('betrayal') ||
+    (signals.resentmentRatio >= thresholds.resentmentHigh && signals.affinity < 0)
+  ) {
     return {
       type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
       scenarioKey: 'betrayal_warning',
     };
   }
-  if (signals.neglectRatio >= 0.5 && !signals.tags.has('alliance')) {
+  if (signals.neglectRatio >= thresholds.neglectHigh && !signals.tags.has('alliance')) {
     return { type: 'warning', scenarioKey: 'ignored_warning' };
   }
   if (signals.tags.has('target')) {
