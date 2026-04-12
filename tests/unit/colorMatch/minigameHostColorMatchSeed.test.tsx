@@ -15,8 +15,10 @@
  *  1. When MinigameHost renders a ColorMatch game with a non-zero
  *     gameOptions.seed, ColorMatchComp receives seed=undefined.
  *  2. When gameOptions.seed is 0, ColorMatchComp still receives seed=undefined.
- *  3. ClosestWithoutGoingOver (a generic-path game) is unaffected — it still
- *     receives the challenge seed.
+ *  3. SnakeGame (a truly generic-path game — it has no dedicated MinigameHost
+ *     branch and goes through the reactComponents map) still receives the
+ *     challenge seed unchanged, confirming the isolation is specific to
+ *     ColorMatch and doesn't affect other games.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -38,19 +40,24 @@ vi.mock('../../../src/components/ColorMatchComp/ColorMatchComp', () => ({
   },
 }));
 
-// ── ClosestWithoutGoingOverComp mock — captures the seed prop ─────────────────
+// ── SnakeGame mock — captures the seed prop ───────────────────────────────────
+// SnakeGame is a truly generic-path game: it only appears in the reactComponents
+// map and has no dedicated MinigameHost special-case branch.
 
-let capturedCwgoSeed: number | undefined | 'NOT_RENDERED' = 'NOT_RENDERED';
+let capturedSnakeSeed: number | undefined | 'NOT_RENDERED' = 'NOT_RENDERED';
 
-vi.mock('../../../src/components/ClosestWithoutGoingOverComp', () => ({
+vi.mock('../../../src/components/SnakeGame/SnakeGame', () => ({
   default: ({ seed }: { seed?: number }) => {
-    capturedCwgoSeed = seed;
-    return <div data-testid="cwgo-comp" />;
+    capturedSnakeSeed = seed;
+    return <div data-testid="snake-comp" />;
   },
 }));
 
 // ── Other dependency mocks ────────────────────────────────────────────────────
 
+vi.mock('../../../src/components/ClosestWithoutGoingOverComp', () => ({
+  default: () => <div data-testid="cwgo-comp" />,
+}));
 vi.mock('../../../src/components/HoldTheWallComp/HoldTheWallComp', () => ({
   default: () => <div data-testid="htw-comp" />,
 }));
@@ -96,20 +103,21 @@ const COLOR_MATCH_GAME = {
   retired: false,
 };
 
-const CWGO_GAME = {
-  key: 'dontGoOver',
-  title: 'Closest Without Going Over',
-  description: 'Get as close as possible.',
+// SnakeGame goes through the generic reactComponents map — no dedicated branch
+const SNAKE_GAME = {
+  key: 'snake',
+  title: 'Snake',
+  description: 'Classic snake game.',
   instructions: [],
   metricKind: 'points' as const,
   metricLabel: 'Score',
-  timeLimitMs: 30_000,
-  authoritative: false,
-  scoringAdapter: 'raw' as const,
+  timeLimitMs: 0,
+  authoritative: true,
+  scoringAdapter: 'authoritative' as const,
   implementation: 'react' as const,
-  reactComponentKey: 'ClosestWithoutGoingOver',
+  reactComponentKey: 'SnakeGame',
   legacy: false,
-  weight: 1,
+  weight: 2,
   category: 'arcade' as const,
   retired: false,
 };
@@ -129,7 +137,7 @@ describe('MinigameHost — Color Match seed isolation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     capturedColorMatchSeed = 'NOT_RENDERED';
-    capturedCwgoSeed = 'NOT_RENDERED';
+    capturedSnakeSeed = 'NOT_RENDERED';
   });
   afterEach(() => vi.useRealTimers());
 
@@ -177,12 +185,12 @@ describe('MinigameHost — Color Match seed isolation', () => {
     expect(capturedColorMatchSeed).toBeUndefined();
   });
 
-  it('ClosestWithoutGoingOver (generic-path game) still receives the challenge seed unchanged', async () => {
+  it('SnakeGame (generic-path via reactComponents map) still receives the challenge seed unchanged', async () => {
     const CHALLENGE_SEED = 77777;
     render(
       <Provider store={makeStore()}>
         <MinigameHost
-          game={CWGO_GAME}
+          game={SNAKE_GAME}
           gameOptions={{ seed: CHALLENGE_SEED }}
           participants={PARTICIPANTS}
           onDone={vi.fn()}
@@ -194,8 +202,8 @@ describe('MinigameHost — Color Match seed isolation', () => {
 
     await act(async () => { vi.runAllTimers(); });
 
-    expect(screen.getByTestId('cwgo-comp')).toBeTruthy();
-    // CWGO is not affected — it still receives the challenge seed
-    expect(capturedCwgoSeed).toBe(CHALLENGE_SEED);
+    expect(screen.getByTestId('snake-comp')).toBeTruthy();
+    // Generic-path games are not affected — they still receive the challenge seed
+    expect(capturedSnakeSeed).toBe(CHALLENGE_SEED);
   });
 });

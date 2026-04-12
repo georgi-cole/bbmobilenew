@@ -298,7 +298,7 @@ export default function ColorMatchComp({
                 ? getColorMatchAiRoundScore(
                   participant,
                   roundNumber,
-                  seed,
+                  sessionSeed,
                   aiRoundScores[standing.participantId],
                 )
                 : DEFAULT_AI_FALLBACK_SCORE;
@@ -327,7 +327,7 @@ export default function ColorMatchComp({
       }
       setPhase('feedback');
     },
-    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, participantsById, playCorrect, playIncorrect, roundIndex, seed, stopTimer],
+    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, participantsById, playCorrect, playIncorrect, roundIndex, sessionSeed, stopTimer],
   );
 
   // Keep submitRound available via ref so the interval can always call the latest.
@@ -424,7 +424,7 @@ export default function ColorMatchComp({
               ? getColorMatchAiRoundScore(
                 participant,
                 roundNumber,
-                seed,
+                sessionSeed,
                 aiRoundScores[standing.participantId],
               )
               : DEFAULT_AI_FALLBACK_SCORE;
@@ -453,7 +453,7 @@ export default function ColorMatchComp({
       setPhase('feedback');
     }, 600);
     return () => clearTimeout(timeoutId);
-  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, participantsById, phase, roundIndex, seed]);
+  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, participantsById, phase, roundIndex, sessionSeed]);
 
   const handleSliderChange = useCallback(
     (channel: keyof RGB, value: number) => {
