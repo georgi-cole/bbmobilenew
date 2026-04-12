@@ -13,7 +13,7 @@
  *  9. Regression: repeated startMinigame calls produce different session seeds.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, {
   launchMinigame,
@@ -26,6 +26,10 @@ import settingsReducer from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
 import { selectBoosterPrompts } from '../src/ai/competition/quickTapSimulation';
+import {
+  simulateMinigameAiScore,
+  getDefaultCompetitionProfile,
+} from '../src/ai/competition';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -489,11 +493,16 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
 
   it('each invocation generates a fresh session seed — same opts.seed never reuses the same session seed', () => {
     // Regression: startMinigame must not store opts.seed directly as session.seed.
-    // Each call should produce a fresh random invocationSeed so repeated launches
+    // Each call should produce a fresh invocationSeed so repeated launches
     // (restarts, reloads, debug-panel re-runs) do not replay the same game.
-    const players = makePlayers(4);
+    // Mock Math.random to return controlled, distinct values for each invocation.
+    const randomValues = [0.1, 0.2, 0.3, 0.4, 0.5];
+    let callIndex = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => randomValues[callIndex++] ?? 0.9);
 
+    const players = makePlayers(4);
     const seeds: number[] = [];
+
     for (let i = 0; i < 5; i++) {
       const store = makeStore({ players: JSON.parse(JSON.stringify(players)) });
       store.dispatch(
@@ -508,11 +517,12 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
     const unique = new Set(seeds);
     expect(unique.size).toBeGreaterThan(1);
 
-    // None of the session seeds should equal opts.seed (7) — the incoming seed is
-    // used as an input to derivation, not stored verbatim.
-    for (const s of seeds) {
-      expect(s).not.toBe(7);
-    }
+    // The incoming seed must not be copied verbatim for every invocation. A derived
+    // session seed may equal opts.seed by chance, so only assert that they are not
+    // all the same as the provided seed.
+    expect(seeds.every((s) => s === 7)).toBe(false);
+
+    vi.restoreAllMocks();
   });
 
   it('completeMinigame uses the precomputed AI scores (not hybrid-resolved)', () => {
@@ -553,10 +563,18 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
 // ── 9. Regression: different booster sequences across repeated launches ────────
 
 describe('Quick Tap Race — repeated launches produce fresh booster sequences', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('session.seed differs across repeated startMinigame calls with the same opts.seed', () => {
     // Regression for the bug where booster prompts were always the same because
-    // session.seed was copied verbatim from opts.seed.  Now each invocation gets
-    // a fresh random invocationSeed, so the booster trio varies per launch.
+    // session.seed was copied verbatim from opts.seed.  Mock Math.random to
+    // return controlled, distinct values so the test is fully deterministic.
+    const randomValues = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
+    let callIndex = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => randomValues[callIndex++] ?? 0.9);
+
     const players = makePlayers(3);
     const sessionSeeds: number[] = [];
 
@@ -570,37 +588,23 @@ describe('Quick Tap Race — repeated launches produce fresh booster sequences',
           options: { timeLimit: 30 },
         }),
       );
-      const sessionSeed = store.getState().game.pendingMinigame?.seed ?? -1;
-      sessionSeeds.push(sessionSeed);
+      const session = store.getState().game.pendingMinigame;
+      expect(session).not.toBeNull();
+      sessionSeeds.push(session!.seed);
     }
 
     // Must see more than one distinct seed value across 6 launches.
     const unique = new Set(sessionSeeds);
     expect(unique.size).toBeGreaterThan(1);
-  });
 
-  it('session.seed is not equal to opts.seed', () => {
-    // The invocation seed is derived from random+Date.now(), never the raw opts.seed.
-    const players = makePlayers(3);
-    const store = makeStore({ players });
-
-    store.dispatch(
-      startMinigame({
-        key: 'quickTap',
-        participants: ['p0', 'p1', 'p2'],
-        seed: 12345,
-        options: { timeLimit: 30 },
-      }),
-    );
-
-    const sessionSeed = store.getState().game.pendingMinigame?.seed;
-    expect(sessionSeed).not.toBe(12345);
+    // The incoming opts.seed must not be copied verbatim for every invocation.
+    expect(sessionSeeds.every((s) => s === 42)).toBe(false);
   });
 
   it('AI scores and session.seed are consistent within one invocation', () => {
-    // The human UI and precomputed AI scores share the same invocationSeed.
-    // This ensures the booster sequence seen by the human corresponds to the
-    // game that the AI scores were computed for.
+    // The human UI and precomputed AI scores must share the same invocationSeed.
+    // Verify this by re-computing each AI score from the stored session.seed and
+    // confirming it matches what startMinigame stored in session.aiScores.
     const players = makePlayers(3);
     const store = makeStore({ players });
 
@@ -615,20 +619,41 @@ describe('Quick Tap Race — repeated launches produce fresh booster sequences',
 
     const session = store.getState().game.pendingMinigame;
     expect(session).not.toBeNull();
-    // AI scores must be present (precomputed for non-hybrid quickTap path)
-    expect(typeof session?.aiScores?.['p1']).toBe('number');
-    expect(typeof session?.aiScores?.['p2']).toBe('number');
+
+    // Recompute each AI score from the stored session seed and confirm it matches.
+    const aiParticipants: Array<{ pid: string; index: number }> = [
+      { pid: 'p1', index: 1 },
+      { pid: 'p2', index: 2 },
+    ];
+    for (const { pid, index } of aiParticipants) {
+      const storedScore = session!.aiScores?.[pid];
+      expect(typeof storedScore).toBe('number');
+      const recomputed = simulateMinigameAiScore({
+        gameKey: 'quickTap',
+        seed: session!.seed,
+        playerId: pid,
+        participantIndex: index,
+        profile: getDefaultCompetitionProfile(),
+        timeLimitSeconds: 30,
+      });
+      expect(storedScore).toBe(recomputed);
+    }
+
     // Human is not in aiScores
-    expect(session?.aiScores?.['p0']).toBeUndefined();
+    expect(session!.aiScores?.['p0']).toBeUndefined();
     // Session seed must be a valid 32-bit unsigned integer
-    expect(session?.seed).toBeGreaterThanOrEqual(0);
-    expect(session?.seed).toBeLessThanOrEqual(0xffffffff);
+    expect(session!.seed).toBeGreaterThanOrEqual(0);
+    expect(session!.seed).toBeLessThanOrEqual(0xffffffff);
   });
 
   it('booster sequences differ across repeated launches with the same opts.seed', () => {
     // Regression: repeated Quick Tap launches must not always produce the same
-    // booster trio.  This was broken when session.seed was copied verbatim from
-    // opts.seed — identical sessions led to identical selectBoosterPrompts output.
+    // booster trio.  Mock Math.random so each invocation gets a distinct,
+    // controlled seed and the test is fully deterministic.
+    const randomValues = [0.1, 0.25, 0.5, 0.7, 0.85, 0.95];
+    let callIndex = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => randomValues[callIndex++] ?? 0.9);
+
     const players = makePlayers(3);
     const boosterSequences = new Set<string>();
 
@@ -642,12 +667,16 @@ describe('Quick Tap Race — repeated launches produce fresh booster sequences',
           options: { timeLimit: 30 },
         }),
       );
-      const sessionSeed = store.getState().game.pendingMinigame?.seed ?? 0;
-      const boosterTypes = selectBoosterPrompts(sessionSeed).map((p) => p.type).join(',');
+      const session = store.getState().game.pendingMinigame;
+      expect(session).not.toBeNull();
+      if (!session) {
+        throw new Error('startMinigame did not create a pending minigame session');
+      }
+      const boosterTypes = selectBoosterPrompts(session.seed).map((p) => p.type).join(',');
       boosterSequences.add(boosterTypes);
     }
 
-    // With 6 independent launches we must see at least 2 distinct booster trios.
+    // With 6 launches using distinct controlled seeds we must see multiple booster trios.
     expect(boosterSequences.size).toBeGreaterThan(1);
   });
 });

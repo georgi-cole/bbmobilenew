@@ -197,36 +197,29 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
   });
 
   it('AI scores are well above the old stale maxScore (120) for quickTap', () => {
-    // Generate many sessions to confirm the new competitive band scoring is used.
-    // With startMinigame generating a fresh random invocationSeed per call, the
-    // 'seed' parameter no longer controls the exact scores — but the new scoring
-    // model still places the vast majority of scores above the old stale maxScore
-    // of 120 (old band was [48, 120]; new band1 is [105, 120] at only 8% chance).
-    const players = makePlayers(4);
+    // Confirm the new competitive band scoring model is used. Call
+    // simulateMinigameAiScore directly with fixed seeds so the test is
+    // fully deterministic and not affected by startMinigame's random
+    // invocation seed generation.
     const allScores: number[] = [];
 
-    for (let invocationIndex = 0; invocationIndex < 30; invocationIndex++) {
-      const store = makeStore({ players });
-      store.dispatch(
-        startMinigame({
-          key: 'quickTap',
-          participants: ['p0', 'p1', 'p2', 'p3'],
-          seed: invocationIndex + 1,
-          options: { timeLimit: 30 },
-        }),
-      );
-      const session = store.getState().game.pendingMinigame;
+    for (let seed = 1; seed <= 30; seed++) {
       for (const pid of ['p1', 'p2', 'p3']) {
-        const score = session?.aiScores?.[pid];
-        if (typeof score === 'number') allScores.push(score);
+        const score = simulateMinigameAiScore({
+          gameKey: 'quickTap',
+          seed,
+          playerId: pid,
+          participantIndex: parseInt(pid.slice(1), 10),
+          timeLimitSeconds: 30,
+        });
+        allScores.push(score);
       }
     }
 
-    // At least 75% of scores should be above 120 (old stale maxScore).
-    // The new band1 is only 8% probable, so even accounting for jitter/slump
-    // the vast majority will exceed 120, unlike the old stale band [48–120].
+    // At least 85% of scores should be above 120 (old stale maxScore).
+    // The new band1 is only 8% probable, so the vast majority should exceed 120.
     const aboveOldMax = allScores.filter((s) => s > 120);
-    expect(aboveOldMax.length).toBeGreaterThan(allScores.length * 0.75);
+    expect(aboveOldMax.length).toBeGreaterThan(allScores.length * 0.85);
   });
 });
 

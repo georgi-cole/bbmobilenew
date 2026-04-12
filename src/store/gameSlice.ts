@@ -4170,10 +4170,10 @@ export const fastForwardToEviction =
  *
  * A fresh per-invocation seed is generated on every call so that restarting,
  * reloading, or re-launching a minigame never replays the exact same game
- * (same booster sequence, same AI variation, etc.).  The caller-supplied
- * `opts.seed` is used as an input to the derivation but is not used directly,
- * ensuring that repeatedly pressing a debug button or triggering a game from
- * the same global seed still produces varied results each time.
+ * (same booster sequence, same AI variation, etc.).  This seed is generated
+ * independently of the caller-supplied `opts.seed` — `opts.seed` is not used
+ * by this thunk at all, so even passing the same base seed across replays or
+ * debug runs still produces varied results each time.
  *
  * All participants in the same invocation — human UI and precomputed AI scores
  * — share this single fresh seed, preserving internal consistency for that run.
