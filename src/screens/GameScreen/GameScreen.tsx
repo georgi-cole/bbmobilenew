@@ -1871,6 +1871,8 @@ export default function GameScreen() {
   // twist announcement; the overlay opens ~5 s later via the effect below.
   const showBattleBack = battleBack?.active === true && battleBack?.competitionActive === true
   const battleBackAttemptSeed = useMemo(
+    // Step each retry through a large odd offset so the seeded Battle Back
+    // simulation produces a fresh bracket/minigame sequence per replay.
     () => ((game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0),
     [battleBackAttemptIndex, game.seed],
   )
@@ -1890,6 +1892,10 @@ export default function GameScreen() {
   const battleBackReturnPlayer = useMemo(
     () => (battleBackReturnId ? game.players.find((p) => p.id === battleBackReturnId) ?? null : null),
     [battleBackReturnId, game.players],
+  )
+  const battleBackRetryOfferWinner = useMemo(
+    () => (battleBackRetryOfferWinnerId ? game.players.find((player) => player.id === battleBackRetryOfferWinnerId) ?? null : null),
+    [battleBackRetryOfferWinnerId, game.players],
   )
   const showBattleBackReturn = !!battleBackReturnPlayer
 
@@ -3298,7 +3304,7 @@ export default function GameScreen() {
         <AdPrompt
           icon="⚡"
           title="Second Chance?"
-          description={`Watch a short ad to rerun Battle Back before ${(game.players.find((player) => player.id === battleBackRetryOfferWinnerId)?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
+          description={`Watch a short ad to rerun Battle Back before ${(battleBackRetryOfferWinner?.name ?? 'the winner')} returns. Retries left: ${BATTLE_BACK_RETRY_LIMIT - battleBackRetryCount}.`}
           watchLabel="Watch Ad to Replay Battle Back"
           skipLabel="Continue"
           onWatch={() => {

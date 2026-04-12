@@ -25,7 +25,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 let lastSpectatorOnDone: (() => void) | null = null;
 let mockBattleBackWinnerId: string | undefined = 'p2';
-let spectatorRenderWinnerIds: Array<string | undefined> = [];
+let spectatorRenderedWinnerIds: Array<string | undefined> = [];
 const getMockBattleBackWinnerId = () => mockBattleBackWinnerId;
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
@@ -45,7 +45,7 @@ vi.mock('../../src/components/ui/SpectatorView', () => ({
     expectedWinnerId?: string;
   }) => {
     lastSpectatorOnDone = onDone ?? null;
-    spectatorRenderWinnerIds.push(expectedWinnerId);
+    spectatorRenderedWinnerIds.push(expectedWinnerId);
     return <div data-testid="spectator-view" />;
   },
 }));
@@ -420,7 +420,7 @@ describe('GameScreen – Battle Back completion guards', () => {
   beforeEach(() => {
     lastSpectatorOnDone = null;
     mockBattleBackWinnerId = 'p2';
-    spectatorRenderWinnerIds = [];
+    spectatorRenderedWinnerIds = [];
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 0, y: 0, width: 60, height: 80,
       top: 0, left: 0, bottom: 80, right: 60,
@@ -538,7 +538,7 @@ describe('GameScreen – Battle Back completion guards', () => {
     );
     await act(async () => {});
 
-    expect(spectatorRenderWinnerIds.at(-1)).toBe('p1');
+    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p1');
 
     await act(async () => { lastSpectatorOnDone?.(); });
 
@@ -550,7 +550,7 @@ describe('GameScreen – Battle Back completion guards', () => {
     });
 
     expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
-    expect(spectatorRenderWinnerIds.at(-1)).toBe('p0');
+    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p0');
 
     await act(async () => { lastSpectatorOnDone?.(); });
 
