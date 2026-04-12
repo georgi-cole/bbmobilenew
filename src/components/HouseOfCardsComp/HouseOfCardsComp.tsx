@@ -83,7 +83,7 @@ export default function HouseOfCardsComp({
   onComplete,
 }: Props) {
   const dispatch = useAppDispatch();
-  const [sessionSeed] = useState<number>(() => (seed !== 0 && seed !== undefined ? seed : cryptoSeed()));
+  const [sessionSeed] = useState<number>(() => (seed !== 0 ? seed : cryptoSeed()));
 
   // Resolve the human player id.
   const humanId = useMemo(
