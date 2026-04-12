@@ -40,6 +40,7 @@ import {
   PEEK_STREAK_TRIGGER,
   type HouseOfCardsBoardCard,
 } from './houseOfCardsUtils';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { useHouseOfCardsAudio } from '../../hooks/useHouseOfCardsAudio';
 import './HouseOfCardsComp.css';
 
@@ -55,7 +56,7 @@ interface Props {
   participantIds: string[];
   participants?: ParticipantProp[];
   prizeType: HouseOfCardsPrizeType;
-  seed: number;
+  seed?: number;
   onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
@@ -82,6 +83,7 @@ export default function HouseOfCardsComp({
   onComplete,
 }: Props) {
   const dispatch = useAppDispatch();
+  const [sessionSeed] = useState<number>(() => (seed !== undefined && seed !== 0 ? seed : cryptoSeed()));
 
   // Resolve the human player id.
   const humanId = useMemo(
@@ -143,10 +145,10 @@ export default function HouseOfCardsComp({
         participantIds,
         humanId,
         prizeType,
-        seed,
+        seed: sessionSeed,
       }),
     );
-    setBoard(buildHouseOfCardsBoard(seed));
+    setBoard(buildHouseOfCardsBoard(sessionSeed));
     startTimeRef.current = Date.now();
     gameOverRef.current = false;
     finalisedRef.current = false;
@@ -157,7 +159,7 @@ export default function HouseOfCardsComp({
       }
       dispatch(resetHouseOfCards());
     };
-  // Intentionally run only on mount: participants/seed/prizeType define the competition
+  // Intentionally run only on mount: participants/session seed/prizeType define the competition
   // session and must not change mid-game (restart would require a remount).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
