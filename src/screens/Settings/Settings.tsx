@@ -180,7 +180,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="settings-screen">
+    <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
         <button
           className="settings-screen__back"
@@ -192,7 +192,7 @@ export default function Settings() {
         <h1 className="settings-screen__title">⚙️ Settings</h1>
       </header>
 
-      <div className="settings-content">
+      <div className="settings-content settings-content--flat">
         {SECTIONS.map((section) => (
           <section key={section.id} className="settings-section">
             {section.items.map(renderItem)}
