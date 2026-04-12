@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Settings from '../src/screens/Settings/Settings';
+import SettingsAdmin from '../src/screens/SettingsAdmin/SettingsAdmin';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import { restartApp } from '../src/utils/restartApp';
@@ -36,6 +37,21 @@ function renderSettings(initialEntries = ['/settings']) {
   return { store };
 }
 
+function renderSettingsAdmin(initialEntries = ['/settingsatiste']) {
+  const store = makeStore();
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+        <Routes>
+          <Route path="/game" element={<div>Game route</div>} />
+          <Route path="/settingsatiste" element={<SettingsAdmin />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+  return { store };
+}
+
 describe('Settings screen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,7 +69,7 @@ describe('Settings screen', () => {
   });
 
   it('replaces the comp-selection save button with the general save flow', async () => {
-    const { store } = renderSettings();
+    const { store } = renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
 
@@ -82,7 +98,7 @@ describe('Settings screen', () => {
   });
 
   it('hard restarts the app from the save confirmation prompt', async () => {
-    renderSettings();
+    renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
 
@@ -97,7 +113,7 @@ describe('Settings screen', () => {
   });
 
   it('shows compact roster layout choices when the toggle is enabled', async () => {
-    const { store } = renderSettings();
+    const { store } = renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
 
@@ -121,7 +137,7 @@ describe('Settings screen', () => {
   });
 
   it('shows the renamed brand and twist copy in the UI', async () => {
-    renderSettings();
+    renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
     fireEvent.click(screen.getByLabelText(/toggle twists/i));
@@ -143,7 +159,7 @@ describe('Settings screen', () => {
   });
 
   it('lets QA set a forced secret mission week in debug settings', async () => {
-    const { store } = renderSettings();
+    const { store } = renderSettingsAdmin();
 
     fireEvent.click(screen.getByRole('tab', { name: /game ux/i }));
 
