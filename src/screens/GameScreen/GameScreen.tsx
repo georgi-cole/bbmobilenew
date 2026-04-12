@@ -215,6 +215,7 @@ export default function GameScreen() {
     week: number
     phase: Phase
   } | null>(null)
+  const isMountedRef = useRef(true)
   const postEvictionVoteBreakdownPromptTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
@@ -222,8 +223,10 @@ export default function GameScreen() {
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false
       if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
         window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
+        postEvictionVoteBreakdownPromptTimerRef.current = null
       }
     }
   }, [])
@@ -1841,9 +1844,11 @@ export default function GameScreen() {
     if (isPostEvictionConfessionalModeRef.current) {
       if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
         window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
+        postEvictionVoteBreakdownPromptTimerRef.current = null
       }
       postEvictionVoteBreakdownPromptTimerRef.current = window.setTimeout(() => {
         postEvictionVoteBreakdownPromptTimerRef.current = null
+        if (!isMountedRef.current) return
         setShowVoteBreakdownPrompt(true)
       }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
