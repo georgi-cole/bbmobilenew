@@ -379,7 +379,7 @@ export default function CodeBreakerComp({
         <div className="cb__results">
           <p className="cb__results-headline">🔓 Vault Cracked!</p>
           <p className="cb__results-subhead">
-            Your run ranks by attempt band, with time as a tiebreaker. 1–2 = Mythic · 3–4 = Elite · 5–6 = Expert · 7–8 = Strong · 9–10 = Solved · 11+ = Struggled
+            Leaderboard placement is based on score, which rewards solving in fewer attempts and faster time. Bands shown: 1–2 = Mythic · 3–4 = Elite · 5–6 = Expert · 7–8 = Strong · 9–10 = Solved · 11+ = Struggled
           </p>
 
           <ol className="cb__leaderboard">
@@ -414,13 +414,14 @@ export default function CodeBreakerComp({
                   <span className="cb__lb-score-wrap">
                     <span className="cb__lb-score-label">Score</span>
                     <span className="cb__lb-score">{entry.score}</span>
-                    {entry.solveProfile && (
-                      <span
-                        className={`cb__lb-band cb__lb-band--${getAttemptBand(entry.solveProfile.attempts)}`}
-                      >
-                        {ATTEMPT_BAND_LABELS[getAttemptBand(entry.solveProfile.attempts)]}
-                      </span>
-                    )}
+                    {entry.solveProfile && (() => {
+                      const band = getAttemptBand(entry.solveProfile.attempts);
+                      return (
+                        <span className={`cb__lb-band cb__lb-band--${band}`}>
+                          {ATTEMPT_BAND_LABELS[band]}
+                        </span>
+                      );
+                    })()}
                   </span>
                 </li>
               );
