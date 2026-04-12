@@ -10,7 +10,7 @@
  * Presentation: Nokia 3310-style retro phone shell with a green LCD display.
  * Controls: keyboard (Arrow/WASD) + on-screen D-pad + swipe gestures.
  *
- * Scoring: Race-to-1000 mode. Foods award +10 (standard), +30 (bonus), or
+ * Scoring: Race-to-1000 mode. Foods award +25 (standard), +75 (bonus), or
  * −20 (penalty). Game ends when the player reaches 1000 points. Competition
  * is ranked primarily by completion time; players who do not complete the run
  * are ranked by highest accumulated score.
@@ -453,7 +453,7 @@ export default function SnakeGame({
           .map((id) => {
             const p = resolvedPlayers.find((pl) => pl.id === id);
             const isHuman = id === humanId;
-            const aiResult = isHuman
+            const simulationResult = isHuman
               ? null
               : simulateSnakeAiScore({
                   sessionSeed: seed,
@@ -464,10 +464,10 @@ export default function SnakeGame({
             return {
               id,
               name: p?.name ?? id,
-              score: isHuman ? humanScore : aiResult!.score,
+              score: isHuman ? humanScore : simulationResult!.score,
               foodEaten: isHuman ? humanFood : 0,
               isHuman,
-              completionMs: isHuman ? humanCompletionMs : (aiResult?.completionMs ?? undefined),
+              completionMs: isHuman ? humanCompletionMs : (simulationResult?.completionMs ?? undefined),
             };
           })
           .sort(sortScoreEntries);
