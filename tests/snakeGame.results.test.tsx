@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import SnakeGame from '../src/components/SnakeGame/SnakeGame';
 import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
@@ -50,6 +52,11 @@ function stubCanvas() {
     set fillStyle(_: string) {},
   });
 }
+
+const snakeStyles = readFileSync(
+  path.resolve(process.cwd(), 'src/components/SnakeGame/SnakeGame.css'),
+  'utf8',
+);
 
 async function driveGameToWaiting() {
   await act(async () => {
@@ -142,6 +149,23 @@ describe('SnakeGame competition reveal flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
     expect(onFinish).toHaveBeenCalledWith(0);
+  });
+
+  it('renders a larger Nokia status line for points and time', () => {
+    const store = makeStore();
+
+    render(
+      <Provider store={store}>
+        <SnakeGame seed={42} participantIds={['p0', 'p1', 'p2']} onFinish={vi.fn()} />
+      </Provider>,
+    );
+
+    const statusLine = screen.getByText(/0 PTS\s+0:00\.0/i);
+    expect(statusLine).toHaveClass('snake-status-line');
+    expect(snakeStyles).toMatch(/--snake-lcd-status-top:\s*clamp\(3px,\s*0\.8vw,\s*5px\);/);
+    expect(snakeStyles).toMatch(/--snake-lcd-status-side:\s*clamp\(6px,\s*1\.4vw,\s*10px\);/);
+    expect(snakeStyles).toMatch(/font-size:\s*clamp\(9px,\s*2\.4vw,\s*12px\);/);
+    expect(snakeStyles).toMatch(/padding:\s*1px 5px;/);
   });
 });
 
