@@ -16,8 +16,7 @@
  *  1. When MinigameHost renders a MajorityRules game with a non-zero
  *     gameOptions.seed, MajorityRulesComp receives seed=undefined (not the
  *     challenge seed).
- *  2. The MAJORITY_RULES_NEW_SESSION log is emitted with the ignored seed.
- *  3. Other React minigames (e.g. ClosestWithoutGoingOver) are unaffected —
+ *  2. Other React minigames (e.g. ClosestWithoutGoingOver) are unaffected —
  *     they still receive the challenge seed.
  */
 
