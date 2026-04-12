@@ -143,27 +143,28 @@
 
 .tv-announcement--cinematic-loh {
   --tv-cinematic-bg:
-    radial-gradient(circle at 49% 43%, rgba(242, 196, 112, 0.13) 0%, rgba(242, 196, 112, 0.06) 20%, rgba(242, 196, 112, 0) 42%),
-    radial-gradient(circle at 50% 29%, rgba(255, 226, 150, 0.09) 0%, rgba(214, 160, 78, 0.04) 24%, rgba(214, 160, 78, 0) 50%),
-    linear-gradient(90deg, rgba(28, 42, 74, 0.16) 0%, rgba(28, 42, 74, 0) 22%, rgba(28, 42, 74, 0) 76%, rgba(96, 62, 18, 0.16) 100%),
-    linear-gradient(180deg, rgba(4, 7, 16, 0.995) 0%, rgba(10, 14, 26, 0.985) 22%, rgba(20, 26, 46, 0.96) 52%, rgba(38, 28, 16, 0.94) 72%, rgba(10, 8, 6, 0.995) 100%);
+    radial-gradient(circle at 49% 43%, rgba(255, 232, 176, 0.15) 0%, rgba(255, 214, 132, 0.1) 12%, rgba(214, 164, 88, 0.055) 24%, rgba(214, 164, 88, 0) 42%),
+    radial-gradient(circle at 50% 28%, rgba(255, 244, 212, 0.09) 0%, rgba(236, 196, 118, 0.045) 18%, rgba(236, 196, 118, 0) 38%),
+    linear-gradient(90deg, rgba(18, 24, 40, 0.18) 0%, rgba(18, 24, 40, 0) 22%, rgba(18, 24, 40, 0) 78%, rgba(24, 18, 16, 0.14) 100%),
+    linear-gradient(180deg, rgba(4, 7, 16, 0.995) 0%, rgba(9, 13, 24, 0.988) 24%, rgba(18, 24, 40, 0.965) 52%, rgba(26, 20, 14, 0.945) 72%, rgba(8, 7, 8, 0.995) 100%);
   --tv-cinematic-overlay:
-    radial-gradient(circle at 49% 44%, rgba(255, 234, 182, 0.16) 0%, rgba(228, 184, 106, 0.11) 18%, rgba(144, 108, 38, 0.04) 34%, rgba(144, 108, 38, 0) 58%),
-    radial-gradient(circle at 52% 28%, rgba(255, 238, 188, 0.11) 0%, rgba(226, 180, 98, 0.05) 24%, rgba(226, 180, 98, 0) 50%),
-    radial-gradient(circle at 45% 46%, rgba(255, 242, 214, 0.012) 0%, rgba(255, 242, 214, 0.006) 13%, rgba(255, 242, 214, 0) 28%),
-    linear-gradient(90deg, rgba(236, 194, 102, 0) 0%, rgba(236, 194, 102, 0.014) 22%, rgba(255, 216, 132, 0.048) 50%, rgba(236, 194, 102, 0.014) 78%, rgba(236, 194, 102, 0) 100%),
-    linear-gradient(180deg, rgba(255, 226, 160, 0) 0%, rgba(255, 226, 160, 0.028) 26%, rgba(255, 226, 160, 0.036) 52%, rgba(255, 226, 160, 0.014) 74%, rgba(255, 226, 160, 0) 100%),
-    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 32%, rgba(255, 238, 204, 0.008) 68%, rgba(255, 238, 204, 0.015) 100%),
+    radial-gradient(circle at 49% 43%, rgba(255, 240, 204, 0.18) 0%, rgba(255, 224, 164, 0.14) 10%, rgba(226, 178, 98, 0.08) 19%, rgba(150, 108, 36, 0.032) 31%, rgba(150, 108, 36, 0) 48%),
+    radial-gradient(circle at 51% 28%, rgba(255, 246, 220, 0.1) 0%, rgba(232, 192, 114, 0.05) 20%, rgba(232, 192, 114, 0) 42%),
+    radial-gradient(circle at 50% 18%, rgba(255, 248, 226, 0.028) 0%, rgba(255, 248, 226, 0.012) 10%, rgba(255, 248, 226, 0) 24%),
+    linear-gradient(90deg, rgba(255, 226, 166, 0) 0%, rgba(255, 226, 166, 0.008) 36%, rgba(255, 236, 196, 0.022) 49%, rgba(255, 226, 166, 0.028) 50%, rgba(255, 236, 196, 0.022) 51%, rgba(255, 226, 166, 0.008) 64%, rgba(255, 226, 166, 0) 100%),
+    linear-gradient(90deg, rgba(255, 232, 186, 0) 0%, rgba(255, 232, 186, 0.012) 26%, rgba(255, 232, 186, 0.02) 33%, rgba(255, 232, 186, 0.02) 67%, rgba(255, 232, 186, 0.012) 74%, rgba(255, 232, 186, 0) 100%),
+    linear-gradient(180deg, rgba(255, 232, 178, 0) 0%, rgba(255, 232, 178, 0.018) 26%, rgba(255, 232, 178, 0.034) 52%, rgba(255, 232, 178, 0.012) 74%, rgba(255, 232, 178, 0) 100%),
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 34%, rgba(255, 240, 210, 0.007) 68%, rgba(255, 240, 210, 0.014) 100%),
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.014) 0 1px, rgba(255, 255, 255, 0) 1px 18px);
   --tv-cinematic-vignette:
-    radial-gradient(circle at 8% 10%, rgba(2, 4, 12, 0.48) 0%, rgba(2, 4, 12, 0) 24%),
-    radial-gradient(circle at 92% 12%, rgba(10, 6, 2, 0.38) 0%, rgba(10, 6, 2, 0) 26%),
-    radial-gradient(circle at 12% 92%, rgba(4, 4, 8, 0.58) 0%, rgba(4, 4, 8, 0) 30%),
-    radial-gradient(circle at 88% 90%, rgba(10, 6, 2, 0.58) 0%, rgba(10, 6, 2, 0) 30%),
-    radial-gradient(ellipse at center, rgba(2, 4, 12, 0) 30%, rgba(2, 4, 12, 0.22) 58%, rgba(8, 8, 8, 0.52) 100%),
-    linear-gradient(180deg, rgba(4, 4, 8, 0.34) 0%, rgba(4, 4, 8, 0.1) 18%, rgba(4, 4, 8, 0) 34%, rgba(8, 6, 2, 0.05) 62%, rgba(8, 6, 2, 0.18) 82%, rgba(8, 6, 2, 0.4) 100%);
+    radial-gradient(circle at 8% 10%, rgba(2, 4, 12, 0.5) 0%, rgba(2, 4, 12, 0) 24%),
+    radial-gradient(circle at 92% 12%, rgba(4, 4, 8, 0.42) 0%, rgba(4, 4, 8, 0) 26%),
+    radial-gradient(circle at 12% 92%, rgba(4, 4, 8, 0.6) 0%, rgba(4, 4, 8, 0) 30%),
+    radial-gradient(circle at 88% 90%, rgba(6, 4, 4, 0.58) 0%, rgba(6, 4, 4, 0) 30%),
+    radial-gradient(ellipse at center, rgba(2, 4, 12, 0) 30%, rgba(2, 4, 12, 0.22) 58%, rgba(8, 8, 8, 0.54) 100%),
+    linear-gradient(180deg, rgba(4, 4, 8, 0.36) 0%, rgba(4, 4, 8, 0.1) 18%, rgba(4, 4, 8, 0) 34%, rgba(6, 6, 8, 0.03) 62%, rgba(8, 8, 8, 0.18) 82%, rgba(8, 8, 8, 0.42) 100%);
   --tv-cinematic-title-color: #fff3d5;
-  --tv-cinematic-title-shadow: 0 0 16px rgba(238, 194, 106, 0.5), 0 0 28px rgba(160, 120, 42, 0.18), 0 1px 6px rgba(0, 0, 0, 1);
+  --tv-cinematic-title-shadow: 0 0 12px rgba(255, 224, 160, 0.46), 0 0 22px rgba(210, 160, 82, 0.24), 0 1px 6px rgba(0, 0, 0, 1);
   --tv-cinematic-subtitle-color: rgba(248, 232, 198, 0.76);
 }
 
