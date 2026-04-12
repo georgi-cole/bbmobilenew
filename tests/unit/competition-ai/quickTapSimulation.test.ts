@@ -197,40 +197,50 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
       simulateQuickTapAiScore({ seed, playerId: 'distribution-check', profile: DEFAULT_PROFILE }),
     );
 
-    // Using new bands from minigameAiBalance.ts:
-    //   135–160 →  8%
-    //   161–185 → 22%
-    //   186–210 → 32%
-    //   211–235 → 25%
-    //   236–265 → 13%
-    // Jitter / hot-streak / slump can push scores slightly outside band edges.
+    // Bands from minigameAiBalance.ts (mutually exclusive, mirroring configured ranges):
+    //   band1: ≤160        →  8% nominal
+    //   band2: 161–185     → 22% nominal
+    //   band3: 186–210     → 32% nominal
+    //   band4: 211–235     → 25% nominal
+    //   band5: ≥236        → 13% nominal
+    //
+    // Jitter (±4) and hot-streak/slump (±6–18) can shift individual scores across
+    // band edges, so tolerances are intentionally wider than the nominal percentage.
+    // Counts sum to exactly 1000 because the ranges are mutually exclusive and exhaustive.
     const counts = {
-      weakZone:  scores.filter((s) => s >= 100 && s <= 165).length,
-      lowZone:   scores.filter((s) => s >= 161 && s <= 190).length,
-      midZone:   scores.filter((s) => s >= 186 && s <= 215).length,
-      highZone:  scores.filter((s) => s >= 211 && s <= 240).length,
-      eliteZone: scores.filter((s) => s >= 236).length,
+      band1: scores.filter((s) => s <= 160).length,
+      band2: scores.filter((s) => s >= 161 && s <= 185).length,
+      band3: scores.filter((s) => s >= 186 && s <= 210).length,
+      band4: scores.filter((s) => s >= 211 && s <= 235).length,
+      band5: scores.filter((s) => s >= 236).length,
     };
 
-    // Weak-zone: ~8% base chance → tolerate 40–160
-    expect(counts.weakZone).toBeGreaterThanOrEqual(40);
-    expect(counts.weakZone).toBeLessThanOrEqual(160);
+    // Sanity: all 1000 scores are captured (exhaustive + non-overlapping).
+    expect(counts.band1 + counts.band2 + counts.band3 + counts.band4 + counts.band5).toBe(1000);
 
-    // Low zone: ~22% base → tolerate 160–300
-    expect(counts.lowZone).toBeGreaterThanOrEqual(160);
-    expect(counts.lowZone).toBeLessThanOrEqual(300);
+    // band1 (~8% nominal): allow generous tolerance for jitter + slump spillover
+    expect(counts.band1).toBeGreaterThanOrEqual(40);
+    expect(counts.band1).toBeLessThanOrEqual(170);
 
-    // Mid zone: ~32% base → tolerate 240–420
-    expect(counts.midZone).toBeGreaterThanOrEqual(240);
-    expect(counts.midZone).toBeLessThanOrEqual(420);
+    // band2 (~22% nominal)
+    expect(counts.band2).toBeGreaterThanOrEqual(150);
+    expect(counts.band2).toBeLessThanOrEqual(330);
 
-    // High zone: ~25% base → tolerate 180–340
-    expect(counts.highZone).toBeGreaterThanOrEqual(180);
-    expect(counts.highZone).toBeLessThanOrEqual(340);
+    // band3 (~32% nominal — core competitive zone)
+    expect(counts.band3).toBeGreaterThanOrEqual(230);
+    expect(counts.band3).toBeLessThanOrEqual(420);
 
-    // Elite zone: ~13% base → tolerate 80–200
-    expect(counts.eliteZone).toBeGreaterThanOrEqual(80);
-    expect(counts.eliteZone).toBeLessThanOrEqual(200);
+    // band4 (~25% nominal)
+    expect(counts.band4).toBeGreaterThanOrEqual(170);
+    expect(counts.band4).toBeLessThanOrEqual(340);
+
+    // band5 (~13% nominal): allow tolerance for hot-streak spillover
+    expect(counts.band5).toBeGreaterThanOrEqual(70);
+    expect(counts.band5).toBeLessThanOrEqual(200);
+
+    // Summary check: competitive zone (bands 2–5) should dominate
+    const competitive = counts.band2 + counts.band3 + counts.band4 + counts.band5;
+    expect(competitive).toBeGreaterThanOrEqual(820); // ≥ 82% of 1000
   });
 
   it('strong AI can still reach the top competitive band (≥ 240)', () => {
