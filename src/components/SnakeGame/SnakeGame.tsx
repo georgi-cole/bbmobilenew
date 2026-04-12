@@ -64,15 +64,15 @@ const FOOD_PULSE_STEP = 0.55;
 const FOOD_EXPIRY_BLINK_MS = 3_000;
 /** Total lifetime (ms) of non-standard food before it auto-disappears. */
 const FOOD_EXPIRY_TOTAL_MS = 6_000;
-/** Emoji icons per food type rendered on the LCD canvas. */
-const FOOD_EMOJI: Record<FoodType, string> = {
-  standard: '🍎',
-  bonus: '⭐',
-  penalty: '💀',
+/** Monochrome LCD glyphs per food type — distinct, but intentionally similar. */
+const FOOD_GLYPHS: Record<FoodType, string> = {
+  standard: '■',
+  bonus: '◆',
+  penalty: '▲',
 };
 
-/** Font used for food emoji on the LCD canvas (pre-computed from TILE_SIZE). */
-const FOOD_FONT = `${TILE_SIZE - 2}px serif`;
+/** Font used for food glyphs on the LCD canvas (pre-computed from TILE_SIZE). */
+const FOOD_FONT = `900 ${TILE_SIZE - 2}px monospace`;
 /** Multiplier applied to foodPulsePhase to drive the faster expiry-blink animation. */
 const BLINK_PHASE_MULTIPLIER = 6;
 
@@ -312,8 +312,9 @@ export default function SnakeGame({
     }
 
     ctx.globalAlpha = foodAlpha;
+    ctx.fillStyle = '#0f380f';
     ctx.fillText(
-      FOOD_EMOJI[foodTypeRef.current],
+      FOOD_GLYPHS[foodTypeRef.current],
       foodRef.current.x * TILE_SIZE + TILE_SIZE / 2,
       foodRef.current.y * TILE_SIZE + TILE_SIZE / 2,
     );
