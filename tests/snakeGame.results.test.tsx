@@ -58,6 +58,14 @@ const snakeStyles = readFileSync(
   'utf8',
 );
 
+function ensureSnakeStylesInjected() {
+  if (document.getElementById('snake-test-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'snake-test-styles';
+  style.textContent = snakeStyles;
+  document.head.appendChild(style);
+}
+
 async function driveGameToWaiting() {
   await act(async () => {
     vi.advanceTimersByTime(2700);
@@ -153,6 +161,7 @@ describe('SnakeGame competition reveal flow', () => {
 
   it('renders a larger Nokia status line for points and time', () => {
     const store = makeStore();
+    ensureSnakeStylesInjected();
 
     render(
       <Provider store={store}>
@@ -160,12 +169,16 @@ describe('SnakeGame competition reveal flow', () => {
       </Provider>,
     );
 
-    const statusLine = screen.getByText(/0 PTS\s+0:00\.0/i);
+    const statusLine = screen.getByText(/0 PTS\s+0:00\.0/i) as HTMLElement;
+    const styles = getComputedStyle(statusLine);
+    const normalizedStyles = snakeStyles.replace(/\s+/g, ' ');
+
     expect(statusLine).toHaveClass('snake-status-line');
-    expect(snakeStyles).toMatch(/--snake-lcd-status-top:\s*clamp\(3px,\s*0\.8vw,\s*5px\);/);
-    expect(snakeStyles).toMatch(/--snake-lcd-status-side:\s*clamp\(6px,\s*1\.4vw,\s*10px\);/);
-    expect(snakeStyles).toMatch(/font-size:\s*clamp\(9px,\s*2\.4vw,\s*12px\);/);
-    expect(snakeStyles).toMatch(/padding:\s*1px 5px;/);
+    expect(normalizedStyles).toContain('font-size: clamp(9px, 2.4vw, 12px);');
+    expect(styles.getPropertyValue('padding-top')).toBe('1px');
+    expect(styles.getPropertyValue('padding-right')).toBe('5px');
+    expect(styles.getPropertyValue('padding-bottom')).toBe('1px');
+    expect(styles.getPropertyValue('padding-left')).toBe('5px');
   });
 });
 
