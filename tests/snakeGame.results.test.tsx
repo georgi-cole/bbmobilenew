@@ -9,9 +9,9 @@ import { getGame } from '../src/minigames/registry';
 
 vi.mock('../src/ai/competition/snakeAiSimulator', () => ({
   simulateSnakeAiScore: vi.fn(({ playerId }: { playerId: string }) => {
-    if (playerId === 'p1') return 900;
-    if (playerId === 'p2') return 400;
-    return 0;
+    if (playerId === 'p1') return { score: 900, completionMs: null };
+    if (playerId === 'p2') return { score: 400, completionMs: null };
+    return { score: 0, completionMs: null };
   }),
 }));
 

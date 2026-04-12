@@ -10,8 +10,10 @@
  * Presentation: Nokia 3310-style retro phone shell with a green LCD display.
  * Controls: keyboard (Arrow/WASD) + on-screen D-pad + swipe gestures.
  *
- * Scoring: higher-is-better.  Each food item eaten = 10 points (raw).
- * Raw score is normalized to the 0–1000 scale the store expects.
+ * Scoring: Race-to-1000 mode. Foods award +10 (standard), +30 (bonus), or
+ * −20 (penalty). Game ends when the player reaches 1000 points. Competition
+ * is ranked primarily by completion time; players who do not complete the run
+ * are ranked by highest accumulated score.
  */
 
 import React, {
@@ -24,6 +26,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
 import { simulateSnakeAiScore } from '../../ai/competition/snakeAiSimulator';
+import type { SnakeAiScoreResult } from '../../ai/competition/snakeAiSimulator';
 import { getDefaultCompetitionProfile } from '../../ai/competition';
 import './SnakeGame.css';
 
@@ -37,12 +40,20 @@ const TILE_SIZE = 15;
 const CANVAS_PX = GRID_SIZE * TILE_SIZE;
 /** Milliseconds between game loop ticks. */
 const TICK_MS = 150;
-/** Points awarded per food item. */
-const POINTS_PER_FOOD = 10;
-/** Normalised score upper bound (matches store scale). */
+/** Points awarded for a standard food item. */
+const POINTS_PER_STANDARD_FOOD = 25;
+/** Points awarded for a bonus food item. */
+const POINTS_PER_BONUS_FOOD = 75;
+/** Points deducted for a penalty food item. */
+const POINTS_PER_PENALTY_FOOD = -20;
+/** Target score — game ends when accumulated score reaches this. */
+const TARGET_SCORE = 1000;
+/** Probability that a newly spawned food item is a bonus. */
+const BONUS_FOOD_CHANCE = 0.15;
+/** Probability that a newly spawned food item is a penalty (rare trap). */
+const PENALTY_FOOD_CHANCE = 0.10;
+/** Normalised score upper bound (matches store scale and TARGET_SCORE). */
 const SCORE_SCALE = 1000;
-/** Raw score cap before normalisation. */
-const RAW_SCORE_CAP = 100;
 const RESULTS_REVEAL_MS = 10_000;
 const FAST_FORWARD_DELAY_MS = 4_000;
 const FAST_FORWARD_RESOLVE_MS = 2_000;
@@ -56,13 +67,16 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 type Vec2 = { x: number; y: number };
 type GamePhase = 'ready' | 'playing' | 'over' | 'waiting' | 'results';
+type FoodType = 'standard' | 'bonus' | 'penalty';
 
 interface ScoreEntry {
   id: string;
   name: string;
-  score: number;  // normalised 0–1000 score
+  score: number;       // accumulated 0–1000 score
   foodEaten: number;
   isHuman: boolean;
+  /** Elapsed ms at completion (reached TARGET_SCORE); undefined if run ended by collision. */
+  completionMs?: number;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -84,9 +98,32 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function normaliseScore(foodEaten: number): number {
-  const raw = Math.min(RAW_SCORE_CAP, foodEaten * POINTS_PER_FOOD);
-  return Math.round((raw / RAW_SCORE_CAP) * SCORE_SCALE);
+/** Clamp an accumulated score to the valid [0, SCORE_SCALE] range. */
+function normaliseScore(score: number): number {
+  return Math.max(0, Math.min(SCORE_SCALE, score));
+}
+
+/** Format milliseconds as M:SS.t (e.g. 1:23.4). */
+function formatTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const tenth = Math.floor((ms % 1000) / 100);
+  return `${min}:${String(sec).padStart(2, '0')}.${tenth}`;
+}
+
+/**
+ * Sort ScoreEntry items for leaderboard display.
+ * Completers (reached TARGET_SCORE) rank above non-completers, sorted by
+ * completion time ascending.  Non-completers are sorted by score descending.
+ */
+function sortScoreEntries(a: ScoreEntry, b: ScoreEntry): number {
+  const aCompleted = a.completionMs != null;
+  const bCompleted = b.completionMs != null;
+  if (aCompleted && bCompleted) return a.completionMs! - b.completionMs!;
+  if (aCompleted) return -1;
+  if (bCompleted) return 1;
+  return b.score - a.score;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -107,8 +144,9 @@ export default function SnakeGame({
   // ── State ──────────────────────────────────────────────────────────────────
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('ready');
-  const [foodEaten, setFoodEaten] = useState(0);
-  const [snakeLength, setSnakeLength] = useState(1);
+  const [currentScore, setCurrentScore] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [goalReached, setGoalReached] = useState(false);
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [showFastForward, setShowFastForward] = useState(false);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
@@ -122,7 +160,16 @@ export default function SnakeGame({
   const dirRef = useRef<Vec2>({ x: 1, y: 0 });
   const nextDirRef = useRef<Vec2>({ x: 1, y: 0 });
   const foodRef = useRef<Vec2>({ x: 5, y: 5 });
+  /** Type of the currently active food item. */
+  const foodTypeRef = useRef<FoodType>('standard');
   const foodEatenRef = useRef(0);
+  const currentScoreRef = useRef(0);
+  /** Timestamp (Date.now()) when the current run started; null before first start. */
+  const startTimeRef = useRef<number | null>(null);
+  /** Final elapsed ms captured in endGame; used for the completion time report. */
+  const elapsedMsRef = useRef(0);
+  /** True when the run ended by reaching TARGET_SCORE (not a collision). */
+  const goalReachedRef = useRef(false);
   const foodPulsePhaseRef = useRef(0);
   const gameOverRef = useRef(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -226,7 +273,11 @@ export default function SnakeGame({
         + (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE)
       : 1;
     ctx.globalAlpha = foodPulse;
-    ctx.fillStyle = '#0f380f';
+    // Food color varies by type: bonus (lighter green) / penalty (dark reddish) / standard
+    ctx.fillStyle =
+      foodTypeRef.current === 'bonus' ? '#306010'
+      : foodTypeRef.current === 'penalty' ? '#3d1010'
+      : '#0f380f';
     ctx.fillRect(
       foodRef.current.x * TILE_SIZE,
       foodRef.current.y * TILE_SIZE,
@@ -252,6 +303,11 @@ export default function SnakeGame({
       };
     } while (snakeRef.current.some((s) => s.x === candidate.x && s.y === candidate.y));
     foodRef.current = candidate;
+    // Assign a food type based on random roll
+    const r = Math.random();
+    foodTypeRef.current = r < BONUS_FOOD_CHANCE ? 'bonus'
+      : r < BONUS_FOOD_CHANCE + PENALTY_FOOD_CHANCE ? 'penalty'
+      : 'standard';
   }, []);
 
   // ── Game tick ──────────────────────────────────────────────────────────────
@@ -286,12 +342,31 @@ export default function SnakeGame({
     snakeRef.current = [newHead, ...snakeRef.current];
 
     if (newHead.x === foodRef.current.x && newHead.y === foodRef.current.y) {
+      const points =
+        foodTypeRef.current === 'bonus' ? POINTS_PER_BONUS_FOOD
+        : foodTypeRef.current === 'penalty' ? POINTS_PER_PENALTY_FOOD
+        : POINTS_PER_STANDARD_FOOD;
+
+      const newScore = Math.max(0, currentScoreRef.current + points);
+      currentScoreRef.current = newScore;
       foodEatenRef.current += 1;
-      setFoodEaten(foodEatenRef.current);
-      setSnakeLength(snakeRef.current.length);
+      setCurrentScore(newScore);
+
+      // Check if the player has reached the target score
+      if (newScore >= TARGET_SCORE) {
+        goalReachedRef.current = true;
+        endGameRef.current?.();
+        return;
+      }
+
       placeFood();
     } else {
       snakeRef.current = snakeRef.current.slice(0, -1);
+    }
+
+    // Update live elapsed time display (every tick)
+    if (startTimeRef.current !== null) {
+      setElapsedMs(Date.now() - startTimeRef.current);
     }
 
     foodPulsePhaseRef.current += FOOD_PULSE_STEP;
@@ -309,56 +384,59 @@ export default function SnakeGame({
       tickRef.current = null;
     }
 
+    // Capture elapsed time before state updates
+    const elapsed = startTimeRef.current !== null ? Date.now() - startTimeRef.current : 0;
+    elapsedMsRef.current = elapsed;
+    setElapsedMs(elapsed);
+    setGoalReached(goalReachedRef.current);
     setGamePhase('over');
 
     endGameTimeoutRef.current = setTimeout(() => {
       const humanFood = foodEatenRef.current;
-      const humanScore = normaliseScore(humanFood);
+      const humanScore = normaliseScore(currentScoreRef.current);
+      const humanCompletionMs = goalReachedRef.current ? elapsedMsRef.current : undefined;
 
       if (session) {
         // LOH/POS path — build ranked leaderboard.
         // AI scores come from real headless simulation runs using the same
-        // board rules as the human game.  Each AI plays its own board and
-        // produces a genuine food-eaten count rather than a precomputed value.
-        let resolvedAiScores: Record<string, number>;
+        // board rules as the human game.
+        let resolvedAiResults: Record<string, SnakeAiScoreResult>;
         if (session.hybridResolveOnComplete) {
-          resolvedAiScores = {};
+          resolvedAiResults = {};
           for (const id of session.participants) {
             if (id === humanId) continue;
             const p = resolvedPlayers.find((pl) => pl.id === id);
-            resolvedAiScores[id] = simulateSnakeAiScore({
+            resolvedAiResults[id] = simulateSnakeAiScore({
               sessionSeed: session.seed,
               playerId: id,
               profile: p?.competitionProfile ?? getDefaultCompetitionProfile(),
             });
           }
         } else {
-          resolvedAiScores = session.aiScores;
+          // session.aiScores is a plain Record<string, number>; wrap it
+          resolvedAiResults = {};
+          for (const [id, score] of Object.entries(session.aiScores)) {
+            resolvedAiResults[id] = { score, completionMs: null };
+          }
         }
-
-        const allScores: Record<string, number> = {
-          ...resolvedAiScores,
-          ...(humanId ? { [humanId]: humanScore } : {}),
-        };
 
         const entries: ScoreEntry[] = session.participants.map((id) => {
           const p = resolvedPlayers.find((pl) => pl.id === id);
           const isHuman = id === humanId;
-          const score = allScores[id] ?? 0;
-          // Reverse-engineer food count for display: score / SCORE_SCALE * RAW_SCORE_CAP / POINTS_PER_FOOD
-          const approxFood = isHuman
-            ? humanFood
-            : Math.round((score / SCORE_SCALE) * RAW_SCORE_CAP / POINTS_PER_FOOD);
+          const aiResult = resolvedAiResults[id] ?? { score: 0, completionMs: null };
+          const score = isHuman ? humanScore : aiResult.score;
+          const completionMs = isHuman ? humanCompletionMs : (aiResult.completionMs ?? undefined);
           return {
             id,
             name: p?.name ?? id,
             score,
-            foodEaten: approxFood,
+            foodEaten: isHuman ? humanFood : 0,
             isHuman,
+            completionMs,
           };
         });
 
-        const ranked = [...entries].sort((a, b) => b.score - a.score);
+        const ranked = [...entries].sort(sortScoreEntries);
         beginLeaderboardReveal(ranked);
       } else {
         let activeParticipantIds = participantIds;
@@ -375,8 +453,8 @@ export default function SnakeGame({
           .map((id) => {
             const p = resolvedPlayers.find((pl) => pl.id === id);
             const isHuman = id === humanId;
-            const score = isHuman
-              ? humanScore
+            const aiResult = isHuman
+              ? null
               : simulateSnakeAiScore({
                   sessionSeed: seed,
                   playerId: id,
@@ -386,14 +464,13 @@ export default function SnakeGame({
             return {
               id,
               name: p?.name ?? id,
-              score,
-              foodEaten: isHuman
-                ? humanFood
-                : Math.round((score / SCORE_SCALE) * RAW_SCORE_CAP / POINTS_PER_FOOD),
+              score: isHuman ? humanScore : aiResult!.score,
+              foodEaten: isHuman ? humanFood : 0,
               isHuman,
+              completionMs: isHuman ? humanCompletionMs : (aiResult?.completionMs ?? undefined),
             };
           })
-          .sort((a, b) => b.score - a.score);
+          .sort(sortScoreEntries);
 
         beginLeaderboardReveal(ranked);
       }
@@ -418,11 +495,16 @@ export default function SnakeGame({
     dirRef.current = { x: 1, y: 0 };
     nextDirRef.current = { x: 1, y: 0 };
     foodEatenRef.current = 0;
+    currentScoreRef.current = 0;
+    goalReachedRef.current = false;
+    startTimeRef.current = Date.now();
+    elapsedMsRef.current = 0;
     foodPulsePhaseRef.current = 0;
     gameOverRef.current = false;
 
-    setFoodEaten(0);
-    setSnakeLength(1);
+    setCurrentScore(0);
+    setElapsedMs(0);
+    setGoalReached(false);
     setScores([]);
     setShowFastForward(false);
     setIsFastForwarding(false);
@@ -560,7 +642,7 @@ export default function SnakeGame({
   // ── Dispatch on "Continue" ─────────────────────────────────────────────────
 
   const handleDone = useCallback(() => {
-    const humanScore = normaliseScore(foodEatenRef.current);
+    const humanScore = normaliseScore(currentScoreRef.current);
     if (session) {
       const lastPlaceId = scores.length > 0 ? scores[scores.length - 1].id : undefined;
       const payload: CompleteMinigamePayload = { humanScore, lastPlaceId };
@@ -598,7 +680,7 @@ export default function SnakeGame({
             >
               {/* Status line */}
               <div className="snake-status-line" aria-live="polite">
-                LEN {snakeLength}&nbsp;&nbsp;F {foodEaten}
+                {currentScore} PTS&nbsp;&nbsp;{formatTime(elapsedMs)}
               </div>
 
               {/* Game canvas */}
@@ -621,7 +703,8 @@ export default function SnakeGame({
                   <p className="snake-overlay-title" aria-label="Snake">
                     SNAKE
                   </p>
-                  <p className="snake-overlay-hint">Arrow keys or D-pad to move</p>
+                  <p className="snake-overlay-hint">Reach 1000 pts to win!</p>
+                  <p className="snake-overlay-hint">Arrow keys or D-pad</p>
                   <button className="snake-btn snake-btn--start" onClick={startGame}>
                     START
                   </button>
@@ -631,11 +714,16 @@ export default function SnakeGame({
               {/* Game-over overlay */}
               {gamePhase === 'over' && (
                 <div className="snake-overlay">
-                  <p className="snake-overlay-title snake-overlay-title--danger">
-                    GAME OVER
+                  <p className={[
+                    'snake-overlay-title',
+                    !goalReached ? 'snake-overlay-title--danger' : '',
+                  ].filter(Boolean).join(' ')}>
+                    {goalReached ? 'GOAL!' : 'GAME OVER'}
                   </p>
                   <p className="snake-overlay-hint">
-                    Food: {foodEaten} · Score: {normaliseScore(foodEaten)}
+                    {goalReached
+                      ? `Done in ${formatTime(elapsedMs)}`
+                      : `Score: ${currentScore}`}
                   </p>
                 </div>
               )}
@@ -725,6 +813,7 @@ export default function SnakeGame({
           <h2 className="snake-results-title">🏁 Results</h2>
           <p className="snake-results-winner">
             🏆 {scores[0].name} wins{scores[0].isHuman ? " — that's you!" : '!'}
+            {scores[0].completionMs != null ? ` · ${formatTime(scores[0].completionMs)}` : ''}
           </p>
           <ol className="snake-leaderboard">
             {scores.map((entry, i) => (
@@ -746,7 +835,11 @@ export default function SnakeGame({
                   {entry.name}
                   {entry.isHuman ? ' (you)' : ''}
                 </span>
-                <span className="snake-leaderboard-score">{entry.score}</span>
+                <span className="snake-leaderboard-score">
+                  {entry.completionMs != null
+                    ? formatTime(entry.completionMs)
+                    : `${entry.score} pts`}
+                </span>
               </li>
             ))}
           </ol>

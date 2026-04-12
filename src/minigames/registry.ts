@@ -579,11 +579,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   snake: {
     key: 'snake',
     title: 'Snake',
-    description: 'Classic snake game — eat food and grow',
+    description: 'Race to 1000 points — navigate food, grab bonuses, dodge penalties!',
     instructions: [
-      'Snake moves continuously forward',
-      'Change direction using controls',
-      'Eat food to grow longer',
+      'Reach 1000 points to complete the run — fastest time wins',
+      'Standard food: +25 pts · Bonus food: +75 pts · Penalty food: −20 pts',
+      'Snake moves continuously — change direction using controls',
       'Avoid hitting walls or your own tail',
       'Runs resolve asynchronously — start independently, then wait for the full ranking reveal',
     ],
