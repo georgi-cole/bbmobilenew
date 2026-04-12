@@ -139,5 +139,60 @@
   box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.6);
 }
 
+.game-screen__vote-breakdown-card {
+  gap: 14px;
+  max-width: min(92vw, 420px);
+}
+
+.game-screen__vote-breakdown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.game-screen__vote-breakdown-eyebrow {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-screen__vote-breakdown-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.game-screen__vote-breakdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.game-screen__vote-breakdown-cell {
+  min-width: 0;
+  font-weight: 700;
+}
+
+.game-screen__vote-breakdown-cell--target {
+  text-align: right;
+}
+
+.game-screen__vote-breakdown-arrow {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+}
+
+.game-screen__vote-breakdown-actions {
+  display: flex;
+  justify-content: center;
+}
+
 
 /* ── end of GameScreen.css ─────────────────────────────────────────────────── */

@@ -25,6 +25,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 
 let lastSpectatorOnDone: (() => void) | null = null;
 let mockBattleBackWinnerId: string | undefined = 'p2';
+let spectatorRenderedWinnerIds: Array<string | undefined> = [];
 const getMockBattleBackWinnerId = () => mockBattleBackWinnerId;
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
@@ -36,8 +37,15 @@ vi.mock('../../src/components/ui/TvZone', () => ({
 }));
 
 vi.mock('../../src/components/ui/SpectatorView', () => ({
-  default: ({ onDone }: { onDone?: () => void }) => {
+  default: ({
+    onDone,
+    expectedWinnerId,
+  }: {
+    onDone?: () => void;
+    expectedWinnerId?: string;
+  }) => {
     lastSpectatorOnDone = onDone ?? null;
+    spectatorRenderedWinnerIds.push(expectedWinnerId);
     return <div data-testid="spectator-view" />;
   },
 }));
@@ -412,6 +420,7 @@ describe('GameScreen – Battle Back completion guards', () => {
   beforeEach(() => {
     lastSpectatorOnDone = null;
     mockBattleBackWinnerId = 'p2';
+    spectatorRenderedWinnerIds = [];
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       x: 0, y: 0, width: 60, height: 80,
       top: 0, left: 0, bottom: 80, right: 60,
@@ -497,6 +506,100 @@ describe('GameScreen – Battle Back completion guards', () => {
 
     expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/dismissBattleBack')).toBe(true);
     expect(dispatchSpy.mock.calls.some(([action]) => action.type === 'game/advance')).toBe(true);
+    expect(store.getState().game.battleBack?.active).toBe(false);
+  });
+
+  it('offers a Battle Back replay prompt before the return animation when the human loses', async () => {
+    mockBattleBackWinnerId = 'p1';
+    const players = makePlayers(6);
+    players[0].status = 'jury';
+    players[1].status = 'jury';
+    players[2].status = 'jury';
+    const store = makeStore({
+      phase: 'eviction_results',
+      twistActive: true,
+      battleBack: {
+        used: false,
+        active: true,
+        competitionActive: true,
+        weekDecided: 4,
+        candidates: ['p0', 'p1', 'p2'],
+        winnerId: null,
+      },
+      players,
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await act(async () => {});
+
+    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p1');
+
+    await act(async () => { lastSpectatorOnDone?.(); });
+
+    expect(screen.getByRole('dialog', { name: /second chance/i })).toBeTruthy();
+
+    mockBattleBackWinnerId = 'p0';
+    await act(async () => {
+      screen.getByRole('button', { name: /watch ad to replay battle back/i }).click();
+    });
+
+    expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
+    expect(spectatorRenderedWinnerIds.at(-1)).toBe('p0');
+
+    await act(async () => { lastSpectatorOnDone?.(); });
+
+    expect(store.getState().game.battleBack?.winnerId).toBe('p0');
+    expect(store.getState().game.players.find((player) => player.id === 'p0')?.status).toBe('active');
+  });
+
+  it('caps the Battle Back replay offer at three retries', async () => {
+    mockBattleBackWinnerId = 'p1';
+    const players = makePlayers(6);
+    players[0].status = 'jury';
+    players[1].status = 'jury';
+    players[2].status = 'jury';
+    const store = makeStore({
+      phase: 'eviction_results',
+      twistActive: true,
+      battleBack: {
+        used: false,
+        active: true,
+        competitionActive: true,
+        weekDecided: 4,
+        candidates: ['p0', 'p1', 'p2'],
+        winnerId: null,
+      },
+      players,
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await act(async () => {});
+
+    for (let retry = 0; retry < 3; retry += 1) {
+      await act(async () => { lastSpectatorOnDone?.(); });
+      expect(screen.getByRole('dialog', { name: /second chance/i })).toBeTruthy();
+      await act(async () => {
+        screen.getByRole('button', { name: /watch ad to replay battle back/i }).click();
+      });
+      expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
+    }
+
+    await act(async () => { lastSpectatorOnDone?.(); });
+
+    expect(screen.queryByRole('dialog', { name: /second chance/i })).toBeNull();
+    expect(store.getState().game.battleBack?.winnerId).toBe('p1');
     expect(store.getState().game.battleBack?.active).toBe(false);
   });
 });

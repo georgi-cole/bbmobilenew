@@ -17,9 +17,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import gameReducer from '../../src/store/gameSlice';
 import challengeReducer from '../../src/store/challengeSlice';
 import socialReducer from '../../src/social/socialSlice';
+import { setEnergyBankEntry } from '../../src/social/socialSlice';
 import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
-import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
+import publicOpinionReducer, {
+  initializeProfiles,
+  setProfileApprovals,
+} from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
 import GameScreen, {
   POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
@@ -408,6 +412,50 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
   });
 
+  it('shows the unlocked vote breakdown in a modal when the evicted player is the human user', async () => {
+    const players = makePlayers(6);
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p0', 'p2'],
+      voteResults: { p0: 5, p2: 4 },
+      votes: { p1: 'p0', p3: 'p0', p4: 'p2' },
+      pendingEviction: { evicteeId: 'p0', evictionMessage: 'Player 0 has been eliminated. 🚪' },
+      players,
+    });
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    act(() => {
+      screen.getByText('Done').click();
+    });
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
+    });
+    await act(async () => {
+      capturedEvictionSplashDone?.();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS);
+    });
+
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
+
+    act(() => {
+      screen.getByRole('button', { name: /watch ad to unlock vote reveal/i }).click();
+    });
+
+    expect(loadEvictionVoteBreakdownUnlock()).toBeNull();
+    expect(screen.getByRole('dialog', { name: /vote breakdown/i })).toBeTruthy();
+    expect(screen.getByText(/who voted for whom/i)).toBeTruthy();
+    expect(screen.getByRole('table', { name: /eviction vote breakdown/i })).toHaveTextContent('Player 1');
+    expect(screen.getByRole('table', { name: /eviction vote breakdown/i })).toHaveTextContent('Player 0');
+  });
+
   it('unlocks the confessional vote breakdown when the ad is accepted in dev/web', async () => {
     const store = makeStore({
       phase: 'eviction_results',
@@ -482,5 +530,40 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       vi.advanceTimersByTime(POST_VOTE_ANNOUNCEMENT_DELAY_MS);
     });
     expect(screen.getByTestId('eviction-overlay')).toBeTruthy();
+  });
+});
+
+describe('GameScreen eviction prompt suppression for eliminated human players', () => {
+  it('suppresses the approval prompt after the human player is evicted', async () => {
+    const players = makePlayers(6);
+    players[0].status = 'jury';
+    const store = makeStore({
+      phase: 'week_end',
+      week: 2,
+      players,
+    });
+    store.dispatch(initializeProfiles(players.map((player) => player.id)));
+    store.dispatch(setProfileApprovals({ p0: 35 }));
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    expect(screen.queryByRole('dialog', { name: /your approval is slipping/i })).toBeNull();
+  });
+
+  it('suppresses the energy prompt after the human player is evicted', async () => {
+    const players = makePlayers(6);
+    players[0].status = 'jury';
+    const store = makeStore({
+      phase: 'social_1',
+      week: 2,
+      players,
+    });
+    store.dispatch(setEnergyBankEntry({ playerId: 'p0', value: 0 }));
+
+    renderWithStore(store);
+    await act(async () => {});
+
+    expect(screen.queryByRole('dialog', { name: /out of energy/i })).toBeNull();
   });
 });
