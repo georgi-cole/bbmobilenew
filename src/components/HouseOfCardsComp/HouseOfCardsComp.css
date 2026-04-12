@@ -349,15 +349,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 20px 16px;
   min-height: 100%;
   background: linear-gradient(160deg, #0d1b2a 0%, #1a2a3d 60%, #0a1622 100%);
   color: #e3ecf5;
   box-sizing: border-box;
+  --minigame-list-max-height: 43vh;
 }
 
 .hoc-complete-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-size: 1.6rem;
   font-weight: 900;
   text-align: center;
@@ -368,66 +372,132 @@
   margin: 0;
 }
 
+.hoc-complete-title-icon {
+  position: relative;
+  width: 22px;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(164, 206, 255, 0.95), rgba(121, 181, 255, 0.82));
+  box-shadow:
+    0 0 0 1px rgba(131, 191, 255, 0.2),
+    8px -6px 0 -1px rgba(255, 209, 102, 0.28);
+  transform: rotate(-4deg);
+}
+
+.hoc-complete-title-icon::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
 .hoc-complete-winner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 16px 24px;
-  background: rgba(255, 209, 102, 0.1);
-  border: 1px solid rgba(255, 209, 102, 0.3);
-  border-radius: 14px;
+  gap: 8px;
+  width: min(100%, 280px);
+  padding: 20px 24px 18px;
+  background:
+    radial-gradient(circle at top, rgba(255, 209, 102, 0.12), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 209, 102, 0.26);
+  border-radius: 20px;
+  box-shadow: 0 18px 40px rgba(4, 10, 18, 0.28);
   text-align: center;
 }
 
-.hoc-complete-winner-trophy {
-  font-size: 2.4rem;
+.hoc-complete-winner-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffd979, #f3ae48);
+  color: #5b3100;
+  font-size: 1.45rem;
+  font-weight: 900;
+  box-shadow:
+    0 10px 24px rgba(243, 174, 72, 0.22),
+    inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+
+.hoc-complete-winner-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(100, 160, 255, 0.14);
+  border: 1px solid rgba(100, 160, 255, 0.28);
+  color: #a8cbff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hoc-complete-winner-name {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #ffd166;
 }
 
 .hoc-complete-winner-score {
-  font-size: 0.85rem;
-  color: #95a9c0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e3ecf5;
+}
+
+.hoc-complete-winner-meta {
+  font-size: 0.78rem;
+  color: #8ca4bb;
 }
 
 .hoc-standings {
   width: 100%;
-  max-width: 400px;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+}
+
+.hoc-standings-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
 }
 
 .hoc-standings-label {
-  font-size: 0.65rem;
-  color: #5b7185;
+  font-size: 0.72rem;
+  color: #6f84a0;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-align: center;
 }
 
 .hoc-standing-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .hoc-standing-row.hoc-standing--winner {
-  background: rgba(255, 209, 102, 0.08);
-  border-color: rgba(255, 209, 102, 0.25);
+  background:
+    linear-gradient(90deg, rgba(255, 209, 102, 0.14), rgba(255, 209, 102, 0.04)),
+    rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 209, 102, 0.3);
 }
 
 .hoc-standing-row.hoc-standing--last {
-  background: rgba(255, 87, 87, 0.06);
+  background: rgba(255, 87, 87, 0.05);
   border-color: rgba(255, 87, 87, 0.2);
 }
 
@@ -436,16 +506,46 @@
 }
 
 .hoc-standing-rank {
-  font-size: 1rem;
-  width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #cbd8e7;
+  background: rgba(90, 116, 142, 0.35);
   text-align: center;
   flex-shrink: 0;
 }
 
-.hoc-standing-name {
+.hoc-standing-rank--top-1 {
+  color: #5b3100;
+  background: linear-gradient(180deg, #ffd979, #f3ae48);
+}
+
+.hoc-standing-rank--top-2 {
+  color: #3f4a5b;
+  background: linear-gradient(180deg, #e8edf5, #c6d1df);
+}
+
+.hoc-standing-rank--top-3 {
+  color: #5a3821;
+  background: linear-gradient(180deg, #efb687, #c9855a);
+}
+
+.hoc-standing-summary {
+  min-width: 0;
   flex: 1;
-  font-size: 0.85rem;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hoc-standing-name {
+  font-size: 1rem;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -459,28 +559,35 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .hoc-standing-score {
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   color: #e3ecf5;
 }
 
 .hoc-standing-meta {
-  font-size: 0.65rem;
-  color: #6a8499;
+  font-size: 0.78rem;
+  color: #7f97af;
+}
+
+.hoc-standing-badges {
+  min-height: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .hoc-standing-badge {
   font-size: 0.62rem;
-  padding: 2px 7px;
-  border-radius: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   flex-shrink: 0;
 }
 
@@ -494,6 +601,41 @@
   background: rgba(100, 160, 255, 0.2);
   color: #83bfff;
   border: 1px solid rgba(100, 160, 255, 0.3);
+}
+
+.hoc-complete-continue {
+  min-width: 180px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #83bfff, #5f8eff);
+  color: #06101f;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 24px rgba(95, 142, 255, 0.28);
+}
+
+.hoc-complete-continue:focus-visible {
+  outline: 2px solid rgba(255, 209, 102, 0.85);
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .hoc-standing-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .hoc-standing-details {
+    width: 100%;
+    align-items: flex-start;
+    padding-left: 46px;
+  }
+
+  .hoc-standing-badges {
+    justify-content: flex-start;
+  }
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────────────── */
