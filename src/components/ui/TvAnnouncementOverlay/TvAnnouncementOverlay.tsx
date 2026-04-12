@@ -18,6 +18,42 @@ export interface TvAnnouncementOverlayProps {
   paused?: boolean;
 }
 
+function getAnnouncementThemeClass(key: string): string {
+  if (
+    key === 'pos_comp_announcement' ||
+    key === 'veto_ceremony' ||
+    key === 'final4' ||
+    key === 'vip_veto' ||
+    key === 'diamond_pov' ||
+    key === 'spotlight_veto' ||
+    key === 'battle_back'
+  ) {
+    return 'tv-announcement--theme-pos';
+  }
+
+  if (
+    key === 'loh_comp_announcement' ||
+    key === 'nomination_ceremony' ||
+    key === 'final3_announcement' ||
+    key === 'final_hoh' ||
+    key === 'jury' ||
+    key.startsWith('loh_tiebreak_')
+  ) {
+    return 'tv-announcement--theme-loh';
+  }
+
+  if (
+    key === 'live_eviction' ||
+    key === 'eviction_vote_result' ||
+    key === 'double_eviction' ||
+    key === 'coup_detat'
+  ) {
+    return 'tv-announcement--theme-eviction';
+  }
+
+  return 'tv-announcement--standard';
+}
+
 /**
  * TvAnnouncementOverlay — broadcast stinger rendered inside the TV viewport.
  *
@@ -47,6 +83,7 @@ export default function TvAnnouncementOverlay({
     announcement.key === 'eviction_vote_result' ||
     announcement.key.startsWith('loh_tiebreak_');
   const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
+  const themeClass = getAnnouncementThemeClass(announcement.key);
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
@@ -133,6 +170,7 @@ export default function TvAnnouncementOverlay({
       <div
         className={[
             'tv-announcement',
+            themeClass,
             isBattleBack ? 'tv-announcement--battle-back' : '',
             isDoubleEviction ? 'tv-announcement--double-eviction' : '',
             isVipVeto ? 'tv-announcement--vip-veto' : '',

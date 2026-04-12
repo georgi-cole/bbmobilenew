@@ -111,20 +111,33 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 6px;
-  background: #ef4444;
+  background: #dc2626;
   color: #fff;
   font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 1px;
   text-transform: uppercase;
   /* base shadow matches animation start state to prevent flash-in */
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  border: 1px solid rgba(255, 230, 230, 0.18);
+  box-shadow:
+    0 0 8px rgba(220, 38, 38, 0.72),
+    0 0 16px rgba(127, 29, 29, 0.28);
   animation: livePulse 1.4s ease-in-out infinite;
 }
 
 @keyframes livePulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6); }
-  50%       { opacity: 0.7; box-shadow: 0 0 14px rgba(239, 68, 68, 0.9); }
+  0%, 100% {
+    opacity: 1;
+    box-shadow:
+      0 0 8px rgba(220, 38, 38, 0.72),
+      0 0 16px rgba(127, 29, 29, 0.28);
+  }
+  50% {
+    opacity: 0.78;
+    box-shadow:
+      0 0 12px rgba(239, 68, 68, 0.88),
+      0 0 24px rgba(153, 27, 27, 0.36);
+  }
 }
 
 /* ── Viewport (the "screen") ───────────────────────────────────────────────── */
