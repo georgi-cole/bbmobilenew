@@ -378,9 +378,6 @@ export default function CodeBreakerComp({
 
         <div className="cb__results">
           <p className="cb__results-headline">🔓 Vault Cracked!</p>
-          <p className="cb__results-subhead">
-            Leaderboard placement is based on score, which rewards solving in fewer attempts and faster time. Bands shown: 1–2 = Mythic · 3–4 = Elite · 5–6 = Expert · 7–8 = Strong · 9–10 = Solved · 11+ = Struggled
-          </p>
 
           <ol className="cb__leaderboard">
             {leaderboard.map((entry, i) => {
