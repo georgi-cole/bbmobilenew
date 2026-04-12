@@ -66,11 +66,8 @@ interface TickerEvent {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MEDALS = ['🥇', '🥈', '🥉'];
-
-function rankIcon(rank: number): string {
-  const ICONS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-  return ICONS[rank - 1] ?? `#${rank}`;
+function getMissesLabel(mistakes: number): string {
+  return `${mistakes} ${mistakes === 1 ? 'miss' : 'misses'}`;
 }
 
 const MISMATCH_HIDE_MS = 900;
@@ -372,57 +369,80 @@ export default function HouseOfCardsComp({
         className="hoc-complete"
         onContinue={handleContinue}
         continueLabel="Continue ▶"
+        continueButtonClassName="hoc-complete-continue"
         placementsNode={
-          <div className="hoc-standings" role="list" aria-label="Final standings">
+          <div className="hoc-standings">
             <div className="hoc-standings-label">Final Standings</div>
-            {hoc.standings.map((outcome: PlayerOutcome) => {
-              const isHuman = outcome.playerId === humanId;
-              const isLast = outcome.playerId === lastPlace.playerId;
-              const isWinner = outcome.playerId === winner.playerId;
-              const icon = rankIcon(outcome.finalRank);
-              const rowClass = [
-                'hoc-standing-row',
-                isWinner ? 'hoc-standing--winner' : '',
-                isLast && !isWinner ? 'hoc-standing--last' : '',
-                isHuman ? 'hoc-standing--human' : '',
-              ]
-                .filter(Boolean)
-                .join(' ');
+            <ol className="hoc-standings-list" role="list" aria-label="Final standings">
+              {hoc.standings.map((outcome: PlayerOutcome) => {
+                const isHuman = outcome.playerId === humanId;
+                const isLast = outcome.playerId === lastPlace.playerId;
+                const isWinner = outcome.playerId === winner.playerId;
+                const rowClass = [
+                  'hoc-standing-row',
+                  isWinner ? 'hoc-standing--winner' : '',
+                  isLast && !isWinner ? 'hoc-standing--last' : '',
+                  isHuman ? 'hoc-standing--human' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ');
 
-              return (
-                <div key={outcome.playerId} className={rowClass} role="listitem">
-                  <span className="hoc-standing-rank">{icon}</span>
-                  <span
-                    className={`hoc-standing-name${isHuman ? ' hoc-standing-name--human' : ''}`}
-                  >
-                    {nameFor(outcome.playerId)}
-                  </span>
-                  <div className="hoc-standing-details">
-                    <span className="hoc-standing-score">{outcome.clashScore} pts</span>
-                    <span className="hoc-standing-meta">
-                      {outcome.matchedPairs}/{TOTAL_PAIRS} pairs ·{' '}
-                      {outcome.mistakes} miss
+                return (
+                  <li key={outcome.playerId} className={rowClass}>
+                    <span
+                      className={[
+                        'hoc-standing-rank',
+                        outcome.finalRank <= 3 ? `hoc-standing-rank--top-${outcome.finalRank}` : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      aria-label={`Rank ${outcome.finalRank}`}
+                    >
+                      {outcome.finalRank}
                     </span>
-                  </div>
-                  {isHuman && !isLast && (
-                    <span className="hoc-standing-badge hoc-badge--you">You</span>
-                  )}
-                  {isLast && !isWinner && (
-                    <span className="hoc-standing-badge hoc-badge--last">Last</span>
-                  )}
-                </div>
-              );
-            })}
+                    <div className="hoc-standing-summary">
+                      <span
+                        className={`hoc-standing-name${isHuman ? ' hoc-standing-name--human' : ''}`}
+                      >
+                        {nameFor(outcome.playerId)}
+                      </span>
+                      <span className="hoc-standing-meta">
+                        {outcome.matchedPairs}/{TOTAL_PAIRS} pairs ·{' '}
+                        {getMissesLabel(outcome.mistakes)}
+                      </span>
+                    </div>
+                    <div className="hoc-standing-details">
+                      <span className="hoc-standing-score">{outcome.clashScore} pts</span>
+                      <div className="hoc-standing-badges">
+                        {isHuman && !isLast && (
+                          <span className="hoc-standing-badge hoc-badge--you">You</span>
+                        )}
+                        {isLast && !isWinner && (
+                          <span className="hoc-standing-badge hoc-badge--last">Last</span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         }
       >
-        <div className="hoc-complete-title">🃏 House of Cards</div>
+        <div className="hoc-complete-title">
+          <span className="hoc-complete-title-icon" aria-hidden="true" />
+          <span>House of Cards</span>
+        </div>
         <div className="hoc-complete-winner">
-          <div className="hoc-complete-winner-trophy">
-            {isHumanWinner ? '🏆 You Win!' : MEDALS[0]}
+          <div className="hoc-complete-winner-rank" aria-hidden="true">
+            1
           </div>
+          <div className="hoc-complete-winner-badge">{isHumanWinner ? 'You Win!' : 'Winner'}</div>
           <div className="hoc-complete-winner-name">{winnerName}</div>
-          <div className="hoc-complete-winner-score">{winner.clashScore} Clash Score</div>
+          <div className="hoc-complete-winner-score">{winner.clashScore} clash points</div>
+          <div className="hoc-complete-winner-meta">
+            {winner.matchedPairs}/{TOTAL_PAIRS} pairs · {getMissesLabel(winner.mistakes)}
+          </div>
         </div>
       </MinigameCompleteWrapper>
     );

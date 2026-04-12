@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import HouseOfCardsComp from '../../../src/components/HouseOfCardsComp/HouseOfCardsComp';
+import {
+  finaliseOutcome,
+  TOTAL_PAIRS,
+} from '../../../src/features/houseOfCards/houseOfCardsSlice';
 import houseOfCardsReducer from '../../../src/features/houseOfCards/houseOfCardsSlice';
 import {
   buildHouseOfCardsBoard,
@@ -12,19 +16,23 @@ import {
 function makeStore() {
   return configureStore({
     reducer: {
+      game: (state = { phase: 'loh_comp' }) => state,
       houseOfCards: houseOfCardsReducer,
     },
   });
 }
 
-function renderGame(seed = 42) {
+function renderGame(
+  seed = 42,
+  participants = [{ id: 'human', name: 'You', isHuman: true }],
+) {
   const store = makeStore();
-  const participants = [{ id: 'human', name: 'You', isHuman: true }];
+  const participantIds = participants.map((participant) => participant.id);
 
   const utils = render(
     <Provider store={store}>
       <HouseOfCardsComp
-        participantIds={['human']}
+        participantIds={participantIds}
         participants={participants}
         prizeType="LOH"
         seed={seed}
@@ -135,5 +143,37 @@ describe('HouseOfCardsComp — peek effect', () => {
 
     await clickPair(pairs[4]);
     expect(screen.queryByText(/peek!/i)).not.toBeInTheDocument();
+  });
+
+  it('renders a native-styled final scoreboard without emoji rank glyphs', async () => {
+    const seed = 42;
+    const { store } = renderGame(seed, [
+      { id: 'human', name: 'Finn', isHuman: true },
+      { id: 'zed', name: 'Zed', isHuman: false },
+      { id: 'vee', name: 'Vee', isHuman: false },
+    ]);
+    await act(async () => {
+      store.dispatch(
+        finaliseOutcome({
+          matchedPairs: TOTAL_PAIRS,
+          mistakes: 0,
+          turnsTaken: TOTAL_PAIRS,
+          completionTimeMs: 15_000,
+          streakBest: 4,
+          humanId: 'human',
+        }),
+      );
+    });
+
+    expect(screen.getByText('House of Cards')).toBeInTheDocument();
+    expect(screen.getByText('You Win!')).toBeInTheDocument();
+    expect(screen.getByText('Continue ▶')).toHaveClass('hoc-complete-continue');
+    const winnerRow = screen.getByLabelText('Rank 1').closest('li') as HTMLElement;
+    expect(screen.getByLabelText('Rank 1')).toHaveTextContent('1');
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(within(winnerRow).getByText('Finn')).toBeInTheDocument();
+    expect(within(winnerRow).getByText(/10\/10 pairs · 0 misses/i)).toBeInTheDocument();
+    expect(screen.queryByText('🥇')).not.toBeInTheDocument();
+    expect(screen.queryByText('4️⃣')).not.toBeInTheDocument();
   });
 });
