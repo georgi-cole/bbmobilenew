@@ -49,7 +49,7 @@ function validateBandChances(key: string, tuning: MinigameAiTuning): void {
   const total = tuning.scoreBands.reduce((sum, b) => sum + b.chance, 0);
   if (Math.abs(total - 1.0) > 0.01) {
     const msg = `[minigameAiBalance] "${key}" scoreBand chances sum to ${total.toFixed(4)}, expected 1.0`;
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.warn(msg);
     }
   }
