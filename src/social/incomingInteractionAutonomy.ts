@@ -861,7 +861,17 @@ export function scheduleIncomingInteractionsForPhase(
       continue;
     }
 
-    const plan = decision.plan!;
+    const plan = decision.plan;
+    if (!plan) {
+      logIncomingInteractionDecision(store.dispatch, {
+        stage: 'generation',
+        reason: 'blocked_by_missing_plan',
+        actorId: actor.id,
+        week,
+        phase,
+      });
+      continue;
+    }
 
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
