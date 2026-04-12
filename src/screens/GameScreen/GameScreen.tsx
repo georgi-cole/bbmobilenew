@@ -2250,6 +2250,25 @@ export default function GameScreen() {
   const expandsTvForCompactRoster = settings.gameUX.compactRoster
   const compactRosterLogRows = expandsTvForCompactRoster ? 6 : 2
 
+  // ── Viewport fallback message for blank-TV states ────────────────────────
+  // Provides a meaningful holding message during states where no fresh TV event
+  // is available: after dismissing the live_eviction announcement during
+  // live_vote, and during the postVoteAnnouncementDelayActive grace period.
+  const tvViewportFallbackMessage = useMemo(() => {
+    if (game.phase === 'live_vote') {
+      if (game.awaitingHumanVote) {
+        return activeConfessionalDecision
+          ? 'The Big Eye requires your vote in the Confessional.'
+          : 'Waiting for your vote.'
+      }
+      return 'Houseguests are casting their votes.'
+    }
+    if (postVoteAnnouncementDelayActive && game.pendingEviction) {
+      return 'Please wait while the houseguest says their goodbyes.'
+    }
+    return undefined
+  }, [game.phase, game.awaitingHumanVote, activeConfessionalDecision, postVoteAnnouncementDelayActive, game.pendingEviction])
+
   return (
     <LayoutGroup id="game-layout">
     <div
@@ -2268,6 +2287,7 @@ export default function GameScreen() {
           externalAnnouncement={preAdAnnouncement}
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
+          viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : showVoteResults ? (
         <TvZone
@@ -2284,6 +2304,7 @@ export default function GameScreen() {
           externalAnnouncement={preAdAnnouncement}
           onExternalAnnouncementDismiss={handlePreAdAnnouncementDismiss}
           mainLogMaxVisible={compactRosterLogRows}
+          viewportFallbackMessage={tvViewportFallbackMessage}
         />
       ) : (
         <TvZone
@@ -2305,6 +2326,7 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
           }
           mainLogMaxVisible={compactRosterLogRows}
+          viewportFallbackMessage={tvViewportFallbackMessage}
         />
       )}
 
