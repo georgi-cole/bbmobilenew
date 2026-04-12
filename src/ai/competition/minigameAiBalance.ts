@@ -68,11 +68,11 @@ export const minigameAiBalance: Record<string, MinigameAiTuning> = {
   quickTap: {
     scoringModel: 'bands',
     scoreBands: [
-      { chance: 0.08, min: 135, max: 160 },
-      { chance: 0.22, min: 161, max: 185 },
-      { chance: 0.32, min: 186, max: 210 },
-      { chance: 0.25, min: 211, max: 235 },
-      { chance: 0.13, min: 236, max: 265 },
+      { chance: 0.08, min: 105, max: 120 },
+      { chance: 0.22, min: 121, max: 165 },
+      { chance: 0.32, min: 166, max: 189 },
+      { chance: 0.25, min: 190, max: 205 },
+      { chance: 0.13, min: 206, max: 235 },
     ],
     jitter: 4,
     hotStreakChance: 0.10,
