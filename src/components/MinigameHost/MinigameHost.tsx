@@ -46,6 +46,7 @@ import type { HouseOfCardsPrizeType } from '../../features/houseOfCards/houseOfC
 import MemoryColorsComp from '../MemoryColorsComp/MemoryColorsComp';
 import type { MemoryColorsCompetitionType } from '../../features/memoryColors/memoryColorsSlice';
 import TrapAuctionComp from '../TrapAuction/TrapAuction';
+import ColorMatchComp from '../ColorMatchComp/ColorMatchComp';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -360,12 +361,24 @@ export default function MinigameHost({
               );
             }
             if (game.implementation === 'react' && game.reactComponentKey === 'MajorityRules') {
+              // seed is intentionally NOT forwarded to MajorityRulesComp.
+              // In normal gameplay the challenge seed is a deterministic value; passing it
+              // would cause the same question sequence every session with the same seed.
+              // MajorityRulesComp generates a fresh crypto-random session seed when the
+              // seed prop is absent/zero so each hosted game gets a unique question order.
+              if (import.meta.env.DEV) {
+                console.log('MAJORITY_RULES_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
               return (
                 <MajorityRulesComp
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as MajorityRulesCompetitionType ?? 'LOH'}
-                  seed={seed}
                   onComplete={handleReactComplete}
                 />
               );
@@ -492,6 +505,39 @@ export default function MinigameHost({
                   seed={seed}
                   autoStart={true}
                   onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'ColorMatch') {
+              // seed is intentionally NOT forwarded to ColorMatchComp.
+              // In normal gameplay the challenge seed is a deterministic value derived
+              // from game.seed — passing it would cause the same color sequence to
+              // repeat whenever the same game.seed is active (e.g. after a page reload).
+              // ColorMatchComp generates a fresh crypto-random session seed when the
+              // seed prop is absent/zero, ensuring each session has a unique color order.
+              if (import.meta.env.DEV) {
+                console.log('COLOR_MATCH_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
+              return (
+                <ColorMatchComp
+                  autoStart={true}
+                  participantIds={participantIds}
+                  participants={participants}
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
+                    setFinalValue(value);
+                    setFinalTiebreakerMs(tiebreakerMs ?? null);
+                    setWasPartial(false);
+                    setPhase('results');
+                  }}
                 />
               );
             }
