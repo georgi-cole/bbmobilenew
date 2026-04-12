@@ -5,8 +5,16 @@ A React + TypeScript + Vite mobile-first app.
 ## Dev setup
 
 ```bash
-npm install
+npm ci
 npm run dev        # http://localhost:5173
+```
+
+## Full bootstrap
+
+Install both root and server dependencies in one step:
+
+```bash
+npm run bootstrap
 ```
 
 ## Build
@@ -273,7 +281,7 @@ Response `201 Created`:
 
 ```bash
 # from the repo root — requires server deps to be installed
-cd server && npm install && cd ..
+cd server && npm ci && cd ..
 NODE_PATH=./server/node_modules node --test tests/diaryWeek.spec.cjs
 ```
 

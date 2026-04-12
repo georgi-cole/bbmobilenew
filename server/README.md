@@ -11,7 +11,7 @@ This directory contains the Express backend that powers the Big Brother AI Diary
 
 ```bash
 cd server
-npm install
+npm ci
 
 # Copy the example env file and fill in your API key
 cp .env.example .env
