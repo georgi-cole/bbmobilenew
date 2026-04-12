@@ -39,6 +39,7 @@ import {
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger';
 import {
+  buildEvictionVoteBreakdownRows,
   isEvictionVoteBreakdownActive,
   loadEvictionVoteBreakdownUnlock,
   updateEvictionVoteBreakdownStatus,
@@ -411,21 +412,7 @@ export default function DiaryRoom() {
     ? voteBreakdownUnlock
     : null;
   const voteBreakdownRows = activeVoteBreakdown
-    ? Object.entries(activeVoteBreakdown.votes).map(([voterKey, targetId]) => {
-      // Double-vote rewards store the second ballot under `${playerId}__dv2`.
-      // Split the synthetic key so the chart can render the original voter name
-      // while still labelling the bonus ballot as a separate vote.
-      const voteKeyParts = voterKey.split('__');
-      const voterId = voteKeyParts[0];
-      const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null;
-      const voterName = players.find((player) => player.id === voterId)?.name ?? voterId;
-      const targetName = players.find((player) => player.id === targetId)?.name ?? targetId;
-      return {
-        voterKey,
-        voterName: extraVoteKey === 'dv2' ? `${voterName} (Vote 2)` : voterName,
-        targetName,
-      };
-    })
+    ? buildEvictionVoteBreakdownRows(activeVoteBreakdown.votes, players)
     : [];
 
   const activeDecisionPresentation = useMemo(() => {

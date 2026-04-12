@@ -110,6 +110,7 @@ import {
   shouldShowDislikedBoostPrompt,
 } from './dislikedBoostPrompt'
 import {
+  buildEvictionVoteBreakdownRows,
   isEvictionVoteBreakdownActive,
   loadEvictionVoteBreakdownUnlock,
   saveEvictionVoteBreakdownUnlock,
@@ -1545,6 +1546,15 @@ export default function GameScreen() {
     humanPlayerEliminated,
     proceedAfterVoteResults,
   ])
+
+  const postEvictionVoteBreakdownRows = useMemo(
+    () => (
+      postEvictionVoteBreakdown
+        ? buildEvictionVoteBreakdownRows(postEvictionVoteBreakdown.votes, game.players)
+        : []
+    ),
+    [game.players, postEvictionVoteBreakdown],
+  )
 
   useEffect(() => {
     if (!showVoteResults) {
@@ -3194,24 +3204,17 @@ export default function GameScreen() {
               <strong>Who voted for whom</strong>
             </div>
             <div className="game-screen__vote-breakdown-table" role="table" aria-label="Eviction vote breakdown">
-              {Object.entries(postEvictionVoteBreakdown.votes).map(([voterKey, targetId]) => {
-                const voteKeyParts = voterKey.split('__')
-                const voterId = voteKeyParts[0]
-                const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null
-                const voterName = game.players.find((player) => player.id === voterId)?.name ?? voterId
-                const targetName = game.players.find((player) => player.id === targetId)?.name ?? targetId
-                return (
-                  <div key={voterKey} className="game-screen__vote-breakdown-row" role="row">
-                    <span className="game-screen__vote-breakdown-cell" role="cell">
-                      {extraVoteKey === 'dv2' ? `${voterName} (Vote 2)` : voterName}
-                    </span>
-                    <span className="game-screen__vote-breakdown-arrow" aria-hidden="true">→</span>
-                    <span className="game-screen__vote-breakdown-cell game-screen__vote-breakdown-cell--target" role="cell">
-                      {targetName}
-                    </span>
-                  </div>
-                )
-              })}
+              {postEvictionVoteBreakdownRows.map((row) => (
+                <div key={row.voterKey} className="game-screen__vote-breakdown-row" role="row">
+                  <span className="game-screen__vote-breakdown-cell" role="cell">
+                    {row.voterName}
+                  </span>
+                  <span className="game-screen__vote-breakdown-arrow" aria-hidden="true">→</span>
+                  <span className="game-screen__vote-breakdown-cell game-screen__vote-breakdown-cell--target" role="cell">
+                    {row.targetName}
+                  </span>
+                </div>
+              ))}
             </div>
             <div className="game-screen__vote-breakdown-actions">
               <button

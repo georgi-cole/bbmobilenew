@@ -13,6 +13,12 @@ export interface EvictionVoteBreakdownUnlock {
   status: EvictionVoteBreakdownStatus;
 }
 
+export interface EvictionVoteBreakdownRow {
+  voterKey: string;
+  voterName: string;
+  targetName: string;
+}
+
 export function loadEvictionVoteBreakdownUnlock(): EvictionVoteBreakdownUnlock | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -59,4 +65,25 @@ export function updateEvictionVoteBreakdownStatus(
   const next = { ...current, status };
   saveEvictionVoteBreakdownUnlock(next);
   return next;
+}
+
+export function buildEvictionVoteBreakdownRows(
+  votes: Record<string, string>,
+  players: ReadonlyArray<{ id: string; name: string }>,
+): EvictionVoteBreakdownRow[] {
+  const playerNamesById = Object.fromEntries(players.map((player) => [player.id, player.name]));
+
+  return Object.entries(votes).map(([voterKey, targetId]) => {
+    const voteKeyParts = voterKey.split('__');
+    const voterId = voteKeyParts[0];
+    const extraVoteKey = voteKeyParts.length > 1 ? voteKeyParts[1] : null;
+    const voterName = playerNamesById[voterId] ?? voterId;
+    const targetName = playerNamesById[targetId] ?? targetId;
+
+    return {
+      voterKey,
+      voterName: extraVoteKey === 'dv2' ? `${voterName} (Vote 2)` : voterName,
+      targetName,
+    };
+  });
 }
