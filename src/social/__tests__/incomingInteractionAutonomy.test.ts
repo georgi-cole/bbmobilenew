@@ -86,6 +86,7 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
         typeof action === 'object' &&
         action !== null &&
         'type' in action &&
+        'payload' in action &&
         (action as { type?: string }).type === 'social/scheduleIncomingInteraction'
       ) {
         social.scheduledIncomingInteractions.push(
