@@ -49,9 +49,15 @@ interface GameState {
   phase: string;
   week: number;
   lohId: string | null;
+  prevHohId: string | null;
   posWinnerId: string | null;
+  povSavedId?: string | null;
   nomineeIds: string[];
-  players: Array<{ id: string; status: string; isUser?: boolean }>;
+  votes?: Record<string, string>;
+  pendingEviction?: { evicteeId: string; evictionMessage: string } | null;
+  doubleEviction?: { weekActive?: boolean };
+  specialVeto?: { activeType?: string | null };
+  players: Array<{ id: string; name?: string; status: string; isUser?: boolean }>;
 }
 
 interface StateWithGame {
@@ -69,7 +75,18 @@ function handleWeekStart(api: MiddlewareAPI): void {
   api.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week));
   seedWeekRelationships(api);
   api.dispatch(snapshotWeekRelationships());
-  scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore);
+  scheduleIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore, {
+    lohId: state.game?.lohId ?? null,
+    prevLohId: state.game?.prevHohId ?? null,
+    nomineeIds: state.game?.nomineeIds ?? [],
+    posWinnerId: state.game?.posWinnerId ?? null,
+    povSavedId: state.game?.povSavedId ?? null,
+    votes: state.game?.votes ?? {},
+    pendingEvictionId: state.game?.pendingEviction?.evicteeId ?? null,
+    recentEvicteeId: state.game?.pendingEviction?.evicteeId ?? null,
+    isDoubleEviction: state.game?.doubleEviction?.weekActive === true,
+    specialVeto: state.game?.specialVeto?.activeType ?? null,
+  });
   deliverScheduledIncomingInteractionsForPhase('week_start', api as unknown as AutonomyStore, {
     week,
   });
@@ -80,7 +97,19 @@ function handleWeekStart(api: MiddlewareAPI): void {
  * week_start (which is handled by handleWeekStart above).
  */
 function handleAutonomyPhase(api: AutonomyStore, phase: string): void {
-  scheduleIncomingInteractionsForPhase(phase, api);
+  const state = api.getState() as StateWithGame;
+  scheduleIncomingInteractionsForPhase(phase, api, {
+    lohId: state.game?.lohId ?? null,
+    prevLohId: state.game?.prevHohId ?? null,
+    nomineeIds: state.game?.nomineeIds ?? [],
+    posWinnerId: state.game?.posWinnerId ?? null,
+    povSavedId: state.game?.povSavedId ?? null,
+    votes: state.game?.votes ?? {},
+    pendingEvictionId: state.game?.pendingEviction?.evicteeId ?? null,
+    recentEvicteeId: state.game?.pendingEviction?.evicteeId ?? null,
+    isDoubleEviction: state.game?.doubleEviction?.weekActive === true,
+    specialVeto: state.game?.specialVeto?.activeType ?? null,
+  });
   deliverScheduledIncomingInteractionsForPhase(phase, api);
 }
 

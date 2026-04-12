@@ -147,24 +147,28 @@ export const socialConfig = {
     /** Strategic urgency weights per phase. */
     phaseUrgency: {
       week_start: 0.5,
-      nominations: 0.9,
-      nomination_results: 0.8,
+      loh_results: 0.8,
       pos_results: 0.7,
-      pos_ceremony: 0.6,
       pos_ceremony_results: 0.7,
+      social_1: 0.55,
+      nominations: 0.95,
+      nomination_results: 0.85,
+      pos_ceremony: 0.6,
+      social_2: 0.65,
       live_vote: 0.95,
       eviction_results: 0.85,
-      loh_results: 0.8,
-      social_1: 0.4,
-      social_2: 0.4,
     } as Record<string, number>,
     /** Additional event pressure bonuses per phase. */
     phaseEventPressure: {
+      loh_results: 0.15,
+      social_1: 0.1,
       nominations: 0.2,
+      nomination_results: 0.2,
       live_vote: 0.3,
       eviction_results: 0.2,
       pos_results: 0.1,
-      loh_results: 0.1,
+      pos_ceremony_results: 0.2,
+      social_2: 0.15,
     } as Record<string, number>,
     /** Affinity thresholds that drive interaction type selection. */
     interactionTypeThresholds: {
@@ -172,6 +176,18 @@ export const socialConfig = {
       povResults: { ally: 0.3, enemy: -0.3 },
       lohEviction: { strongAlly: 0.5, mildAlly: 0.1, strongEnemy: -0.4 },
       social: { strongAlly: 0.4, mildAlly: 0.1, strongEnemy: -0.4, mildEnemy: -0.1 },
+    },
+    /** Additional thresholds for context-aware scenario routing. */
+    scenarioThresholds: {
+      strongAlly: 0.45,
+      mildAlly: 0.15,
+      strongEnemy: -0.45,
+      mildEnemy: -0.15,
+      gratitudeHigh: 0.55,
+      resentmentHigh: 0.45,
+      neglectHigh: 0.5,
+      trustLow: -0.3,
+      allianceProposalMinAffinity: 0.35,
     },
   },
 
