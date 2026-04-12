@@ -5,1804 +5,204 @@ export interface MajorityRulesQuestionTemplate {
 }
 
 export const MAJORITY_RULES_QUESTION_BANK: MajorityRulesQuestionTemplate[] = [
-  {
-    id: 'q001',
-    prompt: 'What would most people choose?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q002',
-    prompt: 'What would people choose nowadays?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q003',
-    prompt: 'What defines a person most nowadays?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q004',
-    prompt: 'What is harder to deal with in general?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q005',
-    prompt: 'What matters more today?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q006',
-    prompt: 'What defines a person most today?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q007',
-    prompt: 'What motivates people more today?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q008',
-    prompt: 'What hurts more overall?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q009',
-    prompt: 'What do people want most in general?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q010',
-    prompt: 'What defines a person most overall?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q011',
-    prompt: 'What would people choose in general?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q012',
-    prompt: 'What do people want most today?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q013',
-    prompt: 'What do people want most today?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q014',
-    prompt: 'What matters more for most people?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q015',
-    prompt: 'What matters more in relationships for most people?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q016',
-    prompt: 'What do people fear more nowadays?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q017',
-    prompt: 'What do people fear more?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q018',
-    prompt: 'What defines a person most?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q019',
-    prompt: 'What matters more in life in general?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q020',
-    prompt: 'What motivates people more?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q021',
-    prompt: 'What defines a person most in general?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q022',
-    prompt: 'What hurts more overall?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q023',
-    prompt: 'What matters more online for most people?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q024',
-    prompt: 'What do people prioritize more for most people?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q025',
-    prompt: 'What hurts more nowadays?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q026',
-    prompt: 'What matters more in life in general?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q027',
-    prompt: 'What matters more online?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q028',
-    prompt: 'What do people regret more?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q029',
-    prompt: 'What is more attractive overall?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q030',
-    prompt: 'What is more attractive overall?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q031',
-    prompt: 'What motivates people more in general?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q032',
-    prompt: 'What is more annoying today?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q033',
-    prompt: 'What do people prioritize more nowadays?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q034',
-    prompt: 'What hurts more overall?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q035',
-    prompt: 'What matters more overall?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q036',
-    prompt: 'What do people envy more today?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q037',
-    prompt: 'What do people envy more in general?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q038',
-    prompt: 'What is more attractive overall?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q039',
-    prompt: 'What matters more online today?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q040',
-    prompt: 'What do people fear more overall?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q041',
-    prompt: 'What would people choose?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q042',
-    prompt: 'What would people choose realistically today?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q043',
-    prompt: 'What matters more online today?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q044',
-    prompt: 'What is more annoying in general?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q045',
-    prompt: 'What would people choose realistically in general?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q046',
-    prompt: 'What motivates people more for most people?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q047',
-    prompt: 'What is more important socially for most people?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q048',
-    prompt: 'What is more important socially in general?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q049',
-    prompt: 'What matters more?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q050',
-    prompt: 'What matters more online for most people?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q051',
-    prompt: 'What matters more in relationships?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q052',
-    prompt: 'What is more attractive in general?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q053',
-    prompt: 'What would people choose today?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q054',
-    prompt: 'What would people choose realistically today?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q055',
-    prompt: 'What is more attractive for most people?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q056',
-    prompt: 'What do people fear more in general?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q057',
-    prompt: 'What matters more online today?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q058',
-    prompt: 'What do people fear more today?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q059',
-    prompt: 'What do people regret more in general?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q060',
-    prompt: 'What motivates people more nowadays?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q061',
-    prompt: 'What motivates people more in general?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q062',
-    prompt: 'What matters more in relationships for most people?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q063',
-    prompt: 'What is more attractive nowadays?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q064',
-    prompt: 'What is harder to deal with in general?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q065',
-    prompt: 'What do people envy more for most people?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q066',
-    prompt: 'What matters more nowadays?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q067',
-    prompt: 'What matters more in life for most people?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q068',
-    prompt: 'What would people sacrifice first nowadays?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q069',
-    prompt: 'What do people fear more nowadays?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q070',
-    prompt: 'What do people prioritize more?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q071',
-    prompt: 'What do people fear more nowadays?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q072',
-    prompt: 'What would people choose realistically for most people?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q073',
-    prompt: 'What do people prioritize more for most people?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q074',
-    prompt: 'What would people choose realistically?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q075',
-    prompt: 'What hurts more overall?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q076',
-    prompt: 'What do people envy more?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q077',
-    prompt: 'What matters more in relationships overall?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q078',
-    prompt: 'What matters more online?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q079',
-    prompt: 'What do people regret more nowadays?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q080',
-    prompt: 'What would people sacrifice first in general?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q081',
-    prompt: 'What is more important socially for most people?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q082',
-    prompt: 'What is more important socially overall?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q083',
-    prompt: 'What defines a person most today?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q084',
-    prompt: 'What is more annoying for most people?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q085',
-    prompt: 'What would people choose realistically for most people?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q086',
-    prompt: 'What hurts more in general?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q087',
-    prompt: 'What matters more in relationships in general?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q088',
-    prompt: 'What defines a person most overall?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q089',
-    prompt: 'What do people value more in general?',
-    options: [
-      'Stability',
-      'Freedom',
-      'Excitement',
-    ],
-  },
-  {
-    id: 'q090',
-    prompt: 'What do people value more for most people?',
-    options: [
-      'Stability',
-      'Freedom',
-      'Excitement',
-    ],
-  },
-  {
-    id: 'q091',
-    prompt: 'What is more important socially?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q092',
-    prompt: 'What do people want most overall?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q093',
-    prompt: 'What would people sacrifice first today?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q094',
-    prompt: 'What is more annoying today?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q095',
-    prompt: 'What do people envy more in general?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q096',
-    prompt: 'What motivates people more?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q097',
-    prompt: 'What would people sacrifice first overall?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q098',
-    prompt: 'What matters more in life?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q099',
-    prompt: 'What do people fear more today?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q100',
-    prompt: 'What matters more in relationships overall?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q101',
-    prompt: 'What is more annoying today?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q102',
-    prompt: 'What defines a person most nowadays?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q103',
-    prompt: 'What matters more online nowadays?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q104',
-    prompt: 'What matters more online today?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q105',
-    prompt: 'What would people choose realistically overall?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q106',
-    prompt: 'What do people value more nowadays?',
-    options: [
-      'Stability',
-      'Freedom',
-      'Excitement',
-    ],
-  },
-  {
-    id: 'q107',
-    prompt: 'What do people regret more in general?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q108',
-    prompt: 'What would people choose nowadays?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q109',
-    prompt: 'What do people fear more in general?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q110',
-    prompt: 'What is more attractive for most people?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q111',
-    prompt: 'What do people regret more today?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q112',
-    prompt: 'What matters more for most people?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q113',
-    prompt: 'What would people sacrifice first in general?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q114',
-    prompt: 'What hurts more nowadays?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q115',
-    prompt: 'What do people value more today?',
-    options: [
-      'Stability',
-      'Freedom',
-      'Excitement',
-    ],
-  },
-  {
-    id: 'q116',
-    prompt: 'What would people choose nowadays?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q117',
-    prompt: 'What matters more in relationships overall?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q118',
-    prompt: 'What would people sacrifice first today?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q119',
-    prompt: 'What do people envy more in general?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q120',
-    prompt: 'What is more annoying in general?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q121',
-    prompt: 'What do people fear more today?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q122',
-    prompt: 'What do people envy more in general?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q123',
-    prompt: 'What would people choose realistically nowadays?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q124',
-    prompt: 'What is more attractive today?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q125',
-    prompt: 'What defines a person most in general?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q126',
-    prompt: 'What is harder to deal with today?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q127',
-    prompt: 'What matters more in general?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q128',
-    prompt: 'What matters more in life in general?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q129',
-    prompt: 'What matters more in relationships overall?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q130',
-    prompt: 'What would people choose realistically today?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q131',
-    prompt: 'What matters more in life today?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q132',
-    prompt: 'What would people choose realistically overall?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q133',
-    prompt: 'What matters more online for most people?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q134',
-    prompt: 'What do people envy more today?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q135',
-    prompt: 'What is more annoying in general?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q136',
-    prompt: 'What is harder to deal with nowadays?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q137',
-    prompt: 'What is harder to deal with for most people?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q138',
-    prompt: 'What do people prioritize more overall?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q139',
-    prompt: 'What do people regret more for most people?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q140',
-    prompt: 'What is more attractive?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q141',
-    prompt: 'What would people choose today?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q142',
-    prompt: 'What is more annoying overall?',
-    options: [
-      'Loud people',
-      'Slow people',
-      'Negative people',
-    ],
-  },
-  {
-    id: 'q143',
-    prompt: 'What hurts more overall?',
-    options: [
-      'Betrayal',
-      'Rejection',
-      'Failure',
-    ],
-  },
-  {
-    id: 'q144',
-    prompt: 'What matters more?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q145',
-    prompt: 'What matters more in relationships for most people?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q146',
-    prompt: 'What matters more in relationships overall?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q147',
-    prompt: 'What motivates people more for most people?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q148',
-    prompt: 'What matters more in life today?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q149',
-    prompt: 'What is more important socially?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q150',
-    prompt: 'What matters more in life today?',
-    options: [
-      'Time',
-      'Money',
-      'Energy',
-    ],
-  },
-  {
-    id: 'q151',
-    prompt: 'What defines a person most overall?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q152',
-    prompt: 'What do people envy more?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q153',
-    prompt: 'What do people fear more in general?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q154',
-    prompt: 'What matters more in relationships in general?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q155',
-    prompt: 'What would people choose realistically today?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q156',
-    prompt: 'What defines a person most in general?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q157',
-    prompt: 'What defines a person most?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q158',
-    prompt: 'What would people choose realistically nowadays?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q159',
-    prompt: 'What is more important socially today?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q160',
-    prompt: 'What do people want most?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q161',
-    prompt: 'What is more attractive nowadays?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q162',
-    prompt: 'What do people envy more today?',
-    options: [
-      'Wealth',
-      'Looks',
-      'Lifestyle',
-    ],
-  },
-  {
-    id: 'q163',
-    prompt: 'What would most people choose?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q164',
-    prompt: 'What is more important socially?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q165',
-    prompt: 'What matters more in relationships?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q166',
-    prompt: 'What would people choose overall?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q167',
-    prompt: 'What do people fear more overall?',
-    options: [
-      'Being alone',
-      'Being judged',
-      'Being ignored',
-    ],
-  },
-  {
-    id: 'q168',
-    prompt: 'What would people choose realistically for most people?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q169',
-    prompt: 'What matters more in relationships today?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q170',
-    prompt: 'What is harder to deal with today?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q171',
-    prompt: 'What would people sacrifice first overall?',
-    options: [
-      'Sleep',
-      'Health',
-      'Free time',
-    ],
-  },
-  {
-    id: 'q172',
-    prompt: 'What do people want most for most people?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q173',
-    prompt: 'What would people choose today?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q174',
-    prompt: 'What is more important socially today?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q175',
-    prompt: 'What do people want most nowadays?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q176',
-    prompt: 'What do people regret more today?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
-  {
-    id: 'q177',
-    prompt: 'What is more attractive for most people?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q178',
-    prompt: 'What do people prioritize more nowadays?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q179',
-    prompt: 'What defines a person most in general?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q180',
-    prompt: 'What matters more in relationships today?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q181',
-    prompt: 'What would people choose realistically?',
-    options: [
-      'Safe life',
-      'Exciting life',
-      'Balanced life',
-    ],
-  },
-  {
-    id: 'q182',
-    prompt: 'What would people choose nowadays?',
-    options: [
-      'Fame',
-      'Wealth',
-      'Privacy',
-    ],
-  },
-  {
-    id: 'q183',
-    prompt: 'What matters more online?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q184',
-    prompt: 'What is more important socially today?',
-    options: [
-      'Being liked',
-      'Being respected',
-      'Being feared',
-    ],
-  },
-  {
-    id: 'q185',
-    prompt: 'What is harder to deal with overall?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q186',
-    prompt: 'What defines a person most today?',
-    options: [
-      'Actions',
-      'Intentions',
-      'Results',
-    ],
-  },
-  {
-    id: 'q187',
-    prompt: 'What matters more in relationships today?',
-    options: [
-      'Trust',
-      'Attraction',
-      'Effort',
-    ],
-  },
-  {
-    id: 'q188',
-    prompt: 'What is more attractive today?',
-    options: [
-      'Confidence',
-      'Humor',
-      'Intelligence',
-    ],
-  },
-  {
-    id: 'q189',
-    prompt: 'What do people want most?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q190',
-    prompt: 'What motivates people more in general?',
-    options: [
-      'Fear',
-      'Desire',
-      'Competition',
-    ],
-  },
-  {
-    id: 'q191',
-    prompt: 'What matters more today?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q192',
-    prompt: 'What is harder to deal with for most people?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q193',
-    prompt: 'What matters more?',
-    options: [
-      'Respect',
-      'Love',
-      'Power',
-    ],
-  },
-  {
-    id: 'q194',
-    prompt: 'What matters more online for most people?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q195',
-    prompt: 'What do people prioritize more for most people?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q196',
-    prompt: 'What matters more online nowadays?',
-    options: [
-      'Attention',
-      'Authenticity',
-      'Validation',
-    ],
-  },
-  {
-    id: 'q197',
-    prompt: 'What do people want most for most people?',
-    options: [
-      'Security',
-      'Freedom',
-      'Success',
-    ],
-  },
-  {
-    id: 'q198',
-    prompt: 'What is harder to deal with today?',
-    options: [
-      'Failure',
-      'Uncertainty',
-      'Loneliness',
-    ],
-  },
-  {
-    id: 'q199',
-    prompt: 'What do people prioritize more today?',
-    options: [
-      'Health',
-      'Career',
-      'Relationships',
-    ],
-  },
-  {
-    id: 'q200',
-    prompt: 'What do people regret more for most people?',
-    options: [
-      'Things done',
-      'Things not done',
-      'Both equally',
-    ],
-  },
+  { id:'q001', prompt:'What would most people choose?', options:['Fame','Wealth','Privacy'] },
+  { id:'q002', prompt:'What would most people eat first at a buffet?', options:['Meat','Salads','Desserts'] },
+  { id:'q003', prompt:'What would most people do on a free evening?', options:['Watch TV','Go out','Stay offline'] },
+  { id:'q004', prompt:'What would most people prefer in a job?', options:['High salary','Flexibility','Stability'] },
+  { id:'q005', prompt:'What would most people pick for vacation?', options:['Beach','Mountains','City'] },
+  { id:'q006', prompt:'What would most people spend extra money on?', options:['Travel','Food','Tech'] },
+  { id:'q007', prompt:'What would most people upgrade first?', options:['Phone','Laptop','Car'] },
+  { id:'q008', prompt:'What would most people improve first?', options:['Health','Finances','Relationships'] },
+  { id:'q009', prompt:'What would most people value more?', options:['Time','Money','Energy'] },
+  { id:'q010', prompt:'What would most people avoid most?', options:['Debt','Stress','Boredom'] },
+  { id:'q011', prompt:'What would most people want as a gift?', options:['Money','Experience','Physical item'] },
+  { id:'q012', prompt:'What would most people choose for dinner?', options:['Home cooked','Takeout','Restaurant'] },
+  { id:'q013', prompt:'What would most people do first in the morning?', options:['Check phone','Eat breakfast','Shower'] },
+  { id:'q014', prompt:'What would most people prefer in a partner?', options:['Attractive','Reliable','Fun'] },
+  { id:'q015', prompt:'What would most people watch most?', options:['Series','Movies','YouTube'] },
+  { id:'q016', prompt:'What would most people prioritize?', options:['Career','Family','Self-growth'] },
+  { id:'q017', prompt:'What would most people improve about themselves?', options:['Confidence','Discipline','Appearance'] },
+  { id:'q018', prompt:'What would most people like to learn?', options:['Language','Practical skill','Sport'] },
+  { id:'q019', prompt:'What would most people want more at home?', options:['Comfort','Style','Space'] },
+  { id:'q020', prompt:'What would most people save for?', options:['House','Travel','Emergency fund'] },
+  { id:'q021', prompt:'What would most people do when bored?', options:['Scroll','Sleep','Go out'] },
+  { id:'q022', prompt:'What would most people hate losing most?', options:['Phone','Wallet','Keys'] },
+  { id:'q023', prompt:'What would most people want socially?', options:['Being liked','Being respected','Being admired'] },
+  { id:'q024', prompt:'What would most people eat most often?', options:['Fast food','Healthy food','Mixed diet'] },
+  { id:'q025', prompt:'What would most people wear daily?', options:['Comfortable','Stylish','Expensive'] },
+  { id:'q026', prompt:'What would most people do on weekends?', options:['Rest','Socialize','Handle tasks'] },
+  { id:'q027', prompt:'What would most people fix first in life?', options:['Health','Career','Mindset'] },
+  { id:'q028', prompt:'What would most people use the internet for most?', options:['Entertainment','Learning','Socializing'] },
+  { id:'q029', prompt:'What would most people value in friends?', options:['Loyalty','Fun','Honesty'] },
+  { id:'q030', prompt:'What would most people do with extra free time?', options:['Relax','Work more','Pursue a hobby'] },
+  { id:'q031', prompt:'What would most people associate with success?', options:['Money','Recognition','Freedom'] },
+  { id:'q032', prompt:'What would most people avoid in relationships?', options:['Drama','Distance','Routine'] },
+  { id:'q033', prompt:'What would most people choose for fitness?', options:['Gym','Home workout','Outdoor activity'] },
+  { id:'q034', prompt:'What would most people eat when stressed?', options:['Junk food','Snacks','Nothing'] },
+  { id:'q035', prompt:'What would most people spend most money on?', options:['Food','Bills','Leisure'] },
+  { id:'q036', prompt:'What would most people want improved at work?', options:['Salary','Workload','Recognition'] },
+  { id:'q037', prompt:'What would most people use for fun?', options:['Gaming','Movies','Social media'] },
+  { id:'q038', prompt:'What would most people prefer mornings to be?', options:['Slow','Structured','Fast'] },
+  { id:'q039', prompt:'What would most people upgrade at home first?', options:['Kitchen','Bedroom','Living room'] },
+  { id:'q040', prompt:'What would most people choose for daily transport?', options:['Car','Public transport','Walking'] },
+  { id:'q041', prompt:'What would most people try hardest to quit?', options:['Social media','Sugar','Alcohol'] },
+  { id:'q042', prompt:'What would most people value most in life?', options:['Happiness','Success','Stability'] },
+  { id:'q043', prompt:'What would most people like hearing most?', options:['Compliment','Truth','Praise'] },
+  { id:'q044', prompt:'What would most people try to fix in their routine?', options:['Sleep','Stress','Meal schedule'] },
+  { id:'q045', prompt:'What would most people do at a party?', options:['Drink','Dance','Talk'] },
+  { id:'q046', prompt:'What would most people prefer to save more of?', options:['Money','Time','Energy'] },
+  { id:'q047', prompt:'What would most people improve socially?', options:['Confidence','Communication','Presence'] },
+  { id:'q048', prompt:'What would most people choose as a hobby?', options:['Sports','Creative hobby','Passive hobby'] },
+  { id:'q049', prompt:'What would most people do most evenings?', options:['Relax at home','Go out','Keep working'] },
+  { id:'q050', prompt:'What would most people snack on first?', options:['Sweet','Salty','Healthy'] },
+  { id:'q051', prompt:'What would most people fear most?', options:['Failure','Rejection','Loneliness'] },
+  { id:'q052', prompt:'What would most people regret more?', options:['Missed chances','Bad choices','Lost time'] },
+  { id:'q053', prompt:'What would most people envy most?', options:['Wealth','Looks','Lifestyle'] },
+  { id:'q054', prompt:'What would most people admire most?', options:['Success','Kindness','Talent'] },
+  { id:'q055', prompt:'What would most people prioritize in danger?', options:['Safety','Money','Helping others'] },
+  { id:'q056', prompt:'What would most people want more control over?', options:['Future','Emotions','Other people'] },
+  { id:'q057', prompt:'What would most people improve in society first?', options:['Healthcare','Education','Economy'] },
+  { id:'q058', prompt:'What would most people want to know in advance?', options:['Future','Secrets about others','The truth'] },
+  { id:'q059', prompt:'What would most people want to improve mentally?', options:['Focus','Calmness','Motivation'] },
+  { id:'q060', prompt:'What would most people protect most carefully?', options:['Health','Money','Reputation'] },
+  { id:'q061', prompt:'What would most people value long-term?', options:['Stability','Growth','Freedom'] },
+  { id:'q062', prompt:'What would most people improve for better productivity?', options:['Routine','Tools','Motivation'] },
+  { id:'q063', prompt:'What would most people want more of each day?', options:['Energy','Time','Focus'] },
+  { id:'q064', prompt:'What would most people struggle with most often?', options:['Consistency','Stress','Distractions'] },
+  { id:'q065', prompt:'What would most people improve financially first?', options:['Saving','Earning more','Investing'] },
+  { id:'q066', prompt:'What would most people prefer to gain?', options:['Knowledge','Connections','Wealth'] },
+  { id:'q067', prompt:'What would most people avoid at work most?', options:['Conflict','Boredom','Pressure'] },
+  { id:'q068', prompt:'What would most people upgrade for a better lifestyle?', options:['Home','Travel habits','Food quality'] },
+  { id:'q069', prompt:'What would most people improve in their habits first?', options:['Sleep','Diet','Routine'] },
+  { id:'q070', prompt:'What would most people want to reduce first?', options:['Stress','Expenses','Screen time'] },
+  { id:'q071', prompt:'What would most people prefer in communication?', options:['Honesty','Clarity','Kindness'] },
+  { id:'q072', prompt:'What would most people do during a conflict?', options:['Avoid it','Confront it','Compromise'] },
+  { id:'q073', prompt:'What would most people improve in relationships first?', options:['Trust','Communication','Time together'] },
+  { id:'q074', prompt:'What would most people rather spend on?', options:['Experiences','Useful objects','Savings'] },
+  { id:'q075', prompt:'What would most people value most in a close friend?', options:['Support','Fun','Loyalty'] },
+  { id:'q076', prompt:'What would most people want in their lifestyle?', options:['Comfort','Excitement','Balance'] },
+  { id:'q077', prompt:'What would most people improve in their career first?', options:['Skills','Network','Position'] },
+  { id:'q078', prompt:'What would most people change in daily life first?', options:['Routine','Mindset','Habits'] },
+  { id:'q079', prompt:'What would most people prioritize for better health?', options:['Exercise','Diet','Sleep'] },
+  { id:'q080', prompt:'What would most people prefer mentally on a daily basis?', options:['Peace','Focus','Motivation'] },
+  { id:'q081', prompt:'What would most people want more in social life?', options:['More friends','Quality time','New experiences'] },
+  { id:'q082', prompt:'What would most people improve in their free time?', options:['Productivity','Relaxation','Creativity'] },
+  { id:'q083', prompt:'What would most people choose for personal growth?', options:['Reading','Courses','Real-life experience'] },
+  { id:'q084', prompt:'What would most people avoid spending on?', options:['Luxury items','Subscriptions','Impulse buys'] },
+  { id:'q085', prompt:'What would most people value in their lifestyle most?', options:['Freedom','Comfort','Status'] },
+  { id:'q086', prompt:'What would most people want as a daily reward?', options:['Food treat','Rest','Entertainment'] },
+  { id:'q087', prompt:'What would most people choose when facing risk?', options:['Safe option','Moderate option','High-risk option'] },
+  { id:'q088', prompt:'What would most people want to improve emotionally?', options:['Confidence','Calmness','Resilience'] },
+  { id:'q089', prompt:'What would most people want more from others?', options:['Respect','Support','Attention'] },
+  { id:'q090', prompt:'What would most people choose as a long-term goal?', options:['Wealth','Happiness','Freedom'] },
+  { id:'q091', prompt:'What would most people want more of at work?', options:['Autonomy','Recognition','Security'] },
+  { id:'q092', prompt:'What would most people improve in their home environment?', options:['Organization','Cleanliness','Atmosphere'] },
+  { id:'q093', prompt:'What would most people choose for a quick break?', options:['Coffee','Snack','Phone time'] },
+  { id:'q094', prompt:'What would most people prefer to be known for?', options:['Intelligence','Kindness','Success'] },
+  { id:'q095', prompt:'What would most people choose for a first date?', options:['Dinner','Coffee','Activity'] },
+  { id:'q096', prompt:'What would most people want to be better at?', options:['Planning','Discipline','Communication'] },
+  { id:'q097', prompt:'What would most people pick for a day off?', options:['Sleeping in','Going out','Staying home'] },
+  { id:'q098', prompt:'What would most people care more about online?', options:['Attention','Authenticity','Validation'] },
+  { id:'q099', prompt:'What would most people choose to improve their mood?', options:['Music','Food','Going outside'] },
+  { id:'q100', prompt:'What would most people prefer from a boss?', options:['Fairness','Competence','Friendliness'] },
+  { id:'q101', prompt:'What would most people want more from a vacation?', options:['Relaxation','Adventure','Luxury'] },
+  { id:'q102', prompt:'What would most people choose to organize first?', options:['Room','Schedule','Finances'] },
+  { id:'q103', prompt:'What would most people prefer in a conversation?', options:['Humor','Depth','Politeness'] },
+  { id:'q104', prompt:'What would most people want to stop procrastinating on?', options:['Exercise','Cleaning','Paperwork'] },
+  { id:'q105', prompt:'What would most people rather cook?', options:['Simple meal','Healthy meal','Comfort food'] },
+  { id:'q106', prompt:'What would most people prefer in entertainment?', options:['Comedy','Drama','Thriller'] },
+  { id:'q107', prompt:'What would most people want to receive more often?', options:['Praise','Honesty','Affection'] },
+  { id:'q108', prompt:'What would most people improve in their appearance first?', options:['Body shape','Skin','Hair'] },
+  { id:'q109', prompt:'What would most people choose for a pet?', options:['Dog','Cat','No pet'] },
+  { id:'q110', prompt:'What would most people rather borrow?', options:['Money','Time','Advice'] },
+  { id:'q111', prompt:'What would most people prefer to spend less time on?', options:['Commute','Housework','Meetings'] },
+  { id:'q112', prompt:'What would most people choose to make life easier?', options:['More money','More help','Better habits'] },
+  { id:'q113', prompt:'What would most people want to do before age forty?', options:['Travel a lot','Buy a home','Build a career'] },
+  { id:'q114', prompt:'What would most people find most annoying?', options:['Loud people','Slow people','Negative people'] },
+  { id:'q115', prompt:'What would most people choose for lunch at work?', options:['Quick meal','Healthy meal','Cheap meal'] },
+  { id:'q116', prompt:'What would most people want more in a relationship?', options:['Passion','Stability','Trust'] },
+  { id:'q117', prompt:'What would most people rather repair first?', options:['Phone','Appliance','Car'] },
+  { id:'q118', prompt:'What would most people want to understand better?', options:['Themselves','Other people','The future'] },
+  { id:'q119', prompt:'What would most people choose for a major purchase?', options:['Home appliance','Vacation','Electronics'] },
+  { id:'q120', prompt:'What would most people prefer as a weekend plan?', options:['Seeing friends','Resting alone','Family time'] },
+  { id:'q121', prompt:'What would most people want more from daily meals?', options:['Taste','Convenience','Healthiness'] },
+  { id:'q122', prompt:'What would most people prefer to change in their city?', options:['Traffic','Safety','Cleanliness'] },
+  { id:'q123', prompt:'What would most people choose when tired?', options:['Nap','Coffee','Push through'] },
+  { id:'q124', prompt:'What would most people value more in a partner over time?', options:['Reliability','Chemistry','Ambition'] },
+  { id:'q125', prompt:'What would most people choose for a celebration?', options:['Dinner out','House gathering','Short trip'] },
+  { id:'q126', prompt:'What would most people want to do less of?', options:['Worrying','Spending','Working'] },
+  { id:'q127', prompt:'What would most people prefer to improve in communication apps?', options:['Speed','Privacy','Ease of use'] },
+  { id:'q128', prompt:'What would most people rather receive after a hard day?', options:['Silence','Comfort','Praise'] },
+  { id:'q129', prompt:'What would most people choose for home entertainment?', options:['TV','Gaming console','Music setup'] },
+  { id:'q130', prompt:'What would most people want more consistency in?', options:['Sleep schedule','Exercise','Budgeting'] },
+  { id:'q131', prompt:'What would most people prefer in a neighborhood?', options:['Quiet','Convenient','Prestigious'] },
+  { id:'q132', prompt:'What would most people choose for breakfast?', options:['Something quick','Something filling','Skip it'] },
+  { id:'q133', prompt:'What would most people value more in teamwork?', options:['Efficiency','Harmony','Clear roles'] },
+  { id:'q134', prompt:'What would most people choose after receiving extra income?', options:['Save it','Spend it','Pay debt'] },
+  { id:'q135', prompt:'What would most people want more from technology?', options:['Convenience','Speed','Reliability'] },
+  { id:'q136', prompt:'What would most people choose when making a big decision?', options:['Think alone','Ask advice','Follow feelings'] },
+  { id:'q137', prompt:'What would most people prefer in a phone?', options:['Battery life','Camera','Storage'] },
+  { id:'q138', prompt:'What would most people care about most before moving?', options:['Price','Location','Space'] },
+  { id:'q139', prompt:'What would most people rather improve in friendships?', options:['Contact frequency','Trust','Shared fun'] },
+  { id:'q140', prompt:'What would most people choose for stress relief?', options:['Sleep','Entertainment','Exercise'] },
+  { id:'q141', prompt:'What would most people want most from free time?', options:['Rest','Pleasure','Progress'] },
+  { id:'q142', prompt:'What would most people rather avoid in a home?', options:['Noise','Mess','Small space'] },
+  { id:'q143', prompt:'What would most people choose to improve transportation?', options:['Comfort','Cost','Speed'] },
+  { id:'q144', prompt:'What would most people prefer in a restaurant?', options:['Good taste','Good price','Good atmosphere'] },
+  { id:'q145', prompt:'What would most people want more in their wardrobe?', options:['Basics','Stylish pieces','Comfort items'] },
+  { id:'q146', prompt:'What would most people choose for a first impression?', options:['Friendly','Confident','Polite'] },
+  { id:'q147', prompt:'What would most people rather solve first after payday?', options:['Bills','Savings','Treating themselves'] },
+  { id:'q148', prompt:'What would most people want more in a vacation photo?', options:['Beautiful place','Good company','Good lighting'] },
+  { id:'q149', prompt:'What would most people choose for a commute?', options:['Shortest route','Cheapest route','Most comfortable route'] },
+  { id:'q150', prompt:'What would most people prefer to improve in a room?', options:['Lighting','Furniture','Storage'] },
+  { id:'q151', prompt:'What would most people choose when shopping for clothes?', options:['Price','Style','Comfort'] },
+  { id:'q152', prompt:'What would most people value more at a wedding?', options:['Food','Atmosphere','People'] },
+  { id:'q153', prompt:'What would most people want more in a smartphone app?', options:['Simplicity','Features','No ads'] },
+  { id:'q154', prompt:'What would most people rather talk about?', options:['Personal life','Current events','Funny things'] },
+  { id:'q155', prompt:'What would most people choose as a reason to stay in a job?', options:['Pay','Security','Work-life balance'] },
+  { id:'q156', prompt:'What would most people want more from exercise?', options:['Energy','Better looks','Stress relief'] },
+  { id:'q157', prompt:'What would most people choose for a special meal?', options:['Steak','Pasta','Seafood'] },
+  { id:'q158', prompt:'What would most people prefer to improve at home first?', options:['Bathroom','Kitchen','Bedroom'] },
+  { id:'q159', prompt:'What would most people choose before bed?', options:['Watch something','Scroll phone','Sleep right away'] },
+  { id:'q160', prompt:'What would most people want more in life right now?', options:['Money','Peace','Time'] },
+  { id:'q161', prompt:'What would most people choose for a rainy day?', options:['Stay home','Go to a cafe','Run errands'] },
+  { id:'q162', prompt:'What would most people prefer in a close relationship?', options:['Safety','Excitement','Understanding'] },
+  { id:'q163', prompt:'What would most people want more when learning?', options:['Clear explanation','Practice','Speed'] },
+  { id:'q164', prompt:'What would most people choose for a home purchase?', options:['Affordable option','Dream option','Best location'] },
+  { id:'q165', prompt:'What would most people value more in a manager?', options:['Decisiveness','Empathy','Fairness'] },
+  { id:'q166', prompt:'What would most people rather improve in their finances?', options:['Spending control','Income','Savings discipline'] },
+  { id:'q167', prompt:'What would most people choose to celebrate success?', options:['Nice dinner','Big purchase','Trip'] },
+  { id:'q168', prompt:'What would most people want more from weekends?', options:['Rest','Fun','Accomplishment'] },
+  { id:'q169', prompt:'What would most people choose when redecorating?', options:['Practical design','Cozy design','Modern design'] },
+  { id:'q170', prompt:'What would most people prefer in a travel companion?', options:['Easygoing','Organized','Funny'] },
+  { id:'q171', prompt:'What would most people choose to improve their day immediately?', options:['More sleep','Better breakfast','Less stress'] },
+  { id:'q172', prompt:'What would most people want more from friendships as adults?', options:['Loyalty','Frequency','Depth'] },
+  { id:'q173', prompt:'What would most people choose when eating out?', options:['Familiar food','Cheap food','Something new'] },
+  { id:'q174', prompt:'What would most people prefer in a living room?', options:['Comfortable sofa','Large TV','Open space'] },
+  { id:'q175', prompt:'What would most people want to be complimented on?', options:['Looks','Intelligence','Personality'] },
+  { id:'q176', prompt:'What would most people choose for a quick vacation?', options:['Seaside town','Big city','Nature retreat'] },
+  { id:'q177', prompt:'What would most people want more from social media?', options:['Entertainment','Connection','Useful information'] },
+  { id:'q178', prompt:'What would most people choose for self-improvement?', options:['Therapy','Books','Better routines'] },
+  { id:'q179', prompt:'What would most people prefer to fix first in the morning?', options:['Mood','Energy','Appearance'] },
+  { id:'q180', prompt:'What would most people choose when buying a car?', options:['Reliability','Price','Appearance'] },
+  { id:'q181', prompt:'What would most people want more in a meal prep routine?', options:['Speed','Variety','Healthiness'] },
+  { id:'q182', prompt:'What would most people choose to make a room feel better?', options:['Cleaner space','Better smell','Warmer lighting'] },
+  { id:'q183', prompt:'What would most people value more in an apology?', options:['Sincerity','Immediate action','Detailed explanation'] },
+  { id:'q184', prompt:'What would most people prefer in a holiday?', options:['Comfort','Adventure','Good weather'] },
+  { id:'q185', prompt:'What would most people choose for a shared home?', options:['Low rent','Good location','More space'] },
+  { id:'q186', prompt:'What would most people want more in their future?', options:['Security','Freedom','Achievement'] },
+  { id:'q187', prompt:'What would most people choose when buying groceries?', options:['Price','Taste','Health value'] },
+  { id:'q188', prompt:'What would most people prefer for weekend exercise?', options:['Walk','Gym session','Team sport'] },
+  { id:'q189', prompt:'What would most people choose as a daily luxury?', options:['Good coffee','Quiet time','Nice meal'] },
+  { id:'q190', prompt:'What would most people want more from a partner during stress?', options:['Patience','Practical help','Affection'] },
+  { id:'q191', prompt:'What would most people choose for productivity at home?', options:['Quiet','Better desk','Less phone use'] },
+  { id:'q192', prompt:'What would most people prefer after a long week?', options:['Sleep','Entertainment','Social time'] },
+  { id:'q193', prompt:'What would most people choose in a supermarket checkout line?', options:['Shortest line','Fastest cashier','Self-checkout'] },
+  { id:'q194', prompt:'What would most people want more from their home city?', options:['Opportunity','Safety','Fun'] },
+  { id:'q195', prompt:'What would most people choose when replacing furniture?', options:['Cheaper option','Better quality','Better style'] },
+  { id:'q196', prompt:'What would most people value more in everyday life?', options:['Convenience','Comfort','Predictability'] },
+  { id:'q197', prompt:'What would most people choose for a difficult conversation?', options:['Be direct','Be gentle','Delay it'] },
+  { id:'q198', prompt:'What would most people want more in a routine meal?', options:['Taste','Protein','Low cost'] },
+  { id:'q199', prompt:'What would most people choose for a long-term living setup?', options:['City apartment','Suburban home','Small quiet town'] },
+  { id:'q200', prompt:'What would most people prioritize long-term?', options:['Stability','Growth','Freedom'] },
 ];
