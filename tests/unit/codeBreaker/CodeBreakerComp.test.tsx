@@ -154,7 +154,7 @@ describe('CodeBreakerComp', () => {
 
     expect(onComplete).not.toHaveBeenCalled();
     expect(screen.getByText('🔓 Vault Cracked!')).toBeInTheDocument();
-    expect(screen.getByText('Leaderboard placement is based on score, which rewards solving in fewer attempts and faster time. Bands shown: 1–2 = Mythic · 3–4 = Elite · 5–6 = Expert · 7–8 = Strong · 9–10 = Solved · 11+ = Struggled')).toBeInTheDocument();
+    expect(screen.queryByText(/Leaderboard placement is based on score/)).not.toBeInTheDocument();
     expect(screen.getByText('Attempts')).toBeInTheDocument();
     expect(screen.getByText('Elapsed')).toBeInTheDocument();
     expect(screen.getAllByText('Score').length).toBeGreaterThan(0);

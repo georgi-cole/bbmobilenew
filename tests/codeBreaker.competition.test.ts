@@ -293,8 +293,35 @@ describe('Vault Cracker — scoring', () => {
   });
 
   it('very slow high-attempt solves collapse toward the solved floor', () => {
-    // 50 attempts: base=10 (floored), confidence=0.75 → adjusted=8; time bonus=0 → 8
+    // 50 attempts: base=10 (floored), confidence=0.80 → adjusted=8; time bonus=0 → 8
     expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(8);
+  });
+
+  it('softened curve — expert range instant solves (5–6 attempts)', () => {
+    // 5 attempts: base=82, confidence=1.00 → adjusted=82; time bonus=12 → 94
+    expect(computeSolvedScore(5, 0)).toBe(94);
+    // 6 attempts: base=74, confidence=0.98 → adjusted=73; time bonus=12 → 85
+    expect(computeSolvedScore(6, 0)).toBe(85);
+  });
+
+  it('softened curve — strong range instant solves (7–8 attempts)', () => {
+    // 7 attempts: base=66, confidence=0.97 → adjusted=64; time bonus=12 → 76
+    expect(computeSolvedScore(7, 0)).toBe(76);
+    // 8 attempts: base=58, confidence=0.96 → adjusted=56; time bonus=12 → 68
+    expect(computeSolvedScore(8, 0)).toBe(68);
+  });
+
+  it('softened curve — solved range instant solves (9–10 attempts)', () => {
+    // 9 attempts: base=50, confidence=0.93 → Math.round(50*0.93)=Math.round(46.5)=47; time bonus=12 → 59
+    expect(computeSolvedScore(9, 0)).toBe(59);
+    // 10 attempts: base=42, confidence=0.90 → Math.round(42*0.90)=Math.round(37.8)=38; time bonus=12 → 50
+    expect(computeSolvedScore(10, 0)).toBe(50);
+  });
+
+  it('softened curve — elite peak (4 attempts) still outranks expert range (5–6 attempts)', () => {
+    // 4 attempts instant (96) > 5 attempts instant (94) > 6 attempts instant (85)
+    expect(computeSolvedScore(4, 0)).toBeGreaterThan(computeSolvedScore(5, 0));
+    expect(computeSolvedScore(5, 0)).toBeGreaterThan(computeSolvedScore(6, 0));
   });
 
   it('AI scores stay within valid range when computing deterministic results', () => {

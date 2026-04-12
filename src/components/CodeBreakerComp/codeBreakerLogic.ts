@@ -43,21 +43,23 @@ export const TIME_BONUS_MAX = 12;
 /**
  * Raw base scores by attempt count.
  * Shaped so that 4 attempts is the peak scoring zone for a hard deduction puzzle.
+ * Values for 5–10 are softened ~20% compared with the original hard curve so that
+ * solid human performances (5–9 attempts) rank more favourably.
  */
 const ATTEMPT_BASE_SCORE_TABLE: Record<number, number> = {
   1: 100,
   2: 96,
   3: 90,
   4: 84,
-  5: 76,
-  6: 68,
-  7: 60,
-  8: 52,
-  9: 44,
-  10: 36,
+  5: 82,
+  6: 74,
+  7: 66,
+  8: 58,
+  9: 50,
+  10: 42,
 };
 /** Base score for 11 attempts; declines by ATTEMPT_BASE_SCORE_DECLINE per extra attempt. */
-const ATTEMPT_BASE_SCORE_11 = 28;
+const ATTEMPT_BASE_SCORE_11 = 34;
 const ATTEMPT_BASE_SCORE_DECLINE = 3;
 const ATTEMPT_BASE_SCORE_HARD_FLOOR = 10;
 
@@ -65,7 +67,8 @@ const ATTEMPT_BASE_SCORE_HARD_FLOOR = 10;
  * Confidence multipliers applied to the base score.
  * 1–2 attempts are discounted as likely-lucky outliers.
  * 3–6 attempts carry full or near-full confidence.
- * Confidence decreases gradually beyond 6 attempts.
+ * Confidence decreases gradually beyond 6 attempts, but less steeply than
+ * the original hard-puzzle curve so mid-range solvers rank more favourably.
  */
 const ATTEMPT_CONFIDENCE_TABLE: Record<number, number> = {
   1: 0.75,
@@ -74,12 +77,12 @@ const ATTEMPT_CONFIDENCE_TABLE: Record<number, number> = {
   4: 1.00,
   5: 1.00,
   6: 0.98,
-  7: 0.95,
-  8: 0.92,
-  9: 0.88,
-  10: 0.84,
+  7: 0.97,
+  8: 0.96,
+  9: 0.93,
+  10: 0.90,
 };
-const ATTEMPT_CONFIDENCE_11PLUS = 0.75;
+const ATTEMPT_CONFIDENCE_11PLUS = 0.80;
 
 // ─── Attempt bands ────────────────────────────────────────────────────────────
 
