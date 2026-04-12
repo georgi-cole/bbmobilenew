@@ -41,7 +41,6 @@ function stubCanvas() {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
     fillRect: vi.fn(),
     clearRect: vi.fn(),
-    fillText: vi.fn(),
     beginPath: vi.fn(),
     closePath: vi.fn(),
     fill: vi.fn(),
@@ -49,9 +48,6 @@ function stubCanvas() {
     save: vi.fn(),
     restore: vi.fn(),
     set fillStyle(_: string) {},
-    set font(_: string) {},
-    set textAlign(_: string) {},
-    set textBaseline(_: string) {},
   });
 }
 
