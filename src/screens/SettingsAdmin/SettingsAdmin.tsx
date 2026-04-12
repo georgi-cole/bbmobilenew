@@ -88,7 +88,7 @@ const COMPACT_ROSTER_LAYOUT_OPTIONS: {
 ];
 
 
-export default function Settings() {
+export default function SettingsAdmin() {
   const [activeTab, setActiveTab] = useState<Tab>('audio');
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
