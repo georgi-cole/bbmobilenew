@@ -994,7 +994,9 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     act(() => { store.dispatch(setPhase('pos_comp_announcement')); });
 
-    expect(screen.getByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeDefined();
+    expect(
+      screen.getByRole('dialog', { name: /Announcement: Power of Safety/i }).className,
+    ).toContain('tv-announcement--cinematic-major');
   });
 
   it('LOH Competition overlay requires manual dismissal (no auto-dismiss)', () => {

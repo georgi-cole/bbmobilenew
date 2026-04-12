@@ -46,6 +46,16 @@ export default function TvAnnouncementOverlay({
     announcement.key === 'live_eviction' ||
     announcement.key === 'eviction_vote_result' ||
     announcement.key.startsWith('loh_tiebreak_');
+  const isCinematicMajor =
+    !isBattleBack &&
+    !isDoubleEviction &&
+    !isVipVeto &&
+    !isDiamondPov &&
+    !isCoupDetat &&
+    !isSpotlightVeto &&
+    !isPublicSaveResult &&
+    !isConfessionalRequired &&
+    !isRoyalPurple;
   const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
@@ -141,6 +151,7 @@ export default function TvAnnouncementOverlay({
             isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
             isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
             isRoyalPurple ? 'tv-announcement--royal-purple' : '',
+            isCinematicMajor ? 'tv-announcement--cinematic-major' : '',
           ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="false"
