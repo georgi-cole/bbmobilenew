@@ -113,6 +113,23 @@
   gap: 0.5rem;
 }
 
+/* Compact audio row: [label] [toggle] [──slider──] [70%] */
+.settings-row--audio {
+  display: grid;
+  grid-template-columns: max-content 2.6rem 1fr max-content;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+}
+
+.settings-row__vol {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
 .settings-row--nested {
   padding: 0;
   border: 0;
@@ -173,6 +190,32 @@
 .settings-slider:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Styled <select> for dropdown settings (e.g. Theme) */
+.settings-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-card-2);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 2rem 0.4rem 0.75rem;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.5)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  transition: border-color 0.15s;
+}
+.settings-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.settings-select option {
+  background: #1e1e2e;
+  color: var(--color-text);
 }
 
 .settings-number {
