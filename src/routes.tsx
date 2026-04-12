@@ -26,6 +26,7 @@ import SelfEvicted          from './screens/SelfEvicted/SelfEvicted';
 import Rules                from './screens/Rules/Rules';
 import PublicMeter          from './screens/PublicMeter/PublicMeter';
 import Settings             from './screens/Settings/Settings';
+import SettingsAdmin        from './screens/SettingsAdmin/SettingsAdmin';
 import NotFound             from './screens/NotFound/NotFound';
 import { lazy, Suspense }   from 'react';
 import GameDebug            from './screens/GameDebug/GameDebug';
@@ -96,6 +97,7 @@ export const router = createHashRouter([
       { path: 'rules',            element: <Rules />        },
       { path: 'public-meter',     element: <PublicMeter />  },
       { path: 'settings',         element: <Settings />     },
+      { path: 'settingsatiste',   element: <SettingsAdmin /> },
       ...(import.meta.env.DEV && TwistsTestPage != null
         ? [{ path: 'twists-test', element: <Suspense fallback={null}><TwistsTestPage /></Suspense> }]
         : []),
