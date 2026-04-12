@@ -46,7 +46,7 @@ interface Props {
   participantIds: string[];
   participants?: MinigameParticipant[];
   prizeType: MajorityRulesCompetitionType;
-  /** Explicit seed for deterministic RNG. When omitted, a fresh crypto-random seed is generated on mount. */
+  /** Explicit seed for deterministic RNG. When omitted or set to 0, a fresh crypto-random seed is generated on mount. */
   seed?: number;
   onComplete?: () => void;
 }
