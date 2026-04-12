@@ -120,6 +120,7 @@ import './GameScreen.css'
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 export const POST_VOTE_ANNOUNCEMENT_DELAY_MS = 5000
+export const POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS = 400
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
 const AI_TIE_STAGE_DELAY_MS = 1000
 const AI_TIE_DECIDING_DELAY_MS = 1500
@@ -214,9 +215,18 @@ export default function GameScreen() {
     week: number
     phase: Phase
   } | null>(null)
+  const postEvictionVoteBreakdownPromptTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
     : null
+
+  useEffect(() => {
+    return () => {
+      if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
+        window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!activeConfessionalDecisionKey) {
@@ -1829,7 +1839,13 @@ export default function GameScreen() {
     // Show the confessional breakdown prompt if it was flagged during vote-results
     // dismissal (post-eviction confessional mode).
     if (isPostEvictionConfessionalModeRef.current) {
-      setShowVoteBreakdownPrompt(true)
+      if (postEvictionVoteBreakdownPromptTimerRef.current != null) {
+        window.clearTimeout(postEvictionVoteBreakdownPromptTimerRef.current)
+      }
+      postEvictionVoteBreakdownPromptTimerRef.current = window.setTimeout(() => {
+        postEvictionVoteBreakdownPromptTimerRef.current = null
+        setShowVoteBreakdownPrompt(true)
+      }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
   }, [dispatch, game.pendingEviction, game.phase, setFinal4Stage])
 

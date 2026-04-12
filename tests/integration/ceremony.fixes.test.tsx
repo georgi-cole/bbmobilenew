@@ -21,7 +21,10 @@ import uiReducer from '../../src/store/uiSlice';
 import settingsReducer from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player } from '../../src/types';
-import GameScreen, { POST_VOTE_ANNOUNCEMENT_DELAY_MS } from '../../src/screens/GameScreen/GameScreen';
+import GameScreen, {
+  POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
+  POST_VOTE_ANNOUNCEMENT_DELAY_MS,
+} from '../../src/screens/GameScreen/GameScreen';
 import { loadEvictionVoteBreakdownUnlock } from '../../src/features/evictionVoteBreakdownStorage';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -394,6 +397,14 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
       capturedEvictionSplashDone?.();
     });
 
+    expect(screen.queryByRole('dialog', { name: /peek behind the curtain/i })).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS - 1);
+    });
+    expect(screen.queryByRole('dialog', { name: /peek behind the curtain/i })).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy();
   });
 
@@ -425,6 +436,9 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     });
     await act(async () => {
       capturedEvictionSplashDone?.();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS);
     });
 
     act(() => {
