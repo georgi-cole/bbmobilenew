@@ -71,6 +71,11 @@ const FOOD_EMOJI: Record<FoodType, string> = {
   penalty: '💀',
 };
 
+/** Font used for food emoji on the LCD canvas (pre-computed from TILE_SIZE). */
+const FOOD_FONT = `${TILE_SIZE - 2}px serif`;
+/** Multiplier applied to foodPulsePhase to drive the faster expiry-blink animation. */
+const BLINK_PHASE_MULTIPLIER = 6;
+
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -293,8 +298,9 @@ export default function SnakeGame({
     let foodAlpha: number;
     if (gamePhaseRef.current === 'playing') {
       if (foodTypeRef.current !== 'standard' && foodAge >= FOOD_EXPIRY_BLINK_MS) {
-        // Fast blink when approaching expiry: rapid sine between ~0 and 1
-        foodAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+        // Fast blink when approaching expiry: use a multiple of the existing
+        // pulse phase so no extra Date.now() call is needed in the render loop.
+        foodAlpha = 0.5 + 0.5 * Math.sin(foodPulsePhaseRef.current * BLINK_PHASE_MULTIPLIER);
       } else {
         // Gentle pulse (existing behaviour for all non-blinking food)
         foodAlpha =
@@ -306,9 +312,6 @@ export default function SnakeGame({
     }
 
     ctx.globalAlpha = foodAlpha;
-    ctx.font = `${TILE_SIZE - 2}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.fillText(
       FOOD_EMOJI[foodTypeRef.current],
       foodRef.current.x * TILE_SIZE + TILE_SIZE / 2,
@@ -598,9 +601,18 @@ export default function SnakeGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  // Initial canvas render
+  // Initial canvas render + one-time text property setup
   useEffect(() => {
-    if (canvasRef.current) draw();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Set text properties once; they persist for the lifetime of the context.
+      ctx.font = FOOD_FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+    }
+    draw();
   }, [draw]);
 
   // ── Direction handling ─────────────────────────────────────────────────────
