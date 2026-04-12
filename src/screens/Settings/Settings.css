@@ -429,7 +429,7 @@
 
 .settings-number {
   width: 100%;
-  min-height: 2.8rem;
+  min-height: 2.7rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
     rgba(17, 24, 39, 0.9);
