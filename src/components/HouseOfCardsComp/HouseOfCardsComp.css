@@ -355,6 +355,7 @@
   background: linear-gradient(160deg, #0d1b2a 0%, #1a2a3d 60%, #0a1622 100%);
   color: #e3ecf5;
   box-sizing: border-box;
+  /* Tighten the shared MinigameCompleteWrapper scroll area for this taller hero card. */
   --minigame-list-max-height: 43vh;
 }
 

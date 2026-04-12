@@ -388,7 +388,7 @@ export default function HouseOfCardsComp({
                   .join(' ');
 
                 return (
-                  <li key={outcome.playerId} className={rowClass} role="listitem">
+                  <li key={outcome.playerId} className={rowClass}>
                     <span
                       className={[
                         'hoc-standing-rank',
