@@ -362,13 +362,13 @@ function resolveIncomingInteractionPlan(
     };
   } else if (
     constraints.actorIsNominee &&
-    (context.phase === 'nominations' || context.phase === 'nomination_results') &&
+    context.phase === 'nominations' &&
     constraints.playerIsHoh
   ) {
     plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' };
   } else if (
     constraints.actorIsNominee &&
-    (context.phase === 'nomination_results' || context.phase === 'social_2' || context.phase === 'live_vote')
+    (context.phase === 'social_2' || context.phase === 'live_vote')
   ) {
     plan = {
       type: context.phase === 'live_vote' ? 'deal_offer' : 'check_in',
@@ -502,6 +502,7 @@ export function computeIncomingInteractionEngagementScore(
 export interface IncomingInteractionEnqueueDecision {
   allowed: boolean;
   reason: string;
+  plan?: InteractionPlan;
   score?: number;
   globalActive?: number;
   perAiActive?: number;
@@ -577,7 +578,7 @@ export function evaluateIncomingInteractionEnqueueDecision(
   if (socialConfig.verbose) {
     console.debug(`[autonomy] enqueue ${actorId}: score=${score.toFixed(3)}`);
   }
-  return { allowed: true, reason: 'eligible', score };
+  return { allowed: true, reason: 'eligible', plan, score };
 }
 
 export function shouldEnqueueInteraction(
@@ -860,17 +861,7 @@ export function scheduleIncomingInteractionsForPhase(
       continue;
     }
 
-    const plan = resolveIncomingInteractionPlan(actor.id, playerId, context);
-    if (!plan) {
-      logIncomingInteractionDecision(store.dispatch, {
-        stage: 'generation',
-        reason: 'blocked_by_context_rules',
-        actorId: actor.id,
-        week,
-        phase,
-      });
-      continue;
-    }
+    const plan = decision.plan!;
 
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),

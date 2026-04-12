@@ -129,6 +129,24 @@ describe('incomingInteractionAutonomy thematic routing', () => {
     expect(chooseIncomingInteractionType('nominee', 'user', context)).toBe('nomination_plea');
   });
 
+  it('uses the nomination aftershock scenario right after nominations are revealed', () => {
+    const context = buildContext({
+      phase: 'nomination_results',
+      lohId: 'user',
+      nomineeIds: ['nominee'],
+      random: () => 0,
+    });
+    const store = buildStore(context);
+
+    scheduleIncomingInteractionsForPhase('nomination_results', store, context);
+
+    const interaction = store.social.scheduledIncomingInteractions.find(
+      (entry) => entry.interaction.fromId === 'nominee',
+    )?.interaction;
+    expect(interaction?.type).toBe('check_in');
+    expect(interaction?.payload?.scenarioKey).toBe('nomination_aftershock');
+  });
+
   it('routes nominees to deal offers when the player holds veto power', () => {
     const context = buildContext({
       phase: 'pos_results',
