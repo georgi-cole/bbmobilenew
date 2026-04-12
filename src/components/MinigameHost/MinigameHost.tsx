@@ -46,6 +46,7 @@ import type { HouseOfCardsPrizeType } from '../../features/houseOfCards/houseOfC
 import MemoryColorsComp from '../MemoryColorsComp/MemoryColorsComp';
 import type { MemoryColorsCompetitionType } from '../../features/memoryColors/memoryColorsSlice';
 import TrapAuctionComp from '../TrapAuction/TrapAuction';
+import ColorMatchComp from '../ColorMatchComp/ColorMatchComp';
 import reactComponents from '../../minigames/reactComponents';
 import './MinigameHost.css';
 
@@ -505,6 +506,39 @@ export default function MinigameHost({
                   seed={seed}
                   autoStart={true}
                   onComplete={handleReactComplete}
+                />
+              );
+            }
+            if (game.implementation === 'react' && game.reactComponentKey === 'ColorMatch') {
+              // seed is intentionally NOT forwarded to ColorMatchComp.
+              // In normal gameplay the challenge seed is a deterministic value derived
+              // from game.seed — passing it would cause the same color sequence to
+              // repeat whenever the same game.seed is active (e.g. after a page reload).
+              // ColorMatchComp generates a fresh crypto-random session seed when the
+              // seed prop is absent/zero, ensuring each session has a unique color order.
+              if (import.meta.env.DEV) {
+                console.log('COLOR_MATCH_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
+              return (
+                <ColorMatchComp
+                  autoStart={true}
+                  participantIds={participantIds}
+                  participants={participants}
+                  onFinish={(value: number, tiebreakerMs?: number, completion?: ReactMinigameCompletion) => {
+                    if (completion?.authoritativeWinnerId) {
+                      onDone(value, false, completion);
+                      return;
+                    }
+                    setFinalValue(value);
+                    setFinalTiebreakerMs(tiebreakerMs ?? null);
+                    setWasPartial(false);
+                    setPhase('results');
+                  }}
                 />
               );
             }

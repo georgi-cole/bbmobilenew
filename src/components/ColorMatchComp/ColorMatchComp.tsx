@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { mulberry32 } from '../../store/rng';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import useSound from '../../hooks/useSound';
 import {
   buildColorMatchCompetitionRawResults,
@@ -125,6 +126,17 @@ export default function ColorMatchComp({
   participantIds = [],
   participants,
 }: Props) {
+  // Only use an explicitly non-zero prop seed (dev/test pages).
+  // In normal hosted play MinigameHost omits the seed prop so ColorMatchComp
+  // always generates a fresh crypto-random sequence per session — ensuring the
+  // color order is unique each game and never a deterministic replay.
+  const [sessionSeed] = useState<number>(() => {
+    const s = seed !== 0 && seed !== undefined ? seed : cryptoSeed();
+    if (import.meta.env.DEV) {
+      console.log('COLOR_MATCH_INIT', { seedProp: seed, sessionSeed: s });
+    }
+    return s;
+  });
   const { play } = useSound();
   const resolvedParticipants = useMemo(() => {
     if (participants && participants.length > 0) {
@@ -157,11 +169,11 @@ export default function ColorMatchComp({
           Array.from({ length: MAX_ROUNDS }, (_, roundIndex) => simulateColorMatchAiRoundScore(
             participant,
             roundIndex + 1,
-            seed,
+            sessionSeed,
           )),
         ]),
     ) as Record<string, number[]>,
-    [resolvedParticipants, seed],
+    [resolvedParticipants, sessionSeed],
   );
   const participantsById = useMemo(
     () => Object.fromEntries(resolvedParticipants.map((participant) => [participant.id, participant])),
@@ -169,14 +181,14 @@ export default function ColorMatchComp({
   );
 
   const rounds = useMemo(() => {
-    const rng = mulberry32((seed ^ 0x7f3da812) >>> 0);
+    const rng = mulberry32((sessionSeed ^ 0x7f3da812) >>> 0);
     const picked = seededPick(NAMED_COLORS, NAMED_COLORS.length, rng);
     return picked.map((nc) => ({
       name: nc.name,
       target: { ...nc.rgb },
       startColor: randomStartColor(nc.rgb, rng),
     }));
-  }, [seed]);
+  }, [sessionSeed]);
 
   const [roundIndex, setRoundIndex] = useState(0);
   const [phase, setPhase] = useState<GamePhase>('mixing');
@@ -286,7 +298,7 @@ export default function ColorMatchComp({
                 ? getColorMatchAiRoundScore(
                   participant,
                   roundNumber,
-                  seed,
+                  sessionSeed,
                   aiRoundScores[standing.participantId],
                 )
                 : DEFAULT_AI_FALLBACK_SCORE;
@@ -315,7 +327,7 @@ export default function ColorMatchComp({
       }
       setPhase('feedback');
     },
-    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, participantsById, playCorrect, playIncorrect, roundIndex, seed, stopTimer],
+    [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, participantsById, playCorrect, playIncorrect, roundIndex, sessionSeed, stopTimer],
   );
 
   // Keep submitRound available via ref so the interval can always call the latest.
@@ -412,7 +424,7 @@ export default function ColorMatchComp({
               ? getColorMatchAiRoundScore(
                 participant,
                 roundNumber,
-                seed,
+                sessionSeed,
                 aiRoundScores[standing.participantId],
               )
               : DEFAULT_AI_FALLBACK_SCORE;
@@ -441,7 +453,7 @@ export default function ColorMatchComp({
       setPhase('feedback');
     }, 600);
     return () => clearTimeout(timeoutId);
-  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, participantsById, phase, roundIndex, seed]);
+  }, [activeCompetitionStandings, aiRoundScores, competitionMode, competitionStandings, humanStillActive, participantsById, phase, roundIndex, sessionSeed]);
 
   const handleSliderChange = useCallback(
     (channel: keyof RGB, value: number) => {
