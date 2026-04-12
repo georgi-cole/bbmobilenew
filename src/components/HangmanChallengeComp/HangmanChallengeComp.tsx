@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import {
   MYSTERY_BOX_POOL,
@@ -80,7 +80,13 @@ interface RoundSummary {
   appliedEffects: string[];
 }
 
+interface AttemptedLetter {
+  letter: string;
+  result: 'correct' | 'wrong';
+}
+
 interface RoundState {
+  attemptedLetters: AttemptedLetter[];
   guessedLetters: string[];
   revealedLetters: string[];
   wrongLetters: string[];
@@ -116,6 +122,7 @@ interface Props {
 
 function createEmptyRoundState(): RoundState {
   return {
+    attemptedLetters: [],
     guessedLetters: [],
     revealedLetters: [],
     wrongLetters: [],
@@ -224,6 +231,10 @@ function formatAdjustment(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`;
 }
 
+function sanitizeLetterInput(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z]/g, '').slice(-1);
+}
+
 export default function HangmanChallengeComp({
   onFinish,
   seed = 0,
@@ -260,6 +271,7 @@ export default function HangmanChallengeComp({
   const [breakdown, setBreakdown] = useState<RoundScoreBreakdown | null>(null);
   const [animatedRoundScore, setAnimatedRoundScore] = useState(0);
   const [roundLeaderboard, setRoundLeaderboard] = useState<RoundSummary[]>([]);
+  const [letterInput, setLetterInput] = useState('');
   const [cumulativeScores, setCumulativeScores] = useState<Record<string, number>>(() =>
     Object.fromEntries(resolvedParticipants.map((participant) => [participant.id, 0])),
   );
@@ -293,6 +305,21 @@ export default function HangmanChallengeComp({
   );
   const boxesLocked = roundState.activeTimedEffects.some((effect) => effect.id === 'lock_boxes');
   const keyboardDistorted = roundState.activeTimedEffects.some((effect) => effect.id === 'distort_used');
+  const pressureRatio = roundState.wrongCount / MAX_ERRORS;
+  const pressureFill = roundState.wrongCount >= MAX_ERRORS
+    ? 'linear-gradient(180deg, rgba(255, 112, 112, 0.96), rgba(120, 18, 36, 0.94))'
+    : roundState.wrongCount >= MAX_ERRORS - 1
+      ? 'linear-gradient(180deg, rgba(255, 134, 98, 0.96), rgba(172, 42, 56, 0.94))'
+      : roundState.wrongCount >= 4
+        ? 'linear-gradient(180deg, rgba(255, 177, 96, 0.96), rgba(208, 86, 52, 0.92))'
+        : roundState.wrongCount >= 2
+          ? 'linear-gradient(180deg, rgba(255, 214, 120, 0.96), rgba(227, 128, 70, 0.92))'
+          : 'linear-gradient(180deg, rgba(111, 220, 255, 0.94), rgba(53, 135, 224, 0.9))';
+  const normalizedInput = sanitizeLetterInput(letterInput);
+  const inputIsUsed = normalizedInput.length > 0
+    && (roundState.guessedLetters.includes(normalizedInput) || roundState.wrongLetters.includes(normalizedInput));
+  const inputIsDisabled = normalizedInput.length > 0 && roundState.disabledLetters.includes(normalizedInput);
+  const canSubmitInput = normalizedInput.length > 0 && !inputIsUsed && !inputIsDisabled;
 
   const badgeLabels = useMemo(() => {
     const labels = roundState.activeTimedEffects.map((effect) => `${effect.label} ${Math.ceil(effect.remainingMs / 1000)}s`);
@@ -309,6 +336,7 @@ export default function HangmanChallengeComp({
     setRoundState(createEmptyRoundState());
     setBreakdown(null);
     setAnimatedRoundScore(0);
+    setLetterInput('');
   }, []);
 
   useEffect(() => {
@@ -580,27 +608,30 @@ export default function HangmanChallengeComp({
     }
     const isCorrect = normalizeWord(currentWord.text).includes(letter);
     setRoundState((prev) => {
-      if (isCorrect) {
-        return {
-          ...prev,
-          guessedLetters: [...prev.guessedLetters, letter],
-          boardFlash: 'correct',
-        };
+        if (isCorrect) {
+          return {
+            ...prev,
+            attemptedLetters: [...prev.attemptedLetters, { letter, result: 'correct' }],
+            guessedLetters: [...prev.guessedLetters, letter],
+            boardFlash: 'correct',
+          };
       }
 
       const adjustments = [...prev.scoreAdjustments];
       const wrongIncrement = prev.shieldNextWrong ? 0 : prev.nextWrongDouble ? 2 : 1;
+      const nextWrongCount = clamp(prev.wrongCount + wrongIncrement, 0, MAX_ERRORS);
       if (prev.nextWrongExtraPenalty) adjustments.push({ label: 'Risk marker', value: -40 });
       return {
         ...prev,
+        attemptedLetters: [...prev.attemptedLetters, { letter, result: 'wrong' }],
         wrongLetters: [...prev.wrongLetters, letter],
-        wrongCount: clamp(prev.wrongCount + wrongIncrement, 0, MAX_ERRORS),
+        wrongCount: nextWrongCount,
         scoreAdjustments: adjustments,
         shieldNextWrong: false,
         nextWrongDouble: false,
         nextWrongExtraPenalty: false,
         guessedLetters: [...prev.guessedLetters],
-        boardFlash: 'wrong',
+        boardFlash: nextWrongCount >= MAX_ERRORS ? 'failed' : 'wrong',
       };
     });
   }, [currentWord.text, phase, roundState.disabledLetters, roundState.guessedLetters, roundState.wrongLetters]);
@@ -737,11 +768,26 @@ export default function HangmanChallengeComp({
       return () => clearTimeout(timeout);
     }
     if (roundState.wrongCount >= MAX_ERRORS) {
-      const timeout = setTimeout(() => finishRound(false), 0);
+      const timeout = setTimeout(() => finishRound(false), 650);
       return () => clearTimeout(timeout);
     }
     return undefined;
   }, [finishRound, phase, roundState.wrongCount, solved]);
+
+  const submitLetterGuess = useCallback(() => {
+    if (!canSubmitInput) return;
+    guessLetter(normalizedInput);
+    setLetterInput('');
+  }, [canSubmitInput, guessLetter, normalizedInput]);
+
+  const handleLetterInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setLetterInput(sanitizeLetterInput(event.target.value));
+  }, []);
+
+  const handleLetterInputSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    submitLetterGuess();
+  }, [submitLetterGuess]);
 
   useEffect(() => {
     if (phase !== 'breakdown' || !breakdown) return undefined;
@@ -819,25 +865,29 @@ export default function HangmanChallengeComp({
             <div className="hangman-challenge__pressure-card">
               <div className="hangman-challenge__pressure-head">
                 <span>Pressure</span>
-                <strong>{roundState.wrongCount}/{MAX_ERRORS}</strong>
               </div>
               <div
                 className={`hangman-challenge__pressure-glass${roundState.wrongCount >= MAX_ERRORS ? ' is-shattered' : ''}`}
                 aria-hidden="true"
               >
-                <div className="hangman-challenge__pressure-glass-fill" style={{ height: `${(roundState.wrongCount / MAX_ERRORS) * 100}%` }} />
+                <div
+                  className="hangman-challenge__pressure-glass-fill"
+                  style={{ height: `${pressureRatio * 100}%`, background: pressureFill }}
+                />
                 {PRESSURE_CRACK_INDICES.map((index) => (
                   <span
                     key={index}
                     className={`hangman-challenge__pressure-crack hangman-challenge__pressure-crack--${(index % 4) + 1}${index < roundState.wrongCount ? ' is-visible' : ''}`}
                   />
                 ))}
+                {roundState.wrongCount >= MAX_ERRORS && (
+                  <div className="hangman-challenge__shatter-burst">
+                    {Array.from({ length: 7 }, (_, index) => (
+                      <span key={index} className={`hangman-challenge__shard hangman-challenge__shard--${index + 1}`} />
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="hangman-challenge__pressure-copy">
-                {roundState.wrongCount >= MAX_ERRORS
-                  ? 'The glass gave out on the last miss.'
-                  : `${MAX_ERRORS - roundState.wrongCount} clean reads left before it shatters.`}
-              </p>
             </div>
           </section>
 
@@ -874,29 +924,54 @@ export default function HangmanChallengeComp({
                 </div>
               )}
             </div>
-            <section className={`hangman-challenge__keyboard-panel${keyboardDistorted ? ' is-distorted' : ''}`} aria-label="Letter board">
+            <section className={`hangman-challenge__keyboard-panel${keyboardDistorted ? ' is-distorted' : ''}`} aria-label="Letter entry">
               <div className="hangman-challenge__used-head">
-                <span>Letter board</span>
-                <strong>A–Z</strong>
+                <span>Letter entry</span>
+                <strong>{roundState.attemptedLetters.length} tried</strong>
               </div>
-              <div className="hangman-challenge__keyboard" aria-label="Letter keyboard">
-                {ALPHABET.map((letter) => {
-                  const isUsed = roundState.guessedLetters.includes(letter) || roundState.wrongLetters.includes(letter);
-                  const isCorrect = roundState.guessedLetters.includes(letter);
-                  const isWrong = roundState.wrongLetters.includes(letter);
-                  const isDisabled = roundState.disabledLetters.includes(letter);
-                  return (
-                    <button
-                      key={letter}
-                      className={`hangman-challenge__key${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}${isDisabled ? ' is-disabled' : ''}`}
-                      disabled={isUsed || isDisabled}
-                      onClick={() => guessLetter(letter)}
-                      type="button"
+              <form className="hangman-challenge__letter-form" onSubmit={handleLetterInputSubmit}>
+                <label className="hangman-challenge__input-shell">
+                  <span className="hangman-challenge__input-label">Guess a letter</span>
+                  <input
+                    aria-label="Guess a letter"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    className="hangman-challenge__letter-input"
+                    inputMode="text"
+                    maxLength={1}
+                    onChange={handleLetterInputChange}
+                    pattern="[A-Za-z]"
+                    placeholder="A–Z"
+                    type="text"
+                    value={letterInput}
+                  />
+                </label>
+                <button className="hangman-challenge__key hangman-challenge__submit" disabled={!canSubmitInput} type="submit">
+                  Guess
+                </button>
+              </form>
+              <p className="hangman-challenge__input-hint">
+                {inputIsDisabled
+                  ? `${normalizedInput} is jammed by the current signal effect.`
+                  : inputIsUsed
+                    ? `${normalizedInput} is already on the board.`
+                    : roundState.disabledLetters.length > 0
+                      ? `Jammed right now: ${roundState.disabledLetters.join(', ')}`
+                      : 'Use your phone keyboard to enter one letter at a time.'}
+              </p>
+              <div className="hangman-challenge__attempts" aria-label="Attempted letters">
+                {roundState.attemptedLetters.length > 0 ? (
+                  roundState.attemptedLetters.map(({ letter, result }, index) => (
+                    <span
+                      key={`${letter}-${index}`}
+                      className={`hangman-challenge__attempt-chip${result === 'correct' ? ' is-correct' : ' is-wrong'}`}
                     >
                       {letter}
-                    </button>
-                  );
-                })}
+                    </span>
+                  ))
+                ) : (
+                  <span className="hangman-challenge__attempt-empty">No letters called yet.</span>
+                )}
               </div>
             </section>
           </section>
