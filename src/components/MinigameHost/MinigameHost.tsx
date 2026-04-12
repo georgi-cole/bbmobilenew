@@ -464,12 +464,25 @@ export default function MinigameHost({
               );
             }
             if (game.implementation === 'react' && game.reactComponentKey === 'HouseOfCards') {
+              // seed is intentionally NOT forwarded to HouseOfCardsComp.
+              // In normal gameplay the challenge seed is a deterministic value derived
+              // from game.seed — passing it would cause the same card layout to
+              // repeat whenever the same game.seed is active (e.g. after a page reload).
+              // HouseOfCardsComp generates a fresh crypto-random session seed on mount
+              // so each new session shuffles the board and AI simulation uniquely.
+              if (import.meta.env.DEV) {
+                console.log('HOUSE_OF_CARDS_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
               return (
                 <HouseOfCardsComp
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as HouseOfCardsPrizeType ?? 'LOH'}
-                  seed={seed}
                   onComplete={handleReactComplete}
                 />
               );
