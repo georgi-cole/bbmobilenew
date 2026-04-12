@@ -1,6 +1,18 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import './TvAnnouncementOverlay.css';
 
+const CINEMATIC_MAJOR_KEYS = new Set([
+  'nomination_ceremony',
+  'veto_ceremony',
+  'final4',
+  'final3_announcement',
+  'final_hoh',
+  'jury',
+  'twist',
+  'loh_comp_announcement',
+  'pos_comp_announcement',
+]);
+
 export interface Announcement {
   key: string;
   title: string;
@@ -46,16 +58,7 @@ export default function TvAnnouncementOverlay({
     announcement.key === 'live_eviction' ||
     announcement.key === 'eviction_vote_result' ||
     announcement.key.startsWith('loh_tiebreak_');
-  const isCinematicMajor =
-    !isBattleBack &&
-    !isDoubleEviction &&
-    !isVipVeto &&
-    !isDiamondPov &&
-    !isCoupDetat &&
-    !isSpotlightVeto &&
-    !isPublicSaveResult &&
-    !isConfessionalRequired &&
-    !isRoyalPurple;
+  const isCinematicMajor = CINEMATIC_MAJOR_KEYS.has(announcement.key);
   const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
