@@ -582,7 +582,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     description: 'Race to 1000 points — navigate food, grab bonuses, dodge penalties!',
     instructions: [
       'Reach 1000 points to complete the run — fastest time wins',
-      'Monochrome food signs: block +25 pts · diamond +75 pts · triangle −20 pts',
+      'Monochrome food silhouettes: fruit +25 pts · heart +75 pts · bug −20 pts',
       'Bonus and penalty food expire after 6 seconds — grab them or let them vanish',
       'Snake moves continuously — change direction using controls',
       'Avoid hitting walls or your own tail',

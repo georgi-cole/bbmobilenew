@@ -64,15 +64,36 @@ const FOOD_PULSE_STEP = 0.55;
 const FOOD_EXPIRY_BLINK_MS = 3_000;
 /** Total lifetime (ms) of non-standard food before it auto-disappears. */
 const FOOD_EXPIRY_TOTAL_MS = 6_000;
-/** Monochrome LCD glyphs per food type — distinct, but intentionally similar. */
-const FOOD_GLYPHS: Record<FoodType, string> = {
-  standard: '■',
-  bonus: '◆',
-  penalty: '▲',
+/** Monochrome LCD pixel silhouettes per food type — interesting, but still subtly similar. */
+const FOOD_SPRITES: Record<FoodType, readonly string[]> = {
+  // Fruit-ish
+  standard: [
+    '00100',
+    '01110',
+    '11111',
+    '11111',
+    '01110',
+  ],
+  // Heart-ish
+  bonus: [
+    '01010',
+    '11111',
+    '11111',
+    '01110',
+    '00100',
+  ],
+  // Bug-ish
+  penalty: [
+    '01110',
+    '11111',
+    '10101',
+    '11111',
+    '01010',
+  ],
 };
-
-/** Font used for food glyphs on the LCD canvas (pre-computed from TILE_SIZE). */
-const FOOD_FONT = `900 ${TILE_SIZE - 2}px monospace`;
+const FOOD_SPRITE_GRID = 5;
+const FOOD_SPRITE_PIXEL = 2;
+const FOOD_SPRITE_OFFSET = Math.floor((TILE_SIZE - (FOOD_SPRITE_GRID * FOOD_SPRITE_PIXEL)) / 2);
 /** Multiplier applied to foodPulsePhase to drive the faster expiry-blink animation. */
 const BLINK_PHASE_MULTIPLIER = 6;
 
@@ -116,6 +137,28 @@ interface Props {
 /** Clamp an accumulated score to the valid [0, SCORE_SCALE] range. */
 function normaliseScore(score: number): number {
   return Math.max(0, Math.min(SCORE_SCALE, score));
+}
+
+function drawFoodSprite(
+  ctx: CanvasRenderingContext2D,
+  type: FoodType,
+  position: Vec2,
+): void {
+  const sprite = FOOD_SPRITES[type];
+  const originX = position.x * TILE_SIZE + FOOD_SPRITE_OFFSET;
+  const originY = position.y * TILE_SIZE + FOOD_SPRITE_OFFSET;
+
+  sprite.forEach((row, rowIndex) => {
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      if (row[columnIndex] !== '1') continue;
+      ctx.fillRect(
+        originX + (columnIndex * FOOD_SPRITE_PIXEL),
+        originY + (rowIndex * FOOD_SPRITE_PIXEL),
+        FOOD_SPRITE_PIXEL,
+        FOOD_SPRITE_PIXEL,
+      );
+    }
+  });
 }
 
 /** Format milliseconds as M:SS.t (e.g. 1:23.4). */
@@ -313,11 +356,7 @@ export default function SnakeGame({
 
     ctx.globalAlpha = foodAlpha;
     ctx.fillStyle = '#0f380f';
-    ctx.fillText(
-      FOOD_GLYPHS[foodTypeRef.current],
-      foodRef.current.x * TILE_SIZE + TILE_SIZE / 2,
-      foodRef.current.y * TILE_SIZE + TILE_SIZE / 2,
-    );
+    drawFoodSprite(ctx, foodTypeRef.current, foodRef.current);
     ctx.globalAlpha = 1;
   }, []);
 
@@ -602,17 +641,8 @@ export default function SnakeGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  // Initial canvas render + one-time text property setup
+  // Initial canvas render
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      // Set text properties once; they persist for the lifetime of the context.
-      ctx.font = FOOD_FONT;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-    }
     draw();
   }, [draw]);
 
