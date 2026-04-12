@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import type { PlayerStatus } from '../../types';
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import {
   advanceIntro,
   advanceReveal,
@@ -45,7 +46,8 @@ interface Props {
   participantIds: string[];
   participants?: MinigameParticipant[];
   prizeType: MajorityRulesCompetitionType;
-  seed: number;
+  /** Explicit seed for deterministic RNG. When omitted or set to 0, a fresh crypto-random seed is generated on mount. */
+  seed?: number;
   onComplete?: () => void;
 }
 
@@ -384,7 +386,10 @@ export default function MajorityRulesComp({
   }>(() => ({
     participantIds: [...participantIds],
     competitionType: prizeType,
-    seed,
+    // Only forward an explicit non-zero seed (e.g. dev/test pages).
+    // When seed is absent or 0, generate a fresh crypto-random seed so each
+    // new hosted game session draws questions in a unique, unpredictable order.
+    seed: seed !== undefined && seed !== 0 ? seed : cryptoSeed(),
     humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
   }));
   const motionEnabled = !areAnimationsDisabled();

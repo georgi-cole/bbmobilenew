@@ -360,12 +360,25 @@ export default function MinigameHost({
               );
             }
             if (game.implementation === 'react' && game.reactComponentKey === 'MajorityRules') {
+              // seed is intentionally NOT forwarded to MajorityRulesComp.
+              // In normal gameplay the challenge seed is a deterministic value derived
+              // from game.seed — passing it would cause the same question sequence to
+              // repeat whenever the same game.seed is active (e.g. after a page reload).
+              // MajorityRulesComp generates a fresh crypto-random seed on mount so each
+              // new session draws questions in a unique, unpredictable order.
+              if (import.meta.env.DEV) {
+                console.log('MAJORITY_RULES_NEW_SESSION', {
+                  source: 'MinigameHost',
+                  challengeSeedIgnored: seed,
+                  participantIds,
+                  prizeType: gameOptions?.prizeType ?? 'LOH',
+                });
+              }
               return (
                 <MajorityRulesComp
                   participantIds={participantIds}
                   participants={participants}
                   prizeType={gameOptions?.prizeType as MajorityRulesCompetitionType ?? 'LOH'}
-                  seed={seed}
                   onComplete={handleReactComplete}
                 />
               );
