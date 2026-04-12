@@ -51,7 +51,7 @@ describe('ConfessionalSpotlightOverlay', () => {
     });
   });
 
-  it('anchors the spotlight to the measured target center with tight radii', () => {
+  it('anchors the spotlight to the measured target center with badge-inclusive radii', () => {
     const target = document.createElement('img');
     const targetRef = createRef<HTMLElement>();
     targetRef.current = target;
@@ -74,16 +74,16 @@ describe('ConfessionalSpotlightOverlay', () => {
 
     expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-x')).toBe('109px');
     expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-y')).toBe('209px');
-    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-inner')).toBe('14px');
-    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-outer')).toBe('22px');
-    expect(haloLayer.style.left).toBe('86px');
-    expect(haloLayer.style.top).toBe('186px');
-    expect(haloLayer.style.width).toBe('46px');
-    expect(haloLayer.style.height).toBe('46px');
-    expect(buttonGlowLayer.style.left).toBe('89px');
-    expect(buttonGlowLayer.style.top).toBe('189px');
-    expect(buttonGlowLayer.style.width).toBe('40px');
-    expect(buttonGlowLayer.style.height).toBe('40px');
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-inner')).toBe('20px');
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-outer')).toBe('30px');
+    expect(haloLayer.style.left).toBe('76px');
+    expect(haloLayer.style.top).toBe('176px');
+    expect(haloLayer.style.width).toBe('66px');
+    expect(haloLayer.style.height).toBe('66px');
+    expect(buttonGlowLayer.style.left).toBe('77px');
+    expect(buttonGlowLayer.style.top).toBe('177px');
+    expect(buttonGlowLayer.style.width).toBe('64px');
+    expect(buttonGlowLayer.style.height).toBe('64px');
   });
 
   it('re-measures the target on resize and keeps the spotlight bounded for larger targets', async () => {
@@ -106,8 +106,8 @@ describe('ConfessionalSpotlightOverlay', () => {
     const overlay = screen.getByTestId('confessional-spotlight');
     const overlayLayer = overlay.querySelector('.confessional-spotlight__overlay') as HTMLElement;
 
-    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-inner')).toBe('16px');
-    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-outer')).toBe('24px');
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-inner')).toBe('22px');
+    expect(overlayLayer.style.getPropertyValue('--confessional-spotlight-outer')).toBe('32px');
 
     rect = {
       left: 180,

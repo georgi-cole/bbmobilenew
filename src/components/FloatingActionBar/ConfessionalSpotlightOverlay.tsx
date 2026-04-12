@@ -4,13 +4,13 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 const SPOTLIGHT_TOTAL_DURATION_MS = 4400;
 const SPOTLIGHT_REDUCED_DURATION_MS = 2800;
-const SPOTLIGHT_CLEAR_RADIUS_MIN_PX = 14;
-const SPOTLIGHT_CLEAR_RADIUS_MAX_PX = 20;
-const SPOTLIGHT_CLEAR_RADIUS_PADDING_PX = 4;
-const SPOTLIGHT_FEATHER_OFFSET_PX = 8;
-const SPOTLIGHT_FEATHER_RADIUS_MAX_PX = 30;
-const SPOTLIGHT_HALO_PADDING_PX = 1;
-const SPOTLIGHT_GLOW_PADDING_PX = 6;
+const SPOTLIGHT_CLEAR_RADIUS_MIN_PX = 20;
+const SPOTLIGHT_CLEAR_RADIUS_MAX_PX = 26;
+const SPOTLIGHT_CLEAR_RADIUS_PADDING_PX = 10;
+const SPOTLIGHT_FEATHER_OFFSET_PX = 10;
+const SPOTLIGHT_FEATHER_RADIUS_MAX_PX = 36;
+const SPOTLIGHT_HALO_PADDING_PX = 3;
+const SPOTLIGHT_GLOW_PADDING_PX = 12;
 
 type SpotlightRect = {
   left: number;
@@ -177,9 +177,9 @@ export default function ConfessionalSpotlightOverlay({
         initial={{ opacity: 0, scale: 0.6 }}
         animate={
           prefersReducedMotion
-            ? { opacity: 0.72, scale: 1 }
+            ? { opacity: 0.8, scale: 1 }
             : {
-                opacity: [0, 0.92, 0.78, 0],
+                opacity: [0, 0.96, 0.84, 0],
                 scale: [0.6, 1, 1.02, 0.98],
               }
         }
@@ -195,7 +195,7 @@ export default function ConfessionalSpotlightOverlay({
           style={buttonGlowStyle}
           initial={{ opacity: 0, scale: 0.84 }}
           animate={{
-            opacity: [0, 0.56, 0.16, 0.4, 0],
+            opacity: [0, 0.66, 0.22, 0.46, 0],
             scale: [0.9, 1.04, 0.98, 1.02, 1],
           }}
           transition={{
