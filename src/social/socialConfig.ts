@@ -229,6 +229,12 @@ export const socialConfig = {
       sameTypeCooldownWeeks: 1,
       /** Minimum number of weeks between any low-priority interactions per actor. */
       lowPriorityCooldownWeeks: 1,
+      /**
+       * Minimum number of weeks before an actor may reuse the same variant family
+       * with the same recipient. Prevents near-duplicate phrasing even when the
+       * scenario type is allowed again.
+       */
+      familyCooldownWeeks: 1,
     },
   },
 

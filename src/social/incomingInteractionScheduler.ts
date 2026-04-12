@@ -158,6 +158,25 @@ export function getInteractionDedupeReason({
     return 'deduped_similar_pending';
   }
 
+  // Family-level dedupe: prevent near-duplicate phrasing by blocking the same
+  // variant family from the same actor within the configured cooldown window.
+  const incomingFamilyId =
+    typeof interaction.payload?.variantFamilyId === 'string'
+      ? interaction.payload.variantFamilyId
+      : null;
+  if (incomingFamilyId && dedupe.familyCooldownWeeks > 0) {
+    const sameFamily = allFromActor.find(
+      (entry) =>
+        typeof entry.payload?.variantFamilyId === 'string' &&
+        entry.payload.variantFamilyId === incomingFamilyId &&
+        week >= entry.createdWeek &&
+        week - entry.createdWeek <= dedupe.familyCooldownWeeks,
+    );
+    if (sameFamily) {
+      return 'deduped_same_family';
+    }
+  }
+
   if (priority === 'low' && dedupe.lowPriorityCooldownWeeks > 0) {
     const lastFromActor = allFromActor.reduce<IncomingInteraction | null>(
       (latest, entry) => {

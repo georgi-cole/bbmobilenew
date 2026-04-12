@@ -29,6 +29,11 @@ import {
   getIncomingInteractionPriority,
 } from './incomingInteractionScheduler';
 import { logIncomingInteractionDecision } from './incomingInteractionLogging';
+import {
+  SCENARIO_VARIANT_POOLS,
+  getVoiceProfile,
+  pickVariantText,
+} from './interactionVariantBank';
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -730,11 +735,62 @@ function generateInteractionText(
   playerId: string,
   plan: InteractionPlan,
   context: AutonomyContext,
+  pendingInteractions: IncomingInteraction[] = [],
   rng: () => number = Math.random,
-): string {
+): { text: string; variantFamilyId: string } {
+  // Build context for token replacement.
+  const textContext = buildInteractionTextContext(actorId, playerId, context);
+
+  // Determine how many times this actor has already contacted the player
+  // (unresolved interactions) so follow-up families can be preferred.
+  const priorFromActor = pendingInteractions.filter(
+    (interaction) => interaction.fromId === actorId && !interaction.resolved,
+  ).length;
+
+  // Collect variant family IDs recently used by this actor → player pair so
+  // the selection logic can avoid them. Only consider interactions within the
+  // configured family-cooldown window to prevent unbounded growth.
+  const familyRecencyWindowWeeks = Math.max(
+    0,
+    socialConfig.incomingInteractionDeliveryConfig.dedupe.familyCooldownWeeks ?? 0,
+  );
+  const recentFamilyCutoffWeek = context.week - familyRecencyWindowWeeks;
+  const recentFamilyIds = new Set<string>(
+    pendingInteractions
+      .filter(
+        (interaction) =>
+          interaction.fromId === actorId &&
+          typeof interaction.createdWeek === 'number' &&
+          interaction.createdWeek >= recentFamilyCutoffWeek,
+      )
+      .map((interaction) => interaction.payload?.variantFamilyId as string | undefined)
+      .filter((id): id is string => typeof id === 'string'),
+  );
+
+  // Use the rich variant bank when families are available for this scenario.
+  const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey];
+  if (variantFamilies && variantFamilies.length > 0) {
+    const voiceProfile = getVoiceProfile(actorId);
+    const { text, familyId } = pickVariantText(
+      variantFamilies,
+      voiceProfile,
+      recentFamilyIds,
+      priorFromActor,
+      rng,
+    );
+    return {
+      text: renderInteractionTemplate(text, textContext),
+      variantFamilyId: familyId,
+    };
+  }
+
+  // Fallback: use the legacy flat template array.
   const templates = SCENARIO_TEMPLATES[plan.scenarioKey] ?? SCENARIO_TEMPLATES.generic_check_in;
   const template = templates[Math.floor(rng() * templates.length)] ?? 'We need to talk.';
-  return renderInteractionTemplate(template, buildInteractionTextContext(actorId, playerId, context));
+  return {
+    text: renderInteractionTemplate(template, textContext),
+    variantFamilyId: `legacy_${plan.scenarioKey}`,
+  };
 }
 
 let _idCounter = 0;
@@ -873,13 +929,22 @@ export function scheduleIncomingInteractionsForPhase(
       continue;
     }
 
+    const textResult = generateInteractionText(
+      actor.id,
+      playerId,
+      plan,
+      context,
+      pendingInteractions,
+      context.random,
+    );
     const interaction: IncomingInteraction = {
       id: generateInteractionId(),
       fromId: actor.id,
       type: plan.type,
-      text: generateInteractionText(actor.id, playerId, plan, context, context.random),
+      text: textResult.text,
       payload: {
         scenarioKey: plan.scenarioKey,
+        variantFamilyId: textResult.variantFamilyId,
         phase,
         actorStatus: actor.status,
       },
