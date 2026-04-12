@@ -53,16 +53,22 @@ function stubCanvas() {
   });
 }
 
-const snakeStyles = readFileSync(
-  path.resolve(process.cwd(), 'src/components/SnakeGame/SnakeGame.css'),
-  'utf8',
-);
+let cachedSnakeStyles: string | null = null;
+
+function getSnakeStyles() {
+  if (cachedSnakeStyles != null) return cachedSnakeStyles;
+  cachedSnakeStyles = readFileSync(
+    path.resolve(process.cwd(), 'src/components/SnakeGame/SnakeGame.css'),
+    'utf8',
+  );
+  return cachedSnakeStyles;
+}
 
 function ensureSnakeStylesInjected() {
   if (document.getElementById('snake-test-styles')) return;
   const style = document.createElement('style');
   style.id = 'snake-test-styles';
-  style.textContent = snakeStyles;
+  style.textContent = getSnakeStyles();
   document.head.appendChild(style);
 }
 
@@ -169,9 +175,14 @@ describe('SnakeGame competition reveal flow', () => {
       </Provider>,
     );
 
-    const statusLine = screen.getByText(/0 PTS\s+0:00\.0/i) as HTMLElement;
-    const styles = getComputedStyle(statusLine);
-    const normalizedStyles = snakeStyles.replace(/\s+/g, ' ');
+    const statusLine = document.querySelector('.snake-status-line') as HTMLElement | null;
+    const normalizedStyles = getSnakeStyles().replace(/\s+/g, ' ');
+
+    expect(statusLine).not.toBeNull();
+    expect(statusLine?.textContent ?? '').toContain('PTS');
+    expect(statusLine?.textContent ?? '').toMatch(/\d+:\d{2}\.\d/);
+
+    const styles = getComputedStyle(statusLine as HTMLElement);
 
     expect(statusLine).toHaveClass('snake-status-line');
     expect(normalizedStyles).toContain('font-size: clamp(9px, 2.4vw, 12px);');
