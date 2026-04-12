@@ -60,6 +60,16 @@ const FAST_FORWARD_RESOLVE_MS = 2_000;
 const FOOD_PULSE_MIN_OPACITY = 0.68;
 const FOOD_PULSE_RANGE = 0.32;
 const FOOD_PULSE_STEP = 0.55;
+/** Age (ms) after which non-standard food starts blinking. */
+const FOOD_EXPIRY_BLINK_MS = 3_000;
+/** Total lifetime (ms) of non-standard food before it auto-disappears. */
+const FOOD_EXPIRY_TOTAL_MS = 6_000;
+/** Emoji icons per food type rendered on the LCD canvas. */
+const FOOD_EMOJI: Record<FoodType, string> = {
+  standard: '🍎',
+  bonus: '⭐',
+  penalty: '💀',
+};
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -162,6 +172,11 @@ export default function SnakeGame({
   const foodRef = useRef<Vec2>({ x: 5, y: 5 });
   /** Type of the currently active food item. */
   const foodTypeRef = useRef<FoodType>('standard');
+  /**
+   * Timestamp (Date.now()) when the current non-standard food was placed.
+   * 0 for standard food or before first placement.
+   */
+  const foodSpawnTimeRef = useRef<number>(0);
   const foodEatenRef = useRef(0);
   const currentScoreRef = useRef(0);
   /** Timestamp (Date.now()) when the current run started; null before first start. */
@@ -270,21 +285,34 @@ export default function SnakeGame({
       ctx.fillRect(seg.x * TILE_SIZE, seg.y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     });
 
-    const foodPulse = gamePhaseRef.current === 'playing'
-      ? FOOD_PULSE_MIN_OPACITY
-        + (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE)
-      : 1;
-    ctx.globalAlpha = foodPulse;
-    // Food color varies by type: bonus (lighter green) / penalty (dark reddish) / standard
-    ctx.fillStyle =
-      foodTypeRef.current === 'bonus' ? '#306010'
-      : foodTypeRef.current === 'penalty' ? '#3d1010'
-      : '#0f380f';
-    ctx.fillRect(
-      foodRef.current.x * TILE_SIZE,
-      foodRef.current.y * TILE_SIZE,
-      TILE_SIZE - 1,
-      TILE_SIZE - 1,
+    const foodAge =
+      foodTypeRef.current !== 'standard' && foodSpawnTimeRef.current > 0
+        ? Date.now() - foodSpawnTimeRef.current
+        : 0;
+
+    let foodAlpha: number;
+    if (gamePhaseRef.current === 'playing') {
+      if (foodTypeRef.current !== 'standard' && foodAge >= FOOD_EXPIRY_BLINK_MS) {
+        // Fast blink when approaching expiry: rapid sine between ~0 and 1
+        foodAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+      } else {
+        // Gentle pulse (existing behaviour for all non-blinking food)
+        foodAlpha =
+          FOOD_PULSE_MIN_OPACITY +
+          (((Math.sin(foodPulsePhaseRef.current) + 1) / 2) * FOOD_PULSE_RANGE);
+      }
+    } else {
+      foodAlpha = 1;
+    }
+
+    ctx.globalAlpha = foodAlpha;
+    ctx.font = `${TILE_SIZE - 2}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      FOOD_EMOJI[foodTypeRef.current],
+      foodRef.current.x * TILE_SIZE + TILE_SIZE / 2,
+      foodRef.current.y * TILE_SIZE + TILE_SIZE / 2,
     );
     ctx.globalAlpha = 1;
   }, []);
@@ -307,9 +335,13 @@ export default function SnakeGame({
     foodRef.current = candidate;
     // Assign a food type based on random roll
     const r = Math.random();
-    foodTypeRef.current = r < BONUS_FOOD_CHANCE ? 'bonus'
+    const newType: FoodType =
+      r < BONUS_FOOD_CHANCE ? 'bonus'
       : r < BONUS_FOOD_CHANCE + PENALTY_FOOD_CHANCE ? 'penalty'
       : 'standard';
+    foodTypeRef.current = newType;
+    // Track spawn time so non-standard food can expire
+    foodSpawnTimeRef.current = newType !== 'standard' ? Date.now() : 0;
   }, []);
 
   // ── Game tick ──────────────────────────────────────────────────────────────
@@ -367,6 +399,13 @@ export default function SnakeGame({
       placeFood();
     } else {
       snakeRef.current = snakeRef.current.slice(0, -1);
+      // Food expiry: non-standard food disappears after FOOD_EXPIRY_TOTAL_MS,
+      // ensuring bad food can never block progress indefinitely.
+      if (foodTypeRef.current !== 'standard' && foodSpawnTimeRef.current > 0) {
+        if (Date.now() - foodSpawnTimeRef.current >= FOOD_EXPIRY_TOTAL_MS) {
+          placeFood();
+        }
+      }
     }
 
     // Update live elapsed time display — throttled to every ~250ms to avoid
@@ -519,6 +558,7 @@ export default function SnakeGame({
     lastTimerUpdateRef.current = 0;
     elapsedMsRef.current = 0;
     foodPulsePhaseRef.current = 0;
+    foodSpawnTimeRef.current = 0;
     gameOverRef.current = false;
 
     setCurrentScore(0);

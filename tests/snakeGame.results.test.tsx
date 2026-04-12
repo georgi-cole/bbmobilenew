@@ -41,6 +41,7 @@ function stubCanvas() {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
     fillRect: vi.fn(),
     clearRect: vi.fn(),
+    fillText: vi.fn(),
     beginPath: vi.fn(),
     closePath: vi.fn(),
     fill: vi.fn(),
@@ -48,6 +49,9 @@ function stubCanvas() {
     save: vi.fn(),
     restore: vi.fn(),
     set fillStyle(_: string) {},
+    set font(_: string) {},
+    set textAlign(_: string) {},
+    set textBaseline(_: string) {},
   });
 }
 
@@ -170,10 +174,13 @@ describe('SnakeGame leaderboard ordering — sortScoreEntries contract', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
-      fillRect: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
+      fillRect: vi.fn(), clearRect: vi.fn(), fillText: vi.fn(), beginPath: vi.fn(),
       closePath: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
       save: vi.fn(), restore: vi.fn(),
       set fillStyle(_: string) {},
+      set font(_: string) {},
+      set textAlign(_: string) {},
+      set textBaseline(_: string) {},
     });
     vi.spyOn(Math, 'random').mockReturnValue(0);
     simulateMock = simulateSnakeAiScore as ReturnType<typeof vi.fn>;
