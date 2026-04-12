@@ -17,7 +17,6 @@ import {
   type MajorityRulesCompetitionType,
 } from '../../features/majorityRules/majorityRulesSlice';
 import { resolveMajorityRulesOutcome } from '../../features/majorityRules/thunks';
-import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import './MajorityRulesComp.css';
 
@@ -46,7 +45,7 @@ interface Props {
   participantIds: string[];
   participants?: MinigameParticipant[];
   prizeType: MajorityRulesCompetitionType;
-  seed?: number;
+  seed: number;
   onComplete?: () => void;
 }
 
@@ -382,22 +381,12 @@ export default function MajorityRulesComp({
     competitionType: MajorityRulesCompetitionType;
     seed: number;
     humanPlayerId: string | null;
-  }>(() => {
-    // Only use an explicitly non-zero prop seed (dev/test pages).
-    // In normal hosted play MinigameHost omits the seed prop so MajorityRulesComp
-    // always generates a fresh crypto-random session seed — ensuring each hosted
-    // game gets a unique, non-deterministic question sequence.
-    const sessionSeed = seed !== 0 && seed !== undefined ? seed : cryptoSeed();
-    if (import.meta.env.DEV) {
-      console.log('MAJORITY_RULES_INIT', { seedProp: seed, sessionSeed });
-    }
-    return {
-      participantIds: [...participantIds],
-      competitionType: prizeType,
-      seed: sessionSeed,
-      humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
-    };
-  });
+  }>(() => ({
+    participantIds: [...participantIds],
+    competitionType: prizeType,
+    seed,
+    humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
+  }));
   const motionEnabled = !areAnimationsDisabled();
 
   const playerMap = useMemo<Record<string, DisplayPlayer>>(() => {
