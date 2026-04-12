@@ -725,7 +725,56 @@
   letter-spacing: 0.22em;
 }
 
-@media (max-width: 420px) {
+/* ── Band badges in the leaderboard ───────────────────────────────────────── */
+
+.cb__lb-band {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-top: 2px;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+.cb__lb-band--mythic {
+  background: rgba(190, 110, 230, 0.22);
+  color: #d9a0f5;
+  border: 1px solid rgba(190, 110, 230, 0.35);
+}
+
+.cb__lb-band--elite {
+  background: rgba(255, 200, 60, 0.18);
+  color: #f5d06a;
+  border: 1px solid rgba(255, 200, 60, 0.32);
+}
+
+.cb__lb-band--expert {
+  background: rgba(75, 208, 141, 0.16);
+  color: #74e8ab;
+  border: 1px solid rgba(75, 208, 141, 0.28);
+}
+
+.cb__lb-band--strong {
+  background: rgba(80, 160, 240, 0.16);
+  color: #7abef5;
+  border: 1px solid rgba(80, 160, 240, 0.28);
+}
+
+.cb__lb-band--solved {
+  background: rgba(160, 180, 200, 0.14);
+  color: #a4bbd4;
+  border: 1px solid rgba(160, 180, 200, 0.24);
+}
+
+.cb__lb-band--struggled {
+  background: rgba(200, 100, 110, 0.14);
+  color: #d4919a;
+  border: 1px solid rgba(200, 100, 110, 0.24);
+}
+
   .cb__dials {
     gap: 10px;
   }

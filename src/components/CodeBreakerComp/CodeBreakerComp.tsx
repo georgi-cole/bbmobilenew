@@ -34,6 +34,8 @@ import {
   computeSolvedScore,
   computeAllAiSolveProfiles,
   rankScores,
+  getAttemptBand,
+  ATTEMPT_BAND_LABELS,
   type GuessResult,
 } from './codeBreakerLogic';
 import './CodeBreakerComp.css';
@@ -312,7 +314,7 @@ export default function CodeBreakerComp({
       ? `${elapsedLabel} Elapsed • Score ${humanScore}`
       : attempts > 0
         ? `Best alignment so far: ${bestBulls}/${CODE_LENGTH} exact`
-        : 'Unlimited attempts. Higher scores come from solving in fewer tries and less time.';
+        : 'Unlimited attempts. Fewer attempts earn a higher band — 3–4 is Elite, 5–6 is Expert, 7–8 is Strong.';
 
   const statusCls = [
     'cb__status',
@@ -377,7 +379,7 @@ export default function CodeBreakerComp({
         <div className="cb__results">
           <p className="cb__results-headline">🔓 Vault Cracked!</p>
           <p className="cb__results-subhead">
-            Your run now ranks by score, based on attempts and elapsed time.
+            Leaderboard placement is based on score, which rewards solving in fewer attempts and faster time. Bands shown: 1–2 = Mythic · 3–4 = Elite · 5–6 = Expert · 7–8 = Strong · 9–10 = Solved · 11+ = Struggled
           </p>
 
           <ol className="cb__leaderboard">
@@ -412,6 +414,14 @@ export default function CodeBreakerComp({
                   <span className="cb__lb-score-wrap">
                     <span className="cb__lb-score-label">Score</span>
                     <span className="cb__lb-score">{entry.score}</span>
+                    {entry.solveProfile && (() => {
+                      const band = getAttemptBand(entry.solveProfile.attempts);
+                      return (
+                        <span className={`cb__lb-band cb__lb-band--${band}`}>
+                          {ATTEMPT_BAND_LABELS[band]}
+                        </span>
+                      );
+                    })()}
                   </span>
                 </li>
               );

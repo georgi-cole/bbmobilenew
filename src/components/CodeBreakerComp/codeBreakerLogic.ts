@@ -3,6 +3,21 @@
  *
  * Pure logic utilities for the Vault Cracker (formerly Logic Locks) minigame.
  * Exported separately so they can be tested independently of the React component.
+ *
+ * Scoring design (hard-puzzle model):
+ *   - Attempts dominate the score; time is a smaller secondary modifier.
+ *   - Peak score is achieved at 4 attempts (elite zone for a hard deduction puzzle).
+ *   - 1–2 attempt solves are treated as outlier/lucky and receive a confidence
+ *     discount so they do not automatically outrank strong 3–6 attempt runs.
+ *   - Time contributes a bonus of 0–TIME_BONUS_MAX points within each attempt tier.
+ *
+ * Attempt bands:
+ *   Mythic   1–2   (lucky/outlier – confidence-discounted)
+ *   Elite    3–4   (peak skill zone)
+ *   Expert   5–6   (strong performance)
+ *   Strong   7–8   (typical good solve)
+ *   Solved   9–10  (lower-end success)
+ *   Struggled 11+  (completed, low efficiency)
  */
 
 import { mulberry32 } from '../../store/rng';
@@ -13,16 +28,97 @@ export const CODE_LENGTH = 4;
 export const DEFAULT_ELAPSED_SCORE_CAP_MS = 180_000;
 
 /**
- * Minimum score for a completed solve.
+ * Minimum score for any completed solve (floor applied after all modifiers).
  */
-export const SOLVED_SCORE_FLOOR = 30;
+export const SOLVED_SCORE_FLOOR = 5;
+
 /**
- * Maximum additional score on top of SOLVED_SCORE_FLOOR.
- * Total solved range: SOLVED_SCORE_FLOOR .. SOLVED_SCORE_FLOOR + SOLVED_SCORE_RANGE
+ * Maximum time bonus added on top of the attempt-based score.
+ * Time contributes 0–TIME_BONUS_MAX points as a tiebreaker within each attempt tier.
  */
-export const SOLVED_SCORE_RANGE = 70; // → max 100
-export const SOLVED_ATTEMPT_WEIGHT = 0.65;
-export const SOLVED_TIME_WEIGHT = 0.35;
+export const TIME_BONUS_MAX = 12;
+
+// ─── Attempt-band scoring tables ──────────────────────────────────────────────
+
+/**
+ * Raw base scores by attempt count.
+ * Shaped so that 4 attempts is the peak scoring zone for a hard deduction puzzle.
+ */
+const ATTEMPT_BASE_SCORE_TABLE: Record<number, number> = {
+  1: 100,
+  2: 96,
+  3: 90,
+  4: 84,
+  5: 76,
+  6: 68,
+  7: 60,
+  8: 52,
+  9: 44,
+  10: 36,
+};
+/** Base score for 11 attempts; declines by ATTEMPT_BASE_SCORE_DECLINE per extra attempt. */
+const ATTEMPT_BASE_SCORE_11 = 28;
+const ATTEMPT_BASE_SCORE_DECLINE = 3;
+const ATTEMPT_BASE_SCORE_HARD_FLOOR = 10;
+
+/**
+ * Confidence multipliers applied to the base score.
+ * 1–2 attempts are discounted as likely-lucky outliers.
+ * 3–6 attempts carry full or near-full confidence.
+ * Confidence decreases gradually beyond 6 attempts.
+ */
+const ATTEMPT_CONFIDENCE_TABLE: Record<number, number> = {
+  1: 0.75,
+  2: 0.82,
+  3: 0.92,
+  4: 1.00,
+  5: 1.00,
+  6: 0.98,
+  7: 0.95,
+  8: 0.92,
+  9: 0.88,
+  10: 0.84,
+};
+const ATTEMPT_CONFIDENCE_11PLUS = 0.75;
+
+// ─── Attempt bands ────────────────────────────────────────────────────────────
+
+/**
+ * Attempt-based performance band for the leaderboard.
+ *
+ * Bands reflect the expected difficulty of a hard deduction puzzle where
+ * the bulk of successful solvers land around 6–8 attempts.
+ */
+export type AttemptBand = 'mythic' | 'elite' | 'expert' | 'strong' | 'solved' | 'struggled';
+
+/** Human-readable label for each attempt band. */
+export const ATTEMPT_BAND_LABELS: Record<AttemptBand, string> = {
+  mythic: 'Mythic',
+  elite: 'Elite',
+  expert: 'Expert',
+  strong: 'Strong',
+  solved: 'Solved',
+  struggled: 'Struggled',
+};
+
+/**
+ * Map an attempt count to its performance band.
+ *
+ * - 1–2:  Mythic   (very lucky / outlier)
+ * - 3–4:  Elite    (exceptional deduction)
+ * - 5–6:  Expert   (strong performance)
+ * - 7–8:  Strong   (typical good solve)
+ * - 9–10: Solved   (lower-end success)
+ * - 11+:  Struggled
+ */
+export function getAttemptBand(attempts: number): AttemptBand {
+  if (attempts <= 2) return 'mythic';
+  if (attempts <= 4) return 'elite';
+  if (attempts <= 6) return 'expert';
+  if (attempts <= 8) return 'strong';
+  if (attempts <= 10) return 'solved';
+  return 'struggled';
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,17 +207,41 @@ export function evaluateGuess(secret: number[], guess: number[]): GuessResult {
   return { digits: guess, bulls, cows };
 }
 
+// ─── Internal scoring helpers ─────────────────────────────────────────────────
+
+function attemptBaseScore(attempts: number): number {
+  if (attempts <= 10) {
+    return ATTEMPT_BASE_SCORE_TABLE[attempts] ?? ATTEMPT_BASE_SCORE_TABLE[10];
+  }
+  return Math.max(
+    ATTEMPT_BASE_SCORE_HARD_FLOOR,
+    ATTEMPT_BASE_SCORE_11 - (attempts - 11) * ATTEMPT_BASE_SCORE_DECLINE,
+  );
+}
+
+function attemptConfidence(attempts: number): number {
+  if (attempts <= 10) {
+    return ATTEMPT_CONFIDENCE_TABLE[attempts] ?? ATTEMPT_CONFIDENCE_TABLE[10];
+  }
+  return ATTEMPT_CONFIDENCE_11PLUS;
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 /**
  * Compute the score for a player who successfully cracked the code.
  *
- * Score = SOLVED_SCORE_FLOOR + round(SOLVED_SCORE_RANGE * weightedPerformance)
+ * Formula:
+ *   adjustedBase = round(attemptBase(attempts) × confidence(attempts))
+ *   timeBonus    = round(TIME_BONUS_MAX × timeFraction)
+ *   score        = max(SOLVED_SCORE_FLOOR, adjustedBase + timeBonus)
  *
- * weightedPerformance blends:
- *   - Attempts: 1 / attempts
- *   - Time:     remaining fraction within DEFAULT_ELAPSED_SCORE_CAP_MS
- *
- * Fewer attempts carry the most weight, while faster solves add a smaller but
- * meaningful bonus.
+ * Design:
+ *   - Attempts dominate: the base score is non-linear with a peak at 4 attempts
+ *     (the elite zone for a hard puzzle).
+ *   - 1–2 attempt solves receive a confidence discount (0.75–0.82×) so they do
+ *     not automatically outrank strong 3–6 attempt runs.
+ *   - Time contributes a 0–TIME_BONUS_MAX bonus as a secondary tiebreaker.
  */
 export function computeSolvedScore(
   attempts: number,
@@ -130,15 +250,15 @@ export function computeSolvedScore(
 ): number {
   const safeAttempts = Math.max(1, attempts);
   const safeElapsedScoreCapMs = Math.max(1, elapsedScoreCapMs);
-  const attemptsFraction = 1 / safeAttempts;
+  const base = attemptBaseScore(safeAttempts);
+  const confidence = attemptConfidence(safeAttempts);
+  const adjustedBase = Math.round(base * confidence);
   const timeFraction = Math.max(
     0,
     Math.min(1, 1 - Math.max(0, elapsedMs) / safeElapsedScoreCapMs),
   );
-  const weightedPerformance =
-    (attemptsFraction * SOLVED_ATTEMPT_WEIGHT) + (timeFraction * SOLVED_TIME_WEIGHT);
-
-  return SOLVED_SCORE_FLOOR + Math.round(SOLVED_SCORE_RANGE * weightedPerformance);
+  const timeBonus = Math.round(TIME_BONUS_MAX * timeFraction);
+  return Math.max(SOLVED_SCORE_FLOOR, adjustedBase + timeBonus);
 }
 
 /**
@@ -146,6 +266,9 @@ export function computeSolvedScore(
  *
  * AI players always eventually solve the code, with attempt efficiency and
  * elapsed-time profiles derived from (masterSeed, playerId).
+ *
+ * Attempt range 4–11 reflects a hard deduction puzzle where most players
+ * need several attempts before cracking the vault.
  */
 export function computeAiSolveProfile(
   masterSeed: number,
@@ -153,7 +276,8 @@ export function computeAiSolveProfile(
   elapsedScoreCapMs = DEFAULT_ELAPSED_SCORE_CAP_MS,
 ): AiSolveProfile {
   const rng = playerRng(masterSeed, playerId);
-  const attempts = 1 + Math.floor(rng() * 8);
+  // 4..11 attempts: hard-puzzle distribution (no 1–3 attempt outliers for AI)
+  const attempts = 4 + Math.floor(rng() * 8);
   const elapsedMs = Math.min(
     elapsedScoreCapMs,
     15_000 + Math.round(rng() * elapsedScoreCapMs),

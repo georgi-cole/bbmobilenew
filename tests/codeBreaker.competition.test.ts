@@ -36,8 +36,11 @@ import {
   computeAllAiSolveProfiles,
   computeAllAiScores,
   rankScores,
+  getAttemptBand,
+  ATTEMPT_BAND_LABELS,
   CODE_LENGTH,
   DEFAULT_ELAPSED_SCORE_CAP_MS,
+  SOLVED_SCORE_FLOOR,
 } from '../src/components/CodeBreakerComp/codeBreakerLogic';
 
 describe('Vault Cracker registry wiring', () => {
@@ -212,24 +215,77 @@ describe('Vault Cracker — evaluateGuess', () => {
   });
 });
 
-// ── 3. Pure logic — scoring ───────────────────────────────────────────────────
+// ── 3. Pure logic — attempt bands ─────────────────────────────────────────────
+
+describe('Vault Cracker — getAttemptBand', () => {
+  it('1–2 attempts → mythic', () => {
+    expect(getAttemptBand(1)).toBe('mythic');
+    expect(getAttemptBand(2)).toBe('mythic');
+  });
+
+  it('3–4 attempts → elite', () => {
+    expect(getAttemptBand(3)).toBe('elite');
+    expect(getAttemptBand(4)).toBe('elite');
+  });
+
+  it('5–6 attempts → expert', () => {
+    expect(getAttemptBand(5)).toBe('expert');
+    expect(getAttemptBand(6)).toBe('expert');
+  });
+
+  it('7–8 attempts → strong', () => {
+    expect(getAttemptBand(7)).toBe('strong');
+    expect(getAttemptBand(8)).toBe('strong');
+  });
+
+  it('9–10 attempts → solved', () => {
+    expect(getAttemptBand(9)).toBe('solved');
+    expect(getAttemptBand(10)).toBe('solved');
+  });
+
+  it('11+ attempts → struggled', () => {
+    expect(getAttemptBand(11)).toBe('struggled');
+    expect(getAttemptBand(20)).toBe('struggled');
+  });
+
+  it('ATTEMPT_BAND_LABELS has a label for every band', () => {
+    const bands: ReturnType<typeof getAttemptBand>[] = [
+      'mythic', 'elite', 'expert', 'strong', 'solved', 'struggled',
+    ];
+    for (const band of bands) {
+      expect(typeof ATTEMPT_BAND_LABELS[band]).toBe('string');
+      expect(ATTEMPT_BAND_LABELS[band].length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ── 4. Pure logic — scoring ───────────────────────────────────────────────────
 
 describe('Vault Cracker — scoring', () => {
-  it('perfect solve = score 100', () => {
-    expect(computeSolvedScore(1, 0)).toBe(100);
+  it('single attempt instant solve is discounted as lucky (below the elite peak)', () => {
+    // 1 attempt: base=100, confidence=0.75 → adjusted=75; time bonus=12 → 87
+    expect(computeSolvedScore(1, 0)).toBe(87);
+  });
+
+  it('four attempt instant solve yields the highest possible score (elite peak)', () => {
+    // 4 attempts: base=84, confidence=1.00 → adjusted=84; time bonus=12 → 96
+    expect(computeSolvedScore(4, 0)).toBe(96);
   });
 
   it('treats zero attempts and negative elapsed values like an immediate one-attempt solve', () => {
-    expect(computeSolvedScore(0, -5_000)).toBe(100);
+    expect(computeSolvedScore(0, -5_000)).toBe(87);
   });
 
   it('guards against non-positive elapsed score caps', () => {
-    expect(computeSolvedScore(2, 20_000, 0)).toBe(53);
-    expect(computeSolvedScore(2, -1_000, -25)).toBe(77);
+    // cap=0 → safeCapMs=1 → time fraction≈0 → no time bonus
+    expect(computeSolvedScore(2, 20_000, 0)).toBe(79);
+    // cap=-25 → safeCapMs=1, elapsed=-1000 → elapsed treated as 0 → full time bonus
+    expect(computeSolvedScore(2, -1_000, -25)).toBe(91);
   });
 
-  it('more attempts reduce score even with the same elapsed time', () => {
-    expect(computeSolvedScore(2, 20_000)).toBeLessThan(computeSolvedScore(1, 20_000));
+  it('elite attempts (3–4) score higher than mythic attempts (1–2) at the same elapsed time', () => {
+    // For a hard puzzle, 4 attempts (84 × 1.00 = 84) beats 2 attempts (96 × 0.82 = 79)
+    expect(computeSolvedScore(4, 20_000)).toBeGreaterThan(computeSolvedScore(2, 20_000));
   });
 
   it('longer elapsed time reduces score for the same attempt count', () => {
@@ -237,26 +293,28 @@ describe('Vault Cracker — scoring', () => {
   });
 
   it('very slow high-attempt solves collapse toward the solved floor', () => {
-    expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(31);
+    // 50 attempts: base=10 (floored), confidence=0.75 → adjusted=8; time bonus=0 → 8
+    expect(computeSolvedScore(50, DEFAULT_ELAPSED_SCORE_CAP_MS * 2)).toBe(8);
   });
 
-  it('AI scores stay within the elapsed cap when computing deterministic results', () => {
+  it('AI scores stay within valid range when computing deterministic results', () => {
     const score = computeAiScore(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(score).toBeLessThanOrEqual(100);
-    expect(score).toBeGreaterThanOrEqual(30);
+    expect(score).toBeGreaterThanOrEqual(SOLVED_SCORE_FLOOR);
   });
 
-  it('AI solve profiles keep attempts and elapsed time in the expected range', () => {
+  it('AI solve profiles keep attempts and elapsed time in the hard-puzzle range', () => {
+    // Hard-puzzle AI: 4..11 attempts, reflecting a puzzle most players need many guesses for
     const result = computeAiSolveProfile(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS);
-    expect(result.attempts).toBeGreaterThanOrEqual(1);
-    expect(result.attempts).toBeLessThanOrEqual(8);
+    expect(result.attempts).toBeGreaterThanOrEqual(4);
+    expect(result.attempts).toBeLessThanOrEqual(11);
     expect(result.elapsedMs).toBeGreaterThanOrEqual(15_000);
     expect(result.elapsedMs).toBeLessThanOrEqual(DEFAULT_ELAPSED_SCORE_CAP_MS);
     expect(result.score).toBe(computeAiScore(42, 'cap-check', DEFAULT_ELAPSED_SCORE_CAP_MS));
   });
 });
 
-// ── 4. AI score determinism ───────────────────────────────────────────────────
+// ── 5. AI score determinism ───────────────────────────────────────────────────
 
 describe('Vault Cracker — AI score determinism', () => {
   it('same seed + playerId always produces the same score', () => {
@@ -577,11 +635,11 @@ describe('Vault Cracker — POS competition', () => {
 // ── 12. computeAllAiScores integration ────────────────────────────────────────
 
 describe('Vault Cracker — computeAllAiScores integration', () => {
-  it('all AI scores are in valid range [30, 100]', () => {
+  it('all AI scores are in valid range [SOLVED_SCORE_FLOOR, 100]', () => {
     const ids = ['p0', 'p1', 'p2', 'p3', 'p4'];
     const scores = computeAllAiScores(42, ids, 'p0', DEFAULT_ELAPSED_SCORE_CAP_MS);
     for (const id of ids.slice(1)) {
-      expect(scores[id]).toBeGreaterThanOrEqual(30);
+      expect(scores[id]).toBeGreaterThanOrEqual(SOLVED_SCORE_FLOOR);
       expect(scores[id]).toBeLessThanOrEqual(100);
     }
   });
