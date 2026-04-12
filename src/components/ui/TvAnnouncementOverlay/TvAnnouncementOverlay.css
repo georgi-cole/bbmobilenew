@@ -74,10 +74,11 @@
     radial-gradient(circle at 50% 43%, rgba(192, 182, 255, 0.26) 0%, rgba(122, 134, 255, 0.2) 16%, rgba(86, 98, 212, 0.1) 32%, rgba(86, 98, 212, 0) 58%),
     linear-gradient(90deg, rgba(110, 126, 255, 0) 0%, rgba(110, 126, 255, 0.035) 24%, rgba(152, 138, 255, 0.09) 50%, rgba(110, 126, 255, 0.035) 76%, rgba(110, 126, 255, 0) 100%),
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.028) 0 1px, rgba(255, 255, 255, 0) 1px 16px);
-  opacity: 0.88;
   animation: tvAnnouncementStudioGlow 10s ease-in-out infinite;
 }
 
+/* Separate vignette layer so the edge darkening can sit above the glow without
+   affecting the title or subtitle content stacking. */
 .tv-announcement--cinematic-major::after {
   content: '';
   position: absolute;
