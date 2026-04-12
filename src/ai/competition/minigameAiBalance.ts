@@ -41,6 +41,21 @@ export interface MinigameAiTuning {
 }
 
 /**
+ * Validate that the score band chances in a tuning config sum to 1.0 (within ±0.01
+ * floating-point tolerance). Logs a warning in development — does not throw in
+ * production so a misconfiguration never crashes the game.
+ */
+function validateBandChances(key: string, tuning: MinigameAiTuning): void {
+  const total = tuning.scoreBands.reduce((sum, b) => sum + b.chance, 0);
+  if (Math.abs(total - 1.0) > 0.01) {
+    const msg = `[minigameAiBalance] "${key}" scoreBand chances sum to ${total.toFixed(4)}, expected 1.0`;
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(msg);
+    }
+  }
+}
+
+/**
  * Per-minigame AI balance configuration.
  *
  * Quick Tap target behaviour (humans routinely score 175–220):
@@ -68,3 +83,8 @@ export const minigameAiBalance: Record<string, MinigameAiTuning> = {
     slumpPenaltyMax: 14,
   },
 };
+
+// Validate all entries at module load time so misconfiguration is caught early.
+for (const [key, tuning] of Object.entries(minigameAiBalance)) {
+  validateBandChances(key, tuning);
+}
